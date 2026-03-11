@@ -1,0 +1,363 @@
+/* ===================================
+   CSS Variables & Reset
+   =================================== */
+:root {
+  /* Colors */
+  --primary-color: #ff6b35;
+  --secondary-color: #00d9ff;
+  --accent-color: #ffb627;
+  --dark-bg: #0a0e27;
+  --dark-secondary: #141b3d;
+  --dark-tertiary: #1e2749;
+  --text-primary: #ffffff;
+  --text-secondary: #b8c5d6;
+  --text-muted: #7a8ba3;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ffb627 100%);
+  --gradient-secondary: linear-gradient(135deg, #00d9ff 0%, #0099ff 100%);
+  --gradient-dark: linear-gradient(
+    180deg,
+    rgba(10, 14, 39, 0.95) 0%,
+    rgba(20, 27, 61, 0.98) 100%
+  );
+
+  /* Spacing */
+  --section-padding: 120px;
+  --container-max-width: 1200px;
+
+  /* Transitions */
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Shadows */
+  --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.2);
+  --shadow-large: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-glow: 0 0 30px rgba(255, 107, 53, 0.3);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+body {
+  font-family:
+    'Inter',
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  background-color: var(--dark-bg);
+  color: var(--text-primary);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition-smooth);
+}
+
+ul {
+  list-style: none;
+}
+
+.container {
+  max-width: var(--container-max-width);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ===================================
+   Section Styles
+   =================================== */
+section {
+  padding: var(--section-padding) 0;
+  position: relative;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 80px;
+}
+
+.section-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  background: rgba(255, 107, 53, 0.1);
+  border: 1px solid rgba(255, 107, 53, 0.3);
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--primary-color);
+  letter-spacing: 2px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(36px, 5vw, 56px);
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 20px;
+}
+
+/* ===================================
+   Animation Classes
+   =================================== */
+.fade-in {
+  animation: fadeIn 1s ease-out;
+}
+
+.fade-in-up {
+  animation: fadeInUp 1s ease-out;
+}
+
+.fade-in-up.delay-1 {
+  animation-delay: 0.2s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.fade-in-up.delay-2 {
+  animation-delay: 0.4s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.fade-in-up.delay-3 {
+  animation-delay: 0.6s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+.fade-in-up.delay-4 {
+  animation-delay: 0.8s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: all 0.8s ease-out;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal.delay-1 {
+  transition-delay: 0.2s;
+}
+
+.reveal.delay-2 {
+  transition-delay: 0.4s;
+}
+
+/* ===================================
+   Responsive Design
+   =================================== */
+@media (max-width: 1024px) {
+  :root {
+    --section-padding: 80px;
+  }
+
+  .nav-menu {
+    gap: 30px;
+  }
+
+  .about-grid,
+  .products-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --section-padding: 60px;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .nav-menu {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 280px;
+    height: 100vh;
+    background: rgba(10, 14, 39, 0.98);
+    backdrop-filter: blur(20px);
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 32px;
+    transition: var(--transition-smooth);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .nav-menu.active {
+    right: 0;
+  }
+
+  .nav-link {
+    font-size: 18px;
+  }
+
+  .hero {
+    min-height: 90vh;
+    padding: 100px 0 60px;
+  }
+
+  .hero-cta {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn {
+    width: 100%;
+    max-width: 280px;
+    justify-content: center;
+  }
+
+  .hero-stats {
+    gap: 24px;
+  }
+
+  .stat-divider {
+    display: none;
+  }
+
+  .section-header {
+    margin-bottom: 48px;
+  }
+
+  .about-grid,
+  .products-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .footer-links {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .vision-statement {
+    padding: 40px 24px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0 16px;
+  }
+
+  .logo-text {
+    font-size: 22px;
+  }
+
+  .hero-badge {
+    font-size: 12px;
+    padding: 10px 20px;
+  }
+
+  .stat-number {
+    font-size: 36px;
+  }
+
+  .about-card,
+  .product-card {
+    padding: 32px 24px;
+  }
+
+  .product-icon,
+  .about-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 28px;
+  }
+
+  .contact-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+
+  .back-to-top {
+    width: 45px;
+    height: 45px;
+    font-size: 18px;
+    bottom: 20px;
+    right: 20px;
+  }
+}
+
+/* ===================================
+   Print Styles
+   =================================== */
+@media print {
+  .navbar,
+  .hamburger,
+  .back-to-top,
+  .scroll-indicator {
+    display: none;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .hero-background {
+    display: none;
+  }
+}
