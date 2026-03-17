@@ -62,7 +62,7 @@ export default function Privacy() {
                 className="privacy-term"
                 onClick={() => handleShowPress('parke', 'consent-third')}
               >
-                개인정보 제3자제공 동의서 <Arrow size={16} />
+                개인정보 제3자 제공 동의서 <Arrow size={16} />
               </div>
             </div>
           </div>
