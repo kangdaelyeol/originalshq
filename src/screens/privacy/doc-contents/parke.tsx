@@ -213,7 +213,7 @@ export const PARKE_DOCS: AppDocs = {
       <ul>
         <li>성명: 강대렬</li>
         <li>직책: CTO</li>
-        <li>연락처: : daniel@originalshq.com / 010-2413-0510</li>
+        <li>연락처: daniel@originalshq.com / 010-2413-0510</li>
       </ul>
 
       <h3>제10조 (개인정보 처리방침의 변경)</h3>
