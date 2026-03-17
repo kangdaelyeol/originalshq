@@ -1,0 +1,89 @@
+.privacy-container {
+  margin-top: 100px;
+}
+
+.privacy-wrapper {
+  max-width: 1000px;
+  width: 100%;
+  margin: auto;
+  padding: 50px 30px;
+}
+
+.privacy-title {
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.privacy-items {
+  display: flex;
+  margin-top: 40px;
+  flex-direction: column;
+  gap: 20px;
+  .privacy-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(0, 0, 0, 0.21);
+    border-radius: 20px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    max-width: 350px;
+    .item-top {
+      display: flex;
+    }
+    .item-box {
+      border-radius: 20px;
+      overflow: hidden;
+      width: 80px;
+      height: 80px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+  }
+}
+
+.desc-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-left: 20px;
+  .desc-title {
+    margin-top: 5px;
+    font-weight: 600;
+    font-size: 20px;
+  }
+  .desc-subtitle {
+    color: var(--text-secondary);
+    font-size: 13px;
+    opacity: 0.5;
+  }
+}
+
+.privacy-box {
+  display: flex;
+  flex-direction: column;
+
+  // align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+  font-size: 15px;
+  .privacy-term {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    transition: all 0.2s linear;
+    &:hover {
+      color: var(--text-white);
+      opacity: 0.9;
+    }
+  }
+  .divider {
+    width: 100%;
+    height: 1px;
+    background-color: var(--text-secondary);
+    opacity: 0.2;
+  }
+}
