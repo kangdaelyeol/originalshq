@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import './styles.scss'
 import { useScroll } from '../../hooks/use-scroll'
+import { Link } from 'react-router-dom'
 
 const navMenuList = [
   { href: '#home', label: 'Home' },
   { href: '#about', label: 'About' },
   { href: '#products', label: 'Products' },
   { href: '#contact', label: 'Contact' },
+  { to: '/privacy', label: 'Privacy' },
 ]
 
 export const Nav = () => {
@@ -58,16 +60,22 @@ export const Nav = () => {
             className={['nav-menu', isMenuOpen && 'active'].join(' ')}
             id="navMenu"
           >
-            {navMenuList.map((config) => (
-              <a
-                href={config.href}
-                key={config.label}
-                className="nav-link"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {config.label}
-              </a>
-            ))}
+            {navMenuList.map((config) =>
+              config.href ? (
+                <a
+                  href={config.href}
+                  key={config.label}
+                  className="nav-link"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  {config.label}
+                </a>
+              ) : (
+                <Link className="nav-link" to={config.to as string}>
+                  {config.label}
+                </Link>
+              ),
+            )}
           </div>
 
           <div
