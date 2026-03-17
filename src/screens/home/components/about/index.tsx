@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import './styles.scss'
-import { useRevealContext } from '../../context/reveal-context'
+import { useRevealContext } from '@/context/reveal-context'
 
 export const About = () => {
   const aboutCard1Ref = useRef<HTMLDivElement>(null)
