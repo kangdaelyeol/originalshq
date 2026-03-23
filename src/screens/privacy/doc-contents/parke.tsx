@@ -60,7 +60,8 @@ export const PARKE_DOCS: AppDocs = {
         <li>
           카카오 로그인을 통한 수집: 닉네임, 이메일 (카카오로부터 제공받음)
         </li>
-        <li> 앱 내 직접 입력: 휴대전화번호, 차량번호</li>
+        <li>Apple 로그인을 통한 수집: 이름, 이메일 (Apple로부터 제공받음)</li>
+        <li>앱 내 직접 입력: 휴대전화번호</li>
       </ul>
       <h3>제4조 (개인정보의 제3자 제공)</h3>
       <p>
@@ -117,6 +118,10 @@ export const PARKE_DOCS: AppDocs = {
           <tr>
             <td>카카오</td>
             <td>카카오 로그인 연동 (본인 인증)</td>
+          </tr>
+          <tr>
+            <td>Apple</td>
+            <td>Apple 로그인 연동 (본인 인증)</td>
           </tr>
         </tbody>
       </table>
