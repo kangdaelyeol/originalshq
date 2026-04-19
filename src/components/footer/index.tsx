@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { HashLink } from 'react-router-hash-link'
 import './styles.scss'
 
 export const Footer = () => {
@@ -23,13 +24,13 @@ export const Footer = () => {
                 <h4>Company</h4>
                 <ul>
                   <li>
-                    <a href="/#about">About Us</a>
+                    <HashLink to="/#about">About Us</HashLink>
                   </li>
                   <li>
-                    <a href="/#products">Products</a>
+                    <HashLink to="/#products">Products</HashLink>
                   </li>
                   <li>
-                    <a href="/#contact">Contact</a>
+                    <HashLink to="/#contact">Contact</HashLink>
                   </li>
                 </ul>
               </div>
