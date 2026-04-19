@@ -4,12 +4,16 @@ import './styles.scss'
 import ParkeLogo from '@/assets/parke-icon.png'
 import PrivacyModal from '@/screens/privacy/components/privacy-modal'
 import { type DocType, type AppName } from './types'
+import { useScrollToTop } from '@/hooks'
 // import { PrivacyScreen } from './components/PrivacyScreen'
 
 export default function Privacy() {
   const [activeDoc, setActiveDoc] = useState(false)
   const [appName, setAppName] = useState<AppName>(null)
   const [docType, setDocType] = useState<DocType>(null)
+
+  useScrollToTop()
+
   const handleShowPress = (name: AppName, type: DocType) => {
     setActiveDoc(true)
     setAppName(name)
@@ -21,7 +25,7 @@ export default function Privacy() {
   }
 
   return (
-    <div className="privacy-container">
+    <div className="privacy-container" id="privacy">
       {/* <PrivacyScreen /> */}
       <div className="privacy-wrapper">
         <div className="privacy-title">개인정보 처리방침</div>
