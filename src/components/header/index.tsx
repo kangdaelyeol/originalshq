@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import './styles.scss'
-import { useScroll } from '../../hooks/use-scroll'
 import { Link } from 'react-router-dom'
 import { HashLink } from 'react-router-hash-link'
+import { useScroll } from '@/hooks/use-scroll'
+import './styles.scss'
+
 const navMenuList = [
   { to: '/#home', label: 'Home' },
   { to: '/#about', label: 'About' },
@@ -10,7 +11,7 @@ const navMenuList = [
   { to: '/#contact', label: 'Contact' },
 ]
 
-export const Nav = () => {
+export const Header = () => {
   const [scrolled, setScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
@@ -49,7 +50,7 @@ export const Nav = () => {
       <div className="container">
         <div className="nav-wrapper">
           <div className="logo">
-            <a href="#home">
+            <a href="/#home">
               <span className="logo-text">ORIGINALS</span>
             </a>
           </div>
@@ -60,7 +61,11 @@ export const Nav = () => {
             id="navMenu"
           >
             {navMenuList.map((config) => (
-              <HashLink className="nav-link" to={config.to as string}>
+              <HashLink
+                key={config.label}
+                className="nav-link"
+                to={config.to as string}
+              >
                 {config.label}
               </HashLink>
             ))}

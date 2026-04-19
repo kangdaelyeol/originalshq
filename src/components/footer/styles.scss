@@ -33,6 +33,33 @@
   color: var(--text-secondary);
 }
 
+.footer-right {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  .right-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    a {
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+    a:hover {
+      color: #6970f6;
+    }
+    .divider {
+      box-sizing: border-box;
+      height: 70%;
+      width: 1px;
+      background-color: #ffffff;
+      padding: 5px 0;
+    }
+  }
+}
+
 .footer-links {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -62,7 +89,7 @@
 }
 
 .footer-column a:hover {
-  color: var(--primary-color);
+  color: #6970f6;
 }
 
 .footer-bottom {
