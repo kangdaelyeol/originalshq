@@ -1,11 +1,11 @@
 import { Footer } from '@/components/footer'
-import { Nav } from '@/components/navigation-bar'
+import { Header } from '@/components/header'
 import { Outlet } from 'react-router-dom'
 
 export default function BasePage() {
   return (
     <div>
-      <Nav />
+      <Header />
       <Outlet />
       <Footer />
     </div>

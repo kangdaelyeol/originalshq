@@ -24,7 +24,7 @@ export default function Privacy() {
     <div className="privacy-container">
       {/* <PrivacyScreen /> */}
       <div className="privacy-wrapper">
-        <div className="privacy-title">이용약관</div>
+        <div className="privacy-title">개인정보 처리방침</div>
         <div className="privacy-items">
           <div className="privacy-item">
             <div className="item-top">
