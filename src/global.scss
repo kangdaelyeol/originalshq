@@ -55,8 +55,6 @@ body {
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
-  background-color: var(--dark-bg);
-  color: var(--text-primary);
   line-height: 1.6;
   overflow-x: hidden;
 }
@@ -75,46 +73,6 @@ a {
 
 ul {
   list-style: none;
-}
-
-.container {
-  max-width: var(--container-max-width);
-  margin: 0 auto;
-  padding: 0 24px;
-}
-
-/* ===================================
-   Section Styles
-   =================================== */
-section {
-  padding: var(--section-padding) 0;
-  position: relative;
-}
-
-.section-header {
-  text-align: center;
-  margin-bottom: 80px;
-}
-
-.section-badge {
-  display: inline-block;
-  padding: 8px 20px;
-  background: rgba(255, 107, 53, 0.1);
-  border: 1px solid rgba(255, 107, 53, 0.3);
-  border-radius: 50px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--primary-color);
-  letter-spacing: 2px;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-family: 'Orbitron', sans-serif;
-  font-size: clamp(36px, 5vw, 56px);
-  font-weight: 800;
-  line-height: 1.2;
-  margin-bottom: 20px;
 }
 
 /* ===================================
@@ -195,14 +153,6 @@ section {
    Responsive Design
    =================================== */
 @media (max-width: 1024px) {
-  :root {
-    --section-padding: 80px;
-  }
-
-  .nav-menu {
-    gap: 30px;
-  }
-
   .about-grid,
   .products-grid {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -210,38 +160,6 @@ section {
 }
 
 @media (max-width: 768px) {
-  :root {
-    --section-padding: 60px;
-  }
-
-  .hamburger {
-    display: flex;
-  }
-
-  .nav-menu {
-    position: fixed;
-    top: 0;
-    right: -100%;
-    width: 280px;
-    height: 100vh;
-    background: rgba(10, 14, 39, 0.98);
-    backdrop-filter: blur(20px);
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: 32px;
-    transition: var(--transition-smooth);
-    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .nav-menu.active {
-    right: 0;
-  }
-
-  .nav-link {
-    font-size: 18px;
-  }
-
   .hero {
     min-height: 90vh;
     padding: 100px 0 60px;
@@ -264,10 +182,6 @@ section {
 
   .stat-divider {
     display: none;
-  }
-
-  .section-header {
-    margin-bottom: 48px;
   }
 
   .about-grid,
@@ -297,10 +211,6 @@ section {
 }
 
 @media (max-width: 480px) {
-  .container {
-    padding: 0 16px;
-  }
-
   .logo-text {
     font-size: 22px;
   }

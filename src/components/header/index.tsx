@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HashLink } from 'react-router-hash-link'
 import { useScroll } from '@/hooks/use-scroll'
+import LogoIcon from '@/assets/originals_logo.svg'
 import './styles.scss'
+import { ArrowRight } from '@/illustrations'
 
 const navMenuList = [
   { to: '/#home', label: 'Home' },
@@ -46,37 +48,33 @@ export const Header = () => {
   })
 
   return (
-    <nav className={['navbar', scrolled && 'scrolled'].join(' ')} id="navbar">
+    <section className={['header', 'navbar', scrolled && 'scrolled'].join(' ')}>
       <div className="container">
-        <div className="nav-wrapper">
-          <div className="logo">
-            <a href="/#home">
-              <span className="logo-text">ORIGINALS</span>
-            </a>
-          </div>
+        <div className="wrapper">
+          <a href="/#home">
+            <img src={LogoIcon} alt="logo icon" />
+          </a>
 
           <div
             ref={menuRef}
-            className={['nav-menu', isMenuOpen && 'active'].join(' ')}
-            id="navMenu"
+            className={['nav', isMenuOpen && 'active'].join(' ')}
           >
             {navMenuList.map((config) => (
               <HashLink
                 key={config.label}
-                className="nav-link"
+                className="link"
                 to={config.to as string}
               >
                 {config.label}
               </HashLink>
             ))}
-            <Link className="nav-link" to="/privacy">
+            <Link className="link" to="/privacy">
               Privacy
             </Link>
           </div>
 
           <div
             className={['hamburger', isMenuOpen && 'active'].join(' ')}
-            id="hamburger"
             ref={hamburgerRef}
             onClick={() => setIsMenuOpen((prev) => !prev)}
           >
@@ -84,8 +82,24 @@ export const Header = () => {
             <span></span>
             <span></span>
           </div>
+          <div className={['hamburger__nav', isMenuOpen && 'active'].join(' ')}>
+            {navMenuList.map((config) => (
+              <HashLink
+                key={config.label}
+                to={config.to}
+                className="hamburger__link"
+              >
+                {config.label}
+                <ArrowRight size={25} color={'#555'} className="icon" />
+              </HashLink>
+            ))}
+            <Link className="hamburger__link" to="/privacy">
+              Privacy
+              <ArrowRight size={25} color={'#555'} className="icon" />
+            </Link>
+          </div>
         </div>
       </div>
-    </nav>
+    </section>
   )
 }
