@@ -1,6 +1,10 @@
 import type { SvgProps } from './types'
 
-export const ArrowRight = ({ size, color, className = '' }: SvgProps) => {
+export const ArrowRight = ({
+  size,
+  color = 'black',
+  className = '',
+}: SvgProps) => {
   return (
     <svg width={size} height={size} viewBox="0 0 40 40" className={className}>
       <path
