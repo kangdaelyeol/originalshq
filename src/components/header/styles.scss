@@ -17,7 +17,7 @@
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     border-color: none;
     .text__container {
-      opacity: 0;
+      animation: fade-out 0.2s both;
     }
     .wrapper {
       height: 60px;
@@ -47,13 +47,15 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 5px;
-      transition: all 0.3s ease;
+
       .logo-caption {
         margin-top: 3px;
         height: 7px;
+        animation: fade-in 0.2s both;
       }
       .logo-text {
         height: 18px;
+        animation: fade-in 0.2s both;
       }
     }
   }
@@ -162,5 +164,15 @@
   }
   100% {
     opacity: 1;
+  }
+}
+
+@keyframes fade-out {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    display: none;
   }
 }
