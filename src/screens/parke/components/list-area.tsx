@@ -1,16 +1,17 @@
 import '@/screens/parke/styles/list-area.scss'
+import { useParkeContext } from '../context'
+import { PARKE_URL } from '../constants'
 
 interface RowProps {
-  url: string
   serial: string
 }
 
-const Row = ({ url, serial }: RowProps) => {
+const Row = ({ serial }: RowProps) => {
   return (
     <div className="row">
       <div className="row-main">
         <div className="row-serial">{serial}</div>
-        <div className="row-url">{url}</div>
+        <div className="row-url">{`${PARKE_URL}/${serial}`}</div>
       </div>
       <div className="row-actions">
         <button
@@ -53,16 +54,12 @@ const Row = ({ url, serial }: RowProps) => {
 }
 
 export const ListArea = () => {
-  const sampleRowData = [
-    { url: 'url1234', serial: 'serial123124' },
-    { url: 'url1234', serial: 'serial123125' },
-    { url: 'url1234', serial: 'serial123128' },
-  ]
+  const { serialList } = useParkeContext()
   return (
     <div id="listArea">
       <div className="list">
-        {sampleRowData.map((v) => (
-          <Row url={v.url} serial={v.serial} key={v.serial} />
+        {serialList.map((v) => (
+          <Row serial={v} key={v} />
         ))}
       </div>
     </div>
