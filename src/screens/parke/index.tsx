@@ -5,7 +5,7 @@ import {
   Panel,
   SearchRow,
 } from '@/screens/parke/components'
-import './parke.scss'
+import './styles/global.scss'
 
 export default function ParkeScreen() {
   return (

@@ -1,3 +1,5 @@
+import '@/screens/parke/styles/list-area.scss'
+
 interface RowProps {
   url: string
   serial: string
@@ -5,7 +7,7 @@ interface RowProps {
 
 const Row = ({ url, serial }: RowProps) => {
   return (
-    <div className="row" data-serial="${escapeAttr(c.serial)}">
+    <div className="row">
       <div className="row-main">
         <div className="row-serial">{serial}</div>
         <div className="row-url">{url}</div>

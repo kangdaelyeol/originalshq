@@ -1,4 +1,4 @@
-import '@/screens/parke/parke.scss'
+import '@/screens/parke/styles/header.scss'
 
 export const Header = () => {
   return (

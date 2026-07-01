@@ -1,0 +1,19 @@
+@use './global.scss';
+
+.search-row {
+  position: relative;
+  margin-bottom: 16px;
+  input {
+    width: 100%;
+    padding-left: 38px;
+  }
+}
+.search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  font-size: 15px;
+  pointer-events: none;
+}

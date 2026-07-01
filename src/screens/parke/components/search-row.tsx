@@ -1,3 +1,5 @@
+import '@/screens/parke/styles/search-row.scss'
+
 export const SearchRow = () => {
   return (
     <div className="search-row">

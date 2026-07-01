@@ -1,3 +1,5 @@
+import '@/screens/parke/styles/list-header.scss'
+
 export const ListHeader = () => {
   return (
     <div className="list-header">

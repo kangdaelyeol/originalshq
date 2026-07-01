@@ -1,9 +1,36 @@
+import { QRCodeCanvas } from 'qrcode.react'
+import '@/screens/parke/styles/panel.scss'
+
+const downloadQrCode = (serial: string) => {
+  const canvas = document.querySelector('.qr-code-canvas') as HTMLCanvasElement
+  if (!canvas) return
+  const url = canvas.toDataURL('image/png')
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `qr-${serial}.png`
+  a.click()
+}
+
+const QrCode = ({ url }: { url: string }) => {
+  return (
+    <QRCodeCanvas
+      marginSize={2}
+      className="qr-code-canvas"
+      size={150}
+      value={url}
+    />
+  )
+}
+
 export const Panel = () => {
   const tmpData = {
     serial: 'mr1nzp99',
-    qrImageUrl:
-      'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=https%3A%2F%2Fgithub.com%2Fkangdaelyeol%3Ftab%3Doverview%26from%3D2026-06-01%26to%3D2026-06-30',
+    qrImageUrl: 'https://parke-web.netlify.app/parke/abcd',
   }
+  const handleDownloadClick = () => {
+    downloadQrCode(tmpData.serial)
+  }
+
   return (
     <div className="panel">
       <div className="panel-label">QR 코드 생성</div>
@@ -20,7 +47,7 @@ export const Panel = () => {
 
       <div className="result" id="resultBox">
         <div className="scan-frame">
-          <img id="resultImg" src={tmpData.qrImageUrl} alt="생성된 QR 코드" />
+          <QrCode url={tmpData.qrImageUrl} />
           <div className="corner tl"></div>
           <div className="corner tr"></div>
           <div className="corner bl"></div>
@@ -37,6 +64,9 @@ export const Panel = () => {
           </div>
         </div>
       </div>
+      <button onClick={handleDownloadClick} className="qrdown__btn">
+        다운로드
+      </button>
     </div>
   )
 }
