@@ -1,4 +1,5 @@
 @use './global.scss';
+@use './variables.scss';
 
 .list {
   display: flex;
@@ -10,9 +11,9 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  background: variables.$surface-1;
+  border: 1px solid variables.$border;
+  border-radius: variables.$radius;
   padding: 12px 14px;
 }
 .row-thumb {
@@ -35,15 +36,15 @@
   min-width: 0;
 }
 .row-serial {
-  font-family: var(--font-mono);
+  font-family: variables.$font-mono;
   font-size: 15px;
   font-weight: 500;
-  color: var(--text-primary);
+  color: variables.$text-primary;
 }
 .row-url {
-  font-family: var(--font-mono);
+  font-family: variables.$font-mono;
   font-size: 12px;
-  color: var(--text-muted);
+  color: variables.$text-muted;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -60,37 +61,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  background: variables.$surface-2;
+  border: 1px solid variables.$border;
+  color: variables.$text-secondary;
   &:hover {
-    border-color: var(--border-strong);
-    color: var(--text-primary);
+    border-color: variables.$border-strong;
+    color: variables.$text-primary;
   }
   svg {
     width: 16px;
     height: 16px;
   }
   &.del:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-    background: var(--danger-dim);
+    border-color: variables.$danger;
+    color: variables.$danger;
+    background: variables.$danger-dim;
   }
 }
 
 .empty {
   text-align: center;
   padding: 56px 20px;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
+  color: variables.$text-muted;
+  font-family: variables.$font-mono;
   font-size: 13px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+  border: 1px dashed variables.$border;
+  border-radius: variables.$radius;
 
   strong {
     display: block;
-    color: var(--text-secondary);
-    font-family: var(--font-sans);
+    color: variables.$text-secondary;
+    font-family: variables.$font-sans;
     font-size: 14px;
     font-weight: 500;
     margin-bottom: 6px;

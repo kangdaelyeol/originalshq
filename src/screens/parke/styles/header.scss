@@ -1,16 +1,17 @@
 @use './global';
+@use './variables.scss';
 
 .eyebrow {
-  font-family: var(--font-mono);
+  font-family: variables.$font-mono;
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: variables.$accent;
   margin-bottom: 10px;
 }
 
 .sub {
-  color: var(--text-secondary);
+  color: variables.$text-secondary;
   font-size: 14px;
   margin-bottom: 40px;
 }

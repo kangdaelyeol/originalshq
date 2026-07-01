@@ -1,4 +1,5 @@
 @use './global.scss';
+@use './variables.scss';
 
 .search-row {
   position: relative;
@@ -13,7 +14,7 @@
   left: 13px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-muted);
+  color: variables.$text-muted;
   font-size: 15px;
   pointer-events: none;
 }

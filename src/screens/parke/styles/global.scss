@@ -7,15 +7,15 @@
   padding: 0;
 }
 body {
-  background: var(--bg);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
+  background: variables.$bg;
+  color: variables.$text-primary;
+  font-family: variables.$font-sans;
   min-height: 100vh;
   padding: 48px 24px 80px;
 }
 
 h1 {
-  font-family: var(--font-display);
+  font-family: variables.$font-display;
   font-weight: 700;
   font-size: 30px;
   letter-spacing: -0.01em;
@@ -24,11 +24,11 @@ h1 {
 
 input[type='text'] {
   flex: 1;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  background: variables.$surface-2;
+  border: 1px solid variables.$border;
   border-radius: 8px;
-  color: var(--text-primary);
-  font-family: var(--font-mono);
+  color: variables.$text-primary;
+  font-family: variables.$font-mono;
   font-size: 14px;
   padding: 0 14px;
   height: 44px;
@@ -36,17 +36,17 @@ input[type='text'] {
   transition: border-color 0.15s ease;
 }
 input[type='text']::placeholder {
-  color: var(--text-muted);
+  color: variables.$text-muted;
 }
 input[type='text']:focus {
-  border-color: var(--accent);
+  border-color: variables.$accent;
 }
 
 button {
-  font-family: var(--font-sans);
+  font-family: variables.$font-sans;
   font-weight: 600;
   font-size: 16px;
-  border-radius: var(--btn-border-radius);
+  border-radius: variables.$btn-border-radius;
   border: 1px solid transparent;
   cursor: pointer;
 }
@@ -57,8 +57,8 @@ button {
 }
 
 .error-msg {
-  color: var(--danger);
-  font-family: var(--font-mono);
+  color: variables.$danger;
+  font-family: variables.$font-mono;
   font-size: 12.5px;
   margin-top: 10px;
 }
@@ -68,10 +68,10 @@ button {
   bottom: 28px;
   left: 50%;
   transform: translateX(-50%) translateY(20px);
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
+  background: variables.$surface-2;
+  border: 1px solid variables.$border-strong;
+  color: variables.$text-primary;
+  font-family: variables.$font-mono;
   font-size: 13px;
   padding: 10px 18px;
   border-radius: 8px;
