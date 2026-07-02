@@ -1,13 +1,20 @@
 import '@/screens/parke/styles/header.scss'
+import AppIcon from '@/assets/parke-icon.png'
+import { LogoText } from './logo-text'
 
 export const Header = () => {
   return (
     <div className="header-wrapper">
-      <div className="eyebrow">Admin / QR generator</div>
-      <h1>QR 코드 콘솔</h1>
-      <p className="sub">
-        URL을 입력하면 QR 코드와 고유 시리얼 번호를 생성합니다.
-      </p>
+      <div className="title-box">
+        <LogoText />
+        <div className="title">- Admin</div>
+      </div>
+      <div className="caption-box">
+        <div className="app-icon">
+          <img src={AppIcon} alt="app icon" />
+        </div>
+        <div className="caption">QR generator</div>
+      </div>
     </div>
   )
 }

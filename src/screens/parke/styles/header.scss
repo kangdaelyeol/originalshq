@@ -1,16 +1,52 @@
 @use './variables.scss';
 
-.eyebrow {
-  font-family: variables.$font-mono;
-  font-size: 12px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: variables.$accent;
-  margin-bottom: 20px;
-}
+.header-wrapper {
+  padding-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 
-.sub {
-  color: variables.$text-secondary;
-  font-size: 14px;
-  margin-bottom: 40px;
+  .title-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .title {
+    color: white;
+    font-family: variables.$font-montserrat;
+    font-weight: 600;
+    letter-spacing: -1.2px;
+    font-size: 25px;
+  }
+
+  .caption-box {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .caption {
+    font-family: variables.$font-montserrat;
+    font-size: 25px;
+    letter-spacing: -1.2px;
+    color: variables.$accent;
+    font-weight: 600;
+    margin-bottom: 20px;
+    margin-top: 20px;
+  }
+
+  .app-icon {
+    width: 40px;
+    overflow: hidden;
+    border-radius: 5px;
+    img {
+      width: 100%;
+    }
+  }
+  .logo-caption {
+    width: 250px;
+    height: calc(250px * 68.86523 / 700.62437);
+    fill: white;
+  }
 }
