@@ -31,11 +31,19 @@ export const Panel = () => {
     downloadQrCode(tmpData.serial)
   }
 
+  const handleCreateClick = () => {
+    console.log('asdsad')
+  }
+
   return (
     <div className="panel">
       <div className="panel-label">QR 코드 생성</div>
       <div className="gen-row">
-        <button className="btn-generate" id="genBtn">
+        <button
+          onClick={handleCreateClick}
+          className="btn-generate"
+          id="genBtn"
+        >
           생성하기
         </button>
       </div>

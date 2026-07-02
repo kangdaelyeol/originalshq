@@ -1,0 +1,14 @@
+@use './variables';
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+.parke {
+  background: variables.$bg;
+  color: variables.$text-primary;
+  font-family: variables.$font-sans;
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 820px;
+  margin: 0 auto;
+}

@@ -1,12 +1,27 @@
-@use './global.scss';
 @use './variables.scss';
 
 .search-row {
   position: relative;
   margin-bottom: 16px;
-  input {
+  .search-input {
     width: 100%;
-    padding-left: 38px;
+    padding-left: 28px;
+    box-sizing: border-box;
+    flex: 1;
+    background: variables.$surface-2;
+    border: 1px solid variables.$border;
+    border-radius: 8px;
+    color: variables.$text-primary;
+    font-family: variables.$font-mono;
+    font-size: 14px;
+    height: 44px;
+    outline: none;
+  }
+  .search-input::placeholder {
+    color: variables.$text-muted;
+  }
+  .search-input:focus {
+    border-color: variables.$accent;
   }
 }
 .search-icon {
