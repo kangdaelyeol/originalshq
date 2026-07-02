@@ -7,6 +7,8 @@
   align-items: center;
 
   .title-box {
+    color: white;
+    font-size: 30px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -28,18 +30,19 @@
 
   .caption {
     font-family: variables.$font-montserrat;
-    font-size: 25px;
+    font-size: 20px;
     letter-spacing: -1.2px;
-    color: variables.$accent;
-    font-weight: 600;
+    color: #eee;
+    font-weight: 500;
     margin-bottom: 20px;
-    margin-top: 20px;
   }
 
   .app-icon {
     width: 40px;
+    height: 40px;
     overflow: hidden;
     border-radius: 5px;
+    border: 1px solid #151515;
     img {
       width: 100%;
     }

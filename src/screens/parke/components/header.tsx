@@ -6,14 +6,13 @@ export const Header = () => {
   return (
     <div className="header-wrapper">
       <div className="title-box">
-        <LogoText />
-        <div className="title">- Admin</div>
-      </div>
-      <div className="caption-box">
+        <LogoText /> -
         <div className="app-icon">
           <img src={AppIcon} alt="app icon" />
         </div>
-        <div className="caption">QR generator</div>
+      </div>
+      <div className="caption-box">
+        <div className="caption">QR generator / Admin</div>
       </div>
     </div>
   )
