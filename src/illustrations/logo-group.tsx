@@ -40,9 +40,9 @@ export const LogoGroup = ({ size = 134, className = '' }: SvgProps) => {
           width="104.249"
           height="119.267"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -76,8 +76,8 @@ export const LogoGroup = ({ size = 134, className = '' }: SvgProps) => {
           y2="97.9981"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stop-color="#B289BC" />
-          <stop offset="1" stop-color="#153586" />
+          <stop stopColor="#B289BC" />
+          <stop offset="1" stopColor="#153586" />
         </linearGradient>
         <linearGradient
           id="paint1_linear_203_3"
@@ -87,8 +87,8 @@ export const LogoGroup = ({ size = 134, className = '' }: SvgProps) => {
           y2="120.159"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stop-color="#B289BC" />
-          <stop offset="1" stop-color="#153586" />
+          <stop stopColor="#B289BC" />
+          <stop offset="1" stopColor="#153586" />
         </linearGradient>
         <linearGradient
           id="paint2_linear_203_3"
@@ -98,8 +98,8 @@ export const LogoGroup = ({ size = 134, className = '' }: SvgProps) => {
           y2="89.4127"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stop-color="#B289BC" />
-          <stop offset="1" stop-color="#153586" />
+          <stop stopColor="#B289BC" />
+          <stop offset="1" stopColor="#153586" />
         </linearGradient>
         <linearGradient
           id="paint3_linear_203_3"
@@ -109,9 +109,9 @@ export const LogoGroup = ({ size = 134, className = '' }: SvgProps) => {
           y2="102.652"
           gradientUnits="userSpaceOnUse"
         >
-          <stop stop-color="#4C5299" />
-          <stop offset="0.302785" stop-color="#B289BC" />
-          <stop offset="1" stop-color="#153586" />
+          <stop stopColor="#4C5299" />
+          <stop offset="0.302785" stopColor="#B289BC" />
+          <stop offset="1" stopColor="#153586" />
         </linearGradient>
       </defs>
     </svg>

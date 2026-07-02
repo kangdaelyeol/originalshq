@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { HashLink } from 'react-router-hash-link'
-import './styles.scss'
+import '@/screens/home/styles/footer.scss'
 
 export const Footer = () => {
   return (

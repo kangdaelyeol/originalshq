@@ -4,8 +4,8 @@ import LogoSymbol from '@/assets/logo_symbol.svg'
 import LogoCaption from '@/assets/logo_caption.svg'
 import LogoText from '@/assets/logo_text.svg'
 import { ArrowRight } from '@/illustrations'
-import './styles.scss'
-import { useHeader } from './use-header'
+import { useHeader } from '@/screens/home/controller'
+import '@/screens/home/styles/header.scss'
 
 const navMenuList = [
   { to: '/#home', label: 'Home' },

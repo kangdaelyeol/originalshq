@@ -67,8 +67,9 @@ img {
 
 a {
   text-decoration: none;
-  color: inherit;
-  transition: var(--transition-smooth);
+  &:visited {
+    color: inherit;
+  }
 }
 
 ul {
@@ -160,26 +161,6 @@ ul {
 }
 
 @media (max-width: 768px) {
-  .hero {
-    min-height: 90vh;
-    padding: 100px 0 60px;
-  }
-
-  .hero-cta {
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .btn {
-    width: 100%;
-    max-width: 280px;
-    justify-content: center;
-  }
-
-  .hero-stats {
-    gap: 24px;
-  }
-
   .stat-divider {
     display: none;
   }
@@ -211,15 +192,6 @@ ul {
 }
 
 @media (max-width: 480px) {
-  .logo-text {
-    font-size: 22px;
-  }
-
-  .hero-badge {
-    font-size: 12px;
-    padding: 10px 20px;
-  }
-
   .stat-number {
     font-size: 36px;
   }

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
-import './styles.scss'
+import '@/screens/home/styles/back-to-top-button.scss'
+
 export const BackToTopButton = () => {
   const btnRef = useRef<HTMLButtonElement | null>(null)
   const handleScroll = useCallback(() => {

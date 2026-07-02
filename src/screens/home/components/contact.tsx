@@ -1,17 +1,19 @@
 import { useEffect, useRef } from 'react'
-import './styles.scss'
 import { useRevealContext } from '@/context/reveal-context'
+import '@/screens/home/styles/contact.scss'
 
 export const Contact = () => {
   const card1Ref = useRef<HTMLDivElement>(null)
   const card2Ref = useRef<HTMLDivElement>(null)
   const { pushRevealRef } = useRevealContext()
+
   useEffect(() => {
     if (card1Ref.current !== null && card2Ref.current !== null) {
       pushRevealRef(card1Ref as React.RefObject<HTMLDivElement>)
       pushRevealRef(card2Ref as React.RefObject<HTMLDivElement>)
     }
   }, [pushRevealRef])
+
   return (
     <section className="contact" id="contact">
       <div className="container">

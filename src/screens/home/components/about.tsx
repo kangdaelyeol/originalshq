@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import './styles.scss'
 import { useRevealContext } from '@/context/reveal-context'
+import '@/screens/home/styles/about.scss'
 
 export const About = () => {
   const aboutCard1Ref = useRef<HTMLDivElement>(null)
@@ -8,6 +8,7 @@ export const About = () => {
   const aboutCard3Ref = useRef<HTMLDivElement>(null)
   const aboutCard4Ref = useRef<HTMLDivElement>(null)
   const { pushRevealRef } = useRevealContext()
+
   useEffect(() => {
     if (
       aboutCard1Ref.current !== null &&
@@ -21,6 +22,7 @@ export const About = () => {
       pushRevealRef(aboutCard4Ref as React.RefObject<HTMLDivElement>)
     }
   }, [pushRevealRef])
+
   return (
     <section className="about" id="about">
       <div className="container">
