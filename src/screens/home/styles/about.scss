@@ -1,10 +1,10 @@
-@use './global.scss';
+@use './variables.scss';
 
 /* ===================================
    About Section
    =================================== */
 .about {
-  background: var(--dark-secondary);
+  background: variables.$dark-secondary;
   position: relative;
 }
 
@@ -37,7 +37,7 @@
   border-radius: 24px;
   padding: 40px 32px;
   text-align: center;
-  transition: var(--transition-smooth);
+  transition: variables.$transition-smooth;
 }
 
 .about-card:hover {
@@ -53,23 +53,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-primary);
+  background: variables.$gradient-primary;
   border-radius: 20px;
   font-size: 36px;
   color: white;
-  box-shadow: var(--shadow-glow);
+  box-shadow: variables.$shadow-glow;
 }
 
 .about-card h3 {
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 16px;
-  color: var(--text-primary);
+  color: variables.$text-primary;
 }
 
 .about-card p {
   font-size: 15px;
-  color: var(--text-secondary);
+  color: variables.$text-secondary;
   line-height: 1.8;
 }
 
@@ -113,7 +113,7 @@
 
 .vision-icon {
   font-size: 48px;
-  color: var(--primary-color);
+  color: variables.$primary-color;
   margin-bottom: 24px;
   position: relative;
   z-index: 1;
@@ -124,7 +124,7 @@
   font-size: clamp(20px, 3vw, 28px);
   font-weight: 600;
   line-height: 1.6;
-  color: var(--text-primary);
+  color: variables.$text-primary;
   margin-bottom: 20px;
   position: relative;
   z-index: 1;
@@ -132,7 +132,7 @@
 
 .vision-author {
   font-size: 16px;
-  color: var(--text-muted);
+  color: variables.$text-muted;
   font-style: italic;
   position: relative;
   z-index: 1;

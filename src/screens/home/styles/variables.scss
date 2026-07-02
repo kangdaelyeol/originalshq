@@ -1,0 +1,36 @@
+/* ===================================
+   CSS Variables & Reset
+   =================================== */
+/* Colors */
+$primary-color: #ff6b35;
+$secondary-color: #00d9ff;
+$accent-color: #ffb627;
+$dark-bg: #0a0e27;
+$dark-secondary: #141b3d;
+$dark-tertiary: #1e2749;
+$text-primary: #ffffff;
+$text-secondary: #b8c5d6;
+$text-muted: #7a8ba3;
+
+/* Gradients */
+$gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ffb627 100%);
+$gradient-secondary: linear-gradient(135deg, #00d9ff 0%, #0099ff 100%);
+$gradient-dark: linear-gradient(
+  180deg,
+  rgba(10, 14, 39, 0.95) 0%,
+  rgba(20, 27, 61, 0.98) 100%
+);
+
+/* Spacing */
+$section-padding: 120px;
+$container-max-width: 1200px;
+
+/* Transitions */
+$transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+$transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+/* Shadows */
+$shadow-small: 0 2px 8px rgba(0, 0, 0, 0.1);
+$shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.2);
+$shadow-large: 0 8px 32px rgba(0, 0, 0, 0.3);
+$shadow-glow: 0 0 30px rgba(255, 107, 53, 0.3);

@@ -1,10 +1,10 @@
-@use './global.scss';
+@use './variables.scss';
 
 /* ===================================
    Footer
    =================================== */
 .footer {
-  background: var(--dark-bg);
+  background: variables.$dark-bg;
   padding: 60px 0 30px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -21,7 +21,7 @@
   font-size: 32px;
   font-weight: 800;
   margin-bottom: 12px;
-  background: var(--gradient-primary);
+  background: variables.$gradient-primary;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -30,7 +30,7 @@
 
 .footer-logo p {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: variables.$text-secondary;
 }
 
 .footer-right {
@@ -70,7 +70,7 @@
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: var(--text-primary);
+  color: variables.$text-primary;
 }
 
 .footer-column ul {
@@ -81,11 +81,11 @@
 
 .footer-column li {
   font-size: 14px;
-  color: var(--text-secondary);
+  color: variables.$text-secondary;
 }
 
 .footer-column a {
-  transition: var(--transition-smooth);
+  transition: variables.$transition-smooth;
 }
 
 .footer-column a:hover {
@@ -100,6 +100,6 @@
 
 .footer-bottom p {
   font-size: 14px;
-  color: var(--text-muted);
+  color: variables.$text-muted;
   margin-bottom: 8px;
 }

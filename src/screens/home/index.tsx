@@ -8,17 +8,22 @@ import {
   Footer,
   Header,
 } from './components'
+import Styles from '@/screens/home/styles/global.module.scss'
 
 export default function HomeScreen() {
   return (
     <RevealContextProvider>
-      <Header />
-      <Hero />
-      <About />
-      <Products />
-      <Contact />
-      <BackToTopButton />
-      <Footer />
+      <div className={Styles.home}>
+        <div className={Styles.wrap}>
+          <Header />
+          <Hero />
+          <About />
+          <Products />
+          <Contact />
+          <BackToTopButton />
+          <Footer />
+        </div>
+      </div>
     </RevealContextProvider>
   )
 }

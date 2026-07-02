@@ -1,10 +1,10 @@
-@use './global.scss';
+@use './variables.scss';
 
 /* ===================================
    Contact Section
    =================================== */
 .contact {
-  background: var(--dark-secondary);
+  background: variables.$dark-secondary;
   position: relative;
 }
 
@@ -50,7 +50,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--gradient-primary);
+  background: variables.$gradient-primary;
   border-radius: 16px;
   font-size: 24px;
   color: white;
@@ -59,7 +59,7 @@
 .contact-details h4 {
   font-size: 14px;
   font-weight: 600;
-  color: var(--text-muted);
+  color: variables.$text-muted;
   margin-bottom: 8px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -67,17 +67,17 @@
 
 .contact-details p {
   font-size: 16px;
-  color: var(--text-primary);
+  color: variables.$text-primary;
   line-height: 1.8;
 }
 
 .contact-details a {
-  color: var(--secondary-color);
-  transition: var(--transition-smooth);
+  color: variables.$secondary-color;
+  transition: variables.$transition-smooth;
 }
 
 .contact-details a:hover {
-  color: var(--primary-color);
+  color: variables.$primary-color;
 }
 
 .contact-map {
@@ -100,18 +100,18 @@
 
 .map-placeholder i {
   font-size: 64px;
-  color: var(--primary-color);
+  color: variables.$primary-color;
   margin-bottom: 20px;
 }
 
 .map-placeholder p {
   font-size: 20px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: variables.$text-primary;
   margin-bottom: 8px;
 }
 
 .map-placeholder span {
   font-size: 16px;
-  color: var(--text-secondary);
+  color: variables.$text-secondary;
 }
