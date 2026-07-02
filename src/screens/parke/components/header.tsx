@@ -12,7 +12,7 @@ export const Header = () => {
         </div>
       </div>
       <div className="caption-box">
-        <div className="caption">QR generator / Admin</div>
+        <div className="caption"> Admin / QR Generator</div>
       </div>
     </div>
   )

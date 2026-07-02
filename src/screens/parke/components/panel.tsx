@@ -1,5 +1,7 @@
 import { QRCodeCanvas } from 'qrcode.react'
 import '@/screens/parke/styles/panel.scss'
+import { PARKE_URL } from '../constants'
+import { useState } from 'react'
 
 const downloadQrCode = (serial: string) => {
   const canvas = document.querySelector('.qr-code-canvas') as HTMLCanvasElement
@@ -11,29 +13,48 @@ const downloadQrCode = (serial: string) => {
   a.click()
 }
 
-const QrCode = ({ url }: { url: string }) => {
+const QrCode = ({ url, size }: { url: string; size: number }) => {
   return (
     <QRCodeCanvas
       marginSize={2}
       className="qr-code-canvas"
-      size={150}
+      size={size}
       value={url}
     />
   )
 }
 
 export const Panel = () => {
-  const tmpData = {
-    serial: 'mr1nzp99',
-    qrImageUrl: 'https://parke-web.netlify.app/parke/abcd',
-  }
+  const [modalActive, setModalActive] = useState(false)
+  const [serial, setSerial] = useState('')
+  const [iconIndex] = useState(() => Math.floor(Math.random() * 4))
+
+  const qrImageUrl = PARKE_URL + '/' + serial
+
   const handleDownloadClick = () => {
-    downloadQrCode(tmpData.serial)
+    downloadQrCode(serial)
   }
 
   const handleCreateClick = () => {
-    console.log('asdsad')
+    setSerial('mr1nzp99')
   }
+
+  const handleFrameClick = () => {
+    setModalActive(true)
+  }
+
+  const handleCloseClick = () => {
+    setModalActive(false)
+  }
+
+  const icon =
+    iconIndex === 0
+      ? "(='X'=)"
+      : iconIndex === 1
+        ? '(^-^*)'
+        : iconIndex === 2
+          ? '(o^^)o'
+          : '(;-;)'
 
   return (
     <div className="panel">
@@ -47,34 +68,56 @@ export const Panel = () => {
           생성하기
         </button>
       </div>
-      <div
-        className="error-msg"
-        id="errorMsg"
-        style={{ display: 'none' }}
-      ></div>
 
-      <div className="result" id="resultBox">
-        <div className="scan-frame">
-          <QrCode url={tmpData.qrImageUrl} />
-          <div className="corner tl"></div>
-          <div className="corner tr"></div>
-          <div className="corner bl"></div>
-          <div className="corner br"></div>
-        </div>
-        <div className="result-info">
-          <div className="lbl">QR 코드 정보</div>
-          <div className="serial" id="resultSerial">
-            {tmpData.serial}
+      <div className="result-box">
+        {serial ? (
+          <>
+            <div className="result">
+              <div className="scan-frame">
+                <div className="hover-frame" onClick={handleFrameClick} />
+                <QrCode url={qrImageUrl} size={150} />
+                <div className="corner tl" />
+                <div className="corner tr" />
+                <div className="corner bl" />
+                <div className="corner br" />
+              </div>
+              <div className="result-info">
+                <div className="lbl">QR 코드 정보</div>
+                <div className="serial" id="resultSerial">
+                  {serial}
+                </div>
+                <div className="lbl"></div>
+                <div className="url" id="resultUrl">
+                  {qrImageUrl}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleDownloadClick}
+              className="btn btn-qrdownload"
+            >
+              다운로드
+            </button>
+          </>
+        ) : (
+          <div className="empty-box">
+            <div className="icon">{icon}</div>
+            <div className="caption">QR 코드를 생성해주세요!</div>
           </div>
-          <div className="lbl"></div>
-          <div className="url" id="resultUrl">
-            {tmpData.qrImageUrl}
-          </div>
-        </div>
+        )}
       </div>
-      <button onClick={handleDownloadClick} className="btn btn-qrdownload">
-        다운로드
-      </button>
+
+      {/* Modal */}
+      {modalActive && (
+        <div className="modal">
+          <div className="qr-wrapper">
+            <QrCode url={qrImageUrl} size={300} />
+            <div onClick={handleCloseClick} className="btn-close">
+              &times;
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
