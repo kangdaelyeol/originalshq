@@ -3,10 +3,25 @@
 .panel {
   background: variables.$surface-1;
   border: 1px solid variables.$border;
-  border-left: 2px solid variables.$accent;
-  border-radius: 0 variables.$radius 0 variables.$radius 0;
+  border-left: 2px solid #8f8f8f;
+  border-radius: 0 variables.$radius variables.$radius 0;
   padding: 24px;
+  margin-top: 15px;
   margin-bottom: 32px;
+
+  .btn {
+    cursor: pointer;
+    color: white;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: -0.6px;
+    white-space: nowrap;
+    height: 44px;
+    padding: 0 22px;
+    border: none;
+    border-radius: variables.$btn-border-radius;
+    flex-grow: 1;
+  }
 }
 
 .panel-label {
@@ -24,21 +39,22 @@
 }
 
 .btn-generate {
-  background: variables.$accent;
-  color: #1a1300;
-  height: 44px;
-  padding: 0 22px;
-  white-space: nowrap;
+  background-color: #00bb55;
   border: none;
   flex-grow: 1;
 
   &:hover {
-    background: #ffc240;
+    background: #00d660;
   }
-  &:disabled {
-    background: variables.$surface-2;
-    color: variables.$text-muted;
-    cursor: not-allowed;
+}
+
+.btn-qrdownload {
+  background-color: #6169ff;
+  width: 100%;
+  margin-top: 20px;
+
+  &:hover {
+    background: #777eff;
   }
 }
 
@@ -46,8 +62,7 @@
   position: absolute;
   width: 18px;
   height: 18px;
-  border-color: variables.$accent;
-  animation: flash 0.9s ease-out;
+  border-color: white;
   &.tl {
     top: -6px;
     left: -6px;
@@ -100,15 +115,16 @@
     font-size: 20px;
     font-weight: 500;
     color: variables.$accent;
-    margin-bottom: 14px;
+
     word-break: break-all;
+    margin-top: 14px;
   }
   .url {
     font-family: variables.$font-mono;
     font-size: 12.5px;
     color: variables.$text-secondary;
     word-break: break-all;
-    margin-bottom: 16px;
+    margin-top: 10px;
   }
 }
 
@@ -117,29 +133,4 @@
   width: 150px;
   height: 150px;
   flex-shrink: 0;
-}
-
-@keyframes flash {
-  0% {
-    border-color: variables.$text-primary;
-  }
-  100% {
-    border-color: variables.$accent;
-  }
-}
-
-.qrdown__btn {
-  background-color: #6169ff;
-  color: #1a1300;
-  width: 100%;
-  margin-top: 20px;
-  height: 44px;
-  padding: 0 22px;
-  white-space: nowrap;
-  border: none;
-  flex-grow: 1;
-
-  &:hover {
-    background: #858bff;
-  }
 }

@@ -41,7 +41,7 @@ export const Panel = () => {
       <div className="gen-row">
         <button
           onClick={handleCreateClick}
-          className="btn-generate"
+          className="btn btn-generate"
           id="genBtn"
         >
           생성하기
@@ -62,7 +62,7 @@ export const Panel = () => {
           <div className="corner br"></div>
         </div>
         <div className="result-info">
-          <div className="lbl"></div>
+          <div className="lbl">QR 코드 정보</div>
           <div className="serial" id="resultSerial">
             {tmpData.serial}
           </div>
@@ -72,7 +72,7 @@ export const Panel = () => {
           </div>
         </div>
       </div>
-      <button onClick={handleDownloadClick} className="qrdown__btn">
+      <button onClick={handleDownloadClick} className="btn btn-qrdownload">
         다운로드
       </button>
     </div>
