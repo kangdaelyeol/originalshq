@@ -1,17 +1,6 @@
 import { QRCodeCanvas } from 'qrcode.react'
 import '@/screens/parke/styles/panel.scss'
-import { PARKE_URL } from '../constants'
-import { useState } from 'react'
-
-const downloadQrCode = (serial: string) => {
-  const canvas = document.querySelector('.qr-code-canvas') as HTMLCanvasElement
-  if (!canvas) return
-  const url = canvas.toDataURL('image/png')
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `qr-${serial}.png`
-  a.click()
-}
+import { usePanel } from '@/screens/parke/controller'
 
 const QrCode = ({ url, size }: { url: string; size: number }) => {
   return (
@@ -25,43 +14,13 @@ const QrCode = ({ url, size }: { url: string; size: number }) => {
 }
 
 export const Panel = () => {
-  const [modalActive, setModalActive] = useState(false)
-  const [serial, setSerial] = useState('')
-  const [iconIndex] = useState(() => Math.floor(Math.random() * 4))
-
-  const qrImageUrl = PARKE_URL + '/' + serial
-
-  const handleDownloadClick = () => {
-    downloadQrCode(serial)
-  }
-
-  const handleCreateClick = () => {
-    setSerial('mr1nzp99')
-  }
-
-  const handleFrameClick = () => {
-    setModalActive(true)
-  }
-
-  const handleCloseClick = () => {
-    setModalActive(false)
-  }
-
-  const icon =
-    iconIndex === 0
-      ? "(='X'=)"
-      : iconIndex === 1
-        ? '(^-^*)'
-        : iconIndex === 2
-          ? '(o^^)o'
-          : '(;-;)'
-
+  const { handler, modalActive, icon, qrImageUrl, serial } = usePanel()
   return (
     <div className="panel">
       <div className="panel-label">QR 코드 생성</div>
       <div className="gen-row">
         <button
-          onClick={handleCreateClick}
+          onClick={handler.createClick}
           className="btn btn-generate"
           id="genBtn"
         >
@@ -74,7 +33,7 @@ export const Panel = () => {
           <>
             <div className="result">
               <div className="scan-frame">
-                <div className="hover-frame" onClick={handleFrameClick} />
+                <div className="hover-frame" onClick={handler.frameClick} />
                 <QrCode url={qrImageUrl} size={150} />
                 <div className="corner tl" />
                 <div className="corner tr" />
@@ -93,7 +52,7 @@ export const Panel = () => {
               </div>
             </div>
             <button
-              onClick={handleDownloadClick}
+              onClick={handler.downloadClick}
               className="btn btn-qrdownload"
             >
               다운로드
@@ -112,7 +71,7 @@ export const Panel = () => {
         <div className="modal">
           <div className="qr-wrapper">
             <QrCode url={qrImageUrl} size={300} />
-            <div onClick={handleCloseClick} className="btn-close">
+            <div onClick={handler.closeClick} className="btn-close">
               &times;
             </div>
           </div>
