@@ -68,8 +68,8 @@ const Row = ({ serial }: RowProps) => {
         <QRCodeCanvas value={url} size={50} marginSize={1} />
       </div>
       <div className="row-main">
-        <div className="row-serial">{serial}</div>
-        <div className="row-url">{url}</div>
+        <div className="serial">{serial}</div>
+        <div className="url">{url}</div>
       </div>
       <div className="row-actions">
         <DonwloadButton

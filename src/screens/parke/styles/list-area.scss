@@ -8,7 +8,7 @@
 
 .row {
   display: flex;
-  align-items: center;
+
   gap: 14px;
   background: variables.$surface-1;
   border: 1px solid variables.$border;
@@ -37,26 +37,31 @@
 .row-main {
   flex: 1;
   min-width: 0;
-}
-.row-serial {
-  font-family: variables.$font-mono;
-  font-size: 15px;
-  font-weight: 500;
-  color: variables.$text-primary;
-}
-.row-url {
-  font-family: variables.$font-mono;
-  font-size: 12px;
-  color: variables.$text-muted;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 2px;
+  display: flex;
+  padding-top: 3px;
+  flex-direction: column;
+  gap: 5px;
+  .serial {
+    font-family: variables.$font-mono;
+    font-size: 16spx;
+    font-weight: 500;
+    color: variables.$text-primary;
+  }
+  .url {
+    font-family: variables.$font-mono;
+    font-size: 13px;
+    color: variables.$text-muted;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
 }
 .row-actions {
   display: flex;
   gap: 6px;
   flex-shrink: 0;
+  align-items: center;
 }
 .icon-btn {
   width: 34px;
