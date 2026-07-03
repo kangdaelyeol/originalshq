@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PARKE_URL } from '../constants'
+import { getIcon, getSerialUrl } from '../utils'
 
 const downloadQrCode = (serial: string) => {
   const canvas = document.querySelector('.qr-code-canvas') as HTMLCanvasElement
@@ -16,16 +16,9 @@ export const usePanel = () => {
   const [serial, setSerial] = useState('')
   const [iconIndex] = useState(() => Math.floor(Math.random() * 4))
 
-  const icon =
-    iconIndex === 0
-      ? "(='X'=)"
-      : iconIndex === 1
-        ? '(^-^*)'
-        : iconIndex === 2
-          ? '(o^^)o'
-          : '(;-;)'
+  const icon = getIcon(iconIndex)
 
-  const qrImageUrl = PARKE_URL + '/' + serial
+  const qrImageUrl = getSerialUrl(serial)
 
   const handler = {
     downloadClick: () => {
@@ -33,7 +26,8 @@ export const usePanel = () => {
     },
 
     createClick: () => {
-      setSerial('mr1nzp99')
+      const newSerial = Date.now().toString(36)
+      setSerial(newSerial)
     },
 
     frameClick: () => {
@@ -50,6 +44,6 @@ export const usePanel = () => {
     modalActive,
     icon,
     qrImageUrl,
-    serial
+    serial,
   }
 }
