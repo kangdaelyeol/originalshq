@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { getIcon, getSerialUrl } from '../utils'
+import { useParkeContext } from '../context'
 
 const downloadQrCode = (serial: string) => {
   const canvas = document.querySelector('.qr-code-canvas') as HTMLCanvasElement
@@ -15,6 +16,7 @@ export const usePanel = () => {
   const [modalActive, setModalActive] = useState(false)
   const [serial, setSerial] = useState('')
   const [iconIndex] = useState(() => Math.floor(Math.random() * 4))
+  const { addSerial } = useParkeContext()
 
   const icon = getIcon(iconIndex)
 
@@ -28,6 +30,7 @@ export const usePanel = () => {
     createClick: () => {
       const newSerial = Date.now().toString(36)
       setSerial(newSerial)
+      addSerial(newSerial)
     },
 
     frameClick: () => {
