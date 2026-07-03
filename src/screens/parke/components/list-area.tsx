@@ -1,9 +1,9 @@
-import { QRCodeCanvas } from 'qrcode.react'
-import '@/screens/parke/styles/list-area.scss'
-import { useParkeContext } from '@/screens/parke/context'
-import { downloadQrCode, getSerialUrl } from '../utils'
 import { useState } from 'react'
-import { QrModal } from './qr-modal'
+import { QRCodeCanvas } from 'qrcode.react'
+import { QrModal } from '@/screens/parke/components'
+import { useParkeContext } from '@/screens/parke/context'
+import { downloadQrCode, getSerialUrl } from '@/screens/parke/utils'
+import '@/screens/parke/styles/list-area.scss'
 
 interface RowProps {
   serial: string
