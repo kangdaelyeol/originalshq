@@ -1,7 +1,7 @@
+import { QRCodeCanvas } from 'qrcode.react'
 import '@/screens/parke/styles/list-area.scss'
 import { useParkeContext } from '@/screens/parke/context'
-import { getSerialUrl } from '../utils'
-import { QRCodeCanvas } from 'qrcode.react'
+import { downloadQrCode, getSerialUrl } from '../utils'
 
 interface RowProps {
   serial: string
@@ -55,17 +55,6 @@ const DeleteButton = ({ onClick }: { onClick: () => void }) => {
       </svg>
     </button>
   )
-}
-
-const downloadQrCode = (serial: string, className: string) => {
-  const canvas = document.querySelector(className) as HTMLCanvasElement
-  console.log(canvas)
-  if (!canvas) return
-  const url = canvas.toDataURL('image/png')
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `qr-${serial}.png`
-  a.click()
 }
 
 const Row = ({ serial }: RowProps) => {
