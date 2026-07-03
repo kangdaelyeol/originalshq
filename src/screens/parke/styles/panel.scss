@@ -23,33 +23,6 @@
     border-radius: variables.$btn-border-radius;
     flex-grow: 1;
   }
-
-  .modal {
-    position: fixed;
-    display: flex;
-    align-items: center;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.861);
-    z-index: 100;
-
-    .qr-wrapper {
-      position: relative;
-      width: 300px;
-      margin: auto;
-      .btn-close {
-        position: absolute;
-        top: -50px;
-        right: 0;
-        color: rgb(109, 109, 109);
-        font-size: 40px;
-        font-weight: lighter;
-        cursor: pointer;
-      }
-    }
-  }
 }
 
 .panel-label {

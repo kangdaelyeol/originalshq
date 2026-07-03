@@ -1,17 +1,7 @@
 import { QRCodeCanvas } from 'qrcode.react'
 import '@/screens/parke/styles/panel.scss'
 import { usePanel } from '@/screens/parke/controller'
-
-const QrCode = ({ url, size }: { url: string; size: number }) => {
-  return (
-    <QRCodeCanvas
-      marginSize={2}
-      className="qr-code-canvas"
-      size={size}
-      value={url}
-    />
-  )
-}
+import { QrModal } from './qr-modal'
 
 export const Panel = () => {
   const { handler, modalActive, icon, qrImageUrl, serial } = usePanel()
@@ -34,7 +24,12 @@ export const Panel = () => {
             <div className="result">
               <div className="scan-frame">
                 <div className="hover-frame" onClick={handler.frameClick} />
-                <QrCode url={qrImageUrl} size={150} />
+                <QRCodeCanvas
+                  value={qrImageUrl}
+                  size={150}
+                  marginSize={2}
+                  className="qr-code-canvas"
+                />
                 <div className="corner tl" />
                 <div className="corner tr" />
                 <div className="corner bl" />
@@ -68,14 +63,7 @@ export const Panel = () => {
 
       {/* Modal */}
       {modalActive && (
-        <div className="modal">
-          <div className="qr-wrapper">
-            <QrCode url={qrImageUrl} size={300} />
-            <div onClick={handler.closeClick} className="btn-close">
-              &times;
-            </div>
-          </div>
-        </div>
+        <QrModal url={qrImageUrl} onCloseClick={handler.closeClick} />
       )}
     </div>
   )

@@ -18,6 +18,20 @@
   .qr-box-hidden {
     display: none;
   }
+  .row-qr {
+    position: relative;
+    cursor: pointer;
+    .bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    &:hover .bg {
+      background-color: #00000033;
+    }
+  }
 }
 .row-thumb {
   width: 40px;

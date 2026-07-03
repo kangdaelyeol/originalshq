@@ -2,6 +2,8 @@ import { QRCodeCanvas } from 'qrcode.react'
 import '@/screens/parke/styles/list-area.scss'
 import { useParkeContext } from '@/screens/parke/context'
 import { downloadQrCode, getSerialUrl } from '../utils'
+import { useState } from 'react'
+import { QrModal } from './qr-modal'
 
 interface RowProps {
   serial: string
@@ -59,13 +61,18 @@ const DeleteButton = ({ onClick }: { onClick: () => void }) => {
 
 const Row = ({ serial }: RowProps) => {
   const { removeSerial } = useParkeContext()
+  const [modal, setModal] = useState(false)
+
+  const showModal = () => setModal(true)
+  const hideModal = () => setModal(false)
 
   const url = getSerialUrl(serial)
 
   return (
     <div className="row">
-      <div className="row-qr">
+      <div className="row-qr" onClick={showModal}>
         <QRCodeCanvas value={url} size={50} marginSize={1} />
+        <div className="bg" />
       </div>
       <div className="row-main">
         <div className="serial">{serial}</div>
@@ -92,6 +99,7 @@ const Row = ({ serial }: RowProps) => {
           marginSize={3}
         />
       </div>
+      {modal && <QrModal url={url} onCloseClick={hideModal} />}
     </div>
   )
 }
