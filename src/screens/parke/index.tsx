@@ -3,6 +3,7 @@ import {
   Header,
   ListArea,
   ListHeader,
+  PaginationBar,
   Panel,
   SearchRow,
 } from '@/screens/parke/components'
@@ -19,6 +20,7 @@ export default function ParkeScreen() {
           <SearchRow />
           <ListHeader />
           <ListArea />
+          <PaginationBar />
           <Footer />
         </div>
       </div>

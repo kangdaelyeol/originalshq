@@ -1,0 +1,62 @@
+@use './variables.scss';
+
+.parke-pagination {
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+  padding-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.pagination-row {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  color: #eeeeee;
+  .row-btn {
+    all: unset;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-family: variables.$font-poppins;
+
+    &.left {
+      left: -40px;
+    }
+    &.right {
+      right: -40px;
+    }
+    &:hover {
+      color: #bcbcbc;
+    }
+  }
+}
+
+.pagenation-dot {
+  all: unset;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  font-size: 16px;
+  border: 1px solid #444;
+  cursor: pointer;
+  font-weight: 600;
+  font-family: variables.$font-mono;
+  &:hover {
+    background-color: #3f3f3f;
+  }
+  &.focused {
+    background-color: #eeeeee;
+    color: black;
+  }
+}
