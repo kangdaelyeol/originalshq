@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router-dom'
 
-export default function BasePage() {
+export const BasePage = () => {
   return <Outlet />
 }
