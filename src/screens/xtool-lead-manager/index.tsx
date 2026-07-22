@@ -1,3 +1,9 @@
+import { Main } from './components'
+
 export default function XtoolLeadManager() {
-  return <div></div>
+  return (
+    <div>
+      <Main />
+    </div>
+  )
 }
