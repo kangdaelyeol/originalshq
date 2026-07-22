@@ -1,0 +1,39 @@
+.xtool-header {
+  width: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background-color: inherit;
+  .wrapper {
+    box-sizing: border-box;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    .title-box {
+      display: flex;
+      align-items: center;
+      padding: 5px 10px;
+      border-radius: 5px;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+    .title {
+      font-size: 20px;
+      margin-left: 8px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      user-select: none;
+    }
+    .xtool-logo {
+      height: 30px;
+    }
+    .enterprise-logo {
+      height: 30px;
+    }
+  }
+}
