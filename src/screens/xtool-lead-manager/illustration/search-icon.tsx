@@ -1,6 +1,6 @@
 export const SearchIcon = () => {
   return (
-    <svg width="115" height="115" viewBox="0 0 115 115">
+    <svg width="115" height="115" viewBox="0 0 115 115" className="search">
       <circle
         cx="40"
         cy="40"
