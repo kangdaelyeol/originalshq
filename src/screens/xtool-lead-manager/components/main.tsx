@@ -40,6 +40,7 @@ const data = [
 export const Main = () => {
   const [searchActive, setSearchActive] = useState(false)
   const [searchValue, setSearchValue] = useState('')
+  const [allChecked, setAllChecked] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   useOutsideClick(searchRef, () => {
     if (searchValue) return
@@ -53,13 +54,9 @@ export const Main = () => {
     setSearchActive(true)
   }
 
-  const inactiveSearch = () => {
-    setSearchActive(false)
+  const toggleAllChecked = () => {
+    setAllChecked((prev) => !prev)
   }
-
-  useEffect(() => {
-    return () => {}
-  }, [])
 
   return (
     <div className="xtool-main">
@@ -93,7 +90,37 @@ export const Main = () => {
             </button>
           )}
         </div>
-        <div className="group"></div>
+        <div className="group">
+          <div className="group_header">
+            <div className="item">
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={true}
+                onClick={toggleAllChecked}
+                className={allChecked ? 'checked' : ''}
+              >
+                {allChecked && (
+                  <svg viewBox="0 0 14 14" fill="none">
+                    <path
+                      pathLength={40}
+                      d="M3 7.2 5.6 10 11 4"
+                      stroke="#eeeeee"
+                      strokeWidth="1.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray={40}
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
+            <div className="item">상담 시각</div>
+            <div className="item">고객명</div>
+            <div className="item">휴대폰 번호</div>
+            <div className="item">상담 기기</div>
+          </div>
+        </div>
       </div>
     </div>
   )
