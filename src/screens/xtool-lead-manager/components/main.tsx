@@ -1,6 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import { SearchIcon } from '../illustration'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { CloseIcon } from './close-icon'
 import { useOutsideClick } from '../hooks/use-outside-click'
 
@@ -90,9 +90,9 @@ export const Main = () => {
             </button>
           )}
         </div>
-        <div className="group">
-          <div className="group_header">
-            <div className="item">
+        <div className="table">
+          <div className="table_header">
+            <div className="item cb">
               <button
                 type="button"
                 role="checkbox"
@@ -115,10 +115,10 @@ export const Main = () => {
                 )}
               </button>
             </div>
-            <div className="item">상담 시각</div>
-            <div className="item">고객명</div>
-            <div className="item">휴대폰 번호</div>
-            <div className="item">상담 기기</div>
+            <div className="item created">상담 시각</div>
+            <div className="item fn">고객명</div>
+            <div className="item ph">휴대폰 번호</div>
+            <div className="item device">상담 기기</div>
           </div>
         </div>
       </div>
