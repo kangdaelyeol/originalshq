@@ -19,7 +19,7 @@ const initialData: Row[] = [
     fn: 'rkdeofuf',
     ph: '01024130510',
     device: 'metalfab',
-    createdAt: Date.now(),
+    createdAt: Date.now() - DayMill * 3,
     registered: false,
     registering: false,
   },
@@ -28,7 +28,7 @@ const initialData: Row[] = [
     fn: 'rkdeofuf',
     ph: '01024130510',
     device: 'metalfab',
-    createdAt: Date.now() + DayMill,
+    createdAt: Date.now() - DayMill * 2,
     registered: false,
     registering: false,
   },
@@ -37,7 +37,7 @@ const initialData: Row[] = [
     fn: 'rkdeofuf',
     ph: '01024130510',
     device: 'metalfab',
-    createdAt: Date.now() + DayMill * 2,
+    createdAt: Date.now() - DayMill * 1,
     registered: false,
     registering: false,
   },
@@ -46,7 +46,7 @@ const initialData: Row[] = [
     fn: 'rkdeofuf',
     ph: '01024130510',
     device: 'metalfab',
-    createdAt: Date.now() + DayMill * 3,
+    createdAt: Date.now(),
     registered: false,
     registering: false,
   },
@@ -68,6 +68,8 @@ export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Row[]>(initialData)
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
+  const [newReadFold, setNewReadFold] = useState(false)
+
   const searchRef = useRef<HTMLDivElement>(null)
 
   useOutsideClick(searchRef, () => {
@@ -78,8 +80,32 @@ export const useMainViewModel = () => {
 
   const typed = !!searchValue
 
+  const toggleNewReadFold = () => {
+    setNewReadFold((prev) => !prev)
+  }
+
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchValue(e.target.value)
+  }
+
+  const handleEditingKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === 'Escape') stopEditing()
+  }
+
+  const createNewReadRow = () => {
+    setRows((prev) => {
+      const newRows = [...prev]
+      newRows.push({
+        id: Date.now(),
+        fn: '',
+        ph: '',
+        device: 'metalfab',
+        createdAt: Date.now(),
+        registered: false,
+        registering: false,
+      })
+      return newRows
+    })
   }
 
   const resetSearchValue = () => {
@@ -160,6 +186,7 @@ export const useMainViewModel = () => {
       searchRef,
       searchValue,
       rows,
+      newReadFold,
     },
     actions: {
       activeSearch,
@@ -171,7 +198,10 @@ export const useMainViewModel = () => {
       deleteRow,
       registerRow,
       handleSearchChange,
+      handleEditingKeyDown,
       resetSearchValue,
+      toggleNewReadFold,
+      createNewReadRow,
     },
   }
 }

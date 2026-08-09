@@ -91,7 +91,35 @@
       }
     }
   }
+
+  .table_container {
+    margin-top: 10px;
+  }
+
+  .table_label {
+    font-size: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 5px;
+    &:hover {
+      background-color: #f7f9f92a;
+    }
+    .arrow {
+      width: 25px;
+      height: 25px;
+      transform-origin: center center;
+      transform: rotateZ(90deg);
+    }
+    .arrow.fold {
+      transform: rotateZ(0deg);
+    }
+  }
   .table {
+    margin-top: 15px;
     box-sizing: border-box;
     padding: 10px;
     background-color: rgb(48, 50, 78);
@@ -143,11 +171,11 @@
       border-right: 1px solid #c3c6d4;
     }
     .created {
-      width: 150px;
+      width: 300px;
       border-right: 1px solid #c3c6d4;
     }
     .fn {
-      width: 100px;
+      width: 200px;
       border-left: none;
       border-right: 1px solid #c3c6d4;
     }
@@ -216,15 +244,11 @@
       }
     }
 
-    .register,
-    .delete {
-      width: 110px;
-    }
-
     .register-btn {
       all: unset;
       width: 50px;
       text-align: center;
+      margin-left: 10px;
       cursor: pointer;
       padding: 6px 14px;
       background-color: #0a4e70;
@@ -254,6 +278,9 @@
 
     .delete-btn {
       all: unset;
+      margin-left: 10px;
+      width: 50px;
+      text-align: center;
       cursor: pointer;
       padding: 6px 14px;
       border: 1px solid #c34a4a;
@@ -264,6 +291,30 @@
         background-color: #c34a4a22;
       }
     }
+
+    .new-btn {
+      border: 1px solid #c3c6d4;
+      height: 45px;
+      border-top: none;
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+      font-size: 18px;
+      letter-spacing: -0.6px;
+      cursor: pointer;
+      border-radius: 0 0 5px 5px;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+  }
+
+  .table_divider {
+    height: 3px;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.724);
+    margin: 15px 5px;
+    border-radius: 51px;
   }
 }
 
