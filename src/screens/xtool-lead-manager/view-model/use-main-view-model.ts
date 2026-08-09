@@ -11,9 +11,11 @@ type Row = {
   createdAt: number
   registered: boolean
   registering: boolean
+  price: number
+  state: 'new' | 'contacted' | 'purchased'
 }
 
-const initialData: Row[] = [
+const initialNewReadData: Row[] = [
   {
     id: 1,
     fn: 'rkdeofuf',
@@ -22,6 +24,8 @@ const initialData: Row[] = [
     createdAt: Date.now() - DayMill * 3,
     registered: false,
     registering: false,
+    price: 0,
+    state: 'new',
   },
   {
     id: 2,
@@ -31,6 +35,8 @@ const initialData: Row[] = [
     createdAt: Date.now() - DayMill * 2,
     registered: false,
     registering: false,
+    price: 0,
+    state: 'new',
   },
   {
     id: 3,
@@ -40,6 +46,8 @@ const initialData: Row[] = [
     createdAt: Date.now() - DayMill * 1,
     registered: false,
     registering: false,
+    price: 0,
+    state: 'contacted',
   },
   {
     id: 4,
@@ -49,6 +57,8 @@ const initialData: Row[] = [
     createdAt: Date.now(),
     registered: false,
     registering: false,
+    price: 0,
+    state: 'contacted',
   },
 ]
 
@@ -66,9 +76,11 @@ export const useMainViewModel = () => {
   const [searchActive, setSearchActive] = useState(false)
   const [searchValue, setSearchValue] = useState('')
   const [allChecked, setAllChecked] = useState(false)
-  const [rows, setRows] = useState<Row[]>(initialData)
+  const [rows, setRows] = useState<Row[]>(initialNewReadData)
+
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [newReadFold, setNewReadFold] = useState(false)
+  const [readCompleteFold, setReadCompleteFold] = useState(false)
 
   const searchRef = useRef<HTMLDivElement>(null)
 
@@ -82,6 +94,10 @@ export const useMainViewModel = () => {
 
   const toggleNewReadFold = () => {
     setNewReadFold((prev) => !prev)
+  }
+
+  const toggleReadCompleteFold = () => {
+    setReadCompleteFold((prev) => !prev)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +119,8 @@ export const useMainViewModel = () => {
         createdAt: Date.now(),
         registered: false,
         registering: false,
+        price: 0,
+        state: 'new',
       })
       return newRows
     })
@@ -187,6 +205,7 @@ export const useMainViewModel = () => {
       searchValue,
       rows,
       newReadFold,
+      readCompleteFold,
     },
     actions: {
       activeSearch,
@@ -202,6 +221,7 @@ export const useMainViewModel = () => {
       resetSearchValue,
       toggleNewReadFold,
       createNewReadRow,
+      toggleReadCompleteFold,
     },
   }
 }

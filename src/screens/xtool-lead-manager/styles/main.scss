@@ -94,6 +94,7 @@
 
   .table_container {
     margin-top: 10px;
+    position: relative;
   }
 
   .table_label {
@@ -118,7 +119,17 @@
       transform: rotateZ(0deg);
     }
   }
+
+  .table_label.new-read {
+    color: rgb(17, 217, 37);
+  }
+
+  .table_label.read-complete {
+    color: rgb(23, 242, 184);
+  }
+
   .table {
+    position: relative;
     margin-top: 15px;
     box-sizing: border-box;
     padding: 10px;
@@ -132,6 +143,21 @@
       border: 1px solid #c3c6d4;
       border-radius: 5px 5px 0 0;
       overflow: hidden;
+    }
+    .table_left {
+      height: 100%;
+      width: 5px;
+      top: 0;
+      left: 0;
+      position: absolute;
+    }
+
+    .table_left.new-read {
+      background-color: rgb(17, 217, 37);
+    }
+
+    .table_left.read-complete {
+      background-color: rgb(23, 242, 184);
     }
 
     .item {
@@ -175,7 +201,7 @@
       border-right: 1px solid #c3c6d4;
     }
     .fn {
-      width: 200px;
+      width: 130px;
       border-left: none;
       border-right: 1px solid #c3c6d4;
     }
@@ -267,6 +293,7 @@
 
     .badge.done {
       width: 50px;
+      margin-left: 10px;
       text-align: center;
       padding: 6px 14px;
       background-color: #1a5c3a;
