@@ -102,7 +102,7 @@
     .table_header {
       display: flex;
       border: 1px solid #c3c6d4;
-      border-radius: 5px;
+      border-radius: 5px 5px 0 0;
       overflow: hidden;
     }
 
@@ -112,7 +112,7 @@
       align-items: center;
       justify-content: center;
       padding: 10px 0;
-      button {
+      button.check-btn {
         all: unset;
         cursor: pointer;
         width: 18px;
@@ -160,6 +160,109 @@
       width: 150px;
       border-left: none;
       border-right: 1px solid #c3c6d4;
+    }
+
+    .table_row {
+      display: flex;
+      border-left: 1px solid #c3c6d4;
+      border-right: 1px solid #c3c6d4;
+      border-bottom: 1px solid #c3c6d4;
+      &:last-child {
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 5px;
+      }
+    }
+
+    .item.editable {
+      cursor: pointer;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+      input {
+        all: unset;
+        box-sizing: border-box;
+        width: 90%;
+        padding: 4px 6px;
+        background-color: #229ad638;
+        border: 1px solid #229ad6;
+        border-radius: 4px;
+        color: #eeeeee;
+        font-size: 14px;
+        text-align: center;
+      }
+      span {
+        color: #eeeeee;
+        font-size: 14px;
+      }
+    }
+
+    .item.device {
+      padding: 0;
+      select {
+        all: unset;
+        cursor: pointer;
+        width: 100%;
+        height: 100%;
+        justify-content: center;
+        align-items: center;
+        border-radius: 5px;
+        color: #eeeeee;
+        font-size: 14px;
+        text-align: center;
+        display: flex;
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.05);
+        }
+      }
+    }
+
+    .register,
+    .delete {
+      width: 110px;
+    }
+
+    .register-btn {
+      all: unset;
+      width: 50px;
+      text-align: center;
+      cursor: pointer;
+      padding: 6px 14px;
+      background-color: #0a4e70;
+      border-radius: 5px;
+      color: #eeeeee;
+      font-size: 13px;
+      transition: all 0.1s ease;
+      &:hover:not(:disabled) {
+        background-color: #0e6895;
+      }
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.6;
+      }
+    }
+
+    .badge.done {
+      width: 50px;
+      text-align: center;
+      padding: 6px 14px;
+      background-color: #1a5c3a;
+      border-radius: 5px;
+      color: #6fdb9b;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .delete-btn {
+      all: unset;
+      cursor: pointer;
+      padding: 6px 14px;
+      border: 1px solid #c34a4a;
+      border-radius: 5px;
+      color: #e88888;
+      font-size: 13px;
+      &:hover {
+        background-color: #c34a4a22;
+      }
     }
   }
 }
