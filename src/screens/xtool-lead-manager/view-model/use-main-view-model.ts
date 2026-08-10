@@ -3,16 +3,19 @@ import { useOutsideClick } from '../hooks/use-outside-click'
 
 const DayMill = 1000 * 60 * 60 * 24
 
+type UserState = 'new' | 'contacted' | 'purchased'
+
 type Row = {
   id: number
   fn: string
   ph: string
   device: string
   createdAt: number
+  purchasedAt: number
   registered: boolean
   registering: boolean
   price: number
-  state: 'new' | 'contacted' | 'purchased'
+  state: UserState
 }
 
 const initialNewReadData: Row[] = [
@@ -24,6 +27,7 @@ const initialNewReadData: Row[] = [
     createdAt: Date.now() - DayMill * 3,
     registered: false,
     registering: false,
+    purchasedAt: 0,
     price: 0,
     state: 'new',
   },
@@ -35,6 +39,7 @@ const initialNewReadData: Row[] = [
     createdAt: Date.now() - DayMill * 2,
     registered: false,
     registering: false,
+    purchasedAt: 0,
     price: 0,
     state: 'new',
   },
@@ -46,6 +51,7 @@ const initialNewReadData: Row[] = [
     createdAt: Date.now() - DayMill * 1,
     registered: false,
     registering: false,
+    purchasedAt: 0,
     price: 0,
     state: 'contacted',
   },
@@ -57,14 +63,63 @@ const initialNewReadData: Row[] = [
     createdAt: Date.now(),
     registered: false,
     registering: false,
+    purchasedAt: 0,
     price: 0,
     state: 'contacted',
+  },
+  {
+    id: 5,
+    fn: 'rkdeofuf',
+    ph: '01024130510',
+    device: 'metalfab',
+    createdAt: Date.now(),
+    registered: false,
+    registering: false,
+    purchasedAt: 0,
+    price: 0,
+    state: 'purchased',
+  },
+  {
+    id: 6,
+    fn: 'rkdeofuf',
+    ph: '01024130510',
+    device: 'metalfab',
+    createdAt: Date.now(),
+    registered: false,
+    registering: false,
+    purchasedAt: 0,
+    price: 0,
+    state: 'purchased',
+  },
+  {
+    id: 7,
+    fn: 'rkdeofuf',
+    ph: '01024130510',
+    device: 'metalfab',
+    createdAt: Date.now(),
+    registered: false,
+    registering: false,
+    purchasedAt: 0,
+    price: 0,
+    state: 'purchased',
+  },
+  {
+    id: 8,
+    fn: 'rkdeofuf',
+    ph: '01024130510',
+    device: 'metalfab',
+    createdAt: Date.now(),
+    registered: false,
+    registering: false,
+    purchasedAt: 0,
+    price: 0,
+    state: 'purchased',
   },
 ]
 
 type EditingCell = {
   rowId: number
-  field: 'fn' | 'ph'
+  field: 'fn' | 'ph' | 'price'
 } | null
 
 async function registerCustomerCAPI(row: Row): Promise<{ success: boolean }> {
@@ -81,6 +136,7 @@ export const useMainViewModel = () => {
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [newReadFold, setNewReadFold] = useState(false)
   const [readCompleteFold, setReadCompleteFold] = useState(false)
+  const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
 
   const searchRef = useRef<HTMLDivElement>(null)
 
@@ -98,6 +154,10 @@ export const useMainViewModel = () => {
 
   const toggleReadCompleteFold = () => {
     setReadCompleteFold((prev) => !prev)
+  }
+
+  const togglePurchasCompleteFold = () => {
+    setPurchaseCompleteFold((prev) => !prev)
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -138,13 +198,13 @@ export const useMainViewModel = () => {
     setAllChecked((prev) => !prev)
   }
 
-  const startEditing = (rowId: number, field: 'fn' | 'ph') => {
+  const startEditing = (rowId: number, field: 'fn' | 'ph' | 'price') => {
     setEditingCell({ rowId, field })
   }
 
   const updateCellValue = (
     rowId: number,
-    field: 'fn' | 'ph',
+    field: 'fn' | 'ph' | 'price',
     value: string,
   ) => {
     setRows((prev) =>
@@ -206,6 +266,7 @@ export const useMainViewModel = () => {
       rows,
       newReadFold,
       readCompleteFold,
+      purchaseCompleteFold,
     },
     actions: {
       activeSearch,
@@ -222,6 +283,7 @@ export const useMainViewModel = () => {
       toggleNewReadFold,
       createNewReadRow,
       toggleReadCompleteFold,
+      togglePurchasCompleteFold,
     },
   }
 }

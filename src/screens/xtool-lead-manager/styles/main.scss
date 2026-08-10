@@ -11,7 +11,11 @@
 
 .xtool-main .wrapper {
   .nav {
-    position: relative;
+    position: sticky;
+    top: 0px;
+    left: 10px;
+    background-color: rgba(24, 27, 52);
+    width: 100%;
     padding: 10px 0;
     svg.search {
       position: absolute;
@@ -92,6 +96,11 @@
     }
   }
 
+  .row_section {
+    overflow-y: scroll;
+    max-height: 600px;
+  }
+
   .table_container {
     margin-top: 10px;
     position: relative;
@@ -128,6 +137,10 @@
     color: rgb(23, 242, 184);
   }
 
+  .table_label.purchase-complete {
+    color: rgb(247, 98, 254);
+  }
+
   .table {
     position: relative;
     margin-top: 15px;
@@ -137,7 +150,7 @@
     border: 1px solid #4b547b;
     border-radius: 10px;
     overflow: hidden;
-    min-width: 1000px;
+    min-width: 1250px;
     .table_header {
       display: flex;
       border: 1px solid #c3c6d4;
@@ -158,6 +171,10 @@
 
     .table_left.read-complete {
       background-color: rgb(23, 242, 184);
+    }
+
+    .table_left.purchase-complete {
+      background-color: rgb(247, 98, 254);
     }
 
     .item {
@@ -210,6 +227,11 @@
       border-left: none;
       border-right: 1px solid #c3c6d4;
     }
+    .price {
+      width: 200px;
+      border-left: none;
+      border-right: 1px solid #c3c6d4;
+    }
     .device {
       width: 150px;
       border-left: none;
@@ -221,10 +243,6 @@
       border-left: 1px solid #c3c6d4;
       border-right: 1px solid #c3c6d4;
       border-bottom: 1px solid #c3c6d4;
-      &:last-child {
-        border-bottom-left-radius: 5px;
-        border-bottom-right-radius: 5px;
-      }
     }
 
     .item.editable {

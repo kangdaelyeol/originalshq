@@ -1,4 +1,4 @@
-export type UserContact = {
+export type ReadRow = {
   createdAt: number
   utmCampaign: string
   utmSource: string
@@ -9,9 +9,6 @@ export type UserContact = {
   fbc: string
   fbp: string
   userAgent: string
-}
-
-export type UserPurchase = UserContact & {
   purchasedAt: number
   price: number
 }
