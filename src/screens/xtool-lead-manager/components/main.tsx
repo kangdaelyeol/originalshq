@@ -1,6 +1,7 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { formatTime } from '@/screens/xtool-lead-manager/utils/format-time'
+import type { Device } from '../types'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -174,7 +175,7 @@ export const Main = () => {
                           <select
                             value={row.device}
                             onChange={(e) =>
-                              updateDevice(row.id, e.target.value)
+                              updateDevice(row.id, e.target.value as Device)
                             }
                           >
                             {DEVICE_OPTIONS.map((option) => (
@@ -365,7 +366,7 @@ export const Main = () => {
                           <select
                             value={row.device}
                             onChange={(e) =>
-                              updateDevice(row.id, e.target.value)
+                              updateDevice(row.id, e.target.value as Device)
                             }
                           >
                             {DEVICE_OPTIONS.map((option) => (
@@ -576,7 +577,7 @@ export const Main = () => {
                           <select
                             value={row.device}
                             onChange={(e) =>
-                              updateDevice(row.id, e.target.value)
+                              updateDevice(row.id, e.target.value as Device)
                             }
                           >
                             {DEVICE_OPTIONS.map((option) => (

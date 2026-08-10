@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { sampleLeads } from '../sample-data'
-import type { Lead } from '../hooks/types'
+import type { Device, Lead } from '../types'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
@@ -50,7 +50,7 @@ export const useMainViewModel = () => {
         createdAt: Date.now(),
         fn: '',
         ph: '',
-        device: 'metalfab',
+        device: 'Metalfab',
         purchasedAt: 0,
         price: 0,
         state: 'new',
@@ -84,7 +84,7 @@ export const useMainViewModel = () => {
     setEditingCell(null)
   }
 
-  const updateDevice = (rowId: string, device: string) => {
+  const updateDevice = (rowId: string, device: Device) => {
     setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, device } : row)),
     )
