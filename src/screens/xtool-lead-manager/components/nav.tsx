@@ -13,7 +13,7 @@ export const Nav = () => {
     handleSearchChange,
   } = useSearchContext()
 
-  const typed = searchValue?.trim() === ''
+  const typed = searchValue?.trim() !== ''
 
   return (
     <div className="lead_manager_nav">
