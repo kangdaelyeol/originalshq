@@ -269,11 +269,14 @@
   }
 
   .table_divider {
-    height: 3px;
-    width: 100%;
-    background-color: rgba(255, 255, 255, 0.724);
-    margin: 15px 5px;
-    border-radius: 51px;
+    min-width: 1250px;
+    padding: 15px 5px;
+    box-sizing: border-box;
+    .line {
+      border-radius: 51px;
+      height: 3px;
+      background-color: rgba(255, 255, 255, 0.724);
+    }
   }
 }
 

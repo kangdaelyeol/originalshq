@@ -221,7 +221,9 @@ export const Main = () => {
             </div>
           )}
         </div>
-        <div className="table_divider" />
+        <div className="table_divider">
+          <div className="line" />
+        </div>
         <div className="table_container">
           <div
             className="table_label read-complete"
@@ -432,7 +434,9 @@ export const Main = () => {
             </div>
           )}
         </div>
-        <div className="table_divider" />
+        <div className="table_divider">
+          <div className="line" />
+        </div>
         <div className="table_container">
           <div
             className="table_label purchase-complete"
