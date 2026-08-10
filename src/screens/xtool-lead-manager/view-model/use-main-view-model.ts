@@ -1,125 +1,13 @@
 import { useState } from 'react'
-
-const DayMill = 1000 * 60 * 60 * 24
+import { sampleLeads } from '../sample-data'
+import type { Lead } from '../hooks/types'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
 type Field = 'fn' | 'ph' | 'price'
 
-type Row = {
-  id: number
-  fn: string
-  ph: string
-  device: string
-  createdAt: number
-  purchasedAt: number
-  registered: boolean
-  registering: boolean
-  price: number
-  state: UserState
-}
-
-const initialNewReadData: Row[] = [
-  {
-    id: 1,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now() - DayMill * 3,
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'new',
-  },
-  {
-    id: 2,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now() - DayMill * 2,
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'new',
-  },
-  {
-    id: 3,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now() - DayMill * 1,
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'contacted',
-  },
-  {
-    id: 4,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now(),
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'contacted',
-  },
-  {
-    id: 5,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now(),
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'purchased',
-  },
-  {
-    id: 6,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now(),
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'purchased',
-  },
-  {
-    id: 7,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now(),
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'purchased',
-  },
-  {
-    id: 8,
-    fn: 'rkdeofuf',
-    ph: '01024130510',
-    device: 'metalfab',
-    createdAt: Date.now(),
-    registered: false,
-    registering: false,
-    purchasedAt: 0,
-    price: 0,
-    state: 'purchased',
-  },
-]
-
 type EditingCell = {
-  rowId: number
+  rowId: string
   field: Field
 } | null
 
@@ -131,7 +19,7 @@ async function registerCustomerCAPI(): Promise<{ success: boolean }> {
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
-  const [rows, setRows] = useState<Row[]>(initialNewReadData)
+  const [rows, setRows] = useState<Lead[]>(sampleLeads)
 
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [newReadFold, setNewReadFold] = useState(false)
@@ -158,16 +46,21 @@ export const useMainViewModel = () => {
     setRows((prev) => {
       const newRows = [...prev]
       newRows.push({
-        id: Date.now(),
+        id: Date.now().toString(),
+        createdAt: Date.now(),
         fn: '',
         ph: '',
         device: 'metalfab',
-        createdAt: Date.now(),
-        registered: false,
-        registering: false,
         purchasedAt: 0,
         price: 0,
         state: 'new',
+        utm_campaign: '',
+        utm_medium: '',
+        utm_source: '',
+        ip: '',
+        user_agent: '',
+        fbc: '',
+        fbp: '',
       })
       return newRows
     })
@@ -177,11 +70,11 @@ export const useMainViewModel = () => {
     setAllChecked((prev) => !prev)
   }
 
-  const startEditing = (rowId: number, field: Field) => {
+  const startEditing = (rowId: string, field: Field) => {
     setEditingCell({ rowId, field })
   }
 
-  const updateCellValue = (rowId: number, field: Field, value: string) => {
+  const updateCellValue = (rowId: string, field: Field, value: string) => {
     setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
     )
@@ -191,23 +84,17 @@ export const useMainViewModel = () => {
     setEditingCell(null)
   }
 
-  const updateDevice = (rowId: number, device: string) => {
+  const updateDevice = (rowId: string, device: string) => {
     setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, device } : row)),
     )
   }
 
-  const deleteRow = (rowId: number) => {
+  const deleteRow = (rowId: string) => {
     setRows((prev) => prev.filter((row) => row.id !== rowId))
   }
 
-  const registerRow = async (rowId: number) => {
-    setRows((prev) =>
-      prev.map((row) =>
-        row.id === rowId ? { ...row, registering: true } : row,
-      ),
-    )
-
+  const registerRow = async (rowId: string) => {
     const target = rows.find((row) => row.id === rowId)
     if (!target) return
 

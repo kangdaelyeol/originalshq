@@ -1,6 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
-import { formatCreatedAt } from '@/screens/xtool-lead-manager/utils/format-created-at'
+import { formatTime } from '@/screens/xtool-lead-manager/utils/format-time'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -91,10 +91,10 @@ export const Main = () => {
                   .map((row) => {
                     const isEditingFn =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'fn'
+                      editingCell?.field === 'fn'
                     const isEditingPh =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'ph'
+                      editingCell?.field === 'ph'
 
                     return (
                       <div className="table_row" key={row.id}>
@@ -125,7 +125,7 @@ export const Main = () => {
                         </div>
 
                         <div className="item created">
-                          {formatCreatedAt(row.createdAt)}
+                          {formatTime(row.createdAt)}
                         </div>
 
                         <div
@@ -186,18 +186,13 @@ export const Main = () => {
                         </div>
 
                         <div className="item register">
-                          {row.registered ? (
-                            <span className="badge done">등록완료</span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="register-btn"
-                              disabled={row.registering}
-                              onClick={() => registerRow(row.id)}
-                            >
-                              {row.registering ? '등록 중...' : '등록'}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="register-btn"
+                            onClick={() => registerRow(row.id)}
+                          >
+                            등록
+                          </button>
                         </div>
 
                         <div className="item delete">
@@ -285,13 +280,13 @@ export const Main = () => {
                   .map((row) => {
                     const isEditingFn =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'fn'
+                      editingCell?.field === 'fn'
                     const isEditingPh =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'ph'
+                      editingCell?.field === 'ph'
                     const isEditingPrice =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'price'
+                      editingCell?.field === 'price'
                     return (
                       <div className="table_row" key={row.id}>
                         <div className="item cb">
@@ -321,7 +316,7 @@ export const Main = () => {
                         </div>
 
                         <div className="item created">
-                          {formatCreatedAt(row.createdAt)}
+                          {formatTime(row.createdAt)}
                         </div>
 
                         <div
@@ -403,18 +398,13 @@ export const Main = () => {
                         </div>
 
                         <div className="item register">
-                          {row.registered ? (
-                            <span className="badge done">등록완료</span>
-                          ) : (
-                            <button
-                              type="button"
-                              className="register-btn"
-                              disabled={row.registering}
-                              onClick={() => registerRow(row.id)}
-                            >
-                              {row.registering ? '등록 중...' : '등록'}
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            className="register-btn"
+                            onClick={() => registerRow(row.id)}
+                          >
+                            등록
+                          </button>
                         </div>
 
                         <div className="item delete">
@@ -492,6 +482,7 @@ export const Main = () => {
                 <div className="item ph">전화번호</div>
                 <div className="item device">상담기기</div>
                 <div className="item price">구매금액</div>
+                <div className="item purchased">구매시각</div>
               </div>
 
               <div className="row_section">
@@ -500,13 +491,13 @@ export const Main = () => {
                   .map((row) => {
                     const isEditingFn =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'fn'
+                      editingCell?.field === 'fn'
                     const isEditingPh =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'ph'
+                      editingCell?.field === 'ph'
                     const isEditingPrice =
                       editingCell?.rowId === row.id &&
-                      editingCell.field === 'price'
+                      editingCell?.field === 'price'
                     return (
                       <div className="table_row" key={row.id}>
                         <div className="item cb">
@@ -536,7 +527,7 @@ export const Main = () => {
                         </div>
 
                         <div className="item created">
-                          {formatCreatedAt(row.createdAt)}
+                          {formatTime(row.createdAt)}
                         </div>
 
                         <div
@@ -615,6 +606,14 @@ export const Main = () => {
                           ) : (
                             <span>{row.price}</span>
                           )}
+                        </div>
+                        <div
+                          className="item purchased"
+                          onClick={() =>
+                            !isEditingPrice && startEditing(row.id, 'price')
+                          }
+                        >
+                          <span>{formatTime(row.purchasedAt)}</span>
                         </div>
                       </div>
                     )

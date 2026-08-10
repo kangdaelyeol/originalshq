@@ -1,4 +1,4 @@
-export const formatCreatedAt = (dateNow: number) => {
+export const formatTime = (dateNow: number) => {
   return new Date(dateNow).toLocaleDateString('ko-KR', {
     year: 'numeric',
     month: 'long',
