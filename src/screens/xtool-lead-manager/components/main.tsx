@@ -1,7 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
-
-import { useMainViewModel } from '../view-model'
-import { formatCreatedAt } from '../utils/format-created-at'
+import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
+import { formatCreatedAt } from '@/screens/xtool-lead-manager/utils/format-created-at'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -25,7 +24,7 @@ export const Main = () => {
       registerRow,
       handleEditingKeyDown,
       toggleNewReadFold,
-      createNewReadRow,
+      // createNewReadRow,
       toggleReadCompleteFold,
       togglePurchasCompleteFold,
     },
@@ -215,9 +214,9 @@ export const Main = () => {
                   })}
               </div>
 
-              <div className="new-btn" onClick={createNewReadRow}>
+              {/* <div className="new-btn" onClick={createNewReadRow}>
                 + 데이터 추가
-              </div>
+              </div> */}
             </div>
           )}
         </div>

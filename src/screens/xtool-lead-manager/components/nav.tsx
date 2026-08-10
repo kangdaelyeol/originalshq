@@ -1,7 +1,7 @@
+import '@/screens/xtool-lead-manager/styles/nav.scss'
+import { useSearchContext } from '@/screens/xtool-lead-manager/context/search-context'
+import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
 import { CloseIcon } from './close-icon'
-import { useSearchContext } from '../context/search-context'
-import { SearchIcon } from '../illustration'
-import '../styles/nav.scss'
 
 export const Nav = () => {
   const {

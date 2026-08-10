@@ -1,6 +1,6 @@
 import { useRef, useState, type PropsWithChildren } from 'react'
+import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
 import { SearchContext } from './search-context'
-import { useOutsideClick } from '../../hooks/use-outside-click'
 
 export const SearchContextProvider = ({ children }: PropsWithChildren) => {
   const [searchActive, setSearchActive] = useState(false)
@@ -33,7 +33,7 @@ export const SearchContextProvider = ({ children }: PropsWithChildren) => {
         resetSearchValue,
         activeSearch,
         handleSearchChange,
-        searchValue
+        searchValue,
       }}
     >
       {children}
