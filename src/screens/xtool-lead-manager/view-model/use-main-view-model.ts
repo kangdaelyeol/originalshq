@@ -1,9 +1,10 @@
-import { useRef, useState } from 'react'
-import { useOutsideClick } from '../hooks/use-outside-click'
+import { useState } from 'react'
 
 const DayMill = 1000 * 60 * 60 * 24
 
-type UserState = 'new' | 'contacted' | 'purchased'
+export type UserState = 'new' | 'contacted' | 'purchased'
+
+type Field = 'fn' | 'ph' | 'price'
 
 type Row = {
   id: number
@@ -119,17 +120,16 @@ const initialNewReadData: Row[] = [
 
 type EditingCell = {
   rowId: number
-  field: 'fn' | 'ph' | 'price'
+  field: Field
 } | null
 
-async function registerCustomerCAPI(row: Row): Promise<{ success: boolean }> {
+// TODO: Register
+async function registerCustomerCAPI(): Promise<{ success: boolean }> {
   await new Promise((resolve) => setTimeout(resolve, 800))
   return { success: true }
 }
 
 export const useMainViewModel = () => {
-  const [searchActive, setSearchActive] = useState(false)
-  const [searchValue, setSearchValue] = useState('')
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Row[]>(initialNewReadData)
 
@@ -137,16 +137,6 @@ export const useMainViewModel = () => {
   const [newReadFold, setNewReadFold] = useState(false)
   const [readCompleteFold, setReadCompleteFold] = useState(false)
   const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
-
-  const searchRef = useRef<HTMLDivElement>(null)
-
-  useOutsideClick(searchRef, () => {
-    if (searchValue) return
-    setSearchActive(false)
-    setSearchValue('')
-  })
-
-  const typed = !!searchValue
 
   const toggleNewReadFold = () => {
     setNewReadFold((prev) => !prev)
@@ -158,10 +148,6 @@ export const useMainViewModel = () => {
 
   const togglePurchasCompleteFold = () => {
     setPurchaseCompleteFold((prev) => !prev)
-  }
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchValue(e.target.value)
   }
 
   const handleEditingKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -179,6 +165,7 @@ export const useMainViewModel = () => {
         createdAt: Date.now(),
         registered: false,
         registering: false,
+        purchasedAt: 0,
         price: 0,
         state: 'new',
       })
@@ -186,27 +173,15 @@ export const useMainViewModel = () => {
     })
   }
 
-  const resetSearchValue = () => {
-    setSearchValue('')
-  }
-
-  const activeSearch = () => {
-    setSearchActive(true)
-  }
-
   const toggleAllChecked = () => {
     setAllChecked((prev) => !prev)
   }
 
-  const startEditing = (rowId: number, field: 'fn' | 'ph' | 'price') => {
+  const startEditing = (rowId: number, field: Field) => {
     setEditingCell({ rowId, field })
   }
 
-  const updateCellValue = (
-    rowId: number,
-    field: 'fn' | 'ph' | 'price',
-    value: string,
-  ) => {
+  const updateCellValue = (rowId: number, field: Field, value: string) => {
     setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
     )
@@ -237,7 +212,7 @@ export const useMainViewModel = () => {
     if (!target) return
 
     try {
-      const result = await registerCustomerCAPI(target)
+      const result = await registerCustomerCAPI()
       setRows((prev) =>
         prev.map((row) =>
           row.id === rowId
@@ -257,19 +232,14 @@ export const useMainViewModel = () => {
 
   return {
     state: {
-      searchActive,
       allChecked,
       editingCell,
-      typed,
-      searchRef,
-      searchValue,
       rows,
       newReadFold,
       readCompleteFold,
       purchaseCompleteFold,
     },
     actions: {
-      activeSearch,
       toggleAllChecked,
       startEditing,
       updateCellValue,
@@ -277,9 +247,7 @@ export const useMainViewModel = () => {
       updateDevice,
       deleteRow,
       registerRow,
-      handleSearchChange,
       handleEditingKeyDown,
-      resetSearchValue,
       toggleNewReadFold,
       createNewReadRow,
       toggleReadCompleteFold,

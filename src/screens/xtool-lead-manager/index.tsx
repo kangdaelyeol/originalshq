@@ -1,5 +1,13 @@
-import { Main } from './components'
+import { Main, Nav } from './components'
+import { SearchContextProvider } from './context/search-context'
 
 export default function XtoolLeadManager() {
-  return <Main />
+  return (
+    <>
+      <SearchContextProvider>
+        <Nav />
+        <Main />
+      </SearchContextProvider>
+    </>
+  )
 }

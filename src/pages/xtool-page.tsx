@@ -1,7 +1,7 @@
-import { Footer, Header } from '@/screens/xtool-lead-manager/components'
-import { Outlet } from 'react-router-dom'
-import './xtool-global.scss'
 import { useEffect } from 'react'
+import { Outlet } from 'react-router-dom'
+import { Footer, Header } from '@/screens/xtool-lead-manager/components'
+import './xtool-global.scss'
 
 export const XtoolPage = () => {
   useEffect(() => {

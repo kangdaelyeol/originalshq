@@ -1,6 +1,5 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
-import { SearchIcon } from '../illustration'
-import { CloseIcon } from './close-icon'
+
 import { useMainViewModel } from '../view-model'
 import { formatCreatedAt } from '../utils/format-created-at'
 
@@ -9,19 +8,14 @@ const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 export const Main = () => {
   const {
     state: {
-      searchActive,
       allChecked,
       editingCell,
-      typed,
-      searchRef,
-      searchValue,
       newReadFold,
       readCompleteFold,
       rows,
       purchaseCompleteFold,
     },
     actions: {
-      activeSearch,
       toggleAllChecked,
       startEditing,
       updateCellValue,
@@ -29,8 +23,6 @@ export const Main = () => {
       updateDevice,
       deleteRow,
       registerRow,
-      handleSearchChange,
-      resetSearchValue,
       handleEditingKeyDown,
       toggleNewReadFold,
       createNewReadRow,
@@ -42,31 +34,6 @@ export const Main = () => {
   return (
     <div className="xtool-main">
       <div className="wrapper">
-        <div className="nav">
-          <SearchIcon />
-          {searchActive ? (
-            <div className="search-container" ref={searchRef}>
-              <input
-                className={['search-input', typed ? 'typed' : ''].join(' ')}
-                type="text"
-                name="search"
-                id="search"
-                autoFocus
-                value={searchValue}
-                onChange={handleSearchChange}
-              />
-              {typed && (
-                <div className="reset-btn">
-                  <CloseIcon onClick={resetSearchValue} />
-                </div>
-              )}
-            </div>
-          ) : (
-            <button className="search-btn" onClick={activeSearch}>
-              검색
-            </button>
-          )}
-        </div>
         <div className="table_container">
           <div className="table_label new-read" onClick={toggleNewReadFold}>
             <svg
