@@ -1,0 +1,42 @@
+.sort_btn {
+  all: unset;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  cursor: pointer;
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .arrow_up,
+  .arrow_down {
+    fill: #5c6485;
+  }
+
+  &:hover .arrow_up,
+  &:hover .arrow_down {
+    fill: #9198b8;
+  }
+
+  &.asc .arrow_up {
+    fill: #4fb8e8;
+  }
+
+  &.desc .arrow_down {
+    fill: #4fb8e8;
+  }
+}
+
+.item.created,
+.item.fn,
+.item.ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

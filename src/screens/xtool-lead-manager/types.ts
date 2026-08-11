@@ -1,8 +1,8 @@
 export type Device = 'F2Ultra' | 'F2UltraUV' | 'P3' | 'DTF' | 'Metalfab'
-
 export type LeadState = 'new' | 'contacted' | 'purchased'
-
 export type ConfirmVariant = 'delete' | 'register'
+export type SortField = 'createdAt' | 'fn' | 'ph'
+export type SortDirection = 'asc' | 'desc'
 
 export type Lead = {
   id: string

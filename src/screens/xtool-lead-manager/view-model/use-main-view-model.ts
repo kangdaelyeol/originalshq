@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react'
 import { sampleLeads } from '../sample-data'
-import type { ConfirmVariant, Device, Lead } from '../types'
+import type {
+  ConfirmVariant,
+  Device,
+  Lead,
+  SortDirection,
+  SortField,
+} from '../types'
 import { useSearchContext } from '../context/search-context'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
@@ -22,6 +28,8 @@ export const useMainViewModel = () => {
   const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
   const [detail, setDetail] = useState<Lead | null>(null)
+  const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const { searchValue } = useSearchContext()
 
@@ -30,6 +38,30 @@ export const useMainViewModel = () => {
     if (!keyword) return rows
     return rows.filter((row) => row.fn.toLowerCase().includes(keyword))
   }, [rows, searchValue])
+
+  const sortedRows = useMemo(() => {
+    const sorted = [...filteredRows]
+    sorted.sort((a, b) => {
+      let res: number
+      if (sortField === 'createdAt') {
+        res = a.createdAt - b.createdAt
+      } else {
+        res = a[sortField].localeCompare(b[sortField], 'ko')
+      }
+      return sortDirection === 'asc' ? res : -res
+    })
+
+    return sorted
+  }, [filteredRows, sortField, sortDirection])
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+    } else {
+      setSortField(field)
+      setSortDirection('desc')
+    }
+  }
 
   const registerCustomer = async (): Promise<void> => {
     await new Promise<void>((resolve) =>
@@ -161,13 +193,15 @@ export const useMainViewModel = () => {
     state: {
       allChecked,
       editingCell,
-      rows: filteredRows,
+      rows: sortedRows,
       newReadFold,
       readCompleteFold,
       purchaseCompleteFold,
       selectedRowIndex,
       variant,
       detail,
+      sortField,
+      sortDirection,
     },
     actions: {
       toggleAllChecked,
@@ -186,6 +220,7 @@ export const useMainViewModel = () => {
       handleConfirmClick,
       showDetail,
       hideDetail,
+      toggleSort,
     },
   }
 }

@@ -4,6 +4,7 @@ import { formatTime } from '@/screens/xtool-lead-manager/utils/format-time'
 import type { Device } from '../types'
 import { ConfirmModal } from './confirm-modal'
 import { Detail } from './detail'
+import { SortButton } from './sort-button'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -19,6 +20,8 @@ export const Main = () => {
       selectedRowIndex,
       variant,
       detail,
+      sortField,
+      sortDirection,
     },
     actions: {
       toggleAllChecked,
@@ -37,6 +40,7 @@ export const Main = () => {
       handleConfirmClick,
       showDetail,
       hideDetail,
+      toggleSort,
     },
   } = useMainViewModel()
 
@@ -89,9 +93,33 @@ export const Main = () => {
                     )}
                   </button>
                 </div>
-                <div className="item created">상담 시각</div>
-                <div className="item fn">고객명</div>
-                <div className="item ph">전화번호</div>
+                <div className="item created">
+                  상담 시각
+                  <SortButton
+                    columnKey="createdAt"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item fn">
+                  고객명
+                  <SortButton
+                    columnKey="fn"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item ph">
+                  전화번호
+                  <SortButton
+                    columnKey="ph"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
                 <div className="item device">상담기기</div>
               </div>
 
@@ -286,9 +314,33 @@ export const Main = () => {
                     )}
                   </button>
                 </div>
-                <div className="item created">상담 시각</div>
-                <div className="item fn">고객명</div>
-                <div className="item ph">전화번호</div>
+                <div className="item created">
+                  상담 시각
+                  <SortButton
+                    columnKey="createdAt"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item fn">
+                  고객명
+                  <SortButton
+                    columnKey="fn"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item ph">
+                  전화번호
+                  <SortButton
+                    columnKey="ph"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
                 <div className="item device">상담기기</div>
                 <div className="item price">구매금액</div>
               </div>
@@ -505,9 +557,33 @@ export const Main = () => {
                     )}
                   </button>
                 </div>
-                <div className="item created">상담 시각</div>
-                <div className="item fn">고객명</div>
-                <div className="item ph">전화번호</div>
+                <div className="item created">
+                  상담 시각
+                  <SortButton
+                    columnKey="createdAt"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item fn">
+                  고객명
+                  <SortButton
+                    columnKey="fn"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
+                <div className="item ph">
+                  전화번호
+                  <SortButton
+                    columnKey="ph"
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </div>
                 <div className="item device">상담기기</div>
                 <div className="item price">구매금액</div>
                 <div className="item purchased">구매시각</div>
