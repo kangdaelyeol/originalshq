@@ -108,7 +108,7 @@ export const ListArea = () => {
   const { serialList } = useParkeContext()
 
   return (
-    <div id="listArea">
+    <div id="listArea" className='parke_listarea'>
       <div className="list">
         {serialList.map((v) => (
           <Row serial={v} key={v} />
