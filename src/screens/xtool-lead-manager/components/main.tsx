@@ -2,6 +2,7 @@ import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { formatTime } from '@/screens/xtool-lead-manager/utils/format-time'
 import type { Device } from '../types'
+import { ConfirmModal } from './confirm-modal'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -14,6 +15,8 @@ export const Main = () => {
       readCompleteFold,
       rows,
       purchaseCompleteFold,
+      selectedRowIndex,
+      variant,
     },
     actions: {
       toggleAllChecked,
@@ -28,6 +31,8 @@ export const Main = () => {
       // createNewReadRow,
       toggleReadCompleteFold,
       togglePurchasCompleteFold,
+      handleCancelConfirmClick,
+      handleConfirmClick,
     },
   } = useMainViewModel()
 
@@ -624,6 +629,14 @@ export const Main = () => {
           )}
         </div>
       </div>
+      {selectedRowIndex !== -1 && (
+        <ConfirmModal
+          lead={rows[selectedRowIndex]}
+          variant={variant}
+          onCancel={handleCancelConfirmClick}
+          onConfirm={handleConfirmClick}
+        />
+      )}
     </div>
   )
 }

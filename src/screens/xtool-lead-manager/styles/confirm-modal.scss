@@ -1,0 +1,184 @@
+// confirm-modal.scss
+.lead_manager_confirm_modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  min-width: 800px;
+  min-height: 600px;
+  z-index: 10;
+  background-color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: overlay-fade-in 0.15s ease;
+
+  .confirm_form {
+    box-sizing: border-box;
+    width: 400px;
+    min-width: 400px;
+    min-height: auto;
+    padding: 32px 28px 24px;
+    background-color: rgb(23, 26, 51);
+    border: 1px solid #383e63;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: modal-pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+
+    .icon_wrap {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+      svg {
+        width: 26px;
+        height: 26px;
+      }
+    }
+
+    &.delete .icon_wrap {
+      background-color: rgba(195, 74, 74, 0.15);
+      color: #e88888;
+    }
+    &.register .icon_wrap {
+      background-color: rgba(10, 78, 112, 0.25);
+      color: #4fb8e8;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #eeeeee;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .description {
+      font-size: 13.5px;
+      color: #9198b8;
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+
+    .lead_summary {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 14px 16px;
+      background-color: rgba(255, 255, 255, 0.03);
+      border: 1px solid #383e63;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 24px;
+
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 13.5px;
+      }
+      .label {
+        color: #7d84a3;
+      }
+      .value {
+        color: #dfe1ec;
+        font-weight: 500;
+      }
+    }
+
+    .actions {
+      width: 100%;
+      display: flex;
+      gap: 8px;
+
+      .btn {
+        all: unset;
+        box-sizing: border-box;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 42px;
+        border-radius: 9px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        text-align: center;
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+      }
+
+      .cancel {
+        background-color: rgba(255, 255, 255, 0.06);
+        color: #c3c6d4;
+        &:hover:not(:disabled) {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+
+      .confirm {
+        color: #ffffff;
+        &.delete {
+          background-color: #c34a4a;
+          &:hover:not(:disabled) {
+            background-color: #d55e5e;
+          }
+        }
+        &.register {
+          background-color: #0a4e70;
+          &:hover:not(:disabled) {
+            background-color: #0e6895;
+          }
+        }
+      }
+
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.35);
+        border-top-color: #ffffff;
+        border-radius: 50%;
+        animation: spin 0.6s linear infinite;
+      }
+    }
+  }
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

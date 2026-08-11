@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { sampleLeads } from '../sample-data'
-import type { Device, Lead } from '../types'
+import type { ConfirmVariant, Device, Lead } from '../types'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
@@ -11,20 +11,50 @@ type EditingCell = {
   field: Field
 } | null
 
-// TODO: Register
-async function registerCustomerCAPI(): Promise<{ success: boolean }> {
-  await new Promise((resolve) => setTimeout(resolve, 800))
-  return { success: true }
-}
-
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Lead[]>(sampleLeads)
-
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [newReadFold, setNewReadFold] = useState(false)
   const [readCompleteFold, setReadCompleteFold] = useState(false)
   const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
+  const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
+  const [variant, setVariant] = useState<ConfirmVariant>('delete')
+
+  const registerCustomer = async (): Promise<void> => {
+    await new Promise<void>((resolve) =>
+      setTimeout(() => {
+        setRows((prev) => {
+          const newRows = [...prev]
+          const newRow = { ...newRows[selectedRowIndex] }
+          if (newRows[selectedRowIndex].state === 'new')
+            newRow.state = 'contacted'
+          else newRow.state = 'purchased'
+          newRows[selectedRowIndex] = newRow
+          return newRows
+        })
+        setSelectedRowIndex(-1)
+        resolve()
+      }, 500),
+    )
+  }
+
+  const deleteCustomer = async (): Promise<void> => {
+    await new Promise<void>((resolve) =>
+      setTimeout(() => {
+        resolve()
+      }, 500),
+    )
+  }
+
+  const handleConfirmClick = async () => {
+    if (variant === 'delete') await deleteCustomer()
+    if (variant === 'register') await registerCustomer()
+  }
+
+  const handleCancelConfirmClick = () => {
+    setSelectedRowIndex(-1)
+  }
 
   const toggleNewReadFold = () => {
     setNewReadFold((prev) => !prev)
@@ -91,30 +121,17 @@ export const useMainViewModel = () => {
   }
 
   const deleteRow = (rowId: string) => {
-    setRows((prev) => prev.filter((row) => row.id !== rowId))
+    const idx = rows.findIndex((row) => row.id === rowId)
+    if (idx === -1) return
+    setSelectedRowIndex(idx)
+    setVariant('delete')
   }
 
   const registerRow = async (rowId: string) => {
-    const target = rows.find((row) => row.id === rowId)
-    if (!target) return
-
-    try {
-      const result = await registerCustomerCAPI()
-      setRows((prev) =>
-        prev.map((row) =>
-          row.id === rowId
-            ? { ...row, registering: false, registered: result.success }
-            : row,
-        ),
-      )
-    } catch (e) {
-      console.log(e)
-      setRows((prev) =>
-        prev.map((row) =>
-          row.id === rowId ? { ...row, registering: false } : row,
-        ),
-      )
-    }
+    const idx = rows.findIndex((row) => row.id === rowId)
+    if (idx === -1) return
+    setSelectedRowIndex(idx)
+    setVariant('register')
   }
 
   return {
@@ -125,6 +142,8 @@ export const useMainViewModel = () => {
       newReadFold,
       readCompleteFold,
       purchaseCompleteFold,
+      selectedRowIndex,
+      variant,
     },
     actions: {
       toggleAllChecked,
@@ -139,6 +158,8 @@ export const useMainViewModel = () => {
       createNewReadRow,
       toggleReadCompleteFold,
       togglePurchasCompleteFold,
+      handleCancelConfirmClick,
+      handleConfirmClick,
     },
   }
 }
