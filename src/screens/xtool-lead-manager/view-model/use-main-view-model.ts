@@ -42,6 +42,8 @@ export const useMainViewModel = () => {
   const deleteCustomer = async (): Promise<void> => {
     await new Promise<void>((resolve) =>
       setTimeout(() => {
+        setRows((prev) => prev.filter((_, idx) => idx !== selectedRowIndex))
+        setSelectedRowIndex(-1)
         resolve()
       }, 500),
     )
