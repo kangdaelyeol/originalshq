@@ -3,6 +3,7 @@ import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { formatTime } from '@/screens/xtool-lead-manager/utils/format-time'
 import type { Device } from '../types'
 import { ConfirmModal } from './confirm-modal'
+import { Detail } from './detail'
 
 const DEVICE_OPTIONS = ['F2Ultra', 'F2UltraUV', 'P3', 'DTF', 'Metalfab']
 
@@ -17,6 +18,7 @@ export const Main = () => {
       purchaseCompleteFold,
       selectedRowIndex,
       variant,
+      detail,
     },
     actions: {
       toggleAllChecked,
@@ -30,9 +32,11 @@ export const Main = () => {
       toggleNewReadFold,
       // createNewReadRow,
       toggleReadCompleteFold,
-      togglePurchasCompleteFold,
+      togglePurchaseCompleteFold,
       handleCancelConfirmClick,
       handleConfirmClick,
+      showDetail,
+      hideDetail,
     },
   } = useMainViewModel()
 
@@ -208,6 +212,15 @@ export const Main = () => {
                             onClick={() => deleteRow(row.id)}
                           >
                             삭제
+                          </button>
+                        </div>
+                        <div className="item detail">
+                          <button
+                            type="button"
+                            className="detail-btn"
+                            onClick={() => showDetail(row.id)}
+                          >
+                            자세히 보기
                           </button>
                         </div>
                       </div>
@@ -422,6 +435,15 @@ export const Main = () => {
                             삭제
                           </button>
                         </div>
+                        <div className="item detail">
+                          <button
+                            type="button"
+                            className="detail-btn"
+                            onClick={() => showDetail(row.id)}
+                          >
+                            자세히 보기
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
@@ -435,7 +457,7 @@ export const Main = () => {
         <div className="table_container">
           <div
             className="table_label purchase-complete"
-            onClick={togglePurchasCompleteFold}
+            onClick={togglePurchaseCompleteFold}
           >
             <svg
               viewBox="0 0 20 20"
@@ -621,6 +643,15 @@ export const Main = () => {
                         >
                           <span>{formatTime(row.purchasedAt)}</span>
                         </div>
+                        <div className="item detail">
+                          <button
+                            type="button"
+                            className="detail-btn"
+                            onClick={() => showDetail(row.id)}
+                          >
+                            자세히 보기
+                          </button>
+                        </div>
                       </div>
                     )
                   })}
@@ -637,6 +668,7 @@ export const Main = () => {
           onConfirm={handleConfirmClick}
         />
       )}
+      {detail && <Detail lead={detail} onConfirm={hideDetail} />}
     </div>
   )
 }

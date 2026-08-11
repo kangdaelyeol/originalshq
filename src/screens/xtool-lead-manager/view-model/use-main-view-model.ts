@@ -21,6 +21,7 @@ export const useMainViewModel = () => {
   const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
   const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
+  const [detail, setDetail] = useState<Lead | null>(null)
 
   const { searchValue } = useSearchContext()
 
@@ -39,6 +40,7 @@ export const useMainViewModel = () => {
           if (newRows[selectedRowIndex].state === 'new')
             newRow.state = 'contacted'
           else newRow.state = 'purchased'
+          newRow.purchasedAt = Date.now()
           newRows[selectedRowIndex] = newRow
           return newRows
         })
@@ -75,8 +77,18 @@ export const useMainViewModel = () => {
     setReadCompleteFold((prev) => !prev)
   }
 
-  const togglePurchasCompleteFold = () => {
+  const togglePurchaseCompleteFold = () => {
     setPurchaseCompleteFold((prev) => !prev)
+  }
+
+  const showDetail = (rowId: string) => {
+    const row = rows.find((row) => row.id === rowId)
+    if (!row) return
+    setDetail(row)
+  }
+
+  const hideDetail = () => {
+    setDetail(null)
   }
 
   const handleEditingKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -155,6 +167,7 @@ export const useMainViewModel = () => {
       purchaseCompleteFold,
       selectedRowIndex,
       variant,
+      detail,
     },
     actions: {
       toggleAllChecked,
@@ -168,9 +181,11 @@ export const useMainViewModel = () => {
       toggleNewReadFold,
       createNewReadRow,
       toggleReadCompleteFold,
-      togglePurchasCompleteFold,
+      togglePurchaseCompleteFold,
       handleCancelConfirmClick,
       handleConfirmClick,
+      showDetail,
+      hideDetail,
     },
   }
 }

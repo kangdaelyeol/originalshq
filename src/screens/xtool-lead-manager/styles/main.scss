@@ -212,7 +212,8 @@
 
     .register-btn,
     .badge.done,
-    .delete-btn {
+    .delete-btn,
+    .detail-btn {
       all: unset;
       display: flex;
       justify-content: center;
@@ -250,6 +251,13 @@
       background-color: #0909096b;
       &:hover:not(:disabled) {
         background-color: #0d0000;
+      }
+    }
+
+    .detail-btn {
+      background-color: #2322226b;
+      &:hover:not(:disabled) {
+        background-color: #232222ce;
       }
     }
 
