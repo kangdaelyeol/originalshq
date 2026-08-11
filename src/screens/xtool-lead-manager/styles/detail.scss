@@ -1,3 +1,4 @@
+@use './variables.scss';
 // detail.scss
 .lead_manager_detail_modal {
   position: fixed;
@@ -54,16 +55,16 @@
           font-weight: 500;
 
           &.new {
-            background-color: rgba(79, 184, 232, 0.15);
-            color: #4fb8e8;
+            background-color: rgba(17, 217, 37, 0.15);
+            color: variables.$color-new-read;
           }
           &.contacted {
-            background-color: rgba(232, 184, 79, 0.15);
-            color: #e8b84f;
+            background-color: rgba(23, 242, 184, 0.15);
+            color: variables.$color-read-complete;
           }
           &.purchased {
-            background-color: rgba(79, 232, 155, 0.15);
-            color: #4fe89b;
+            background-color: rgba(247, 98, 254, 0.15);
+            color: variables.$color-purchase-complete;
           }
         }
       }
@@ -159,11 +160,13 @@
             text-align: left;
             display: -webkit-box;
             -webkit-line-clamp: 1;
+            line-clamp: 1;
             -webkit-box-orient: vertical;
             overflow: hidden;
 
             &.expanded {
               -webkit-line-clamp: unset;
+              line-clamp: unset;
               overflow: visible;
             }
           }

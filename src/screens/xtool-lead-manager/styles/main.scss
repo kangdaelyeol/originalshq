@@ -44,15 +44,15 @@
   }
 
   .table_label.new-read {
-    color: rgb(17, 217, 37);
+    color: variables.$color-new-read;
   }
 
   .table_label.read-complete {
-    color: rgb(23, 242, 184);
+    color: variables.$color-read-complete;
   }
 
   .table_label.purchase-complete {
-    color: rgb(247, 98, 254);
+    color: variables.$color-purchase-complete;
   }
 
   .table {
@@ -80,15 +80,15 @@
     }
 
     .table_left.new-read {
-      background-color: rgb(17, 217, 37);
+      background-color: variables.$color-new-read;
     }
 
     .table_left.read-complete {
-      background-color: rgb(23, 242, 184);
+      background-color: variables.$color-read-complete;
     }
 
     .table_left.purchase-complete {
-      background-color: rgb(247, 98, 254);
+      background-color: variables.$color-purchase-complete;
     }
 
     .item {

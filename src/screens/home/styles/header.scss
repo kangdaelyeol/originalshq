@@ -1,7 +1,7 @@
 /* ===================================
    Navigation Bar
    =================================== */
-.header {
+.originals-header {
   position: fixed;
   top: 0;
   left: 0;
@@ -23,7 +23,7 @@
   }
 }
 
-.header .wrapper {
+.originals-header .wrapper {
   width: 100%;
   max-width: 1200px;
   height: 70px;
@@ -142,7 +142,7 @@
 }
 
 @media (max-width: 768px) {
-  .header .wrapper .nav {
+  .originals-header .wrapper .nav {
     display: none;
   }
   .hamburger {

@@ -19,7 +19,7 @@ export const Header = () => {
     useHeader()
 
   return (
-    <section className={['header', 'navbar', scrolled && 'scrolled'].join(' ')}>
+    <section className={['originals-header', 'navbar', scrolled && 'scrolled'].join(' ')}>
       <div className="container">
         <div className="wrapper">
           <a className="logo__container" href="/#home">
