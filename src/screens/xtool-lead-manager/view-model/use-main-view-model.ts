@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { sampleLeads } from '../sample-data'
 import type { ConfirmVariant, Device, Lead } from '../types'
+import { useSearchContext } from '../context/search-context'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
@@ -20,6 +21,14 @@ export const useMainViewModel = () => {
   const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
   const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
+
+  const { searchValue } = useSearchContext()
+
+  const filteredRows = useMemo(() => {
+    const keyword = searchValue.trim().toLowerCase()
+    if (!keyword) return rows
+    return rows.filter((row) => row.fn.toLowerCase().includes(keyword))
+  }, [rows, searchValue])
 
   const registerCustomer = async (): Promise<void> => {
     await new Promise<void>((resolve) =>
@@ -140,7 +149,7 @@ export const useMainViewModel = () => {
     state: {
       allChecked,
       editingCell,
-      rows,
+      rows: filteredRows,
       newReadFold,
       readCompleteFold,
       purchaseCompleteFold,
