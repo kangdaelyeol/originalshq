@@ -1,0 +1,92 @@
+// device-filter.scss (또는 nav.scss에 추가)
+.device_filter {
+  position: relative;
+
+  .device_filter_btn {
+    all: unset;
+    position: relative;
+    box-sizing: border-box;
+    height: 40px;
+    width: 150px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    color: #c3c6d4;
+    font-size: 14px;
+    border: 1px solid #4b547b;
+    border-radius: 7px;
+    cursor: pointer;
+
+    .chevron_box {
+      position: absolute;
+      right: 15px;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      .chevron {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    &:hover {
+      border-color: #c3c6d4;
+    }
+
+    &.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    &.active {
+      border-color: #229ad6;
+      color: #4fb8e8;
+      background-color: #229ad61a;
+    }
+  }
+
+  .device_filter_menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 140px;
+    box-sizing: border-box;
+    padding: 6px;
+    background-color: rgb(30, 34, 62);
+    border: 1px solid #4b547b;
+    border-radius: 9px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .device_filter_item {
+      all: unset;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      color: #dfe1ec;
+      cursor: pointer;
+      text-align: left;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.06);
+      }
+
+      &.selected {
+        color: #4fb8e8;
+        background-color: #229ad61a;
+      }
+    }
+
+    .menu_divider {
+      height: 1px;
+      background-color: #383e63;
+      margin: 4px 2px;
+    }
+  }
+}

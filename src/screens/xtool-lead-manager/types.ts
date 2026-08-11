@@ -1,4 +1,13 @@
 export type Device = 'F2Ultra' | 'F2UltraUV' | 'P3' | 'DTF' | 'Metalfab'
+export type DeviceFilter = Device | 'all'
+export const DEVICE_OPTIONS: Device[] = [
+  'F2Ultra',
+  'F2UltraUV',
+  'P3',
+  'DTF',
+  'Metalfab',
+]
+
 export type LeadState = 'new' | 'contacted' | 'purchased'
 export type ConfirmVariant = 'delete' | 'register'
 export type SortField = 'createdAt' | 'fn' | 'ph'

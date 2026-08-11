@@ -7,7 +7,7 @@ import type {
   SortDirection,
   SortField,
 } from '../types'
-import { useSearchContext } from '../context/search-context'
+import { useFilterContext } from '../context/filter-context'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
@@ -31,7 +31,7 @@ export const useMainViewModel = () => {
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
-  const { searchValue } = useSearchContext()
+  const { searchValue, deviceFilter } = useFilterContext()
 
   const filteredRows = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
@@ -53,6 +53,11 @@ export const useMainViewModel = () => {
 
     return sorted
   }, [filteredRows, sortField, sortDirection])
+
+  const finalRows = useMemo(() => {
+    if (deviceFilter === 'all') return sortedRows
+    return sortedRows.filter((row) => row.device === deviceFilter)
+  }, [sortedRows, deviceFilter])
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -193,7 +198,7 @@ export const useMainViewModel = () => {
     state: {
       allChecked,
       editingCell,
-      rows: sortedRows,
+      rows: finalRows,
       newReadFold,
       readCompleteFold,
       purchaseCompleteFold,
