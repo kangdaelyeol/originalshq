@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DeviceFilter } from '../../types'
+import type { DeviceFilter } from '@/screens/xtool-lead-manager/types'
 
 interface FilterContextValue {
   resetSearchValue: () => void

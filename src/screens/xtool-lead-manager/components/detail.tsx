@@ -1,7 +1,6 @@
-// detail.tsx
-import '@/screens/xtool-lead-manager/styles/detail.scss'
 import { useEffect, useState } from 'react'
-import type { Lead } from '../types'
+import type { Lead } from '@/screens/xtool-lead-manager/types'
+import '@/screens/xtool-lead-manager/styles/detail.scss'
 
 const STATE_LABEL: Record<Lead['state'], string> = {
   new: '신규 유입',

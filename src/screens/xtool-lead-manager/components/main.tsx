@@ -1,8 +1,10 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
-import { ConfirmModal } from './confirm-modal'
-import { Detail } from './detail'
-import { Table } from './table'
+import {
+  ConfirmModal,
+  Detail,
+  Table,
+} from '@/screens/xtool-lead-manager/components'
 
 export const Main = () => {
   const { state, actions } = useMainViewModel()

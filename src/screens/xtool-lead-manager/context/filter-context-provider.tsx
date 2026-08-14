@@ -1,7 +1,7 @@
 import { useRef, useState, type PropsWithChildren } from 'react'
-import { FilterContext } from './filter-context'
-import { useOutsideClick } from '../../hooks/use-outside-click'
-import type { DeviceFilter } from '../../types'
+import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
+import type { DeviceFilter } from '@/screens/xtool-lead-manager/types'
+import { FilterContext } from '@/screens/xtool-lead-manager/context/filter-context'
 
 export const FilterContextProvider = ({ children }: PropsWithChildren) => {
   const [searchActive, setSearchActive] = useState(false)

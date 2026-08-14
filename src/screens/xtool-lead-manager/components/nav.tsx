@@ -1,8 +1,10 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context/filter-context'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
-import { CloseIcon } from './close-icon'
-import { DeviceFilter } from './device-filter'
+import {
+  CloseIcon,
+  DeviceFilter,
+} from '@/screens/xtool-lead-manager/components'
 
 export const Nav = () => {
   const {

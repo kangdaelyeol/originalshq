@@ -1,5 +1,8 @@
-import type { SortDirection, SortField } from '../types'
-import '../styles/sort-button.scss'
+import type {
+  SortDirection,
+  SortField,
+} from '@/screens/xtool-lead-manager/types'
+import '@/screens/xtool-lead-manager/styles/sort-button.scss'
 
 export const SortButton = ({
   columnKey,

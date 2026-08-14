@@ -1,8 +1,7 @@
 import { useRef, useState } from 'react'
+import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks/use-outside-click'
+import { DEVICE_OPTIONS, type DeviceFilter as DeviceFilterType } from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/device-filter.scss'
-import { useOutsideClick } from '../hooks/use-outside-click'
-import type { DeviceFilter as DeviceFilterType } from '../types'
-import { DEVICE_OPTIONS } from '../types'
 
 const DEVICE_LABEL: Record<DeviceFilterType, string> = {
   all: '전체 기기',

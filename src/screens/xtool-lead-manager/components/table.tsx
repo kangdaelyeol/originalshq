@@ -1,20 +1,23 @@
 import {
   DEVICE_OPTIONS,
   type Device,
+  type EditingCell,
+  type EditingField,
   type Lead,
+  type LeadState,
   type SortDirection,
   type SortField,
-} from '../types'
-import { formatTime } from '../utils/format-time'
-import type { EditingCell, Field, TableFold, UserState } from '../view-model'
-import { SortButton } from './sort-button'
+  type TableFold,
+} from '@/screens/xtool-lead-manager/types'
+import { formatTime } from '@/screens/xtool-lead-manager/utils'
+import { SortButton } from '@/screens/xtool-lead-manager/components/sort-button'
 
 interface TableActions {
-  toggleFold: (field: UserState) => void
+  toggleFold: (field: LeadState) => void
   toggleAllChecked: () => void
   toggleSort: (field: SortField) => void
-  startEditing: (rowId: string, field: Field) => void
-  updateCellValue: (rowId: string, field: Field, value: string) => void
+  startEditing: (rowId: string, field: EditingField) => void
+  updateCellValue: (rowId: string, field: EditingField, value: string) => void
   stopEditing: () => void
   showDetail: (rowId: string) => void
   handleEditingKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -35,7 +38,7 @@ interface TableState {
 interface TableProps {
   state: TableState
   actions: TableActions
-  type: UserState
+  type: LeadState
 }
 
 export const Table = ({ state, actions, type }: TableProps) => {

@@ -13,6 +13,19 @@ export type ConfirmVariant = 'delete' | 'register'
 export type SortField = 'createdAt' | 'fn' | 'ph'
 export type SortDirection = 'asc' | 'desc'
 
+export type EditingField = 'fn' | 'ph' | 'price'
+
+export type EditingCell = {
+  rowId: string
+  field: EditingField
+} | null
+
+export interface TableFold {
+  new: boolean
+  contacted: boolean
+  purchased: boolean
+}
+
 export type Lead = {
   id: string
   createdAt: number

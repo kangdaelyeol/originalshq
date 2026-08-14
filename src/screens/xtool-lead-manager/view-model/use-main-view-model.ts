@@ -1,28 +1,17 @@
 import { useMemo, useState } from 'react'
-import { sampleLeads } from '../sample-data'
+import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 import type {
   ConfirmVariant,
   Device,
+  EditingCell,
+  EditingField,
   Lead,
+  LeadState,
   SortDirection,
   SortField,
-} from '../types'
-import { useFilterContext } from '../context/filter-context'
-
-export type UserState = 'new' | 'contacted' | 'purchased'
-
-export type Field = 'fn' | 'ph' | 'price'
-
-export type EditingCell = {
-  rowId: string
-  field: Field
-} | null
-
-export interface TableFold {
-  new: boolean
-  contacted: boolean
-  purchased: boolean
-}
+  TableFold,
+} from '@/screens/xtool-lead-manager/types'
+import { useFilterContext } from '@/screens/xtool-lead-manager/context'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -42,14 +31,14 @@ export const useMainViewModel = () => {
     purchased: false,
   })
 
-  const filteredRows = useMemo(() => {
+  const keywordFilteredRows = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
     if (!keyword) return rows
     return rows.filter((row) => row.fn.toLowerCase().includes(keyword))
   }, [rows, searchValue])
 
   const sortedRows = useMemo(() => {
-    const sorted = [...filteredRows]
+    const sorted = [...keywordFilteredRows]
     sorted.sort((a, b) => {
       let res: number
       if (sortField === 'createdAt') {
@@ -61,14 +50,14 @@ export const useMainViewModel = () => {
     })
 
     return sorted
-  }, [filteredRows, sortField, sortDirection])
+  }, [keywordFilteredRows, sortField, sortDirection])
 
-  const finalRows = useMemo(() => {
+  const deviceFilteredRows = useMemo(() => {
     if (deviceFilter === 'all') return sortedRows
     return sortedRows.filter((row) => row.device === deviceFilter)
   }, [sortedRows, deviceFilter])
 
-  const toggleFold = (field: UserState) => {
+  const toggleFold = (field: LeadState) => {
     setFold((prev) => {
       const newFold = { ...prev }
       newFold[field] = !newFold[field]
@@ -166,11 +155,15 @@ export const useMainViewModel = () => {
     setAllChecked((prev) => !prev)
   }
 
-  const startEditing = (rowId: string, field: Field) => {
+  const startEditing = (rowId: string, field: EditingField) => {
     setEditingCell({ rowId, field })
   }
 
-  const updateCellValue = (rowId: string, field: Field, value: string) => {
+  const updateCellValue = (
+    rowId: string,
+    field: EditingField,
+    value: string,
+  ) => {
     setRows((prev) =>
       prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
     )
@@ -204,7 +197,7 @@ export const useMainViewModel = () => {
     state: {
       allChecked,
       editingCell,
-      rows: finalRows,
+      rows: deviceFilteredRows,
       selectedRowIndex,
       variant,
       detail,
