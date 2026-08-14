@@ -1,4 +1,3 @@
-// context/filter-context-provider.tsx
 import { useRef, useState, type PropsWithChildren } from 'react'
 import { FilterContext } from './filter-context'
 import { useOutsideClick } from '../../hooks/use-outside-click'

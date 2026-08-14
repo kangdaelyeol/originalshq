@@ -11,20 +11,23 @@ import { useFilterContext } from '../context/filter-context'
 
 export type UserState = 'new' | 'contacted' | 'purchased'
 
-type Field = 'fn' | 'ph' | 'price'
+export type Field = 'fn' | 'ph' | 'price'
 
-type EditingCell = {
+export type EditingCell = {
   rowId: string
   field: Field
 } | null
+
+export interface TableFold {
+  new: boolean
+  contacted: boolean
+  purchased: boolean
+}
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Lead[]>(sampleLeads)
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
-  const [newReadFold, setNewReadFold] = useState(false)
-  const [readCompleteFold, setReadCompleteFold] = useState(false)
-  const [purchaseCompleteFold, setPurchaseCompleteFold] = useState(false)
   const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
   const [detail, setDetail] = useState<Lead | null>(null)
@@ -32,6 +35,12 @@ export const useMainViewModel = () => {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const { searchValue, deviceFilter } = useFilterContext()
+
+  const [fold, setFold] = useState<TableFold>({
+    new: false,
+    contacted: false,
+    purchased: false,
+  })
 
   const filteredRows = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase()
@@ -58,6 +67,15 @@ export const useMainViewModel = () => {
     if (deviceFilter === 'all') return sortedRows
     return sortedRows.filter((row) => row.device === deviceFilter)
   }, [sortedRows, deviceFilter])
+
+  const toggleFold = (field: UserState) => {
+    setFold((prev) => {
+      const newFold = { ...prev }
+      newFold[field] = !newFold[field]
+
+      return newFold
+    })
+  }
 
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
@@ -104,18 +122,6 @@ export const useMainViewModel = () => {
 
   const handleCancelConfirmClick = () => {
     setSelectedRowIndex(-1)
-  }
-
-  const toggleNewReadFold = () => {
-    setNewReadFold((prev) => !prev)
-  }
-
-  const toggleReadCompleteFold = () => {
-    setReadCompleteFold((prev) => !prev)
-  }
-
-  const togglePurchaseCompleteFold = () => {
-    setPurchaseCompleteFold((prev) => !prev)
   }
 
   const showDetail = (rowId: string) => {
@@ -199,14 +205,12 @@ export const useMainViewModel = () => {
       allChecked,
       editingCell,
       rows: finalRows,
-      newReadFold,
-      readCompleteFold,
-      purchaseCompleteFold,
       selectedRowIndex,
       variant,
       detail,
       sortField,
       sortDirection,
+      fold,
     },
     actions: {
       toggleAllChecked,
@@ -217,15 +221,13 @@ export const useMainViewModel = () => {
       deleteRow,
       registerRow,
       handleEditingKeyDown,
-      toggleNewReadFold,
       createNewReadRow,
-      toggleReadCompleteFold,
-      togglePurchaseCompleteFold,
       handleCancelConfirmClick,
       handleConfirmClick,
       showDetail,
       hideDetail,
       toggleSort,
+      toggleFold,
     },
   }
 }
