@@ -94,13 +94,13 @@ export const Table = ({ state, actions, type }: TableProps) => {
             fill="currentColor"
             d="M12.76 10.56a.77.77 0 0 0 0-1.116L8.397 5.233a.84.84 0 0 0-1.157 0 .77.77 0 0 0 0 1.116l3.785 3.653-3.785 3.652a.77.77 0 0 0 0 1.117.84.84 0 0 0 1.157 0l4.363-4.211Z"
           ></path>
+          {type === 'contacted' && (
+            <path
+              fill="currentColor"
+              d="M12.76 10.56a.77.77 0 0 0 0-1.116L8.397 5.233a.84.84 0 0 0-1.157 0 .77.77 0 0 0 0 1.116l3.785 3.653-3.785 3.652a.77.77 0 0 0 0 1.117.84.84 0 0 0 1.157 0l4.363-4.211Z"
+            ></path>
+          )}
         </svg>
-        {type === 'contacted' && (
-          <path
-            fill="currentColor"
-            d="M12.76 10.56a.77.77 0 0 0 0-1.116L8.397 5.233a.84.84 0 0 0-1.157 0 .77.77 0 0 0 0 1.116l3.785 3.653-3.785 3.652a.77.77 0 0 0 0 1.117.84.84 0 0 0 1.157 0l4.363-4.211Z"
-          ></path>
-        )}
         {tableLabel}
       </div>
       {!fold[type] && (
@@ -291,25 +291,29 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         <span>{formatTime(row.purchasedAt)}</span>
                       </div>
                     )}
-                    <div className="item register">
-                      <button
-                        type="button"
-                        className="register-btn"
-                        onClick={() => registerRow(row.id)}
-                      >
-                        등록
-                      </button>
-                    </div>
+                    {type !== 'purchased' && (
+                      <>
+                        <div className="item register">
+                          <button
+                            type="button"
+                            className="register-btn"
+                            onClick={() => registerRow(row.id)}
+                          >
+                            등록
+                          </button>
+                        </div>
 
-                    <div className="item delete">
-                      <button
-                        type="button"
-                        className="delete-btn"
-                        onClick={() => deleteRow(row.id)}
-                      >
-                        삭제
-                      </button>
-                    </div>
+                        <div className="item delete">
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            onClick={() => deleteRow(row.id)}
+                          >
+                            삭제
+                          </button>
+                        </div>
+                      </>
+                    )}
 
                     <div className="item detail">
                       <button
