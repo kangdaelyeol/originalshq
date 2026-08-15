@@ -178,8 +178,16 @@ export const useMainViewModel = () => {
     if (!editingCell) return
     const { rowId, field } = editingCell
     const editedValue = rows.find((row) => row.id === rowId)?.[field]
-    
-    if (!rowId) setEditingCell(null)
+
+    // TODO - update row in firebase(rowId / editedValue)
+    await new Promise((resolve) => {
+      setLoading(true)
+      setTimeout(() => {
+        setLoading(false)
+        resolve(null)
+        setEditingCell(null)
+      }, 500)
+    })
   }
 
   const updateDevice = (rowId: string, device: Device) => {
@@ -213,6 +221,7 @@ export const useMainViewModel = () => {
       sortField,
       sortDirection,
       fold,
+      loading,
     },
     actions: {
       toggleAllChecked,

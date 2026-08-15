@@ -3,12 +3,13 @@ import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import {
   ConfirmModal,
   Detail,
+  Loading,
   Table,
 } from '@/screens/xtool-lead-manager/components'
 
 export const Main = () => {
   const { state, actions } = useMainViewModel()
-  const { rows, selectedRowIndex, variant, detail } = state
+  const { rows, selectedRowIndex, variant, detail, loading } = state
 
   const { handleCancelConfirmClick, handleConfirmClick, hideDetail } = actions
 
@@ -36,6 +37,7 @@ export const Main = () => {
         />
       )}
       {detail && <Detail lead={detail} onConfirm={hideDetail} />}
+      {loading && <Loading />}
     </div>
   )
 }
