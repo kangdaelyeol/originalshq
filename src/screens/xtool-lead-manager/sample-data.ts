@@ -123,7 +123,7 @@ function randomIp(): string {
 function randomPhone(): string {
   const mid = randomInt(1000, 9999)
   const end = randomInt(1000, 9999)
-  return `010-${mid}-${end}`
+  return `010${mid}${end}`
 }
 
 function randomFbParam(prefix: 'fbc' | 'fbp', ts: number): string {

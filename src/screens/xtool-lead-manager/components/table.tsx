@@ -9,7 +9,10 @@ import {
   type SortField,
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
-import { formatTime } from '@/screens/xtool-lead-manager/utils'
+import {
+  formatPhoneNumber,
+  formatTime,
+} from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components/sort-button'
 
 interface TableActions {
@@ -238,7 +241,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           onKeyDown={handleEditingKeyDown}
                         />
                       ) : (
-                        <span>{row.ph}</span>
+                        <span>{formatPhoneNumber(row.ph)}</span>
                       )}
                     </div>
 

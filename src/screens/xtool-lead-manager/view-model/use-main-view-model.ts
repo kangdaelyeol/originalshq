@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 import type {
   ConfirmVariant,
   Device,
@@ -12,6 +11,7 @@ import type {
   TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
+import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -22,6 +22,7 @@ export const useMainViewModel = () => {
   const [detail, setDetail] = useState<Lead | null>(null)
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [loading, setLoading] = useState(false)
 
   const { searchValue, deviceFilter } = useFilterContext()
 
@@ -164,13 +165,21 @@ export const useMainViewModel = () => {
     field: EditingField,
     value: string,
   ) => {
+    const cleanedValue = field === 'ph' ? value.replace(/\D/g, '') : value
+
     setRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, [field]: value } : row)),
+      prev.map((row) =>
+        row.id === rowId ? { ...row, [field]: cleanedValue } : row,
+      ),
     )
   }
 
-  const stopEditing = () => {
-    setEditingCell(null)
+  const stopEditing = async () => {
+    if (!editingCell) return
+    const { rowId, field } = editingCell
+    const editedValue = rows.find((row) => row.id === rowId)?.[field]
+    
+    if (!rowId) setEditingCell(null)
   }
 
   const updateDevice = (rowId: string, device: Device) => {
