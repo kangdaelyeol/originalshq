@@ -8,10 +8,10 @@ import {
 } from '@/screens/xtool-lead-manager/components'
 
 export const Main = () => {
-  const { state, actions } = useMainViewModel()
+  const { state, actions, component } = useMainViewModel()
   const { rows, selectedRowIndex, variant, detail, loading } = state
-
   const { handleCancelConfirmClick, handleConfirmClick, hideDetail } = actions
+  const { ToastContainer } = component
 
   return (
     <div className="xtool-main">
@@ -38,6 +38,7 @@ export const Main = () => {
       )}
       {detail && <Detail lead={detail} onConfirm={hideDetail} />}
       {loading && <Loading />}
+      <ToastContainer />
     </div>
   )
 }

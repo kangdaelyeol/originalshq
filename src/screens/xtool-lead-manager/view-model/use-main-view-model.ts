@@ -12,6 +12,7 @@ import type {
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
 import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
+import { useToast } from '../hooks/use-toast'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -25,6 +26,7 @@ export const useMainViewModel = () => {
   const [loading, setLoading] = useState(false)
 
   const { searchValue, deviceFilter } = useFilterContext()
+  const { showToast, ToastContainer } = useToast()
 
   const [fold, setFold] = useState<TableFold>({
     new: false,
@@ -91,6 +93,7 @@ export const useMainViewModel = () => {
         })
         setSelectedRowIndex(-1)
         resolve()
+        showToast('registered')
       }, 500),
     )
   }
@@ -101,6 +104,7 @@ export const useMainViewModel = () => {
         setRows((prev) => prev.filter((_, idx) => idx !== selectedRowIndex))
         setSelectedRowIndex(-1)
         resolve()
+        showToast('deleted')
       }, 500),
     )
   }
@@ -186,14 +190,25 @@ export const useMainViewModel = () => {
         setLoading(false)
         resolve(null)
         setEditingCell(null)
+        showToast('updated')
       }, 500)
     })
   }
 
-  const updateDevice = (rowId: string, device: Device) => {
-    setRows((prev) =>
-      prev.map((row) => (row.id === rowId ? { ...row, device } : row)),
-    )
+  const updateDevice = async (rowId: string, device: Device) => {
+    // TODO - update row in firebase(rowId / device)
+    await new Promise((resolve) => {
+      setLoading(true)
+      setTimeout(() => {
+        setLoading(false)
+        resolve(null)
+        setEditingCell(null)
+        showToast('updated')
+        setRows((prev) =>
+          prev.map((row) => (row.id === rowId ? { ...row, device } : row)),
+        )
+      }, 500)
+    })
   }
 
   const deleteRow = (rowId: string) => {
@@ -239,6 +254,9 @@ export const useMainViewModel = () => {
       hideDetail,
       toggleSort,
       toggleFold,
+    },
+    component: {
+      ToastContainer,
     },
   }
 }
