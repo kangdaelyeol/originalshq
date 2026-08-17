@@ -38,8 +38,8 @@ export type Lead = {
   user_agent: string
   fn: string
   ph: string
+  device: Device
   price: number
   purchasedAt: number
   state: LeadState
-  device: Device
 }
