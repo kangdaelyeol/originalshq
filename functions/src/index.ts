@@ -5,8 +5,8 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
-import { CreateLeadInput, Lead } from './types'
-import { validateLeadCreationBody } from './validation'
+import { CreateLeadInput, Device, Lead } from './types'
+import { validateLeadCreationBody, DEVICE_VALUES } from './validation'
 import { sendMetaEvent } from './meta'
 
 initializeApp()
@@ -298,3 +298,161 @@ export const purchaseLead = onRequest(
     })
   },
 )
+
+export const updateLeadContact = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id, fn, ph } = request.body as {
+        id?: string
+        fn?: string
+        ph?: string
+      }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+
+      const hasFn = typeof fn === 'string' && fn !== ''
+      const hasPh = typeof ph === 'string' && ph !== ''
+
+      if (!hasFn && !hasPh) {
+        response.status(400).send({ error: 'fn or ph is required' })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      const updateData: Partial<Pick<Lead, 'fn' | 'ph'>> = {}
+
+      if (hasFn) {
+        updateData.fn = fn as string
+      }
+
+      if (hasPh) {
+        const digitsOnlyPhone = (ph as string).replace(/\D/g, '')
+
+        if (!digitsOnlyPhone) {
+          response.status(400).send({ error: 'ph must contain digits' })
+          return
+        }
+
+        updateData.ph = digitsOnlyPhone
+      }
+
+      await docRef.update(updateData)
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+
+      logger.info('리드 연락처 수정 완료:', id, updateData)
+
+      response.status(200).send({
+        id: snapshot.id,
+        ...lead,
+        ...updateData,
+      })
+    } catch (error) {
+      logger.error('updateLeadContact 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+export const updateLeadDevice = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id, device } = request.body as { id?: string; device?: string }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+
+      if (!device || typeof device !== 'string') {
+        response.status(400).send({ error: 'device is required' })
+        return
+      }
+
+      if (!DEVICE_VALUES.includes(device as Device)) {
+        response
+          .status(400)
+          .send({ error: `device must be one of: ${DEVICE_VALUES.join(', ')}` })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ device })
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+
+      logger.info('리드 디바이스 수정 완료:', id, device)
+
+      response.status(200).send({
+        id: snapshot.id,
+        ...lead,
+        device,
+      })
+    } catch (error) {
+      logger.error('updateLeadDevice 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+export const deleteLead = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id } = request.body as { id?: string }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.delete()
+
+      logger.info('리드 삭제 완료:', id)
+
+      response.status(200).send({ id, deleted: true })
+    } catch (error) {
+      logger.error('deleteLead 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
