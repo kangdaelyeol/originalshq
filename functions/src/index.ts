@@ -7,7 +7,7 @@ import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
 import { CreateLeadInput, Device, Lead } from './types'
 import { validateLeadCreationBody, DEVICE_VALUES } from './validation'
-import { sendMetaEvent } from './meta'
+import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 
 initializeApp()
 
@@ -197,6 +197,10 @@ export const contactLead = onRequest(
           accessToken: metaAccessToken.value(),
           eventName: 'Contact',
           lead,
+          customData: {
+            currency: 'KRW',
+            value: DEVICE_EXPECTED_VALUE[lead.device],
+          },
         })
 
         if (!capiResult.ok) {
