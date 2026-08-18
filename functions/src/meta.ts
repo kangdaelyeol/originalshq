@@ -1,7 +1,6 @@
 import * as crypto from 'crypto'
 import * as logger from 'firebase-functions/logger'
-import { Lead } from './types'
-import { Device } from './types'
+import { Lead, Device } from './types'
 
 export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
   F2Ultra: 104500,
