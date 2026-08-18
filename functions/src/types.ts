@@ -31,4 +31,5 @@ export type CreateLeadInput = {
   fn: string
   ph: string
   device: Device
+  createdAt?: number
 }

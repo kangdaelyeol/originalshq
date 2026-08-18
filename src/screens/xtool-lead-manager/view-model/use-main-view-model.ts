@@ -1,22 +1,24 @@
 import { useMemo, useState } from 'react'
-import type {
-  ConfirmVariant,
-  Device,
-  EditingCell,
-  EditingField,
-  Lead,
-  LeadState,
-  SortDirection,
-  SortField,
-  TableFold,
+import {
+  INITIAL_CREATE_LEAD_FORM,
+  type ConfirmVariant,
+  type CreateLeadFormValues,
+  type Device,
+  type EditingCell,
+  type EditingField,
+  type Lead,
+  type LeadState,
+  type SortDirection,
+  type SortField,
+  type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
-import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
+// import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 import { useToast } from '../hooks/use-toast'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
-  const [rows, setRows] = useState<Lead[]>(sampleLeads)
+  const [rows, setRows] = useState<Lead[]>([])
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
@@ -24,6 +26,11 @@ export const useMainViewModel = () => {
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [loading, setLoading] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createForm, setCreateForm] = useState<CreateLeadFormValues>(
+    INITIAL_CREATE_LEAD_FORM,
+  )
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { searchValue, deviceFilter } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
@@ -225,6 +232,57 @@ export const useMainViewModel = () => {
     setVariant('register')
   }
 
+  const openCreateModal = () => {
+    setCreateForm(INITIAL_CREATE_LEAD_FORM)
+    setCreateOpen(true)
+  }
+
+  const closeCreateModal = () => {
+    setCreateOpen(false)
+  }
+
+  const updateField = (field: keyof CreateLeadFormValues, value: string) => {
+    setCreateForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleCreateLeadClick = async () => {
+    if (!createForm.fn || !createForm.ph) {
+      // 토스트 등으로 안내
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const createdAtMs = createForm.createdAt
+        ? new Date(createForm.createdAt).getTime()
+        : undefined
+
+      const body = { ...createForm, createdAt: createdAtMs }
+
+      const response = await fetch(
+        'https://us-central1-xtool-63b29.cloudfunctions.net/createLead',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        },
+      )
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error ?? '등록 실패')
+      }
+
+      closeCreateModal()
+      // 여기서 목록 다시 불러오기 (listLeads 재호출)
+    } catch (error) {
+      console.error(error)
+      // 에러 토스트
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return {
     state: {
       allChecked,
@@ -237,6 +295,9 @@ export const useMainViewModel = () => {
       sortDirection,
       fold,
       loading,
+      createOpen,
+      isSubmitting,
+      form: createForm,
     },
     actions: {
       toggleAllChecked,
@@ -254,6 +315,10 @@ export const useMainViewModel = () => {
       hideDetail,
       toggleSort,
       toggleFold,
+      openCreateModal,
+      closeCreateModal,
+      handleCreateLeadClick,
+      updateField,
     },
     component: {
       ToastContainer,

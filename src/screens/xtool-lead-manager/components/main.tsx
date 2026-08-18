@@ -2,6 +2,7 @@ import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import {
   ConfirmModal,
+  CreateModal,
   Detail,
   Loading,
   Table,
@@ -9,8 +10,13 @@ import {
 
 export const Main = () => {
   const { state, actions, component } = useMainViewModel()
-  const { rows, selectedRowIndex, variant, detail, loading } = state
-  const { handleCancelConfirmClick, handleConfirmClick, hideDetail } = actions
+  const { rows, selectedRowIndex, variant, detail, loading, createOpen } = state
+  const {
+    handleCancelConfirmClick,
+    handleConfirmClick,
+    hideDetail,
+    openCreateModal,
+  } = actions
   const { ToastContainer } = component
 
   return (
@@ -38,6 +44,12 @@ export const Main = () => {
       )}
       {detail && <Detail lead={detail} onConfirm={hideDetail} />}
       {loading && <Loading />}
+      {createOpen && (
+        <CreateModal state={{ ...state }} actions={{ ...actions }} />
+      )}
+      <div className="create-btn" onClick={openCreateModal}>
+        +
+      </div>
       <ToastContainer />
     </div>
   )

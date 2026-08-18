@@ -60,10 +60,13 @@ export const createLead = onRequest((request, response) => {
         return
       }
 
-      const now = Date.now()
+      const createdAt =
+        typeof input.createdAt === 'number' && input.createdAt > 0
+          ? input.createdAt
+          : Date.now()
 
       const leadData: Omit<Lead, 'id'> = {
-        createdAt: now,
+        createdAt,
         utm_campaign: input.utm_campaign,
         utm_medium: input.utm_medium,
         utm_source: input.utm_source,

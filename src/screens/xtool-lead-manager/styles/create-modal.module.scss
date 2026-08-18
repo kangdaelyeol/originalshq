@@ -1,0 +1,169 @@
+// 색상/스케일 토큰
+$color-overlay: rgba(15, 23, 42, 0.5);
+$color-surface: #ffffff;
+$color-border: #e2e8f0;
+$color-border-focus: #3b82f6;
+$color-text: #0f172a;
+$color-text-muted: #64748b;
+$color-danger: #ef4444;
+$color-danger-bg: #fef2f2;
+
+$radius-panel: 14px;
+$radius-control: 8px;
+
+$shadow-panel: 0 20px 40px rgba(15, 23, 42, 0.16);
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background-color: $color-overlay;
+  z-index: 1000;
+}
+
+.panel {
+  width: 480px;
+  max-width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: $color-surface;
+  border-radius: $radius-panel;
+  box-shadow: $shadow-panel;
+  padding: 28px;
+
+  // 스크롤바를 얇고 눈에 덜 띄게
+  scrollbar-width: thin;
+  scrollbar-color: $color-border transparent;
+}
+
+.title {
+  margin: 0 0 20px;
+  font-size: 18px;
+  font-weight: 700;
+  color: $color-text;
+  letter-spacing: -0.01em;
+}
+
+.sectionLabel {
+  margin: 20px 0 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $color-text-muted;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+.formRow {
+  margin-bottom: 14px;
+
+  &__label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: $color-text-muted;
+  }
+}
+
+// input, select 공통
+.control {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  font-size: 14px;
+  font-family: inherit;
+  color: $color-text;
+  background-color: $color-surface;
+  border: 1px solid $color-border;
+  border-radius: $radius-control;
+  outline: none;
+
+  &::placeholder {
+    color: #a1a8b3;
+  }
+
+  &:focus,
+  &:focus-visible {
+    border-color: $color-border-focus;
+    box-shadow: 0 0 0 3px rgba($color-border-focus, 0.15);
+  }
+
+  &:disabled {
+    background-color: #f8fafc;
+    color: $color-text-muted;
+    cursor: not-allowed;
+  }
+
+  &--invalid {
+    border-color: $color-danger;
+    background-color: $color-danger-bg;
+
+    &:focus,
+    &:focus-visible {
+      box-shadow: 0 0 0 3px rgba($color-danger, 0.15);
+    }
+  }
+}
+
+select.control {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none'%3E%3Cpath d='M4 6L8 10L12 6' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 32px;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid $color-border;
+}
+
+// 버튼 공통
+.btn {
+  padding: 9px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: $radius-control;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.05s ease;
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+  }
+}
+
+.btn--ghost {
+  background-color: transparent;
+  border-color: $color-border;
+  color: $color-text;
+
+  &:hover:not(:disabled) {
+    background-color: #f8fafc;
+  }
+}
+
+.btn--primary {
+  background-color: $color-border-focus;
+  color: #ffffff;
+}

@@ -7,6 +7,23 @@
   .wrapper {
     padding: 0 20px;
   }
+  .create-btn {
+    position: fixed;
+    bottom: 30px;
+    left: 50px;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 5px;
+    background-color: #000002;
+    opacity: 0.5;
+    &:hover {
+      opacity: 1;
+    }
+  }
 }
 
 .xtool-main .wrapper {

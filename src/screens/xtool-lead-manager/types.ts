@@ -43,3 +43,31 @@ export type Lead = {
   purchasedAt: number
   state: LeadState
 }
+
+export type CreateLeadFormValues = {
+  utm_campaign: string
+  utm_medium: string
+  utm_source: string
+  ip: string
+  fbc: string
+  fbp: string
+  user_agent: string
+  fn: string
+  ph: string
+  device: Device
+  createdAt: string // <input type="datetime-local"> 바인딩용 문자열
+}
+
+export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
+  utm_campaign: '',
+  utm_medium: '',
+  utm_source: '',
+  ip: '',
+  fbc: '',
+  fbp: '',
+  user_agent: '',
+  fn: '',
+  ph: '',
+  device: 'F2Ultra',
+  createdAt: '',
+}
