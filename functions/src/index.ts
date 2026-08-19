@@ -210,6 +210,7 @@ export const contactLead = onRequest(
             currency: 'KRW',
             value: DEVICE_EXPECTED_VALUE[lead.device],
           },
+          eventTimeMs: lead.createdAt,
         })
 
         if (!capiResult.ok) {
@@ -284,6 +285,7 @@ export const purchaseLead = onRequest(
           eventName: 'Purchase',
           lead,
           customData: { currency: 'KRW', value: price },
+          eventTimeMs: lead.purchasedAt,
         })
 
         if (!capiResult.ok) {

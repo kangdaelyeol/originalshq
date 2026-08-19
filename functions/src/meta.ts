@@ -33,6 +33,7 @@ type SendMetaEventParams = {
   eventName: MetaEventName
   lead: Omit<Lead, 'id'>
   customData?: Record<string, unknown>
+  eventTimeMs?: number
 }
 
 type SendMetaEventResult =
@@ -45,8 +46,9 @@ export const sendMetaEvent = async ({
   eventName,
   lead,
   customData,
+  eventTimeMs,
 }: SendMetaEventParams): Promise<SendMetaEventResult> => {
-  const eventTime = Math.floor(Date.now() / 1000)
+  const eventTime = Math.floor((eventTimeMs ?? Date.now()) / 1000)
 
   const payload = {
     data: [
