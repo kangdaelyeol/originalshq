@@ -28,18 +28,7 @@ setGlobalOptions({ maxInstances: 10 })
 // ────────────────────────────────
 // createLead
 // ────────────────────────────────
-const CREATE_LEAD_REQUIRED_FIELDS = [
-  'utm_campaign',
-  'utm_medium',
-  'utm_source',
-  'ip',
-  'fbc',
-  'fbp',
-  'user_agent',
-  'fn',
-  'ph',
-  'device',
-]
+const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device']
 
 export const createLead = onRequest((request, response) => {
   corsHandler(request, response, async () => {
@@ -71,21 +60,23 @@ export const createLead = onRequest((request, response) => {
           ? input.createdAt
           : Date.now()
 
+      const state = input.state === 'contacted' ? 'contacted' : 'new'
+
       const leadData: Omit<Lead, 'id'> = {
         createdAt,
         utm_campaign: input.utm_campaign,
         utm_medium: input.utm_medium,
         utm_source: input.utm_source,
-        ip: input.ip,
-        fbc: input.fbc,
-        fbp: input.fbp,
-        user_agent: input.user_agent,
+        ip: input.ip ?? '',
+        fbc: input.fbc ?? '',
+        fbp: input.fbp ?? '',
+        user_agent: input.user_agent ?? '',
         fn: input.fn,
         ph: digitsOnlyPhone,
         device: input.device,
         price: 0,
         purchasedAt: 0,
-        state: 'new',
+        state,
       }
 
       const docRef = await db.collection('lead').add(leadData)
@@ -106,10 +97,6 @@ const CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS = [
   'utm_campaign',
   'utm_medium',
   'utm_source',
-  'ip',
-  'fbc',
-  'fbp',
-  'user_agent',
   'device',
 ]
 
@@ -133,21 +120,23 @@ export const createLeadWithoutContact = onRequest((request, response) => {
       const input = request.body as Omit<CreateLeadInput, 'fn' | 'ph'>
       const now = Date.now()
 
+      const state = input.state === 'contacted' ? 'contacted' : 'new'
+
       const leadData: Omit<Lead, 'id'> = {
         createdAt: now,
         utm_campaign: input.utm_campaign,
         utm_medium: input.utm_medium,
         utm_source: input.utm_source,
-        ip: input.ip,
-        fbc: input.fbc,
-        fbp: input.fbp,
-        user_agent: input.user_agent,
+        ip: input.ip ?? '',
+        fbc: input.fbc ?? '',
+        fbp: input.fbp ?? '',
+        user_agent: input.user_agent ?? '',
         fn: '',
         ph: '',
         device: input.device,
         price: 0,
         purchasedAt: 0,
-        state: 'new',
+        state,
       }
 
       const docRef = await db.collection('lead').add(leadData)

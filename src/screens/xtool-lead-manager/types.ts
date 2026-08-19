@@ -56,6 +56,7 @@ export type CreateLeadFormValues = {
   ph: string
   device: Device
   createdAt: string // <input type="datetime-local"> 바인딩용 문자열
+  state: 'new' | 'contacted'
 }
 
 export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
@@ -70,4 +71,5 @@ export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
   ph: '',
   device: 'F2Ultra',
   createdAt: '',
+  state: 'new',
 }

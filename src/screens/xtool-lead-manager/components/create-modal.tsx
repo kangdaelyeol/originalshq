@@ -86,6 +86,18 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
           </select>
         </FormRow>
 
+        <FormRow label="상태 (state)" htmlFor="lead-state">
+          <select
+            id="lead-state"
+            className={styles.control}
+            value={form.state}
+            onChange={(e) => updateField('state', e.target.value)}
+          >
+            <option value="new">신규 (new)</option>
+            <option value="contacted">상담 완료 (contacted)</option>
+          </select>
+        </FormRow>
+
         <FormRow label="utm_campaign" htmlFor="lead-utm-campaign">
           <input
             id="lead-utm-campaign"

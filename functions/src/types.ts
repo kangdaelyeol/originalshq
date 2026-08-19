@@ -32,6 +32,7 @@ export type CreateLeadInput = {
   ph: string
   device: Device
   createdAt?: number
+  state?: 'new' | 'contacted'
 }
 
 export const TIMESTAMP_FIELDS = ['createdAt', 'purchasedAt'] as const
