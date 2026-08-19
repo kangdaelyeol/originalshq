@@ -37,7 +37,7 @@ export const useMainViewModel = () => {
   const { searchValue, deviceFilter } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
 
-    const fetchLeads = useCallback(async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true)
     try {
       const response = await fetch(`${LEADS_API_BASE}/listLeads`)
@@ -60,7 +60,6 @@ export const useMainViewModel = () => {
   useEffect(() => {
     fetchLeads()
   }, [fetchLeads])
-
 
   const [fold, setFold] = useState<TableFold>({
     new: false,
@@ -113,34 +112,81 @@ export const useMainViewModel = () => {
   }
 
   const registerCustomer = async (): Promise<void> => {
-    await new Promise<void>((resolve) =>
-      setTimeout(() => {
-        setRows((prev) => {
-          const newRows = [...prev]
-          const newRow = { ...newRows[selectedRowIndex] }
-          if (newRows[selectedRowIndex].state === 'new')
-            newRow.state = 'contacted'
-          else newRow.state = 'purchased'
-          newRow.purchasedAt = Date.now()
-          newRows[selectedRowIndex] = newRow
-          return newRows
-        })
-        setSelectedRowIndex(-1)
-        resolve()
-        showToast('registered')
-      }, 500),
-    )
+    const targetLead = rows[selectedRowIndex]
+
+    if (!targetLead) {
+      setSelectedRowIndex(-1)
+      return
+    }
+
+    const isContactStep = targetLead.state === 'new'
+
+    if (!isContactStep && targetLead.price <= 0) {
+      console.error('purchaseLead 호출에는 0보다 큰 price가 필요합니다')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const endpoint = isContactStep ? 'contactLead' : 'purchaseLead'
+      const body = isContactStep
+        ? { id: targetLead.id }
+        : { id: targetLead.id, price: targetLead.price }
+
+      const response = await fetch(`${LEADS_API_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error ?? '처리 실패')
+      }
+
+      const updatedLead = (await response.json()) as Lead
+
+      setRows((prev) =>
+        prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
+      )
+      setSelectedRowIndex(-1)
+      showToast('registered')
+    } catch (error) {
+      console.error('registerCustomer 실패:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const deleteCustomer = async (): Promise<void> => {
-    await new Promise<void>((resolve) =>
-      setTimeout(() => {
-        setRows((prev) => prev.filter((_, idx) => idx !== selectedRowIndex))
-        setSelectedRowIndex(-1)
-        resolve()
-        showToast('deleted')
-      }, 500),
-    )
+    const targetLead = rows[selectedRowIndex]
+
+    if (!targetLead) {
+      setSelectedRowIndex(-1)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/deleteLead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: targetLead.id }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error ?? '삭제 실패')
+      }
+
+      setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
+      setSelectedRowIndex(-1)
+      showToast('deleted')
+    } catch (error) {
+      console.error('deleteCustomer 실패:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleConfirmClick = async () => {
@@ -164,30 +210,6 @@ export const useMainViewModel = () => {
 
   const handleEditingKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' || e.key === 'Escape') stopEditing()
-  }
-
-  const createNewReadRow = () => {
-    setRows((prev) => {
-      const newRows = [...prev]
-      newRows.push({
-        id: Date.now().toString(),
-        createdAt: Date.now(),
-        fn: '',
-        ph: '',
-        device: 'Metalfab',
-        purchasedAt: 0,
-        price: 0,
-        state: 'new',
-        utm_campaign: '',
-        utm_medium: '',
-        utm_source: '',
-        ip: '',
-        user_agent: '',
-        fbc: '',
-        fbp: '',
-      })
-      return newRows
-    })
   }
 
   const toggleAllChecked = () => {
@@ -217,32 +239,89 @@ export const useMainViewModel = () => {
     const { rowId, field } = editingCell
     const editedValue = rows.find((row) => row.id === rowId)?.[field]
 
-    // TODO - update row in firebase(rowId / editedValue)
-    await new Promise((resolve) => {
-      setLoading(true)
-      setTimeout(() => {
-        setLoading(false)
-        resolve(null)
+    if (editedValue === undefined) {
+      setEditingCell(null)
+      return
+    }
+
+    let endpoint: string
+    let body: Record<string, unknown>
+
+    if (field === 'price') {
+      const numericPrice = Number(editedValue)
+
+      if (Number.isNaN(numericPrice)) {
+        console.error('가격은 숫자여야 합니다')
         setEditingCell(null)
-        showToast('updated')
-      }, 500)
-    })
+        return
+      }
+
+      endpoint = 'updateLeadPrice'
+      body = { id: rowId, price: numericPrice }
+    } else if (field === 'fn' || field === 'ph') {
+      endpoint = 'updateLeadContact'
+      body = { id: rowId, [field]: editedValue }
+    } else {
+      console.error(`stopEditing: 지원하지 않는 필드입니다 (${field})`)
+      setEditingCell(null)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error ?? '수정 실패')
+      }
+
+      const updatedLead = (await response.json()) as Lead
+
+      setRows((prev) =>
+        prev.map((row) => (row.id === rowId ? updatedLead : row)),
+      )
+
+      showToast('updated')
+    } catch (error) {
+      console.error('stopEditing 실패:', error)
+    } finally {
+      setLoading(false)
+      setEditingCell(null)
+    }
   }
 
   const updateDevice = async (rowId: string, device: Device) => {
-    // TODO - update row in firebase(rowId / device)
-    await new Promise((resolve) => {
-      setLoading(true)
-      setTimeout(() => {
-        setLoading(false)
-        resolve(null)
-        setEditingCell(null)
-        showToast('updated')
-        setRows((prev) =>
-          prev.map((row) => (row.id === rowId ? { ...row, device } : row)),
-        )
-      }, 500)
-    })
+    setLoading(true)
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/updateLeadDevice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: rowId, device }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error ?? '수정 실패')
+      }
+
+      const updatedLead = (await response.json()) as Lead
+
+      setRows((prev) =>
+        prev.map((row) => (row.id === rowId ? updatedLead : row)),
+      )
+
+      showToast('updated')
+    } catch (error) {
+      console.error('updateDevice 실패:', error)
+    } finally {
+      setLoading(false)
+      setEditingCell(null)
+    }
   }
 
   const deleteRow = (rowId: string) => {
@@ -335,7 +414,6 @@ export const useMainViewModel = () => {
       deleteRow,
       registerRow,
       handleEditingKeyDown,
-      createNewReadRow,
       handleCancelConfirmClick,
       handleConfirmClick,
       showDetail,

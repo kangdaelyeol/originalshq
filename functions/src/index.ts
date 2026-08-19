@@ -489,3 +489,51 @@ export const listLeads = onRequest((request, response) => {
     }
   })
 })
+
+export const updateLeadPrice = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id, price } = request.body as { id?: string; price?: number }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+
+      if (typeof price !== 'number') {
+        response
+          .status(400)
+          .send({ error: 'price must be a non-negative number' })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ price })
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+
+      logger.info('리드 가격 수정 완료:', id, price)
+
+      response.status(200).send({
+        id: snapshot.id,
+        ...lead,
+        price,
+      })
+    } catch (error) {
+      logger.error('updateLeadPrice 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
