@@ -335,13 +335,7 @@ export const updateLeadContact = onRequest((request, response) => {
         return
       }
 
-      const hasFn = typeof fn === 'string' && fn !== ''
       const hasPh = typeof ph === 'string' && ph !== ''
-
-      if (!hasFn && !hasPh) {
-        response.status(400).send({ error: 'fn or ph is required' })
-        return
-      }
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
@@ -353,10 +347,6 @@ export const updateLeadContact = onRequest((request, response) => {
 
       const updateData: Partial<Pick<Lead, 'fn' | 'ph'>> = {}
 
-      if (hasFn) {
-        updateData.fn = fn as string
-      }
-
       if (hasPh) {
         const digitsOnlyPhone = (ph as string).replace(/\D/g, '')
 
@@ -366,6 +356,8 @@ export const updateLeadContact = onRequest((request, response) => {
         }
 
         updateData.ph = digitsOnlyPhone
+      } else {
+        updateData.fn = fn as string
       }
 
       await docRef.update(updateData)
