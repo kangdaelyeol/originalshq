@@ -145,11 +145,11 @@
         border-right: 1px solid variables.$table-border-color;
       }
       &.created {
-        width: 300px;
+        width: 230px;
         border-right: 1px solid variables.$table-border-color;
       }
       &.fn {
-        width: 130px;
+        width: 100px;
         border-left: none;
         border-right: 1px solid variables.$table-border-color;
       }
@@ -159,17 +159,17 @@
         border-right: 1px solid variables.$table-border-color;
       }
       &.price {
-        width: 200px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.device {
         width: 150px;
         border-left: none;
         border-right: 1px solid variables.$table-border-color;
       }
+      &.device {
+        width: 110px;
+        border-left: none;
+        border-right: 1px solid variables.$table-border-color;
+      }
       &.purchased {
-        width: 300px;
+        width: 230px;
         border-left: none;
         border-right: 1px solid variables.$table-border-color;
       }

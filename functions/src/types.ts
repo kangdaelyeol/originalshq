@@ -33,3 +33,6 @@ export type CreateLeadInput = {
   device: Device
   createdAt?: number
 }
+
+export const TIMESTAMP_FIELDS = ['createdAt', 'purchasedAt'] as const
+export type TimestampField = (typeof TIMESTAMP_FIELDS)[number]

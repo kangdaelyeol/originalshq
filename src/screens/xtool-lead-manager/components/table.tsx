@@ -12,8 +12,9 @@ import {
 import {
   formatPhoneNumber,
   formatTime,
+  toDatetimeLocalValue,
 } from '@/screens/xtool-lead-manager/utils'
-import { SortButton } from '@/screens/xtool-lead-manager/components/sort-button'
+import { SortButton } from '@/screens/xtool-lead-manager/components'
 
 interface TableActions {
   toggleFold: (field: LeadState) => void
@@ -159,9 +160,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
             </div>
             <div className="item device">상담기기</div>
             {type !== 'new' && <div className="item price">구매금액</div>}
-            {type === 'purchased' && (
-              <div className="item purchased">구매시각</div>
-            )}
+            {type !== 'new' && <div className="item purchased">구매시각</div>}
           </div>
 
           <div className="row_section">
@@ -175,6 +174,13 @@ export const Table = ({ state, actions, type }: TableProps) => {
                 const isEditingPrice =
                   editingCell?.rowId === row.id &&
                   editingCell?.field === 'price'
+                const isEditingCreatedAt =
+                  editingCell?.rowId === row.id &&
+                  editingCell?.field === 'createdAt'
+                const isEditingPurchasedAt =
+                  editingCell?.rowId === row.id &&
+                  editingCell?.field === 'purchasedAt'
+
                 return (
                   <div className="table_row" key={row.id}>
                     <div className="item cb">
@@ -203,8 +209,26 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       </button>
                     </div>
 
-                    <div className="item created">
-                      {formatTime(row.createdAt)}
+                    <div
+                      className="item created editable"
+                      onClick={() =>
+                        !isEditingCreatedAt && startEditing(row.id, 'createdAt')
+                      }
+                    >
+                      {isEditingCreatedAt ? (
+                        <input
+                          autoFocus
+                          type="datetime-local"
+                          value={toDatetimeLocalValue(row.createdAt)}
+                          onChange={(e) =>
+                            updateCellValue(row.id, 'createdAt', e.target.value)
+                          }
+                          onBlur={stopEditing}
+                          onKeyDown={handleEditingKeyDown}
+                        />
+                      ) : (
+                        <span>{formatTime(row.createdAt)}</span>
+                      )}
                     </div>
 
                     <div
@@ -281,14 +305,32 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         )}
                       </div>
                     )}
-                    {type === 'purchased' && (
+                    {type !== 'new' && (
                       <div
-                        className="item purchased"
+                        className="item purchased editable"
                         onClick={() =>
-                          !isEditingPrice && startEditing(row.id, 'price')
+                          !isEditingPurchasedAt &&
+                          startEditing(row.id, 'purchasedAt')
                         }
                       >
-                        <span>{formatTime(row.purchasedAt)}</span>
+                        {isEditingPurchasedAt ? (
+                          <input
+                            autoFocus
+                            type="datetime-local"
+                            value={toDatetimeLocalValue(row.purchasedAt)}
+                            onChange={(e) =>
+                              updateCellValue(
+                                row.id,
+                                'purchasedAt',
+                                e.target.value,
+                              )
+                            }
+                            onBlur={stopEditing}
+                            onKeyDown={handleEditingKeyDown}
+                          />
+                        ) : (
+                          <span>{formatTime(row.purchasedAt)}</span>
+                        )}
                       </div>
                     )}
                     {type !== 'purchased' && (

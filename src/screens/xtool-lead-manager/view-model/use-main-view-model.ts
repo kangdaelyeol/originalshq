@@ -13,8 +13,8 @@ import {
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
-// import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 import { useToast } from '../hooks/use-toast'
+import { fromDatetimeLocalValue } from '../utils'
 
 const LEADS_API_BASE = 'https://us-central1-xtool-63b29.cloudfunctions.net'
 
@@ -225,7 +225,13 @@ export const useMainViewModel = () => {
     field: EditingField,
     value: string,
   ) => {
-    const cleanedValue = field === 'ph' ? value.replace(/\D/g, '') : value
+    let cleanedValue: string | number = value
+
+    if (field === 'ph') {
+      cleanedValue = value.replace(/\D/g, '')
+    } else if (field === 'createdAt' || field === 'purchasedAt') {
+      cleanedValue = fromDatetimeLocalValue(value)
+    }
 
     setRows((prev) =>
       prev.map((row) =>
@@ -258,6 +264,17 @@ export const useMainViewModel = () => {
 
       endpoint = 'updateLeadPrice'
       body = { id: rowId, price: numericPrice }
+    } else if (field === 'createdAt' || field === 'purchasedAt') {
+      const numericTimestamp = Number(editedValue)
+
+      if (Number.isNaN(numericTimestamp)) {
+        console.error('시각 값이 올바르지 않습니다')
+        setEditingCell(null)
+        return
+      }
+
+      endpoint = 'updateLeadTimestamp'
+      body = { id: rowId, field, value: numericTimestamp }
     } else if (field === 'fn' || field === 'ph') {
       endpoint = 'updateLeadContact'
       body = { id: rowId, [field]: editedValue }

@@ -5,7 +5,13 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
-import { CreateLeadInput, Device, Lead } from './types'
+import {
+  CreateLeadInput,
+  Device,
+  Lead,
+  TIMESTAMP_FIELDS,
+  TimestampField,
+} from './types'
 import { validateLeadCreationBody, DEVICE_VALUES } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 
@@ -533,6 +539,65 @@ export const updateLeadPrice = onRequest((request, response) => {
       })
     } catch (error) {
       logger.error('updateLeadPrice 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+export const updateLeadTimestamp = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id, field, value } = request.body as {
+        id?: string
+        field?: string
+        value?: number
+      }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+
+      if (!field || !TIMESTAMP_FIELDS.includes(field as TimestampField)) {
+        response.status(400).send({
+          error: `field must be one of: ${TIMESTAMP_FIELDS.join(', ')}`,
+        })
+        return
+      }
+
+      if (typeof value !== 'number' || value < 0 || Number.isNaN(value)) {
+        response
+          .status(400)
+          .send({ error: 'value must be a valid timestamp (ms)' })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ [field]: value })
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+
+      logger.info('리드 시각 수정 완료:', id, field, value)
+
+      response.status(200).send({
+        id: snapshot.id,
+        ...lead,
+        [field]: value,
+      })
+    } catch (error) {
+      logger.error('updateLeadTimestamp 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

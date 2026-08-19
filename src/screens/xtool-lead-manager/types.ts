@@ -13,7 +13,7 @@ export type ConfirmVariant = 'delete' | 'register'
 export type SortField = 'createdAt' | 'fn' | 'ph'
 export type SortDirection = 'asc' | 'desc'
 
-export type EditingField = 'fn' | 'ph' | 'price'
+export type EditingField = 'fn' | 'ph' | 'price' | 'createdAt' | 'purchasedAt'
 
 export type EditingCell = {
   rowId: string
