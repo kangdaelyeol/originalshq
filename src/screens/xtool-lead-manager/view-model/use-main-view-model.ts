@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   INITIAL_CREATE_LEAD_FORM,
   type ConfirmVariant,
@@ -15,6 +15,8 @@ import {
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
 // import { sampleLeads } from '@/screens/xtool-lead-manager/sample-data'
 import { useToast } from '../hooks/use-toast'
+
+const LEADS_API_BASE = 'https://us-central1-xtool-63b29.cloudfunctions.net'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -34,6 +36,31 @@ export const useMainViewModel = () => {
 
   const { searchValue, deviceFilter } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
+
+    const fetchLeads = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/listLeads`)
+
+      if (!response.ok) {
+        throw new Error('리드 목록을 불러오지 못했습니다')
+      }
+
+      const data = (await response.json()) as { leads: Lead[]; count: number }
+
+      setRows(data.leads)
+    } catch (error) {
+      console.error('fetchLeads 실패:', error)
+      // 여기서 토스트 등으로 에러 노출 가능
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchLeads()
+  }, [fetchLeads])
+
 
   const [fold, setFold] = useState<TableFold>({
     new: false,

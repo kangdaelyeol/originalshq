@@ -463,3 +463,29 @@ export const deleteLead = onRequest((request, response) => {
     }
   })
 })
+
+export const listLeads = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const snapshot = await db
+        .collection('lead')
+        .orderBy('createdAt', 'desc')
+        .get()
+
+      const leads: Lead[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Lead, 'id'>),
+      }))
+
+      response.status(200).send({ leads, count: leads.length })
+    } catch (error) {
+      logger.error('listLeads 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
