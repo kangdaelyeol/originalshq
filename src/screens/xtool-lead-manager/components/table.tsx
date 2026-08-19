@@ -10,6 +10,7 @@ import {
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import {
+  displayName,
   formatPhoneNumber,
   formatTime,
   toDatetimeLocalValue,
@@ -246,7 +247,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           onKeyDown={handleEditingKeyDown}
                         />
                       ) : (
-                        <span>{row.fn}</span>
+                        <span>{displayName(row.fn)}</span>
                       )}
                     </div>
 

@@ -196,8 +196,8 @@ export const contactLead = onRequest(
           return
         }
 
-        if (!lead.fn || !lead.ph) {
-          response.status(400).send({ error: 'lead has no fn/ph to contact' })
+        if (!lead.ph) {
+          response.status(400).send({ error: 'lead has no ph to contact' })
           return
         }
 
@@ -295,16 +295,18 @@ export const purchaseLead = onRequest(
           return
         }
 
-        const purchasedAt = Date.now()
-
-        await docRef.update({ state: 'purchased', price, purchasedAt })
+        await docRef.update({
+          state: 'purchased',
+          price,
+          purchasedAt: lead.purchasedAt,
+        })
 
         response.status(200).send({
           id: snapshot.id,
           ...lead,
           state: 'purchased',
           price,
-          purchasedAt,
+          purchasedAt: lead.purchasedAt,
         })
       } catch (error) {
         logger.error('purchaseLead 처리 실패:', error)

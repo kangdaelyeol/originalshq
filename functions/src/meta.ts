@@ -59,7 +59,7 @@ export const sendMetaEvent = async ({
         ...(customData ? { custom_data: customData } : {}),
         user_data: {
           ph: hashPhoneVariants(lead.ph),
-          fn: [sha256(lead.fn)],
+          ...(lead.fn ? { fn: [sha256(lead.fn)] } : {}),
           client_ip_address: lead.ip || undefined,
           client_user_agent: lead.user_agent || undefined,
           fbc: lead.fbc || undefined,
