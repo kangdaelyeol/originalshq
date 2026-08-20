@@ -133,11 +133,14 @@ export const useMainViewModel = () => {
         ? { id: targetLead.id }
         : { id: targetLead.id, price: targetLead.price }
 
+      console.log(`전송 데이터: `, body)
       const response = await fetch(`${LEADS_API_BASE}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
+
+      console.log('응답: ', response)
 
       if (!response.ok) {
         const error = await response.json()

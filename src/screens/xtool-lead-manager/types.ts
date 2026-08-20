@@ -1,4 +1,11 @@
-export type Device = 'F2Ultra' | 'F2UltraUV' | 'P3' | 'DTF' | 'Metalfab'
+export type Device =
+  | 'F2Ultra'
+  | 'F2UltraUV'
+  | 'P3'
+  | 'DTF'
+  | 'Metalfab'
+  | 'F2'
+  | 'M2'
 export type DeviceFilter = Device | 'all'
 export const DEVICE_OPTIONS: Device[] = [
   'F2Ultra',
@@ -6,6 +13,8 @@ export const DEVICE_OPTIONS: Device[] = [
   'P3',
   'DTF',
   'Metalfab',
+  'M2',
+  'F2',
 ]
 
 export type LeadState = 'new' | 'contacted' | 'purchased'

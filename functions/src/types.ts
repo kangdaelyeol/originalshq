@@ -1,4 +1,11 @@
-export type Device = 'F2Ultra' | 'F2UltraUV' | 'P3' | 'DTF' | 'Metalfab'
+export type Device =
+  | 'F2Ultra'
+  | 'F2UltraUV'
+  | 'P3'
+  | 'DTF'
+  | 'Metalfab'
+  | 'F2'
+  | 'M2'
 
 export type LeadState = 'new' | 'contacted' | 'purchased'
 

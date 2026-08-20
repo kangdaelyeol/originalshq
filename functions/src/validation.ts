@@ -6,6 +6,8 @@ export const DEVICE_VALUES: Device[] = [
   'P3',
   'DTF',
   'Metalfab',
+  'M2',
+  'F2',
 ]
 
 const isNonEmptyString = (value: unknown): value is string =>
