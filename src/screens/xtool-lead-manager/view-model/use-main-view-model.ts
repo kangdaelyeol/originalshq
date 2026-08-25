@@ -22,7 +22,7 @@ export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Lead[]>([])
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
-  const [selectedRowIndex, setSelectedRowIndex] = useState<number>(-1)
+  const [selectedRow, setSelectedRow] = useState<Lead | null>(null)
   const [variant, setVariant] = useState<ConfirmVariant>('delete')
   const [detail, setDetail] = useState<Lead | null>(null)
   const [sortField, setSortField] = useState<SortField>('createdAt')
@@ -51,7 +51,7 @@ export const useMainViewModel = () => {
       setRows(data.leads)
     } catch (error) {
       console.error('fetchLeads 실패:', error)
-      // TODO: toaster - error message
+      showToast('error')
     } finally {
       setLoading(false)
     }
@@ -112,12 +112,9 @@ export const useMainViewModel = () => {
   }
 
   const registerCustomer = async (): Promise<void> => {
-    const targetLead = rows[selectedRowIndex]
+    const targetLead = selectedRow
 
-    if (!targetLead) {
-      setSelectedRowIndex(-1)
-      return
-    }
+    if (!targetLead) return
 
     const isContactStep = targetLead.state === 'new'
 
@@ -152,7 +149,7 @@ export const useMainViewModel = () => {
       setRows((prev) =>
         prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
       )
-      setSelectedRowIndex(-1)
+      setSelectedRow(null)
       showToast('registered')
     } catch (error) {
       console.error('registerCustomer 실패:', error)
@@ -162,12 +159,9 @@ export const useMainViewModel = () => {
   }
 
   const deleteCustomer = async (): Promise<void> => {
-    const targetLead = rows[selectedRowIndex]
+    const targetLead = selectedRow
 
-    if (!targetLead) {
-      setSelectedRowIndex(-1)
-      return
-    }
+    if (!targetLead) return
 
     setLoading(true)
     try {
@@ -183,10 +177,11 @@ export const useMainViewModel = () => {
       }
 
       setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
-      setSelectedRowIndex(-1)
+      setSelectedRow(null)
       showToast('deleted')
     } catch (error) {
       console.error('deleteCustomer 실패:', error)
+      showToast('error')
     } finally {
       setLoading(false)
     }
@@ -198,7 +193,7 @@ export const useMainViewModel = () => {
   }
 
   const handleCancelConfirmClick = () => {
-    setSelectedRowIndex(-1)
+    setSelectedRow(null)
   }
 
   const showDetail = (rowId: string) => {
@@ -345,16 +340,16 @@ export const useMainViewModel = () => {
   }
 
   const deleteRow = (rowId: string) => {
-    const idx = rows.findIndex((row) => row.id === rowId)
-    if (idx === -1) return
-    setSelectedRowIndex(idx)
+    const row = rows.find((row) => row.id === rowId)
+    if (!row) return
+    setSelectedRow(row)
     setVariant('delete')
   }
 
   const registerRow = async (rowId: string) => {
-    const idx = rows.findIndex((row) => row.id === rowId)
-    if (idx === -1) return
-    setSelectedRowIndex(idx)
+    const row = rows.find((row) => row.id === rowId)
+    if (!row) return
+    setSelectedRow(row)
     setVariant('register')
   }
 
@@ -372,11 +367,6 @@ export const useMainViewModel = () => {
   }
 
   const handleCreateLeadClick = async () => {
-    if (!createForm.fn || !createForm.ph) {
-      // 토스트 등으로 안내
-      return
-    }
-
     setIsSubmitting(true)
     try {
       const createdAtMs = createForm.createdAt
@@ -399,11 +389,11 @@ export const useMainViewModel = () => {
         throw new Error(error.error ?? '등록 실패')
       }
 
+      await fetchLeads()
       closeCreateModal()
-      // TODO: listLeads 재호출
     } catch (error) {
       console.error(error)
-      // TODO: toaster - error message
+      showToast('error')
     } finally {
       setIsSubmitting(false)
     }
@@ -414,7 +404,7 @@ export const useMainViewModel = () => {
       allChecked,
       editingCell,
       rows: deviceFilteredRows,
-      selectedRowIndex,
+      selectedRow,
       variant,
       detail,
       sortField,

@@ -1,4 +1,4 @@
-export type ToastType = 'registered' | 'deleted' | 'updated'
+export type ToastType = 'registered' | 'deleted' | 'updated' | 'error'
 
 interface ToasterMessageProps {
   type: ToastType
@@ -8,12 +8,14 @@ const MESSAGE_MAP: Record<ToastType, string> = {
   registered: '등록완료',
   deleted: '삭제완료',
   updated: '수정완료',
+  error: '에러발생',
 }
 
 const COLOR_MAP: Record<ToastType, string> = {
   registered: '#3b82f6',
   deleted: '#ef4444',
   updated: '#22c55e',
+  error: '#fb0404',
 }
 
 export const ToasterMessage = ({ type }: ToasterMessageProps) => {

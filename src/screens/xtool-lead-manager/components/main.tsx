@@ -10,7 +10,7 @@ import {
 
 export const Main = () => {
   const { state, actions, component } = useMainViewModel()
-  const { rows, selectedRowIndex, variant, detail, loading, createOpen } = state
+  const { selectedRow, variant, detail, loading, createOpen } = state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -34,9 +34,9 @@ export const Main = () => {
         </div>
         <Table state={{ ...state }} actions={{ ...actions }} type="purchased" />
       </div>
-      {selectedRowIndex !== -1 && (
+      {selectedRow && (
         <ConfirmModal
-          lead={rows[selectedRowIndex]}
+          lead={selectedRow}
           variant={variant}
           onCancel={handleCancelConfirmClick}
           onConfirm={handleConfirmClick}
