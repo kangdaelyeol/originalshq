@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { ConfirmVariant, Lead } from '@/screens/xtool-lead-manager/types'
+import { ConfirmVariant, type Lead } from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/confirm-modal.scss'
 
 const VARIANT_CONTENT: Record<
@@ -78,7 +78,7 @@ export const ConfirmModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="icon_wrap">
-          {variant === 'delete' ? (
+          {variant === ConfirmVariant.DELETE ? (
             <svg viewBox="0 0 24 24" fill="none">
               <path
                 d="M4 7h16M9.5 7V5a1.5 1.5 0 0 1 1.5-1.5h2A1.5 1.5 0 0 1 14.5 5v2M6.5 7l.7 12.1A2 2 0 0 0 9.2 21h5.6a2 2 0 0 0 2-1.9L18 7"

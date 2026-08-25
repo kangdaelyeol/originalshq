@@ -31,7 +31,14 @@ export const LeadState = {
 
 export type LeadState = (typeof LeadState)[keyof typeof LeadState]
 
-export type ConfirmVariant = 'delete' | 'register'
+export const ConfirmVariant = {
+  DELETE: 'delete',
+  REGISTER: 'register',
+} as const
+
+export type ConfirmVariant =
+  (typeof ConfirmVariant)[keyof typeof ConfirmVariant]
+
 export type SortField = 'createdAt' | 'fn' | 'ph'
 export type SortDirection = 'asc' | 'desc'
 

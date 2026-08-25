@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  ConfirmVariant,
   EditingField,
   INITIAL_CREATE_LEAD_FORM,
-  type ConfirmVariant,
   type CreateLeadFormValues,
   type Device,
   type EditingCell,
@@ -22,7 +22,7 @@ export const useMainViewModel = () => {
   const [rows, setRows] = useState<Lead[]>([])
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [selectedRow, setSelectedRow] = useState<Lead | null>(null)
-  const [variant, setVariant] = useState<ConfirmVariant>('delete')
+  const [variant, setVariant] = useState<ConfirmVariant>(ConfirmVariant.DELETE)
   const [detail, setDetail] = useState<Lead | null>(null)
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -187,8 +187,8 @@ export const useMainViewModel = () => {
   }
 
   const handleConfirmClick = async () => {
-    if (variant === 'delete') await deleteCustomer()
-    if (variant === 'register') await registerCustomer()
+    if (variant === ConfirmVariant.DELETE) await deleteCustomer()
+    if (variant === ConfirmVariant.REGISTER) await registerCustomer()
   }
 
   const handleCancelConfirmClick = () => {
@@ -345,14 +345,14 @@ export const useMainViewModel = () => {
     const row = rows.find((row) => row.id === rowId)
     if (!row) return
     setSelectedRow(row)
-    setVariant('delete')
+    setVariant(ConfirmVariant.DELETE)
   }
 
   const registerRow = async (rowId: string) => {
     const row = rows.find((row) => row.id === rowId)
     if (!row) return
     setSelectedRow(row)
-    setVariant('register')
+    setVariant(ConfirmVariant.REGISTER)
   }
 
   const openCreateModal = () => {
