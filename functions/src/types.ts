@@ -1,14 +1,4 @@
-export type Device =
-  | 'F2Ultra'
-  | 'F2UltraUV'
-  | 'P3'
-  | 'DTF'
-  | 'Metalfab'
-  | 'F2'
-  | 'M2'
-  | 'o1'
-
-export const DEVICE_VALUES: Device[] = [
+export const DEVICE_VALUES = [
   'F2Ultra',
   'F2UltraUV',
   'P3',
@@ -17,7 +7,9 @@ export const DEVICE_VALUES: Device[] = [
   'M2',
   'F2',
   'o1',
-]
+] as const
+
+export type Device = (typeof DEVICE_VALUES)[number]
 
 export type LeadState = 'new' | 'contacted' | 'purchased'
 
