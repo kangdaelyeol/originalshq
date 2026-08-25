@@ -13,8 +13,8 @@ import {
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
-import { useToast } from '../hooks/use-toast'
-import { fromDatetimeLocalValue } from '../utils'
+import { useToast } from '@/screens/xtool-lead-manager/hooks/use-toast'
+import { fromDatetimeLocalValue } from '@/screens/xtool-lead-manager/utils'
 
 const LEADS_API_BASE = 'https://us-central1-xtool-63b29.cloudfunctions.net'
 
@@ -51,7 +51,7 @@ export const useMainViewModel = () => {
       setRows(data.leads)
     } catch (error) {
       console.error('fetchLeads 실패:', error)
-      // 여기서 토스트 등으로 에러 노출 가능
+      // TODO: toaster - error message
     } finally {
       setLoading(false)
     }
@@ -400,10 +400,10 @@ export const useMainViewModel = () => {
       }
 
       closeCreateModal()
-      // 여기서 목록 다시 불러오기 (listLeads 재호출)
+      // TODO: listLeads 재호출
     } catch (error) {
       console.error(error)
-      // 에러 토스트
+      // TODO: toaster - error message
     } finally {
       setIsSubmitting(false)
     }

@@ -25,6 +25,7 @@ const DEVICE_OPTIONS: Device[] = [
   'Metalfab',
   'F2',
   'M2',
+  'o1'
 ]
 
 const FormRow = ({

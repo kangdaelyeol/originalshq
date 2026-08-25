@@ -1,14 +1,4 @@
-import { Device } from './types'
-
-export const DEVICE_VALUES: Device[] = [
-  'F2Ultra',
-  'F2UltraUV',
-  'P3',
-  'DTF',
-  'Metalfab',
-  'M2',
-  'F2',
-]
+import { DEVICE_VALUES, Device } from './types'
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value !== ''

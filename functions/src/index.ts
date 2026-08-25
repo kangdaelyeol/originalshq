@@ -11,8 +11,10 @@ import {
   Lead,
   TIMESTAMP_FIELDS,
   TimestampField,
+  DEVICE_VALUES,
+  CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS,
 } from './types'
-import { validateLeadCreationBody, DEVICE_VALUES } from './validation'
+import { validateLeadCreationBody } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 
 initializeApp()
@@ -93,12 +95,6 @@ export const createLead = onRequest((request, response) => {
 // ────────────────────────────────
 // createLeadWithoutContact
 // ────────────────────────────────
-const CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS = [
-  'utm_campaign',
-  'utm_medium',
-  'utm_source',
-  'device',
-]
 
 export const createLeadWithoutContact = onRequest((request, response) => {
   corsHandler(request, response, async () => {
