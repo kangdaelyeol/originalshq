@@ -1,14 +1,4 @@
-export type Device =
-  | 'F2Ultra'
-  | 'F2UltraUV'
-  | 'P3'
-  | 'DTF'
-  | 'Metalfab'
-  | 'F2'
-  | 'M2'
-  | 'o1'
-export type DeviceFilter = Device | 'all'
-export const DEVICE_OPTIONS: Device[] = [
+export const DEVICE_OPTIONS = [
   'F2Ultra',
   'F2UltraUV',
   'P3',
@@ -17,14 +7,33 @@ export const DEVICE_OPTIONS: Device[] = [
   'M2',
   'F2',
   'o1',
-]
+] as const
 
-export type LeadState = 'new' | 'contacted' | 'purchased'
+export type Device = (typeof DEVICE_OPTIONS)[number]
+
+export type DeviceFilter = Device | 'all'
+
+export const EditingField = {
+  FIRST_NAME: 'fn',
+  PHONE: 'ph',
+  PRICE: 'price',
+  CREATED_AT: 'createdAt',
+  PURCHASED_AT: 'purchasedAt',
+} as const
+
+export type EditingField = (typeof EditingField)[keyof typeof EditingField]
+
+export const LeadState = {
+  NEW: 'new',
+  CONTACTED: 'contacted',
+  PURCHASED: 'purchased',
+} as const
+
+export type LeadState = (typeof LeadState)[keyof typeof LeadState]
+
 export type ConfirmVariant = 'delete' | 'register'
 export type SortField = 'createdAt' | 'fn' | 'ph'
 export type SortDirection = 'asc' | 'desc'
-
-export type EditingField = 'fn' | 'ph' | 'price' | 'createdAt' | 'purchasedAt'
 
 export type EditingCell = {
   rowId: string

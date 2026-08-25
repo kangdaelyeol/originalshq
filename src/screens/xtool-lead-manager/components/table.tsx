@@ -1,10 +1,10 @@
 import {
   DEVICE_OPTIONS,
+  EditingField,
+  LeadState,
   type Device,
   type EditingCell,
-  type EditingField,
   type Lead,
-  type LeadState,
   type SortDirection,
   type SortField,
   type TableFold,
@@ -169,18 +169,20 @@ export const Table = ({ state, actions, type }: TableProps) => {
               .filter((row) => row.state === type)
               .map((row) => {
                 const isEditingFn =
-                  editingCell?.rowId === row.id && editingCell?.field === 'fn'
+                  editingCell?.rowId === row.id &&
+                  editingCell?.field === EditingField.FIRST_NAME
                 const isEditingPh =
-                  editingCell?.rowId === row.id && editingCell?.field === 'ph'
+                  editingCell?.rowId === row.id &&
+                  editingCell?.field === EditingField.PHONE
                 const isEditingPrice =
                   editingCell?.rowId === row.id &&
-                  editingCell?.field === 'price'
+                  editingCell?.field === EditingField.PRICE
                 const isEditingCreatedAt =
                   editingCell?.rowId === row.id &&
-                  editingCell?.field === 'createdAt'
+                  editingCell?.field === EditingField.CREATED_AT
                 const isEditingPurchasedAt =
                   editingCell?.rowId === row.id &&
-                  editingCell?.field === 'purchasedAt'
+                  editingCell?.field === EditingField.PURCHASED_AT
 
                 return (
                   <div className="table_row" key={row.id}>
@@ -213,7 +215,8 @@ export const Table = ({ state, actions, type }: TableProps) => {
                     <div
                       className="item created editable"
                       onClick={() =>
-                        !isEditingCreatedAt && startEditing(row.id, 'createdAt')
+                        !isEditingCreatedAt &&
+                        startEditing(row.id, EditingField.CREATED_AT)
                       }
                     >
                       {isEditingCreatedAt ? (
@@ -222,7 +225,11 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           type="datetime-local"
                           value={toDatetimeLocalValue(row.createdAt)}
                           onChange={(e) =>
-                            updateCellValue(row.id, 'createdAt', e.target.value)
+                            updateCellValue(
+                              row.id,
+                              EditingField.CREATED_AT,
+                              e.target.value,
+                            )
                           }
                           onBlur={stopEditing}
                           onKeyDown={handleEditingKeyDown}
@@ -234,14 +241,21 @@ export const Table = ({ state, actions, type }: TableProps) => {
 
                     <div
                       className="item fn editable"
-                      onClick={() => !isEditingFn && startEditing(row.id, 'fn')}
+                      onClick={() =>
+                        !isEditingFn &&
+                        startEditing(row.id, EditingField.FIRST_NAME)
+                      }
                     >
                       {isEditingFn ? (
                         <input
                           autoFocus
                           value={row.fn}
                           onChange={(e) =>
-                            updateCellValue(row.id, 'fn', e.target.value)
+                            updateCellValue(
+                              row.id,
+                              EditingField.FIRST_NAME,
+                              e.target.value,
+                            )
                           }
                           onBlur={stopEditing}
                           onKeyDown={handleEditingKeyDown}
@@ -253,14 +267,20 @@ export const Table = ({ state, actions, type }: TableProps) => {
 
                     <div
                       className="item ph editable"
-                      onClick={() => !isEditingPh && startEditing(row.id, 'ph')}
+                      onClick={() =>
+                        !isEditingPh && startEditing(row.id, EditingField.PHONE)
+                      }
                     >
                       {isEditingPh ? (
                         <input
                           autoFocus
                           value={row.ph}
                           onChange={(e) =>
-                            updateCellValue(row.id, 'ph', e.target.value)
+                            updateCellValue(
+                              row.id,
+                              EditingField.PHONE,
+                              e.target.value,
+                            )
                           }
                           onBlur={stopEditing}
                           onKeyDown={handleEditingKeyDown}
@@ -284,11 +304,12 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         ))}
                       </select>
                     </div>
-                    {type !== 'new' && (
+                    {type !== LeadState.NEW && (
                       <div
                         className="item price editable"
                         onClick={() =>
-                          !isEditingPrice && startEditing(row.id, 'price')
+                          !isEditingPrice &&
+                          startEditing(row.id, EditingField.PRICE)
                         }
                       >
                         {isEditingPrice ? (
@@ -296,7 +317,11 @@ export const Table = ({ state, actions, type }: TableProps) => {
                             autoFocus
                             value={row.price}
                             onChange={(e) =>
-                              updateCellValue(row.id, 'price', e.target.value)
+                              updateCellValue(
+                                row.id,
+                                EditingField.PRICE,
+                                e.target.value,
+                              )
                             }
                             onBlur={stopEditing}
                             onKeyDown={handleEditingKeyDown}
@@ -311,7 +336,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         className="item purchased editable"
                         onClick={() =>
                           !isEditingPurchasedAt &&
-                          startEditing(row.id, 'purchasedAt')
+                          startEditing(row.id, EditingField.PURCHASED_AT)
                         }
                       >
                         {isEditingPurchasedAt ? (
@@ -322,7 +347,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                             onChange={(e) =>
                               updateCellValue(
                                 row.id,
-                                'purchasedAt',
+                                EditingField.PURCHASED_AT,
                                 e.target.value,
                               )
                             }
@@ -334,7 +359,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         )}
                       </div>
                     )}
-                    {type !== 'purchased' && (
+                    {type !== LeadState.PURCHASED && (
                       <>
                         <div className="item register">
                           <button

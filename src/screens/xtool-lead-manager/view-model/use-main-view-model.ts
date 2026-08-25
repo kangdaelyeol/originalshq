@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  EditingField,
   INITIAL_CREATE_LEAD_FORM,
   type ConfirmVariant,
   type CreateLeadFormValues,
   type Device,
   type EditingCell,
-  type EditingField,
   type Lead,
   type LeadState,
   type SortDirection,
@@ -15,8 +15,7 @@ import {
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
 import { useToast } from '@/screens/xtool-lead-manager/hooks/use-toast'
 import { fromDatetimeLocalValue } from '@/screens/xtool-lead-manager/utils'
-
-const LEADS_API_BASE = 'https://us-central1-xtool-63b29.cloudfunctions.net'
+import { LEADS_API_BASE } from '@/screens/xtool-lead-manager/constants'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -273,7 +272,10 @@ export const useMainViewModel = () => {
 
       endpoint = 'updateLeadTimestamp'
       body = { id: rowId, field, value: numericTimestamp }
-    } else if (field === 'fn' || field === 'ph') {
+    } else if (
+      field === EditingField.FIRST_NAME ||
+      field === EditingField.PHONE
+    ) {
       endpoint = 'updateLeadContact'
       body = { id: rowId, [field]: editedValue }
     } else {
