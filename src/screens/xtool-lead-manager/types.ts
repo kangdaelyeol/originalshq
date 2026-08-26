@@ -39,7 +39,14 @@ export const ConfirmVariant = {
 export type ConfirmVariant =
   (typeof ConfirmVariant)[keyof typeof ConfirmVariant]
 
-export type SortField = 'createdAt' | 'fn' | 'ph'
+export const SortField = {
+  CREATED_AT: 'createdAt',
+  FIRST_NAME: 'fn',
+  PHONE: 'ph',
+} as const
+
+export type SortField = (typeof SortField)[keyof typeof SortField]
+
 export type SortDirection = 'asc' | 'desc'
 
 export type EditingCell = {

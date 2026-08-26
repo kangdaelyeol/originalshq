@@ -2,11 +2,11 @@ import {
   DEVICE_OPTIONS,
   EditingField,
   LeadState,
+  SortField,
   type Device,
   type EditingCell,
   type Lead,
   type SortDirection,
-  type SortField,
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import {
@@ -135,7 +135,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
             <div className="item created">
               상담 시각
               <SortButton
-                columnKey="createdAt"
+                columnKey={SortField.CREATED_AT}
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={toggleSort}
@@ -144,7 +144,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
             <div className="item fn">
               고객명
               <SortButton
-                columnKey="fn"
+                columnKey={SortField.FIRST_NAME}
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={toggleSort}
@@ -153,7 +153,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
             <div className="item ph">
               전화번호
               <SortButton
-                columnKey="ph"
+                columnKey={SortField.PHONE}
                 sortField={sortField}
                 sortDirection={sortDirection}
                 onSort={toggleSort}

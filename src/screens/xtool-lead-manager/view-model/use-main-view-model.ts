@@ -3,13 +3,13 @@ import {
   ConfirmVariant,
   EditingField,
   INITIAL_CREATE_LEAD_FORM,
+  SortField,
   type CreateLeadFormValues,
   type Device,
   type EditingCell,
   type Lead,
   type LeadState,
   type SortDirection,
-  type SortField,
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
@@ -76,7 +76,7 @@ export const useMainViewModel = () => {
     const sorted = [...keywordFilteredRows]
     sorted.sort((a, b) => {
       let res: number
-      if (sortField === 'createdAt') {
+      if (sortField === SortField.CREATED_AT) {
         res = a.createdAt - b.createdAt
       } else {
         res = a[sortField].localeCompare(b[sortField], 'ko')
@@ -377,14 +377,11 @@ export const useMainViewModel = () => {
 
       const body = { ...createForm, createdAt: createdAtMs }
 
-      const response = await fetch(
-        'https://us-central1-xtool-63b29.cloudfunctions.net/createLead',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        },
-      )
+      const response = await fetch(`${LEADS_API_BASE}/createLead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
 
       if (!response.ok) {
         const error = await response.json()
