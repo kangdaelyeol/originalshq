@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DeviceFilter } from '@/screens/xtool-lead-manager/types'
+import type { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
 
 interface FilterContextValue {
   resetSearchValue: () => void
@@ -8,9 +8,8 @@ interface FilterContextValue {
   searchRef: React.RefObject<HTMLDivElement | null>
   searchActive: boolean
   searchValue: string
-
-  deviceFilter: DeviceFilter
-  setDeviceFilter: (device: DeviceFilter) => void
+  deviceFilter: DeviceFilterLabel
+  setDeviceFilter: (device: DeviceFilterLabel) => void
 }
 
 export const FilterContext = createContext({} as FilterContextValue)

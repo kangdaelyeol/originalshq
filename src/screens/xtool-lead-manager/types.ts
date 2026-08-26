@@ -1,17 +1,25 @@
-export const DEVICE_OPTIONS = [
-  'F2Ultra',
-  'F2UltraUV',
-  'P3',
-  'DTF',
-  'Metalfab',
-  'M2',
-  'F2',
-  'o1',
-] as const
+export const Device = {
+  F2: 'F2',
+  F2_ULTRA: 'F2Ultra',
+  F2_ULTRA_UV: 'F2UltraUV',
+  P3: 'P3',
+  DTF: 'DTF',
+  METAL_FAB: 'Metalfab',
+  M2: 'M2',
+  O1: 'o1',
+} as const
 
-export type Device = (typeof DEVICE_OPTIONS)[number]
+export type Device = (typeof Device)[keyof typeof Device]
 
-export type DeviceFilter = Device | 'all'
+export const DeviceFilterLabel = {
+  ALL: '전체 기기',
+  ...Device,
+} as const
+
+export type DeviceFilterLabel =
+  (typeof DeviceFilterLabel)[keyof typeof DeviceFilterLabel]
+
+export type DeviceFilterOption = keyof typeof DeviceFilterLabel
 
 export const EditingField = {
   FIRST_NAME: 'fn',

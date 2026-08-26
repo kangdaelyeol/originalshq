@@ -1,12 +1,14 @@
 import { useRef, useState, type PropsWithChildren } from 'react'
 import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
-import type { DeviceFilter } from '@/screens/xtool-lead-manager/types'
 import { FilterContext } from '@/screens/xtool-lead-manager/context/filter-context'
+import { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
 
 export const FilterContextProvider = ({ children }: PropsWithChildren) => {
   const [searchActive, setSearchActive] = useState(false)
   const [searchValue, setSearchValue] = useState('')
-  const [deviceFilter, setDeviceFilter] = useState<DeviceFilter>('all')
+  const [deviceFilter, setDeviceFilter] = useState<DeviceFilterLabel>(
+    DeviceFilterLabel.ALL,
+  )
   const searchRef = useRef<HTMLDivElement>(null)
 
   useOutsideClick(searchRef, () => {

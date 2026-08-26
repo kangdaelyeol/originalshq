@@ -1,9 +1,8 @@
 import {
-  DEVICE_OPTIONS,
+  Device,
   EditingField,
   LeadState,
   SortField,
-  type Device,
   type EditingCell,
   type Lead,
   type SortDirection,
@@ -108,6 +107,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
       {!fold[type] && (
         <div className="table">
           <div className={['table_left', tableLabelCN].join(' ')} />
+          {/* Table Header Section */}
           <div className="table_header">
             <div className="item cb">
               <button
@@ -164,6 +164,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
             {type !== 'new' && <div className="item purchased">구매시각</div>}
           </div>
 
+          {/* Table Rows Section */}
           <div className="row_section">
             {rows
               .filter((row) => row.state === type)
@@ -186,6 +187,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
 
                 return (
                   <div className="table_row" key={row.id}>
+                    {/* Checkbox Cell */}
                     <div className="item cb">
                       <button
                         type="button"
@@ -212,6 +214,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       </button>
                     </div>
 
+                    {/* CreatedAt cell */}
                     <div
                       className="item created editable"
                       onClick={() =>
@@ -239,6 +242,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       )}
                     </div>
 
+                    {/* First name Cell */}
                     <div
                       className="item fn editable"
                       onClick={() =>
@@ -265,6 +269,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       )}
                     </div>
 
+                    {/* Phone number Cell */}
                     <div
                       className="item ph editable"
                       onClick={() =>
@@ -289,7 +294,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         <span>{formatPhoneNumber(row.ph)}</span>
                       )}
                     </div>
-
+                    {/* Device Cell */}
                     <div className="item device">
                       <select
                         value={row.device}
@@ -297,13 +302,14 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           updateDevice(row.id, e.target.value as Device)
                         }
                       >
-                        {DEVICE_OPTIONS.map((option) => (
+                        {Object.values(Device).map((option) => (
                           <option key={option} value={option}>
                             {option}
                           </option>
                         ))}
                       </select>
                     </div>
+
                     {type !== LeadState.NEW && (
                       <div
                         className="item price editable"

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ConfirmVariant,
+  DeviceFilterLabel,
   EditingField,
   INITIAL_CREATE_LEAD_FORM,
   SortField,
@@ -88,7 +89,7 @@ export const useMainViewModel = () => {
   }, [keywordFilteredRows, sortField, sortDirection])
 
   const deviceFilteredRows = useMemo(() => {
-    if (deviceFilter === 'all') return sortedRows
+    if (deviceFilter === DeviceFilterLabel.ALL) return sortedRows
     return sortedRows.filter((row) => row.device === deviceFilter)
   }, [sortedRows, deviceFilter])
 

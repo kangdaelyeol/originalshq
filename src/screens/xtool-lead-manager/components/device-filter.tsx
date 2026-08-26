@@ -1,30 +1,21 @@
 import { useRef, useState } from 'react'
-import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks/use-outside-click'
-import { DEVICE_OPTIONS, type DeviceFilter as DeviceFilterType } from '@/screens/xtool-lead-manager/types'
+import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
+import { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/device-filter.scss'
-
-const DEVICE_LABEL: Record<DeviceFilterType, string> = {
-  all: '전체 기기',
-  F2Ultra: 'F2Ultra',
-  F2UltraUV: 'F2UltraUV',
-  P3: 'P3',
-  DTF: 'DTF',
-  Metalfab: 'Metalfab',
-}
 
 export const DeviceFilter = ({
   value,
   onChange,
 }: {
-  value: DeviceFilterType
-  onChange: (device: DeviceFilterType) => void
+  value: DeviceFilterLabel
+  onChange: (device: DeviceFilterLabel) => void
 }) => {
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   useOutsideClick(wrapRef, () => setOpen(false))
 
-  const handleSelect = (device: DeviceFilterType) => {
+  const handleSelect = (device: DeviceFilterLabel) => {
     onChange(device)
     setOpen(false)
   }
@@ -36,11 +27,11 @@ export const DeviceFilter = ({
         className={[
           'device_filter_btn',
           open ? 'open' : '',
-          value !== 'all' ? 'active' : '',
+          value !== DeviceFilterLabel.ALL ? 'active' : '',
         ].join(' ')}
         onClick={() => setOpen((v) => !v)}
       >
-        <span>{DEVICE_LABEL[value]}</span>
+        <span>{value}</span>
         <div className="chevron_box">
           <svg viewBox="0 0 20 20" fill="none" className="chevron">
             <path
@@ -54,32 +45,35 @@ export const DeviceFilter = ({
         </div>
       </button>
 
+      {/* Device filter dropdown box */}
       {open && (
         <div className="device_filter_menu">
           <button
             type="button"
             className={[
               'device_filter_item',
-              value === 'all' ? 'selected' : '',
+              value === DeviceFilterLabel.ALL ? 'selected' : '',
             ].join(' ')}
-            onClick={() => handleSelect('all')}
+            onClick={() => handleSelect(DeviceFilterLabel.ALL)}
           >
             전체 기기
           </button>
           <div className="menu_divider" />
-          {DEVICE_OPTIONS.map((device) => (
-            <button
-              type="button"
-              key={device}
-              className={[
-                'device_filter_item',
-                value === device ? 'selected' : '',
-              ].join(' ')}
-              onClick={() => handleSelect(device)}
-            >
-              {device}
-            </button>
-          ))}
+          {Object.values(DeviceFilterLabel)
+            .filter((v) => v !== DeviceFilterLabel.ALL)
+            .map((device) => (
+              <button
+                type="button"
+                key={device}
+                className={[
+                  'device_filter_item',
+                  value === device ? 'selected' : '',
+                ].join(' ')}
+                onClick={() => handleSelect(device)}
+              >
+                {device}
+              </button>
+            ))}
         </div>
       )}
     </div>
