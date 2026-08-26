@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react'
-import { type ToastType, ToasterMessage } from '../components'
+import {
+  type ToastType,
+  ToasterMessage,
+} from '@/screens/xtool-lead-manager/components'
 
 interface Toast {
   id: number

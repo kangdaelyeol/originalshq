@@ -1,6 +1,6 @@
 import { useRef, useState, type PropsWithChildren } from 'react'
 import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
-import { FilterContext } from '@/screens/xtool-lead-manager/context/filter-context'
+import { FilterContext } from '@/screens/xtool-lead-manager/context'
 import { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
 
 export const FilterContextProvider = ({ children }: PropsWithChildren) => {
