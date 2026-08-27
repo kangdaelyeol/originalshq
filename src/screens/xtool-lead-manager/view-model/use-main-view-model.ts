@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ConfirmVariant,
-  DeviceFilterLabel,
   EditingField,
   INITIAL_CREATE_LEAD_FORM,
   SortField,
@@ -14,8 +13,13 @@ import {
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
-import { useToast } from '@/screens/xtool-lead-manager/hooks/use-toast'
-import { fromDatetimeLocalValue } from '@/screens/xtool-lead-manager/utils'
+import { useToast } from '@/screens/xtool-lead-manager/hooks'
+import {
+  filterLeadsByDevice,
+  filterLeadsByKeywords,
+  fromDatetimeLocalValue,
+  sortLeads,
+} from '@/screens/xtool-lead-manager/utils'
 import { LEADS_API_BASE } from '@/screens/xtool-lead-manager/constants'
 
 export const useMainViewModel = () => {
@@ -67,31 +71,20 @@ export const useMainViewModel = () => {
     purchased: false,
   })
 
-  const keywordFilteredRows = useMemo(() => {
-    const keyword = searchValue.trim().toLowerCase()
-    if (!keyword) return rows
-    return rows.filter((row) => row.fn.toLowerCase().includes(keyword))
-  }, [rows, searchValue])
+  const keywordFilteredRows = useMemo(
+    () => filterLeadsByKeywords(rows, searchValue),
+    [rows, searchValue],
+  )
 
-  const sortedRows = useMemo(() => {
-    const sorted = [...keywordFilteredRows]
-    sorted.sort((a, b) => {
-      let res: number
-      if (sortField === SortField.CREATED_AT) {
-        res = a.createdAt - b.createdAt
-      } else {
-        res = a[sortField].localeCompare(b[sortField], 'ko')
-      }
-      return sortDirection === 'asc' ? res : -res
-    })
+  const sortedRows = useMemo(
+    () => sortLeads(keywordFilteredRows, sortField, sortDirection),
+    [keywordFilteredRows, sortField, sortDirection],
+  )
 
-    return sorted
-  }, [keywordFilteredRows, sortField, sortDirection])
-
-  const deviceFilteredRows = useMemo(() => {
-    if (deviceFilter === DeviceFilterLabel.ALL) return sortedRows
-    return sortedRows.filter((row) => row.device === deviceFilter)
-  }, [sortedRows, deviceFilter])
+  const deviceFilteredRows = useMemo(
+    () => filterLeadsByDevice(sortedRows, deviceFilter),
+    [sortedRows, deviceFilter],
+  )
 
   const toggleFold = (field: LeadState) => {
     setFold((prev) => {
