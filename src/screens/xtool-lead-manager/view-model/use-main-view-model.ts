@@ -59,7 +59,7 @@ export const useMainViewModel = () => {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     fetchLeads()
