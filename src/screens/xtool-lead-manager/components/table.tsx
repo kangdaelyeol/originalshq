@@ -1,10 +1,7 @@
 import {
-  Device,
   EditingField,
-  LeadState,
   SortField,
   type EditingCell,
-  type Lead,
   type SortDirection,
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
@@ -15,6 +12,11 @@ import {
   toDatetimeLocalValue,
 } from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
+import {
+  Device,
+  LeadState,
+  type Lead,
+} from '@/screens/xtool-lead-manager/entity'
 
 interface TableActions {
   toggleFold: (field: LeadState) => void

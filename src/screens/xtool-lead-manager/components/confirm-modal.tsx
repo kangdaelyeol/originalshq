@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ConfirmVariant, type Lead } from '@/screens/xtool-lead-manager/types'
+import { ConfirmVariant } from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/confirm-modal.scss'
+import type { Lead } from '@/screens/xtool-lead-manager/entity'
 
 const VARIANT_CONTENT: Record<
   ConfirmVariant,

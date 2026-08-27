@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Lead } from '@/screens/xtool-lead-manager/types'
+import type { Lead } from '@/screens/xtool-lead-manager/entity'
 import '@/screens/xtool-lead-manager/styles/detail.scss'
 
 const STATE_LABEL: Record<Lead['state'], string> = {

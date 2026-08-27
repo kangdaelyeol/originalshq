@@ -1,5 +1,6 @@
-import { type Device, type CreateLeadFormValues } from '../types'
-import styles from '../styles/create-modal.module.scss'
+import { type CreateLeadFormValues } from '@/screens/xtool-lead-manager/types'
+import type { Device } from '@/screens/xtool-lead-manager/entity'
+import styles from '@/screens/xtool-lead-manager/styles/create-modal.module.scss'
 
 interface CreateModalState {
   form: CreateLeadFormValues
@@ -25,7 +26,7 @@ const DEVICE_OPTIONS: Device[] = [
   'Metalfab',
   'F2',
   'M2',
-  'o1'
+  'o1',
 ]
 
 const FormRow = ({

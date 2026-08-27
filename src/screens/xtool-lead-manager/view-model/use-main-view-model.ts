@@ -5,10 +5,7 @@ import {
   INITIAL_CREATE_LEAD_FORM,
   SortField,
   type CreateLeadFormValues,
-  type Device,
   type EditingCell,
-  type Lead,
-  type LeadState,
   type SortDirection,
   type TableFold,
 } from '@/screens/xtool-lead-manager/types'
@@ -21,6 +18,11 @@ import {
   sortLeads,
 } from '@/screens/xtool-lead-manager/utils'
 import { LEADS_API_BASE } from '@/screens/xtool-lead-manager/constants'
+import type {
+  Device,
+  Lead,
+  LeadState,
+} from '@/screens/xtool-lead-manager/entity'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)

@@ -1,9 +1,9 @@
+import type { Lead } from '@/screens/xtool-lead-manager/entity'
 import {
   DeviceFilterLabel,
   SortField,
-  type Lead,
   type SortDirection,
-} from '../types'
+} from '@/screens/xtool-lead-manager/types'
 
 export const filterLeadsByKeywords = (rows: Lead[], keyword: string) => {
   const trimmed = keyword.trim().toLowerCase()
