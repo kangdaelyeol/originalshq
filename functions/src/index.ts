@@ -9,6 +9,7 @@ import { CreateLeadInput, Device, Lead } from './types'
 import {
   hasExternalId,
   validateLeadCreationBody,
+  validatePurchaseLead,
   validateUpdateTimestampParams,
 } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
@@ -188,19 +189,12 @@ export const purchaseLead = onRequest(
 
         const { id, price } = request.body as { id?: string; price?: number }
 
-        if (!id || typeof id !== 'string') {
-          response.status(400).send({ error: 'id is required' })
-          return
-        }
+        const validationRes = validatePurchaseLead(id, price)
 
-        if (typeof price !== 'number' || price <= 0) {
-          response
-            .status(400)
-            .send({ error: 'price must be a positive number' })
-          return
-        }
+        if (!validationRes.ok)
+          return response.status(400).send({ error: validationRes.error })
 
-        const docRef = db.collection('lead').doc(id)
+        const docRef = db.collection('lead').doc(id as string)
         const snapshot = await docRef.get()
 
         if (!snapshot.exists) {
@@ -241,6 +235,7 @@ export const purchaseLead = onRequest(
           state: 'purchased',
           price,
           purchasedAt: lead.purchasedAt,
+          externalId: lead.externalId,
         })
 
         response.status(200).send({

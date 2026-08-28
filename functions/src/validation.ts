@@ -29,7 +29,7 @@ export const validateLeadCreationBody = (
 export const hasExternalId = (body: Record<string, unknown>): boolean =>
   body.externalId ? true : false
 
-export type ValidateUpdateTimestampResponse =
+type ValidateResponse =
   | {
       ok: true
     }
@@ -42,7 +42,7 @@ export const validateUpdateTimestampParams = (
   id?: string,
   field?: string,
   value?: number,
-): ValidateUpdateTimestampResponse => {
+): ValidateResponse => {
   if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
   }
@@ -56,6 +56,21 @@ export const validateUpdateTimestampParams = (
 
   if (typeof value !== 'number' || value < 0 || Number.isNaN(value)) {
     return { ok: false, error: 'value must be a valid timestamp (ms)' }
+  }
+
+  return { ok: true }
+}
+
+export const validatePurchaseLead = (
+  id?: string,
+  price?: number,
+): ValidateResponse => {
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+
+  if (typeof price !== 'number' || price <= 0) {
+    return { ok: false, error: 'price must be a positive number' }
   }
 
   return { ok: true }

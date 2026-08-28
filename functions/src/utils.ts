@@ -1,4 +1,4 @@
 import { createHash } from 'crypto'
 
-export const generateExternalId = (id: string): string =>
-  createHash('sha256').update(id).digest('hex')
+export const generateExternalId = (ph: string): string =>
+  createHash('sha256').update(ph).digest('hex')
