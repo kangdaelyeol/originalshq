@@ -35,4 +35,5 @@ export type Lead = {
   price: number
   purchasedAt: number
   state: LeadState
+  externalId?: string
 }
