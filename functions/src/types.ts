@@ -1,4 +1,4 @@
-export const DEVICE_VALUES = [
+export const Device = [
   'F2Ultra',
   'F2UltraUV',
   'P3',
@@ -9,9 +9,11 @@ export const DEVICE_VALUES = [
   'o1',
 ] as const
 
-export type Device = (typeof DEVICE_VALUES)[number]
+export type Device = (typeof Device)[number]
 
-export type LeadState = 'new' | 'contacted' | 'purchased'
+export const LeadState = ['new', 'contacted', 'purchased']
+
+export type LeadState = (typeof LeadState)[number]
 
 export type Lead = {
   id: string
@@ -29,6 +31,7 @@ export type Lead = {
   price: number
   purchasedAt: number
   state: LeadState
+  externalId?: string
 }
 
 export type CreateLeadInput = {
@@ -43,15 +46,9 @@ export type CreateLeadInput = {
   ph: string
   device: Device
   createdAt?: number
-  state?: 'new' | 'contacted'
+  state?: LeadState
 }
 
-export const TIMESTAMP_FIELDS = ['createdAt', 'purchasedAt'] as const
-export type TimestampField = (typeof TIMESTAMP_FIELDS)[number]
+export const TimestampField = ['createdAt', 'purchasedAt'] as const
 
-export const CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS = [
-  'utm_campaign',
-  'utm_medium',
-  'utm_source',
-  'device',
-]
+export type TimestampField = (typeof TimestampField)[number]

@@ -5,17 +5,10 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
-import {
-  CreateLeadInput,
-  Device,
-  Lead,
-  TIMESTAMP_FIELDS,
-  TimestampField,
-  DEVICE_VALUES,
-  CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS,
-} from './types'
-import { validateLeadCreationBody } from './validation'
+import { CreateLeadInput, Device, Lead, TimestampField } from './types'
+import { hasExternalId, validateLeadCreationBody } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
+import { generateExternalId } from './utils'
 
 initializeApp()
 
@@ -66,77 +59,24 @@ export const createLead = onRequest((request, response) => {
 
       const leadData: Omit<Lead, 'id'> = {
         createdAt,
-        utm_campaign: input.utm_campaign,
-        utm_medium: input.utm_medium,
-        utm_source: input.utm_source,
+        utm_campaign: input.utm_campaign ?? '',
+        utm_medium: input.utm_medium ?? '',
+        utm_source: input.utm_source ?? '',
         ip: input.ip ?? '',
         fbc: input.fbc ?? '',
         fbp: input.fbp ?? '',
         user_agent: input.user_agent ?? '',
-        fn: input.fn,
+        fn: input.fn ?? '',
         ph: digitsOnlyPhone,
         device: input.device,
         price: 0,
         purchasedAt: 0,
         state,
+        externalId: generateExternalId(digitsOnlyPhone),
       }
 
       const docRef = await db.collection('lead').add(leadData)
       logger.info('리드 생성 완료:', docRef.id)
-
-      response.status(201).send({ id: docRef.id, ...leadData })
-    } catch (error) {
-      logger.error('리드 생성 실패:', error)
-      response.status(500).send({ error: '서버 오류' })
-    }
-  })
-})
-
-// ────────────────────────────────
-// createLeadWithoutContact
-// ────────────────────────────────
-
-export const createLeadWithoutContact = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      if (request.method !== 'POST') {
-        response.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-
-      const validationError = validateLeadCreationBody(
-        request.body,
-        CREATE_LEAD_WITHOUT_CONTACT_REQUIRED_FIELDS,
-      )
-      if (validationError) {
-        response.status(400).send({ error: validationError })
-        return
-      }
-
-      const input = request.body as Omit<CreateLeadInput, 'fn' | 'ph'>
-      const now = Date.now()
-
-      const state = input.state === 'contacted' ? 'contacted' : 'new'
-
-      const leadData: Omit<Lead, 'id'> = {
-        createdAt: now,
-        utm_campaign: input.utm_campaign,
-        utm_medium: input.utm_medium,
-        utm_source: input.utm_source,
-        ip: input.ip ?? '',
-        fbc: input.fbc ?? '',
-        fbp: input.fbp ?? '',
-        user_agent: input.user_agent ?? '',
-        fn: '',
-        ph: '',
-        device: input.device,
-        price: 0,
-        purchasedAt: 0,
-        state,
-      }
-
-      const docRef = await db.collection('lead').add(leadData)
-      logger.info('리드(연락처 미포함) 생성 완료:', docRef.id)
 
       response.status(201).send({ id: docRef.id, ...leadData })
     } catch (error) {
@@ -186,6 +126,10 @@ export const contactLead = onRequest(
           return
         }
 
+        const hasEid = hasExternalId(lead)
+
+        if (!hasEid) lead.externalId = generateExternalId(lead.ph)
+
         const capiResult = await sendMetaEvent({
           pixelId: metaPixelId.value(),
           accessToken: metaAccessToken.value(),
@@ -205,7 +149,12 @@ export const contactLead = onRequest(
           return
         }
 
-        await docRef.update({ state: 'contacted' })
+        const docUpdate = {
+          state: 'contacted',
+          externalId: lead.externalId ?? '',
+        }
+
+        await docRef.update(docUpdate)
 
         response.status(200).send({
           id: snapshot.id,
@@ -383,10 +332,10 @@ export const updateLeadDevice = onRequest((request, response) => {
         return
       }
 
-      if (!DEVICE_VALUES.includes(device as Device)) {
+      if (!Device.includes(device as Device)) {
         response
           .status(400)
-          .send({ error: `device must be one of: ${DEVICE_VALUES.join(', ')}` })
+          .send({ error: `device must be one of: ${Device.join(', ')}` })
         return
       }
 
@@ -544,9 +493,9 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         return
       }
 
-      if (!field || !TIMESTAMP_FIELDS.includes(field as TimestampField)) {
+      if (!field || !TimestampField.includes(field as TimestampField)) {
         response.status(400).send({
-          error: `field must be one of: ${TIMESTAMP_FIELDS.join(', ')}`,
+          error: `field must be one of: ${TimestampField.join(', ')}`,
         })
         return
       }

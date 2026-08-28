@@ -1,4 +1,4 @@
-import { DEVICE_VALUES, Device } from './types'
+import { Device } from './types'
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === 'string' && value !== ''
@@ -19,9 +19,12 @@ export const validateLeadCreationBody = (
     }
   }
 
-  if (!DEVICE_VALUES.includes(record.device as Device)) {
-    return `device must be one of: ${DEVICE_VALUES.join(', ')}`
+  if (!Device.includes(record.device as Device)) {
+    return `device must be one of: ${Device.join(', ')}`
   }
 
   return null
 }
+
+export const hasExternalId = (body: Record<string, unknown>): boolean =>
+  body.externalId ? true : false

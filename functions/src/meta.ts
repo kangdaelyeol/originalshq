@@ -17,7 +17,7 @@ export const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
 
 export const normalizePhoneForMeta = (digitsOnlyPhone: string) => {
-  const withoutLeadingZero = digitsOnlyPhone.replace(/^0/, '')
+  const withoutLeadingZero = digitsOnlyPhone.replace(/^0/, '').replace(/-/g, '')
   return `82${withoutLeadingZero}`
 }
 
