@@ -5,8 +5,12 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
-import { CreateLeadInput, Device, Lead, TimestampField } from './types'
-import { hasExternalId, validateLeadCreationBody } from './validation'
+import { CreateLeadInput, Device, Lead } from './types'
+import {
+  hasExternalId,
+  validateLeadCreationBody,
+  validateUpdateTimestampParams,
+} from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { generateExternalId } from './utils'
 
@@ -536,26 +540,14 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         value?: number
       }
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
+      const validationRes = validateUpdateTimestampParams(id, field, value)
+
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
 
-      if (!field || !TimestampField.includes(field as TimestampField)) {
-        response.status(400).send({
-          error: `field must be one of: ${TimestampField.join(', ')}`,
-        })
-        return
-      }
-
-      if (typeof value !== 'number' || value < 0 || Number.isNaN(value)) {
-        response
-          .status(400)
-          .send({ error: 'value must be a valid timestamp (ms)' })
-        return
-      }
-
-      const docRef = db.collection('lead').doc(id)
+      const docRef = db.collection('lead').doc(id as string)
       const snapshot = await docRef.get()
 
       if (!snapshot.exists) {
@@ -563,7 +555,7 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         return
       }
 
-      await docRef.update({ [field]: value })
+      await docRef.update({ [field as string]: value })
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
 
@@ -572,7 +564,7 @@ export const updateLeadTimestamp = onRequest((request, response) => {
       response.status(200).send({
         id: snapshot.id,
         ...lead,
-        [field]: value,
+        [field as string]: value,
       })
     } catch (error) {
       logger.error('updateLeadTimestamp 처리 실패:', error)
