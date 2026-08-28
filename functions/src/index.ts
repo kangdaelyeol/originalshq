@@ -401,6 +401,9 @@ export const updateLeadDevice = onRequest((request, response) => {
   })
 })
 
+// ────────────────────────────────
+// deleteLead
+// ────────────────────────────────
 export const deleteLead = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
@@ -436,6 +439,9 @@ export const deleteLead = onRequest((request, response) => {
   })
 })
 
+// ────────────────────────────────
+// getAllLeads
+// ────────────────────────────────
 export const listLeads = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
@@ -462,6 +468,9 @@ export const listLeads = onRequest((request, response) => {
   })
 })
 
+// ────────────────────────────────
+// updateLeadPrice
+// ────────────────────────────────
 export const updateLeadPrice = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
@@ -510,6 +519,9 @@ export const updateLeadPrice = onRequest((request, response) => {
   })
 })
 
+// ────────────────────────────────
+// updateLeadTimestamp - createdAt, purchasedAt
+// ────────────────────────────────
 export const updateLeadTimestamp = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
