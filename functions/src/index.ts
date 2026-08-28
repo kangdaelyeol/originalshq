@@ -206,12 +206,16 @@ export const purchaseLead = onRequest(
 
         const lead = snapshot.data() as Omit<Lead, 'id'>
 
-        if (lead.state !== 'contacted') {
+        if (lead.state === 'purchased') {
           response.status(409).send({
-            error: `lead must be contacted first (current: ${lead.state})`,
+            error: `lead must not be purchase state`,
           })
           return
         }
+
+        const hasEid = hasExternalId(lead)
+
+        if (!hasEid) lead.externalId = generateExternalId(lead.ph)
 
         const capiResult = await sendMetaEvent({
           pixelId: metaPixelId.value(),
@@ -250,7 +254,10 @@ export const purchaseLead = onRequest(
   },
 )
 
-export const updateLeadContact = onRequest((request, response) => {
+// ────────────────────────────────
+// updateLeadPhone
+// ────────────────────────────────
+export const updateLeadPhone = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
       if (request.method !== 'POST') {
@@ -258,18 +265,22 @@ export const updateLeadContact = onRequest((request, response) => {
         return
       }
 
-      const { id, fn, ph } = request.body as {
-        id?: string
-        fn?: string
-        ph?: string
-      }
+      const { id, ph } = request.body as { id?: string; ph?: string }
 
       if (!id || typeof id !== 'string') {
         response.status(400).send({ error: 'id is required' })
         return
       }
+      if (!ph || typeof ph !== 'string') {
+        response.status(400).send({ error: 'ph is required' })
+        return
+      }
 
-      const hasPh = typeof ph === 'string' && ph !== ''
+      const digitsOnlyPhone = ph.replace(/\D/g, '')
+      if (!digitsOnlyPhone) {
+        response.status(400).send({ error: 'ph must contain digits' })
+        return
+      }
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
@@ -279,39 +290,64 @@ export const updateLeadContact = onRequest((request, response) => {
         return
       }
 
-      const updateData: Partial<Pick<Lead, 'fn' | 'ph'>> = {}
-
-      if (hasPh) {
-        const digitsOnlyPhone = (ph as string).replace(/\D/g, '')
-
-        if (!digitsOnlyPhone) {
-          response.status(400).send({ error: 'ph must contain digits' })
-          return
-        }
-
-        updateData.ph = digitsOnlyPhone
-      } else {
-        updateData.fn = fn as string
+      const updateData = {
+        ph: digitsOnlyPhone,
+        externalId: generateExternalId(digitsOnlyPhone), // 항상 재계산, 조건 분기 없음
       }
 
       await docRef.update(updateData)
 
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-
-      logger.info('리드 연락처 수정 완료:', id, updateData)
-
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        ...updateData,
-      })
+      response.status(200).send({ id, ...snapshot.data(), ...updateData })
     } catch (error) {
-      logger.error('updateLeadContact 처리 실패:', error)
+      logger.error('updateLeadPhone 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })
 })
 
+// ────────────────────────────────
+// updateLeadFn
+// ────────────────────────────────
+export const updateLeadFn = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const { id, fn } = request.body as { id?: string; fn?: string }
+
+      if (!id || typeof id !== 'string') {
+        response.status(400).send({ error: 'id is required' })
+        return
+      }
+      if (typeof fn !== 'string' || fn === '') {
+        response.status(400).send({ error: 'fn is required' })
+        return
+      }
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ fn })
+
+      response.status(200).send({ id, ...snapshot.data(), fn })
+    } catch (error) {
+      logger.error('updateLeadFn 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// updateLeadDevice
+// ────────────────────────────────
 export const updateLeadDevice = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
