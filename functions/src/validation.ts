@@ -78,6 +78,24 @@ export const valiedateUpdateLeadPhone = (
   return { ok: true, data: { id, ph: digitsOnlyPhone } }
 }
 
+export const validateUpdateLeanFn = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  fn: string
+}> => {
+  const { id, fn } = body as { id?: string; fn?: string }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (typeof fn !== 'string' || fn === '') {
+    return { ok: false, error: 'fn is required' }
+  }
+
+  return { ok: true, data: { id, fn } }
+}
+
 export const validateUpdateTimestampParams = (
   body: Record<string, unknown>,
 ): ValidationResponse<{

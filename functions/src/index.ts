@@ -13,6 +13,7 @@ import {
   validatePurchaseLead,
   validateUpdateTimestampParams,
   valiedateUpdateLeadPhone,
+  validateUpdateLeanFn,
 } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { generateExternalId } from './utils'
@@ -300,16 +301,14 @@ export const updateLeadFn = onRequest((request, response) => {
         return
       }
 
-      const { id, fn } = request.body as { id?: string; fn?: string }
+      const validationRes = validateUpdateLeanFn(request.body)
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
-      if (typeof fn !== 'string' || fn === '') {
-        response.status(400).send({ error: 'fn is required' })
-        return
-      }
+
+      const { id, fn } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
