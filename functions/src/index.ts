@@ -5,10 +5,10 @@ import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import cors from 'cors'
-import { CreateLeadInput, Device, Lead } from './types'
+import { Device, Lead } from './types'
 import {
   hasExternalId,
-  validateLeadCreationBody,
+  validateCreateLead,
   validatePurchaseLead,
   validateUpdateTimestampParams,
 } from './validation'
@@ -28,8 +28,6 @@ setGlobalOptions({ maxInstances: 10 })
 // ────────────────────────────────
 // createLead
 // ────────────────────────────────
-const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device']
-
 export const createLead = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {
@@ -38,29 +36,20 @@ export const createLead = onRequest((request, response) => {
         return
       }
 
-      const validationError = validateLeadCreationBody(
-        request.body,
-        CREATE_LEAD_REQUIRED_FIELDS,
-      )
-      if (validationError) {
-        response.status(400).send({ error: validationError })
+      const validationRes = validateCreateLead(request.body)
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
 
-      const input = request.body as CreateLeadInput
-      const digitsOnlyPhone = input.ph.replace(/\D/g, '')
-
-      if (!digitsOnlyPhone) {
-        response.status(400).send({ error: 'ph must contain digits' })
-        return
-      }
+      const input = validationRes.data
 
       const createdAt =
         typeof input.createdAt === 'number' && input.createdAt > 0
           ? input.createdAt
           : Date.now()
 
-      const state = input.state === 'contacted' ? 'contacted' : 'new'
+      const digitsOnlyPhone = input.ph.replace(/\D/g, '')
 
       const leadData: Omit<Lead, 'id'> = {
         createdAt,
@@ -76,7 +65,7 @@ export const createLead = onRequest((request, response) => {
         device: input.device,
         price: 0,
         purchasedAt: 0,
-        state,
+        state: input.state,
         externalId: generateExternalId(digitsOnlyPhone),
       }
 
@@ -187,14 +176,16 @@ export const purchaseLead = onRequest(
           return
         }
 
-        const { id, price } = request.body as { id?: string; price?: number }
+        const validationRes = validatePurchaseLead(request.body)
 
-        const validationRes = validatePurchaseLead(id, price)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
 
-        if (!validationRes.ok)
-          return response.status(400).send({ error: validationRes.error })
+        const { id, price, purchasedAt } = validationRes.data
 
-        const docRef = db.collection('lead').doc(id as string)
+        const docRef = db.collection('lead').doc(id)
         const snapshot = await docRef.get()
 
         if (!snapshot.exists) {
@@ -221,7 +212,7 @@ export const purchaseLead = onRequest(
           eventName: 'Purchase',
           lead,
           customData: { currency: 'KRW', value: price },
-          eventTimeMs: lead.purchasedAt,
+          eventTimeMs: purchasedAt,
         })
 
         if (!capiResult.ok) {
@@ -234,7 +225,7 @@ export const purchaseLead = onRequest(
         await docRef.update({
           state: 'purchased',
           price,
-          purchasedAt: lead.purchasedAt,
+          purchasedAt: purchasedAt,
           externalId: lead.externalId,
         })
 
@@ -243,7 +234,7 @@ export const purchaseLead = onRequest(
           ...lead,
           state: 'purchased',
           price,
-          purchasedAt: lead.purchasedAt,
+          purchasedAt: purchasedAt,
         })
       } catch (error) {
         logger.error('purchaseLead 처리 실패:', error)
@@ -529,20 +520,16 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         return
       }
 
-      const { id, field, value } = request.body as {
-        id?: string
-        field?: string
-        value?: number
-      }
-
-      const validationRes = validateUpdateTimestampParams(id, field, value)
+      const validationRes = validateUpdateTimestampParams(request.body)
 
       if (!validationRes.ok) {
         response.status(400).send({ error: validationRes.error })
         return
       }
 
-      const docRef = db.collection('lead').doc(id as string)
+      const { id, field, value } = validationRes.data
+
+      const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
 
       if (!snapshot.exists) {
@@ -550,7 +537,7 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         return
       }
 
-      await docRef.update({ [field as string]: value })
+      await docRef.update({ [field]: value })
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
 

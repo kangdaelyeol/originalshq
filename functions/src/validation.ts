@@ -1,48 +1,61 @@
-import { Device, TimestampField } from './types'
+import {
+  CreateLeadInput,
+  Device,
+  LeadState,
+  TimestampField,
+  ValidateResponse,
+} from './types'
 
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === 'string' && value !== ''
-
-export const validateLeadCreationBody = (
-  body: unknown,
-  requiredFields: string[],
-): string | null => {
-  if (typeof body !== 'object' || body === null) {
-    return 'invalid request body'
-  }
-
-  const record = body as Record<string, unknown>
-
-  for (const field of requiredFields) {
-    if (!isNonEmptyString(record[field])) {
-      return `${field} is required`
-    }
-  }
-
-  if (!Device.includes(record.device as Device)) {
-    return `device must be one of: ${Device.join(', ')}`
-  }
-
-  return null
-}
+const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device'] as const
 
 export const hasExternalId = (body: Record<string, unknown>): boolean =>
   body.externalId ? true : false
 
-type ValidateResponse =
-  | {
-      ok: true
-    }
-  | {
-      ok: false
-      error: string
+const isNonEmptyString = (value: unknown): value is string =>
+  typeof value === 'string' && value !== ''
+
+export const validateCreateLead = (
+  body: Record<string, unknown>,
+): ValidateResponse<CreateLeadInput> => {
+  if (typeof body !== 'object' || body === null)
+    return { ok: false, error: 'invalid request body' }
+
+  for (const field of CREATE_LEAD_REQUIRED_FIELDS) {
+    if (!isNonEmptyString(body[field]))
+      return { ok: false, error: `${field} is required` }
+  }
+
+  if (!LeadState.includes(body.state as string))
+    return {
+      ok: false,
+      error: `lead state must be one of: ${LeadState.join(', ')}`,
     }
 
+  if (!Device.includes(body.device as Device))
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+
+  const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
+
+  if (!digitsOnlyPhone) {
+    return { ok: false, error: 'ph must contain digits' }
+  }
+
+  return { ok: true, data: body as CreateLeadInput }
+}
+
 export const validateUpdateTimestampParams = (
-  id?: string,
-  field?: string,
-  value?: number,
-): ValidateResponse => {
+  body: Record<string, unknown>,
+): ValidateResponse<{
+  id: string
+  field: string
+  value: number
+}> => {
+  const { id, field, value } = body as {
+    id?: string
+    field?: string
+    value?: number
+  }
+
   if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
   }
@@ -58,20 +71,26 @@ export const validateUpdateTimestampParams = (
     return { ok: false, error: 'value must be a valid timestamp (ms)' }
   }
 
-  return { ok: true }
+  return { ok: true, data: { id, field, value } }
 }
 
 export const validatePurchaseLead = (
-  id?: string,
-  price?: number,
-): ValidateResponse => {
-  if (!id || typeof id !== 'string') {
+  body: Record<string, unknown>,
+): ValidateResponse<{ id: string; price: number; purchasedAt: number }> => {
+  const { id, price, purchasedAt } = body as {
+    id?: string
+    price?: number
+    purchasedAt?: number
+  }
+
+  if (!id || typeof id !== 'string')
     return { ok: false, error: 'id is required' }
-  }
 
-  if (typeof price !== 'number' || price <= 0) {
+  if (typeof price !== 'number' || price <= 0)
     return { ok: false, error: 'price must be a positive number' }
-  }
 
-  return { ok: true }
+  if (typeof purchasedAt !== 'number' || purchasedAt <= 0)
+    return { ok: false, error: 'purchasedAt must be required' }
+
+  return { ok: true, data: { id, price, purchasedAt } }
 }

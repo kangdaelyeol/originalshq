@@ -46,9 +46,19 @@ export type CreateLeadInput = {
   ph: string
   device: Device
   createdAt?: number
-  state?: LeadState
+  state: LeadState
 }
 
 export const TimestampField = ['createdAt', 'purchasedAt'] as const
 
 export type TimestampField = (typeof TimestampField)[number]
+
+export type ValidateResponse<T> =
+  | {
+      ok: true
+      data: T
+    }
+  | {
+      ok: false
+      error: string
+    }
