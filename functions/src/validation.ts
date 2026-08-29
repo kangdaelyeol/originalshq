@@ -43,6 +43,19 @@ export const validateCreateLead = (
   return { ok: true, data: body as CreateLeadInput }
 }
 
+export const validateContactLead = (
+  body: Record<string, unknown>,
+): ValidateResponse<{
+  id: string
+}> => {
+  const { id } = body as { id?: string }
+
+  if (!id || typeof id !== 'string')
+    return { ok: false, error: 'id is required' }
+
+  return { ok: true, data: { id } }
+}
+
 export const validateUpdateTimestampParams = (
   body: Record<string, unknown>,
 ): ValidateResponse<{

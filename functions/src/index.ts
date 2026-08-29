@@ -8,6 +8,7 @@ import cors from 'cors'
 import { Device, Lead } from './types'
 import {
   hasExternalId,
+  validateContactLead,
   validateCreateLead,
   validatePurchaseLead,
   validateUpdateTimestampParams,
@@ -93,12 +94,14 @@ export const contactLead = onRequest(
           return
         }
 
-        const { id } = request.body as { id?: string }
+        const validationRes = validateContactLead(request.body)
 
-        if (!id || typeof id !== 'string') {
-          response.status(400).send({ error: 'id is required' })
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
           return
         }
+
+        const { id } = validationRes.data
 
         const docRef = db.collection('lead').doc(id)
         const snapshot = await docRef.get()
@@ -143,12 +146,10 @@ export const contactLead = onRequest(
           return
         }
 
-        const docUpdate = {
+        await docRef.update({
           state: 'contacted',
           externalId: lead.externalId ?? '',
-        }
-
-        await docRef.update(docUpdate)
+        })
 
         response.status(200).send({
           id: snapshot.id,
