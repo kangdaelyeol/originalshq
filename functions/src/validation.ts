@@ -118,6 +118,19 @@ export const validateUpdateLeadDevice = (
   return { ok: true, data: { id, device } }
 }
 
+export const validateDeleteLead = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+}> => {
+  const { id } = body as { id?: string }
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+
+  return { ok: true, data: { id } }
+}
+
 export const validateUpdateTimestampParams = (
   body: Record<string, unknown>,
 ): ValidationResponse<{

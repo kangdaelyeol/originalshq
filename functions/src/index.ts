@@ -15,6 +15,7 @@ import {
   valiedateUpdateLeadPhone,
   validateUpdateLeadFn,
   validateUpdateLeadDevice,
+  validateDeleteLead,
 } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { generateExternalId } from './utils'
@@ -386,12 +387,14 @@ export const deleteLead = onRequest((request, response) => {
         return
       }
 
-      const { id } = request.body as { id?: string }
+      const validationRes = validateDeleteLead(request.body)
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
+
+      const { id } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
