@@ -53,7 +53,7 @@ export const TimestampField = ['createdAt', 'purchasedAt'] as const
 
 export type TimestampField = (typeof TimestampField)[number]
 
-export type ValidateResponse<T> =
+export type ValidationResponse<T> =
   | {
       ok: true
       data: T

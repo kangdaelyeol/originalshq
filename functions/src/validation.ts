@@ -3,7 +3,7 @@ import {
   Device,
   LeadState,
   TimestampField,
-  ValidateResponse,
+  ValidationResponse,
 } from './types'
 
 const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device'] as const
@@ -16,7 +16,7 @@ const isNonEmptyString = (value: unknown): value is string =>
 
 export const validateCreateLead = (
   body: Record<string, unknown>,
-): ValidateResponse<CreateLeadInput> => {
+): ValidationResponse<CreateLeadInput> => {
   if (typeof body !== 'object' || body === null)
     return { ok: false, error: 'invalid request body' }
 
@@ -45,7 +45,7 @@ export const validateCreateLead = (
 
 export const validateContactLead = (
   body: Record<string, unknown>,
-): ValidateResponse<{
+): ValidationResponse<{
   id: string
 }> => {
   const { id } = body as { id?: string }
@@ -58,7 +58,7 @@ export const validateContactLead = (
 
 export const valiedateUpdateLeadPhone = (
   body: Record<string, unknown>,
-): ValidateResponse<{
+): ValidationResponse<{
   id: string
   ph: string
 }> => {
@@ -80,7 +80,7 @@ export const valiedateUpdateLeadPhone = (
 
 export const validateUpdateTimestampParams = (
   body: Record<string, unknown>,
-): ValidateResponse<{
+): ValidationResponse<{
   id: string
   field: string
   value: number
@@ -111,7 +111,7 @@ export const validateUpdateTimestampParams = (
 
 export const validatePurchaseLead = (
   body: Record<string, unknown>,
-): ValidateResponse<{ id: string; price: number; purchasedAt: number }> => {
+): ValidationResponse<{ id: string; price: number; purchasedAt: number }> => {
   const { id, price, purchasedAt } = body as {
     id?: string
     price?: number
