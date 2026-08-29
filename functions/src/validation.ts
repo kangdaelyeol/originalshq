@@ -56,6 +56,28 @@ export const validateContactLead = (
   return { ok: true, data: { id } }
 }
 
+export const valiedateUpdateLeadPhone = (
+  body: Record<string, unknown>,
+): ValidateResponse<{
+  id: string
+  ph: string
+}> => {
+  const { id, ph } = body as { id?: string; ph?: string }
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!ph || typeof ph !== 'string') {
+    return { ok: false, error: 'ph is required' }
+  }
+
+  const digitsOnlyPhone = ph.replace(/\D/g, '')
+  if (!digitsOnlyPhone) {
+    return { ok: false, error: 'ph must contain digits' }
+  }
+
+  return { ok: true, data: { id, ph: digitsOnlyPhone } }
+}
+
 export const validateUpdateTimestampParams = (
   body: Record<string, unknown>,
 ): ValidateResponse<{

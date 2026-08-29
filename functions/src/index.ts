@@ -12,6 +12,7 @@ import {
   validateCreateLead,
   validatePurchaseLead,
   validateUpdateTimestampParams,
+  valiedateUpdateLeadPhone,
 } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { generateExternalId } from './utils'
@@ -256,22 +257,14 @@ export const updateLeadPhone = onRequest((request, response) => {
         return
       }
 
-      const { id, ph } = request.body as { id?: string; ph?: string }
+      const validationRes = valiedateUpdateLeadPhone(request.body)
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
-        return
-      }
-      if (!ph || typeof ph !== 'string') {
-        response.status(400).send({ error: 'ph is required' })
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
 
-      const digitsOnlyPhone = ph.replace(/\D/g, '')
-      if (!digitsOnlyPhone) {
-        response.status(400).send({ error: 'ph must contain digits' })
-        return
-      }
+      const { id, ph } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
@@ -282,8 +275,8 @@ export const updateLeadPhone = onRequest((request, response) => {
       }
 
       const updateData = {
-        ph: digitsOnlyPhone,
-        externalId: generateExternalId(digitsOnlyPhone), // 항상 재계산, 조건 분기 없음
+        ph,
+        externalId: generateExternalId(ph),
       }
 
       await docRef.update(updateData)
