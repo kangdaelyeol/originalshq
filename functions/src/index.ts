@@ -1,24 +1,25 @@
+import cors from 'cors'
+import * as logger from 'firebase-functions/logger'
 import { setGlobalOptions } from 'firebase-functions'
 import { onRequest } from 'firebase-functions/https'
-import * as logger from 'firebase-functions/logger'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
-import cors from 'cors'
-import { Device, Lead } from './types'
+import { Lead } from './types'
+import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
+import { generateExternalId } from './utils'
 import {
   hasExternalId,
   validateContactLead,
   validateCreateLead,
   validatePurchaseLead,
-  validateUpdateTimestampParams,
+  validateUpdateTimestamp,
   valiedateUpdateLeadPhone,
   validateUpdateLeadFn,
   validateUpdateLeadDevice,
   validateDeleteLead,
+  validateUpdateLeadPrice,
 } from './validation'
-import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
-import { generateExternalId } from './utils'
 
 initializeApp()
 
@@ -456,19 +457,14 @@ export const updateLeadPrice = onRequest((request, response) => {
         return
       }
 
-      const { id, price } = request.body as { id?: string; price?: number }
+      const validationRes = validateUpdateLeadPrice(request.body)
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
 
-      if (typeof price !== 'number') {
-        response
-          .status(400)
-          .send({ error: 'price must be a non-negative number' })
-        return
-      }
+      const { id, price } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
@@ -507,7 +503,7 @@ export const updateLeadTimestamp = onRequest((request, response) => {
         return
       }
 
-      const validationRes = validateUpdateTimestampParams(request.body)
+      const validationRes = validateUpdateTimestamp(request.body)
 
       if (!validationRes.ok) {
         response.status(400).send({ error: validationRes.error })

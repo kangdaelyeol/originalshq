@@ -131,7 +131,24 @@ export const validateDeleteLead = (
   return { ok: true, data: { id } }
 }
 
-export const validateUpdateTimestampParams = (
+export const validateUpdateLeadPrice = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  price: number
+}> => {
+  const { id, price } = body as { id?: string; price?: number }
+
+  if (!id || typeof id !== 'string')
+    return { ok: false, error: 'id is required' }
+
+  if (typeof price !== 'number')
+    return { ok: false, error: 'price must be a non-negative number' }
+
+  return { ok: true, data: { id, price } }
+}
+
+export const validateUpdateTimestamp = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
