@@ -13,7 +13,8 @@ import {
   validatePurchaseLead,
   validateUpdateTimestampParams,
   valiedateUpdateLeadPhone,
-  validateUpdateLeanFn,
+  validateUpdateLeadFn,
+  validateUpdateLeadDevice,
 } from './validation'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { generateExternalId } from './utils'
@@ -301,7 +302,7 @@ export const updateLeadFn = onRequest((request, response) => {
         return
       }
 
-      const validationRes = validateUpdateLeanFn(request.body)
+      const validationRes = validateUpdateLeadFn(request.body)
 
       if (!validationRes.ok) {
         response.status(400).send({ error: validationRes.error })
@@ -339,24 +340,14 @@ export const updateLeadDevice = onRequest((request, response) => {
         return
       }
 
-      const { id, device } = request.body as { id?: string; device?: string }
+      const validationRes = validateUpdateLeadDevice(request.body)
 
-      if (!id || typeof id !== 'string') {
-        response.status(400).send({ error: 'id is required' })
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
         return
       }
 
-      if (!device || typeof device !== 'string') {
-        response.status(400).send({ error: 'device is required' })
-        return
-      }
-
-      if (!Device.includes(device as Device)) {
-        response
-          .status(400)
-          .send({ error: `device must be one of: ${Device.join(', ')}` })
-        return
-      }
+      const { id, device } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()

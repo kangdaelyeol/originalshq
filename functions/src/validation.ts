@@ -78,7 +78,7 @@ export const valiedateUpdateLeadPhone = (
   return { ok: true, data: { id, ph: digitsOnlyPhone } }
 }
 
-export const validateUpdateLeanFn = (
+export const validateUpdateLeadFn = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
@@ -94,6 +94,28 @@ export const validateUpdateLeanFn = (
   }
 
   return { ok: true, data: { id, fn } }
+}
+
+export const validateUpdateLeadDevice = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  device: string
+}> => {
+  const { id, device } = body as { id?: string; device?: string }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+
+  if (!device || typeof device !== 'string') {
+    return { ok: false, error: 'device is required' }
+  }
+
+  if (!Device.includes(device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+  return { ok: true, data: { id, device } }
 }
 
 export const validateUpdateTimestampParams = (
