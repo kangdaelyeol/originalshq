@@ -251,7 +251,7 @@ export const useMainViewModel = () => {
     let res: ClientResponse<Lead>
 
     switch (field) {
-      case 'price':
+      case EditingField.PRICE:
         numericPrice = Number(editedValue)
         if (Number.isNaN(numericPrice)) {
           console.error('가격은 숫자여야 합니다')
@@ -263,8 +263,8 @@ export const useMainViewModel = () => {
         body = { id: rowId, price: numericPrice }
         res = await leadClient.updatePrice(body)
         break
-      case 'createdAt':
-      case 'purchasedAt':
+      case EditingField.CREATED_AT:
+      case EditingField.PURCHASED_AT:
         numericTimestamp = Number(editedValue)
         if (Number.isNaN(numericTimestamp)) {
           console.error('시각 값이 올바르지 않습니다')
@@ -276,11 +276,11 @@ export const useMainViewModel = () => {
         body = { id: rowId, field, value: numericTimestamp }
         res = await leadClient.updateTimeStamp(body)
         break
-      case 'fn':
+      case EditingField.FIRST_NAME:
         body = { id: rowId, [field]: editedValue }
         res = await leadClient.updateFn(body)
         break
-      case 'ph':
+      case EditingField.PHONE:
         body = { id: rowId, [field]: editedValue }
         res = await leadClient.updatePh(body)
         break
@@ -297,7 +297,6 @@ export const useMainViewModel = () => {
     const updatedLead = res.data
 
     setRows((prev) => prev.map((row) => (row.id === rowId ? updatedLead : row)))
-
     showToast('updated')
     setLoading(false)
     setEditingCell(null)
