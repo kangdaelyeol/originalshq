@@ -23,7 +23,7 @@ import type {
   Lead,
   LeadState,
 } from '@/screens/xtool-lead-manager/entity'
-import { leadClient } from '../client'
+import { leadClient, type ClientResponse } from '../client'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -244,78 +244,63 @@ export const useMainViewModel = () => {
       return
     }
 
-    let endpoint: string
+    setLoading(true)
+    let numericPrice: number
+    let numericTimestamp: number
     let body: Record<string, unknown>
+    let res: ClientResponse<Lead>
 
     switch (field) {
       case 'price':
-        {
-          const numericPrice = Number(editedValue)
-
-          if (Number.isNaN(numericPrice)) {
-            console.error('가격은 숫자여야 합니다')
-            setEditingCell(null)
-            return
-          }
-
-          body = { id: rowId, price: numericPrice }
-          const res = await leadClient.updatePrice(body)
-          if (!res.ok) {
-            console.log(res.error)
-          }
+        numericPrice = Number(editedValue)
+        if (Number.isNaN(numericPrice)) {
+          console.error('가격은 숫자여야 합니다')
+          showToast('error')
+          setLoading(false)
+          setEditingCell(null)
+          return
         }
+        body = { id: rowId, price: numericPrice }
+        res = await leadClient.updatePrice(body)
+        break
+      case 'createdAt':
+      case 'purchasedAt':
+        numericTimestamp = Number(editedValue)
+        if (Number.isNaN(numericTimestamp)) {
+          console.error('시각 값이 올바르지 않습니다')
+          showToast('error')
+          setLoading(false)
+          setEditingCell(null)
+          return
+        }
+        body = { id: rowId, field, value: numericTimestamp }
+        res = await leadClient.updateTimeStamp(body)
+        break
+      case 'fn':
+        body = { id: rowId, [field]: editedValue }
+        res = await leadClient.updateFn(body)
+        break
+      case 'ph':
+        body = { id: rowId, [field]: editedValue }
+        res = await leadClient.updatePh(body)
         break
     }
-    
-    if (field === 'createdAt' || field === 'purchasedAt') {
-      const numericTimestamp = Number(editedValue)
 
-      if (Number.isNaN(numericTimestamp)) {
-        console.error('시각 값이 올바르지 않습니다')
-        setEditingCell(null)
-        return
-      }
-
-      endpoint = 'updateLeadTimestamp'
-      body = { id: rowId, field, value: numericTimestamp }
-    } else if (
-      field === EditingField.FIRST_NAME ||
-      field === EditingField.PHONE
-    ) {
-      endpoint = 'updateLeadContact'
-      body = { id: rowId, [field]: editedValue }
-    } else {
-      console.error(`stopEditing: 지원하지 않는 필드입니다 (${field})`)
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
       setEditingCell(null)
       return
     }
 
-    setLoading(true)
-    try {
-      const response = await fetch(`${LEADS_API_BASE}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+    const updatedLead = res.data
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error ?? '수정 실패')
-      }
+    setRows((prev) => prev.map((row) => (row.id === rowId ? updatedLead : row)))
 
-      const updatedLead = (await response.json()) as Lead
-
-      setRows((prev) =>
-        prev.map((row) => (row.id === rowId ? updatedLead : row)),
-      )
-
-      showToast('updated')
-    } catch (error) {
-      console.error('stopEditing 실패:', error)
-    } finally {
-      setLoading(false)
-      setEditingCell(null)
-    }
+    showToast('updated')
+    setLoading(false)
+    setEditingCell(null)
   }
 
   const updateDevice = async (rowId: string, device: Device) => {

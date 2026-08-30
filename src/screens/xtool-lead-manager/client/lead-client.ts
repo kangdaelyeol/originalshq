@@ -1,7 +1,7 @@
 import { LEADS_API_BASE } from '../constants'
 import type { Lead } from '../entity'
 
-type ClientResponse<T> =
+export type ClientResponse<T> =
   | {
       ok: true
       data: T
@@ -65,7 +65,9 @@ export const leadClient = {
       }
     }
   },
-  updateTimeStamp: async (body: Record<string, unknown>): Promise<Lead> => {
+  updateTimeStamp: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
     const response = await fetch(`${LEADS_API_BASE}/updateLeadTimestamp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -78,7 +80,7 @@ export const leadClient = {
     }
 
     const updatedLead = (await response.json()) as Lead
-    return updatedLead
+    return { ok: true, data: updatedLead }
   },
   updateContact: async (body: Record<string, unknown>): Promise<Lead> => {
     const response = await fetch(`${LEADS_API_BASE}/updateLeadContact`, {
@@ -115,7 +117,55 @@ export const leadClient = {
     } catch (error) {
       return {
         ok: false,
-        error: `stopEditing 실패: ${error instanceof Error ? error.message : 'known error'}`,
+        error: `leadClient-UpdatePrice error: ${error instanceof Error ? error.message : 'known error'}`,
+      }
+    }
+  },
+  updateFn: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/updateLeadFn`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error: error.error ?? '수정 실패' }
+      }
+
+      const updatedLead = (await response.json()) as Lead
+      return { ok: true, data: updatedLead }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `leadClient-UpdateFn error: ${error instanceof Error ? error.message : 'known error'}`,
+      }
+    }
+  },
+  updatePh: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/updateLeadPhone`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error: error.error ?? '수정 실패' }
+      }
+
+      const updatedLead = (await response.json()) as Lead
+      return { ok: true, data: updatedLead }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `leadClient-UpdatePh error: ${error instanceof Error ? error.message : 'known error'}`,
       }
     }
   },
