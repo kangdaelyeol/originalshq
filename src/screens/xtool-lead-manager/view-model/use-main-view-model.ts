@@ -23,6 +23,7 @@ import type {
   Lead,
   LeadState,
 } from '@/screens/xtool-lead-manager/entity'
+import { leadClient } from '../client'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -366,32 +367,25 @@ export const useMainViewModel = () => {
 
   const handleCreateLeadClick = async () => {
     setIsSubmitting(true)
-    try {
-      const createdAtMs = createForm.createdAt
-        ? new Date(createForm.createdAt).getTime()
-        : undefined
+    const createdAtMs = createForm.createdAt
+      ? new Date(createForm.createdAt).getTime()
+      : 0
 
-      const body = { ...createForm, createdAt: createdAtMs }
+    const body = { ...createForm, createdAt: createdAtMs }
 
-      const response = await fetch(`${LEADS_API_BASE}/createLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
+    const res = await leadClient.create(body)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error ?? '등록 실패')
-      }
-
-      await fetchLeads()
-      closeCreateModal()
-    } catch (error) {
-      console.error(error)
+    if (!res.ok) {
+      console.error(res.error)
       showToast('error')
-    } finally {
       setIsSubmitting(false)
+      return
     }
+
+    await fetchLeads()
+    closeCreateModal()
+
+    setIsSubmitting(false)
   }
 
   return {
