@@ -27,7 +27,7 @@ interface TableActions {
   stopEditing: () => void
   showDetail: (rowId: string) => void
   handleEditingKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  updateDevice: (rowId: string, device: Device) => void
+  handleDeviceUpdate: (rowId: string, device: Device) => void
   deleteRow: (rowId: string) => void
   registerRow: (rowId: string) => Promise<void>
 }
@@ -56,7 +56,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
     stopEditing,
     showDetail,
     handleEditingKeyDown,
-    updateDevice,
+    handleDeviceUpdate,
     deleteRow,
     registerRow,
     toggleFold,
@@ -301,7 +301,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       <select
                         value={row.device}
                         onChange={(e) =>
-                          updateDevice(row.id, e.target.value as Device)
+                          handleDeviceUpdate(row.id, e.target.value as Device)
                         }
                       >
                         {Object.values(Device).map((option) => (

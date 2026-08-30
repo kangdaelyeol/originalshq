@@ -305,7 +305,7 @@ export const useMainViewModel = () => {
     setEditingCell(null)
   }
 
-  const updateDevice = async (rowId: string, device: Device) => {
+  const handleDeviceUpdate = async (rowId: string, device: Device) => {
     setLoading(true)
     const body = { id: rowId, device }
     const response = await leadClient.updateDevice(body)
@@ -396,7 +396,7 @@ export const useMainViewModel = () => {
       startEditing,
       handleFieldChange,
       stopEditing,
-      updateDevice,
+      handleDeviceUpdate,
       deleteRow,
       registerRow,
       handleEditingKeyDown,
