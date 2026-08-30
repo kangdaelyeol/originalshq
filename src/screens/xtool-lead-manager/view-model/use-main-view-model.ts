@@ -311,31 +311,22 @@ export const useMainViewModel = () => {
 
   const updateDevice = async (rowId: string, device: Device) => {
     setLoading(true)
-    try {
-      const response = await fetch(`${LEADS_API_BASE}/updateLeadDevice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: rowId, device }),
-      })
+    const body = { id: rowId, device }
+    const response = await leadClient.updateDevice(body)
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error ?? '수정 실패')
-      }
-
-      const updatedLead = (await response.json()) as Lead
-
-      setRows((prev) =>
-        prev.map((row) => (row.id === rowId ? updatedLead : row)),
-      )
-
-      showToast('updated')
-    } catch (error) {
-      console.error('updateDevice 실패:', error)
-    } finally {
+    if (!response.ok) {
+      console.log(response.error)
       setLoading(false)
       setEditingCell(null)
+      return
     }
+
+    const updatedLead = response.data
+
+    setRows((prev) => prev.map((row) => (row.id === rowId ? updatedLead : row)))
+    showToast('updated')
+    setLoading(false)
+    setEditingCell(null)
   }
 
   const deleteRow = (rowId: string) => {
