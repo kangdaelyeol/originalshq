@@ -247,18 +247,27 @@ export const useMainViewModel = () => {
     let endpoint: string
     let body: Record<string, unknown>
 
-    if (field === 'price') {
-      const numericPrice = Number(editedValue)
+    switch (field) {
+      case 'price':
+        {
+          const numericPrice = Number(editedValue)
 
-      if (Number.isNaN(numericPrice)) {
-        console.error('가격은 숫자여야 합니다')
-        setEditingCell(null)
-        return
-      }
+          if (Number.isNaN(numericPrice)) {
+            console.error('가격은 숫자여야 합니다')
+            setEditingCell(null)
+            return
+          }
 
-      endpoint = 'updateLeadPrice'
-      body = { id: rowId, price: numericPrice }
-    } else if (field === 'createdAt' || field === 'purchasedAt') {
+          body = { id: rowId, price: numericPrice }
+          const res = await leadClient.updatePrice(body)
+          if (!res.ok) {
+            console.log(res.error)
+          }
+        }
+        break
+    }
+    
+    if (field === 'createdAt' || field === 'purchasedAt') {
       const numericTimestamp = Number(editedValue)
 
       if (Number.isNaN(numericTimestamp)) {

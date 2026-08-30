@@ -95,4 +95,28 @@ export const leadClient = {
     const updatedLead = (await response.json()) as Lead
     return updatedLead
   },
+  updatePrice: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/updateLeadPrice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error: error.error ?? '수정 실패' }
+      }
+
+      const updatedLead = (await response.json()) as Lead
+      return { ok: true, data: updatedLead }
+    } catch (error) {
+      return {
+        ok: false,
+        error: `stopEditing 실패: ${error instanceof Error ? error.message : 'known error'}`,
+      }
+    }
+  },
 }
