@@ -25,11 +25,39 @@ initializeApp()
 
 const db = getFirestore('xtool-read')
 const corsHandler = cors({ origin: true })
+setGlobalOptions({ maxInstances: 10 })
 
 const metaPixelId = defineSecret('META_PIXEL_ID')
 const metaAccessToken = defineSecret('META_ACCESS_TOKEN')
 
-setGlobalOptions({ maxInstances: 10 })
+// ────────────────────────────────
+// getAllLeads
+// ────────────────────────────────
+export const listLeads = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const snapshot = await db
+        .collection('lead')
+        .orderBy('createdAt', 'desc')
+        .get()
+
+      const leads: Lead[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Lead, 'id'>),
+      }))
+
+      response.status(200).send({ leads, count: leads.length })
+    } catch (error) {
+      logger.error('listLeads 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
 
 // ────────────────────────────────
 // createLead
@@ -412,35 +440,6 @@ export const deleteLead = onRequest((request, response) => {
       response.status(200).send({ id, deleted: true })
     } catch (error) {
       logger.error('deleteLead 처리 실패:', error)
-      response.status(500).send({ error: '서버 오류' })
-    }
-  })
-})
-
-// ────────────────────────────────
-// getAllLeads
-// ────────────────────────────────
-export const listLeads = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      if (request.method !== 'GET') {
-        response.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-
-      const snapshot = await db
-        .collection('lead')
-        .orderBy('createdAt', 'desc')
-        .get()
-
-      const leads: Lead[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...(doc.data() as Omit<Lead, 'id'>),
-      }))
-
-      response.status(200).send({ leads, count: leads.length })
-    } catch (error) {
-      logger.error('listLeads 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

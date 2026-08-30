@@ -1,6 +1,7 @@
 import * as crypto from 'crypto'
 import * as logger from 'firebase-functions/logger'
 import { Lead, Device } from './types'
+import { getActionSource } from './utils'
 
 export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
   F2Ultra: 104500,
@@ -36,7 +37,7 @@ type SendMetaEventParams = {
   eventName: MetaEventName
   lead: Omit<Lead, 'id'>
   customData?: Record<string, unknown>
-  eventTimeMs?: number
+  eventTimeMs: number
 }
 
 type SendMetaEventResult =
@@ -51,18 +52,20 @@ export const sendMetaEvent = async ({
   customData,
   eventTimeMs,
 }: SendMetaEventParams): Promise<SendMetaEventResult> => {
-  const eventTime = Math.floor((eventTimeMs ?? Date.now()) / 1000)
+  const eventTime = Math.floor(eventTimeMs) / 1000
+
+  const actionSource = getActionSource(eventTime)
 
   const payload = {
     data: [
       {
         event_name: eventName,
         event_time: eventTime,
-        action_source: 'phone_call',
+        action_source: actionSource,
         ...(customData ? { custom_data: customData } : {}),
         user_data: {
           ph: hashPhoneVariants(lead.ph),
-          ...(lead.fn ? { fn: [sha256(lead.fn)] } : {}),
+          ...(lead.fn ? { fn: sha256(lead.fn) } : {}),
           external_id: lead.externalId,
           client_ip_address: lead.ip || undefined,
           client_user_agent: lead.user_agent || undefined,
