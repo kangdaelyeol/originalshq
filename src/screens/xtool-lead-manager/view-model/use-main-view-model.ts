@@ -214,16 +214,19 @@ export const useMainViewModel = () => {
     setEditingCell({ rowId, field })
   }
 
-  const updateCellValue = (
+  const handleFieldChange = (
     rowId: string,
     field: EditingField,
     value: string,
   ) => {
     let cleanedValue: string | number = value
 
-    if (field === 'ph') {
+    if (field === EditingField.PHONE) {
       cleanedValue = value.replace(/\D/g, '')
-    } else if (field === 'createdAt' || field === 'purchasedAt') {
+    } else if (
+      field === EditingField.CREATED_AT ||
+      field === EditingField.PURCHASED_AT
+    ) {
       cleanedValue = fromDatetimeLocalValue(value)
     }
 
@@ -391,7 +394,7 @@ export const useMainViewModel = () => {
     actions: {
       toggleAllChecked,
       startEditing,
-      updateCellValue,
+      handleFieldChange,
       stopEditing,
       updateDevice,
       deleteRow,

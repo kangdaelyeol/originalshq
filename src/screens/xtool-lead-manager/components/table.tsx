@@ -23,7 +23,7 @@ interface TableActions {
   toggleAllChecked: () => void
   toggleSort: (field: SortField) => void
   startEditing: (rowId: string, field: EditingField) => void
-  updateCellValue: (rowId: string, field: EditingField, value: string) => void
+  handleFieldChange: (rowId: string, field: EditingField, value: string) => void
   stopEditing: () => void
   showDetail: (rowId: string) => void
   handleEditingKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
@@ -51,7 +51,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
   const {
     toggleAllChecked,
     toggleSort,
-    updateCellValue,
+    handleFieldChange,
     startEditing,
     stopEditing,
     showDetail,
@@ -230,7 +230,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           type="datetime-local"
                           value={toDatetimeLocalValue(row.createdAt)}
                           onChange={(e) =>
-                            updateCellValue(
+                            handleFieldChange(
                               row.id,
                               EditingField.CREATED_AT,
                               e.target.value,
@@ -257,7 +257,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           autoFocus
                           value={row.fn}
                           onChange={(e) =>
-                            updateCellValue(
+                            handleFieldChange(
                               row.id,
                               EditingField.FIRST_NAME,
                               e.target.value,
@@ -283,7 +283,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           autoFocus
                           value={row.ph}
                           onChange={(e) =>
-                            updateCellValue(
+                            handleFieldChange(
                               row.id,
                               EditingField.PHONE,
                               e.target.value,
@@ -325,7 +325,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                             autoFocus
                             value={row.price}
                             onChange={(e) =>
-                              updateCellValue(
+                              handleFieldChange(
                                 row.id,
                                 EditingField.PRICE,
                                 e.target.value,
@@ -353,7 +353,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                             type="datetime-local"
                             value={toDatetimeLocalValue(row.purchasedAt)}
                             onChange={(e) =>
-                              updateCellValue(
+                              handleFieldChange(
                                 row.id,
                                 EditingField.PURCHASED_AT,
                                 e.target.value,
