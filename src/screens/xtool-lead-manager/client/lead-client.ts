@@ -12,6 +12,28 @@ export type ClientResponse<T> =
     }
 
 export const leadClient = {
+  getAll: async (): Promise<
+    ClientResponse<{ leads: Lead[]; count: number }>
+  > => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/listLeads`)
+
+      if (!response.ok) {
+        return { ok: false, error: '리드 목록을 불러오지 못했습니다' }
+      }
+
+      const data = (await response.json()) as { leads: Lead[]; count: number }
+      return { ok: true, data }
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'unknown error: userclient - get all',
+      }
+    }
+  },
   create: async (
     body: Record<string, unknown>,
   ): Promise<ClientResponse<null>> => {

@@ -17,13 +17,15 @@ import {
   fromDatetimeLocalValue,
   sortLeads,
 } from '@/screens/xtool-lead-manager/utils'
-import { LEADS_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type {
   Device,
   Lead,
   LeadState,
 } from '@/screens/xtool-lead-manager/entity'
-import { leadClient, type ClientResponse } from '../client'
+import {
+  leadClient,
+  type ClientResponse,
+} from '@/screens/xtool-lead-manager/client'
 
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
@@ -46,26 +48,25 @@ export const useMainViewModel = () => {
 
   const fetchLeads = useCallback(async () => {
     setLoading(true)
-    try {
-      const response = await fetch(`${LEADS_API_BASE}/listLeads`)
+    const res = await leadClient.getAll()
 
-      if (!response.ok) {
-        throw new Error('리드 목록을 불러오지 못했습니다')
-      }
-
-      const data = (await response.json()) as { leads: Lead[]; count: number }
-
-      setRows(data.leads)
-    } catch (error) {
-      console.error('fetchLeads 실패:', error)
+    if (!res.ok) {
+      console.error('fetchLeads 실패:', res.error)
       showToast('error')
-    } finally {
       setLoading(false)
+      return
     }
+
+    const { data } = res
+
+    setRows(data.leads)
+    setLoading(false)
   }, [showToast])
 
   useEffect(() => {
-    fetchLeads()
+    ;(async () => {
+      await fetchLeads()
+    })()
   }, [fetchLeads])
 
   const [fold, setFold] = useState<TableFold>({
