@@ -168,27 +168,19 @@ export const useMainViewModel = () => {
     if (!targetLead) return
 
     setLoading(true)
-    try {
-      const response = await fetch(`${LEADS_API_BASE}/deleteLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: targetLead.id }),
-      })
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error ?? '삭제 실패')
-      }
+    const body = { id: targetLead.id }
+    const res = await leadClient.delete(body)
 
-      setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
-      setSelectedRow(null)
-      showToast('deleted')
-    } catch (error) {
-      console.error('deleteCustomer 실패:', error)
+    if (!res.ok) {
+      console.error('deleteCustomer 실패:', res.error)
       showToast('error')
-    } finally {
-      setLoading(false)
+    } else {
+      setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
+      showToast('deleted')
     }
+    setSelectedRow(null)
+    setLoading(false)
   }
 
   const handleConfirmClick = async () => {

@@ -223,4 +223,30 @@ export const leadClient = {
       }
     }
   },
+  delete: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<null>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/deleteLead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error }
+      }
+
+      return { ok: true, data: null }
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'unknown error: leadclient-delete',
+      }
+    }
+  },
 }
