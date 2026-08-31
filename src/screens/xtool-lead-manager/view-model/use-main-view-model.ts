@@ -350,6 +350,10 @@ export const useMainViewModel = () => {
   }
 
   const updateField = (field: keyof CreateLeadFormValues, value: string) => {
+    if (field === 'ph') {
+      value = value.replace(/\D/g, '')
+    }
+
     setCreateForm((prev) => ({ ...prev, [field]: value }))
   }
 

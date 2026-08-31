@@ -296,6 +296,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         <span>{formatPhoneNumber(row.ph)}</span>
                       )}
                     </div>
+                    
                     {/* Device Cell */}
                     <div className="item device">
                       <select
@@ -363,7 +364,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                             onKeyDown={handleEditingKeyDown}
                           />
                         ) : (
-                          <span>{formatTime(row.purchasedAt)}</span>
+                          <span>{row.purchasedAt !== 0 ?formatTime(row.purchasedAt) : '등록하기'}</span>
                         )}
                       </div>
                     )}
