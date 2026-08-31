@@ -169,4 +169,58 @@ export const leadClient = {
       }
     }
   },
+  updateStateToContact: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/contactLead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error }
+      }
+
+      const updatedLead = (await response.json()) as Lead
+      return { ok: true, data: updatedLead }
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'unknown error: leadclient-updateStateToContact',
+      }
+    }
+  },
+  updateStateToPurchased: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
+    try {
+      const response = await fetch(`${LEADS_API_BASE}/purchaseLead`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        return { ok: false, error }
+      }
+
+      const updatedLead = (await response.json()) as Lead
+      return { ok: true, data: updatedLead }
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'unknown error: leadclient-updateStateToPurchase',
+      }
+    }
+  },
 }

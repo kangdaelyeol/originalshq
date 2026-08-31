@@ -109,49 +109,57 @@ export const useMainViewModel = () => {
 
   const registerCustomer = async (): Promise<void> => {
     const targetLead = selectedRow
-
     if (!targetLead) return
 
     const isContactStep = targetLead.state === 'new'
-
     if (!isContactStep && targetLead.price <= 0) {
       console.error('purchaseLead 호출에는 0보다 큰 price가 필요합니다')
       return
     }
 
+    let body: Record<string, unknown>
+    let res: ClientResponse<Lead>
+
     setLoading(true)
-    try {
-      const endpoint = isContactStep ? 'contactLead' : 'purchaseLead'
-      const body = isContactStep
-        ? { id: targetLead.id }
-        : { id: targetLead.id, price: targetLead.price }
-
-      console.log(`전송 데이터: `, body)
-      const response = await fetch(`${LEADS_API_BASE}/${endpoint}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      console.log('응답: ', response)
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error ?? '처리 실패')
-      }
-
-      const updatedLead = (await response.json()) as Lead
-
-      setRows((prev) =>
-        prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
-      )
-      setSelectedRow(null)
-      showToast('registered')
-    } catch (error) {
-      console.error('registerCustomer 실패:', error)
-    } finally {
-      setLoading(false)
+    switch (targetLead.state) {
+      case 'new':
+        body = { id: targetLead.id }
+        res = await leadClient.updateStateToContact(body)
+        if (!res.ok) {
+          console.error(res.error)
+          setSelectedRow(null)
+          showToast('error')
+          setLoading(false)
+          return
+        }
+        break
+      case 'contacted':
+        body = { id: targetLead.id, price: targetLead.price }
+        res = await leadClient.updateStateToContact(body)
+        if (!res.ok) {
+          console.error(res.error)
+          setSelectedRow(null)
+          showToast('error')
+          setLoading(false)
+          return
+        }
+        break
+      default:
+        console.error(`unexpected state: ${targetLead.state}`)
+        setSelectedRow(null)
+        showToast('error')
+        setLoading(false)
+        return
     }
+
+    const updatedLead = res.data
+
+    setRows((prev) =>
+      prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
+    )
+    setSelectedRow(null)
+    showToast('registered')
+    setLoading(false)
   }
 
   const deleteCustomer = async (): Promise<void> => {
