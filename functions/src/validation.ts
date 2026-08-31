@@ -17,22 +17,26 @@ const isNonEmptyString = (value: unknown): value is string =>
 export const validateCreateLead = (
   body: Record<string, unknown>,
 ): ValidationResponse<CreateLeadInput> => {
-  if (typeof body !== 'object' || body === null)
+  if (typeof body !== 'object' || body === null) {
     return { ok: false, error: 'invalid request body' }
-
-  for (const field of CREATE_LEAD_REQUIRED_FIELDS) {
-    if (!isNonEmptyString(body[field]))
-      return { ok: false, error: `${field} is required` }
   }
 
-  if (!LeadState.includes(body.state as string))
+  for (const field of CREATE_LEAD_REQUIRED_FIELDS) {
+    if (!isNonEmptyString(body[field])) {
+      return { ok: false, error: `${field} is required` }
+    }
+  }
+
+  if (!LeadState.includes(body.state as string)) {
     return {
       ok: false,
       error: `lead state must be one of: ${LeadState.join(', ')}`,
     }
+  }
 
-  if (!Device.includes(body.device as Device))
+  if (!Device.includes(body.device as Device)) {
     return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
 
   const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
 
@@ -50,8 +54,9 @@ export const validateContactLead = (
 }> => {
   const { id } = body as { id?: string }
 
-  if (!id || typeof id !== 'string')
+  if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
+  }
 
   return { ok: true, data: { id } }
 }
@@ -139,11 +144,13 @@ export const validateUpdateLeadPrice = (
 }> => {
   const { id, price } = body as { id?: string; price?: number }
 
-  if (!id || typeof id !== 'string')
+  if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
+  }
 
-  if (typeof price !== 'number')
+  if (typeof price !== 'number') {
     return { ok: false, error: 'price must be a non-negative number' }
+  }
 
   return { ok: true, data: { id, price } }
 }
@@ -188,14 +195,17 @@ export const validatePurchaseLead = (
     purchasedAt?: number
   }
 
-  if (!id || typeof id !== 'string')
+  if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
+  }
 
-  if (typeof price !== 'number' || price <= 0)
+  if (typeof price !== 'number' || price <= 0) {
     return { ok: false, error: 'price must be a positive number' }
+  }
 
-  if (typeof purchasedAt !== 'number' || purchasedAt <= 0)
+  if (typeof purchasedAt !== 'number' || purchasedAt <= 0) {
     return { ok: false, error: 'purchasedAt must be required' }
+  }
 
   return { ok: true, data: { id, price, purchasedAt } }
 }
