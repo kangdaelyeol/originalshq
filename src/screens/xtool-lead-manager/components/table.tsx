@@ -313,6 +313,7 @@ export const Table = ({ state, actions, type }: TableProps) => {
                       </select>
                     </div>
 
+                    {/* Price Cell */}
                     {type !== LeadState.NEW && (
                       <div
                         className="item price editable"
@@ -340,6 +341,8 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         )}
                       </div>
                     )}
+
+                    {/* PurchasedAt Cell */}
                     {type !== 'new' && (
                       <div
                         className="item purchased editable"
@@ -372,30 +375,32 @@ export const Table = ({ state, actions, type }: TableProps) => {
                         )}
                       </div>
                     )}
-                    {type !== LeadState.PURCHASED && (
-                      <>
-                        <div className="item register">
-                          <button
-                            type="button"
-                            className="register-btn"
-                            onClick={() => registerRow(row.id)}
-                          >
-                            등록
-                          </button>
-                        </div>
 
-                        <div className="item delete">
-                          <button
-                            type="button"
-                            className="delete-btn"
-                            onClick={() => deleteRow(row.id)}
-                          >
-                            삭제
-                          </button>
-                        </div>
-                      </>
+                    {/* Register button */}
+                    {type !== LeadState.PURCHASED && (
+                      <div className="item register">
+                        <button
+                          type="button"
+                          className="register-btn"
+                          onClick={() => registerRow(row.id)}
+                        >
+                          등록
+                        </button>
+                      </div>
                     )}
 
+                    {/* Delete button */}
+                    <div className="item delete">
+                      <button
+                        type="button"
+                        className="delete-btn"
+                        onClick={() => deleteRow(row.id)}
+                      >
+                        삭제
+                      </button>
+                    </div>
+
+                    {/* Detail button */}
                     <div className="item detail">
                       <button
                         type="button"
