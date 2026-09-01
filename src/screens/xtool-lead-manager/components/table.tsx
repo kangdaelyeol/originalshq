@@ -240,7 +240,11 @@ export const Table = ({ state, actions, type }: TableProps) => {
                           onKeyDown={handleEditingKeyDown}
                         />
                       ) : (
-                        <span>{formatTime(row.createdAt)}</span>
+                        <span>
+                          {row.createdAt !== 0
+                            ? formatTime(row.createdAt)
+                            : '등록하기'}
+                        </span>
                       )}
                     </div>
 

@@ -27,6 +27,10 @@ export const validateCreateLead = (
     }
   }
 
+  if (typeof body.createdAt !== 'number') {
+    return { ok: false, error: 'createdAt must be number' }
+  }
+
   if (!LeadState.includes(body.state as string)) {
     return {
       ok: false,

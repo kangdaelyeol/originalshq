@@ -380,7 +380,6 @@ export const useMainViewModel = () => {
 
     await fetchLeads()
     closeCreateModal()
-
     setIsSubmitting(false)
   }
 

@@ -78,15 +78,10 @@ export const createLead = onRequest((request, response) => {
 
       const input = validationRes.data
 
-      const createdAt =
-        typeof input.createdAt === 'number' && input.createdAt > 0
-          ? input.createdAt
-          : Date.now()
-
       const digitsOnlyPhone = input.ph.replace(/\D/g, '')
 
       const leadData: Omit<Lead, 'id'> = {
-        createdAt,
+        createdAt: input.createdAt,
         utm_campaign: input.utm_campaign ?? '',
         utm_medium: input.utm_medium ?? '',
         utm_source: input.utm_source ?? '',
