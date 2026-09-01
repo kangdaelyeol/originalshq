@@ -135,8 +135,12 @@ export const useMainViewModel = () => {
         }
         break
       case 'contacted':
-        body = { id: targetLead.id, price: targetLead.price }
-        res = await leadClient.updateStateToContact(body)
+        body = {
+          id: targetLead.id,
+          price: targetLead.price,
+          purchasedAt: targetLead.purchasedAt,
+        }
+        res = await leadClient.updateStateToPurchased(body)
         if (!res.ok) {
           console.error(res.error)
           setSelectedRow(null)
