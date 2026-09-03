@@ -1,4 +1,4 @@
-import { LEADS_API_BASE } from '../constants'
+import { API_BASE } from '../constants'
 import type { Lead } from '../entity'
 
 export type ClientResponse<T> =
@@ -16,7 +16,7 @@ export const leadClient = {
     ClientResponse<{ leads: Lead[]; count: number }>
   > => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/listLeads`)
+      const response = await fetch(`${API_BASE}/listLeads`)
 
       if (!response.ok) {
         return { ok: false, error: '리드 목록을 불러오지 못했습니다' }
@@ -38,7 +38,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<null>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/createLead`, {
+      const response = await fetch(`${API_BASE}/createLead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -67,7 +67,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/updateLeadDevice`, {
+      const response = await fetch(`${API_BASE}/updateLeadDevice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -90,7 +90,7 @@ export const leadClient = {
   updateTimeStamp: async (
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
-    const response = await fetch(`${LEADS_API_BASE}/updateLeadTimestamp`, {
+    const response = await fetch(`${API_BASE}/updateLeadTimestamp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -108,7 +108,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/updateLeadPrice`, {
+      const response = await fetch(`${API_BASE}/updateLeadPrice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -132,7 +132,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/updateLeadFn`, {
+      const response = await fetch(`${API_BASE}/updateLeadFn`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -156,7 +156,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/updateLeadPhone`, {
+      const response = await fetch(`${API_BASE}/updateLeadPhone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -180,7 +180,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/contactLead`, {
+      const response = await fetch(`${API_BASE}/contactLead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -207,7 +207,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/purchaseLead`, {
+      const response = await fetch(`${API_BASE}/purchaseLead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -234,7 +234,7 @@ export const leadClient = {
     body: Record<string, unknown>,
   ): Promise<ClientResponse<null>> => {
     try {
-      const response = await fetch(`${LEADS_API_BASE}/deleteLead`, {
+      const response = await fetch(`${API_BASE}/deleteLead`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
