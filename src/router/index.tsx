@@ -1,4 +1,6 @@
 import { AdminPage, BasePage, XtoolPage } from '@/pages'
+import { CmipPage } from '@/pages/cmip-page'
+import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
 import ParkeScreen from '@/screens/parke'
 import PrivacyScreen from '@/screens/privacy'
@@ -23,5 +25,10 @@ export const router = createBrowserRouter([
     path: '/xtool-lead-manager',
     element: <XtoolPage />,
     children: [{ index: true, element: <XtoolLeadManager /> }],
+  },
+  {
+    path: '/cmip',
+    element: <CmipPage />,
+    children: [{ index: true, element: <CmipScreen /> }],
   },
 ])
