@@ -69,7 +69,6 @@ export interface ManualCommerceEntry {
   revenue?: number
 }
 
-
 // --------------------------------------------------------------------------- //
 // 공통: base64 파일 → ParseResult
 // --------------------------------------------------------------------------- //
@@ -132,4 +131,3 @@ export interface SaveCommerceRevenueData {
   entries: ManualCommerceEntry[]
   channel?: Channel
 }
-

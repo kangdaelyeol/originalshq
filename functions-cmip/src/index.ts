@@ -1,11 +1,3 @@
-/**
- * MIP 백엔드 진입점 — Firebase Functions v2 콜러블.
- *
- * 프론트엔드(React SPA)는 이 프로젝트에 없다. 여기서는 도메인 로직만 노출한다.
- *
- * NOTE: Auth 검증(requireAuth)은 요청에 따라 일단 제거한 상태 — 현재 모든 콜러블이
- * 인증 없이 호출 가능하다. 프로덕션 전환 전 App Check 또는 Auth 검증을 다시 붙일 것.
- */
 import { onCall, HttpsError } from 'firebase-functions/v2/https'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import type { CallableRequest } from 'firebase-functions/v2/https'
@@ -14,9 +6,9 @@ import {
   importRowsBatch,
   existingConflictKeys,
   saveManualSmartstore,
-} from './src/data'
-import { runAlertCheck, calcMortarScore } from './src/analysis'
-import { ParseResult, parseBuffer } from './src/csv'
+} from './data'
+import { runAlertCheck, calcMortarScore } from './analysis'
+import { ParseResult, parseBuffer } from './csv'
 import {
   AlertCheckData,
   ImportBatchResult,
@@ -27,7 +19,7 @@ import {
   MortarScoreData,
   SaveCommerceRevenueData,
   CsvFileInput,
-} from './src/types'
+} from './types'
 
 setGlobalOptions({ region: 'asia-northeast3', maxInstances: 10 })
 
