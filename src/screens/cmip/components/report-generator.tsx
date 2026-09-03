@@ -3,6 +3,7 @@ import { useReportGeneratorViewModel } from '../view-model'
 import type { ReportSection } from '../client'
 import type { ReportType } from '../types'
 import { BrandSelect } from './brand-select'
+import { SegmentedToggle } from './segmented-toggle'
 import '../styles/report-generator.scss'
 
 const REPORT_TYPE_OPTIONS: readonly { value: ReportType; label: string }[] = [
@@ -93,23 +94,15 @@ export const ReportGenerator = () => {
     <div className="report-generator">
       <BrandSelect value={brandId} onChange={setBrandId} disabled={loading} />
 
-      <div className="report-generator__form">
-        <div className="report-generator__field">
-          <label htmlFor="report-type">보고서 종류</label>
-          <select
-            id="report-type"
-            value={reportType}
-            onChange={(e) => setReportType(e.target.value as ReportType)}
-            disabled={loading}
-          >
-            {REPORT_TYPE_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <SegmentedToggle
+        label="보고서 종류"
+        options={REPORT_TYPE_OPTIONS}
+        value={reportType}
+        onChange={setReportType}
+        disabled={loading}
+      />
 
+      <div className="report-generator__form">
         <div className="report-generator__field">
           <label htmlFor="report-date-start">시작일</label>
           <input
