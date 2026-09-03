@@ -1,5 +1,5 @@
 {
-  "name": "functions",
+  "name": "xtool-functions",
   "scripts": {
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint --ext .js,.ts .",
     "build": "tsc",
