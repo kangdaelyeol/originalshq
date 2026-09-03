@@ -346,6 +346,23 @@ export interface SaveCommerceRevenueData {
   channel?: Channel
 }
 
+// --------------------------------------------------------------------------- //
+// generateReport — 주간/월간 보고서 구조 데이터
+// brandId만 필수. 날짜를 비우면 서버가 (주간 최근 7일 / 월간 최근 30일, 어제까지)로 채운다.
+// --------------------------------------------------------------------------- //
+export type ReportType = 'weekly' | 'monthly'
+export type ReportFmt = 'pdf' | 'docx'
+
+export interface GenerateReportData {
+  brandId: string | number
+  reportType?: ReportType
+  dateStart?: ISODate | null
+  dateEnd?: ISODate | null
+  notes?: string
+  nextPlanNote?: string
+  fmt?: ReportFmt
+}
+
 export class ParseResult {
   channel: DetectedChannel
   rows: ParsedRow[] = []

@@ -1,0 +1,237 @@
+$color-text: #1f2328;
+$color-muted: #57606a;
+$color-border: #d0d7de;
+$color-border-soft: #eaeef2;
+$color-canvas-subtle: #f6f8fa;
+
+$color-error-bg: #fff1f0;
+$color-error-text: #cf222e;
+$color-error-border: #ffc9c9;
+
+$color-accent-text: #0969da;
+
+$radius: 6px;
+$radius-lg: 8px;
+
+.report-generator {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 760px;
+  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  color: $color-text;
+
+  &__form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    &--wide {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      color: $color-muted;
+    }
+
+    input,
+    select,
+    textarea {
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      color: inherit;
+
+      &:disabled {
+        background: $color-canvas-subtle;
+        opacity: 0.7;
+      }
+    }
+
+    textarea {
+      resize: vertical;
+      line-height: 1.5;
+    }
+  }
+
+  &__hint {
+    margin: -4px 0 0;
+    font-size: 12px;
+    color: $color-muted;
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+
+    button {
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      background: #fff;
+      padding: 8px 14px;
+      font-size: 14px;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  &__banner {
+    border-radius: $radius;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+
+    &.is-error {
+      background: $color-error-bg;
+      color: $color-error-text;
+      border: 1px solid $color-error-border;
+    }
+  }
+
+  &__report {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    border: 1px solid $color-border-soft;
+    border-radius: $radius-lg;
+    padding: 24px;
+  }
+
+  &__report-head {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  &__report-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  &__report-period {
+    margin: 0;
+    font-size: 12px;
+    color: $color-muted;
+  }
+
+  &__kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+  }
+
+  &__kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: 1px solid $color-border-soft;
+    border-radius: $radius;
+    padding: 12px;
+  }
+
+  &__kpi-label {
+    font-size: 12px;
+    color: $color-muted;
+  }
+
+  &__kpi-value {
+    font-size: 18px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__kpi-delta {
+    font-size: 12px;
+    color: $color-accent-text;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__paragraph {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    color: $color-text;
+  }
+
+  &__list {
+    margin: 0;
+    padding-left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  &__funnel {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th,
+    td {
+      border: 1px solid $color-border-soft;
+      padding: 6px 10px;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      background: $color-canvas-subtle;
+      color: $color-muted;
+      font-weight: 500;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+  }
+
+  &__footnote {
+    margin: 0;
+    font-size: 12px;
+    color: $color-muted;
+    line-height: 1.5;
+  }
+}
