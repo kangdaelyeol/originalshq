@@ -6,10 +6,6 @@ module.exports = {
   },
   extends: [
     'eslint:recommended',
-    'plugin:import/errors',
-    'plugin:import/warnings',
-    'plugin:import/typescript',
-    'google',
     'plugin:@typescript-eslint/recommended',
   ],
   parser: '@typescript-eslint/parser',
@@ -18,11 +14,12 @@ module.exports = {
     sourceType: 'module',
   },
   ignorePatterns: [
-    '/lib/**/*', // Ignore built files.
-    '/generated/**/*', // Ignore generated files.
+    '/lib/**/*',
+    '/generated/**/*',
   ],
   plugins: ['@typescript-eslint', 'import'],
   rules: {
+    'no-control-regex': 'off',
     'quotes': 'off',
     'semi': 'off',
     'object-curly-spacing': 'off',
@@ -31,5 +28,6 @@ module.exports = {
     'operator-linebreak': 'off',
     'require-jsdoc': 'off',
     'valid-jsdoc': 'off',
+    '@typescript-eslint/no-unused-expressions': 'off',
   },
-}
+};
