@@ -1,8 +1,10 @@
 import { useCallback, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent } from 'react'
 import {
+  BRAND_OPTIONS,
   Channel,
   ChannelKo,
+  type BrandId,
   type CsvFileInput,
   type DetectedChannel,
   type ImportCsvResult,
@@ -43,7 +45,7 @@ async function toFileInputs(selected: SelectedFile[]): Promise<CsvFileInput[]> {
 }
 
 export const useCsvImporterViewModel = () => {
-  const [brandId, setBrandId] = useState('')
+  const [brandId, setBrandId] = useState<BrandId>(BRAND_OPTIONS[0].id)
   const [selected, setSelected] = useState<SelectedFile[]>([])
   const [stage, setStage] = useState<Stage>('idle')
   const [preview, setPreview] = useState<PreviewCsvResult | null>(null)
@@ -107,13 +109,13 @@ export const useCsvImporterViewModel = () => {
   )
 
   const handlePreview = useCallback(async () => {
-    if (!brandId.trim() || selected.length === 0) return
+    if (selected.length === 0) return
     setError(null)
     setImportResult(null)
     setStage('previewing')
     try {
       const files = await toFileInputs(selected)
-      const result = await previewCsv({ brandId: brandId.trim(), files })
+      const result = await previewCsv({ brandId, files })
       setPreview(result)
       setStage('previewed')
     } catch (err) {
@@ -125,12 +127,12 @@ export const useCsvImporterViewModel = () => {
   }, [brandId, selected])
 
   const handleImport = useCallback(async () => {
-    if (!brandId.trim() || selected.length === 0) return
+    if (selected.length === 0) return
     setError(null)
     setStage('importing')
     try {
       const files = await toFileInputs(selected)
-      const result = await importCsv({ brandId: brandId.trim(), files })
+      const result = await importCsv({ brandId, files })
       setImportResult(result)
       setStage('imported')
     } catch (err) {

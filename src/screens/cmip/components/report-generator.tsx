@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useReportGeneratorViewModel } from '../view-model'
 import type { ReportSection } from '../client'
 import type { ReportType } from '../types'
+import { BrandSelect } from './brand-select'
 import '../styles/report-generator.scss'
 
 const REPORT_TYPE_OPTIONS: readonly { value: ReportType; label: string }[] = [
@@ -82,24 +83,17 @@ export const ReportGenerator = () => {
     loading,
     error,
     report,
+    openSections,
+    toggleSection,
+    setAllSections,
     generate,
   } = useReportGeneratorViewModel()
 
   return (
     <div className="report-generator">
-      <div className="report-generator__form">
-        <div className="report-generator__field">
-          <label htmlFor="report-brand-id">브랜드 ID</label>
-          <input
-            id="report-brand-id"
-            type="text"
-            value={brandId}
-            onChange={(e) => setBrandId(e.target.value)}
-            placeholder="예: 123"
-            disabled={loading}
-          />
-        </div>
+      <BrandSelect value={brandId} onChange={setBrandId} disabled={loading} />
 
+      <div className="report-generator__form">
         <div className="report-generator__field">
           <label htmlFor="report-type">보고서 종류</label>
           <select
@@ -168,11 +162,7 @@ export const ReportGenerator = () => {
       </p>
 
       <div className="report-generator__actions">
-        <button
-          type="button"
-          onClick={generate}
-          disabled={loading || !brandId.trim()}
-        >
+        <button type="button" onClick={generate} disabled={loading}>
           {loading ? '생성하는 중…' : '보고서 생성'}
         </button>
       </div>
@@ -185,33 +175,70 @@ export const ReportGenerator = () => {
         <div className="report-generator__report">
           <header className="report-generator__report-head">
             <h2 className="report-generator__report-title">{report.title}</h2>
-            <p className="report-generator__report-period">
-              {report.periodLabel}
-            </p>
           </header>
 
-          <div className="report-generator__kpis">
-            {report.kpiCards.map((card) => (
-              <div key={card.label} className="report-generator__kpi">
-                <span className="report-generator__kpi-label">{card.label}</span>
-                <span className="report-generator__kpi-value">{card.value}</span>
-                {card.delta && (
-                  <span className="report-generator__kpi-delta">
-                    {card.delta}
+          <section className="report-generator__summary">
+            <div className="report-generator__summary-head">
+              <span className="report-generator__summary-label">Summary</span>
+              <span className="report-generator__summary-period">
+                {report.periodLabel}
+              </span>
+            </div>
+            <div className="report-generator__summary-grid">
+              {report.kpiCards.map((card) => (
+                <div key={card.label} className="report-generator__kpi">
+                  <span className="report-generator__kpi-label">
+                    {card.label}
                   </span>
-                )}
-              </div>
-            ))}
+                  <span className="report-generator__kpi-value">
+                    {card.value}
+                  </span>
+                  {card.delta && (
+                    <span className="report-generator__kpi-delta">
+                      {card.delta}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="report-generator__section-controls">
+            <button type="button" onClick={() => setAllSections(true)}>
+              모두 펼치기
+            </button>
+            <button type="button" onClick={() => setAllSections(false)}>
+              모두 접기
+            </button>
           </div>
 
-          {report.sections.map((section) => (
-            <section key={section.no} className="report-generator__section">
-              <h3 className="report-generator__section-title">
-                {section.no}. {section.title}
-              </h3>
-              {renderSectionBody(section)}
-            </section>
-          ))}
+          <div className="report-generator__sections">
+            {report.sections.map((section) => {
+              const open = openSections.has(section.no)
+              return (
+                <div key={section.no} className="report-generator__section">
+                  <button
+                    type="button"
+                    className="report-generator__section-header"
+                    aria-expanded={open}
+                    onClick={() => toggleSection(section.no)}
+                  >
+                    <span className="report-generator__chevron" aria-hidden>
+                      ▸
+                    </span>
+                    <span className="report-generator__section-title">
+                      {section.no}. {section.title}
+                    </span>
+                  </button>
+                  {open && (
+                    <div className="report-generator__section-body">
+                      {renderSectionBody(section)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>

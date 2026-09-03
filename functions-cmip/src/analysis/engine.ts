@@ -1,17 +1,14 @@
 /**
- * 룰 기반 분석 엔진 — Python `src/analysis/engine.py` 이관.
  * 이상 징후 감지(Alert) + MORTAR SCORE.
  *
  * 절대 규칙: 비교 기준일은 `todayISO()`가 아니라 `refDate`(임포트된 데이터의 최신일 /
  * 보고서 종료일)로 앵커링한다. MIP는 과거 CSV 후행 업로드 방식이라 today 고정이면
  * 알림이 조용히 안 뜬다. 대시보드 등 "지금" 화면만 기본값(오늘)을 쓴다.
  */
-import { addDays, todayISO } from '../utils/dates'
-import { won, pctStr } from '../utils/matrix'
+import { addDays, todayISO, won, pctStr } from '../utils'
 import { alertsCol, fetchPerfRows, FieldValue } from '../data/firestore'
 import type { AlertDoc, AlertSeverity } from '../data/firestore'
-import type { DetectedChannel } from '../csv/channel'
-import type { ParsedRow } from '../csv/parse-result'
+import type { ParsedRow, DetectedChannel } from '../csv'
 import { AlertType, Channel, ISODate, WindowStats } from '../types'
 import {
   CONV_DOWN_PCT,
@@ -58,8 +55,6 @@ function windowStats(
     roas: cost ? (rev / cost) * 100 : 0,
   }
 }
-
-
 
 /**
  * NOTE: firestore.ts의 AlertDoc 스키마 주석에는 brandId가 없었는데, 여기서는 매 알림에

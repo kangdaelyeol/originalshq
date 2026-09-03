@@ -28,6 +28,9 @@ node sample-data/cmip/generate.mjs
 클라이언트 기본 베이스 URL은 `asia-northeast3-xtool-63b29.cloudfunctions.net`
 (`src/screens/xtool-lead-manager/constants.ts`의 `CMIP_API_BASE`).
 
+브랜드는 화면의 토글에서 **xTool / BleeqUp** 중 하나를 고른다 (id: `xtool` / `bleequp`).
+아래는 `xtool` 기준.
+
 ### 1. 브랜드 문서 (선택 — 이름/KPI를 지정하고 싶을 때만)
 
 `importCsv`가 임포트 시 `brands/{brandId}` stub 문서를 자동 생성하므로(`ensureBrandDoc`),
@@ -37,27 +40,25 @@ node sample-data/cmip/generate.mjs
 ```bash
 curl -X POST https://asia-northeast3-xtool-63b29.cloudfunctions.net/upsertBrand \
   -H 'Content-Type: application/json' \
-  -d '{"brandId":"demo","name":"데모 브랜드","industry":"커머스","mainKpi":"ROAS"}'
+  -d '{"brandId":"xtool","name":"xTool","industry":"커머스","mainKpi":"ROAS"}'
 ```
 
-(또는 Firestore 콘솔에서 `brands/demo` 문서를 직접 수정:
+(또는 Firestore 콘솔에서 `brands/xtool` 문서를 직접 수정:
 `name`, `industry`, `mainKpi`(CPA|ROAS|DB), `commerceChannels`(빈 배열), `memo`.)
 
-### 2. CSV 임포트 (cmip 화면 상단 CsvImporter)
+### 2. CSV 임포트 (CSV 입력 탭 / CsvImporter)
 
-1. **브랜드 ID**에 `demo` 입력
+1. 브랜드 토글에서 **xTool** 선택
 2. 위 CSV 4개를 드롭존에 끌어놓기 — 매체가 자동 감지되는지 확인
 3. **미리보기** → 행 수/기간/경고 확인 (경고 0이어야 정상)
 4. **가져오기** → "120행 저장 완료"
 
-### 3. 리포트 생성 (cmip 화면 하단 ReportGenerator)
+### 3. 리포트 생성 (리포트 생성 탭 / ReportGenerator)
 
-1. **브랜드 ID** `demo`
+1. 브랜드 토글에서 **xTool** 선택 (2번과 동일 브랜드)
 2. **보고서 종류** 주간
 3. **시작일/종료일**은 비워두면 최근 7일(2026-08-27 ~ 09-02, 어제까지)로 자동
    - 월간을 보려면 종류를 월간으로 두고 역시 비워두면 최근 30일
 4. (선택) 매체 운영 현황 / 다음 기간 계획 메모 입력
-5. **보고서 생성** → KPI 카드 + 번호 매긴 섹션들이 표시됨
-
-> 참고: 대시보드(BrandDashboard)의 MORTAR SCORE·알림은 브랜드 문서 없이도 조회되지만,
-> 알림을 채우려면 "이상 징후 재검사"를 한 번 눌러라.
+5. **보고서 생성** → Summary(광고비·전환·CPA·CTR…) + 접었다 펼치는 섹션 1~N 표시.
+   MORTAR SCORE는 리포트 섹션에 포함된다.

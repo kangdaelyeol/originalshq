@@ -1,20 +1,25 @@
-$color-text: #1f2328;
-$color-muted: #57606a;
+// 다크 팔레트 (cmip 화면 공통 톤)
+$color-text: #e6edf3;
+$color-muted: #8b949e;
 $color-hint: #6e7781;
-$color-border: #d0d7de;
-$color-border-soft: #eaeef2;
+$color-border: #30363d;
+$color-border-soft: #21262d;
+$color-surface: #161b22;
+$color-surface-2: #1c2128;
 
-$color-error-bg: #fff1f0;
-$color-error-text: #cf222e;
-$color-error-border: #ffc9c9;
+$color-error-bg: #2a1416;
+$color-error-text: #ff7b72;
+$color-error-border: #5c2b2b;
 
-$color-warn-bg: #fff8e6;
-$color-warn-text: #9a6700;
-$color-warn-border: #f2d675;
+$color-warn-bg: #241d10;
+$color-warn-text: #e3b341;
+$color-warn-border: #5c4a1e;
 
-$color-success-bg: #ebfbee;
-$color-success-text: #1a7f37;
-$color-success-border: #a6e9b3;
+$color-success-bg: #10251b;
+$color-success-text: #3fb950;
+$color-success-border: #2c5238;
+
+$color-accent: #4493f8;
 
 $radius: 6px;
 $radius-lg: 8px;
@@ -43,22 +48,28 @@ $radius-lg: 8px;
       border-radius: $radius;
       padding: 8px 10px;
       font-size: 14px;
+      background: $color-surface;
+      color: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent;
+      }
     }
   }
 
   &__dropzone {
-    border: 1px dashed #afb8c1;
+    border: 1px dashed $color-border;
     border-radius: $radius-lg;
     padding: 28px 20px;
     text-align: center;
     cursor: pointer;
-    background: #fbfbfa;
-    transition: border-color 120ms ease, background 120ms ease;
+    background: $color-surface;
 
     &:hover,
     &.is-dragover {
-      border-color: $color-muted;
-      background: #f3f4f4;
+      border-color: $color-accent;
+      background: $color-surface-2;
     }
 
     p {
@@ -90,12 +101,15 @@ $radius-lg: 8px;
     border: 1px solid $color-border-soft;
     border-radius: $radius;
     font-size: 13px;
+    background: $color-surface;
 
     select {
       border: 1px solid $color-border;
       border-radius: $radius;
       padding: 4px 6px;
       font-size: 12px;
+      background: $color-surface-2;
+      color: inherit;
     }
   }
 
@@ -122,10 +136,15 @@ $radius-lg: 8px;
     button {
       border: 1px solid $color-border;
       border-radius: $radius;
-      background: #fff;
+      background: $color-surface;
+      color: inherit;
       padding: 8px 14px;
       font-size: 14px;
       cursor: pointer;
+
+      &:hover:not(:disabled) {
+        border-color: $color-muted;
+      }
 
       &:disabled {
         opacity: 0.5;
@@ -135,9 +154,9 @@ $radius-lg: 8px;
   }
 
   &__primary {
-    background: $color-text !important;
+    background: $color-accent !important;
     color: #fff !important;
-    border-color: $color-text !important;
+    border-color: $color-accent !important;
   }
 
   &__ghost {

@@ -1,0 +1,62 @@
+// 다크 팔레트 (cmip 화면 공통 톤)
+$color-text: #e6edf3;
+$color-muted: #8b949e;
+$color-border: #30363d;
+$color-surface: #161b22;
+$color-surface-2: #1c2128;
+$color-accent: #4493f8;
+
+$radius: 6px;
+
+.brand-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  &__label {
+    font-size: 13px;
+    color: $color-muted;
+  }
+
+  &__row {
+    display: inline-flex;
+    align-self: flex-start;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-surface;
+    overflow: hidden;
+  }
+
+  &__option {
+    appearance: none;
+    border: none;
+    background: none;
+    color: $color-muted;
+    font: inherit;
+    font-size: 14px;
+    padding: 8px 20px;
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease;
+
+    & + & {
+      border-left: 1px solid $color-border;
+    }
+
+    &:hover:not(:disabled):not(.is-active) {
+      color: $color-text;
+      background: $color-surface-2;
+    }
+
+    &.is-active {
+      background: $color-accent;
+      color: #fff;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}

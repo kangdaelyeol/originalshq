@@ -1,5 +1,6 @@
 import { useCsvImporterViewModel, CHANNEL_OPTIONS } from '../view-model'
 import type { DetectedChannel } from '../types'
+import { BrandSelect } from './brand-select'
 import '../styles/csv-importer.scss'
 
 export const CsvImporter = () => {
@@ -27,17 +28,7 @@ export const CsvImporter = () => {
 
   return (
     <div className="csv-importer">
-      <div className="csv-importer__field">
-        <label htmlFor="brand-id">브랜드 ID</label>
-        <input
-          id="brand-id"
-          type="text"
-          value={brandId}
-          onChange={(e) => setBrandId(e.target.value)}
-          placeholder="예: 12"
-          disabled={busy}
-        />
-      </div>
+      <BrandSelect value={brandId} onChange={setBrandId} disabled={busy} />
 
       <div
         className={`csv-importer__dropzone${isDragOver ? ' is-dragover' : ''}`}
@@ -106,7 +97,7 @@ export const CsvImporter = () => {
         <button
           type="button"
           onClick={handlePreview}
-          disabled={busy || !brandId.trim() || selected.length === 0}
+          disabled={busy || selected.length === 0}
         >
           {stage === 'previewing' ? '미리보는 중…' : '미리보기'}
         </button>
@@ -116,7 +107,7 @@ export const CsvImporter = () => {
           onClick={handleImport}
           disabled={busy || !preview || selected.length === 0}
         >
-          {stage === 'importing' ? '적재하는 중…' : '가져오기'}
+          {stage === 'importing' ? '적재하는 중…' : '등록하기'}
         </button>
         {(selected.length > 0 || preview) && (
           <button

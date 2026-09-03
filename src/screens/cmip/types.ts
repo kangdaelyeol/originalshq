@@ -240,6 +240,16 @@ export const ChannelKo = {
 
 export type ChannelKo = (typeof ChannelKo)[keyof typeof ChannelKo]
 
+// --------------------------------------------------------------------------- //
+// 브랜드 — 운영 대상은 xTool / BleeqUp 둘뿐. id = Firestore brands/{id} 문서 ID.
+// --------------------------------------------------------------------------- //
+export const BRAND_OPTIONS = [
+  { id: 'xtool', label: 'xTool' },
+  { id: 'bleequp', label: 'BleeqUp' },
+] as const
+
+export type BrandId = (typeof BRAND_OPTIONS)[number]['id']
+
 export interface WindowStats {
   cost: number
   clicks: number
