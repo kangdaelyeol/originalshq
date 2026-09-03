@@ -1,7 +1,7 @@
 {
   "functions": [
     {
-      "codebase": "default",
+      "codebase": "xtool",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
         "node_modules",
@@ -14,7 +14,23 @@
         "npm --prefix \"$RESOURCE_DIR\" run lint",
         "npm --prefix \"$RESOURCE_DIR\" run build"
       ],
-      "source": "functions"
+      "source": "functions-xtool"
+    },
+    {
+      "codebase": "cmip",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ],
+      "source": "functions-cmip"
     }
   ],
   "firestore": {

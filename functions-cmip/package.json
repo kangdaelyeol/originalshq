@@ -1,0 +1,27 @@
+{
+  "name": "mip-functions",
+  "version": "0.1.0",
+  "description": "MIP 백엔드 — Firebase Functions + Firestore (Python MIP에서 기술 이관 중)",
+  "type": "module",
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test \"test/**/*.test.js\"",
+    "serve": "firebase emulators:start --only functions,firestore,auth,storage",
+    "shell": "firebase functions:shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "dependencies": {
+    "csv-parse": "^5.5.6",
+    "firebase-admin": "^13.0.1",
+    "firebase-functions": "^6.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.14.0"
+  },
+  "private": true
+}
