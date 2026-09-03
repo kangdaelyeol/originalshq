@@ -200,3 +200,5 @@ export const TXT_RANGE_RE = new RegExp(
     '\\s*[-~]\\s*' +
     '(\\d{4})\\s*[.\\-/년]\\s*(\\d{1,2})\\s*[.\\-/월]\\s*(\\d{1,2})\\s*일?',
 )
+
+export { Channel }

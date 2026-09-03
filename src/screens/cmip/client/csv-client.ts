@@ -6,7 +6,7 @@
  *   실패 응답: { error: { message, status, details? } } (HTTP 상태코드도 4xx/5xx로 옴)
  * 이 포맷을 안 지키고 입력값을 그대로 body에 넣거나 응답을 그대로 쓰면 동작하지 않는다.
  */
-import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type {
   PreviewCsvData,
   PreviewCsvResult,
@@ -34,7 +34,7 @@ async function callFunction<TReq, TRes>(
   name: string,
   data: TReq,
 ): Promise<TRes> {
-  const res = await fetch(`${API_BASE}/${name}`, {
+  const res = await fetch(`${CMIP_API_BASE}/${name}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ data }),

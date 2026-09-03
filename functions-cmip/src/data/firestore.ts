@@ -35,7 +35,7 @@ import { Channel } from '../types'
 
 if (getApps().length === 0) initializeApp()
 
-export const db = getFirestore()
+export const db = getFirestore('xtool-read')
 export { FieldValue }
 
 // --------------------------------------------------------------------------- //
