@@ -118,6 +118,40 @@ export const reportsCol = (
 ): CollectionReference<DocumentData> =>
   db.collection('brands').doc(String(brandId)).collection('reports')
 
+/**
+ * brands/{brandId} 문서가 없으면 기본값으로 만든다 (있으면 손대지 않는다).
+ *
+ * 임포트는 brands/{brandId}/performance 서브컬렉션에만 쓰므로 부모 브랜드 문서는
+ * 계속 "존재하지 않는" 상태로 남는다. 그러면 build_analysis 가 "브랜드 없음"으로
+ * 막힌다. importCsv/saveCommerceRevenue 가 먼저 이걸 호출해, 임포트된 브랜드는
+ * 곧바로 리포트가 가능하도록 stub 문서를 보장한다. 이름·KPI·커머스채널을 실제 값으로
+ * 바꾸려면 upsertBrand 로 갱신하면 된다.
+ *
+ * @returns 새로 만들었으면 true
+ */
+export const ensureBrandDoc = async (
+  brandId: string | number,
+): Promise<boolean> => {
+  const ref = brandsCol().doc(String(brandId))
+  const snap = await ref.get()
+  if (snap.exists) return false
+  const doc: BrandDoc = {
+    name: `브랜드 ${brandId}`,
+    industry: '',
+    mainKpi: 'CPA',
+    commerceChannels: [],
+    memo: '',
+    createdAt: FieldValue.serverTimestamp(),
+  }
+  try {
+    await ref.create(doc)
+    return true
+  } catch {
+    // 동시 임포트가 먼저 생성한 경우 등 — 문서 존재만 보장되면 충분하다.
+    return false
+  }
+}
+
 // --------------------------------------------------------------------------- //
 // 문서 ↔ ParsedRow 변환
 // --------------------------------------------------------------------------- //

@@ -131,3 +131,30 @@ export interface SaveCommerceRevenueData {
   entries: ManualCommerceEntry[]
   channel?: Channel
 }
+
+// --------------------------------------------------------------------------- //
+// generateReport — 주간/월간 보고서 구조 데이터
+// brandId만 필수. 나머지는 미지정 시 서버 기본값(주간 / 종료일=어제 / 빈 메모 / pdf 힌트).
+// --------------------------------------------------------------------------- //
+export interface GenerateReportData {
+  brandId: string | number
+  reportType?: 'weekly' | 'monthly'
+  dateStart?: ISODate | null
+  dateEnd?: ISODate | null
+  notes?: string
+  nextPlanNote?: string
+  fmt?: 'pdf' | 'docx'
+}
+
+// --------------------------------------------------------------------------- //
+// upsertBrand — 브랜드 문서 생성/수정
+// brands/{brandId} 문서가 없으면 분석·보고서가 "브랜드 없음"으로 막힌다. 최초 셋업/수정용.
+// --------------------------------------------------------------------------- //
+export interface UpsertBrandData {
+  brandId: string | number
+  name?: string
+  industry?: string
+  mainKpi?: 'CPA' | 'ROAS' | 'DB'
+  commerceChannels?: Channel[]
+  memo?: string
+}

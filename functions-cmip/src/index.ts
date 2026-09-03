@@ -18,14 +18,18 @@ import cors from 'cors'
 import {
   db,
   alertsCol,
+  brandsCol,
+  FieldValue,
   importRowsBatch,
   existingConflictKeys,
   saveManualSmartstore,
 } from './data'
 import { runAlertCheck, calcMortarScore } from './analysis'
+import { generateReport as buildReport } from './reports'
 import { ParseResult, parseBuffer } from './csv'
 import type {
   AlertCheckData,
+  GenerateReportData,
   ImportBatchResult,
   ImportCsvData,
   ImportCsvResult,
@@ -33,6 +37,7 @@ import type {
   PreviewCsvResult,
   MortarScoreData,
   SaveCommerceRevenueData,
+  UpsertBrandData,
   CsvFileInput,
 } from './types'
 
@@ -204,6 +209,95 @@ export const mortarScore = onRequest((request, response) => {
         periodLen || 7,
       )
       response.status(200).send(result)
+    } catch (err) {
+      sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+    }
+  })
+})
+
+/**
+ * 주간/월간 보고서 구조 데이터 — KPI 카드 + 섹션 + 분석 원본(analysis).
+ * build_analysis 를 감싼 최상위 엔드포인트. .pdf/.docx 파일 렌더링은 이 구조를
+ * 입력으로 별도 파이프라인에서 처리한다(fmt 는 어느 렌더러로 넘길지 힌트).
+ */
+export const generateReport = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const {
+        brandId,
+        reportType,
+        dateStart,
+        dateEnd,
+        notes,
+        nextPlanNote,
+        fmt,
+      } = (request.body ?? {}) as Partial<GenerateReportData>
+      if (!brandId) {
+        sendError(response, 400, 'brandId 필요')
+        return
+      }
+      const result = await buildReport(brandId, {
+        reportType: reportType ?? 'weekly',
+        dateStart: dateStart ?? null,
+        dateEnd: dateEnd ?? null,
+        notes: notes ?? '',
+        nextPlanNote: nextPlanNote ?? '',
+        fmt: fmt ?? 'pdf',
+      })
+      response.status(200).send(result)
+    } catch (err) {
+      sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+    }
+  })
+})
+
+/**
+ * 브랜드 문서 생성/수정 — brands/{brandId}.
+ * 이 문서가 없으면 generateReport(build_analysis)가 "브랜드 없음"으로 막힌다.
+ * 최초 셋업(빈 값이면 기본값 채움) 및 부분 수정(merge) 겸용.
+ */
+export const upsertBrand = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { brandId, name, industry, mainKpi, commerceChannels, memo } =
+        (request.body ?? {}) as Partial<UpsertBrandData>
+      if (!brandId) {
+        sendError(response, 400, 'brandId 필요')
+        return
+      }
+
+      const ref = brandsCol().doc(String(brandId))
+      const snap = await ref.get()
+
+      const patch: Record<string, unknown> = {}
+      if (name !== undefined) patch.name = name
+      if (industry !== undefined) patch.industry = industry
+      if (mainKpi !== undefined) patch.mainKpi = mainKpi
+      if (commerceChannels !== undefined)
+        patch.commerceChannels = commerceChannels
+      if (memo !== undefined) patch.memo = memo
+
+      if (!snap.exists) {
+        patch.name = patch.name ?? `브랜드 ${brandId}`
+        patch.industry = patch.industry ?? ''
+        patch.mainKpi = patch.mainKpi ?? 'CPA'
+        patch.commerceChannels = patch.commerceChannels ?? []
+        patch.memo = patch.memo ?? ''
+        patch.createdAt = FieldValue.serverTimestamp()
+      }
+
+      await ref.set(patch, { merge: true })
+      response
+        .status(200)
+        .send({ brandId: String(brandId), created: !snap.exists })
     } catch (err) {
       sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
     }

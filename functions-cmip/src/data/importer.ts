@@ -16,7 +16,7 @@ import type {
   Firestore,
 } from 'firebase-admin/firestore'
 import { parseDate } from '../utils'
-import { perfCol, rowToPerfDoc } from './firestore'
+import { ensureBrandDoc, perfCol, rowToPerfDoc } from './firestore'
 import type { ParsedRow } from '../csv'
 import {
   Channel,
@@ -43,6 +43,9 @@ export const importRowsBatch = async (
     else if (item) rows.push(item as ParsedRow)
   }
   if (rows.length === 0) return { inserted: 0, deleted: 0 }
+
+  // 0) 부모 브랜드 문서 보장 — 임포트된 브랜드는 곧바로 리포트가 가능해야 한다.
+  await ensureBrandDoc(brandId)
 
   // 1) 삭제 대상 조합 수집
   const keys = new Map<string, ParsedRow>()

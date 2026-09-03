@@ -52,6 +52,11 @@ export function won(x: number | null | undefined): string {
   return '₩' + Math.round(x || 0).toLocaleString('en-US')
 }
 
+/** 천단위 콤마 + 소수 0자리 — Python `f"{x:,.0f}"` / `f"{x:,}"`. */
+export function fmtInt(x: number | null | undefined): string {
+  return Math.round(x || 0).toLocaleString('en-US')
+}
+
 /** "+12%" / "-8%" 형태 (소수 0자리). Python `f"{x:+.0f}%"`. */
 export function pctStr(x: number, digits = 0): string {
   const v = Number(x)
