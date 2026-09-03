@@ -1,7 +1,7 @@
 {
-  "name": "mip-functions",
+  "name": "cmip-functions",
   "version": "0.1.0",
-  "description": "MIP 백엔드 — Firebase Functions + Firestore (Python MIP에서 기술 이관 중)",
+  "description": "MIP 백엔드 — for CyanInternational",
   "type": "module",
   "engines": {
     "node": "22"
@@ -9,6 +9,8 @@
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
     "test": "node --test \"test/**/*.test.js\"",
     "serve": "firebase emulators:start --only functions,firestore,auth,storage",
     "shell": "firebase functions:shell",
