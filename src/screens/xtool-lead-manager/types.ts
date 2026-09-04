@@ -78,3 +78,10 @@ export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
   createdAt: '',
   state: 'new',
 }
+
+export interface Timestamp {
+  toDate(): Date;
+  toMillis(): number;
+  seconds: number;
+  nanoseconds: number;
+}
