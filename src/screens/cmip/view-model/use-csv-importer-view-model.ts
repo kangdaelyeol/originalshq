@@ -11,7 +11,8 @@ import {
   type PreviewCsvResult,
 } from '../types'
 import { fileToBase64 } from '../utils'
-import { importCsv, previewCsv } from '../client'
+import { parseBuffer } from '../csv'
+import { importCsv } from '../client'
 
 export interface SelectedFile {
   id: string
@@ -108,14 +109,33 @@ export const useCsvImporterViewModel = () => {
     [addFiles],
   )
 
+  // 미리보기는 프론트에서 파싱한다 (업로드·콜드스타트 없음). 충돌 체크는 안 하고,
+  // 실제 덮어쓰기 여부는 가져오기 응답의 deleted 수로 확인한다.
   const handlePreview = useCallback(async () => {
     if (selected.length === 0) return
     setError(null)
     setImportResult(null)
     setStage('previewing')
     try {
-      const files = await toFileInputs(selected)
-      const result = await previewCsv({ brandId, files })
+      const results = await Promise.all(
+        selected.map(async (sf) => {
+          const bytes = new Uint8Array(await sf.file.arrayBuffer())
+          return parseBuffer(bytes, sf.file.name, sf.channelHint)
+        }),
+      )
+      const result: PreviewCsvResult = {
+        files: results.map((r) => ({
+          source: r.sourceName,
+          channel: r.channel,
+          format: r.detectedFormat,
+          rowCount: r.rows.length,
+          dateRange: r.dateRange,
+          warnings: r.warnings,
+          sample: r.rows.slice(0, 5),
+        })),
+        totalRows: results.reduce((n, r) => n + r.rows.length, 0),
+        conflicts: [],
+      }
       setPreview(result)
       setStage('previewed')
     } catch (err) {
@@ -124,7 +144,7 @@ export const useCsvImporterViewModel = () => {
       )
       setStage('idle')
     }
-  }, [brandId, selected])
+  }, [selected])
 
   const handleImport = useCallback(async () => {
     if (selected.length === 0) return

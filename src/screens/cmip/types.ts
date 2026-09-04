@@ -209,6 +209,9 @@ export const FILENAME_HINTS: ReadonlyArray<
   ['smartstore', ['smartstore', '스마트스토어', '스토어']],
 ]
 
+// 네이버 애드부스트/GFA 등 검색광고가 아닌 네이버 매체의 통합 캠페인 라벨.
+export const NAVER_OTHER_MEDIA_LABEL = '네이버 기타매체 (애드부스트/GFA)'
+
 // 기간 추출용 (날짜 컬럼 없는 집계형)
 export const FN_RANGE_RE = /(\d{8})[_-](\d{8})/
 
@@ -395,5 +398,24 @@ export class ParseResult {
       .filter(Boolean)
       .sort()
     return ds.length ? [ds[0], ds[ds.length - 1]] : [null, null]
+  }
+}
+
+/** 빈 ParsedRow 한 줄. csv 파서가 매체별 값을 채워 넣는 시작점. */
+export function blankRow(channel: DetectedChannel, d: ISODate): ParsedRow {
+  return {
+    date: d,
+    channel,
+    campaign_name: '',
+    adgroup_name: '',
+    keyword: '',
+    impressions: 0,
+    clicks: 0,
+    cost: 0,
+    conversion: 0,
+    conv_indirect: 0,
+    conv_purchase: 0,
+    revenue: 0,
+    result_type: null,
   }
 }

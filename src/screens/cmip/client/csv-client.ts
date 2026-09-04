@@ -5,8 +5,6 @@
  */
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type {
-  PreviewCsvData,
-  PreviewCsvResult,
   ImportCsvData,
   ImportCsvResult,
   AlertCheckData,
@@ -54,10 +52,6 @@ export async function callFunction<TReq, TRes>(
   }
 
   return body as TRes
-}
-
-export function previewCsv(data: PreviewCsvData): Promise<PreviewCsvResult> {
-  return callFunction<PreviewCsvData, PreviewCsvResult>('previewCsv', data)
 }
 
 export function importCsv(data: ImportCsvData): Promise<ImportCsvResult> {
