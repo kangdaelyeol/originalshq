@@ -1,3 +1,7 @@
+/************************************** *
+ ********************* 샘플테스트 보드 *****
+ ************************************** */
+
 import type { Timestamp } from './common'
 
 type State = 'pending' | 'processing' | 'completed'

@@ -1,6 +1,6 @@
-/************************************** *
- ********************* 방문체험 보드 *****
- ************************************** */
+/************************************************ *
+ ********************* 방문체험 / 주말 방문체험 보드 *****
+ ************************************************ */
 
 import type { ConsultationStatus, ContactTimeline, Timestamp } from './common'
 
@@ -13,7 +13,7 @@ type ExperienceState =
   | '체험 완료'
   | '체험 취소'
 
-type purchasePosibility =
+type PurchaseProbability =
   | 'LOW' // 낮음
   | 'MEDIUM' // 중간
   | 'HIGH' // 높음
@@ -21,7 +21,7 @@ type purchasePosibility =
   | '기기 사용 교육'
   | '재방문 예정'
 
-interface VisitExperience {
+interface VisitExperienceField {
   itemId: string
   // 주말 / 평일 구분
   isWeekendSlot: boolean
@@ -36,7 +36,7 @@ interface VisitExperience {
   // 체험 상태
   experienceState: ExperienceState
   // 구매 가능성
-  purchaseProbability: purchasePosibility
+  purchaseProbability: PurchaseProbability
   // 상담 진행 상태
   consultationStatus: ConsultationStatus
   // 상담 내역 (자유 텍스트)
@@ -55,7 +55,7 @@ interface VisitExperience {
 }
 
 // 방문체험 보드 (평일?)
-export interface WeekdayVisitExperience extends VisitExperience {
+interface WeekdayVisitExperience extends VisitExperienceField {
   isWeekendSlot: false
   // 유입 경로
   funnel?: Funnel
@@ -65,6 +65,8 @@ export interface WeekdayVisitExperience extends VisitExperience {
   isRecorded: boolean
 }
 
-export interface WeekendVisitExperience extends VisitExperience {
+interface WeekendVisitExperience extends VisitExperienceField {
   isWeekendSlot: true
 }
+
+export type VisitExperience = WeekdayVisitExperience | WeekendVisitExperience
