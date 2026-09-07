@@ -3,11 +3,11 @@ import type { OnlineContact } from './contact'
 
 export interface User {
   userId: string
-  phones: string[] // PK
+  phone: string[] // PK
   orgName?: string
   nameRaw: string[]
   contacts: OnlineContact[]
-  emails: string[]
+  email: string[]
   aliases: string[]
   /** phones 기준 결정적 파생값. buildExternalId() 참조 */
   /** fn/ln 전송 가능 여부. 회사명뿐이거나 미결이면 false */
@@ -28,4 +28,8 @@ export interface User {
 
   createdAt: Timestamp
   updatedAt: Timestamp
+
+  // 대표 주소 및 우편번호
+  address?: string
+  postalCode?: string
 }
