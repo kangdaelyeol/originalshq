@@ -23,6 +23,7 @@ type PurchaseProbability =
 
 interface VisitExperienceField {
   itemId: string
+  createdAt: Timestamp
   // 주말 / 평일 구분
   isWeekendSlot: boolean
   // 방문체험 일자

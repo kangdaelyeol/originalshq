@@ -12,7 +12,6 @@ type MessageSendState = 'pending' | 'compleled' | 'waiting'
 
 export interface PackageSend {
   itemId: string
-  // 생성 시각
   createdAt: Timestamp
   // 우편번호
   postalCode: string
