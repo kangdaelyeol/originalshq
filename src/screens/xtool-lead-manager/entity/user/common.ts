@@ -5,48 +5,7 @@ export interface Timestamp {
   nanoseconds: number
 }
 
-/**
- * 상담/영업 프로세스 단계별 발생 시각 (Firebase Timestamp)
- * 발생하지 않은 이벤트는 필드 자체를 생략하거나 null로 둡니다.
- */
-export interface ContactTimeline {
-  /** 접수일 */
-  createdAt: Timestamp
-  /** 상담 마감일 */
-  consultationDeadline: Timestamp
-  // 콜백 1-4 단계 진행일
-  callback1At?: Timestamp | null
-  callback2At?: Timestamp | null
-  callback3At?: Timestamp | null
-  callback4At?: Timestamp | null
-  /** 미전환일 */
-  notConvertedAt?: Timestamp | null
-  /** 결제일 */
-  paidAt?: Timestamp | null
-  /** 보류일 */
-  onHoldAt?: Timestamp | null
-  /** 보류 종료일 */
-  onHoldEndedAt?: Timestamp | null
-  /** 샘플 테스트 링크 전달일 */
-  sampleTestLinkSentAt?: Timestamp | null
-  /** 방문체험 확정일 */
-  visitExperienceConfirmedAt?: Timestamp | null
-  /** 방문체험 예약링크 전달일 */
-  visitExperienceLinkSentAt?: Timestamp | null
-  /** 견적서 발행일 */
-  quotationIssuedAt?: Timestamp | null
-  /**
-   * 첫콜까지 걸린 시간
-   * 주의: 이 항목은 성격상 "시각(Timestamp)"이 아니라 "소요 시간(duration)"에
-   * 더 가깝습니다. 접수일(receivedAt) 대비 첫 콜백까지 걸린 시간(ms 등)을
-   * 별도 number 필드로 저장하는 것을 권장하며, 그럴 경우
-   * `firstCallResponseTimeMs: number` 형태로 분리하는 게 계산/조회에 유리합니다.
-   * 우선 요청하신 대로 Timestamp 타입을 유지해둡니다.
-   */
-  firstCallRespondedAt?: Timestamp | null
-}
-
-/** 상담 진행 상태 */
+// 상담 진행 상태
 export type ConsultationStatus =
   | 'NEW_INQUIRY' // 신규 상담 유입
   | 'CALLBACK_1' // 콜백 1단계
@@ -57,3 +16,33 @@ export type ConsultationStatus =
   | 'NOT_CONVERTED' // 미전환
   | 'MISENTERED' // 오기입
   | 'PAID' // 결제
+
+export interface ContactTimeline {
+  // 접수일
+  createdAt: Timestamp
+  // 상담 마감일
+  consultationDeadline: Timestamp
+  // 콜백 1-4 단계 진행일
+  callback1At?: Timestamp | null
+  callback2At?: Timestamp | null
+  callback3At?: Timestamp | null
+  callback4At?: Timestamp | null
+  // 미전환일
+  notConvertedAt?: Timestamp | null
+  // 결제일
+  paidAt?: Timestamp | null
+  // 보류일
+  onHoldAt?: Timestamp | null
+  // 보류 종료일
+  onHoldEndedAt?: Timestamp | null
+  // 샘플 테스트 링크 전달일
+  sampleTestLinkSentAt?: Timestamp | null
+  // 방문체험 확정일
+  visitExperienceConfirmedAt?: Timestamp | null
+  // 방문체험 예약링크 전달일
+  visitExperienceLinkSentAt?: Timestamp | null
+  // 견적서 발행일
+  quotationIssuedAt?: Timestamp | null
+  // 첫콜까지 걸린 시간
+  firstCallRespondedAt?: Timestamp | null
+}

@@ -1,4 +1,6 @@
-/** 방문체험보드 Scheme */
+/************************************** *
+ ********************* 방문체험 보드 *****
+ ************************************** */
 
 import type { ConsultationStatus, ContactTimeline, Timestamp } from './common'
 

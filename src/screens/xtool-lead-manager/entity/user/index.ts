@@ -2,12 +2,11 @@ import type { Timestamp } from '../../types'
 import type { Contact } from './contact'
 
 export interface User {
-  userId: string
   phone: string[] // PK
+  username: string[]
   orgName?: string
-  nameRaw: string[]
   email: string[]
-  aliases: string[]
+
   // 대표 주소 및 우편번호
   address?: string
   postalCode?: string
@@ -18,7 +17,6 @@ export interface User {
   lifetimeValue: number // KRW
 
   /* ── 병합 이력 ── */
-  mergedFrom: string[] // 흡수한 userId 목록
   canonicalUserId?: string // 이 문서가 패자면 승자 포인터 (tombstone)
 
   /** 이 유저를 만든 모든 원본 */
@@ -26,5 +24,5 @@ export interface User {
 
   createdAt: Timestamp
   updatedAt: Timestamp
-  contacts: Contact[]
+  contacts?: Contact[]
 }

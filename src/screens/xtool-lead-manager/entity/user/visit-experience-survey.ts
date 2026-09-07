@@ -4,11 +4,11 @@ import type { Timestamp } from './common'
 type Funnel = 'youtube' | 'instagram' | 'facebook' | 'recommend' | 'other'
 
 /* 
-뛰어난 기능과 디자인  - 'features&design'
-사용 후기·리뷰 등 검증된 신뢰도 - 'reliability'
-믿을 수 있는 AS 및 사후지원 - 'AS'
-빠른 배송 및 설치 서비스 - 'quickDelivery'
-합리적인 가격 대비 성능 - 'performance'
+  뛰어난 기능과 디자인  - 'features&design'
+  사용 후기·리뷰 등 검증된 신뢰도 - 'reliability'
+  믿을 수 있는 AS 및 사후지원 - 'AS'
+  빠른 배송 및 설치 서비스 - 'quickDelivery'
+  합리적인 가격 대비 성능 - 'performance'
 */
 type Insight =
   | 'features&design'
