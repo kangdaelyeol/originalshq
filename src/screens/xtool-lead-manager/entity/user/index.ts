@@ -1,18 +1,16 @@
 import type { Timestamp } from '../../types'
-import type { OnlineContact } from './contact'
+import type { Contact } from './contact'
 
 export interface User {
   userId: string
   phone: string[] // PK
   orgName?: string
   nameRaw: string[]
-  contacts: OnlineContact[]
   email: string[]
   aliases: string[]
-  /** phones 기준 결정적 파생값. buildExternalId() 참조 */
-  /** fn/ln 전송 가능 여부. 회사명뿐이거나 미결이면 false */
-  nameSendable: boolean
-  addresses?: string
+  // 대표 주소 및 우편번호
+  address?: string
+  postalCode?: string
 
   /* ── 롤업: 리스트 화면이 users 컬렉션만 읽고 끝나도록 ── */
   lastContactAt?: Timestamp
@@ -28,8 +26,5 @@ export interface User {
 
   createdAt: Timestamp
   updatedAt: Timestamp
-
-  // 대표 주소 및 우편번호
-  address?: string
-  postalCode?: string
+  contacts: Contact[]
 }

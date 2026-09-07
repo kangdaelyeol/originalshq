@@ -1,7 +1,5 @@
 import type { ConsultationStatus, ContactTimeline } from './common'
 
-
-
 /** 유입 경로 (제품/서비스 라인) */
 export type ConsultationDevice =
   | 'F2_ULTRA' // F2Ultra
@@ -20,7 +18,7 @@ type PurchaseProbability =
   | 'VERY_HIGH' // 매우높음
 
 /** B2B 영업보드 Scheme */
-export interface OnlineContact {
+interface OnlineContact {
   itemId: string
   /** 담당자 */
   assignedManagers: string[]
@@ -45,7 +43,7 @@ export interface OnlineContact {
 }
 
 /** 기타 오프라인 보드 Scheme */
-export interface OfflineContact {
+interface OfflineContact {
   itemId: string
   /** 구매 확률 */
   purchaseProbability: PurchaseProbability
@@ -68,3 +66,5 @@ export interface OfflineContact {
   /** 단계별 이벤트 발생 시각 모음 */
   timeline: ContactTimeline
 }
+
+export type Contact = OnlineContact | OfflineContact
