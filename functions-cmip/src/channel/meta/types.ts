@@ -39,6 +39,13 @@ export interface DayOfWeekSummary extends MetricsSummary {
   dayOfWeek: string
 }
 
+export interface DateRange {
+  start: string
+  end: string
+}
+
 export interface WeekSummary extends MetricsSummary {
-  during: string
+  period: string
+  startDate: string
+  endDate: string
 }

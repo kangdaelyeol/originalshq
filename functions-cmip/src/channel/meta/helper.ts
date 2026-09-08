@@ -6,7 +6,7 @@ import {
   MetricsSummary,
   WeekSummary,
 } from './types'
-import { sumRows } from './utils'
+import { buildWeekRanges, formatMD, sumRows } from './utils'
 
 const DAY_NAMES_BY_INDEX = ['일', '월', '화', '수', '목', '금', '토']
 const DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일']
@@ -32,8 +32,25 @@ export const summarizeByDate = (data: MetaInsight): DateSummary[] => {
 }
 
 // 주차별 성과 추이
-export const summarizeByWeek = (data: MetaInsight): WeekSummary[] => {
-  
+export const summarizeByWeek = (
+  data: MetaInsight,
+  startDate: string,
+  endDate: string,
+): WeekSummary[] => {
+  const ranges = buildWeekRanges(startDate, endDate)
+
+  return ranges.map((range) => {
+    const rows = data.filter(
+      (row) => row.date_start >= range.start && row.date_start <= range.end,
+    )
+
+    return {
+      period: `${formatMD(range.start)}~${formatMD(range.end)}`,
+      startDate: range.start,
+      endDate: range.end,
+      ...sumRows(rows),
+    }
+  })
 }
 
 // 요일별 합계
