@@ -5,7 +5,7 @@
  * 보고서 종료일)로 앵커링한다. MIP는 과거 CSV 후행 업로드 방식이라 today 고정이면
  * 알림이 조용히 안 뜬다. 대시보드 등 "지금" 화면만 기본값(오늘)을 쓴다.
  */
-import { addDays, todayISO, won, pctStr } from '../utils'
+import { addDays, todayISO, won, pctStr } from '../channel/utils'
 import { alertsCol, fetchPerfRows, FieldValue } from '../data/firestore'
 import type { AlertDoc, AlertSeverity } from '../data/firestore'
 import type { ParsedRow, DetectedChannel } from '../csv'

@@ -2,7 +2,7 @@
  * 기간 추출 (날짜 컬럼 없는 집계형) — Python `_range_from_filename`, `_range_from_text` 이관.
  */
 import { ISODate } from '../types'
-import { parseDate } from '../utils'
+import { parseDate } from '../channel/utils'
 import { FN_RANGE_RE, TXT_RANGE_RE } from './aliases'
 
 export type DateSpan = readonly [ISODate, ISODate]

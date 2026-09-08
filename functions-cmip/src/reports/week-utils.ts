@@ -8,7 +8,7 @@
  * `(label, ws, we)` 튜플, weekly/monthly 분기)로부터 동작을 복원했다. 라벨은 "M/D~M/D"
  * 형식으로 통일했다 — 원본과 표기가 다르면 이 파일만 맞추면 된다.
  */
-import { addDays, fromISO } from '../utils/dates'
+import { addDays, fromISO } from '../channel/utils/dates'
 import type { ISODate } from '../types'
 
 export interface WeekSpan {

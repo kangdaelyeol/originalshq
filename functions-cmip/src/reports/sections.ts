@@ -10,7 +10,7 @@
  * 1부터 순번을 매긴다(건너뛴 섹션이 있어도 번호가 비지 않음).
  */
 import type { BuildAnalysisResult, Funnel } from './analyzer'
-import { fmtInt, pctChange, pctStr, won } from '../utils/matrix'
+import { fmtInt, pctChange, pctStr, won } from '../channel/utils/matrix'
 
 // --------------------------------------------------------------------------- //
 // 타입
@@ -74,7 +74,11 @@ const pctText = (x: number, digits = 2): string => `${x.toFixed(digits)}%`
 export const kpiCards = (ana: BuildAnalysisResult): KpiCard[] => {
   const { cur, prev } = ana
   const cards: KpiCard[] = [
-    { label: '광고비', value: won(cur.cost), delta: delta(cur.cost, prev.cost) },
+    {
+      label: '광고비',
+      value: won(cur.cost),
+      delta: delta(cur.cost, prev.cost),
+    },
     {
       label: '전환',
       value: `${fmtInt(cur.conv)}건`,
@@ -135,7 +139,16 @@ export const sections = (ana: BuildAnalysisResult): ReportSection[] => {
       title: '주차별 성과 추이',
       kind: 'table',
       body: {
-        headers: ['기간', '노출', '클릭', 'CTR', 'CPC', '광고비', '전환', 'CPA'],
+        headers: [
+          '기간',
+          '노출',
+          '클릭',
+          'CTR',
+          'CPC',
+          '광고비',
+          '전환',
+          'CPA',
+        ],
         rows: ana.weekly_trend.map((w) => [
           w.label,
           fmtInt(w.imps),

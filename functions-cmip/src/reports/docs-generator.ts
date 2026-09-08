@@ -14,7 +14,7 @@ import type { BuildAnalysisResult } from './analyzer'
 import { kpiCards, sections } from './sections'
 import type { KpiCard, ReportSection } from './sections'
 import type { ReportFmt, ReportType } from '../data/firestore'
-import { addDays, todayISO } from '../utils/dates'
+import { addDays, todayISO } from '../channel/utils/dates'
 import type { ISODate } from '../types'
 
 export interface GenerateReportOptions {

@@ -15,7 +15,7 @@
 import { parse as parseCsv } from 'csv-parse/sync'
 
 import { NAVER_OTHER_MEDIA_LABEL } from '../constants'
-import { parseDate, dateRange, todayISO } from '../utils/dates'
+import { parseDate, dateRange, todayISO } from '../channel/utils/dates'
 import { isSummaryLabel, toInt, toFloat } from './primitives'
 import {
   repairHeader,

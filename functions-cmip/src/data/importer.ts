@@ -15,7 +15,7 @@ import type {
   DocumentData,
   Firestore,
 } from 'firebase-admin/firestore'
-import { parseDate } from '../utils'
+import { parseDate } from '../channel/utils'
 import { ensureBrandDoc, perfCol, rowToPerfDoc } from './firestore'
 import type { ParsedRow } from '../csv'
 import {
