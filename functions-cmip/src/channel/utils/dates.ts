@@ -6,7 +6,7 @@
  * 표준형을 ISO 문자열 "YYYY-MM-DD"로 고정하고, 연산은 UTC 기준으로만 한다.
  */
 
-import { ISODate } from '../types'
+import { ISODate } from '../../types'
 
 export const toISO = (d: Date): ISODate => {
   const y = d.getUTCFullYear()
