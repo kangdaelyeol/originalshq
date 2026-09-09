@@ -47,6 +47,12 @@ const DELTA_LABEL: Record<InsightView, string> = {
   byGroupedWeek: '전주 대비',
 }
 
+const X_AXIS_LABEL: Record<InsightView, string> = {
+  byDate: '날짜',
+  byDayOfWeek: '요일',
+  byGroupedWeek: '기간',
+}
+
 interface MetaInsightChartModalProps {
   data: MetaInsightSummary
   onClose: () => void
@@ -151,6 +157,8 @@ export const MetaInsightChartModal = ({
             type={chartType}
             valueFormat={metric.format}
             deltaLabel={DELTA_LABEL[view]}
+            xAxisLabel={X_AXIS_LABEL[view]}
+            yAxisUnit={metric.unit}
           />
         </div>
       </div>

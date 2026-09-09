@@ -17,14 +17,18 @@ interface BarLineChartProps {
   color?: string
   /** 호버 툴팁의 "이전 대비" 문구 — 뷰에 맞게 부모가 지정(예: '전일 대비', '전주 대비'). */
   deltaLabel?: string
+  /** x축이 뭘 나열한 건지 — 예: '날짜', '요일', '기간'. */
+  xAxisLabel?: string
+  /** y축 단위 — 예: '원', '%'. 있을 때만 "(단위)"로 좌상단에 표시. */
+  yAxisUnit?: string
 }
 
 // viewBox 기준 좌표계 — SVG가 컨테이너 폭에 맞춰 그대로 스케일된다.
 const VB_W = 720
 const VB_H = 280
-const MARGIN_TOP = 28
+const MARGIN_TOP = 40
 const MARGIN_RIGHT = 12
-const MARGIN_BOTTOM = 30
+const MARGIN_BOTTOM = 44
 const MARGIN_LEFT_MIN = 40
 
 const SURFACE = '#161b22'
@@ -82,6 +86,8 @@ export const BarLineChart = ({
   valueFormat,
   color = '#4493f8',
   deltaLabel = '이전 대비',
+  xAxisLabel,
+  yAxisUnit,
 }: BarLineChartProps) => {
   const [hover, setHover] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -158,6 +164,26 @@ export const BarLineChart = ({
         role="img"
         aria-label="성과 그래프"
       >
+        {/* y축 단위 — 좌상단에 "(단위)"로 한 번만 표시 */}
+        {yAxisUnit && (
+          <text x={4} y={14} textAnchor="start" fontSize={10} fill={MUTED}>
+            ({yAxisUnit})
+          </text>
+        )}
+
+        {/* x축 제목 — 무엇을 나열한 축인지 */}
+        {xAxisLabel && (
+          <text
+            x={MARGIN_LEFT + PLOT_W / 2}
+            y={VB_H - 6}
+            textAnchor="middle"
+            fontSize={10}
+            fill={MUTED}
+          >
+            {xAxisLabel}
+          </text>
+        )}
+
         {/* 그리드 + y축 눈금 */}
         {ticks.map((t) => (
           <g key={t}>

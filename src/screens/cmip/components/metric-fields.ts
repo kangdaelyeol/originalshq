@@ -11,6 +11,8 @@ export interface MetricField {
   format: (v: number) => string
   /** 표/그래프 축용 — 단위 없이 간결하게. */
   formatCompact: (v: number) => string
+  /** 그래프 y축 제목에 "(단위)"로 붙는 값. */
+  unit: string
 }
 
 const num = (v: number): string => v.toLocaleString()
@@ -33,19 +35,39 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     label: '노출수(Impression)',
     format: num,
     formatCompact: num,
+    unit: '회',
   },
-  { key: 'clicks', label: '클릭수(Clicks)', format: num, formatCompact: num },
-  { key: 'spend', label: '지출액(Spend)', format: won, formatCompact: num },
+  {
+    key: 'clicks',
+    label: '클릭수(Clicks)',
+    format: num,
+    formatCompact: num,
+    unit: '회',
+  },
+  {
+    key: 'spend',
+    label: '지출액(Spend)',
+    format: won,
+    formatCompact: num,
+    unit: '원',
+  },
   {
     key: 'conversions',
     label: '전환수(Conversion)',
     format: num,
     formatCompact: num,
+    unit: '건',
   },
-  { key: 'ctr', label: 'CTR', format: pct2, formatCompact: num2 },
-  { key: 'cpc', label: 'CPC', format: won2, formatCompact: num2 },
-  { key: 'cpa', label: 'CPA', format: won2, formatCompact: num2 },
-  { key: 'cvr', label: 'CVR', format: pct2, formatCompact: num2 },
-  { key: 'cpm', label: 'CPM', format: won2, formatCompact: num2 },
-  { key: 'frequency', label: 'Frequency', format: num2, formatCompact: num2 },
+  { key: 'ctr', label: 'CTR', format: pct2, formatCompact: num2, unit: '%' },
+  { key: 'cpc', label: 'CPC', format: won2, formatCompact: num2, unit: '원' },
+  { key: 'cpa', label: 'CPA', format: won2, formatCompact: num2, unit: '원' },
+  { key: 'cvr', label: 'CVR', format: pct2, formatCompact: num2, unit: '%' },
+  { key: 'cpm', label: 'CPM', format: won2, formatCompact: num2, unit: '원' },
+  {
+    key: 'frequency',
+    label: 'Frequency',
+    format: num2,
+    formatCompact: num2,
+    unit: '회',
+  },
 ]
