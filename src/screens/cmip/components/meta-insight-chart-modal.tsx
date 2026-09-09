@@ -9,6 +9,7 @@ import type {
 import { METRIC_FIELDS } from './metric-fields'
 import { SegmentedToggle } from './segmented-toggle'
 import { BarLineChart, type ChartPoint, type ChartType } from './bar-line-chart'
+import { formatMD } from '../utils'
 import '../styles/meta-insight-chart-modal.scss'
 
 type InsightView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
@@ -32,7 +33,7 @@ const METRIC_OPTIONS = METRIC_FIELDS.map((f) => ({
 function labelOf(view: InsightView, row: MetricsSummary): string {
   switch (view) {
     case 'byDate':
-      return (row as DateSummary).date
+      return formatMD((row as DateSummary).date)
     case 'byDayOfWeek':
       return (row as DayOfWeekSummary).dayOfWeek
     case 'byGroupedWeek':

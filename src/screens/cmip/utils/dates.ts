@@ -88,3 +88,9 @@ export const todayISO = (): ISODate => {
     new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate())),
   )
 }
+
+/** "YYYY-MM-DD" → "M/D" (예: "9/1"). 그래프 축처럼 짧은 표기가 필요할 때. */
+export const formatMD = (iso: ISODate): string => {
+  const d = fromISO(iso)
+  return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
+}
