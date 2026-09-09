@@ -12,15 +12,17 @@ export type ChartType = 'bar' | 'line'
 interface BarLineChartProps {
   points: readonly ChartPoint[]
   type: ChartType
-  /** 툴팁/축 눈금에 쓰는 값 포맷터. */
+  /** 값 표시(정적 라벨/툴팁/축 눈금)에 쓰는 포맷터. */
   valueFormat: (v: number) => string
   color?: string
+  /** 호버 툴팁의 "이전 대비" 문구 — 뷰에 맞게 부모가 지정(예: '전일 대비', '전주 대비'). */
+  deltaLabel?: string
 }
 
 // viewBox 기준 좌표계 — SVG가 컨테이너 폭에 맞춰 그대로 스케일된다.
 const VB_W = 720
 const VB_H = 280
-const MARGIN_TOP = 16
+const MARGIN_TOP = 28
 const MARGIN_RIGHT = 12
 const MARGIN_BOTTOM = 30
 const MARGIN_LEFT_MIN = 40
@@ -28,6 +30,8 @@ const MARGIN_LEFT_MIN = 40
 const SURFACE = '#161b22'
 const GRID = '#21262d'
 const MUTED = '#8b949e'
+const UP = '#3fb950'
+const DOWN = '#ff7b72'
 
 /** roughStep 이상인 가장 가까운 "깔끔한" 스텝(1/2/5 × 10^n). */
 function niceStep(roughStep: number): number {
@@ -77,6 +81,7 @@ export const BarLineChart = ({
   type,
   valueFormat,
   color = '#4493f8',
+  deltaLabel = '이전 대비',
 }: BarLineChartProps) => {
   const [hover, setHover] = useState<number | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -108,8 +113,9 @@ export const BarLineChart = ({
   const xCenter = (i: number) => MARGIN_LEFT + bandW * i + bandW / 2
   const yFor = (v: number) => MARGIN_TOP + PLOT_H - (v / niceMax) * PLOT_H
 
-  // x축 라벨이 너무 촘촘하면 겹치지 않도록 일부만 표시.
+  // 라벨(x축 + 정적 수치)이 너무 촘촘하면 겹치지 않도록 일부만 표시.
   const labelStride = Math.max(1, Math.ceil(n / 8))
+  const showLabelAt = (i: number) => i % labelStride === 0 || i === n - 1
 
   const pickIndexFromClientX = (clientX: number): number => {
     const rect = wrapRef.current?.getBoundingClientRect()
@@ -132,6 +138,16 @@ export const BarLineChart = ({
       : ''
 
   const hoverPoint = hover != null ? points[hover] : null
+  const prevPoint = hover != null && hover > 0 ? points[hover - 1] : null
+  const delta = hoverPoint && prevPoint ? hoverPoint.value - prevPoint.value : null
+  const deltaPct =
+    delta != null && prevPoint && prevPoint.value !== 0
+      ? (delta / Math.abs(prevPoint.value)) * 100
+      : null
+  const deltaDirection =
+    delta == null || delta === 0 ? 'flat' : delta > 0 ? 'up' : 'down'
+  const deltaColor =
+    deltaDirection === 'up' ? UP : deltaDirection === 'down' ? DOWN : MUTED
 
   return (
     <div className="bar-line-chart" ref={wrapRef}>
@@ -168,7 +184,7 @@ export const BarLineChart = ({
 
         {/* x축 라벨 */}
         {points.map((p, i) =>
-          i % labelStride === 0 || i === n - 1 ? (
+          showLabelAt(i) ? (
             <text
               key={`x-${i}`}
               x={xCenter(i)}
@@ -227,6 +243,33 @@ export const BarLineChart = ({
           </>
         )}
 
+        {/* 정적 수치 라벨 — 약한 톤으로 항상 표시(호버와 무관). 촘촘할 때는
+            x축 라벨과 동일한 기준으로 일부만 그려 겹침을 피한다. */}
+        {points.map((p, i) => {
+          if (!showLabelAt(i)) return null
+          const y =
+            type === 'bar'
+              ? Math.max(yFor(p.value) - 6, MARGIN_TOP - 6)
+              : Math.max(yFor(p.value) - 12, MARGIN_TOP - 6)
+          return (
+            <text
+              key={`val-${i}`}
+              x={xCenter(i)}
+              y={y}
+              textAnchor="middle"
+              fontSize={10}
+              fill={MUTED}
+              opacity={0.85}
+              paintOrder="stroke"
+              stroke={SURFACE}
+              strokeWidth={3}
+              strokeLinejoin="round"
+            >
+              {valueFormat(p.value)}
+            </text>
+          )
+        })}
+
         {/* 크로스헤어 (선 그래프에서만) */}
         {type === 'line' && hover != null && (
           <line
@@ -274,12 +317,32 @@ export const BarLineChart = ({
             top: `${(yFor(hoverPoint.value) / VB_H) * 100}%`,
           }}
         >
-          <span className="bar-line-chart__tooltip-label">
+          <div className="bar-line-chart__tooltip-label">
             {hoverPoint.label}
-          </span>
-          <span className="bar-line-chart__tooltip-value">
+          </div>
+          <div className="bar-line-chart__tooltip-value">
             {valueFormat(hoverPoint.value)}
-          </span>
+          </div>
+          {delta != null && (
+            <div
+              className="bar-line-chart__tooltip-delta"
+              style={{ color: deltaColor }}
+            >
+              <span className="bar-line-chart__tooltip-delta-label">
+                {deltaLabel}
+              </span>
+              <span className="bar-line-chart__tooltip-delta-value">
+                {deltaDirection === 'up'
+                  ? '▲'
+                  : deltaDirection === 'down'
+                    ? '▼'
+                    : '—'}{' '}
+                {valueFormat(Math.abs(delta))}
+                {deltaPct != null &&
+                  ` (${delta >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

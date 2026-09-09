@@ -41,6 +41,12 @@ function labelOf(view: InsightView, row: MetricsSummary): string {
   }
 }
 
+const DELTA_LABEL: Record<InsightView, string> = {
+  byDate: '전일 대비',
+  byDayOfWeek: '이전 요일 대비',
+  byGroupedWeek: '전주 대비',
+}
+
 interface MetaInsightChartModalProps {
   data: MetaInsightSummary
   onClose: () => void
@@ -144,6 +150,7 @@ export const MetaInsightChartModal = ({
             points={points}
             type={chartType}
             valueFormat={metric.format}
+            deltaLabel={DELTA_LABEL[view]}
           />
         </div>
       </div>
