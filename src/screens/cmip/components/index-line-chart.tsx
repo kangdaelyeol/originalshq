@@ -6,12 +6,14 @@ export interface IndexSeries {
   key: string
   label: string
   color: string
-  /** 그래프 좌상단 단위 표기용(포커스 시 "지표명(단위)"로 바꿔 보여준다). */
+  /** 그래프 좌상단 단위 표기용("지표명(단위)"). */
   unit: string
   /** 카테고리(x) 순서에 맞춘 원본 값. */
   raw: readonly number[]
-  /** 툴팁/포커스 y축에 원본 값을 보여줄 때 쓰는 포맷터(단위 포함). */
+  /** 툴팁에 원본 값을 보여줄 때 쓰는 포맷터(단위 포함). */
   format: (v: number) => string
+  /** y축 눈금용 — 단위 없이 간결하게. */
+  formatCompact: (v: number) => string
 }
 
 interface IndexLineChartProps {
@@ -28,12 +30,12 @@ const VB_H = 300
 const MARGIN_TOP = 30
 const MARGIN_RIGHT = 16
 const MARGIN_BOTTOM = 44
-const MARGIN_LEFT = 46 // 지수값은 대개 두세 자리라 고정폭으로 충분
+// 지표별 독립 축이라 눈금 라벨이 실제 값(원/회 등)으로 길어질 수 있어 여유를 둔다.
+const MARGIN_LEFT = 64
 
 const SURFACE = '#161b22'
 const GRID = '#21262d'
 const MUTED = '#8b949e'
-const REFERENCE = '#484f58'
 const UP = '#3fb950'
 const DOWN = '#ff7b72'
 
@@ -48,25 +50,30 @@ function niceStep(roughStep: number): number {
   return niceBase * 10 ** exp
 }
 
-/** 데이터 범위 + 기준선(100)을 모두 포함하는 "깔끔한" y축 구간. 0을 강제하지 않는다 —
- * 지수는 100 근방의 변화를 보는 게 목적이라 0부터 그리면 그 변화가 눌려 보인다. */
+/**
+ * 한 지표의 값 범위를 감싸는 "깔끔한" y축 구간. 0을 강제하지 않는다 — 지표별 독립 축의
+ * 목적이 각 선을 자기 변화폭만큼 플롯 높이에 펼쳐 보는 것이라, 0부터 그리면 그 변화가
+ * 눌려 보인다. 다만 값이 모두 0 이상인데 패딩 때문에 하한이 음수로 내려가면 0으로 자른다.
+ */
 function niceRange(
   minV: number,
   maxV: number,
   count = 5,
 ): { min: number; max: number; ticks: number[] } {
-  let lo = Math.min(minV, 100)
-  let hi = Math.max(maxV, 100)
+  let lo = minV
+  let hi = maxV
   if (lo === hi) {
-    lo -= 10
-    hi += 10
+    const spread = Math.abs(lo) * 0.1 || 1
+    lo -= spread
+    hi += spread
   }
   const pad = (hi - lo) * 0.12
   lo -= pad
   hi += pad
   const step = niceStep((hi - lo) / count)
-  const niceMin = Math.floor(lo / step) * step
+  let niceMin = Math.floor(lo / step) * step
   const niceMax = Math.ceil(hi / step) * step
+  if (minV >= 0 && niceMin < 0) niceMin = 0
   const ticks: number[] = []
   for (let v = niceMin; v <= niceMax + step / 1000; v += step) {
     ticks.push(Math.round(v * 1000) / 1000)
@@ -74,25 +81,7 @@ function niceRange(
   return { min: niceMin, max: niceMax, ticks }
 }
 
-/**
- * raw 값을 "첫 유효값 = 100" 기준 지수로 바꾼다. 선행 값이 0이라 기준으로 못 쓰면
- * 그 구간은 계산 불가(null)로 두고, 이후 첫 0이 아닌 값부터 지수화한다.
- * base(기준값)도 함께 반환 — 포커스 시 y축을 그 지표의 실제값으로 되돌리는 데 쓴다.
- */
-function toIndexSeries(raw: readonly number[]): {
-  values: (number | null)[]
-  base: number
-} {
-  const baseIdx = raw.findIndex((v) => v !== 0)
-  if (baseIdx === -1) return { values: raw.map(() => 100), base: 0 }
-  const base = raw[baseIdx]
-  return {
-    values: raw.map((v, i) => (i < baseIdx ? null : (v / base) * 100)),
-    base,
-  }
-}
-
-/** null(계산 불가 구간)을 건너뛰며 이어진 구간마다 별도 서브패스를 그리는 라인 path. */
+/** null(빠진 값) 구간을 건너뛰며 이어진 구간마다 별도 서브패스를 그리는 라인 path. */
 function buildLinePath(
   values: readonly (number | null)[],
   xAt: (i: number) => number,
@@ -121,26 +110,26 @@ export const IndexLineChart = ({
     index: number
     seriesKey: string | null
   } | null>(null)
+  // 범례에 마우스를 올리면 크로스헤어/툴팁 없이 그 지표만 "포커스"한다.
+  const [legendHoverKey, setLegendHoverKey] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
 
   const n = categories.length
 
-  const indexed = useMemo(
+  // 각 지표를 자기 min~max 범위로 독립 스케일한다 — 그래야 여러 지표를 겹쳐도
+  // 첫 컬럼이 한 점에 몰리지 않고 각 선이 제 변화폭만큼 펼쳐진다.
+  const prepared = useMemo(
     () =>
       series.map((s) => {
-        const { values, base } = toIndexSeries(s.raw)
-        return { ...s, index: values, base }
+        const nums = s.raw.filter((v): v is number => Number.isFinite(v))
+        const range =
+          nums.length === 0
+            ? niceRange(0, 1)
+            : niceRange(Math.min(...nums), Math.max(...nums))
+        return { ...s, range }
       }),
     [series],
   )
-
-  const { min: niceMin, max: niceMax, ticks } = useMemo(() => {
-    const values = indexed.flatMap((s) =>
-      s.index.filter((v): v is number => v != null),
-    )
-    if (values.length === 0) return niceRange(0, 200)
-    return niceRange(Math.min(...values), Math.max(...values))
-  }, [indexed])
 
   if (n === 0 || series.length === 0) {
     return (
@@ -154,8 +143,8 @@ export const IndexLineChart = ({
   const PLOT_H = VB_H - MARGIN_TOP - MARGIN_BOTTOM
   const bandW = PLOT_W / n
   const xCenter = (i: number) => MARGIN_LEFT + bandW * i + bandW / 2
-  const yFor = (v: number) =>
-    MARGIN_TOP + PLOT_H - ((v - niceMin) / (niceMax - niceMin)) * PLOT_H
+  const yIn = (range: { min: number; max: number }, v: number) =>
+    MARGIN_TOP + PLOT_H - ((v - range.min) / (range.max - range.min)) * PLOT_H
 
   const labelStride = Math.max(1, Math.ceil(n / 8))
 
@@ -171,13 +160,13 @@ export const IndexLineChart = ({
       Math.max(0, Math.round((vbX - MARGIN_LEFT - bandW / 2) / bandW)),
     )
 
-    // 포인터에서 세로로 가장 가까운 선을 "포커스"할 지표로 고른다.
+    // 포인터에서 세로로 가장 가까운 선을 "포커스"할 지표로 고른다(각 선의 독립 축 기준).
     let seriesKey: string | null = null
     let nearestDist = Infinity
-    for (const s of indexed) {
-      const v = s.index[index]
+    for (const s of prepared) {
+      const v = s.raw[index]
       if (v == null) continue
-      const d = Math.abs(yFor(v) - vbY)
+      const d = Math.abs(yIn(s.range, v) - vbY)
       if (d < nearestDist) {
         nearestDist = d
         seriesKey = s.key
@@ -186,9 +175,16 @@ export const IndexLineChart = ({
     setHover({ index, seriesKey })
   }
 
-  const focused = hover?.seriesKey
-    ? indexed.find((s) => s.key === hover.seriesKey)
+  // 크로스헤어로 잡힌 선이 우선이고, 없으면 범례 호버로 지정한 지표를 포커스한다.
+  const focusedKey = hover?.seriesKey ?? legendHoverKey
+  const focused = focusedKey
+    ? prepared.find((s) => s.key === focusedKey)
     : null
+
+  // 왼쪽 y축은 한 번에 하나의 지표만 라벨링한다 — 포커스된 지표, 없으면 첫 번째 지표.
+  // (나머지 선은 자기 축으로 스케일되지만 눈금은 표시하지 않는다.)
+  const axisSeries = focused ?? prepared[0]
+  const axisColor = series.length > 1 ? axisSeries.color : MUTED
 
   return (
     <div className="index-line-chart" ref={wrapRef}>
@@ -197,16 +193,12 @@ export const IndexLineChart = ({
         viewBox={`0 0 ${VB_W} ${VB_H}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label="지표 비교 그래프 (지수)"
+        aria-label="지표 비교 그래프"
       >
-        <text
-          x={4}
-          y={14}
-          textAnchor="start"
-          fontSize={10}
-          fill={focused ? focused.color : MUTED}
-        >
-          {focused ? `${focused.label} (${focused.unit})` : '(지수, 시작일=100)'}
+        <text x={4} y={14} textAnchor="start" fontSize={10} fill={axisColor}>
+          {series.length > 1
+            ? `${axisSeries.label} (${axisSeries.unit})`
+            : `${axisSeries.label} (${axisSeries.unit})`}
         </text>
         {xAxisLabel && (
           <text
@@ -220,42 +212,29 @@ export const IndexLineChart = ({
           </text>
         )}
 
-        {/* 그리드 + y축 눈금 — 포커스된 지표가 있으면 그 지표의 실제값으로 재라벨 */}
-        {ticks.map((t) => (
+        {/* 그리드 + y축 눈금 — 라벨링 중인 지표(axisSeries)의 실제값 기준 */}
+        {axisSeries.range.ticks.map((t) => (
           <g key={t}>
             <line
               x1={MARGIN_LEFT}
               x2={VB_W - MARGIN_RIGHT}
-              y1={yFor(t)}
-              y2={yFor(t)}
+              y1={yIn(axisSeries.range, t)}
+              y2={yIn(axisSeries.range, t)}
               stroke={GRID}
               strokeWidth={1}
             />
             <text
               x={MARGIN_LEFT - 8}
-              y={yFor(t)}
+              y={yIn(axisSeries.range, t)}
               textAnchor="end"
               dominantBaseline="middle"
               fontSize={10}
-              fill={focused ? focused.color : MUTED}
+              fill={axisColor}
             >
-              {focused
-                ? focused.format((t * focused.base) / 100)
-                : t.toLocaleString()}
+              {axisSeries.formatCompact(t)}
             </text>
           </g>
         ))}
-
-        {/* 기준선(100) — 점선으로 다른 그리드와 구분 */}
-        <line
-          x1={MARGIN_LEFT}
-          x2={VB_W - MARGIN_RIGHT}
-          y1={yFor(100)}
-          y2={yFor(100)}
-          stroke={REFERENCE}
-          strokeWidth={1}
-          strokeDasharray="3 3"
-        />
 
         {/* x축 라벨 */}
         {categories.map((c, i) =>
@@ -274,13 +253,13 @@ export const IndexLineChart = ({
         )}
 
         {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
-        {indexed.map((s) => {
+        {prepared.map((s) => {
           const isFocused = focused?.key === s.key
           const dimmed = focused != null && !isFocused
           return (
             <path
               key={s.key}
-              d={buildLinePath(s.index, xCenter, yFor)}
+              d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
               fill="none"
               stroke={s.color}
               strokeWidth={isFocused ? 3 : 2}
@@ -292,23 +271,23 @@ export const IndexLineChart = ({
         })}
 
         {/* 마커 */}
-        {indexed.map((s) => {
+        {prepared.map((s) => {
           const isFocused = focused?.key === s.key
           const dimmed = focused != null && !isFocused
-          return s.index.map((v, i) => {
+          return s.raw.map((v, i) => {
             if (v == null) return null
             const isHoverX = hover?.index === i
             return (
               <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
                 <circle
                   cx={xCenter(i)}
-                  cy={yFor(v)}
+                  cy={yIn(s.range, v)}
                   r={isHoverX ? 6 : 5}
                   fill={SURFACE}
                 />
                 <circle
                   cx={xCenter(i)}
-                  cy={yFor(v)}
+                  cy={yIn(s.range, v)}
                   r={isHoverX ? 4.5 : 3.5}
                   fill={s.color}
                 />
@@ -362,18 +341,12 @@ export const IndexLineChart = ({
           <div className="index-line-chart__tooltip-label">
             {categories[hover.index]} · {deltaLabel}
           </div>
-          {indexed.map((s) => {
-            const v = s.index[hover.index]
-            const prevV =
-              hover.index > 0 ? s.index[hover.index - 1] : null
+          {prepared.map((s) => {
             const rawNow = s.raw[hover.index]
             const rawPrev = hover.index > 0 ? s.raw[hover.index - 1] : null
-            const deltaRaw =
-              rawPrev != null && v != null && prevV != null
-                ? rawNow - rawPrev
-                : null
+            const deltaRaw = rawPrev != null ? rawNow - rawPrev : null
             const deltaPct =
-              deltaRaw != null && rawPrev !== 0 && rawPrev != null
+              deltaRaw != null && rawPrev != null && rawPrev !== 0
                 ? (deltaRaw / Math.abs(rawPrev)) * 100
                 : null
             const deltaDir =
@@ -405,14 +378,18 @@ export const IndexLineChart = ({
                 </span>
                 <span className="index-line-chart__tooltip-values">
                   <span className="index-line-chart__tooltip-value">
-                    {v == null ? '—' : `${s.format(rawNow)} (${v.toFixed(1)})`}
+                    {rawNow == null ? '—' : s.format(rawNow)}
                   </span>
                   {deltaRaw != null && (
                     <span
                       className="index-line-chart__tooltip-delta"
                       style={{ color: deltaColor }}
                     >
-                      {deltaDir === 'up' ? '▲' : deltaDir === 'down' ? '▼' : '—'}{' '}
+                      {deltaDir === 'up'
+                        ? '▲'
+                        : deltaDir === 'down'
+                          ? '▼'
+                          : '—'}{' '}
                       {s.format(Math.abs(deltaRaw))}
                       {deltaPct != null &&
                         ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
@@ -432,6 +409,8 @@ export const IndexLineChart = ({
             className={`index-line-chart__legend-item${
               focused?.key === s.key ? ' is-focused' : ''
             }`}
+            onPointerEnter={() => setLegendHoverKey(s.key)}
+            onPointerLeave={() => setLegendHoverKey(null)}
           >
             <span
               className="index-line-chart__legend-key"

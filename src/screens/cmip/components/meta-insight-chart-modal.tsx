@@ -103,6 +103,7 @@ export const MetaInsightChartModal = ({
         unit: f.unit,
         raw: rows.map((row) => row[f.key]),
         format: f.format,
+        formatCompact: f.formatCompact,
       })),
     [rows, selected],
   )

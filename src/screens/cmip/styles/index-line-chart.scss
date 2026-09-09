@@ -129,6 +129,7 @@ $color-border: #30363d;
     gap: 6px;
     font-size: 12px;
     color: $color-muted;
+    cursor: default;
     transition: color 0.1s ease;
 
     &.is-focused {
