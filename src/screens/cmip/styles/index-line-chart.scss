@@ -30,7 +30,7 @@ $color-border: #30363d;
 
   &__tooltip {
     position: absolute;
-    transform: translate(-50%, -100%);
+    transform: translateX(-50%);
     pointer-events: none;
     display: flex;
     flex-direction: column;
@@ -43,6 +43,16 @@ $color-border: #30363d;
     white-space: nowrap;
     font-size: 12px;
     z-index: 1;
+
+    // 맨 앞/뒤 근처 점은 그대로 가운데 정렬하면 툴팁이 차트 밖으로 잘려 나가서,
+    // 정렬 기준을 그쪽 가장자리로 붙인다.
+    &.is-align-left {
+      transform: translateX(-4%);
+    }
+
+    &.is-align-right {
+      transform: translateX(-96%);
+    }
   }
 
   &__tooltip-label {
@@ -53,14 +63,30 @@ $color-border: #30363d;
 
   &__tooltip-row {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 6px;
+    padding: 2px 0;
+    opacity: 1;
+    transition: opacity 0.1s ease;
+
+    &.is-dimmed {
+      opacity: 0.4;
+    }
+
+    &.is-focused {
+      .index-line-chart__tooltip-name,
+      .index-line-chart__tooltip-value {
+        color: $color-text;
+        font-weight: 700;
+      }
+    }
   }
 
   &__tooltip-key {
     flex: none;
     width: 8px;
     height: 8px;
+    margin-top: 3px;
     border-radius: 2px;
   }
 
@@ -68,11 +94,23 @@ $color-border: #30363d;
     color: $color-muted;
   }
 
-  &__tooltip-value {
+  &__tooltip-values {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
     margin-left: auto;
-    padding-left: 10px;
+    padding-left: 12px;
+  }
+
+  &__tooltip-value {
     color: $color-text;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__tooltip-delta {
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
   }
 
@@ -91,6 +129,12 @@ $color-border: #30363d;
     gap: 6px;
     font-size: 12px;
     color: $color-muted;
+    transition: color 0.1s ease;
+
+    &.is-focused {
+      color: $color-text;
+      font-weight: 600;
+    }
   }
 
   &__legend-key {

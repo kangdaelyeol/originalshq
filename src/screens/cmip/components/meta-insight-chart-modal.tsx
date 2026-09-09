@@ -37,6 +37,12 @@ const X_AXIS_LABEL: Record<InsightView, string> = {
   byGroupedWeek: '기간',
 }
 
+const DELTA_LABEL: Record<InsightView, string> = {
+  byDate: '전일 대비',
+  byDayOfWeek: '이전 요일 대비',
+  byGroupedWeek: '전주 대비',
+}
+
 // 지표별 고정 색상 팔레트가 최대 8개까지만 서로 안전하게 구분되도록 되어 있어서,
 // 동시에 겹쳐 볼 수 있는 지표 수를 그만큼으로 제한한다.
 const MAX_SELECTED = 8
@@ -94,6 +100,7 @@ export const MetaInsightChartModal = ({
         key: f.key,
         label: f.label,
         color: f.color,
+        unit: f.unit,
         raw: rows.map((row) => row[f.key]),
         format: f.format,
       })),
@@ -178,6 +185,7 @@ export const MetaInsightChartModal = ({
             categories={categories}
             series={series}
             xAxisLabel={X_AXIS_LABEL[view]}
+            deltaLabel={DELTA_LABEL[view]}
           />
         </div>
       </div>
