@@ -45,6 +45,6 @@ export const getMetaInsight = async (
     await fetch(mainAdsInsightFetchUrl).then((res) => res.json()),
     await fetch(subAdsInsightFetchUrl).then((res) => res.json()),
   ])
-  const data = { ...mainRes, ...subRes }
+  const data: MetaInsight = [...(mainRes.data ?? []), ...(subRes.data ?? [])]
   return summarizeMetaInsight(data, dateStart, dateEnd)
 }

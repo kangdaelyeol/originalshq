@@ -23,14 +23,17 @@ export const getConversions = (row: DataSetInsight): number => {
   if (!row.results) return 0
   return row.results.reduce((sum, r) => {
     if (!r.values) return sum
-    return sum + r.values.reduce((s, v) => s + Number(v.value), 0)
+    return sum + r.values.reduce((s, v) => s + (Number(v.value) || 0), 0)
   }, 0)
 }
 
 export const sumRows = (rows: DataSetInsight[]): MetricsSummary => {
-  const impressions = rows.reduce((s, r) => s + Number(r.impressions), 0)
-  const clicks = rows.reduce((s, r) => s + Number(r.inline_link_clicks), 0)
-  const spend = rows.reduce((s, r) => s + Number(r.spend), 0)
+  const impressions = rows.reduce((s, r) => s + (Number(r.impressions) || 0), 0)
+  const clicks = rows.reduce(
+    (s, r) => s + (Number(r.inline_link_clicks) || 0),
+    0,
+  )
+  const spend = rows.reduce((s, r) => s + (Number(r.spend) || 0), 0)
   const conversions = rows.reduce((s, r) => s + getConversions(r), 0)
 
   return calcMetrics(impressions, clicks, spend, conversions)
@@ -43,7 +46,9 @@ export const getFetchUrl = (
   accessToken: string,
 ): string => {
   const params = new URLSearchParams({
-    item_increament: '1',
+    fields:
+      'campaign_name,adset_name,impressions,inline_link_clicks,spend,results,date_start,date_stop',
+    time_increment: '1',
     level: 'adset',
     access_token: accessToken,
     time_range: JSON.stringify({
