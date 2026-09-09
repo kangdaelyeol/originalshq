@@ -4,6 +4,16 @@
 
 import { DetectedChannel, ParsedRow, ParseResult } from './csv'
 
+export type ValidationResponse<T> =
+  | {
+      ok: true
+      data: T
+    }
+  | {
+      ok: false
+      error: string
+    }
+
 export type ISODate = string
 
 export const Channel = [

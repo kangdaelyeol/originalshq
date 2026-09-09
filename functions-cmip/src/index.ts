@@ -40,10 +40,15 @@ import type {
   UpsertBrandData,
   CsvFileInput,
 } from './types'
+import { defineSecret } from 'firebase-functions/params'
+import { getMetaInsight } from './channel/meta'
+import { validateGetInsightBody } from './util'
 
 const corsHandler = cors({ origin: true })
 
 setGlobalOptions({ region: 'asia-northeast3', maxInstances: 10 })
+
+const metaAdsId = defineSecret('META_INSIGHT_ACCESS_TOKEN')
 
 function sendError(
   response: import('express').Response,
@@ -374,3 +379,35 @@ export const listAlerts = onRequest((request, response) => {
     }
   })
 })
+
+export const getAllInsights = onRequest(
+  { secrets: [metaAdsId] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const metaRes = await getMetaInsight(
+          dateStart,
+          dateEnd,
+          metaAdsId.value(),
+        )
+        res.status(200).send(metaRes)
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
