@@ -37,4 +37,5 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   { key: 'cpa', label: 'CPA', format: won, formatCompact: num },
   { key: 'cvr', label: 'CVR', format: pct, formatCompact: num },
   { key: 'cpm', label: 'CPM', format: won, formatCompact: num },
+  { key: 'frequency', label: 'Frequency', format: num, formatCompact: num },
 ]

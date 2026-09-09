@@ -5,6 +5,7 @@ function calcMetrics(
   clicks: number,
   spend: number,
   conversions: number,
+  reach: number,
 ): MetricsSummary {
   return {
     impressions,
@@ -16,6 +17,10 @@ function calcMetrics(
     cpa: conversions > 0 ? round2(spend / conversions) : 0,
     cvr: clicks > 0 ? round2((conversions / clicks) * 100) : 0,
     cpm: impressions > 0 ? round2((spend / impressions) * 1000) : 0,
+    // reach는 중복 제거된 사용자 수라 날짜·adset row를 그대로 합산하면 겹치는
+    // 사용자가 중복 집계된다. 다른 지표와 동일하게 row 합산 방식을 따르므로,
+    // 이 frequency는 근사치로 봐야 한다(기간이 넓을수록 실제보다 낮게 나올 수 있음).
+    frequency: reach > 0 ? round2(impressions / reach) : 0,
   }
 }
 
@@ -37,8 +42,9 @@ export const sumRows = (rows: DataSetInsight[]): MetricsSummary => {
   )
   const spend = rows.reduce((s, r) => s + (Number(r.spend) || 0), 0)
   const conversions = rows.reduce((s, r) => s + getConversions(r), 0)
+  const reach = rows.reduce((s, r) => s + (Number(r.reach) || 0), 0)
 
-  return calcMetrics(impressions, clicks, spend, conversions)
+  return calcMetrics(impressions, clicks, spend, conversions, reach)
 }
 
 export const getFetchUrl = (
@@ -49,7 +55,7 @@ export const getFetchUrl = (
 ): string => {
   const params = new URLSearchParams({
     fields:
-      'campaign_name,adset_name,impressions,inline_link_clicks,spend,results,date_start,date_stop',
+      'campaign_name,adset_name,impressions,inline_link_clicks,spend,reach,results,date_start,date_stop',
     time_increment: '1',
     level: 'adset',
     access_token: accessToken,

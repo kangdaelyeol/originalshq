@@ -12,6 +12,7 @@ export interface DataSetInsight {
   impressions: number
   inline_link_clicks: number
   spend: number
+  reach: number
   results?: Indicator[]
   date_start: string
   date_stop: string
@@ -31,6 +32,7 @@ export interface MetricsSummary {
   cpa: number
   cvr: number
   cpm: number
+  frequency: number
 }
 
 export interface DateSummary extends MetricsSummary {
