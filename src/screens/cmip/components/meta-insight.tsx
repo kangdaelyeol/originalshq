@@ -1,9 +1,20 @@
 import { useState } from 'react'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
-import type { DateSummary, DayOfWeekSummary, MetricsSummary, WeekSummary } from '../client'
+import type {
+  DateSummary,
+  DayOfWeekSummary,
+  MetricsSummary,
+  WeekSummary,
+} from '../client'
+import { addDays, todayISO } from '../utils'
 import { METRIC_FIELDS } from './metric-fields'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
 import '../styles/meta-insight.scss'
+
+const DATE_RANGE_PRESETS: readonly { days: number; label: string }[] = [
+  { days: 7, label: '최근 7일' },
+  { days: 28, label: '최근 28일' },
+]
 
 function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
   return (
@@ -76,6 +87,12 @@ export const MetaInsight = () => {
   } = useMetaInsightViewModel()
   const [chartOpen, setChartOpen] = useState(false)
 
+  const applyDateRangePreset = (days: number) => {
+    const end = todayISO()
+    setDateStart(addDays(end, -(days - 1)))
+    setDateEnd(end)
+  }
+
   return (
     <div className="meta-insight">
       <div className="meta-insight__form">
@@ -100,6 +117,20 @@ export const MetaInsight = () => {
             disabled={loading}
           />
         </div>
+      </div>
+
+      <div className="meta-insight__presets">
+        {DATE_RANGE_PRESETS.map((p) => (
+          <button
+            key={p.days}
+            type="button"
+            className="meta-insight__preset"
+            onClick={() => applyDateRangePreset(p.days)}
+            disabled={loading}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div className="meta-insight__actions">
@@ -163,7 +194,10 @@ export const MetaInsight = () => {
       )}
 
       {chartOpen && data && (
-        <MetaInsightChartModal data={data} onClose={() => setChartOpen(false)} />
+        <MetaInsightChartModal
+          data={data}
+          onClose={() => setChartOpen(false)}
+        />
       )}
     </div>
   )

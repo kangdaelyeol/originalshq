@@ -61,6 +61,34 @@ $radius-lg: 8px;
     }
   }
 
+  &__presets {
+    display: flex;
+    gap: 6px;
+    margin-top: -6px;
+  }
+
+  &__preset {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-surface;
+    color: $color-muted;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: $color-text;
+      border-color: $color-accent;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
   &__actions {
     display: flex;
     gap: 8px;
