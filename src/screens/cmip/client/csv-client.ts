@@ -4,14 +4,7 @@
  * 그대로 오고, 실패 시 { error: string } 형태로 온다 (index.ts의 sendError 참고).
  */
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
-import type {
-  ImportCsvData,
-  ImportCsvResult,
-  AlertCheckData,
-  MortarScoreData,
-  WindowStats,
-  ISODate,
-} from '../types'
+import type { AlertCheckData, MortarScoreData, WindowStats, ISODate } from '../types'
 
 export class CallableError extends Error {
   status: number
@@ -52,10 +45,6 @@ export async function callFunction<TReq, TRes>(
   }
 
   return body as TRes
-}
-
-export function importCsv(data: ImportCsvData): Promise<ImportCsvResult> {
-  return callFunction<ImportCsvData, ImportCsvResult>('importCsv', data)
 }
 
 // --------------------------------------------------------------------------- //

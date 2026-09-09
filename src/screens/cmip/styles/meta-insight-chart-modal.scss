@@ -1,0 +1,136 @@
+$color-text: #e6edf3;
+$color-muted: #8b949e;
+$color-border: #30363d;
+$color-border-soft: #21262d;
+$color-surface: #161b22;
+$color-canvas-subtle: #1c2128;
+$color-accent: #4493f8;
+
+$radius: 6px;
+$radius-lg: 8px;
+
+.meta-insight-chart-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(1, 4, 9, 0.65);
+  animation: meta-insight-chart-modal-fade-in 0.15s ease;
+
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 100%;
+    max-width: 880px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 20px 24px 24px;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+    color: $color-text;
+    animation: meta-insight-chart-modal-pop-in 0.16s
+      cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  &__close {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+  }
+
+  // ------------------------------------------------------------------ 탭
+  &__tabs {
+    display: flex;
+    gap: 4px;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  &__tab {
+    appearance: none;
+    border: none;
+    background: none;
+    color: $color-muted;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+
+    &:hover {
+      color: $color-text;
+    }
+
+    &.is-active {
+      color: $color-text;
+      border-bottom-color: $color-accent;
+      font-weight: 600;
+    }
+  }
+
+  // ------------------------------------------------------------------ 컨트롤
+  &__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  // ------------------------------------------------------------------ 차트
+  &__chart {
+    border: 1px solid $color-border-soft;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    padding: 12px;
+  }
+}
+
+@keyframes meta-insight-chart-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes meta-insight-chart-modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

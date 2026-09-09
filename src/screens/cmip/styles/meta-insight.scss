@@ -1,0 +1,214 @@
+// 다크 팔레트 (cmip 화면 공통 톤) — report-generator.scss와 동일 팔레트/구조를 재사용.
+$color-text: #e6edf3;
+$color-muted: #8b949e;
+$color-border: #30363d;
+$color-border-soft: #21262d;
+$color-surface: #161b22;
+$color-canvas-subtle: #1c2128;
+
+$color-error-bg: #2a1416;
+$color-error-text: #ff7b72;
+$color-error-border: #5c2b2b;
+
+$color-accent: #4493f8;
+
+$radius: 6px;
+$radius-lg: 8px;
+
+.meta-insight {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 960px;
+  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  color: $color-text;
+
+  // ------------------------------------------------------------------ 입력 폼
+  &__form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 16px;
+    max-width: 420px;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    label {
+      font-size: 13px;
+      color: $color-muted;
+    }
+
+    input {
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      padding: 8px 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: $color-surface;
+      color: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 8px;
+
+    button {
+      border: 1px solid $color-accent;
+      border-radius: $radius;
+      background: $color-accent;
+      color: #fff;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    }
+
+    .meta-insight__ghost {
+      background: $color-surface;
+      color: $color-text;
+      border-color: $color-border;
+
+      &:hover:not(:disabled) {
+        border-color: $color-accent;
+      }
+    }
+  }
+
+  &__banner {
+    border-radius: $radius;
+    padding: 10px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+
+    &.is-error {
+      background: $color-error-bg;
+      color: $color-error-text;
+      border: 1px solid $color-error-border;
+    }
+  }
+
+  // ------------------------------------------------------------------ 결과
+  &__result {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__summary {
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    background: $color-surface;
+    overflow: hidden;
+  }
+
+  &__summary-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid $color-border-soft;
+  }
+
+  &__summary-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  &__summary-period {
+    font-size: 12px;
+    color: $color-muted;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px;
+    background: $color-border-soft;
+  }
+
+  &__kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    background: $color-surface;
+  }
+
+  &__kpi-label {
+    font-size: 12px;
+    color: $color-muted;
+  }
+
+  &__kpi-value {
+    font-size: 14px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  // ------------------------------------------------------------------ 표 섹션
+  &__section {
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    background: $color-surface;
+    padding: 12px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__section-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th,
+    td {
+      border: 1px solid $color-border-soft;
+      padding: 6px 10px;
+      text-align: right;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    th {
+      background: $color-canvas-subtle;
+      color: $color-muted;
+      font-weight: 500;
+    }
+
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+  }
+}

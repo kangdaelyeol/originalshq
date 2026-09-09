@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { CsvImporter, ReportGenerator } from './components'
+import { MetaInsight, ReportGenerator } from './components'
 import './styles/cmip.scss'
 
-type CmipTab = 'import' | 'report'
+type CmipTab = 'insight' | 'report'
 
 const TABS: readonly { id: CmipTab; label: string }[] = [
-  { id: 'import', label: 'CSV 입력' },
+  { id: 'insight', label: 'Meta 인사이트' },
   { id: 'report', label: '리포트 생성' },
 ]
 
 export default function CmipScreen() {
-  const [tab, setTab] = useState<CmipTab>('import')
+  const [tab, setTab] = useState<CmipTab>('insight')
 
   return (
     <div className="cmip">
@@ -30,7 +30,7 @@ export default function CmipScreen() {
       </nav>
 
       <div className="cmip__panel" role="tabpanel">
-        {tab === 'import' ? <CsvImporter /> : <ReportGenerator />}
+        {tab === 'insight' ? <MetaInsight /> : <ReportGenerator />}
       </div>
     </div>
   )
