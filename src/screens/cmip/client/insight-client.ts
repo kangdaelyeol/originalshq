@@ -14,6 +14,8 @@ export interface MetricsSummary {
   ctr: number
   cpc: number
   cpa: number
+  cvr: number
+  cpm: number
 }
 
 export interface DateSummary extends MetricsSummary {

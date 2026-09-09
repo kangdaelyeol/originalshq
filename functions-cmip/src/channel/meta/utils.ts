@@ -14,6 +14,8 @@ function calcMetrics(
     ctr: impressions > 0 ? round2((clicks / impressions) * 100) : 0,
     cpc: clicks > 0 ? round2(spend / clicks) : 0,
     cpa: conversions > 0 ? round2(spend / conversions) : 0,
+    cvr: clicks > 0 ? round2((conversions / clicks) * 100) : 0,
+    cpm: impressions > 0 ? round2((spend / impressions) * 1000) : 0,
   }
 }
 
