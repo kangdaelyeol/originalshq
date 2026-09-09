@@ -25,7 +25,7 @@ $radius-lg: 8px;
     flex-direction: column;
     gap: 14px;
     width: 100%;
-    max-width: 880px;
+    max-width: 1080px;
     max-height: calc(100vh - 48px);
     overflow-y: auto;
     padding: 20px 24px 24px;
@@ -99,19 +99,74 @@ $radius-lg: 8px;
     }
   }
 
-  // ------------------------------------------------------------------ 컨트롤
-  &__controls {
+  // ------------------------------------------------------------------ 지표 체크박스
+  &__checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    padding-top: 4px;
+    border: none;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  &__checkbox-legend {
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: $color-text;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__checkbox-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 6px 14px;
+  }
+
+  &__checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: $color-muted;
+    cursor: pointer;
+    user-select: none;
+
+    &:hover {
+      color: $color-text;
+    }
+
+    &.is-disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    input[type='checkbox'] {
+      width: 14px;
+      height: 14px;
+      accent-color: $color-accent;
+      cursor: pointer;
+
+      &:disabled {
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  &__checkbox-swatch {
+    flex: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
   }
 
   // ------------------------------------------------------------------ 차트
-  &__chart {
+  &__chart-single {
     border: 1px solid $color-border-soft;
     border-radius: $radius;
     background: $color-canvas-subtle;
-    padding: 12px;
+    padding: 14px 16px;
   }
 }
 

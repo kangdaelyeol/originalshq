@@ -7,28 +7,18 @@ import type {
   WeekSummary,
 } from '../client'
 import { METRIC_FIELDS } from './metric-fields'
-import { SegmentedToggle } from './segmented-toggle'
-import { BarLineChart, type ChartPoint, type ChartType } from './bar-line-chart'
+import { IndexLineChart, type IndexSeries } from './index-line-chart'
 import { formatMD } from '../utils'
 import '../styles/meta-insight-chart-modal.scss'
 
 type InsightView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
+type MetricKey = keyof MetricsSummary
 
 const VIEW_OPTIONS: readonly { value: InsightView; label: string }[] = [
   { value: 'byDate', label: '일별' },
   { value: 'byDayOfWeek', label: '요일별' },
   { value: 'byGroupedWeek', label: '주차별' },
 ]
-
-const CHART_TYPE_OPTIONS: readonly { value: ChartType; label: string }[] = [
-  { value: 'bar', label: '막대 그래프' },
-  { value: 'line', label: '선 그래프' },
-]
-
-const METRIC_OPTIONS = METRIC_FIELDS.map((f) => ({
-  value: f.key,
-  label: f.label,
-}))
 
 function labelOf(view: InsightView, row: MetricsSummary): string {
   switch (view) {
@@ -41,17 +31,18 @@ function labelOf(view: InsightView, row: MetricsSummary): string {
   }
 }
 
-const DELTA_LABEL: Record<InsightView, string> = {
-  byDate: '전일 대비',
-  byDayOfWeek: '이전 요일 대비',
-  byGroupedWeek: '전주 대비',
-}
-
 const X_AXIS_LABEL: Record<InsightView, string> = {
   byDate: '날짜',
   byDayOfWeek: '요일',
   byGroupedWeek: '기간',
 }
+
+// 지표별 고정 색상 팔레트가 최대 8개까지만 서로 안전하게 구분되도록 되어 있어서,
+// 동시에 겹쳐 볼 수 있는 지표 수를 그만큼으로 제한한다.
+const MAX_SELECTED = 8
+
+// 모달을 처음 열었을 때 기본으로 켜둘 지표 — 완전히 빈 화면으로 시작하지 않도록.
+const DEFAULT_METRICS: readonly MetricKey[] = ['impressions']
 
 interface MetaInsightChartModalProps {
   data: MetaInsightSummary
@@ -63,10 +54,9 @@ export const MetaInsightChartModal = ({
   onClose,
 }: MetaInsightChartModalProps) => {
   const [view, setView] = useState<InsightView>('byDate')
-  const [metricKey, setMetricKey] = useState<keyof MetricsSummary>(
-    'impressions',
+  const [selected, setSelected] = useState<ReadonlySet<MetricKey>>(
+    () => new Set(DEFAULT_METRICS),
   )
-  const [chartType, setChartType] = useState<ChartType>('bar')
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -83,16 +73,31 @@ export const MetaInsightChartModal = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [onClose])
 
-  const metric = METRIC_FIELDS.find((f) => f.key === metricKey)!
   const rows: readonly MetricsSummary[] = data[view]
+  const categories = useMemo(
+    () => rows.map((row) => labelOf(view, row)),
+    [rows, view],
+  )
 
-  const points: ChartPoint[] = useMemo(
+  const toggleMetric = (key: MetricKey) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else if (next.size < MAX_SELECTED) next.add(key)
+      return next
+    })
+  }
+
+  const series: IndexSeries[] = useMemo(
     () =>
-      rows.map((row) => ({
-        label: labelOf(view, row),
-        value: row[metricKey],
+      METRIC_FIELDS.filter((f) => selected.has(f.key)).map((f) => ({
+        key: f.key,
+        label: f.label,
+        color: f.color,
+        raw: rows.map((row) => row[f.key]),
+        format: f.format,
       })),
-    [rows, view, metricKey],
+    [rows, selected],
   )
 
   return (
@@ -136,29 +141,43 @@ export const MetaInsightChartModal = ({
           ))}
         </nav>
 
-        <div className="meta-insight-chart-modal__controls">
-          <SegmentedToggle
-            label="지표"
-            options={METRIC_OPTIONS}
-            value={metricKey}
-            onChange={setMetricKey}
-          />
-          <SegmentedToggle
-            label="그래프 종류"
-            options={CHART_TYPE_OPTIONS}
-            value={chartType}
-            onChange={setChartType}
-          />
-        </div>
+        <fieldset className="meta-insight-chart-modal__checkbox-group">
+          <legend className="meta-insight-chart-modal__checkbox-legend">
+            지표 선택 ({selected.size}/{MAX_SELECTED})
+          </legend>
+          <div className="meta-insight-chart-modal__checkbox-row">
+            {METRIC_FIELDS.map((f) => {
+              const checked = selected.has(f.key)
+              const disabled = !checked && selected.size >= MAX_SELECTED
+              return (
+                <label
+                  key={f.key}
+                  className={`meta-insight-chart-modal__checkbox${
+                    disabled ? ' is-disabled' : ''
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    disabled={disabled}
+                    onChange={() => toggleMetric(f.key)}
+                  />
+                  <span
+                    className="meta-insight-chart-modal__checkbox-swatch"
+                    style={{ background: f.color }}
+                  />
+                  {f.label}
+                </label>
+              )
+            })}
+          </div>
+        </fieldset>
 
-        <div className="meta-insight-chart-modal__chart">
-          <BarLineChart
-            points={points}
-            type={chartType}
-            valueFormat={metric.format}
-            deltaLabel={DELTA_LABEL[view]}
+        <div className="meta-insight-chart-modal__chart-single">
+          <IndexLineChart
+            categories={categories}
+            series={series}
             xAxisLabel={X_AXIS_LABEL[view]}
-            yAxisUnit={metric.unit}
           />
         </div>
       </div>

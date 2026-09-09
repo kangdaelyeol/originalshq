@@ -13,6 +13,13 @@ export interface MetricField {
   formatCompact: (v: number) => string
   /** 그래프 y축 제목에 "(단위)"로 붙는 값. */
   unit: string
+  /**
+   * 지표 겹쳐보기(index-line-chart) 전용 색상 — 지표 정체성에 고정으로 묶여 있어야
+   * 체크박스로 다른 지표를 켜고 끄더라도 이미 표시 중인 선의 색이 안 바뀐다.
+   * 앞 8개는 dataviz 스킬의 검증된 다크 테마 카테고리컬 팔레트(고정 순서),
+   * 나머지 2개(CPM/Frequency)는 그 8개와 구분되도록 고른 보조 색상.
+   */
+  color: string
 }
 
 const num = (v: number): string => v.toLocaleString()
@@ -36,6 +43,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     format: num,
     formatCompact: num,
     unit: '회',
+    color: '#3987e5',
   },
   {
     key: 'clicks',
@@ -43,6 +51,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     format: num,
     formatCompact: num,
     unit: '회',
+    color: '#d95926',
   },
   {
     key: 'spend',
@@ -50,6 +59,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     format: won,
     formatCompact: num,
     unit: '원',
+    color: '#199e70',
   },
   {
     key: 'conversions',
@@ -57,17 +67,54 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     format: num,
     formatCompact: num,
     unit: '건',
+    color: '#c98500',
   },
-  { key: 'ctr', label: 'CTR', format: pct2, formatCompact: num2, unit: '%' },
-  { key: 'cpc', label: 'CPC', format: won2, formatCompact: num2, unit: '원' },
-  { key: 'cpa', label: 'CPA', format: won2, formatCompact: num2, unit: '원' },
-  { key: 'cvr', label: 'CVR', format: pct2, formatCompact: num2, unit: '%' },
-  { key: 'cpm', label: 'CPM', format: won2, formatCompact: num2, unit: '원' },
+  {
+    key: 'ctr',
+    label: 'CTR',
+    format: pct2,
+    formatCompact: num2,
+    unit: '%',
+    color: '#d55181',
+  },
+  {
+    key: 'cpc',
+    label: 'CPC',
+    format: won2,
+    formatCompact: num2,
+    unit: '원',
+    color: '#008300',
+  },
+  {
+    key: 'cpa',
+    label: 'CPA',
+    format: won2,
+    formatCompact: num2,
+    unit: '원',
+    color: '#9085e9',
+  },
+  {
+    key: 'cvr',
+    label: 'CVR',
+    format: pct2,
+    formatCompact: num2,
+    unit: '%',
+    color: '#e66767',
+  },
+  {
+    key: 'cpm',
+    label: 'CPM',
+    format: won2,
+    formatCompact: num2,
+    unit: '원',
+    color: '#56c2d6',
+  },
   {
     key: 'frequency',
     label: 'Frequency',
     format: num2,
     formatCompact: num2,
     unit: '회',
+    color: '#b98d5e',
   },
 ]
