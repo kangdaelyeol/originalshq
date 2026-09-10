@@ -110,6 +110,62 @@ export const createLead = onRequest((request, response) => {
 })
 
 // ────────────────────────────────
+// createLeadFromContact
+// ────────────────────────────────
+export const createLeadFromContact = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateCreateLead(request.body)
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const input = validationRes.data
+
+      const digitsOnlyPhone = input.ph.replace(/\D/g, '')
+
+      const ip =
+        (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+        request.ip ||
+        ''
+      const userAgent = request.headers['user-agent'] ?? ''
+
+      const leadData: Omit<Lead, 'id'> = {
+        createdAt: input.createdAt,
+        utm_campaign: input.utm_campaign ?? '',
+        utm_medium: input.utm_medium ?? '',
+        utm_source: input.utm_source ?? '',
+        ip,
+        fbc: input.fbc ?? '',
+        fbp: input.fbp ?? '',
+        user_agent: userAgent,
+        fn: input.fn ?? '',
+        ph: digitsOnlyPhone,
+        device: input.device,
+        price: 0,
+        purchasedAt: 0,
+        state: input.state,
+        externalId: generateExternalId(digitsOnlyPhone),
+      }
+
+      const docRef = await db.collection('lead').add(leadData)
+      logger.info('리드 생성 완료:', docRef.id)
+
+      response.status(201).send({ id: docRef.id, ...leadData })
+    } catch (error) {
+      logger.error('리드 생성 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
 // contactLead
 // ────────────────────────────────
 export const contactLead = onRequest(
