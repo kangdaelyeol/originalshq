@@ -1,7 +1,10 @@
 import {
+  AdsetSummary,
+  CampaignSummary,
   DataSetInsight,
   DateSummary,
   DayOfWeekSummary,
+  GroupedInsightSeries,
   MetaInsight,
   MetricsSummary,
   WeekSummary,
@@ -69,4 +72,57 @@ export const summarizeByDayOfWeek = (data: MetaInsight): DayOfWeekSummary[] => {
     .sort(
       (a, b) => DAY_ORDER.indexOf(a.dayOfWeek) - DAY_ORDER.indexOf(b.dayOfWeek),
     )
+}
+
+const groupBy = (
+  rows: DataSetInsight[],
+  keyOf: (row: DataSetInsight) => string,
+): Map<string, DataSetInsight[]> => {
+  const grouped = new Map<string, DataSetInsight[]>()
+  for (const row of rows) {
+    const key = keyOf(row)
+    const bucket = grouped.get(key)
+    if (bucket) bucket.push(row)
+    else grouped.set(key, [row])
+  }
+  return grouped
+}
+
+/** byDate/byDayOfWeek/byGroupedWeek 3종을 total과 같은 방식으로, 넘겨받은 rows
+ * 부분집합 기준으로 도출한다 — 캠페인/adset 단위 요약이 이 함수를 공유한다. */
+const summarizeSeries = (
+  rows: DataSetInsight[],
+  startDate: string,
+  endDate: string,
+): GroupedInsightSeries => ({
+  byDate: summarizeByDate(rows),
+  byDayOfWeek: summarizeByDayOfWeek(rows),
+  byGroupedWeek: summarizeByWeek(rows, startDate, endDate),
+})
+
+// 캠페인별(그 안의 adset별 포함) byDate/byDayOfWeek/byGroupedWeek
+export const summarizeByCampaign = (
+  data: MetaInsight,
+  startDate: string,
+  endDate: string,
+): CampaignSummary[] => {
+  const campaignGroups = groupBy(data, (row) => row.campaign_name)
+
+  return Array.from(campaignGroups.entries())
+    .map(([campaignName, campaignRows]): CampaignSummary => {
+      const adsetGroups = groupBy(campaignRows, (row) => row.adset_name)
+      const adsets: AdsetSummary[] = Array.from(adsetGroups.entries())
+        .map(([adsetName, adsetRows]): AdsetSummary => ({
+          adsetName,
+          ...summarizeSeries(adsetRows, startDate, endDate),
+        }))
+        .sort((a, b) => a.adsetName.localeCompare(b.adsetName))
+
+      return {
+        campaignName,
+        ...summarizeSeries(campaignRows, startDate, endDate),
+        adsets,
+      }
+    })
+    .sort((a, b) => a.campaignName.localeCompare(b.campaignName))
 }

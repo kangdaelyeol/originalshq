@@ -1,4 +1,5 @@
 import {
+  summarizeByCampaign,
   summarizeByDate,
   summarizeByDayOfWeek,
   summarizeByWeek,
@@ -20,6 +21,9 @@ function summarizeMetaInsight(
     byDate: summarizeByDate(data),
     byDayOfWeek: summarizeByDayOfWeek(data),
     byGroupedWeek: summarizeByWeek(data, startDate, endDate),
+    // 캠페인별(그 안의 adset별 포함) byDate/byDayOfWeek/byGroupedWeek — total과
+    // 같은 도출 방식을 캠페인·adset 단위 부분집합에 그대로 적용한 것.
+    byCampaign: summarizeByCampaign(data, startDate, endDate),
   }
 }
 
