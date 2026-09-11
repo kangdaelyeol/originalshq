@@ -140,6 +140,8 @@ export const MetaInsightChartModal = ({
     })
   }
 
+  const clearAllMetrics = () => setMetricMode(new Map())
+
   const series: IndexSeries[] = useMemo(() => {
     const build = (f: MetricField, type: SeriesKind): IndexSeries => ({
       key: f.key,
@@ -245,7 +247,7 @@ export const MetaInsightChartModal = ({
                 setOpenMenu((m) => (m === 'metric' ? null : 'metric'))
               }
             >
-              지표 {metricMode.size > 0 ? `${metricMode.size}개` : '선택'}
+              지표선택
               <ChevronIcon />
             </button>
             {openMenu === 'metric' && (
@@ -287,6 +289,16 @@ export const MetaInsightChartModal = ({
                     </div>
                   )
                 })}
+                <div className="meta-insight-chart-modal__metric-menu-actions">
+                  <button
+                    type="button"
+                    className="meta-insight-chart-modal__metric-menu-action"
+                    disabled={metricMode.size === 0}
+                    onClick={clearAllMetrics}
+                  >
+                    모두 끄기
+                  </button>
+                </div>
               </div>
             )}
           </div>

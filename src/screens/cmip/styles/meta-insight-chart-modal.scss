@@ -225,6 +225,36 @@ $radius-lg: 8px;
     overflow: hidden;
   }
 
+  &__metric-menu-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  &__metric-menu-action {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  }
+
   &__metric-toggle-btn {
     appearance: none;
     border: none;

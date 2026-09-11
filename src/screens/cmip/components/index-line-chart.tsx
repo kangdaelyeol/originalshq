@@ -47,9 +47,16 @@ const DOWN = '#ff7b72'
 
 const DIM_OPACITY = 0.22
 
-// 막대 그룹이 한 컬럼(band)에서 차지하는 폭 비율. 나머지는 컬럼 간 간격.
+// 막대 그룹이 한 컬럼(band)에서 차지하는 최대 폭 비율 — 컬럼이 좁아지면(카테고리가
+// 많거나 차트가 작을 때) 이 비율까지 줄어든다.
 const BAR_GROUP_FRAC = 0.68
+// 막대 한 개의 절대 최대 폭(px) — 차트가 넓어져 컬럼(bandW)에 여유가 생겨도 막대
+// 자체는 이 폭에서 더 굵어지지 않는다. 남는 공간은 막대 사이 여백으로만 쓰인다
+// (폰트·마커와 같은 "절대 크기" 원칙을 막대에도 적용).
+const BAR_MAX_WIDTH = 22
 const BAR_FILL_OPACITY = 0.85
+// 평균선은 실제 값(선/막대)보다 한눈에 옅어 보여야 배경처럼 읽힌다.
+const AVG_LINE_OPACITY = 0.45
 
 type DeltaDir = 'up' | 'down' | 'flat'
 
@@ -196,7 +203,11 @@ export const IndexLineChart = ({
           range =
             type === 'bar' ? niceRange(Math.min(0, lo), hi) : niceRange(lo, hi)
         }
-        return { ...s, type, range }
+        const avg =
+          nums.length === 0
+            ? null
+            : nums.reduce((sum, v) => sum + v, 0) / nums.length
+        return { ...s, type, range, avg }
       }),
     [series],
   )
@@ -219,7 +230,12 @@ export const IndexLineChart = ({
   // 막대는 라인 뒤에 깔고, 같은 컬럼에 여러 개면 폭을 나눠 나란히 놓는다.
   const barSeries = prepared.filter((s) => s.type === 'bar')
   const lineSeries = prepared.filter((s) => s.type === 'line')
-  const groupW = bandW * BAR_GROUP_FRAC
+  // 컬럼에 여유가 있어도 막대 그룹은 "막대 개수 × 최대 폭"보다 넓어지지 않는다 —
+  // 남는 공간은 그룹 전체를 굵게 만드는 대신 컬럼 사이 여백으로 남는다.
+  const groupW = Math.min(
+    bandW * BAR_GROUP_FRAC,
+    barSeries.length * BAR_MAX_WIDTH,
+  )
   const slotW = barSeries.length > 0 ? groupW / barSeries.length : 0
   const barSlot = new Map(barSeries.map((s, bi) => [s.key, bi]))
   const barCenterX = (key: string, i: number) => {
@@ -375,6 +391,29 @@ export const IndexLineChart = ({
               </text>
             ) : null,
           )}
+
+          {/* 지표 평균선 — 실제 값(선/막대) 뒤에 옅은 점선으로 깔아 기준점처럼 보이게 한다. */}
+          {prepared.map((s) => {
+            if (s.avg == null) return null
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            const y = yIn(s.range, s.avg)
+            return (
+              <line
+                key={`avg-${s.key}`}
+                x1={MARGIN_LEFT}
+                x2={vbWidth - MARGIN_RIGHT}
+                y1={y}
+                y2={y}
+                stroke={s.color}
+                strokeWidth={1.5}
+                strokeDasharray="4 3"
+                opacity={
+                  dimmed ? DIM_OPACITY : isFocused ? 0.7 : AVG_LINE_OPACITY
+                }
+              />
+            )
+          })}
 
           {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
             여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
