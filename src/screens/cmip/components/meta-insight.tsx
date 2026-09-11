@@ -171,7 +171,6 @@ export const MetaInsight = () => {
     setDateEnd,
     loading,
     error,
-    data,
     combinedInsight,
     load,
   } = useMetaInsightViewModel()
@@ -198,7 +197,7 @@ export const MetaInsight = () => {
           type="button"
           className="meta-insight__ghost"
           onClick={() => setChartOpen(true)}
-          disabled={!data}
+          disabled={!combinedInsight}
         >
           그래프로 보기
         </button>
@@ -308,9 +307,9 @@ export const MetaInsight = () => {
         </div>
       )}
 
-      {chartOpen && data && (
+      {chartOpen && combinedInsight && (
         <MetaInsightChartModal
-          data={data}
+          combined={combinedInsight}
           onClose={() => setChartOpen(false)}
         />
       )}

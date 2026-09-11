@@ -1,9 +1,19 @@
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-surface: #161b22;
-$color-border: #30363d;
-
 .index-line-chart {
+  // 다크(기본)/라이트 색 토큰 — TSX의 PALETTE와 짝을 맞춰 유지한다(그래프 본체는
+  // SVG 안에서 JS로 직접 칠하고, 이 변수는 요약행/툴팁/범례처럼 CSS로 그리는
+  // 부분에만 쓴다).
+  --ilc-text: #e6edf3;
+  --ilc-muted: #8b949e;
+  --ilc-surface: #161b22;
+  --ilc-border: #30363d;
+
+  &.is-light {
+    --ilc-text: #1f2328;
+    --ilc-muted: #656d76;
+    --ilc-surface: #ffffff;
+    --ilc-border: #d0d7de;
+  }
+
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -15,7 +25,7 @@ $color-border: #30363d;
   &--empty {
     align-items: center;
     justify-content: center;
-    color: $color-muted;
+    color: var(--ilc-muted);
     font-size: 13px;
   }
 
@@ -29,12 +39,12 @@ $color-border: #30363d;
     gap: 4px 16px;
     padding-bottom: 10px;
     margin-bottom: 8px;
-    border-bottom: 1px solid $color-border;
+    border-bottom: 1px solid var(--ilc-border);
     font-size: 12px;
   }
 
   &__summary-period {
-    color: $color-muted;
+    color: var(--ilc-muted);
     font-size: 11px;
   }
 
@@ -54,11 +64,11 @@ $color-border: #30363d;
   }
 
   &__summary-name {
-    color: $color-muted;
+    color: var(--ilc-muted);
   }
 
   &__summary-value {
-    color: $color-text;
+    color: var(--ilc-text);
     font-weight: 600;
   }
 
@@ -97,8 +107,8 @@ $color-border: #30363d;
     gap: 4px;
     padding: 8px 10px;
     border-radius: 6px;
-    border: 1px solid $color-border;
-    background: $color-surface;
+    border: 1px solid var(--ilc-border);
+    background: var(--ilc-surface);
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
     white-space: nowrap;
     font-size: 12px;
@@ -106,7 +116,7 @@ $color-border: #30363d;
   }
 
   &__tooltip-label {
-    color: $color-muted;
+    color: var(--ilc-muted);
     font-size: 11px;
     margin-bottom: 2px;
   }
@@ -126,7 +136,7 @@ $color-border: #30363d;
     &.is-focused {
       .index-line-chart__tooltip-name,
       .index-line-chart__tooltip-value {
-        color: $color-text;
+        color: var(--ilc-text);
         font-weight: 700;
       }
     }
@@ -141,7 +151,7 @@ $color-border: #30363d;
   }
 
   &__tooltip-name {
-    color: $color-muted;
+    color: var(--ilc-muted);
   }
 
   &__tooltip-values {
@@ -154,7 +164,7 @@ $color-border: #30363d;
   }
 
   &__tooltip-value {
-    color: $color-text;
+    color: var(--ilc-text);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
@@ -171,7 +181,7 @@ $color-border: #30363d;
     gap: 6px 14px;
     margin-top: 8px;
     padding-top: 8px;
-    border-top: 1px solid $color-border;
+    border-top: 1px solid var(--ilc-border);
   }
 
   &__legend-item {
@@ -179,12 +189,12 @@ $color-border: #30363d;
     align-items: center;
     gap: 6px;
     font-size: 12px;
-    color: $color-muted;
+    color: var(--ilc-muted);
     cursor: default;
     transition: color 0.1s ease;
 
     &.is-focused {
-      color: $color-text;
+      color: var(--ilc-text);
       font-weight: 600;
     }
   }

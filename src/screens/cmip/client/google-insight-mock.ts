@@ -96,8 +96,14 @@ function splitMetrics(base: MetricsSummary, weight: number): MetricsSummary {
   })
 }
 
-/** 날짜별 계정 전체 지표를 캠페인 → adset 순으로 비례 배분해 목업 트리를 만든다. */
-function mockCampaigns(dates: readonly ISODate[]): CampaignSummary[] {
+/** 날짜별 계정 전체 지표를 캠페인 → adset 순으로 비례 배분해 목업 트리를 만든다.
+ * seriesStart/seriesEnd는 byGroupedWeek 경계 기준(조회 범위) — Meta capi와 같은
+ * 방식으로 잘라야 캠페인/adset 단위에서도 채널 간 주차 경계가 어긋나지 않는다. */
+function mockCampaigns(
+  dates: readonly ISODate[],
+  seriesStart: ISODate,
+  seriesEnd: ISODate,
+): CampaignSummary[] {
   const campaignRows = new Map<string, DateSummary[]>(
     MOCK_CAMPAIGNS.map((c) => [c.name, []]),
   )
@@ -133,11 +139,17 @@ function mockCampaigns(dates: readonly ISODate[]): CampaignSummary[] {
       adsetName,
       ...seriesFromByDate(
         adsetRows.get(`${campaign.name}::${adsetName}`) ?? [],
+        seriesStart,
+        seriesEnd,
       ),
     }))
     return {
       campaignName: campaign.name,
-      ...seriesFromByDate(campaignRows.get(campaign.name) ?? []),
+      ...seriesFromByDate(
+        campaignRows.get(campaign.name) ?? [],
+        seriesStart,
+        seriesEnd,
+      ),
       adsets,
     }
   })
@@ -158,9 +170,8 @@ export async function getGoogleInsightsMock(
   if (from > to) {
     return {
       total: aggregateMetrics([]),
-      byDate: [],
-      byDayOfWeek: [],
-      byGroupedWeek: [],
+      // 데이터가 없어도 주차 경계 자체는 조회 범위 기준으로 채워둔다(0으로).
+      ...seriesFromByDate([], dateStart, dateEnd),
       byCampaign: [],
     }
   }
@@ -171,9 +182,12 @@ export async function getGoogleInsightsMock(
     ...mockDailyMetrics(date),
   }))
 
+  // byGroupedWeek 경계는 목업 보유 범위로 잘린 from/to가 아니라 원래 조회 범위
+  // (dateStart/dateEnd) 기준 — Meta capi도 항상 조회 범위 기준으로 자르기 때문에,
+  // 이 채널의 실제 데이터가 그보다 좁아도 같은 경계를 써야 다른 채널과 안 어긋난다.
   return {
     total: aggregateMetrics(byDate),
-    ...seriesFromByDate(byDate),
-    byCampaign: mockCampaigns(dates),
+    ...seriesFromByDate(byDate, dateStart, dateEnd),
+    byCampaign: mockCampaigns(dates, dateStart, dateEnd),
   }
 }

@@ -22,6 +22,7 @@ import type {
   MetaInsightSummary,
   MetricsSummary,
 } from './insight-client'
+import type { ISODate } from '../types'
 
 export interface ChannelSplitSeries {
   combined: GroupedInsightSeries
@@ -60,16 +61,22 @@ function uniqueNames<T>(
 }
 
 /** 채널별 시리즈를 종합/메타/구글 3분할로 묶는다. 한쪽 채널에 없으면(campaign/
- * adset이 그 채널에서 아예 없었던 경우) 빈 시리즈로 취급한다. */
+ * adset이 그 채널에서 아예 없었던 경우) 빈 시리즈로 취급한다. dateStart/dateEnd는
+ * "combined"의 byGroupedWeek 경계 기준(조회 범위) — Meta capi와 같은 방식으로
+ * 잘라야 한다. */
 function combineGroupedSeries(
   meta: GroupedInsightSeries | undefined,
   google: GroupedInsightSeries | undefined,
+  dateStart: ISODate,
+  dateEnd: ISODate,
 ): ChannelSplitSeries {
   const metaSeries = meta ?? emptySeries()
   const googleSeries = google ?? emptySeries()
   return {
     combined: seriesFromByDate(
       mergeByDate(metaSeries.byDate, googleSeries.byDate),
+      dateStart,
+      dateEnd,
     ),
     meta: metaSeries,
     google: googleSeries,
@@ -79,6 +86,8 @@ function combineGroupedSeries(
 function combineAdsets(
   metaAdsets: readonly AdsetSummary[],
   googleAdsets: readonly AdsetSummary[],
+  dateStart: ISODate,
+  dateEnd: ISODate,
 ): CombinedAdset[] {
   return uniqueNames(metaAdsets, googleAdsets, (a) => a.adsetName).map(
     (adsetName) => {
@@ -86,7 +95,7 @@ function combineAdsets(
       const googleAdset = googleAdsets.find((a) => a.adsetName === adsetName)
       return {
         adsetName,
-        ...combineGroupedSeries(metaAdset, googleAdset),
+        ...combineGroupedSeries(metaAdset, googleAdset, dateStart, dateEnd),
       }
     },
   )
@@ -95,6 +104,8 @@ function combineAdsets(
 function combineCampaigns(
   metaCampaigns: readonly CampaignSummary[],
   googleCampaigns: readonly CampaignSummary[],
+  dateStart: ISODate,
+  dateEnd: ISODate,
 ): CombinedCampaign[] {
   return uniqueNames(metaCampaigns, googleCampaigns, (c) => c.campaignName).map(
     (campaignName) => {
@@ -106,19 +117,31 @@ function combineCampaigns(
       )
       return {
         campaignName,
-        ...combineGroupedSeries(metaCampaign, googleCampaign),
+        ...combineGroupedSeries(
+          metaCampaign,
+          googleCampaign,
+          dateStart,
+          dateEnd,
+        ),
         adsets: combineAdsets(
           metaCampaign?.adsets ?? [],
           googleCampaign?.adsets ?? [],
+          dateStart,
+          dateEnd,
         ),
       }
     },
   )
 }
 
+/** dateStart/dateEnd는 이번 조회에 실제로 쓴 범위 — 각 채널의 실제 데이터 커버리지가
+ * 그보다 좁아도(예: 목업 보유 기간 제한) byGroupedWeek 경계는 항상 이 범위 기준으로
+ * 맞춘다(Meta capi도 그렇게 자르기 때문에 채널 간 경계가 어긋나지 않는다). */
 export function combineChannelInsights(
   meta: MetaInsightSummary,
   google: MetaInsightSummary,
+  dateStart: ISODate,
+  dateEnd: ISODate,
 ): CombinedInsight {
   return {
     total: {
@@ -126,10 +149,12 @@ export function combineChannelInsights(
       meta: meta.total,
       google: google.total,
     },
-    series: combineGroupedSeries(meta, google),
+    series: combineGroupedSeries(meta, google, dateStart, dateEnd),
     byCampaign: combineCampaigns(
       meta.byCampaign ?? [],
       google.byCampaign ?? [],
+      dateStart,
+      dateEnd,
     ),
   }
 }

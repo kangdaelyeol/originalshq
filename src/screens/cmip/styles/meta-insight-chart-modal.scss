@@ -80,10 +80,41 @@ $radius-lg: 8px;
     }
   }
 
-  &__title {
-    margin: 0;
-    font-size: 16px;
+  // 채널 탭(전체/Meta/Google) — 예전엔 고정 제목이던 자리를 대신한다.
+  &__channel-tabs {
+    display: inline-flex;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    overflow: hidden;
+  }
+
+  &__channel-tab {
+    appearance: none;
+    border: none;
+    background: none;
+    color: $color-muted;
+    padding: 7px 16px;
+    font-size: 13px;
     font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease;
+
+    & + & {
+      border-left: 1px solid $color-border;
+    }
+
+    &:hover:not(.is-active) {
+      color: $color-text;
+    }
+
+    &.is-active {
+      background: $color-accent;
+      color: #fff;
+    }
   }
 
   &__close {
@@ -302,6 +333,16 @@ $radius-lg: 8px;
     border-radius: $radius;
     background: $color-canvas-subtle;
     padding: 14px 16px;
+    transition:
+      background 120ms ease,
+      border-color 120ms ease;
+
+    // 차트만 라이트로 볼 때 — 모달 나머지 크롬(헤더·드롭다운)은 다크 그대로 두고
+    // 이 카드만 밝게 바꾼다. index-line-chart.scss의 --ilc-* 라이트 토큰과 짝.
+    &.is-light {
+      background: #ffffff;
+      border-color: #d0d7de;
+    }
   }
 }
 

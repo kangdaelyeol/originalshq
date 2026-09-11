@@ -4,11 +4,11 @@
  * - 원본 카운트(impressions/clicks/spend/conversions)를 합산하고 비율(ctr 등)은
  *   그 합계에서 다시 계산한다 — 비율의 평균이 아니라 합계 기준 비율이어야 맞다.
  * - byDate → byDayOfWeek/byGroupedWeek로 묶는 "표준" 그룹핑을 여기 한 곳에 둔다.
- *   채널마다 자체 집계 방식이 조금씩 달라도(예: functions-cmip의 주차 경계 방식은
- *   조회 시작일부터 7일씩 자르고, 여기 표준 방식은 캘린더 월요일 기준) 여러 채널을
- *   합칠 때는 이 표준 방식으로 다시 묶어서 경계가 서로 어긋나지 않게 한다.
+ *   주차 경계는 functions-cmip(Meta capi)의 buildWeekRanges와 정확히 같은 방식
+ *   (조회 시작일부터 7일씩, 나머지는 앞에 먼저) — 캘린더 월요일 기준 등 다른
+ *   방식을 쓰면 채널마다(혹은 종합과 Meta 단독 사이에도) 주차 경계가 어긋난다.
  */
-import { addDays, formatMD, fromISO } from '../utils'
+import { addDays, dateRange, formatMD, fromISO } from '../utils'
 import type { ISODate } from '../types'
 import type {
   DateSummary,
@@ -106,13 +106,6 @@ export function mergeByDate(
     .sort((x, y) => x.date.localeCompare(y.date))
 }
 
-/** 해당 날짜가 속한 캘린더 주의 월요일. */
-function mondayOf(date: ISODate): ISODate {
-  const dow = fromISO(date).getUTCDay() // 0=일 ~ 6=토
-  const offset = dow === 0 ? -6 : 1 - dow
-  return addDays(date, offset)
-}
-
 /** 날짜 → 요일 라벨(월요일 시작). groupByDayOfWeek와, 특정 요일 행에 대응하는
  * 채널별 부분합을 되짚어 구할 때(예: 표의 "채널별 자세히 보기") 함께 쓴다. */
 export function weekdayLabelOf(date: ISODate): string {
@@ -147,36 +140,65 @@ export function metricsForDateSubset(
   return aggregateMetrics(byDate.filter((row) => predicate(row.date)))
 }
 
-/** byDate → byGroupedWeek(캘린더 월요일 시작 주 단위). */
-export function groupByWeek(byDate: readonly DateSummary[]): WeekSummary[] {
-  const groups = new Map<ISODate, DateSummary[]>()
-  for (const row of byDate) {
-    const weekStart = mondayOf(row.date)
-    const g = groups.get(weekStart)
-    if (g) g.push(row)
-    else groups.set(weekStart, [row])
+/** functions-cmip의 buildWeekRanges와 동일 — 조회 시작일부터 7일씩 자르고,
+ * 전체 일수가 7의 배수가 아니면 그 나머지를 맨 앞 구간으로 먼저 둔다. */
+function buildWeekRanges(
+  startDate: ISODate,
+  endDate: ISODate,
+): { start: ISODate; end: ISODate }[] {
+  const totalDays = dateRange(startDate, endDate).length
+  const remDays = totalDays % 7
+
+  const ranges: { start: ISODate; end: ISODate }[] = []
+  let cursor = startDate
+
+  if (remDays > 0) {
+    const rangeEnd = addDays(cursor, remDays - 1)
+    ranges.push({ start: cursor, end: rangeEnd })
+    cursor = addDays(cursor, remDays)
   }
-  return Array.from(groups.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([, group]) => {
-      const startDate = group[0].date
-      const endDate = group[group.length - 1].date
-      return {
-        period: `${formatMD(startDate)}~${formatMD(endDate)}`,
-        startDate,
-        endDate,
-        ...aggregateMetrics(group),
-      }
-    })
+
+  while (cursor <= endDate) {
+    const rangeEnd = addDays(cursor, 6)
+    ranges.push({ start: cursor, end: rangeEnd })
+    cursor = addDays(cursor, 7)
+  }
+
+  return ranges
 }
 
-/** byDate 하나로부터 byDayOfWeek/byGroupedWeek까지 표준 방식으로 다시 묶는다. */
+/** byDate → byGroupedWeek. 주차 경계는 조회 범위(startDate~endDate) 전체를
+ * 기준으로 자른다 — 특정 채널의 실제 데이터 범위가 그보다 좁아도(예: 목업 보유
+ * 기간 제한) 항상 같은 경계를 쓰도록. 데이터가 없는 구간은 0으로 채워진다. */
+export function groupByWeek(
+  byDate: readonly DateSummary[],
+  startDate: ISODate,
+  endDate: ISODate,
+): WeekSummary[] {
+  return buildWeekRanges(startDate, endDate).map((range) => {
+    const rows = byDate.filter(
+      (row) => row.date >= range.start && row.date <= range.end,
+    )
+    return {
+      period: `${formatMD(range.start)}~${formatMD(range.end)}`,
+      startDate: range.start,
+      endDate: range.end,
+      ...aggregateMetrics(rows),
+    }
+  })
+}
+
+/** byDate 하나로부터 byDayOfWeek/byGroupedWeek까지 표준 방식으로 다시 묶는다.
+ * startDate/endDate는 주차 경계의 기준이 되는 조회 범위 — byDate 자체의 실제
+ * 커버리지가 아니라 항상 이 범위로 잘라야 채널 간 경계가 일치한다. */
 export function seriesFromByDate(
   byDate: readonly DateSummary[],
+  startDate: ISODate,
+  endDate: ISODate,
 ): GroupedInsightSeries {
   return {
     byDate: [...byDate].sort((a, b) => a.date.localeCompare(b.date)),
     byDayOfWeek: groupByDayOfWeek(byDate),
-    byGroupedWeek: groupByWeek(byDate),
+    byGroupedWeek: groupByWeek(byDate, startDate, endDate),
   }
 }

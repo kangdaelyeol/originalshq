@@ -59,7 +59,9 @@ export const useMetaInsightViewModel = () => {
       ])
       setData(metaResult)
       setGoogleData(googleResult)
-      setCombinedInsight(combineChannelInsights(metaResult, googleResult))
+      setCombinedInsight(
+        combineChannelInsights(metaResult, googleResult, apiStart, apiEnd),
+      )
       console.log(metaResult, googleResult)
     } catch (err) {
       setError(describeError(err, 'Meta 인사이트 조회 중 오류가 발생했습니다.'))

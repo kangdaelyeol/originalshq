@@ -20,10 +20,15 @@ export interface IndexSeries {
   formatCompact: (v: number) => string
 }
 
+export type ChartTheme = 'dark' | 'light'
+
 interface IndexLineChartProps {
   categories: readonly string[]
   series: readonly IndexSeries[]
   xAxisLabel?: string
+  /** 배경·격자·보조 텍스트 색 테마. 기본 'dark'. 겹쳐 보이는 시리즈가 많을 때
+   * 같은 색 계열의 어두운 쪽 명도가 다크 배경에 묻힐 수 있어 라이트도 지원한다. */
+  theme?: ChartTheme
 }
 
 // viewBox 크기를 실제 렌더 픽셀 크기에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 차트
@@ -39,11 +44,27 @@ const MARGIN_BOTTOM = 44
 // 지표별 독립 축이라 눈금 라벨이 실제 값(원/회 등)으로 길어질 수 있어 여유를 둔다.
 const MARGIN_LEFT = 64
 
-const SURFACE = '#161b22'
-const GRID = '#21262d'
-const MUTED = '#8b949e'
-const UP = '#3fb950'
-const DOWN = '#ff7b72'
+// 다크/라이트 2세트 — 둘 다 기존 다크(GitHub Dimmed)와 짝을 이루는 GitHub Light
+// 톤이라 나머지 UI(모달 등)의 다크 팔레트와 위화감이 없다.
+const PALETTE: Record<
+  ChartTheme,
+  { surface: string; grid: string; muted: string; up: string; down: string }
+> = {
+  dark: {
+    surface: '#161b22',
+    grid: '#21262d',
+    muted: '#8b949e',
+    up: '#3fb950',
+    down: '#ff7b72',
+  },
+  light: {
+    surface: '#ffffff',
+    grid: '#eaeef2',
+    muted: '#656d76',
+    up: '#1a7f37',
+    down: '#cf222e',
+  },
+}
 
 const DIM_OPACITY = 0.22
 
@@ -60,11 +81,6 @@ const AVG_LINE_OPACITY = 0.45
 
 type DeltaDir = 'up' | 'down' | 'flat'
 
-const DELTA_COLOR: Record<DeltaDir, string> = {
-  up: UP,
-  down: DOWN,
-  flat: MUTED,
-}
 const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
 
 /** index 지점 값과, 그 직전 지점 대비 증감(절대값·%·방향)을 계산한다.
@@ -153,7 +169,21 @@ export const IndexLineChart = ({
   categories,
   series,
   xAxisLabel,
+  theme = 'dark',
 }: IndexLineChartProps) => {
+  const {
+    surface: SURFACE,
+    grid: GRID,
+    muted: MUTED,
+    up: UP,
+    down: DOWN,
+  } = PALETTE[theme]
+  const DELTA_COLOR: Record<DeltaDir, string> = {
+    up: UP,
+    down: DOWN,
+    flat: MUTED,
+  }
+
   const [hover, setHover] = useState<{
     index: number
     seriesKey: string | null
@@ -214,7 +244,11 @@ export const IndexLineChart = ({
 
   if (n === 0 || series.length === 0) {
     return (
-      <div className="index-line-chart index-line-chart--empty">
+      <div
+        className={`index-line-chart index-line-chart--empty${
+          theme === 'light' ? ' is-light' : ''
+        }`}
+      >
         지표를 선택하면 그래프가 표시됩니다.
       </div>
     )
@@ -286,7 +320,7 @@ export const IndexLineChart = ({
   const summaryIndex = hover?.index ?? n - 1
 
   return (
-    <div className="index-line-chart">
+    <div className={`index-line-chart${theme === 'light' ? ' is-light' : ''}`}>
       <div className="index-line-chart__summary">
         <span className="index-line-chart__summary-period">
           {categories[summaryIndex]}
