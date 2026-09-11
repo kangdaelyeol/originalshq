@@ -308,6 +308,40 @@ $radius-lg: 8px;
     font-variant-numeric: tabular-nums;
   }
 
+  // 조회 중일 때 __kpi-label/__kpi-value 자리에 대신 채우는 회색 바 — 실제
+  // 값이 들어올 자리 폭을 그대로 흉내 내서, 로딩이 끝나는 순간 레이아웃이
+  // 튀지 않는다. 좌→우로 밝기가 지나가는 shimmer로 "로딩 중"임을 드러낸다.
+  &__skeleton-bar {
+    display: block;
+    height: 10px;
+    border-radius: 4px;
+    background: linear-gradient(
+      90deg,
+      $color-canvas-subtle 25%,
+      $color-border-soft 37%,
+      $color-canvas-subtle 63%
+    );
+    background-size: 400% 100%;
+    animation: meta-insight-skeleton-shimmer 1.4s ease infinite;
+
+    &--label {
+      width: 46%;
+    }
+
+    &--value {
+      width: 68%;
+      height: 14px;
+    }
+
+    // 표 스켈레톤(TableSkeleton) 셀용 — td의 text-align(오른쪽 정렬 지표 칸,
+    // 왼쪽 정렬 라벨 칸)을 그대로 따르도록 인라인 블록으로 둔다.
+    &--cell {
+      display: inline-block;
+      width: 44px;
+      height: 9px;
+    }
+  }
+
   // ------------------------------------------------------------------ 표 섹션
   &__section {
     border: 1px solid $color-border;
@@ -460,5 +494,14 @@ $radius-lg: 8px;
       font-weight: 600;
       color: $color-text;
     }
+  }
+}
+
+@keyframes meta-insight-skeleton-shimmer {
+  0% {
+    background-position: 200% 50%;
+  }
+  100% {
+    background-position: -200% 50%;
   }
 }

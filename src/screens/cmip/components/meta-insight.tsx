@@ -16,6 +16,8 @@ import {
 import { METRIC_FIELDS } from './metric-fields'
 import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
+import { dateRange } from '../utils'
+import type { ISODate } from '../types'
 import '../styles/meta-insight.scss'
 
 type MetricKey = keyof MetricsSummary
@@ -63,6 +65,21 @@ function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
           <span className="meta-insight__kpi-value">
             {format(metrics[key])}
           </span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** 조회 중(로딩)일 때 KpiGrid 자리에 대신 깔아두는 스켈레톤 — 값이 들어올 자리를
+ * 그대로 흉내 내서(라벨 폭 짧게, 값 폭 길게) 레이아웃이 흔들리지 않게 한다. */
+function KpiSkeletonGrid() {
+  return (
+    <div className="meta-insight__summary-grid" aria-hidden>
+      {METRIC_FIELDS.map(({ key }) => (
+        <div key={key} className="meta-insight__kpi">
+          <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--label" />
+          <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--value" />
         </div>
       ))}
     </div>
@@ -183,6 +200,97 @@ function MetricsTable<T extends MetricsSummary>({
   )
 }
 
+/** 조회 중일 때 MetricsTable 자리에 대신 까는 스켈레톤 — 같은 컬럼 구성(토글 칸 +
+ * 라벨 칸 + 지표 10개)을 그대로 갖춰서 로딩이 끝나는 순간 표가 옆으로 벌어지거나
+ * 좁아지지 않게 하고, 행 수(rowCount)만 새로 조회 중인 기간에 맞춰 잡아 표
+ * 세로 크기도 실제와 비슷하게 보이도록 한다. */
+function TableSkeleton({
+  headLabel,
+  rowCount,
+}: {
+  headLabel: string
+  rowCount: number
+}) {
+  return (
+    <div className="meta-insight__table-wrap" aria-hidden>
+      <table className="meta-insight__table">
+        <thead>
+          <tr>
+            <th
+              className="meta-insight__table-toggle-head"
+              aria-hidden="true"
+            />
+            <th>{headLabel}</th>
+            {METRIC_FIELDS.map((f) => (
+              <th key={f.key}>{f.label}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: rowCount }, (_, i) => (
+            <tr key={i}>
+              <td className="meta-insight__table-toggle-cell" />
+              <td>
+                <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--cell" />
+              </td>
+              {METRIC_FIELDS.map((f) => (
+                <td key={f.key}>
+                  <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--cell" />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** 최초 조회 중(아직 combinedInsight 자체가 없어 ResultPanel이 렌더되지 않는
+ * 시점)에 그 자리를 대신하는 전체 스켈레톤 — Summary 카드 + 일별/요일별/주차별
+ * 표까지, ResultPanel이 조회 중 보여주는 모양을 그대로 미리 보여준다. */
+function ResultSkeleton({
+  periodLabel,
+  dateStart,
+  dateEnd,
+}: {
+  periodLabel: string
+  dateStart: ISODate
+  dateEnd: ISODate
+}) {
+  const dayCount = dateRange(dateStart, dateEnd).length
+
+  return (
+    <div className="meta-insight__result">
+      <section className="meta-insight__summary">
+        <div className="meta-insight__summary-head">
+          <span className="meta-insight__summary-label">Summary</span>
+          <span className="meta-insight__summary-period">{periodLabel}</span>
+        </div>
+        <KpiSkeletonGrid />
+      </section>
+
+      <section className="meta-insight__section">
+        <h3 className="meta-insight__section-title">일별 성과</h3>
+        <TableSkeleton headLabel="날짜" rowCount={dayCount} />
+      </section>
+
+      <section className="meta-insight__section">
+        <h3 className="meta-insight__section-title">요일별 성과</h3>
+        <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
+      </section>
+
+      <section className="meta-insight__section">
+        <h3 className="meta-insight__section-title">주차별 성과</h3>
+        <TableSkeleton
+          headLabel="기간"
+          rowCount={Math.max(1, Math.ceil(dayCount / 7))}
+        />
+      </section>
+    </div>
+  )
+}
+
 interface ResultPanelProps {
   periodLabel: string
   total: {
@@ -195,11 +303,27 @@ interface ResultPanelProps {
     meta: GroupedInsightSeries
     google: GroupedInsightSeries
   }
+  /** 재조회 중(날짜 범위 변경 등)엔 이전 결과가 그대로 남아있는 동안에도 Summary/
+   * 표 칸을 스켈레톤으로 덮어서 "새로 불러오는 중"임을 보여준다. */
+  loading: boolean
+  /** 로딩 중 표 스켈레톤의 행 수를 "지금 조회 중인" 기간에 맞추기 위한 값 —
+   * 실제 데이터가 아니라 dateStart/dateEnd(즉시 반영되는 입력값)만 있으면 된다. */
+  dateStart: ISODate
+  dateEnd: ISODate
 }
 
 /** "전체 요약" 탭 전용 — Summary KPI 카드 + 일별/요일별/주차별 표. */
-function ResultPanel({ periodLabel, total, series }: ResultPanelProps) {
+function ResultPanel({
+  periodLabel,
+  total,
+  series,
+  loading,
+  dateStart,
+  dateEnd,
+}: ResultPanelProps) {
   const [showChannelTotal, setShowChannelTotal] = useState(false)
+
+  const dayCount = dateRange(dateStart, dateEnd).length
 
   // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 캠페인의 Google)은
   // 펼쳐봐야 모든 행이 0으로만 나와서 의미가 없으니 미리 걸러낸다.
@@ -214,9 +338,9 @@ function ResultPanel({ periodLabel, total, series }: ResultPanelProps) {
           <span className="meta-insight__summary-label">Summary</span>
           <span className="meta-insight__summary-period">{periodLabel}</span>
         </div>
-        <KpiGrid metrics={total.combined} />
+        {loading ? <KpiSkeletonGrid /> : <KpiGrid metrics={total.combined} />}
 
-        {applicableChannels.length > 0 && (
+        {!loading && applicableChannels.length > 0 && (
           <>
             <button
               type="button"
@@ -251,65 +375,80 @@ function ResultPanel({ periodLabel, total, series }: ResultPanelProps) {
 
       <section className="meta-insight__section">
         <h3 className="meta-insight__section-title">일별 성과</h3>
-        <MetricsTable<DateSummary>
-          rows={series.combined.byDate}
-          rowKey={(row) => row.date}
-          headLabel="날짜"
-          headValue={(row) => row.date}
-          channels={applicableChannels}
-          getChannelBreakdown={(row) => ({
-            meta: metricsForDateSubset(
-              series.meta.byDate,
-              (d) => d === row.date,
-            ),
-            google: metricsForDateSubset(
-              series.google.byDate,
-              (d) => d === row.date,
-            ),
-          })}
-        />
+        {loading ? (
+          <TableSkeleton headLabel="날짜" rowCount={dayCount} />
+        ) : (
+          <MetricsTable<DateSummary>
+            rows={series.combined.byDate}
+            rowKey={(row) => row.date}
+            headLabel="날짜"
+            headValue={(row) => row.date}
+            channels={applicableChannels}
+            getChannelBreakdown={(row) => ({
+              meta: metricsForDateSubset(
+                series.meta.byDate,
+                (d) => d === row.date,
+              ),
+              google: metricsForDateSubset(
+                series.google.byDate,
+                (d) => d === row.date,
+              ),
+            })}
+          />
+        )}
       </section>
 
       <section className="meta-insight__section">
         <h3 className="meta-insight__section-title">요일별 성과</h3>
-        <MetricsTable<DayOfWeekSummary>
-          rows={series.combined.byDayOfWeek}
-          rowKey={(row) => row.dayOfWeek}
-          headLabel="요일"
-          headValue={(row) => row.dayOfWeek}
-          channels={applicableChannels}
-          getChannelBreakdown={(row) => ({
-            meta: metricsForDateSubset(
-              series.meta.byDate,
-              (d) => weekdayLabelOf(d) === row.dayOfWeek,
-            ),
-            google: metricsForDateSubset(
-              series.google.byDate,
-              (d) => weekdayLabelOf(d) === row.dayOfWeek,
-            ),
-          })}
-        />
+        {loading ? (
+          <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
+        ) : (
+          <MetricsTable<DayOfWeekSummary>
+            rows={series.combined.byDayOfWeek}
+            rowKey={(row) => row.dayOfWeek}
+            headLabel="요일"
+            headValue={(row) => row.dayOfWeek}
+            channels={applicableChannels}
+            getChannelBreakdown={(row) => ({
+              meta: metricsForDateSubset(
+                series.meta.byDate,
+                (d) => weekdayLabelOf(d) === row.dayOfWeek,
+              ),
+              google: metricsForDateSubset(
+                series.google.byDate,
+                (d) => weekdayLabelOf(d) === row.dayOfWeek,
+              ),
+            })}
+          />
+        )}
       </section>
 
       <section className="meta-insight__section">
         <h3 className="meta-insight__section-title">주차별 성과</h3>
-        <MetricsTable<WeekSummary>
-          rows={series.combined.byGroupedWeek}
-          rowKey={(row) => row.period}
-          headLabel="기간"
-          headValue={(row) => row.period}
-          channels={applicableChannels}
-          getChannelBreakdown={(row) => ({
-            meta: metricsForDateSubset(
-              series.meta.byDate,
-              (d) => d >= row.startDate && d <= row.endDate,
-            ),
-            google: metricsForDateSubset(
-              series.google.byDate,
-              (d) => d >= row.startDate && d <= row.endDate,
-            ),
-          })}
-        />
+        {loading ? (
+          <TableSkeleton
+            headLabel="기간"
+            rowCount={Math.max(1, Math.ceil(dayCount / 7))}
+          />
+        ) : (
+          <MetricsTable<WeekSummary>
+            rows={series.combined.byGroupedWeek}
+            rowKey={(row) => row.period}
+            headLabel="기간"
+            headValue={(row) => row.period}
+            channels={applicableChannels}
+            getChannelBreakdown={(row) => ({
+              meta: metricsForDateSubset(
+                series.meta.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+              google: metricsForDateSubset(
+                series.google.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+            })}
+          />
+        )}
       </section>
     </div>
   )
@@ -674,6 +813,17 @@ export const MetaInsight = () => {
 
       {error && <div className="meta-insight__banner is-error">{error}</div>}
 
+      {/* 최초 조회 전엔 아직 combinedInsight 자체가 없어 ResultPanel이 아예
+          렌더되지 않는다 — 그 사이 화면이 텅 비어 보이지 않도록 ResultPanel이
+          로딩 중 보여줄 모양(Summary + 표 세 개)을 통째로 미리 깔아둔다. */}
+      {loading && !combinedInsight && (
+        <ResultSkeleton
+          periodLabel={periodLabel}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+        />
+      )}
+
       {combinedInsight && (
         <>
           <div
@@ -794,6 +944,9 @@ export const MetaInsight = () => {
               periodLabel={periodLabel}
               total={combinedInsight.total}
               series={combinedInsight.series}
+              loading={loading}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
             />
           )}
           {resultTab === 'campaign' && (
