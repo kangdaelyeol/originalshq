@@ -53,6 +53,38 @@ const DIM_OPACITY = 0.22
 const BAR_GROUP_FRAC = 0.68
 const BAR_FILL_OPACITY = 0.85
 
+type DeltaDir = 'up' | 'down' | 'flat'
+
+const DELTA_COLOR: Record<DeltaDir, string> = {
+  up: UP,
+  down: DOWN,
+  flat: MUTED,
+}
+const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
+
+/** index 지점 값과, 그 직전 지점 대비 증감(절대값·%·방향)을 계산한다.
+ * 상단 고정 요약 행과 호버 툴팁이 이 계산을 공유한다. */
+function computeDelta(
+  raw: readonly number[],
+  index: number,
+): {
+  rawNow: number | null
+  deltaRaw: number | null
+  deltaPct: number | null
+  dir: DeltaDir
+} {
+  const rawNow = raw[index] ?? null
+  const rawPrev = index > 0 ? (raw[index - 1] ?? null) : null
+  const deltaRaw = rawNow != null && rawPrev != null ? rawNow - rawPrev : null
+  const deltaPct =
+    deltaRaw != null && rawPrev != null && rawPrev !== 0
+      ? (deltaRaw / Math.abs(rawPrev)) * 100
+      : null
+  const dir: DeltaDir =
+    deltaRaw == null || deltaRaw === 0 ? 'flat' : deltaRaw > 0 ? 'up' : 'down'
+  return { rawNow, deltaRaw, deltaPct, dir }
+}
+
 /** roughStep 이상인 가장 가까운 "깔끔한" 스텝(1/2/5 × 10^n). */
 function niceStep(roughStep: number): number {
   if (roughStep <= 0) return 1
@@ -236,8 +268,52 @@ export const IndexLineChart = ({
   const axisSeries = focused ?? prepared[0]
   const axisColor = series.length > 1 ? axisSeries.color : MUTED
 
+  // 상단 고정 요약 행이 가리키는 지점 — 평소엔 마지막(최신) 지점, 차트를 호버하면
+  // 그 지점으로 바뀐다(증권 차트 헤더가 크로스헤어를 따라가는 것과 같은 느낌).
+  const summaryIndex = hover?.index ?? n - 1
+
   return (
     <div className="index-line-chart">
+      <div className="index-line-chart__summary">
+        <span className="index-line-chart__summary-period">
+          {categories[summaryIndex]} · {deltaLabel}
+        </span>
+        {prepared.map((s) => {
+          const isFocused = focused?.key === s.key
+          const dimmed = focused != null && !isFocused
+          const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
+            s.raw,
+            summaryIndex,
+          )
+          return (
+            <span
+              key={s.key}
+              className="index-line-chart__summary-item"
+              style={{ opacity: dimmed ? DIM_OPACITY : 1 }}
+            >
+              <span
+                className="index-line-chart__summary-dot"
+                style={{ background: s.color }}
+              />
+              <span className="index-line-chart__summary-name">{s.label}</span>
+              <span className="index-line-chart__summary-value">
+                {rawNow == null ? '—' : s.format(rawNow)}
+              </span>
+              {deltaRaw != null && (
+                <span
+                  className="index-line-chart__summary-delta"
+                  style={{ color: DELTA_COLOR[dir] }}
+                >
+                  {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
+                  {deltaPct != null &&
+                    ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                </span>
+              )}
+            </span>
+          )
+        })}
+      </div>
+
       <div className="index-line-chart__canvas" ref={wrapRef}>
         <svg
           className="index-line-chart__svg"
@@ -451,21 +527,10 @@ export const IndexLineChart = ({
               {categories[hover.index]} · {deltaLabel}
             </div>
             {prepared.map((s) => {
-              const rawNow = s.raw[hover.index]
-              const rawPrev = hover.index > 0 ? s.raw[hover.index - 1] : null
-              const deltaRaw = rawPrev != null ? rawNow - rawPrev : null
-              const deltaPct =
-                deltaRaw != null && rawPrev != null && rawPrev !== 0
-                  ? (deltaRaw / Math.abs(rawPrev)) * 100
-                  : null
-              const deltaDir =
-                deltaRaw == null || deltaRaw === 0
-                  ? 'flat'
-                  : deltaRaw > 0
-                    ? 'up'
-                    : 'down'
-              const deltaColor =
-                deltaDir === 'up' ? UP : deltaDir === 'down' ? DOWN : MUTED
+              const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
+                s.raw,
+                hover.index,
+              )
 
               return (
                 <div
@@ -493,14 +558,9 @@ export const IndexLineChart = ({
                     {deltaRaw != null && (
                       <span
                         className="index-line-chart__tooltip-delta"
-                        style={{ color: deltaColor }}
+                        style={{ color: DELTA_COLOR[dir] }}
                       >
-                        {deltaDir === 'up'
-                          ? '▲'
-                          : deltaDir === 'down'
-                            ? '▼'
-                            : '—'}{' '}
-                        {s.format(Math.abs(deltaRaw))}
+                        {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
                         {deltaPct != null &&
                           ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
                       </span>

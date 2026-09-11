@@ -19,6 +19,53 @@ $color-border: #30363d;
     font-size: 13px;
   }
 
+  // 상단 고정 요약 행 — 증권 차트 헤더처럼 호버와 무관하게 항상 마지막 지점의
+  // 값·전일(직전) 대비 등락을 보여준다.
+  &__summary {
+    flex: none;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+    padding-bottom: 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid $color-border;
+    font-size: 12px;
+  }
+
+  &__summary-period {
+    color: $color-muted;
+    font-size: 11px;
+  }
+
+  &__summary-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 0.1s ease;
+  }
+
+  &__summary-dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+
+  &__summary-name {
+    color: $color-muted;
+  }
+
+  &__summary-value {
+    color: $color-text;
+    font-weight: 600;
+  }
+
+  &__summary-delta {
+    font-size: 11px;
+  }
+
   // svg + 툴팁만 담는 캔버스. 범례는 이 밖에 둬서, 아래 __canvas의 실측 크기가
   // 범례 높이와 섞이지 않고 순수하게 svg 영역만 가리키게 한다(컴포넌트가 이 크기를
   // 그대로 viewBox에 써서 1 유닛 = 1px을 유지한다).
