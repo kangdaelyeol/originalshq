@@ -66,6 +66,55 @@ $radius-lg: 8px;
     }
   }
 
+  // ------------------------------------------------------------------ 보기 단위 탭
+  // (전체 요약 / 캠페인 / adset) — 이 밖에 결과 섹션(__result)은 셋이 공유한다.
+  &__result-tabs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  &__result-tab {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-surface;
+    color: $color-muted;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover:not(.is-active) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    &.is-active {
+      background: $color-accent;
+      border-color: $color-accent;
+      color: #fff;
+    }
+  }
+
+  &__result-select {
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-text;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  &__result-empty {
+    font-size: 12.5px;
+    color: $color-muted;
+  }
+
   // ------------------------------------------------------------------ 결과
   &__result {
     display: flex;
