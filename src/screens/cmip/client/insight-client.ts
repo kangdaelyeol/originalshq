@@ -33,11 +33,31 @@ export interface WeekSummary extends MetricsSummary {
   endDate: ISODate
 }
 
+/** 캠페인/adset처럼 하위 그룹 단위로 total과 같은 도출 방식의 시계열 3종을
+ * 묶어 재사용하는 형태(functions-cmip GroupedInsightSeries와 동일). */
+export interface GroupedInsightSeries {
+  byDate: DateSummary[]
+  byDayOfWeek: DayOfWeekSummary[]
+  byGroupedWeek: WeekSummary[]
+}
+
+export interface AdsetSummary extends GroupedInsightSeries {
+  adsetName: string
+}
+
+export interface CampaignSummary extends GroupedInsightSeries {
+  campaignName: string
+  adsets: AdsetSummary[]
+}
+
 export interface MetaInsightSummary {
   total: MetricsSummary
   byDate: DateSummary[]
   byDayOfWeek: DayOfWeekSummary[]
   byGroupedWeek: WeekSummary[]
+  // 구글 목업(getGoogleInsightsMock)은 아직 이 필드를 채우지 않아 optional로 둔다 —
+  // 실제 Meta 응답에는 항상 들어있다.
+  byCampaign?: CampaignSummary[]
 }
 
 interface ErrorBody {

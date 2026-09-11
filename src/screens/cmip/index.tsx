@@ -6,7 +6,7 @@ type CmipTab = 'insight' | 'report'
 
 // '리포트 생성' 탭은 당분간 숨김 — 필요해지면 이 배열에 다시 추가하면 된다.
 const TABS: readonly { id: CmipTab; label: string }[] = [
-  { id: 'insight', label: 'Meta 인사이트(Test) ' },
+  { id: 'insight', label: '인사이트 조회' },
 ]
 
 export default function CmipScreen() {

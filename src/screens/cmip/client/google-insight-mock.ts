@@ -1,23 +1,38 @@
 /**
  * 구글 인사이트 API 목업 — 토큰 발급이 끝나기 전까지, getAllInsights와 동일한 모양
- * (MetaInsightSummary)의 테스트 데이터를 프론트에서 만들어 대신 쓴다. Functions 쪽은
- * 건드리지 않는다 — 나중에 실제 연동이 끝나면 이 파일 호출부만 진짜 API로 바꾸면 된다.
+ * (MetaInsightSummary, byCampaign 포함)의 테스트 데이터를 프론트에서 만들어 대신
+ * 쓴다. Functions 쪽은 건드리지 않는다 — 나중에 실제 연동이 끝나면 이 파일 호출부만
+ * 진짜 API로 바꾸면 된다.
+ *
+ * byDate/byDayOfWeek/byGroupedWeek 집계, 지표 합산 규칙은 ./insight-aggregate의
+ * 표준 함수를 그대로 쓴다 — Meta+Google을 나중에 합칠 때(insight-channel-combine)
+ * 서로 다른 집계 방식 때문에 어긋나지 않도록.
  */
-import { addDays, dateRange, formatMD, fromISO } from '../utils'
+import { dateRange } from '../utils'
 import type { ISODate } from '../types'
+import {
+  aggregateMetrics,
+  deriveMetrics,
+  seriesFromByDate,
+} from './insight-aggregate'
 import type {
+  AdsetSummary,
+  CampaignSummary,
   DateSummary,
-  DayOfWeekSummary,
   MetaInsightSummary,
   MetricsSummary,
-  WeekSummary,
 } from './insight-client'
 
 // "구글 광고 연동" 시점을 흉내낸 목업 데이터 보유 범위 — 이 밖의 날짜는 데이터가 없다.
 const MOCK_MIN_DATE: ISODate = '2026-08-13'
 const MOCK_MAX_DATE: ISODate = '2026-09-11'
 
-const WEEKDAY_LABELS_MON_FIRST = ['월', '화', '수', '목', '금', '토', '일']
+// 캠페인/adset 구조를 흉내낸 고정 목업 트리 — 실제 계정 구조를 반영한 건 아니다.
+const MOCK_CAMPAIGNS: readonly { name: string; adsets: readonly string[] }[] = [
+  { name: 'Search_브랜드', adsets: ['브랜드_PC', '브랜드_Mobile'] },
+  { name: 'PMax_전환', adsets: ['PMax_전체상품', 'PMax_신상품'] },
+  { name: 'Display_리타겟팅', adsets: ['리타겟팅_7일', '리타겟팅_30일'] },
+]
 
 /** 날짜 문자열을 시드로 매번 같은 값을 내는 간단한 PRNG(mulberry32) — 같은 기간을
  * 다시 조회해도 값이 안 흔들리게 한다. */
@@ -38,8 +53,8 @@ function seededRandom(seed: string): () => number {
 const range = (rand: () => number, min: number, max: number) =>
   min + rand() * (max - min)
 
-/** 하루치 지표를 만든다 — impressions/ctr/cpc/cvr을 먼저 정하고 나머지(clicks/
- * spend/conversions/cpa/cpm)를 그로부터 계산해 서로 어긋나지 않게 한다. */
+/** 하루치 계정 전체 지표를 만든다 — impressions/ctr/cpc/cvr을 먼저 정하고 나머지
+ * (clicks/spend/conversions/cpa/cpm)를 그로부터 계산해 서로 어긋나지 않게 한다. */
 function mockDailyMetrics(date: ISODate): MetricsSummary {
   const rand = seededRandom(`google:${date}`)
   const impressions = Math.round(range(rand, 6000, 22000))
@@ -49,55 +64,88 @@ function mockDailyMetrics(date: ISODate): MetricsSummary {
   const spend = Math.round(clicks * cpc)
   const cvr = range(rand, 2.5, 9)
   const conversions = Math.round((clicks * cvr) / 100)
-  return {
+  return deriveMetrics({
     impressions,
     clicks,
     spend,
     conversions,
-    ctr,
-    cpc,
-    cpa: conversions > 0 ? spend / conversions : 0,
-    cvr,
-    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
-    frequency: range(rand, 1.05, 2.8),
-  }
+    weightedFrequency: range(rand, 1.05, 2.8) * impressions,
+  })
 }
 
-/** 원본 카운트(impressions/clicks/spend/conversions)를 합산하고, 비율 지표는 그
- * 합계에서 다시 계산한다 — 비율의 평균이 아니라 합계 기준 비율이어야 맞다. */
-function aggregateMetrics(rows: readonly MetricsSummary[]): MetricsSummary {
-  const impressions = rows.reduce((s, r) => s + r.impressions, 0)
-  const clicks = rows.reduce((s, r) => s + r.clicks, 0)
-  const spend = rows.reduce((s, r) => s + r.spend, 0)
-  const conversions = rows.reduce((s, r) => s + r.conversions, 0)
-  const frequency =
-    rows.length === 0
-      ? 0
-      : rows.reduce((s, r) => s + r.frequency, 0) / rows.length
-  return {
+/** 합이 1이 되는 n개의 비중 — 한쪽으로 너무 쏠리지 않게 최소치를 둔다. */
+function splitWeights(rand: () => number, n: number): number[] {
+  const raw = Array.from({ length: n }, () => 0.4 + rand() * 0.6)
+  const total = raw.reduce((s, v) => s + v, 0)
+  return raw.map((v) => v / total)
+}
+
+/** 상위 지표를 weight 비율만큼 잘라낸 부분 지표 — 원본 카운트를 비례 배분하고
+ * 비율/도수는 그로부터 다시 계산(도수는 상위 값에 근접하게 유지). */
+function splitMetrics(base: MetricsSummary, weight: number): MetricsSummary {
+  const impressions = Math.round(base.impressions * weight)
+  const clicks = Math.round(base.clicks * weight)
+  const spend = Math.round(base.spend * weight)
+  const conversions = Math.round(base.conversions * weight)
+  return deriveMetrics({
     impressions,
     clicks,
     spend,
     conversions,
-    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
-    cpc: clicks > 0 ? spend / clicks : 0,
-    cpa: conversions > 0 ? spend / conversions : 0,
-    cvr: clicks > 0 ? (conversions / clicks) * 100 : 0,
-    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
-    frequency,
-  }
+    weightedFrequency: base.frequency * impressions,
+  })
 }
 
-/** 해당 날짜가 속한 주의 월요일. */
-function mondayOf(date: ISODate): ISODate {
-  const dow = fromISO(date).getUTCDay() // 0=일 ~ 6=토
-  const offset = dow === 0 ? -6 : 1 - dow
-  return addDays(date, offset)
+/** 날짜별 계정 전체 지표를 캠페인 → adset 순으로 비례 배분해 목업 트리를 만든다. */
+function mockCampaigns(dates: readonly ISODate[]): CampaignSummary[] {
+  const campaignRows = new Map<string, DateSummary[]>(
+    MOCK_CAMPAIGNS.map((c) => [c.name, []]),
+  )
+  const adsetRows = new Map<string, DateSummary[]>()
+
+  for (const date of dates) {
+    const dayMetrics = mockDailyMetrics(date)
+    const campaignWeights = splitWeights(
+      seededRandom(`google:campaign-weight:${date}`),
+      MOCK_CAMPAIGNS.length,
+    )
+
+    MOCK_CAMPAIGNS.forEach((campaign, ci) => {
+      const campaignMetrics = splitMetrics(dayMetrics, campaignWeights[ci])
+      campaignRows.get(campaign.name)?.push({ date, ...campaignMetrics })
+
+      const adsetWeights = splitWeights(
+        seededRandom(`google:adset-weight:${date}:${campaign.name}`),
+        campaign.adsets.length,
+      )
+      campaign.adsets.forEach((adsetName, ai) => {
+        const key = `${campaign.name}::${adsetName}`
+        const adsetMetrics = splitMetrics(campaignMetrics, adsetWeights[ai])
+        const rows = adsetRows.get(key)
+        if (rows) rows.push({ date, ...adsetMetrics })
+        else adsetRows.set(key, [{ date, ...adsetMetrics }])
+      })
+    })
+  }
+
+  return MOCK_CAMPAIGNS.map((campaign) => {
+    const adsets: AdsetSummary[] = campaign.adsets.map((adsetName) => ({
+      adsetName,
+      ...seriesFromByDate(
+        adsetRows.get(`${campaign.name}::${adsetName}`) ?? [],
+      ),
+    }))
+    return {
+      campaignName: campaign.name,
+      ...seriesFromByDate(campaignRows.get(campaign.name) ?? []),
+      adsets,
+    }
+  })
 }
 
 /**
- * getAllInsights와 같은 모양(MetaInsightSummary)의 구글 인사이트 목업.
- * 조회 범위와 목업 보유 범위(MOCK_MIN_DATE~MOCK_MAX_DATE)가 겹치는 구간만
+ * getAllInsights와 같은 모양(MetaInsightSummary, byCampaign 포함)의 구글 인사이트
+ * 목업. 조회 범위와 목업 보유 범위(MOCK_MIN_DATE~MOCK_MAX_DATE)가 겹치는 구간만
  * 데이터를 만든다 — 실제 API도 연동 시작일 이전은 데이터가 없을 것이기 때문.
  */
 export async function getGoogleInsightsMock(
@@ -113,53 +161,19 @@ export async function getGoogleInsightsMock(
       byDate: [],
       byDayOfWeek: [],
       byGroupedWeek: [],
+      byCampaign: [],
     }
   }
 
-  const byDate: DateSummary[] = dateRange(from, to).map((date) => ({
+  const dates = dateRange(from, to)
+  const byDate: DateSummary[] = dates.map((date) => ({
     date,
     ...mockDailyMetrics(date),
   }))
 
-  const byWeekdayGroups = new Map<string, DateSummary[]>()
-  for (const row of byDate) {
-    const label =
-      WEEKDAY_LABELS_MON_FIRST[(fromISO(row.date).getUTCDay() + 6) % 7]
-    const group = byWeekdayGroups.get(label)
-    if (group) group.push(row)
-    else byWeekdayGroups.set(label, [row])
-  }
-  const byDayOfWeek: DayOfWeekSummary[] = WEEKDAY_LABELS_MON_FIRST.flatMap(
-    (label) => {
-      const group = byWeekdayGroups.get(label)
-      return group ? [{ dayOfWeek: label, ...aggregateMetrics(group) }] : []
-    },
-  )
-
-  const byWeekGroups = new Map<ISODate, DateSummary[]>()
-  for (const row of byDate) {
-    const weekStart = mondayOf(row.date)
-    const group = byWeekGroups.get(weekStart)
-    if (group) group.push(row)
-    else byWeekGroups.set(weekStart, [row])
-  }
-  const byGroupedWeek: WeekSummary[] = [...byWeekGroups.entries()]
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-    .map(([, group]) => {
-      const startDate = group[0].date
-      const endDate = group[group.length - 1].date
-      return {
-        period: `${formatMD(startDate)}~${formatMD(endDate)}`,
-        startDate,
-        endDate,
-        ...aggregateMetrics(group),
-      }
-    })
-
   return {
     total: aggregateMetrics(byDate),
-    byDate,
-    byDayOfWeek,
-    byGroupedWeek,
+    ...seriesFromByDate(byDate),
+    byCampaign: mockCampaigns(dates),
   }
 }

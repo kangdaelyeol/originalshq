@@ -108,6 +108,61 @@ $radius-lg: 8px;
     background: $color-border-soft;
   }
 
+  &__summary-toggle {
+    width: 100%;
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    color: $color-muted;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+      background: $color-surface;
+    }
+
+    .meta-insight__chevron {
+      transition: transform 120ms ease;
+    }
+
+    &.is-open .meta-insight__chevron {
+      transform: rotate(180deg);
+    }
+  }
+
+  &__summary-channels {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    background: $color-border-soft;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  &__summary-channel {
+    display: flex;
+    flex-direction: column;
+    background: $color-surface;
+  }
+
+  &__summary-channel-label {
+    padding: 8px 16px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-muted;
+  }
+
+  &__chevron {
+    flex: none;
+    width: 13px;
+    height: 13px;
+  }
+
   &__kpi {
     display: flex;
     flex-direction: column;
@@ -168,9 +223,66 @@ $radius-lg: 8px;
       font-weight: 500;
     }
 
-    th:first-child,
-    td:first-child {
+    th:nth-child(2),
+    td:nth-child(2) {
       text-align: left;
     }
+  }
+
+  &__table-toggle-head,
+  &__table-toggle-cell {
+    width: 28px;
+    padding: 0 !important;
+    text-align: center !important;
+  }
+
+  &__table-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    color: $color-muted;
+
+    .meta-insight__chevron {
+      transition: transform 120ms ease;
+    }
+
+    &.is-open .meta-insight__chevron {
+      transform: rotate(180deg);
+    }
+  }
+
+  // 로우 전체를 눌러서 채널별 펼치기를 토글한다 — 버튼 대신 로우 자체가 인터랙션
+  // 대상이라는 걸 hover 배경 + 커서로 알려준다.
+  &__table-row--clickable {
+    cursor: pointer;
+    transition: background-color 100ms ease;
+
+    &:hover {
+      background: $color-canvas-subtle;
+    }
+
+    &:hover .meta-insight__table-toggle {
+      color: $color-text;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-accent;
+      outline-offset: -2px;
+    }
+  }
+
+  &__table-row--channel {
+    background: $color-canvas-subtle;
+
+    td {
+      color: $color-muted;
+    }
+  }
+
+  &__table-channel-label {
+    padding-left: 24px !important;
+    font-size: 12px;
   }
 }

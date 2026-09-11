@@ -2,7 +2,9 @@ import { useCallback, useState } from 'react'
 import {
   getAllInsights,
   getGoogleInsightsMock,
+  combineChannelInsights,
   CallableError,
+  type CombinedInsight,
   type MetaInsightSummary,
 } from '../client'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
@@ -30,6 +32,11 @@ export const useMetaInsightViewModel = () => {
   // 묶어서 받는다 — functions는 건드리지 않고 프론트에서만 임시로 채워 넣는 것.
   // 나중에 실제 연동이 끝나면 getGoogleInsightsMock 호출부만 바꾸면 된다.
   const [googleData, setGoogleData] = useState<MetaInsightSummary | null>(null)
+  // total은 물론 캠페인/adset 단위까지 "종합(meta+google)/meta/google" 3분할로
+  // 미리 묶어둔다 — 당근·네이버 등 채널이 늘어나면 combineChannelInsights 쪽만
+  // 확장하면 된다.
+  const [combinedInsight, setCombinedInsight] =
+    useState<CombinedInsight | null>(null)
 
   const describeError = (err: unknown, fallback: string): string =>
     err instanceof CallableError || err instanceof Error
@@ -52,14 +59,15 @@ export const useMetaInsightViewModel = () => {
       ])
       setData(metaResult)
       setGoogleData(googleResult)
-      console.log(metaResult)
-      console.log(googleResult)
+      setCombinedInsight(combineChannelInsights(metaResult, googleResult))
+      console.log(metaResult, googleResult)
     } catch (err) {
       setError(describeError(err, 'Meta 인사이트 조회 중 오류가 발생했습니다.'))
     } finally {
       setLoading(false)
     }
   }, [dateStart, dateEnd])
+  console.log(combinedInsight)
 
   return {
     // 입력
@@ -73,6 +81,7 @@ export const useMetaInsightViewModel = () => {
     // 결과
     data,
     googleData,
+    combinedInsight,
     // 액션
     load,
   }

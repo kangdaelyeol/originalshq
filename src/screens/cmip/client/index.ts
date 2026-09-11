@@ -1,4 +1,6 @@
 export * from './csv-client'
 export * from './insight-client'
+export * from './insight-aggregate'
 export * from './google-insight-mock'
+export * from './insight-channel-combine'
 export * from './report-client'
