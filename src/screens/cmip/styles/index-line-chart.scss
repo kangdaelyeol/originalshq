@@ -6,14 +6,16 @@ $color-border: #30363d;
 .index-line-chart {
   position: relative;
   width: 100%;
-  aspect-ratio: 720 / 300;
+  // 컴포넌트의 VB_H(300)와 맞춘 고정 높이 — 폭은 100%로 늘어나되 높이는 고정해서,
+  // viewBox를 실제 렌더 치수(폭 측정값 × 이 고정 높이)에 맞추면 1 유닛 = 1px이 되어
+  // 컨테이너가 넓어져도 폰트/마커 같은 절대 크기 요소가 함께 확대되지 않는다.
+  height: 300px;
 
   &--empty {
     display: flex;
     align-items: center;
     justify-content: center;
     height: 220px;
-    aspect-ratio: auto;
     color: $color-muted;
     font-size: 13px;
   }

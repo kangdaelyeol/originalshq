@@ -68,6 +68,7 @@ export const MetaInsightChartModal = ({
   onClose,
 }: MetaInsightChartModalProps) => {
   const [view, setView] = useState<InsightView>('byDate')
+  const [expanded, setExpanded] = useState(false)
   // 꺾은선 / 막대를 독립된 선택 집합으로 둔다 — 같은 지표를 양쪽에 동시에 넣을 수 있다.
   const [lineKeys, setLineKeys] = useState<ReadonlySet<MetricKey>>(
     () => new Set(DEFAULT_LINE),
@@ -144,21 +145,33 @@ export const MetaInsightChartModal = ({
   return (
     <div className="meta-insight-chart-modal" onClick={onClose}>
       <div
-        className="meta-insight-chart-modal__panel"
+        className={`meta-insight-chart-modal__panel${
+          expanded ? ' is-expanded' : ''
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         <header className="meta-insight-chart-modal__header">
           <h2 className="meta-insight-chart-modal__title">
             Meta 인사이트 그래프
           </h2>
-          <button
-            type="button"
-            className="meta-insight-chart-modal__close"
-            onClick={onClose}
-            aria-label="닫기"
-          >
-            ✕
-          </button>
+          <div className="meta-insight-chart-modal__header-actions">
+            <button
+              type="button"
+              className="meta-insight-chart-modal__expand"
+              onClick={() => setExpanded((v) => !v)}
+              aria-pressed={expanded}
+            >
+              {expanded ? '작게 보기' : '크게 보기'}
+            </button>
+            <button
+              type="button"
+              className="meta-insight-chart-modal__close"
+              onClick={onClose}
+              aria-label="닫기"
+            >
+              ✕
+            </button>
+          </div>
         </header>
 
         <nav

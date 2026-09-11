@@ -37,12 +37,42 @@ $radius-lg: 8px;
     color: $color-text;
     animation: meta-insight-chart-modal-pop-in 0.16s
       cubic-bezier(0.2, 0.9, 0.3, 1.1);
+    transition: max-width 0.16s ease;
+
+    &.is-expanded {
+      max-width: 1400px;
+    }
   }
 
   &__header {
     display: flex;
     align-items: center;
     justify-content: space-between;
+  }
+
+  &__header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__expand {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    height: 28px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-family: inherit;
+    line-height: 1;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+      border-color: $color-muted;
+    }
   }
 
   &__title {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import '../styles/index-line-chart.scss'
 
@@ -28,8 +28,12 @@ interface IndexLineChartProps {
   deltaLabel?: string
 }
 
-// viewBox 기준 좌표계 — SVG가 컨테이너 폭에 맞춰 그대로 스케일된다.
-const VB_W = 720
+// viewBox 폭을 실제 렌더 픽셀 폭에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 컨테이너가
+// 넓어질 때 폰트/마커/여백 같은 지표 요소 크기는 그대로 유지되고, 점 사이 간격
+// (bandW)만 늘어난다 — 폭 전체가 그대로 확대(zoom)되는 걸 막는다.
+// 치수 측정 전(최초 렌더) 잠깐 쓰는 기본값일 뿐, 측정되는 즉시 실제 폭으로 바뀐다.
+const DEFAULT_VB_W = 960
+// 세로는 CSS에서 고정 높이로 주고 그 값을 그대로 쓴다(측정 불필요).
 const VB_H = 300
 const MARGIN_TOP = 30
 const MARGIN_RIGHT = 16
@@ -121,6 +125,23 @@ export const IndexLineChart = ({
   // 범례에 마우스를 올리면 크로스헤어/툴팁 없이 그 지표만 "포커스"한다.
   const [legendHoverKey, setLegendHoverKey] = useState<string | null>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const [vbWidth, setVbWidth] = useState(DEFAULT_VB_W)
+
+  // 컨테이너의 실제 렌더 폭을 측정해 viewBox 폭으로 그대로 쓴다(1 유닛 = 1px).
+  // "크게 보기"처럼 컨테이너가 넓어지면 이 값이 늘어나 점 간격만 넓어지고,
+  // 폰트·마커 등 절대 크기로 둔 요소는 영향받지 않는다.
+  useLayoutEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const update = () => {
+      const w = el.getBoundingClientRect().width
+      if (w > 0) setVbWidth(w)
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const n = categories.length
 
@@ -154,7 +175,7 @@ export const IndexLineChart = ({
     )
   }
 
-  const PLOT_W = VB_W - MARGIN_LEFT - MARGIN_RIGHT
+  const PLOT_W = vbWidth - MARGIN_LEFT - MARGIN_RIGHT
   const PLOT_H = VB_H - MARGIN_TOP - MARGIN_BOTTOM
   const bandW = PLOT_W / n
   const xCenter = (i: number) => MARGIN_LEFT + bandW * i + bandW / 2
@@ -179,7 +200,7 @@ export const IndexLineChart = ({
     if (!rect) return
     const xFraction = (e.clientX - rect.left) / rect.width
     const yFraction = (e.clientY - rect.top) / rect.height
-    const vbX = xFraction * VB_W
+    const vbX = xFraction * vbWidth
     const vbY = yFraction * VB_H
     const index = Math.min(
       n - 1,
@@ -214,7 +235,7 @@ export const IndexLineChart = ({
     <div className="index-line-chart" ref={wrapRef}>
       <svg
         className="index-line-chart__svg"
-        viewBox={`0 0 ${VB_W} ${VB_H}`}
+        viewBox={`0 0 ${vbWidth} ${VB_H}`}
         preserveAspectRatio="none"
         role="img"
         aria-label="지표 비교 그래프"
@@ -241,7 +262,7 @@ export const IndexLineChart = ({
           <g key={t}>
             <line
               x1={MARGIN_LEFT}
-              x2={VB_W - MARGIN_RIGHT}
+              x2={vbWidth - MARGIN_RIGHT}
               y1={yIn(axisSeries.range, t)}
               y2={yIn(axisSeries.range, t)}
               stroke={GRID}
@@ -414,7 +435,7 @@ export const IndexLineChart = ({
                   : 'center'
           }`}
           style={{
-            left: `${(xCenter(hover.index) / VB_W) * 100}%`,
+            left: `${(xCenter(hover.index) / vbWidth) * 100}%`,
             // 시리즈가 많으면 툴팁이 길어져서, 호버된 점 바로 위에 띄우면 위쪽(체크박스
             // 영역)을 침범할 수 있다. 그래서 항상 차트 상단에 고정하고 아래로만 자란다.
             top: `${(MARGIN_TOP / VB_H) * 100}%`,
