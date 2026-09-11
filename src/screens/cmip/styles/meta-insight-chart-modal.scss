@@ -39,8 +39,11 @@ $radius-lg: 8px;
     color: $color-text;
     animation: meta-insight-chart-modal-pop-in 0.16s
       cubic-bezier(0.2, 0.9, 0.3, 1.1);
-    transition: max-width 0.16s ease;
-
+    // width는 애니메이션시키지 않는다 — 차트의 viewBox가 ResizeObserver로 실제 렌더
+    // 크기를 뒤쫓는 구조라, 폭이 CSS transition으로 매 프레임 보간되면 그 사이 viewBox가
+    // 한 프레임씩 뒤처져 preserveAspectRatio="none"이 비율을 맞추려다 가로로만 늘어나
+    // 보인다(세로는 고정이라 가로만 티가 남). 즉시 전환하면 리사이즈가 한 번만 일어나
+    // 다음 페인트 전에 viewBox가 정확히 따라잡는다.
     &.is-expanded {
       max-width: 1400px;
     }
