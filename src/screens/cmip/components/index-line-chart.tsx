@@ -28,13 +28,13 @@ interface IndexLineChartProps {
   deltaLabel?: string
 }
 
-// viewBox 폭을 실제 렌더 픽셀 폭에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 컨테이너가
-// 넓어질 때 폰트/마커/여백 같은 지표 요소 크기는 그대로 유지되고, 점 사이 간격
-// (bandW)만 늘어난다 — 폭 전체가 그대로 확대(zoom)되는 걸 막는다.
-// 치수 측정 전(최초 렌더) 잠깐 쓰는 기본값일 뿐, 측정되는 즉시 실제 폭으로 바뀐다.
+// viewBox 크기를 실제 렌더 픽셀 크기에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 차트
+// 컨테이너가 커져도(모달 "크게 보기", flex로 남는 세로 공간 채우기 등) 폰트·마커·여백
+// 같은 지표 요소 크기는 그대로 유지되고, 점 사이 간격(bandW)·플롯 높이(PLOT_H)만
+// 늘어난다 — 전체가 그대로 확대(zoom)되는 걸 막는다.
+// 치수 측정 전(최초 렌더) 잠깐 쓰는 기본값일 뿐, 측정되는 즉시 실제 크기로 바뀐다.
 const DEFAULT_VB_W = 960
-// 세로는 CSS에서 고정 높이로 주고 그 값을 그대로 쓴다(측정 불필요).
-const VB_H = 300
+const DEFAULT_VB_H = 300
 const MARGIN_TOP = 30
 const MARGIN_RIGHT = 16
 const MARGIN_BOTTOM = 44
@@ -124,18 +124,23 @@ export const IndexLineChart = ({
   } | null>(null)
   // 범례에 마우스를 올리면 크로스헤어/툴팁 없이 그 지표만 "포커스"한다.
   const [legendHoverKey, setLegendHoverKey] = useState<string | null>(null)
+  // 캔버스(svg + 툴팁) 래퍼 — 범례는 이 밖에 둬서, 측정 대상이 순수하게 svg 영역만
+  // 가리키게 한다(범례 높이가 섞여 들어가지 않도록).
   const wrapRef = useRef<HTMLDivElement>(null)
   const [vbWidth, setVbWidth] = useState(DEFAULT_VB_W)
+  const [vbHeight, setVbHeight] = useState(DEFAULT_VB_H)
 
-  // 컨테이너의 실제 렌더 폭을 측정해 viewBox 폭으로 그대로 쓴다(1 유닛 = 1px).
-  // "크게 보기"처럼 컨테이너가 넓어지면 이 값이 늘어나 점 간격만 넓어지고,
-  // 폰트·마커 등 절대 크기로 둔 요소는 영향받지 않는다.
+  // 캔버스의 실제 렌더 크기를 측정해 viewBox 크기로 그대로 쓴다(1 유닛 = 1px).
+  // "크게 보기"나 flex로 남는 세로 공간을 채울 때처럼 컨테이너가 커지면 이 값이
+  // 늘어나 점 간격·플롯 높이만 넓어지고, 폰트·마커 등 절대 크기로 둔 요소는
+  // 영향받지 않는다.
   useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
     const update = () => {
-      const w = el.getBoundingClientRect().width
-      if (w > 0) setVbWidth(w)
+      const rect = el.getBoundingClientRect()
+      if (rect.width > 0) setVbWidth(rect.width)
+      if (rect.height > 0) setVbHeight(rect.height)
     }
     update()
     const ro = new ResizeObserver(update)
@@ -176,7 +181,7 @@ export const IndexLineChart = ({
   }
 
   const PLOT_W = vbWidth - MARGIN_LEFT - MARGIN_RIGHT
-  const PLOT_H = VB_H - MARGIN_TOP - MARGIN_BOTTOM
+  const PLOT_H = vbHeight - MARGIN_TOP - MARGIN_BOTTOM
   const bandW = PLOT_W / n
   const xCenter = (i: number) => MARGIN_LEFT + bandW * i + bandW / 2
   const yIn = (range: { min: number; max: number }, v: number) =>
@@ -201,7 +206,7 @@ export const IndexLineChart = ({
     const xFraction = (e.clientX - rect.left) / rect.width
     const yFraction = (e.clientY - rect.top) / rect.height
     const vbX = xFraction * vbWidth
-    const vbY = yFraction * VB_H
+    const vbY = yFraction * vbHeight
     const index = Math.min(
       n - 1,
       Math.max(0, Math.round((vbX - MARGIN_LEFT - bandW / 2) / bandW)),
@@ -232,279 +237,281 @@ export const IndexLineChart = ({
   const axisColor = series.length > 1 ? axisSeries.color : MUTED
 
   return (
-    <div className="index-line-chart" ref={wrapRef}>
-      <svg
-        className="index-line-chart__svg"
-        viewBox={`0 0 ${vbWidth} ${VB_H}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label="지표 비교 그래프"
-      >
-        <text x={4} y={14} textAnchor="start" fontSize={10} fill={axisColor}>
-          {series.length > 1
-            ? `${axisSeries.label} (${axisSeries.unit})`
-            : `${axisSeries.label} (${axisSeries.unit})`}
-        </text>
-        {xAxisLabel && (
-          <text
-            x={MARGIN_LEFT + PLOT_W / 2}
-            y={VB_H - 6}
-            textAnchor="middle"
-            fontSize={10}
-            fill={MUTED}
-          >
-            {xAxisLabel}
+    <div className="index-line-chart">
+      <div className="index-line-chart__canvas" ref={wrapRef}>
+        <svg
+          className="index-line-chart__svg"
+          viewBox={`0 0 ${vbWidth} ${vbHeight}`}
+          preserveAspectRatio="none"
+          role="img"
+          aria-label="지표 비교 그래프"
+        >
+          <text x={4} y={14} textAnchor="start" fontSize={10} fill={axisColor}>
+            {series.length > 1
+              ? `${axisSeries.label} (${axisSeries.unit})`
+              : `${axisSeries.label} (${axisSeries.unit})`}
           </text>
-        )}
+          {xAxisLabel && (
+            <text
+              x={MARGIN_LEFT + PLOT_W / 2}
+              y={vbHeight - 6}
+              textAnchor="middle"
+              fontSize={10}
+              fill={MUTED}
+            >
+              {xAxisLabel}
+            </text>
+          )}
 
-        {/* 그리드 + y축 눈금 — 라벨링 중인 지표(axisSeries)의 실제값 기준 */}
-        {axisSeries.range.ticks.map((t) => (
-          <g key={t}>
+          {/* 그리드 + y축 눈금 — 라벨링 중인 지표(axisSeries)의 실제값 기준 */}
+          {axisSeries.range.ticks.map((t) => (
+            <g key={t}>
+              <line
+                x1={MARGIN_LEFT}
+                x2={vbWidth - MARGIN_RIGHT}
+                y1={yIn(axisSeries.range, t)}
+                y2={yIn(axisSeries.range, t)}
+                stroke={GRID}
+                strokeWidth={1}
+              />
+              <text
+                x={MARGIN_LEFT - 8}
+                y={yIn(axisSeries.range, t)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={8}
+                fill={axisColor}
+              >
+                {axisSeries.formatCompact(t)}
+              </text>
+            </g>
+          ))}
+
+          {/* x축 라벨 */}
+          {categories.map((c, i) =>
+            i % labelStride === 0 || i === n - 1 ? (
+              <text
+                key={`x-${i}`}
+                x={xCenter(i)}
+                y={MARGIN_TOP + PLOT_H + 13}
+                textAnchor="middle"
+                fontSize={9}
+                fill={MUTED}
+              >
+                {c}
+              </text>
+            ) : null,
+          )}
+
+          {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
+            여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
+          {barSeries.map((s) => {
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            const yBase = yIn(s.range, Math.max(s.range.min, 0))
+            const w = Math.max(1, slotW - 1.5)
+            return s.raw.map((v, i) => {
+              if (v == null) return null
+              const yv = yIn(s.range, v)
+              const top = Math.min(yBase, yv)
+              const h = Math.max(1, Math.abs(yBase - yv))
+              return (
+                <rect
+                  key={`bar-${s.key}-${i}`}
+                  x={barCenterX(s.key, i) - w / 2}
+                  y={top}
+                  width={w}
+                  height={h}
+                  rx={1}
+                  fill={s.color}
+                  opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
+                />
+              )
+            })
+          })}
+
+          {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
+          {lineSeries.map((s) => {
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            return (
+              <path
+                key={s.key}
+                d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={isFocused ? 3 : 2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                opacity={dimmed ? DIM_OPACITY : 1}
+              />
+            )
+          })}
+
+          {/* 마커 — 꺾은선만 */}
+          {lineSeries.map((s) => {
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            return s.raw.map((v, i) => {
+              if (v == null) return null
+              const isHoverX = hover?.index === i
+              return (
+                <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
+                  <circle
+                    cx={xCenter(i)}
+                    cy={yIn(s.range, v)}
+                    r={isHoverX ? 6 : 5}
+                    fill={SURFACE}
+                  />
+                  <circle
+                    cx={xCenter(i)}
+                    cy={yIn(s.range, v)}
+                    r={isHoverX ? 4.5 : 3.5}
+                    fill={s.color}
+                  />
+                </g>
+              )
+            })
+          })}
+
+          {/* 점 값 라벨 — 선택한 모든 지표의 모든 점을 표기한다. 지표마다 독립 축이라
+            값이 겹칠 수 있어, 시리즈 순서에 따라 점의 위/아래로 번갈아 배치해 충돌을 줄인다. */}
+          {prepared.map((s, si) => {
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            const isBar = s.type === 'bar'
+            return s.raw.map((v, i) => {
+              if (v == null) return null
+              const y = yIn(s.range, v)
+              const cx = isBar ? barCenterX(s.key, i) : xCenter(i)
+              // 막대는 항상 막대 위. 꺾은선은 시리즈 순서로 위/아래 교대(상단 여백 넘으면 아래).
+              const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
+              return (
+                <text
+                  key={`label-${s.key}-${i}`}
+                  x={cx}
+                  y={above ? (isBar ? y - 5 : y - 9) : y + 16}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill={series.length > 1 ? s.color : MUTED}
+                  stroke={SURFACE}
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  opacity={dimmed ? DIM_OPACITY : 1}
+                >
+                  {s.formatCompact(v)}
+                </text>
+              )
+            })
+          })}
+
+          {/* 크로스헤어 */}
+          {hover != null && (
             <line
-              x1={MARGIN_LEFT}
-              x2={vbWidth - MARGIN_RIGHT}
-              y1={yIn(axisSeries.range, t)}
-              y2={yIn(axisSeries.range, t)}
+              x1={xCenter(hover.index)}
+              x2={xCenter(hover.index)}
+              y1={MARGIN_TOP}
+              y2={MARGIN_TOP + PLOT_H}
               stroke={GRID}
               strokeWidth={1}
             />
-            <text
-              x={MARGIN_LEFT - 8}
-              y={yIn(axisSeries.range, t)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              fontSize={8}
-              fill={axisColor}
-            >
-              {axisSeries.formatCompact(t)}
-            </text>
-          </g>
-        ))}
+          )}
 
-        {/* x축 라벨 */}
-        {categories.map((c, i) =>
-          i % labelStride === 0 || i === n - 1 ? (
-            <text
-              key={`x-${i}`}
-              x={xCenter(i)}
-              y={MARGIN_TOP + PLOT_H + 13}
-              textAnchor="middle"
-              fontSize={9}
-              fill={MUTED}
-            >
-              {c}
-            </text>
-          ) : null,
-        )}
-
-        {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
-            여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
-        {barSeries.map((s) => {
-          const isFocused = focused?.key === s.key
-          const dimmed = focused != null && !isFocused
-          const yBase = yIn(s.range, Math.max(s.range.min, 0))
-          const w = Math.max(1, slotW - 1.5)
-          return s.raw.map((v, i) => {
-            if (v == null) return null
-            const yv = yIn(s.range, v)
-            const top = Math.min(yBase, yv)
-            const h = Math.max(1, Math.abs(yBase - yv))
-            return (
-              <rect
-                key={`bar-${s.key}-${i}`}
-                x={barCenterX(s.key, i) - w / 2}
-                y={top}
-                width={w}
-                height={h}
-                rx={1}
-                fill={s.color}
-                opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
-              />
-            )
-          })
-        })}
-
-        {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
-        {lineSeries.map((s) => {
-          const isFocused = focused?.key === s.key
-          const dimmed = focused != null && !isFocused
-          return (
-            <path
-              key={s.key}
-              d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={isFocused ? 3 : 2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              opacity={dimmed ? DIM_OPACITY : 1}
-            />
-          )
-        })}
-
-        {/* 마커 — 꺾은선만 */}
-        {lineSeries.map((s) => {
-          const isFocused = focused?.key === s.key
-          const dimmed = focused != null && !isFocused
-          return s.raw.map((v, i) => {
-            if (v == null) return null
-            const isHoverX = hover?.index === i
-            return (
-              <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
-                <circle
-                  cx={xCenter(i)}
-                  cy={yIn(s.range, v)}
-                  r={isHoverX ? 6 : 5}
-                  fill={SURFACE}
-                />
-                <circle
-                  cx={xCenter(i)}
-                  cy={yIn(s.range, v)}
-                  r={isHoverX ? 4.5 : 3.5}
-                  fill={s.color}
-                />
-              </g>
-            )
-          })
-        })}
-
-        {/* 점 값 라벨 — 선택한 모든 지표의 모든 점을 표기한다. 지표마다 독립 축이라
-            값이 겹칠 수 있어, 시리즈 순서에 따라 점의 위/아래로 번갈아 배치해 충돌을 줄인다. */}
-        {prepared.map((s, si) => {
-          const isFocused = focused?.key === s.key
-          const dimmed = focused != null && !isFocused
-          const isBar = s.type === 'bar'
-          return s.raw.map((v, i) => {
-            if (v == null) return null
-            const y = yIn(s.range, v)
-            const cx = isBar ? barCenterX(s.key, i) : xCenter(i)
-            // 막대는 항상 막대 위. 꺾은선은 시리즈 순서로 위/아래 교대(상단 여백 넘으면 아래).
-            const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
-            return (
-              <text
-                key={`label-${s.key}-${i}`}
-                x={cx}
-                y={above ? (isBar ? y - 5 : y - 9) : y + 16}
-                textAnchor="middle"
-                fontSize={9}
-                fill={series.length > 1 ? s.color : MUTED}
-                stroke={SURFACE}
-                strokeWidth={3}
-                paintOrder="stroke"
-                opacity={dimmed ? DIM_OPACITY : 1}
-              >
-                {s.formatCompact(v)}
-              </text>
-            )
-          })
-        })}
-
-        {/* 크로스헤어 */}
-        {hover != null && (
-          <line
-            x1={xCenter(hover.index)}
-            x2={xCenter(hover.index)}
-            y1={MARGIN_TOP}
-            y2={MARGIN_TOP + PLOT_H}
-            stroke={GRID}
-            strokeWidth={1}
+          {/* 히트 타깃 — 전체 시리즈가 x를 공유하므로 영역 하나로 처리 */}
+          <rect
+            x={MARGIN_LEFT}
+            y={MARGIN_TOP}
+            width={PLOT_W}
+            height={PLOT_H}
+            fill="transparent"
+            onPointerMove={handlePointerMove}
+            onPointerLeave={() => setHover(null)}
           />
-        )}
+        </svg>
 
-        {/* 히트 타깃 — 전체 시리즈가 x를 공유하므로 영역 하나로 처리 */}
-        <rect
-          x={MARGIN_LEFT}
-          y={MARGIN_TOP}
-          width={PLOT_W}
-          height={PLOT_H}
-          fill="transparent"
-          onPointerMove={handlePointerMove}
-          onPointerLeave={() => setHover(null)}
-        />
-      </svg>
+        {hover != null && (
+          <div
+            className={`index-line-chart__tooltip is-align-${
+              n <= 1
+                ? 'center'
+                : hover.index / (n - 1) < 0.15
+                  ? 'left'
+                  : hover.index / (n - 1) > 0.85
+                    ? 'right'
+                    : 'center'
+            }`}
+            style={{
+              left: `${(xCenter(hover.index) / vbWidth) * 100}%`,
+              // 시리즈가 많으면 툴팁이 길어져서, 호버된 점 바로 위에 띄우면 위쪽(체크박스
+              // 영역)을 침범할 수 있다. 그래서 항상 차트 상단에 고정하고 아래로만 자란다.
+              top: `${(MARGIN_TOP / vbHeight) * 100}%`,
+            }}
+          >
+            <div className="index-line-chart__tooltip-label">
+              {categories[hover.index]} · {deltaLabel}
+            </div>
+            {prepared.map((s) => {
+              const rawNow = s.raw[hover.index]
+              const rawPrev = hover.index > 0 ? s.raw[hover.index - 1] : null
+              const deltaRaw = rawPrev != null ? rawNow - rawPrev : null
+              const deltaPct =
+                deltaRaw != null && rawPrev != null && rawPrev !== 0
+                  ? (deltaRaw / Math.abs(rawPrev)) * 100
+                  : null
+              const deltaDir =
+                deltaRaw == null || deltaRaw === 0
+                  ? 'flat'
+                  : deltaRaw > 0
+                    ? 'up'
+                    : 'down'
+              const deltaColor =
+                deltaDir === 'up' ? UP : deltaDir === 'down' ? DOWN : MUTED
 
-      {hover != null && (
-        <div
-          className={`index-line-chart__tooltip is-align-${
-            n <= 1
-              ? 'center'
-              : hover.index / (n - 1) < 0.15
-                ? 'left'
-                : hover.index / (n - 1) > 0.85
-                  ? 'right'
-                  : 'center'
-          }`}
-          style={{
-            left: `${(xCenter(hover.index) / vbWidth) * 100}%`,
-            // 시리즈가 많으면 툴팁이 길어져서, 호버된 점 바로 위에 띄우면 위쪽(체크박스
-            // 영역)을 침범할 수 있다. 그래서 항상 차트 상단에 고정하고 아래로만 자란다.
-            top: `${(MARGIN_TOP / VB_H) * 100}%`,
-          }}
-        >
-          <div className="index-line-chart__tooltip-label">
-            {categories[hover.index]} · {deltaLabel}
-          </div>
-          {prepared.map((s) => {
-            const rawNow = s.raw[hover.index]
-            const rawPrev = hover.index > 0 ? s.raw[hover.index - 1] : null
-            const deltaRaw = rawPrev != null ? rawNow - rawPrev : null
-            const deltaPct =
-              deltaRaw != null && rawPrev != null && rawPrev !== 0
-                ? (deltaRaw / Math.abs(rawPrev)) * 100
-                : null
-            const deltaDir =
-              deltaRaw == null || deltaRaw === 0
-                ? 'flat'
-                : deltaRaw > 0
-                  ? 'up'
-                  : 'down'
-            const deltaColor =
-              deltaDir === 'up' ? UP : deltaDir === 'down' ? DOWN : MUTED
-
-            return (
-              <div
-                key={s.key}
-                className={`index-line-chart__tooltip-row${
-                  focused?.key === s.key
-                    ? ' is-focused'
-                    : focused
-                      ? ' is-dimmed'
-                      : ''
-                }`}
-              >
-                <span
-                  className="index-line-chart__tooltip-key"
-                  style={{ background: s.color }}
-                />
-                <span className="index-line-chart__tooltip-name">
-                  {s.label}
-                  {s.type === 'bar' && ' · 막대'}
-                </span>
-                <span className="index-line-chart__tooltip-values">
-                  <span className="index-line-chart__tooltip-value">
-                    {rawNow == null ? '—' : s.format(rawNow)}
+              return (
+                <div
+                  key={s.key}
+                  className={`index-line-chart__tooltip-row${
+                    focused?.key === s.key
+                      ? ' is-focused'
+                      : focused
+                        ? ' is-dimmed'
+                        : ''
+                  }`}
+                >
+                  <span
+                    className="index-line-chart__tooltip-key"
+                    style={{ background: s.color }}
+                  />
+                  <span className="index-line-chart__tooltip-name">
+                    {s.label}
+                    {s.type === 'bar' && ' · 막대'}
                   </span>
-                  {deltaRaw != null && (
-                    <span
-                      className="index-line-chart__tooltip-delta"
-                      style={{ color: deltaColor }}
-                    >
-                      {deltaDir === 'up'
-                        ? '▲'
-                        : deltaDir === 'down'
-                          ? '▼'
-                          : '—'}{' '}
-                      {s.format(Math.abs(deltaRaw))}
-                      {deltaPct != null &&
-                        ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                  <span className="index-line-chart__tooltip-values">
+                    <span className="index-line-chart__tooltip-value">
+                      {rawNow == null ? '—' : s.format(rawNow)}
                     </span>
-                  )}
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      )}
+                    {deltaRaw != null && (
+                      <span
+                        className="index-line-chart__tooltip-delta"
+                        style={{ color: deltaColor }}
+                      >
+                        {deltaDir === 'up'
+                          ? '▲'
+                          : deltaDir === 'down'
+                            ? '▼'
+                            : '—'}{' '}
+                        {s.format(Math.abs(deltaRaw))}
+                        {deltaPct != null &&
+                          ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                      </span>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="index-line-chart__legend">
         {series.map((s) => (

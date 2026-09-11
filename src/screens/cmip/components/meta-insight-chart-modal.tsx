@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type {
   DateSummary,
   DayOfWeekSummary,
@@ -43,19 +43,39 @@ const DELTA_LABEL: Record<InsightView, string> = {
   byGroupedWeek: '전주 대비',
 }
 
-// 지표별 고정 색상 팔레트가 최대 8개까지만 서로 안전하게 구분되도록 되어 있어서,
-// 동시에 겹쳐 볼 수 있는 지표 수(꺾은선 ∪ 막대)를 그만큼으로 제한한다.
-const MAX_SELECTED = 8
-
 // 모달을 처음 열었을 때 기본으로 켜둘 지표 — 완전히 빈 화면으로 시작하지 않도록.
 const DEFAULT_LINE: readonly MetricKey[] = ['impressions']
-const DEFAULT_BAR: readonly MetricKey[] = []
 
 type SeriesKind = 'line' | 'bar'
+type MetricMode = SeriesKind | 'off'
 
-const KIND_LABEL: Record<SeriesKind, string> = {
+const MODE_OPTIONS: readonly MetricMode[] = ['off', 'line', 'bar']
+
+const MODE_LABEL: Record<MetricMode, string> = {
+  off: '끄기',
   line: '꺾은선',
   bar: '막대',
+}
+
+type MenuKey = 'view' | 'metric'
+
+function ChevronIcon() {
+  return (
+    <svg
+      className="meta-insight-chart-modal__chevron"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M5 7.5 10 12.5 15 7.5"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
 }
 
 interface MetaInsightChartModalProps {
@@ -69,13 +89,15 @@ export const MetaInsightChartModal = ({
 }: MetaInsightChartModalProps) => {
   const [view, setView] = useState<InsightView>('byDate')
   const [expanded, setExpanded] = useState(false)
-  // 꺾은선 / 막대를 독립된 선택 집합으로 둔다 — 같은 지표를 양쪽에 동시에 넣을 수 있다.
-  const [lineKeys, setLineKeys] = useState<ReadonlySet<MetricKey>>(
-    () => new Set(DEFAULT_LINE),
-  )
-  const [barKeys, setBarKeys] = useState<ReadonlySet<MetricKey>>(
-    () => new Set(DEFAULT_BAR),
-  )
+  // 지표 하나당 종류(꺾은선/막대)를 최대 하나만 가진다 — radio처럼, 다른 종류를 누르면
+  // 그쪽으로 옮겨간다. Map에 없으면 미선택.
+  const [metricMode, setMetricMode] = useState<
+    ReadonlyMap<MetricKey, SeriesKind>
+  >(() => new Map(DEFAULT_LINE.map((key) => [key, 'line' as SeriesKind])))
+  // 집계 기준 / 지표 선택을 드롭다운 한 줄로 압축 — 차트가 쓸 세로 공간을 최대한
+  // 남겨두기 위해서다. 한 번에 하나만 열린다.
+  const [openMenu, setOpenMenu] = useState<MenuKey | null>(null)
+  const controlsRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -86,11 +108,28 @@ export const MetaInsightChartModal = ({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      // 드롭다운이 열려 있으면 그것부터 닫는다 — 모달까지 한번에 닫히지 않도록.
+      if (openMenu) {
+        setOpenMenu(null)
+        return
+      }
+      onClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, openMenu])
+
+  useEffect(() => {
+    if (!openMenu) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (!controlsRef.current?.contains(e.target as Node)) {
+        setOpenMenu(null)
+      }
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => document.removeEventListener('pointerdown', handlePointerDown)
+  }, [openMenu])
 
   const rows: readonly MetricsSummary[] = data[view]
   const categories = useMemo(
@@ -98,32 +137,18 @@ export const MetaInsightChartModal = ({
     [rows, view],
   )
 
-  // 합집합 기준으로 한도를 센다 — 같은 지표가 양쪽에 있어도 한 번만 카운트.
-  const unionSize = useMemo(
-    () => new Set([...lineKeys, ...barKeys]).size,
-    [lineKeys, barKeys],
-  )
-
-  const toggleMetric = (kind: SeriesKind, key: MetricKey) => {
-    const setKeys = kind === 'line' ? setLineKeys : setBarKeys
-    const otherKeys = kind === 'line' ? barKeys : lineKeys
-    setKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) {
-        next.delete(key)
-        return next
-      }
-      // 새로 켤 때만 한도 확인 — 다른 그룹에 이미 있으면 합집합이 안 늘어난다.
-      const wouldGrow = !otherKeys.has(key)
-      if (wouldGrow && unionSize >= MAX_SELECTED) return prev
-      next.add(key)
+  const setMode = (key: MetricKey, mode: MetricMode) => {
+    setMetricMode((prev) => {
+      const next = new Map(prev)
+      if (mode === 'off') next.delete(key)
+      else next.set(key, mode)
       return next
     })
   }
 
   const series: IndexSeries[] = useMemo(() => {
     const build = (f: MetricField, type: SeriesKind): IndexSeries => ({
-      key: `${f.key}:${type}`,
+      key: f.key,
       label: f.label,
       color: f.color,
       type,
@@ -132,15 +157,15 @@ export const MetaInsightChartModal = ({
       format: f.format,
       formatCompact: f.formatCompact,
     })
-    const lines = METRIC_FIELDS.filter((f) => lineKeys.has(f.key)).map((f) =>
-      build(f, 'line'),
-    )
-    const bars = METRIC_FIELDS.filter((f) => barKeys.has(f.key)).map((f) =>
-      build(f, 'bar'),
-    )
     // 막대를 먼저 — 차트가 라인/마커를 그 위에 얹는다.
+    const bars = METRIC_FIELDS.filter(
+      (f) => metricMode.get(f.key) === 'bar',
+    ).map((f) => build(f, 'bar'))
+    const lines = METRIC_FIELDS.filter(
+      (f) => metricMode.get(f.key) === 'line',
+    ).map((f) => build(f, 'line'))
     return [...bars, ...lines]
-  }, [rows, lineKeys, barKeys])
+  }, [rows, metricMode])
 
   return (
     <div className="meta-insight-chart-modal" onClick={onClose}>
@@ -174,75 +199,104 @@ export const MetaInsightChartModal = ({
           </div>
         </header>
 
-        <nav
-          className="meta-insight-chart-modal__tabs"
-          role="tablist"
-          aria-label="집계 기준"
-        >
-          {VIEW_OPTIONS.map((o) => (
+        <div className="meta-insight-chart-modal__controls" ref={controlsRef}>
+          <div className="meta-insight-chart-modal__dropdown">
             <button
-              key={o.value}
               type="button"
-              role="tab"
-              aria-selected={view === o.value}
-              className={`meta-insight-chart-modal__tab${
-                view === o.value ? ' is-active' : ''
+              className={`meta-insight-chart-modal__dropdown-trigger${
+                openMenu === 'view' ? ' is-open' : ''
               }`}
-              onClick={() => setView(o.value)}
+              aria-haspopup="listbox"
+              aria-expanded={openMenu === 'view'}
+              onClick={() => setOpenMenu((m) => (m === 'view' ? null : 'view'))}
             >
-              {o.label}
+              {VIEW_OPTIONS.find((o) => o.value === view)?.label}
+              <ChevronIcon />
             </button>
-          ))}
-        </nav>
-
-        <fieldset className="meta-insight-chart-modal__checkbox-group">
-          <legend className="meta-insight-chart-modal__checkbox-legend">
-            지표 선택 ({unionSize}/{MAX_SELECTED})
-          </legend>
-          {(['line', 'bar'] as const).map((kind) => {
-            const keys = kind === 'line' ? lineKeys : barKeys
-            const otherKeys = kind === 'line' ? barKeys : lineKeys
-            return (
+            {openMenu === 'view' && (
               <div
-                key={kind}
-                className="meta-insight-chart-modal__checkbox-kind"
+                className="meta-insight-chart-modal__dropdown-menu"
+                role="listbox"
               >
-                <span className="meta-insight-chart-modal__checkbox-kind-label">
-                  {KIND_LABEL[kind]}
-                </span>
-                <div className="meta-insight-chart-modal__checkbox-row">
-                  {METRIC_FIELDS.map((f) => {
-                    const checked = keys.has(f.key)
-                    const disabled =
-                      !checked &&
-                      !otherKeys.has(f.key) &&
-                      unionSize >= MAX_SELECTED
-                    return (
-                      <label
-                        key={f.key}
-                        className={`meta-insight-chart-modal__checkbox${
-                          disabled ? ' is-disabled' : ''
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={disabled}
-                          onChange={() => toggleMetric(kind, f.key)}
-                        />
-                        <span
-                          className="meta-insight-chart-modal__checkbox-swatch"
-                          style={{ background: f.color }}
-                        />
-                        {f.label}
-                      </label>
-                    )
-                  })}
-                </div>
+                {VIEW_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={view === o.value}
+                    className={`meta-insight-chart-modal__dropdown-item${
+                      view === o.value ? ' is-selected' : ''
+                    }`}
+                    onClick={() => {
+                      setView(o.value)
+                      setOpenMenu(null)
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
               </div>
-            )
-          })}
-        </fieldset>
+            )}
+          </div>
+
+          <div className="meta-insight-chart-modal__dropdown">
+            <button
+              type="button"
+              className={`meta-insight-chart-modal__dropdown-trigger${
+                openMenu === 'metric' ? ' is-open' : ''
+              }`}
+              aria-haspopup="true"
+              aria-expanded={openMenu === 'metric'}
+              onClick={() =>
+                setOpenMenu((m) => (m === 'metric' ? null : 'metric'))
+              }
+            >
+              지표 {metricMode.size > 0 ? `${metricMode.size}개` : '선택'}
+              <ChevronIcon />
+            </button>
+            {openMenu === 'metric' && (
+              <div className="meta-insight-chart-modal__dropdown-menu meta-insight-chart-modal__metric-menu">
+                {METRIC_FIELDS.map((f) => {
+                  const mode: MetricMode = metricMode.get(f.key) ?? 'off'
+                  return (
+                    <div
+                      key={f.key}
+                      className="meta-insight-chart-modal__metric-row"
+                    >
+                      <span
+                        className="meta-insight-chart-modal__metric-row-dot"
+                        style={{ background: f.color }}
+                      />
+                      <span className="meta-insight-chart-modal__metric-row-label">
+                        {f.label}
+                      </span>
+                      <div
+                        className="meta-insight-chart-modal__metric-row-toggle"
+                        role="group"
+                        aria-label={f.label}
+                      >
+                        {MODE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt}
+                            type="button"
+                            className={`meta-insight-chart-modal__metric-toggle-btn${
+                              mode === opt ? ' is-active' : ''
+                            }${opt !== 'off' ? ' is-colorable' : ''}`}
+                            style={{ '--chip-color': f.color } as CSSProperties}
+                            aria-pressed={mode === opt}
+                            onClick={() => setMode(f.key, opt)}
+                          >
+                            {MODE_LABEL[opt]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="meta-insight-chart-modal__chart-single">
           <IndexLineChart

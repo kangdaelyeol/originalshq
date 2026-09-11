@@ -4,20 +4,28 @@ $color-surface: #161b22;
 $color-border: #30363d;
 
 .index-line-chart {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  // 컴포넌트의 VB_H(300)와 맞춘 고정 높이 — 폭은 100%로 늘어나되 높이는 고정해서,
-  // viewBox를 실제 렌더 치수(폭 측정값 × 이 고정 높이)에 맞추면 1 유닛 = 1px이 되어
-  // 컨테이너가 넓어져도 폰트/마커 같은 절대 크기 요소가 함께 확대되지 않는다.
-  height: 300px;
+  // 부모(모달의 __chart-single)가 flex 컨테이너면 남는 세로 공간을 전부 채운다.
+  // 그 밖(부모가 flex가 아닌 곳)에서 쓰일 때를 대비한 바닥 높이일 뿐이다.
+  flex: 1;
+  min-height: 220px;
 
   &--empty {
-    display: flex;
     align-items: center;
     justify-content: center;
-    height: 220px;
     color: $color-muted;
     font-size: 13px;
+  }
+
+  // svg + 툴팁만 담는 캔버스. 범례는 이 밖에 둬서, 아래 __canvas의 실측 크기가
+  // 범례 높이와 섞이지 않고 순수하게 svg 영역만 가리키게 한다(컴포넌트가 이 크기를
+  // 그대로 viewBox에 써서 1 유닛 = 1px을 유지한다).
+  &__canvas {
+    position: relative;
+    flex: 1;
+    min-height: 0;
   }
 
   &__svg {
@@ -117,6 +125,7 @@ $color-border: #30363d;
   }
 
   &__legend {
+    flex: none;
     display: flex;
     flex-wrap: wrap;
     gap: 6px 14px;
