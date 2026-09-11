@@ -7,7 +7,12 @@ import type {
   MetricsSummary,
   WeekSummary,
 } from '../client'
-import { metricsForDateSubset, weekdayLabelOf } from '../client'
+import {
+  aggregateMetrics,
+  emptyMetrics,
+  metricsForDateSubset,
+  weekdayLabelOf,
+} from '../client'
 import { METRIC_FIELDS } from './metric-fields'
 import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
@@ -396,9 +401,20 @@ interface PivotGroup {
   byDate: readonly DateSummary[]
 }
 
+// 합산해서 의미 있는(더하면 되는) 지표 — 평균 행에서 일수로 나눈다. 나머지(ctr/cpc/
+// cpa/cvr/cpm/frequency)는 이미 비율/도수라 aggregateMetrics가 원본 카운트 합계에서
+// 다시 계산해준 값을 그대로 쓴다(다시 나누면 이중으로 평균 내는 꼴이 된다).
+const SUM_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
+  'impressions',
+  'clicks',
+  'spend',
+  'conversions',
+])
+
 /** 캠페인/adset 탭 전용 — 선택된 항목(캠페인 또는 adset) × 선택된 지표를 날짜별로
- * 교차 표시한다. 합계/평균/전월평균 없이 일자 원본 그대로, 주차 집계는 안 쓴다
- * (나중에 차트에서 쓸 데이터라 여기서는 손대지 않는다). */
+ * 교차 표시한다. 첫 행은 일 평균(전체 조회 기간 기준), 그 아래로 날짜별 원본이
+ * 최신순(내림차순)으로 이어진다. 주차 집계는 안 쓴다(나중에 차트에서 쓸 데이터라
+ * 여기서는 손대지 않는다). */
 function PivotSummary({
   groups,
   metricKeys,
@@ -429,6 +445,17 @@ function PivotSummary({
     ...g,
     byDateKey: new Map(g.byDate.map((row) => [row.date, row])),
   }))
+
+  // 평균 행 — 조회 기간 전체(dates, 값 없는 날은 0)를 기준으로 한 일 평균.
+  const dayCount = dates.length || 1
+  const groupAverages = groupsWithLookup.map((g) => {
+    const resolvedRows = dates.map((d) => g.byDateKey.get(d) ?? emptyMetrics())
+    const agg = aggregateMetrics(resolvedRows)
+    return { key: g.key, agg }
+  })
+
+  // 최신 날짜가 위로 오도록 — dates는 오름차순으로 들어오므로 뒤집기만 하면 된다.
+  const datesDesc = [...dates].reverse()
 
   return (
     <section className="meta-insight__summary meta-insight__pivot">
@@ -470,21 +497,47 @@ function PivotSummary({
                 </td>
               </tr>
             ) : (
-              dates.map((date) => (
-                <tr key={date}>
-                  <td>
-                    {date} ({weekdayLabelOf(date)})
-                  </td>
-                  {groupsWithLookup.flatMap((g) => {
-                    const row = g.byDateKey.get(date)
-                    return metricFields.map((f) => (
-                      <td key={`${g.key}-${f.key}`}>
-                        {f.formatCompact(row ? row[f.key] : 0)}
+              <>
+                <tr className="meta-insight__table-row--total">
+                  <td>합계</td>
+                  {groupAverages.flatMap(({ key, agg }) =>
+                    metricFields.map((f) => (
+                      <td key={`${key}-${f.key}`}>
+                        {f.formatCompact(agg[f.key])}
                       </td>
-                    ))
-                  })}
+                    )),
+                  )}
                 </tr>
-              ))
+                <tr className="meta-insight__table-row--average">
+                  <td>평균</td>
+                  {groupAverages.flatMap(({ key, agg }) =>
+                    metricFields.map((f) => (
+                      <td key={`${key}-${f.key}`}>
+                        {f.formatCompact(
+                          SUM_METRIC_KEYS.has(f.key)
+                            ? agg[f.key] / dayCount
+                            : agg[f.key],
+                        )}
+                      </td>
+                    )),
+                  )}
+                </tr>
+                {datesDesc.map((date) => (
+                  <tr key={date}>
+                    <td>
+                      {date} ({weekdayLabelOf(date)})
+                    </td>
+                    {groupsWithLookup.flatMap((g) => {
+                      const row = g.byDateKey.get(date)
+                      return metricFields.map((f) => (
+                        <td key={`${g.key}-${f.key}`}>
+                          {f.formatCompact(row ? row[f.key] : 0)}
+                        </td>
+                      ))
+                    })}
+                  </tr>
+                ))}
+              </>
             )}
           </tbody>
         </table>
@@ -503,7 +556,15 @@ export const MetaInsight = () => {
     error,
     combinedInsight,
     load,
+    loadRange,
   } = useMetaInsightViewModel()
+
+  // 페이지에 들어오면 기본 기간(최근 7일)으로 바로 조회 — "조회" 버튼 없이도
+  // 데이터가 바로 보이도록. 마운트 시 한 번만.
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [chartOpen, setChartOpen] = useState(false)
   const [resultTab, setResultTab] = useState<ResultTab>('total')
 
@@ -600,17 +661,15 @@ export const MetaInsight = () => {
           onChange={(start, end) => {
             setDateStart(start)
             setDateEnd(end)
+            // dateStart/dateEnd state 반영을 기다리지 않고 방금 고른 범위로 바로
+            // 조회한다 — "업데이트" 버튼이 곧 조회 버튼을 겸한다.
+            loadRange(start, end)
           }}
           disabled={loading}
         />
-        <button
-          type="button"
-          className="meta-insight__btn"
-          onClick={load}
-          disabled={loading}
-        >
-          {loading ? '조회하는 중…' : '조회'}
-        </button>
+        {loading && (
+          <span className="meta-insight__query-loading">조회하는 중…</span>
+        )}
       </div>
 
       {error && <div className="meta-insight__banner is-error">{error}</div>}

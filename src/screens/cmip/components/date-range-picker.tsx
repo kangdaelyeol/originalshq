@@ -25,7 +25,13 @@ interface Preset {
 
 const CUSTOM_KEY = 'custom'
 
-/** GA 스타일 날짜 프리셋 — "지난 N일"은 오늘을 포함해서 센다(기존 조회 로직과 동일). */
+/** "지난 N일"의 기준일 — 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로 센다. */
+function lastNDaysEndingYesterday(n: number): [ISODate, ISODate] {
+  const end = addDays(todayISO(), -1)
+  return [addDays(end, -(n - 1)), end]
+}
+
+/** GA 스타일 날짜 프리셋. */
 const PRESETS: readonly Preset[] = [
   {
     key: 'today',
@@ -48,22 +54,22 @@ const PRESETS: readonly Preset[] = [
   {
     key: 'last7',
     label: '지난 7일',
-    range: () => [addDays(todayISO(), -6), todayISO()],
+    range: () => lastNDaysEndingYesterday(7),
   },
   {
     key: 'last14',
     label: '지난 14일',
-    range: () => [addDays(todayISO(), -13), todayISO()],
+    range: () => lastNDaysEndingYesterday(14),
   },
   {
     key: 'last28',
     label: '지난 28일',
-    range: () => [addDays(todayISO(), -27), todayISO()],
+    range: () => lastNDaysEndingYesterday(28),
   },
   {
     key: 'last30',
     label: '지난 30일',
-    range: () => [addDays(todayISO(), -29), todayISO()],
+    range: () => lastNDaysEndingYesterday(30),
   },
   {
     key: 'this_week',
@@ -526,7 +532,7 @@ export const DateRangePicker = ({
                 className="date-range-picker__apply"
                 onClick={handleApply}
               >
-                적용
+                업데이트
               </button>
             </div>
           </div>

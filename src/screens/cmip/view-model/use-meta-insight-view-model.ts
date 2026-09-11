@@ -10,8 +10,9 @@ import {
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
 
-/** 기본 조회 기간 — 최근 7일(오늘 포함). */
-const DEFAULT_RANGE_DAYS = 6
+/** 기본 조회 기간 — 최근 7일. 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로
+ * 센다(date-range-picker의 "지난 7일" 프리셋과 동일한 정의). */
+const DEFAULT_RANGE_DAYS = 7
 
 /**
  * <input type="date">의 value는 이미 "YYYY-MM-DD" 문자열이지만, getAllInsights는
@@ -21,10 +22,10 @@ const DEFAULT_RANGE_DAYS = 6
 const formatForApi = (value: string): ISODate => toISO(fromISO(value))
 
 export const useMetaInsightViewModel = () => {
+  const [dateEnd, setDateEnd] = useState<ISODate>(() => addDays(todayISO(), -1))
   const [dateStart, setDateStart] = useState<ISODate>(() =>
     addDays(todayISO(), -DEFAULT_RANGE_DAYS),
   )
-  const [dateEnd, setDateEnd] = useState<ISODate>(() => todayISO())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<MetaInsightSummary | null>(null)
@@ -43,16 +44,19 @@ export const useMetaInsightViewModel = () => {
       ? err.message
       : fallback
 
-  const load = useCallback(async () => {
-    if (!dateStart || !dateEnd) {
+  // dateStart/dateEnd state를 거치지 않고 인자로 받은 범위를 바로 조회한다 —
+  // "date-range-picker에서 방금 고른 값으로 즉시 조회" 같은 경우, setState 직후
+  // 같은 틱에 훅의 dateStart/dateEnd를 읽으면 아직 반영 전(stale)이라 어긋난다.
+  const loadRange = useCallback(async (start: ISODate, end: ISODate) => {
+    if (!start || !end) {
       setError('시작일과 종료일을 모두 입력해주세요.')
       return
     }
     setError(null)
     setLoading(true)
     try {
-      const apiStart = formatForApi(dateStart)
-      const apiEnd = formatForApi(dateEnd)
+      const apiStart = formatForApi(start)
+      const apiEnd = formatForApi(end)
       const [metaResult, googleResult] = await Promise.all([
         getAllInsights(apiStart, apiEnd),
         getGoogleInsightsMock(apiStart, apiEnd),
@@ -62,14 +66,19 @@ export const useMetaInsightViewModel = () => {
       setCombinedInsight(
         combineChannelInsights(metaResult, googleResult, apiStart, apiEnd),
       )
-      console.log(metaResult, googleResult)
     } catch (err) {
       setError(describeError(err, 'Meta 인사이트 조회 중 오류가 발생했습니다.'))
     } finally {
       setLoading(false)
     }
-  }, [dateStart, dateEnd])
-  console.log(combinedInsight)
+  }, [])
+
+  // 현재 state의 dateStart/dateEnd로 조회 — 초기 진입 시 자동 조회 등 "지금 화면에
+  // 표시된 기간을 그대로 다시 조회"할 때 쓴다.
+  const load = useCallback(
+    () => loadRange(dateStart, dateEnd),
+    [loadRange, dateStart, dateEnd],
+  )
 
   return {
     // 입력
@@ -86,5 +95,6 @@ export const useMetaInsightViewModel = () => {
     combinedInsight,
     // 액션
     load,
+    loadRange,
   }
 }

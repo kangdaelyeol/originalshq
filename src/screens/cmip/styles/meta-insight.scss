@@ -23,11 +23,17 @@ $radius-lg: 8px;
   font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
   color: $color-text;
 
-  // 날짜 범위 선택기 + 조회 버튼 — 한 줄에 나란히.
+  // 날짜 범위 선택기 — 여기서 "업데이트"를 누르면 바로 조회되므로 별도 조회
+  // 버튼은 없다. 로딩 중엔 옆에 짧은 안내만 띄운다.
   &__query-row {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  &__query-loading {
+    font-size: 12.5px;
+    color: $color-muted;
   }
 
   &__btn {
@@ -434,5 +440,25 @@ $radius-lg: 8px;
   &__pivot-group-head {
     text-align: center !important;
     border-left: 2px solid $color-border !important;
+  }
+
+  // 맨 위 두 행(합계/평균) — 나머지 날짜 행과 구분되도록 강조. 합계가 평균보다
+  // 한 단계 더 진하게 해서 "더 상위 요약"이라는 느낌을 준다.
+  &__table-row--total {
+    background: color-mix(in srgb, $color-accent 22%, $color-canvas-subtle);
+
+    td {
+      font-weight: 700;
+      color: $color-text;
+    }
+  }
+
+  &__table-row--average {
+    background: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
+
+    td {
+      font-weight: 600;
+      color: $color-text;
+    }
   }
 }
