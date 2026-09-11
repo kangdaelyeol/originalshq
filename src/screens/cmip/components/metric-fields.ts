@@ -39,7 +39,7 @@ const pct2 = (v: number): string => `${num2(v)}%`
 export const METRIC_FIELDS: readonly MetricField[] = [
   {
     key: 'impressions',
-    label: '노출수(Impression)',
+    label: 'Impressions',
     format: num,
     formatCompact: num,
     unit: '회',
@@ -47,7 +47,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   },
   {
     key: 'clicks',
-    label: '클릭수(Clicks)',
+    label: 'Clicks',
     format: num,
     formatCompact: num,
     unit: '회',
@@ -55,7 +55,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   },
   {
     key: 'spend',
-    label: '지출액(Spend)',
+    label: 'Spend',
     format: won,
     formatCompact: num,
     unit: '원',
@@ -63,7 +63,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   },
   {
     key: 'conversions',
-    label: '전환수(Conversion)',
+    label: 'Conversions',
     format: num,
     formatCompact: num,
     unit: '건',

@@ -37,12 +37,6 @@ const X_AXIS_LABEL: Record<InsightView, string> = {
   byGroupedWeek: '기간',
 }
 
-const DELTA_LABEL: Record<InsightView, string> = {
-  byDate: '전일 대비',
-  byDayOfWeek: '이전 요일 대비',
-  byGroupedWeek: '전주 대비',
-}
-
 // 모달을 처음 열었을 때 기본으로 켜둘 지표 — 완전히 빈 화면으로 시작하지 않도록.
 const DEFAULT_LINE: readonly MetricKey[] = ['impressions']
 
@@ -303,7 +297,6 @@ export const MetaInsightChartModal = ({
             categories={categories}
             series={series}
             xAxisLabel={X_AXIS_LABEL[view]}
-            deltaLabel={DELTA_LABEL[view]}
           />
         </div>
       </div>

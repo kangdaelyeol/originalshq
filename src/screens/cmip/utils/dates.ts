@@ -22,6 +22,20 @@ export const addDays = (iso: ISODate, days: number): ISODate => {
   return toISO(dt)
 }
 
+/** 해당 월의 1일. */
+export const startOfMonth = (iso: ISODate): ISODate => {
+  const d = fromISO(iso)
+  return toISO(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)))
+}
+
+/** months만큼 월 단위로 이동한 달의 1일(일수 차이는 무시 — 달력 네비게이션 전용). */
+export const addMonths = (iso: ISODate, months: number): ISODate => {
+  const d = fromISO(iso)
+  return toISO(
+    new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + months, 1)),
+  )
+}
+
 interface DatePattern {
   re: RegExp
   order: readonly [number, number, number] // [연, 월, 일]이 매치 그룹 중 몇 번째인지

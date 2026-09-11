@@ -24,8 +24,6 @@ interface IndexLineChartProps {
   categories: readonly string[]
   series: readonly IndexSeries[]
   xAxisLabel?: string
-  /** 툴팁의 "이전 대비" 문구 — 뷰에 맞게 부모가 지정(예: '전일 대비', '전주 대비'). */
-  deltaLabel?: string
 }
 
 // viewBox 크기를 실제 렌더 픽셀 크기에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 차트
@@ -148,7 +146,6 @@ export const IndexLineChart = ({
   categories,
   series,
   xAxisLabel,
-  deltaLabel = '이전 대비',
 }: IndexLineChartProps) => {
   const [hover, setHover] = useState<{
     index: number
@@ -276,7 +273,7 @@ export const IndexLineChart = ({
     <div className="index-line-chart">
       <div className="index-line-chart__summary">
         <span className="index-line-chart__summary-period">
-          {categories[summaryIndex]} · {deltaLabel}
+          {categories[summaryIndex]}
         </span>
         {prepared.map((s) => {
           const isFocused = focused?.key === s.key
@@ -524,7 +521,7 @@ export const IndexLineChart = ({
             }}
           >
             <div className="index-line-chart__tooltip-label">
-              {categories[hover.index]} · {deltaLabel}
+              {categories[hover.index]}
             </div>
             {prepared.map((s) => {
               const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
@@ -549,7 +546,6 @@ export const IndexLineChart = ({
                   />
                   <span className="index-line-chart__tooltip-name">
                     {s.label}
-                    {s.type === 'bar' && ' · 막대'}
                   </span>
                   <span className="index-line-chart__tooltip-values">
                     <span className="index-line-chart__tooltip-value">
@@ -590,7 +586,6 @@ export const IndexLineChart = ({
               style={{ background: s.color }}
             />
             {s.label}
-            {s.type === 'bar' && ' · 막대'}
           </span>
         ))}
       </div>

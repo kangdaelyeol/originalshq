@@ -6,15 +6,10 @@ import type {
   MetricsSummary,
   WeekSummary,
 } from '../client'
-import { addDays, todayISO } from '../utils'
 import { METRIC_FIELDS } from './metric-fields'
+import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
 import '../styles/meta-insight.scss'
-
-const DATE_RANGE_PRESETS: readonly { days: number; label: string }[] = [
-  { days: 7, label: '최근 7일' },
-  { days: 28, label: '최근 28일' },
-]
 
 function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
   return (
@@ -87,51 +82,17 @@ export const MetaInsight = () => {
   } = useMetaInsightViewModel()
   const [chartOpen, setChartOpen] = useState(false)
 
-  const applyDateRangePreset = (days: number) => {
-    const end = todayISO()
-    setDateStart(addDays(end, -(days - 1)))
-    setDateEnd(end)
-  }
-
   return (
     <div className="meta-insight">
-      <div className="meta-insight__form">
-        <div className="meta-insight__field">
-          <label htmlFor="insight-date-start">시작일</label>
-          <input
-            id="insight-date-start"
-            type="date"
-            value={dateStart}
-            onChange={(e) => setDateStart(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-
-        <div className="meta-insight__field">
-          <label htmlFor="insight-date-end">종료일</label>
-          <input
-            id="insight-date-end"
-            type="date"
-            value={dateEnd}
-            onChange={(e) => setDateEnd(e.target.value)}
-            disabled={loading}
-          />
-        </div>
-      </div>
-
-      <div className="meta-insight__presets">
-        {DATE_RANGE_PRESETS.map((p) => (
-          <button
-            key={p.days}
-            type="button"
-            className="meta-insight__preset"
-            onClick={() => applyDateRangePreset(p.days)}
-            disabled={loading}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
+      <DateRangePicker
+        dateStart={dateStart}
+        dateEnd={dateEnd}
+        onChange={(start, end) => {
+          setDateStart(start)
+          setDateEnd(end)
+        }}
+        disabled={loading}
+      />
 
       <div className="meta-insight__actions">
         <button type="button" onClick={load} disabled={loading}>
