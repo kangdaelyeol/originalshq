@@ -85,9 +85,12 @@ $color-border: #30363d;
     }
   }
 
+  // 호버 위치를 따라다니지 않고 차트 우측 상단에 고정한다 — 점 개수가 많을 때
+  // 매번 다른 자리에 뜨는 것보다 늘 같은 자리에서 읽는 편이 깔끔하다.
   &__tooltip {
     position: absolute;
-    transform: translateX(-50%);
+    top: 6px;
+    right: 6px;
     pointer-events: none;
     display: flex;
     flex-direction: column;
@@ -100,16 +103,6 @@ $color-border: #30363d;
     white-space: nowrap;
     font-size: 12px;
     z-index: 1;
-
-    // 맨 앞/뒤 근처 점은 그대로 가운데 정렬하면 툴팁이 차트 밖으로 잘려 나가서,
-    // 정렬 기준을 그쪽 가장자리로 붙인다.
-    &.is-align-left {
-      transform: translateX(-4%);
-    }
-
-    &.is-align-right {
-      transform: translateX(-96%);
-    }
   }
 
   &__tooltip-label {

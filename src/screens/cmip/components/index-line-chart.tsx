@@ -376,6 +376,32 @@ export const IndexLineChart = ({
             </g>
           ))}
 
+          {/* 포커스(호버/범례)된 지표의 평균값을 y축 위에 표시 — 평소엔 숨겨서
+              눈금과 섞이지 않다가, 그 지표를 볼 때만 기준값으로 드러난다. */}
+          {focused?.avg != null && (
+            <g>
+              <line
+                x1={MARGIN_LEFT - 5}
+                x2={MARGIN_LEFT}
+                y1={yIn(focused.range, focused.avg)}
+                y2={yIn(focused.range, focused.avg)}
+                stroke={focused.color}
+                strokeWidth={1.5}
+              />
+              <text
+                x={MARGIN_LEFT - 8}
+                y={yIn(focused.range, focused.avg)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize={8}
+                fontWeight={700}
+                fill={focused.color}
+              >
+                {focused.formatCompact(focused.avg)}
+              </text>
+            </g>
+          )}
+
           {/* x축 라벨 */}
           {categories.map((c, i) =>
             i % labelStride === 0 || i === n - 1 ? (
@@ -542,23 +568,9 @@ export const IndexLineChart = ({
         </svg>
 
         {hover != null && (
-          <div
-            className={`index-line-chart__tooltip is-align-${
-              n <= 1
-                ? 'center'
-                : hover.index / (n - 1) < 0.15
-                  ? 'left'
-                  : hover.index / (n - 1) > 0.85
-                    ? 'right'
-                    : 'center'
-            }`}
-            style={{
-              left: `${(xCenter(hover.index) / vbWidth) * 100}%`,
-              // 시리즈가 많으면 툴팁이 길어져서, 호버된 점 바로 위에 띄우면 위쪽(체크박스
-              // 영역)을 침범할 수 있다. 그래서 항상 차트 상단에 고정하고 아래로만 자란다.
-              top: `${(MARGIN_TOP / vbHeight) * 100}%`,
-            }}
-          >
+          // 호버 위치를 따라다니지 않고 차트 우측 상단에 고정 — 점 바로 위에 띄우면
+          // 시리즈가 많을 때 다른 요소를 가리거나 차트 밖으로 잘려 나갔다.
+          <div className="index-line-chart__tooltip">
             <div className="index-line-chart__tooltip-label">
               {categories[hover.index]}
             </div>
