@@ -1,4 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import '../styles/index-line-chart.scss'
 
@@ -42,7 +43,9 @@ const MARGIN_TOP = 30
 const MARGIN_RIGHT = 16
 const MARGIN_BOTTOM = 44
 // 지표별 독립 축이라 눈금 라벨이 실제 값(원/회 등)으로 길어질 수 있어 여유를 둔다.
-const MARGIN_LEFT = 64
+// spend처럼 억 단위까지 올라가는 지표는 쉼표 포함 10자리 안팎이라, 64px로는
+// 라벨이 플롯 밖(x<0)으로 잘려 나간다 — 그 경우까지 안 잘리도록 더 넉넉히 둔다.
+const MARGIN_LEFT = 84
 
 // 다크/라이트 2세트 — 둘 다 기존 다크(GitHub Dimmed)와 짝을 이루는 GitHub Light
 // 톤이라 나머지 UI(모달 등)의 다크 팔레트와 위화감이 없다.
@@ -203,13 +206,24 @@ export const IndexLineChart = ({
   useLayoutEffect(() => {
     const el = wrapRef.current
     if (!el) return
-    const update = () => {
-      const rect = el.getBoundingClientRect()
+    const measure = (rect: DOMRectReadOnly) => {
       if (rect.width > 0) setVbWidth(rect.width)
       if (rect.height > 0) setVbHeight(rect.height)
     }
-    update()
-    const ro = new ResizeObserver(update)
+    // 최초 측정은 이 useLayoutEffect 자체가 이미 커밋 단계(페인트 전)라 일반
+    // setState로도 다음 페인트 전에 반영된다.
+    measure(el.getBoundingClientRect())
+    // 이후의 리사이즈는 ResizeObserver 콜백에서 온다 — 브라우저가 레이아웃 이후·
+    // 페인트 이전에 불러주긴 하지만, 그 안의 setState는 React 18에서 "React가
+    // 통제하는 이벤트" 밖의 업데이트라 스케줄러를 타고 비동기로 커밋된다. 보장 없이
+    // 다음 페인트를 놓치면 viewBox가 한 프레임(때로는 그 이상) 뒤처진 채로 그려져
+    // preserveAspectRatio="none"이 그 차이를 가로로 늘려버린다("크게 보기"처럼
+    // 큰 폭 변화가 한 번에 일어날 때 특히 티가 난다). flushSync로 같은 콜백 안에서
+    // 동기 커밋시켜 리사이즈와 같은 프레임에 반영되도록 강제한다.
+    const ro = new ResizeObserver(([entry]) => {
+      if (!entry) return
+      flushSync(() => measure(entry.contentRect))
+    })
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
@@ -233,10 +247,16 @@ export const IndexLineChart = ({
           range =
             type === 'bar' ? niceRange(Math.min(0, lo), hi) : niceRange(lo, hi)
         }
-        const avg =
+        // formatCompact 중 일부(impressions 등 num())는 소수 자릿수를 강제하지
+        // 않아 toLocaleString 기본값(최대 3자리)이 그대로 노출된다 — 평균은 원본
+        // 값들의 합/개수라 나머지 지표는 딱 떨어지지 않는 경우가 많으니, 표시
+        // 전에 미리 소수 둘째 자리로 반올림해둔다(이미 소수 둘째 자리까지 고정
+        // 포맷하는 지표는 영향 없음).
+        const avgRaw =
           nums.length === 0
             ? null
             : nums.reduce((sum, v) => sum + v, 0) / nums.length
+        const avg = avgRaw == null ? null : Math.round(avgRaw * 100) / 100
         return { ...s, type, range, avg }
       }),
     [series],
@@ -369,7 +389,7 @@ export const IndexLineChart = ({
           role="img"
           aria-label="지표 비교 그래프"
         >
-          <text x={4} y={14} textAnchor="start" fontSize={10} fill={axisColor}>
+          <text x={4} y={14} textAnchor="start" fontSize={17} fill={axisColor}>
             {series.length > 1
               ? `${axisSeries.label} (${axisSeries.unit})`
               : `${axisSeries.label} (${axisSeries.unit})`}
@@ -379,7 +399,7 @@ export const IndexLineChart = ({
               x={MARGIN_LEFT + PLOT_W / 2}
               y={vbHeight - 6}
               textAnchor="middle"
-              fontSize={10}
+              fontSize={12}
               fill={MUTED}
             >
               {xAxisLabel}
@@ -402,7 +422,7 @@ export const IndexLineChart = ({
                 y={yIn(axisSeries.range, t)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                fontSize={8}
+                fontSize={12}
                 fill={axisColor}
               >
                 {axisSeries.formatCompact(t)}
@@ -427,7 +447,7 @@ export const IndexLineChart = ({
                 y={yIn(focused.range, focused.avg)}
                 textAnchor="end"
                 dominantBaseline="middle"
-                fontSize={8}
+                fontSize={11}
                 fontWeight={700}
                 fill={focused.color}
               >
@@ -444,7 +464,7 @@ export const IndexLineChart = ({
                 x={xCenter(i)}
                 y={MARGIN_TOP + PLOT_H + 13}
                 textAnchor="middle"
-                fontSize={9}
+                fontSize={12}
                 fill={MUTED}
               >
                 {c}
@@ -564,7 +584,7 @@ export const IndexLineChart = ({
                   x={cx}
                   y={above ? (isBar ? y - 5 : y - 9) : y + 16}
                   textAnchor="middle"
-                  fontSize={9}
+                  fontSize={12}
                   fill={series.length > 1 ? s.color : MUTED}
                   stroke={SURFACE}
                   strokeWidth={3}
