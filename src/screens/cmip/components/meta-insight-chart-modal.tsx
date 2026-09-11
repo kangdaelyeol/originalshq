@@ -6,8 +6,10 @@ import type {
   MetricsSummary,
   WeekSummary,
 } from '../client'
+import type { ISODate } from '../types'
 import { METRIC_FIELDS, type MetricField } from './metric-fields'
 import { IndexLineChart, type IndexSeries } from './index-line-chart'
+import { DateRangeNarrow } from './date-range-narrow'
 import { formatMD } from '../utils'
 import '../styles/meta-insight-chart-modal.scss'
 
@@ -125,7 +127,43 @@ export const MetaInsightChartModal = ({
     return () => document.removeEventListener('pointerdown', handlePointerDown)
   }, [openMenu])
 
-  const rows: readonly MetricsSummary[] = data[view]
+  // "일별" 보기에서만 실제 날짜 단위 데이터라 부분 기간 축소가 가능하다 — 요일별/
+  // 주차별은 이미 서버에서 집계된 값이라 원본 일자로 되짚어 재집계할 수 없다.
+  const dateBounds = useMemo(() => {
+    if (data.byDate.length === 0) return null
+    let min = data.byDate[0].date
+    let max = data.byDate[0].date
+    for (const row of data.byDate) {
+      if (row.date < min) min = row.date
+      if (row.date > max) max = row.date
+    }
+    return { min, max }
+  }, [data])
+
+  const [dateNarrow, setDateNarrow] = useState<{
+    start: ISODate
+    end: ISODate
+  } | null>(null)
+  // dateBounds가 바뀌면(모달을 열어둔 채 다시 조회한 경우 포함) 축소 범위를 그 전체
+  // 기간으로 리셋한다 — 이전 조회의 축소값이 새 데이터에 남아있지 않도록. 렌더 중
+  // 비교해서 바뀐 시점에만 반영한다("prop 변화에 맞춰 state 조정하기" 패턴).
+  const [syncedBoundsKey, setSyncedBoundsKey] = useState<string | null>(null)
+  const boundsKey = dateBounds ? `${dateBounds.min}_${dateBounds.max}` : null
+  if (boundsKey !== syncedBoundsKey) {
+    setSyncedBoundsKey(boundsKey)
+    setDateNarrow(
+      dateBounds ? { start: dateBounds.min, end: dateBounds.max } : null,
+    )
+  }
+
+  const rows: readonly MetricsSummary[] = useMemo(() => {
+    const base = data[view]
+    if (view !== 'byDate' || !dateNarrow) return base
+    return (base as readonly DateSummary[]).filter(
+      (row) => row.date >= dateNarrow.start && row.date <= dateNarrow.end,
+    )
+  }, [data, view, dateNarrow])
+
   const categories = useMemo(
     () => rows.map((row) => labelOf(view, row)),
     [rows, view],
@@ -302,6 +340,17 @@ export const MetaInsightChartModal = ({
               </div>
             )}
           </div>
+
+          {/* "일별" 보기에서만 — 이미 조회된 전체 기간 안에서 부분 구간만 잘라 본다. */}
+          {view === 'byDate' && dateBounds && dateNarrow && (
+            <DateRangeNarrow
+              minDate={dateBounds.min}
+              maxDate={dateBounds.max}
+              dateStart={dateNarrow.start}
+              dateEnd={dateNarrow.end}
+              onChange={(start, end) => setDateNarrow({ start, end })}
+            />
+          )}
         </div>
 
         <div className="meta-insight-chart-modal__chart-single">

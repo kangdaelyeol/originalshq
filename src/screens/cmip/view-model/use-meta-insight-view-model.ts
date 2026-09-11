@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import {
   getAllInsights,
+  getGoogleInsightsMock,
   CallableError,
   type MetaInsightSummary,
 } from '../client'
@@ -25,9 +26,15 @@ export const useMetaInsightViewModel = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<MetaInsightSummary | null>(null)
+  // 구글 인사이트는 아직 토큰 발급 전이라 실제 API 대신 목업으로 같은 조회 액션에
+  // 묶어서 받는다 — functions는 건드리지 않고 프론트에서만 임시로 채워 넣는 것.
+  // 나중에 실제 연동이 끝나면 getGoogleInsightsMock 호출부만 바꾸면 된다.
+  const [googleData, setGoogleData] = useState<MetaInsightSummary | null>(null)
 
   const describeError = (err: unknown, fallback: string): string =>
-    err instanceof CallableError || err instanceof Error ? err.message : fallback
+    err instanceof CallableError || err instanceof Error
+      ? err.message
+      : fallback
 
   const load = useCallback(async () => {
     if (!dateStart || !dateEnd) {
@@ -37,11 +44,16 @@ export const useMetaInsightViewModel = () => {
     setError(null)
     setLoading(true)
     try {
-      const result = await getAllInsights(
-        formatForApi(dateStart),
-        formatForApi(dateEnd),
-      )
-      setData(result)
+      const apiStart = formatForApi(dateStart)
+      const apiEnd = formatForApi(dateEnd)
+      const [metaResult, googleResult] = await Promise.all([
+        getAllInsights(apiStart, apiEnd),
+        getGoogleInsightsMock(apiStart, apiEnd),
+      ])
+      setData(metaResult)
+      setGoogleData(googleResult)
+      console.log(metaResult)
+      console.log(googleResult)
     } catch (err) {
       setError(describeError(err, 'Meta 인사이트 조회 중 오류가 발생했습니다.'))
     } finally {
@@ -60,6 +72,7 @@ export const useMetaInsightViewModel = () => {
     error,
     // 결과
     data,
+    googleData,
     // 액션
     load,
   }

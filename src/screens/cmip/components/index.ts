@@ -1,5 +1,6 @@
 export * from './segmented-toggle'
 export * from './brand-select'
 export * from './date-range-picker'
+export * from './date-range-narrow'
 export * from './meta-insight'
 export * from './report-generator'

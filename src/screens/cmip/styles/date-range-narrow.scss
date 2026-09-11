@@ -1,0 +1,271 @@
+// 다크 팔레트 — 나머지 cmip 화면과 동일 톤.
+$color-text: #e6edf3;
+$color-muted: #8b949e;
+$color-border: #30363d;
+$color-border-soft: #21262d;
+$color-surface: #161b22;
+$color-canvas-subtle: #1c2128;
+$color-accent: #4493f8;
+
+$radius: 6px;
+$radius-lg: 8px;
+
+.date-range-narrow {
+  position: relative;
+  display: inline-block;
+  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  color: $color-text;
+
+  &__trigger {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-text;
+    height: 32px;
+    padding: 0 10px;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color 120ms ease;
+
+    &:hover:not(:disabled),
+    &.is-open {
+      border-color: $color-muted;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    svg {
+      flex: none;
+      width: 14px;
+      height: 14px;
+      color: $color-muted;
+    }
+  }
+
+  &__trigger-label {
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  &__popover {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 10;
+    width: 260px;
+    padding: 12px;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  &__nav-btn {
+    appearance: none;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    cursor: pointer;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    &:hover:not(:disabled) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    &:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+  }
+
+  &__month-head {
+    display: flex;
+    gap: 4px;
+  }
+
+  &__month-select {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-text;
+    padding: 3px 5px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  &__weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+
+    span {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 22px;
+      font-size: 10.5px;
+      color: $color-muted;
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 28px;
+  }
+
+  &__cell {
+    position: relative;
+    appearance: none;
+    border: none;
+    background: none;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: $color-text;
+    cursor: pointer;
+
+    &.is-empty {
+      cursor: default;
+    }
+
+    &.is-in-range::before {
+      content: '';
+      position: absolute;
+      inset: 3px 0;
+      background: color-mix(in srgb, $color-accent 20%, transparent);
+      z-index: 0;
+    }
+
+    &.is-start.is-in-range::before {
+      left: 50%;
+    }
+
+    &.is-end.is-in-range::before {
+      right: 50%;
+    }
+
+    &:disabled {
+      color: $color-muted;
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    &:hover:not(:disabled):not(.is-start):not(.is-end)
+      .date-range-narrow__cell-num {
+      background: $color-border-soft;
+    }
+  }
+
+  &__cell-num {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+  }
+
+  &__cell.is-start &__cell-num,
+  &__cell.is-end &__cell-num {
+    background: $color-accent;
+    color: #fff;
+    font-weight: 600;
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid $color-border-soft;
+  }
+
+  &__reset {
+    appearance: none;
+    border: none;
+    background: none;
+    color: $color-muted;
+    padding: 0;
+    font-size: 12px;
+    font-family: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+
+    &:hover {
+      color: $color-text;
+    }
+  }
+
+  &__footer-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  &__cancel,
+  &__apply {
+    appearance: none;
+    border-radius: $radius;
+    padding: 6px 12px;
+    font-size: 12.5px;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  &__cancel {
+    border: 1px solid $color-border;
+    background: $color-surface;
+    color: $color-text;
+
+    &:hover {
+      border-color: $color-muted;
+    }
+  }
+
+  &__apply {
+    border: 1px solid $color-accent;
+    background: $color-accent;
+    color: #fff;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+}
