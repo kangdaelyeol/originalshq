@@ -1,22 +1,19 @@
-import { Fragment, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
 import type {
-  ChannelSplitSeries,
   DateSummary,
   DayOfWeekSummary,
   GroupedInsightSeries,
   MetricsSummary,
   WeekSummary,
 } from '../client'
-import {
-  aggregateMetrics,
-  metricsForDateSubset,
-  weekdayLabelOf,
-} from '../client'
+import { metricsForDateSubset, weekdayLabelOf } from '../client'
 import { METRIC_FIELDS } from './metric-fields'
 import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
 import '../styles/meta-insight.scss'
+
+type MetricKey = keyof MetricsSummary
 
 // 지금은 Meta/Google뿐이지만, 당근·네이버가 붙으면 이 목록만 늘리면 된다
 // (CombinedInsight.total/series가 그 채널 키를 갖게 되는 시점에 맞춰).
@@ -32,21 +29,6 @@ const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'campaign', label: '캠페인' },
   { key: 'adset', label: 'Adset' },
 ]
-
-/** ChannelSplitSeries(combined/meta/google의 byDate)로부터 채널별 total(KPI 카드용
- * 합계)을 만든다 — 캠페인/adset은 total이 따로 없고 시계열만 있어서, 그 시계열을
- * 그대로 합산해 만든다. */
-function totalsFromSeries(entity: ChannelSplitSeries): {
-  combined: MetricsSummary
-  meta: MetricsSummary
-  google: MetricsSummary
-} {
-  return {
-    combined: aggregateMetrics(entity.combined.byDate),
-    meta: aggregateMetrics(entity.meta.byDate),
-    google: aggregateMetrics(entity.google.byDate),
-  }
-}
 
 function ChevronIcon() {
   return (
@@ -210,15 +192,12 @@ interface ResultPanelProps {
   }
 }
 
-/** "전체 요약"/캠페인/adset 세 탭이 공유하는 요약 섹션 — Summary KPI 카드 +
- * 일별/요일별/주차별 표. 어느 단위(전체/캠페인/adset)의 series를 넘기든 동일하게
- * 동작한다. */
+/** "전체 요약" 탭 전용 — Summary KPI 카드 + 일별/요일별/주차별 표. */
 function ResultPanel({ periodLabel, total, series }: ResultPanelProps) {
   const [showChannelTotal, setShowChannelTotal] = useState(false)
 
   // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 캠페인의 Google)은
-  // 펼쳐봐야 모든 행이 0으로만 나와서 의미가 없으니 미리 걸러낸다. "전체 요약"
-  // 탭에서는 두 채널 다 실제로 조회했으니 보통 둘 다 포함된다.
+  // 펼쳐봐야 모든 행이 0으로만 나와서 의미가 없으니 미리 걸러낸다.
   const applicableChannels = CHANNELS.filter(
     (c) => series[c.key].byDate.length > 0,
   )
@@ -331,6 +310,189 @@ function ResultPanel({ periodLabel, total, series }: ResultPanelProps) {
   )
 }
 
+// ------------------------------------------------------------------ 다중 선택 드롭다운
+// 캠페인 탭의 캠페인 선택, adset 탭의 adset 선택, 지표 선택이 공유하는 체크박스
+// 팝오버. 지표 선택엔 MetricKey를, 나머지엔 일반 string을 써서 제네릭으로 뒀다.
+interface MultiSelectOption<T extends string> {
+  key: T
+  label: string
+}
+
+function MultiSelectDropdown<T extends string>({
+  options,
+  selected,
+  onToggle,
+  emptyLabel,
+  countSuffix,
+}: {
+  options: readonly MultiSelectOption<T>[]
+  selected: ReadonlySet<T>
+  onToggle: (key: T) => void
+  emptyLabel: string
+  countSuffix: string
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handlePointerDown = (e: PointerEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  const selectedOption =
+    selected.size === 1 ? options.find((o) => selected.has(o.key)) : undefined
+  const triggerLabel =
+    selected.size === 0
+      ? emptyLabel
+      : (selectedOption?.label ?? `${selected.size}${countSuffix}`)
+
+  return (
+    <div className="meta-insight__multi-select" ref={ref}>
+      <button
+        type="button"
+        className={`meta-insight__result-select meta-insight__multi-select-trigger${
+          open ? ' is-open' : ''
+        }`}
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {triggerLabel}
+        <ChevronIcon />
+      </button>
+      {open && (
+        <div className="meta-insight__multi-select-menu">
+          {options.map((o) => (
+            <label key={o.key} className="meta-insight__multi-select-item">
+              <input
+                type="checkbox"
+                checked={selected.has(o.key)}
+                onChange={() => onToggle(o.key)}
+              />
+              {o.label}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ------------------------------------------------------------------ 캠페인/adset 교차표
+interface PivotGroup {
+  key: string
+  label: string
+  byDate: readonly DateSummary[]
+}
+
+/** 캠페인/adset 탭 전용 — 선택된 항목(캠페인 또는 adset) × 선택된 지표를 날짜별로
+ * 교차 표시한다. 합계/평균/전월평균 없이 일자 원본 그대로, 주차 집계는 안 쓴다
+ * (나중에 차트에서 쓸 데이터라 여기서는 손대지 않는다). */
+function PivotSummary({
+  groups,
+  metricKeys,
+  dates,
+  emptyLabel,
+  showUnit,
+}: {
+  groups: readonly PivotGroup[]
+  metricKeys: readonly MetricKey[]
+  dates: readonly string[]
+  emptyLabel: string
+  /** 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지. */
+  showUnit: boolean
+}) {
+  const metricFields = METRIC_FIELDS.filter((f) => metricKeys.includes(f.key))
+
+  if (groups.length === 0 || metricFields.length === 0) {
+    return (
+      <section className="meta-insight__summary">
+        <p className="meta-insight__result-empty">
+          {groups.length === 0 ? emptyLabel : '표시할 지표를 선택해주세요.'}
+        </p>
+      </section>
+    )
+  }
+
+  const groupsWithLookup = groups.map((g) => ({
+    ...g,
+    byDateKey: new Map(g.byDate.map((row) => [row.date, row])),
+  }))
+
+  return (
+    <section className="meta-insight__summary meta-insight__pivot">
+      <div className="meta-insight__table-wrap">
+        <table className="meta-insight__table meta-insight__table--pivot">
+          <thead>
+            <tr>
+              <th rowSpan={2} className="meta-insight__pivot-date-head">
+                날짜
+              </th>
+              {groupsWithLookup.map((g) => (
+                <th
+                  key={g.key}
+                  colSpan={metricFields.length}
+                  className="meta-insight__pivot-group-head"
+                >
+                  {g.label}
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {groupsWithLookup.flatMap((g) =>
+                metricFields.map((f) => (
+                  <th
+                    key={`${g.key}-${f.key}`}
+                    className="meta-insight__pivot-metric-head"
+                  >
+                    {showUnit ? `${f.label}(${f.unit})` : f.label}
+                  </th>
+                )),
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {dates.length === 0 ? (
+              <tr>
+                <td colSpan={1 + groupsWithLookup.length * metricFields.length}>
+                  데이터 없음
+                </td>
+              </tr>
+            ) : (
+              dates.map((date) => (
+                <tr key={date}>
+                  <td>
+                    {date} ({weekdayLabelOf(date)})
+                  </td>
+                  {groupsWithLookup.flatMap((g) => {
+                    const row = g.byDateKey.get(date)
+                    return metricFields.map((f) => (
+                      <td key={`${g.key}-${f.key}`}>
+                        {f.formatCompact(row ? row[f.key] : 0)}
+                      </td>
+                    ))
+                  })}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
 export const MetaInsight = () => {
   const {
     dateStart,
@@ -344,12 +506,24 @@ export const MetaInsight = () => {
   } = useMetaInsightViewModel()
   const [chartOpen, setChartOpen] = useState(false)
   const [resultTab, setResultTab] = useState<ResultTab>('total')
+
+  // adset 탭에서 "어느 캠페인의 adset을 볼지"는 단일 선택 — 캠페인 탭의 다중
+  // 선택과는 별개 상태다.
   const [selectedCampaignName, setSelectedCampaignName] = useState<
     string | null
   >(null)
-  const [selectedAdsetName, setSelectedAdsetName] = useState<string | null>(
-    null,
-  )
+  // 캠페인 탭: 캠페인 다중 선택. adset 탭: (선택된 캠페인 안의) adset 다중 선택.
+  const [selectedCampaignNames, setSelectedCampaignNames] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
+  const [selectedAdsetNames, setSelectedAdsetNames] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
+  const [selectedMetricKeys, setSelectedMetricKeys] = useState<
+    ReadonlySet<MetricKey>
+  >(() => new Set(['impressions']))
+  // 캠페인/adset 교차표의 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지.
+  const [showUnit, setShowUnit] = useState(false)
 
   const campaigns = combinedInsight?.byCampaign ?? []
   // 이름이 목록에 없으면(처음 진입, 재조회로 캠페인이 바뀜 등) 첫 캠페인으로
@@ -359,34 +533,83 @@ export const MetaInsight = () => {
     campaigns[0] ??
     null
   const adsets = selectedCampaign?.adsets ?? []
-  const selectedAdset =
-    adsets.find((a) => a.adsetName === selectedAdsetName) ?? adsets[0] ?? null
+
+  // 캠페인 목록 자체가 바뀌면(재조회 등) 다중 선택을 첫 캠페인 하나로 리셋한다 —
+  // 같은 목록 안에서 사용자가 전부 해제한 것(빈 선택)은 그대로 존중한다. 렌더 중
+  // 비교해서 바뀐 시점에만 반영("prop 변화에 맞춰 state 조정하기" 패턴).
+  const campaignListKey = campaigns.map((c) => c.campaignName).join('|')
+  const [syncedCampaignListKey, setSyncedCampaignListKey] = useState<
+    string | null
+  >(null)
+  if (campaignListKey !== syncedCampaignListKey) {
+    setSyncedCampaignListKey(campaignListKey)
+    setSelectedCampaignNames(
+      new Set(campaigns[0] ? [campaigns[0].campaignName] : []),
+    )
+  }
+
+  // adset 탭에서 보는 캠페인이 바뀌거나 그 adset 목록이 바뀌면 adset 다중 선택을
+  // 그 캠페인의 첫 adset 하나로 리셋한다.
+  const adsetListKey = `${selectedCampaign?.campaignName ?? ''}::${adsets
+    .map((a) => a.adsetName)
+    .join('|')}`
+  const [syncedAdsetListKey, setSyncedAdsetListKey] = useState<string | null>(
+    null,
+  )
+  if (adsetListKey !== syncedAdsetListKey) {
+    setSyncedAdsetListKey(adsetListKey)
+    setSelectedAdsetNames(new Set(adsets[0] ? [adsets[0].adsetName] : []))
+  }
+
+  const toggleCampaignMulti = (name: string) => {
+    setSelectedCampaignNames((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+  const toggleAdsetMulti = (name: string) => {
+    setSelectedAdsetNames((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+  const toggleMetric = (key: MetricKey) => {
+    setSelectedMetricKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const periodLabel = `${dateStart} ~ ${dateEnd}`
+  const canonicalDates =
+    combinedInsight?.series.combined.byDate.map((d) => d.date) ?? []
+  const metricKeyList = [...selectedMetricKeys]
 
   return (
     <div className="meta-insight">
-      <DateRangePicker
-        dateStart={dateStart}
-        dateEnd={dateEnd}
-        onChange={(start, end) => {
-          setDateStart(start)
-          setDateEnd(end)
-        }}
-        disabled={loading}
-      />
-
-      <div className="meta-insight__actions">
-        <button type="button" onClick={load} disabled={loading}>
-          {loading ? '조회하는 중…' : '조회'}
-        </button>
+      <div className="meta-insight__query-row">
+        <DateRangePicker
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+          onChange={(start, end) => {
+            setDateStart(start)
+            setDateEnd(end)
+          }}
+          disabled={loading}
+        />
         <button
           type="button"
-          className="meta-insight__ghost"
-          onClick={() => setChartOpen(true)}
-          disabled={!combinedInsight}
+          className="meta-insight__btn"
+          onClick={load}
+          disabled={loading}
         >
-          그래프로 보기
+          {loading ? '조회하는 중…' : '조회'}
         </button>
       </div>
 
@@ -396,63 +619,116 @@ export const MetaInsight = () => {
         <>
           <div
             className="meta-insight__result-tabs"
-            role="tablist"
+            role="group"
             aria-label="보기 단위"
           >
-            {RESULT_TABS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="tab"
-                aria-selected={resultTab === t.key}
-                className={`meta-insight__result-tab${
-                  resultTab === t.key ? ' is-active' : ''
-                }`}
-                onClick={() => setResultTab(t.key)}
-              >
-                {t.label}
-              </button>
-            ))}
-
-            {resultTab !== 'total' &&
-              (campaigns.length === 0 ? (
-                <span className="meta-insight__result-empty">
-                  캠페인 데이터 없음
-                </span>
-              ) : (
-                <select
-                  className="meta-insight__result-select"
-                  value={selectedCampaign?.campaignName ?? ''}
-                  onChange={(e) => setSelectedCampaignName(e.target.value)}
-                >
-                  {campaigns.map((c) => (
-                    <option key={c.campaignName} value={c.campaignName}>
-                      {c.campaignName}
-                    </option>
-                  ))}
-                </select>
+            <select
+              className="meta-insight__result-select"
+              value={resultTab}
+              onChange={(e) => setResultTab(e.target.value as ResultTab)}
+            >
+              {RESULT_TABS.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
               ))}
+            </select>
 
-            {resultTab === 'adset' &&
-              selectedCampaign &&
-              (adsets.length === 0 ? (
-                <span className="meta-insight__result-empty">
-                  adset 데이터 없음
-                </span>
-              ) : (
-                <select
-                  className="meta-insight__result-select"
-                  value={selectedAdset?.adsetName ?? ''}
-                  onChange={(e) => setSelectedAdsetName(e.target.value)}
-                >
-                  {adsets.map((a) => (
-                    <option key={a.adsetName} value={a.adsetName}>
-                      {a.adsetName}
-                    </option>
-                  ))}
-                </select>
-              ))}
+            <button
+              type="button"
+              className="meta-insight__btn meta-insight__ghost"
+              onClick={() => setChartOpen(true)}
+            >
+              그래프로 보기
+            </button>
           </div>
+
+          {(resultTab === 'campaign' || resultTab === 'adset') && (
+            <div
+              className="meta-insight__metric-row"
+              role="group"
+              aria-label="지표 선택"
+            >
+              {/* 캠페인 탭 — 캠페인 다중 선택. */}
+              {resultTab === 'campaign' &&
+                (campaigns.length === 0 ? (
+                  <span className="meta-insight__result-empty">
+                    캠페인 데이터 없음
+                  </span>
+                ) : (
+                  <MultiSelectDropdown
+                    options={campaigns.map((c) => ({
+                      key: c.campaignName,
+                      label: c.campaignName,
+                    }))}
+                    selected={selectedCampaignNames}
+                    onToggle={toggleCampaignMulti}
+                    emptyLabel="캠페인 선택"
+                    countSuffix="개 캠페인"
+                  />
+                ))}
+
+              {/* adset 탭 — 캠페인은 단일 선택, adset은 다중 선택. */}
+              {resultTab === 'adset' &&
+                (campaigns.length === 0 ? (
+                  <span className="meta-insight__result-empty">
+                    캠페인 데이터 없음
+                  </span>
+                ) : (
+                  <select
+                    className="meta-insight__result-select"
+                    value={selectedCampaign?.campaignName ?? ''}
+                    onChange={(e) => setSelectedCampaignName(e.target.value)}
+                  >
+                    {campaigns.map((c) => (
+                      <option key={c.campaignName} value={c.campaignName}>
+                        {c.campaignName}
+                      </option>
+                    ))}
+                  </select>
+                ))}
+
+              {resultTab === 'adset' &&
+                selectedCampaign &&
+                (adsets.length === 0 ? (
+                  <span className="meta-insight__result-empty">
+                    adset 데이터 없음
+                  </span>
+                ) : (
+                  <MultiSelectDropdown
+                    options={adsets.map((a) => ({
+                      key: a.adsetName,
+                      label: a.adsetName,
+                    }))}
+                    selected={selectedAdsetNames}
+                    onToggle={toggleAdsetMulti}
+                    emptyLabel="adset 선택"
+                    countSuffix="개 adset"
+                  />
+                ))}
+
+              <MultiSelectDropdown<MetricKey>
+                options={METRIC_FIELDS.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                }))}
+                selected={selectedMetricKeys}
+                onToggle={toggleMetric}
+                emptyLabel="지표 선택"
+                countSuffix="개 지표"
+              />
+              <button
+                type="button"
+                className={`meta-insight__unit-toggle${
+                  showUnit ? ' is-active' : ''
+                }`}
+                aria-pressed={showUnit}
+                onClick={() => setShowUnit((v) => !v)}
+              >
+                단위 표시
+              </button>
+            </div>
+          )}
 
           {resultTab === 'total' && (
             <ResultPanel
@@ -461,20 +737,34 @@ export const MetaInsight = () => {
               series={combinedInsight.series}
             />
           )}
-          {resultTab === 'campaign' && selectedCampaign && (
-            <ResultPanel
-              key={selectedCampaign.campaignName}
-              periodLabel={periodLabel}
-              total={totalsFromSeries(selectedCampaign)}
-              series={selectedCampaign}
+          {resultTab === 'campaign' && (
+            <PivotSummary
+              groups={campaigns
+                .filter((c) => selectedCampaignNames.has(c.campaignName))
+                .map((c) => ({
+                  key: c.campaignName,
+                  label: c.campaignName,
+                  byDate: c.combined.byDate,
+                }))}
+              metricKeys={metricKeyList}
+              dates={canonicalDates}
+              emptyLabel="표시할 캠페인을 선택해주세요."
+              showUnit={showUnit}
             />
           )}
-          {resultTab === 'adset' && selectedAdset && (
-            <ResultPanel
-              key={`${selectedCampaign?.campaignName}:${selectedAdset.adsetName}`}
-              periodLabel={periodLabel}
-              total={totalsFromSeries(selectedAdset)}
-              series={selectedAdset}
+          {resultTab === 'adset' && (
+            <PivotSummary
+              groups={adsets
+                .filter((a) => selectedAdsetNames.has(a.adsetName))
+                .map((a) => ({
+                  key: a.adsetName,
+                  label: a.adsetName,
+                  byDate: a.combined.byDate,
+                }))}
+              metricKeys={metricKeyList}
+              dates={canonicalDates}
+              emptyLabel="표시할 adset을 선택해주세요."
+              showUnit={showUnit}
             />
           )}
         </>
