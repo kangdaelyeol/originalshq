@@ -2,10 +2,14 @@ import { useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import '../styles/index-line-chart.scss'
 
+export type IndexSeriesType = 'line' | 'bar'
+
 export interface IndexSeries {
   key: string
   label: string
   color: string
+  /** 'line'(꺾은선) / 'bar'(막대). 생략하면 'line'. */
+  type?: IndexSeriesType
   /** 그래프 좌상단 단위 표기용("지표명(단위)"). */
   unit: string
   /** 카테고리(x) 순서에 맞춘 원본 값. */
@@ -40,6 +44,10 @@ const UP = '#3fb950'
 const DOWN = '#ff7b72'
 
 const DIM_OPACITY = 0.22
+
+// 막대 그룹이 한 컬럼(band)에서 차지하는 폭 비율. 나머지는 컬럼 간 간격.
+const BAR_GROUP_FRAC = 0.68
+const BAR_FILL_OPACITY = 0.85
 
 /** roughStep 이상인 가장 가까운 "깔끔한" 스텝(1/2/5 × 10^n). */
 function niceStep(roughStep: number): number {
@@ -121,12 +129,19 @@ export const IndexLineChart = ({
   const prepared = useMemo(
     () =>
       series.map((s) => {
+        const type: IndexSeriesType = s.type ?? 'line'
         const nums = s.raw.filter((v): v is number => Number.isFinite(v))
-        const range =
-          nums.length === 0
-            ? niceRange(0, 1)
-            : niceRange(Math.min(...nums), Math.max(...nums))
-        return { ...s, range }
+        let range
+        if (nums.length === 0) {
+          range = niceRange(0, 1)
+        } else {
+          const lo = Math.min(...nums)
+          const hi = Math.max(...nums)
+          // 막대는 0 기준선을 강제한다 — 바닥이 잘린 막대는 길이 비교를 왜곡한다.
+          range =
+            type === 'bar' ? niceRange(Math.min(0, lo), hi) : niceRange(lo, hi)
+        }
+        return { ...s, type, range }
       }),
     [series],
   )
@@ -145,6 +160,17 @@ export const IndexLineChart = ({
   const xCenter = (i: number) => MARGIN_LEFT + bandW * i + bandW / 2
   const yIn = (range: { min: number; max: number }, v: number) =>
     MARGIN_TOP + PLOT_H - ((v - range.min) / (range.max - range.min)) * PLOT_H
+
+  // 막대는 라인 뒤에 깔고, 같은 컬럼에 여러 개면 폭을 나눠 나란히 놓는다.
+  const barSeries = prepared.filter((s) => s.type === 'bar')
+  const lineSeries = prepared.filter((s) => s.type === 'line')
+  const groupW = bandW * BAR_GROUP_FRAC
+  const slotW = barSeries.length > 0 ? groupW / barSeries.length : 0
+  const barSlot = new Map(barSeries.map((s, bi) => [s.key, bi]))
+  const barCenterX = (key: string, i: number) => {
+    const bi = barSlot.get(key) ?? 0
+    return xCenter(i) - groupW / 2 + slotW * bi + slotW / 2
+  }
 
   const labelStride = Math.max(1, Math.ceil(n / 8))
 
@@ -177,9 +203,7 @@ export const IndexLineChart = ({
 
   // 크로스헤어로 잡힌 선이 우선이고, 없으면 범례 호버로 지정한 지표를 포커스한다.
   const focusedKey = hover?.seriesKey ?? legendHoverKey
-  const focused = focusedKey
-    ? prepared.find((s) => s.key === focusedKey)
-    : null
+  const focused = focusedKey ? prepared.find((s) => s.key === focusedKey) : null
 
   // 왼쪽 y축은 한 번에 하나의 지표만 라벨링한다 — 포커스된 지표, 없으면 첫 번째 지표.
   // (나머지 선은 자기 축으로 스케일되지만 눈금은 표시하지 않는다.)
@@ -228,7 +252,7 @@ export const IndexLineChart = ({
               y={yIn(axisSeries.range, t)}
               textAnchor="end"
               dominantBaseline="middle"
-              fontSize={10}
+              fontSize={8}
               fill={axisColor}
             >
               {axisSeries.formatCompact(t)}
@@ -242,9 +266,9 @@ export const IndexLineChart = ({
             <text
               key={`x-${i}`}
               x={xCenter(i)}
-              y={MARGIN_TOP + PLOT_H + 18}
+              y={MARGIN_TOP + PLOT_H + 13}
               textAnchor="middle"
-              fontSize={10}
+              fontSize={9}
               fill={MUTED}
             >
               {c}
@@ -252,8 +276,35 @@ export const IndexLineChart = ({
           ) : null,
         )}
 
+        {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
+            여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
+        {barSeries.map((s) => {
+          const isFocused = focused?.key === s.key
+          const dimmed = focused != null && !isFocused
+          const yBase = yIn(s.range, Math.max(s.range.min, 0))
+          const w = Math.max(1, slotW - 1.5)
+          return s.raw.map((v, i) => {
+            if (v == null) return null
+            const yv = yIn(s.range, v)
+            const top = Math.min(yBase, yv)
+            const h = Math.max(1, Math.abs(yBase - yv))
+            return (
+              <rect
+                key={`bar-${s.key}-${i}`}
+                x={barCenterX(s.key, i) - w / 2}
+                y={top}
+                width={w}
+                height={h}
+                rx={1}
+                fill={s.color}
+                opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
+              />
+            )
+          })
+        })}
+
         {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
-        {prepared.map((s) => {
+        {lineSeries.map((s) => {
           const isFocused = focused?.key === s.key
           const dimmed = focused != null && !isFocused
           return (
@@ -270,8 +321,8 @@ export const IndexLineChart = ({
           )
         })}
 
-        {/* 마커 */}
-        {prepared.map((s) => {
+        {/* 마커 — 꺾은선만 */}
+        {lineSeries.map((s) => {
           const isFocused = focused?.key === s.key
           const dimmed = focused != null && !isFocused
           return s.raw.map((v, i) => {
@@ -292,6 +343,37 @@ export const IndexLineChart = ({
                   fill={s.color}
                 />
               </g>
+            )
+          })
+        })}
+
+        {/* 점 값 라벨 — 선택한 모든 지표의 모든 점을 표기한다. 지표마다 독립 축이라
+            값이 겹칠 수 있어, 시리즈 순서에 따라 점의 위/아래로 번갈아 배치해 충돌을 줄인다. */}
+        {prepared.map((s, si) => {
+          const isFocused = focused?.key === s.key
+          const dimmed = focused != null && !isFocused
+          const isBar = s.type === 'bar'
+          return s.raw.map((v, i) => {
+            if (v == null) return null
+            const y = yIn(s.range, v)
+            const cx = isBar ? barCenterX(s.key, i) : xCenter(i)
+            // 막대는 항상 막대 위. 꺾은선은 시리즈 순서로 위/아래 교대(상단 여백 넘으면 아래).
+            const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
+            return (
+              <text
+                key={`label-${s.key}-${i}`}
+                x={cx}
+                y={above ? (isBar ? y - 5 : y - 9) : y + 16}
+                textAnchor="middle"
+                fontSize={9}
+                fill={series.length > 1 ? s.color : MUTED}
+                stroke={SURFACE}
+                strokeWidth={3}
+                paintOrder="stroke"
+                opacity={dimmed ? DIM_OPACITY : 1}
+              >
+                {s.formatCompact(v)}
+              </text>
             )
           })
         })}
@@ -375,6 +457,7 @@ export const IndexLineChart = ({
                 />
                 <span className="index-line-chart__tooltip-name">
                   {s.label}
+                  {s.type === 'bar' && ' · 막대'}
                 </span>
                 <span className="index-line-chart__tooltip-values">
                   <span className="index-line-chart__tooltip-value">
@@ -413,10 +496,13 @@ export const IndexLineChart = ({
             onPointerLeave={() => setLegendHoverKey(null)}
           >
             <span
-              className="index-line-chart__legend-key"
+              className={`index-line-chart__legend-key${
+                s.type === 'bar' ? ' is-bar' : ''
+              }`}
               style={{ background: s.color }}
             />
             {s.label}
+            {s.type === 'bar' && ' · 막대'}
           </span>
         ))}
       </div>

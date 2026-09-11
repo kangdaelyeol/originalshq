@@ -118,6 +118,21 @@ $radius-lg: 8px;
     font-variant-numeric: tabular-nums;
   }
 
+  &__checkbox-kind {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  &__checkbox-kind-label {
+    flex: none;
+    width: 44px;
+    padding-top: 1px;
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-muted;
+  }
+
   &__checkbox-row {
     display: flex;
     flex-wrap: wrap;

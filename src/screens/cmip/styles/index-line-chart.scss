@@ -143,5 +143,10 @@ $color-border: #30363d;
     width: 10px;
     height: 2px;
     border-radius: 1px;
+
+    &.is-bar {
+      width: 9px;
+      height: 10px;
+    }
   }
 }
