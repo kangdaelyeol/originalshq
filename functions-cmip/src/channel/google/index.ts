@@ -77,7 +77,10 @@ import { db } from '../../data'
 //   },
 // )
 
-const GOOGLE_ADS_API_VERSION = 'v16' // 현재 사용 중인 API 버전 지정
+// v16은 sunset(폐기)되어 이 경로 자체가 404를 반환한다 — Google Ads API는
+// 버전을 자주(연 3~4회) 폐기하니, 이 값이 다시 404가 나면 release notes에서
+// 현재 활성 버전으로 갱신할 것: https://developers.google.com/google-ads/api/docs/release-notes
+const GOOGLE_ADS_API_VERSION = 'v25' // 2026-09 기준 최신 버전
 
 interface AdsMetricsRow {
   segments?: { date?: string }
