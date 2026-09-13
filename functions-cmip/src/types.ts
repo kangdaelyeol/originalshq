@@ -168,3 +168,17 @@ export interface UpsertBrandData {
   commerceChannels?: Channel[]
   memo?: string
 }
+
+// oauth Callback - google ads
+export interface OauthCallbackQuery {
+  code?: string
+  state?: string
+  error?: string
+  error_description?: string
+}
+
+export interface OauthCallbackResult {
+  success: boolean
+  brandId: string
+  message: string
+}
