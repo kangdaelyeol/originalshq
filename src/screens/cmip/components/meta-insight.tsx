@@ -13,7 +13,7 @@ import {
   metricsForDateSubset,
   weekdayLabelOf,
 } from '../client'
-import { METRIC_FIELDS } from './metric-fields'
+import { METRIC_FIELDS, type MetricField } from './metric-fields'
 import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
 import { dateRange } from '../utils'
@@ -550,6 +550,35 @@ const SUM_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'conversions',
 ])
 
+/** 평균 행의 표시값 — formatCompact(num())는 소수 자릿수를 강제하지 않아, 일수로
+ * 나눈 값이 딱 안 떨어지면 toLocaleString 기본값(최대 3자리)이 그대로 노출돼
+ * 다른 행(합계·일별, 전부 정수)과 자릿수가 들쭉날쭉해 보였다. spend(원)는 애초에
+ * 소수 단위가 없는 지표라 정수로 반올림하고, 나머지 합산 지표(횟수·건수)는 소수
+ * 1자리까지만 남긴다. 비율 지표(ctr/cpc 등)는 원래도 고정 2자리라 그대로 둔다. */
+function averageValueOf(
+  f: MetricField,
+  agg: MetricsSummary,
+  dayCount: number,
+): number {
+  if (!SUM_METRIC_KEYS.has(f.key)) return agg[f.key]
+  const raw = agg[f.key] / dayCount
+  return f.key === 'spend' ? Math.round(raw) : Math.round(raw * 10) / 10
+}
+
+/** 소수부가 있으면 그 부분만 작고 옅게 렌더링해서 정수부가 먼저 읽히도록 한다 —
+ * 평균 행은 유일하게 소수가 섞여 나오는 행이라, 그 소수를 "부가 정보"처럼 덜
+ * 도드라지게 보여주면 합계·일별 행과 나란히 봐도 자릿수 차이가 덜 거슬린다. */
+function SplitDecimalValue({ text }: { text: string }) {
+  const dot = text.lastIndexOf('.')
+  if (dot === -1) return <>{text}</>
+  return (
+    <>
+      {text.slice(0, dot)}
+      <span className="meta-insight__pivot-avg-decimal">{text.slice(dot)}</span>
+    </>
+  )
+}
+
 /** 캠페인/adset 탭 전용 — 선택된 항목(캠페인 또는 adset) × 선택된 지표를 날짜별로
  * 교차 표시한다. 첫 행은 일 평균(전체 조회 기간 기준), 그 아래로 날짜별 원본이
  * 최신순(내림차순)으로 이어진다. 주차 집계는 안 쓴다(나중에 차트에서 쓸 데이터라
@@ -652,11 +681,11 @@ function PivotSummary({
                   {groupAverages.flatMap(({ key, agg }) =>
                     metricFields.map((f) => (
                       <td key={`${key}-${f.key}`}>
-                        {f.formatCompact(
-                          SUM_METRIC_KEYS.has(f.key)
-                            ? agg[f.key] / dayCount
-                            : agg[f.key],
-                        )}
+                        <SplitDecimalValue
+                          text={f.formatCompact(
+                            averageValueOf(f, agg, dayCount),
+                          )}
+                        />
                       </td>
                     )),
                   )}
