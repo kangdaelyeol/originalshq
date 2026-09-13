@@ -390,7 +390,7 @@ export const MetaInsightChartModal = ({
               }
               aria-pressed={chartTheme === 'light'}
             >
-              {chartTheme === 'light' ? '다크 모드' : '라이트 모드'}
+              {chartTheme === 'light' ? 'Dark Mode' : 'Light Mode'}
             </button>
             <button
               type="button"
