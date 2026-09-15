@@ -608,7 +608,7 @@ export const getGoogleAdsInsight = onRequest(
           sendError(
             res,
             400,
-            'brandId, dateStart, dateEnd, customerId 가 모두 필요합니다.',
+            'brandId, dateStart, dateEnd, customerId, loginCustomerId 가 모두 필요합니다.',
           )
           return
         }

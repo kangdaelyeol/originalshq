@@ -145,6 +145,7 @@ export async function getGoogleInsight(
       metrics.impressions,
       metrics.clicks,
       metrics.conversions
+      metrics.average_impression_frequency_per_user
     FROM campaign
     WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
     ORDER BY segments.date DESC
