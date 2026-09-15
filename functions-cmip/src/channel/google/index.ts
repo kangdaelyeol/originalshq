@@ -1,85 +1,6 @@
-// import { GoogleAuth } from 'google-auth-library'
-// import { defineSecret } from 'firebase-functions/params'
-// import { onRequest } from 'firebase-functions/v2/https'
-// import { logger } from 'firebase-functions'
-
 import { OAuth2Client } from 'google-auth-library'
 import { db } from '../../data'
 
-// const adsSaKey = defineSecret('ADS_SA_KEY_JSON') // 서비스 계정 JSON 키 전체
-// const adsDevToken = defineSecret('ADS_DEVELOPER_TOKEN') // Cloud 콘솔에서 확인한 값
-
-// const API_VERSION = 'v25'
-// const CUSTOMER_ID = '1234567890'
-// const LOGIN_CUSTOMER_ID = '' // MCC 계정이면 채우기
-
-// async function getAccessToken(): Promise<string> {
-//   const credentials = JSON.parse(adsSaKey.value())
-//   const auth = new GoogleAuth({
-//     credentials,
-//     scopes: ['https://www.googleapis.com/auth/adwords'],
-//   })
-//   const client = await auth.getClient()
-//   const { token } = await client.getAccessToken()
-//   if (!token) throw new Error('access token 발급 실패')
-//   return token
-// }
-
-// async function fetchAdGroupPerformance() {
-//   const accessToken = await getAccessToken()
-//   const query = `
-//     SELECT
-//       campaign.id, campaign.name,
-//       ad_group.id, ad_group.name,
-//       metrics.impressions, metrics.clicks,
-//       metrics.cost_micros, metrics.conversions
-//     FROM ad_group
-//     WHERE segments.date DURING LAST_7_DAYS
-//   `
-//   const url = `https://googleads.googleapis.com/${API_VERSION}/customers/${CUSTOMER_ID}/googleAds:search`
-//   const headers: Record<string, string> = {
-//     Authorization: `Bearer ${accessToken}`,
-//     'developer-token': adsDevToken.value(),
-//     'Content-Type': 'application/json',
-//   }
-//   if (LOGIN_CUSTOMER_ID) headers['login-customer-id'] = LOGIN_CUSTOMER_ID
-
-//   const rows: unknown[] = []
-//   let pageToken: string | undefined
-//   do {
-//     const res = await fetch(url, {
-//       method: 'POST',
-//       headers,
-//       body: JSON.stringify({ query, pageSize: 1000, pageToken }),
-//     })
-//     if (!res.ok) throw new Error(`Ads API 오류: ${await res.text()}`)
-//     const data = await res.json()
-//     rows.push(...(data.results ?? []))
-//     pageToken = data.nextPageToken
-//   } while (pageToken)
-
-//   return rows
-// }
-
-// // ────────────────────────────────
-// // getAdsInsight
-// // ────────────────────────────────
-// export const getAdsInsight = onRequest(
-//   { secrets: [adsSaKey, adsDevToken] },
-//   async (request, response) => {
-//     try {
-//       const rows = await fetchAdGroupPerformance()
-//       response.status(200).send({ count: rows.length, rows })
-//     } catch (error) {
-//       logger.error('Ads 인사이트 조회 실패:', error)
-//       response.status(500).send({ error: '서버 오류' })
-//     }
-//   },
-// )
-
-// v16은 sunset(폐기)되어 이 경로 자체가 404를 반환한다 — Google Ads API는
-// 버전을 자주(연 3~4회) 폐기하니, 이 값이 다시 404가 나면 release notes에서
-// 현재 활성 버전으로 갱신할 것: https://developers.google.com/google-ads/api/docs/release-notes
 const GOOGLE_ADS_API_VERSION = 'v25' // 2026-09 기준 최신 버전
 
 interface AdsMetricsRow {
@@ -201,6 +122,7 @@ export async function getGoogleInsight(
   clientSecret: string,
   developerToken: string,
   customerId: string, // 타겟 Google Ads 고객 ID (숫자 10자리, 하이픈 제외)
+  loginCustomerId?: string, // [추가] 상위 관리자 계정(MCC) ID (숫자 10자리)
 ) {
   // 1. 해당 브랜드의 Refresh Token 조회
   const brandDoc = await db.collection('brands').doc(brandId).get()
@@ -232,13 +154,21 @@ export async function getGoogleInsight(
   const cleanCustomerId = customerId.replace(/-/g, '')
   const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`
 
+  // [핵심 수정] HTTP Header 객체 구성
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'developer-token': developerToken,
+    'Content-Type': 'application/json',
+  }
+
+  // loginCustomerId가 넘어온 경우, login-customer-id 헤더를 반드시 명시
+  if (loginCustomerId && loginCustomerId.trim()) {
+    headers['login-customer-id'] = loginCustomerId.trim().replace(/-/g, '')
+  }
+
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'developer-token': developerToken,
-      'Content-Type': 'application/json',
-    },
+    headers, // [수정] 위에서 만든 headers 객체 전달
     body: JSON.stringify({ query }),
   })
 

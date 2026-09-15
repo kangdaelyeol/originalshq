@@ -533,7 +533,11 @@ export const getGoogleAuthUrl = onRequest(
         const result: GetGoogleAuthUrlResult = { url }
         response.status(200).send(result)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -591,9 +595,16 @@ export const getGoogleAdsInsight = onRequest(
         const params = (
           req.method === 'GET' ? req.query : req.body
         ) as Partial<GetGoogleInsightParams> & { customerId?: string }
-        const { brandId, dateStart, dateEnd, customerId } = params
+        const { brandId, dateStart, dateEnd, customerId, loginCustomerId } =
+          params
 
-        if (!brandId || !dateStart || !dateEnd || !customerId) {
+        if (
+          !brandId ||
+          !dateStart ||
+          !dateEnd ||
+          !customerId ||
+          !loginCustomerId
+        ) {
           sendError(
             res,
             400,
@@ -610,6 +621,7 @@ export const getGoogleAdsInsight = onRequest(
           googleClientSecret.value(),
           googleDeveloperToken.value(),
           String(customerId),
+          loginCustomerId,
         )
 
         res.status(200).send(insightData)

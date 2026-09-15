@@ -2,6 +2,7 @@ export interface GetGoogleInsightParams {
   brandId: string
   dateStart: string // YYYY-MM-DD
   dateEnd: string // YYYY-MM-DD
+  loginCustomerId: string
 }
 
 export interface GoogleInsightRow {
