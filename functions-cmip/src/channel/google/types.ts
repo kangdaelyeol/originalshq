@@ -10,7 +10,7 @@ export interface GoogleInsightRow {
   campaignId: string
   campaignName: string
   costMicros: number
-  cost: number // 원화/기본 화폐 단위
+  cost: number 
   impressions: number
   clicks: number
   conversions: number
