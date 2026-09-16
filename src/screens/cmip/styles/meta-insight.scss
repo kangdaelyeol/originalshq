@@ -15,6 +15,11 @@ $color-accent: #4493f8;
 $radius: 6px;
 $radius-lg: 8px;
 
+// 캠페인/adset 교차표의 합계/평균 행 배경 — 변수로 빼서 고정(sticky) 첫 컬럼의
+// 배경도 정확히 같은 값으로 맞춘다(&__pivot-sticky-col 참고).
+$pivot-total-bg: color-mix(in srgb, $color-accent 22%, $color-canvas-subtle);
+$pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
+
 .meta-insight {
   display: flex;
   flex-direction: column;
@@ -476,23 +481,44 @@ $radius-lg: 8px;
     border-left: 2px solid $color-border !important;
   }
 
+  // 캠페인/adset을 여러 개 선택하면 표가 옆으로 길어져 overflow-x로 스크롤하는데,
+  // 첫 컬럼(날짜/요일/주차)까지 같이 밀려나면 지금 보는 값이 어느 행인지 놓치기
+  // 쉽다. left:0으로 고정해 항상 보이게 한다. sticky 요소는 배경을 상속하지
+  // 않아 투명하면 스크롤로 지나가는 다른 컬럼 값이 그대로 비쳐 보이므로,
+  // 기본은 표/섹션과 같은 불투명 배경을 깔아둔다 — 합계/평균 행은 그 행 배경이
+  // 더 진해서 아래(&__table-row--total/--average)에서 각각 덮어쓴다.
+  &__pivot-sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: $color-surface;
+  }
+
   // 맨 위 두 행(합계/평균) — 나머지 날짜 행과 구분되도록 강조. 합계가 평균보다
   // 한 단계 더 진하게 해서 "더 상위 요약"이라는 느낌을 준다.
   &__table-row--total {
-    background: color-mix(in srgb, $color-accent 22%, $color-canvas-subtle);
+    background: $pivot-total-bg;
 
     td {
       font-weight: 700;
       color: $color-text;
     }
+
+    .meta-insight__pivot-sticky-col {
+      background: $pivot-total-bg;
+    }
   }
 
   &__table-row--average {
-    background: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
+    background: $pivot-average-bg;
 
     td {
       font-weight: 600;
       color: $color-text;
+    }
+
+    .meta-insight__pivot-sticky-col {
+      background: $pivot-average-bg;
     }
   }
 

@@ -10,6 +10,8 @@ import type {
 import {
   aggregateMetrics,
   emptyMetrics,
+  groupByDayOfWeek,
+  groupByWeek,
   metricsForDateSubset,
   weekdayLabelOf,
 } from '../client'
@@ -579,16 +581,28 @@ function SplitDecimalValue({ text }: { text: string }) {
   )
 }
 
-/** 캠페인/adset 탭 전용 — 선택된 항목(캠페인 또는 adset) × 선택된 지표를 날짜별로
- * 교차 표시한다. 첫 행은 일 평균(전체 조회 기간 기준), 그 아래로 날짜별 원본이
- * 최신순(내림차순)으로 이어진다. 주차 집계는 안 쓴다(나중에 차트에서 쓸 데이터라
- * 여기서는 손대지 않는다). */
+/** 캠페인/adset 탭의 "보기 단위" — 표의 첫 컬럼(행 축)을 날짜/요일/주차 중
+ * 무엇으로 묶을지. */
+type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
+
+const PIVOT_VIEW_OPTIONS: readonly { value: PivotView; label: string }[] = [
+  { value: 'byDate', label: '날짜별' },
+  { value: 'byDayOfWeek', label: '요일별' },
+  { value: 'byGroupedWeek', label: '주차별' },
+]
+
+/** 캠페인/adset 탭 전용 — 선택된 항목(캠페인 또는 adset) × 선택된 지표를 교차
+ * 표시한다. 첫 두 행은 항상 합계/평균(조회 기간 전체 기준)이고, 그 아래는
+ * view에 따라 날짜(최신순)/요일/주차 단위로 묶인다. 어느 축이든 각 셀은 그
+ * 축이 가리키는 날짜 구간으로 그룹의 byDate를 다시 필터링해 합산하므로
+ * (metricsForDateSubset), 세 모드가 같은 렌더 경로를 탄다. */
 function PivotSummary({
   groups,
   metricKeys,
   dates,
   emptyLabel,
   showUnit,
+  view,
 }: {
   groups: readonly PivotGroup[]
   metricKeys: readonly MetricKey[]
@@ -596,6 +610,7 @@ function PivotSummary({
   emptyLabel: string
   /** 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지. */
   showUnit: boolean
+  view: PivotView
 }) {
   const metricFields = METRIC_FIELDS.filter((f) => metricKeys.includes(f.key))
 
@@ -609,21 +624,55 @@ function PivotSummary({
     )
   }
 
-  const groupsWithLookup = groups.map((g) => ({
-    ...g,
-    byDateKey: new Map(g.byDate.map((row) => [row.date, row])),
+  // 합계/평균 행 — 조회 기간 전체 기준이라 view(날짜/요일/주차)와 무관하게 항상
+  // 같다. sum 연산은 "0인 날"이 명시적으로 있든 아예 없든 결과가 같으므로,
+  // g.byDate를 그대로 합치면 된다(과거처럼 dates 전체를 순회하며 emptyMetrics로
+  // 채워 넣을 필요가 없다).
+  const dayCount = dates.length || 1
+  const groupAverages = groups.map((g) => ({
+    key: g.key,
+    agg: aggregateMetrics(g.byDate),
   }))
 
-  // 평균 행 — 조회 기간 전체(dates, 값 없는 날은 0)를 기준으로 한 일 평균.
-  const dayCount = dates.length || 1
-  const groupAverages = groupsWithLookup.map((g) => {
-    const resolvedRows = dates.map((d) => g.byDateKey.get(d) ?? emptyMetrics())
-    const agg = aggregateMetrics(resolvedRows)
-    return { key: g.key, agg }
-  })
-
-  // 최신 날짜가 위로 오도록 — dates는 오름차순으로 들어오므로 뒤집기만 하면 된다.
-  const datesDesc = [...dates].reverse()
+  // 행 축(첫 컬럼) — view에 따라 날짜/요일/주차로 갈라진다. 각 행은 "그 구간에
+  // 속하는 날짜인지" predicate만 들고 있고, 실제 값은 렌더링 시 그룹별로
+  // metricsForDateSubset을 태워 구한다.
+  type PivotRow = {
+    key: string
+    label: string
+    predicate: (d: string) => boolean
+  }
+  let pivotRows: PivotRow[] = []
+  if (dates.length > 0) {
+    if (view === 'byDate') {
+      // 최신 날짜가 위로 오도록 — dates는 오름차순으로 들어오므로 뒤집기만.
+      pivotRows = [...dates].reverse().map((date) => ({
+        key: date,
+        label: `${date} (${weekdayLabelOf(date)})`,
+        predicate: (d) => d === date,
+      }))
+    } else if (view === 'byDayOfWeek') {
+      // 실제 값 없이 날짜만으로 요일 라벨 집합을 구한다(월요일부터, 데이터에
+      // 있는 요일만) — insight-aggregate의 표준 순서를 그대로 재사용.
+      pivotRows = groupByDayOfWeek(
+        dates.map((d) => ({ date: d, ...emptyMetrics() })),
+      ).map((row) => ({
+        key: row.dayOfWeek,
+        label: row.dayOfWeek,
+        predicate: (d) => weekdayLabelOf(d) === row.dayOfWeek,
+      }))
+    } else {
+      // groupByWeek의 주차 경계는 rows 내용과 무관하게 startDate/endDate만으로
+      // 정해지므로, 구간만 뽑아 쓰고 집계값(전부 0)은 버린다.
+      pivotRows = groupByWeek([], dates[0], dates[dates.length - 1]).map(
+        (week) => ({
+          key: week.period,
+          label: week.period,
+          predicate: (d) => d >= week.startDate && d <= week.endDate,
+        }),
+      )
+    }
+  }
 
   return (
     <section className="meta-insight__summary meta-insight__pivot">
@@ -631,10 +680,14 @@ function PivotSummary({
         <table className="meta-insight__table meta-insight__table--pivot">
           <thead>
             <tr>
-              <th rowSpan={2} className="meta-insight__pivot-date-head">
-                날짜
+              <th
+                rowSpan={2}
+                className="meta-insight__pivot-date-head meta-insight__pivot-sticky-col"
+              >
+                {PIVOT_VIEW_OPTIONS.find((o) => o.value === view)?.label ??
+                  '날짜'}
               </th>
-              {groupsWithLookup.map((g) => (
+              {groups.map((g) => (
                 <th
                   key={g.key}
                   colSpan={metricFields.length}
@@ -645,7 +698,7 @@ function PivotSummary({
               ))}
             </tr>
             <tr>
-              {groupsWithLookup.flatMap((g) =>
+              {groups.flatMap((g) =>
                 metricFields.map((f) => (
                   <th
                     key={`${g.key}-${f.key}`}
@@ -660,14 +713,14 @@ function PivotSummary({
           <tbody>
             {dates.length === 0 ? (
               <tr>
-                <td colSpan={1 + groupsWithLookup.length * metricFields.length}>
+                <td colSpan={1 + groups.length * metricFields.length}>
                   데이터 없음
                 </td>
               </tr>
             ) : (
               <>
                 <tr className="meta-insight__table-row--total">
-                  <td>합계</td>
+                  <td className="meta-insight__pivot-sticky-col">합계</td>
                   {groupAverages.flatMap(({ key, agg }) =>
                     metricFields.map((f) => (
                       <td key={`${key}-${f.key}`}>
@@ -677,7 +730,7 @@ function PivotSummary({
                   )}
                 </tr>
                 <tr className="meta-insight__table-row--average">
-                  <td>평균</td>
+                  <td className="meta-insight__pivot-sticky-col">평균</td>
                   {groupAverages.flatMap(({ key, agg }) =>
                     metricFields.map((f) => (
                       <td key={`${key}-${f.key}`}>
@@ -690,16 +743,16 @@ function PivotSummary({
                     )),
                   )}
                 </tr>
-                {datesDesc.map((date) => (
-                  <tr key={date}>
-                    <td>
-                      {date} ({weekdayLabelOf(date)})
+                {pivotRows.map((row) => (
+                  <tr key={row.key}>
+                    <td className="meta-insight__pivot-sticky-col">
+                      {row.label}
                     </td>
-                    {groupsWithLookup.flatMap((g) => {
-                      const row = g.byDateKey.get(date)
+                    {groups.flatMap((g) => {
+                      const agg = metricsForDateSubset(g.byDate, row.predicate)
                       return metricFields.map((f) => (
                         <td key={`${g.key}-${f.key}`}>
-                          {f.formatCompact(row ? row[f.key] : 0)}
+                          {f.formatCompact(agg[f.key])}
                         </td>
                       ))
                     })}
@@ -753,6 +806,8 @@ export const MetaInsight = () => {
   >(() => new Set(['impressions']))
   // 캠페인/adset 교차표의 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지.
   const [showUnit, setShowUnit] = useState(false)
+  // 캠페인/adset 교차표의 행 축(날짜/요일/주차) — 기본은 날짜별.
+  const [pivotView, setPivotView] = useState<PivotView>('byDate')
 
   const campaigns = combinedInsight?.byCampaign ?? []
   // 이름이 목록에 없으면(처음 진입, 재조회로 캠페인이 바뀜 등) 첫 캠페인으로
@@ -887,6 +942,20 @@ export const MetaInsight = () => {
               role="group"
               aria-label="지표 선택"
             >
+              {/* 표의 행 축(날짜/요일/주차) — 캠페인 선택 드롭다운 왼쪽에 둔다. */}
+              <select
+                className="meta-insight__result-select"
+                value={pivotView}
+                onChange={(e) => setPivotView(e.target.value as PivotView)}
+                aria-label="보기 단위"
+              >
+                {PIVOT_VIEW_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+
               {/* 캠페인 탭 — 캠페인 다중 선택. */}
               {resultTab === 'campaign' &&
                 (campaigns.length === 0 ? (
@@ -991,6 +1060,7 @@ export const MetaInsight = () => {
               dates={canonicalDates}
               emptyLabel="표시할 캠페인을 선택해주세요."
               showUnit={showUnit}
+              view={pivotView}
             />
           )}
           {resultTab === 'adset' && (
@@ -1006,6 +1076,7 @@ export const MetaInsight = () => {
               dates={canonicalDates}
               emptyLabel="표시할 adset을 선택해주세요."
               showUnit={showUnit}
+              view={pivotView}
             />
           )}
         </>
