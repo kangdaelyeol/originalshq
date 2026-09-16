@@ -36,6 +36,7 @@ import {
   getGoogleInsight,
   buildGoogleAdsAuthUrl,
   checkGoogleAuthStatus,
+  getGoogleAdGroupInsight,
 } from './channel/google'
 import { GetGoogleInsightParams } from './channel/google/types'
 
@@ -581,7 +582,7 @@ export const getGoogleAuthStatus = onRequest((request, response) => {
 /**
  * Google Ads 인사이트 조회 엔드포인트
  */
-export const getGoogleAdsInsight = onRequest(
+export const getGoogleCampaignInsight = onRequest(
   { secrets: [googleClientId, googleClientSecret, googleDeveloperToken] },
   (req, res) => {
     corsHandler(req, res, async () => {
@@ -614,6 +615,61 @@ export const getGoogleAdsInsight = onRequest(
         }
 
         const insightData = await getGoogleInsight(
+          String(brandId),
+          String(dateStart),
+          String(dateEnd),
+          googleClientId.value(),
+          googleClientSecret.value(),
+          googleDeveloperToken.value(),
+          String(customerId),
+          loginCustomerId,
+        )
+
+        res.status(200).send(insightData)
+      } catch (err) {
+        sendError(
+          res,
+          500,
+          err instanceof Error ? err.message : 'Google Ads 인사이트 조회 실패',
+        )
+      }
+    })
+  },
+)
+
+export const getGoogleAdsInsight = onRequest(
+  { secrets: [googleClientId, googleClientSecret, googleDeveloperToken] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      try {
+        if (req.method !== 'GET' && req.method !== 'POST') {
+          sendError(res, 405, 'Method Not Allowed')
+          return
+        }
+
+        // GET 쿼리 또는 POST 바디 처리
+        const params = (
+          req.method === 'GET' ? req.query : req.body
+        ) as Partial<GetGoogleInsightParams> & { customerId?: string }
+        const { brandId, dateStart, dateEnd, customerId, loginCustomerId } =
+          params
+
+        if (
+          !brandId ||
+          !dateStart ||
+          !dateEnd ||
+          !customerId ||
+          !loginCustomerId
+        ) {
+          sendError(
+            res,
+            400,
+            'brandId, dateStart, dateEnd, customerId, loginCustomerId 가 모두 필요합니다.',
+          )
+          return
+        }
+
+        const insightData = await getGoogleAdGroupInsight(
           String(brandId),
           String(dateStart),
           String(dateEnd),
