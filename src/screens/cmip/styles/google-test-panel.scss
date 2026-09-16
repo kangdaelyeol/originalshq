@@ -73,7 +73,8 @@ $radius-lg: 8px;
     font-size: 12px;
     color: $color-muted;
 
-    input {
+    input,
+    select {
       border: 1px solid $color-border;
       border-radius: $radius;
       background: $color-canvas-subtle;

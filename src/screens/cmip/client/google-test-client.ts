@@ -1,8 +1,9 @@
 /**
  * Google Ads 연동 테스트 전용 클라이언트 — functions-cmip에 새로 추가된
- * getGoogleAuthUrl/getGoogleAuthStatus/getGoogleAdsInsight를 그대로 호출한다.
- * 실 서비스 화면(meta-insight)의 구글 데이터(google-insight-mock)와는 무관하고,
- * GoogleTestPanel에서 "진짜 연동이 되는지"만 확인하는 용도다.
+ * getGoogleAuthUrl/getGoogleAuthStatus/getGoogleCampaignInsight(캠페인 단위)/
+ * getGoogleAdsInsight(adGroup=adset 단위)를 그대로 호출한다. 실 서비스 화면
+ * (meta-insight, google-insight-client.ts가 담당)과는 무관하고, GoogleTestPanel
+ * 에서 "진짜 연동이 되는지"만 확인하는 용도다.
  */
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import { CallableError, callFunction } from './csv-client'
@@ -16,7 +17,8 @@ export interface GoogleAuthStatusResult {
   updatedAt: string | null
 }
 
-export interface GoogleAdsInsightRow {
+// 두 엔드포인트가 공통으로 갖는 지표 필드.
+interface GoogleInsightMetrics {
   date: string
   campaignId: string
   campaignName: string
@@ -25,14 +27,36 @@ export interface GoogleAdsInsightRow {
   impressions: number
   clicks: number
   conversions: number
+  ctr: number
+  cpc: number
+  cpa: number
+  cvr: number
+  cpm: number
+  /** adGroup(adset) 단위는 Google 정책상 항상 0 — 캠페인 단위만 실제 값. */
+  frequency: number
 }
 
-export interface GoogleAdsInsightResult {
+export type GoogleCampaignInsightRow = GoogleInsightMetrics
+
+export interface GoogleAdGroupInsightRow extends GoogleInsightMetrics {
+  adGroupId: string
+  adGroupName: string
+}
+
+export interface GoogleInsightResult<TRow> {
   brandId: string
   dateStart: string
   dateEnd: string
   totalCount: number
-  rows: GoogleAdsInsightRow[]
+  rows: TRow[]
+}
+
+export interface GoogleInsightRequest {
+  brandId: string
+  dateStart: string
+  dateEnd: string
+  customerId: string
+  loginCustomerId: string
 }
 
 interface ErrorBody {
@@ -73,17 +97,14 @@ export const getGoogleAuthStatus = (
 ): Promise<GoogleAuthStatusResult> =>
   getJson('getGoogleAuthStatus', { brandId })
 
-/** getGoogleAdsInsight는 GET/POST 둘 다 받지만, 파라미터가 4개라 body로 보내는
- * 쪽(callFunction, 기존 csv-client 공용 POST 헬퍼)이 더 간단하다. */
-export const getGoogleAdsInsightRaw = (
-  brandId: string,
-  dateStart: string,
-  dateEnd: string,
-  customerId: string,
-): Promise<GoogleAdsInsightResult> =>
-  callFunction('getGoogleAdsInsight', {
-    brandId,
-    dateStart,
-    dateEnd,
-    customerId,
-  })
+/** 캠페인 단위 — 실제 frequency 포함. */
+export const getGoogleCampaignInsightRaw = (
+  req: GoogleInsightRequest,
+): Promise<GoogleInsightResult<GoogleCampaignInsightRow>> =>
+  callFunction('getGoogleCampaignInsight', req)
+
+/** adGroup(adset) 단위 — Google 정책상 frequency는 항상 0. */
+export const getGoogleAdGroupInsightRaw = (
+  req: GoogleInsightRequest,
+): Promise<GoogleInsightResult<GoogleAdGroupInsightRow>> =>
+  callFunction('getGoogleAdsInsight', req)

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react'
 import {
   getAllInsights,
-  getGoogleInsightsMock,
+  getGoogleInsights,
   combineChannelInsights,
   CallableError,
   type CombinedInsight,
@@ -29,9 +29,8 @@ export const useMetaInsightViewModel = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<MetaInsightSummary | null>(null)
-  // 구글 인사이트는 아직 토큰 발급 전이라 실제 API 대신 목업으로 같은 조회 액션에
-  // 묶어서 받는다 — functions는 건드리지 않고 프론트에서만 임시로 채워 넣는 것.
-  // 나중에 실제 연동이 끝나면 getGoogleInsightsMock 호출부만 바꾸면 된다.
+  // 구글 인사이트 — getGoogleInsights가 실제 Google Ads 연동(getGoogleCampaignInsight
+  // + getGoogleAdsInsight)을 getAllInsights와 같은 모양으로 합쳐 돌려준다.
   const [googleData, setGoogleData] = useState<MetaInsightSummary | null>(null)
   // total은 물론 캠페인/adset 단위까지 "종합(meta+google)/meta/google" 3분할로
   // 미리 묶어둔다 — 당근·네이버 등 채널이 늘어나면 combineChannelInsights 쪽만
@@ -59,7 +58,7 @@ export const useMetaInsightViewModel = () => {
       const apiEnd = formatForApi(end)
       const [metaResult, googleResult] = await Promise.all([
         getAllInsights(apiStart, apiEnd),
-        getGoogleInsightsMock(apiStart, apiEnd),
+        getGoogleInsights(apiStart, apiEnd),
       ])
       setData(metaResult)
       setGoogleData(googleResult)
@@ -67,7 +66,10 @@ export const useMetaInsightViewModel = () => {
         combineChannelInsights(metaResult, googleResult, apiStart, apiEnd),
       )
     } catch (err) {
-      setError(describeError(err, 'Meta 인사이트 조회 중 오류가 발생했습니다.'))
+      // Meta/Google 중 어느 쪽이 실패해도 여기로 온다 — CallableError는 항상
+      // 구체적인 메시지를 담고 있어 이 폴백은 거의 쓰이지 않지만, 특정 채널
+      // 이름으로 단정하지 않는다.
+      setError(describeError(err, '인사이트 조회 중 오류가 발생했습니다.'))
     } finally {
       setLoading(false)
     }

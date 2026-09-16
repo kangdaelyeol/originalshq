@@ -2,10 +2,12 @@ import { useState } from 'react'
 import {
   getGoogleAuthUrl,
   getGoogleAuthStatus,
-  getGoogleAdsInsightRaw,
+  getGoogleCampaignInsightRaw,
+  getGoogleAdGroupInsightRaw,
   CallableError,
   type GoogleAuthStatusResult,
-  type GoogleAdsInsightResult,
+  type GoogleCampaignInsightRow,
+  type GoogleAdGroupInsightRow,
 } from '../client'
 import { addDays, todayISO } from '../utils'
 import '../styles/google-test-panel.scss'
@@ -15,18 +17,32 @@ const describeError = (err: unknown, fallback: string): string =>
 
 const won = (v: number): string => `${v.toLocaleString()}원`
 
+type InsightLevel = 'campaign' | 'adgroup'
+
+interface InsightState {
+  totalCount: number
+  dateStart: string
+  dateEnd: string
+  rows: GoogleCampaignInsightRow[] | GoogleAdGroupInsightRow[]
+  level: InsightLevel
+}
+
 /**
- * Google Ads 실 연동 확인 전용 화면 — 실 서비스(meta-insight)의 구글 데이터는
- * 아직 google-insight-mock을 쓰고 있고, 이 패널은 그와 무관하게 "새로 붙인
- * OAuth·데이터 추출 로직이 실제로 동작하는지"만 검증한다. 흐름:
+ * Google Ads 실 연동 확인 전용 화면 — 실 서비스(meta-insight)는 이미
+ * google-insight-client.ts로 진짜 데이터를 쓰고 있고, 이 패널은 그와 무관하게
+ * "OAuth·두 인사이트 엔드포인트가 개별적으로 잘 동작하는지"를 원본 응답 그대로
+ * 확인하는 진단 도구다. 흐름:
  *   1) brandId로 연동 상태 확인 → 미연동이면
  *   2) "연동 시작"으로 Google 동의 화면을 새 탭에서 열어 승인(→ oauthCallback이
  *      refreshToken 저장) →
- *   3) customerId/기간을 넣고 "인사이트 조회"로 실제 데이터가 들어오는지 확인.
+ *   3) customerId/loginCustomerId/기간 + 조회 단위(캠페인/adset)를 골라
+ *      "인사이트 조회"로 실제 데이터가 들어오는지 확인.
  */
 export function GoogleTestPanel() {
   const [brandId, setBrandId] = useState('')
   const [customerId, setCustomerId] = useState('')
+  const [loginCustomerId, setLoginCustomerId] = useState('')
+  const [level, setLevel] = useState<InsightLevel>('campaign')
   const [dateStart, setDateStart] = useState(() => addDays(todayISO(), -7))
   const [dateEnd, setDateEnd] = useState(() => addDays(todayISO(), -1))
 
@@ -37,7 +53,7 @@ export function GoogleTestPanel() {
   const [authLoading, setAuthLoading] = useState(false)
   const [authError, setAuthError] = useState<string | null>(null)
 
-  const [insight, setInsight] = useState<GoogleAdsInsightResult | null>(null)
+  const [insight, setInsight] = useState<InsightState | null>(null)
   const [insightLoading, setInsightLoading] = useState(false)
   const [insightError, setInsightError] = useState<string | null>(null)
 
@@ -85,16 +101,27 @@ export function GoogleTestPanel() {
   }
 
   const fetchInsight = async () => {
-    if (!brandId || !customerId) {
-      setInsightError('brandId와 customerId를 모두 입력해주세요.')
+    if (!brandId || !customerId || !loginCustomerId) {
+      setInsightError(
+        'brandId, customerId, loginCustomerId를 모두 입력해주세요.',
+      )
       return
     }
     setInsightError(null)
     setInsightLoading(true)
     try {
-      setInsight(
-        await getGoogleAdsInsightRaw(brandId, dateStart, dateEnd, customerId),
-      )
+      const req = { brandId, dateStart, dateEnd, customerId, loginCustomerId }
+      const result =
+        level === 'campaign'
+          ? await getGoogleCampaignInsightRaw(req)
+          : await getGoogleAdGroupInsightRaw(req)
+      setInsight({
+        totalCount: result.totalCount,
+        dateStart: result.dateStart,
+        dateEnd: result.dateEnd,
+        rows: result.rows,
+        level,
+      })
     } catch (err) {
       setInsightError(
         describeError(err, 'Google 인사이트 조회에 실패했습니다.'),
@@ -108,9 +135,9 @@ export function GoogleTestPanel() {
   return (
     <div className="google-test-panel">
       <p className="google-test-panel__notice">
-        실 서비스 화면(인사이트 조회)의 구글 데이터는 아직 목업입니다 — 이
-        패널은 새로 붙인 Google Ads OAuth·데이터 추출 로직이 실제로 동작하는지
-        만 확인하는 별도 테스트 도구입니다.
+        실 서비스 화면(인사이트 조회)은 이미 실제 Google Ads 데이터를 씁니다 —
+        이 패널은 두 인사이트 엔드포인트(캠페인 단위/adset 단위)와 OAuth 연동이
+        개별적으로 잘 동작하는지 원본 응답 그대로 확인하는 진단 도구입니다.
       </p>
 
       <section className="google-test-panel__section">
@@ -122,7 +149,7 @@ export function GoogleTestPanel() {
               type="text"
               value={brandId}
               onChange={(e) => setBrandId(e.target.value)}
-              placeholder="예: 1"
+              placeholder="예: 10"
             />
           </label>
           <button
@@ -178,12 +205,33 @@ export function GoogleTestPanel() {
         <h3 className="google-test-panel__section-title">3. 인사이트 조회</h3>
         <div className="google-test-panel__row">
           <label className="google-test-panel__field">
+            <span>조회 단위</span>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value as InsightLevel)}
+            >
+              <option value="campaign">
+                캠페인 (getGoogleCampaignInsight)
+              </option>
+              <option value="adgroup">adset (getGoogleAdsInsight)</option>
+            </select>
+          </label>
+          <label className="google-test-panel__field">
             <span>customerId</span>
             <input
               type="text"
               value={customerId}
               onChange={(e) => setCustomerId(e.target.value)}
-              placeholder="예: 123-456-7890"
+              placeholder="예: 2771515076"
+            />
+          </label>
+          <label className="google-test-panel__field">
+            <span>loginCustomerId</span>
+            <input
+              type="text"
+              value={loginCustomerId}
+              onChange={(e) => setLoginCustomerId(e.target.value)}
+              placeholder="예: 7421390798"
             />
           </label>
           <label className="google-test-panel__field">
@@ -231,10 +279,17 @@ export function GoogleTestPanel() {
                     <tr>
                       <th>날짜</th>
                       <th>캠페인</th>
+                      {insight.level === 'adgroup' && <th>adset</th>}
                       <th>노출</th>
                       <th>클릭</th>
                       <th>비용</th>
                       <th>전환</th>
+                      <th>CTR</th>
+                      <th>CPC</th>
+                      <th>CPA</th>
+                      <th>CVR</th>
+                      <th>CPM</th>
+                      <th>Frequency</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -244,10 +299,22 @@ export function GoogleTestPanel() {
                         <td className="google-test-panel__cell-label">
                           {row.campaignName || row.campaignId}
                         </td>
+                        {insight.level === 'adgroup' && (
+                          <td className="google-test-panel__cell-label">
+                            {(row as GoogleAdGroupInsightRow).adGroupName ||
+                              (row as GoogleAdGroupInsightRow).adGroupId}
+                          </td>
+                        )}
                         <td>{row.impressions.toLocaleString()}</td>
                         <td>{row.clicks.toLocaleString()}</td>
                         <td>{won(row.cost)}</td>
                         <td>{row.conversions.toLocaleString()}</td>
+                        <td>{row.ctr.toLocaleString()}%</td>
+                        <td>{won(row.cpc)}</td>
+                        <td>{won(row.cpa)}</td>
+                        <td>{row.cvr.toLocaleString()}%</td>
+                        <td>{won(row.cpm)}</td>
+                        <td>{row.frequency.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

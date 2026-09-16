@@ -55,8 +55,8 @@ export interface MetaInsightSummary {
   byDate: DateSummary[]
   byDayOfWeek: DayOfWeekSummary[]
   byGroupedWeek: WeekSummary[]
-  // 구글 목업(getGoogleInsightsMock)은 아직 이 필드를 채우지 않아 optional로 둔다 —
-  // 실제 Meta 응답에는 항상 들어있다.
+  // Meta/Google(getGoogleInsights) 둘 다 항상 채워 보내지만, 이 타입을 쓰는 다른
+  // 채널이 나중에 캠페인 단위를 아직 지원 못 하는 경우를 위해 optional로 둔다.
   byCampaign?: CampaignSummary[]
 }
 
@@ -77,7 +77,10 @@ export async function getAllInsights(
   try {
     body = await res.json()
   } catch {
-    throw new CallableError('getAllInsights 응답을 해석할 수 없습니다.', res.status)
+    throw new CallableError(
+      'getAllInsights 응답을 해석할 수 없습니다.',
+      res.status,
+    )
   }
 
   if (!res.ok) {
