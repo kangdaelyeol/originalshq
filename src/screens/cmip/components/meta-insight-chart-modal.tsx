@@ -71,7 +71,7 @@ const MODE_LABEL: Record<MetricMode, string> = {
   bar: '막대',
 }
 
-type MenuKey = 'view' | 'metric'
+type MenuKey = 'view' | 'metric' | 'group'
 
 type ChannelKey = 'combined' | 'meta' | 'google'
 
@@ -204,6 +204,27 @@ function ChevronIcon() {
   )
 }
 
+/** 캠페인/adset 다중 선택 드롭다운의 체크 표시 — 네이티브 input은 시각적으로만
+ * 숨기고(sr-only) 이 아이콘 + 박스로 대신 그린다. */
+function CheckIcon() {
+  return (
+    <svg
+      className="meta-insight-chart-modal__group-check"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M3.5 8.5 6.5 11.5 12.5 4.5"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 /** 모달이 그릴 수 있는 하나의 "그룹" — 전체 요약 탭에서는 계정 전체 하나뿐이고,
  * 캠페인/adset 탭에서는 페이지에서 다중 선택된 캠페인(또는 adset)마다 하나씩
  * 생긴다. CombinedCampaign/CombinedAdset이 이미 ChannelSplitSeries 모양(combined/
@@ -305,6 +326,12 @@ export const MetaInsightChartModal = ({
   }
 
   const selectedGroups = groups.filter((g) => activeGroupKeys.has(g.key))
+  const groupTriggerLabel =
+    selectedGroups.length === 0
+      ? '선택 없음'
+      : selectedGroups.length === 1
+        ? selectedGroups[0].label
+        : `${selectedGroups.length}개 선택`
 
   // 날짜축·기간 축소는 채널/그룹 선택과 무관하게 항상 "전체"(합집합) 기준 —
   // 특정 채널/그룹만 켰다고 그 커버리지로 축이 줄어들면 안 된다(값이 없는
@@ -424,55 +451,27 @@ export const MetaInsightChartModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="meta-insight-chart-modal__header">
-          <div className="meta-insight-chart-modal__header-tabs">
-            {/* 캠페인/adset 탭에서만(그룹이 2개 이상일 때만) 뜬다 — 전체 요약
-                탭은 그룹이 하나뿐이라 탭을 보여줄 이유가 없다. */}
-            {groups.length > 1 && (
-              <div
-                className="meta-insight-chart-modal__channel-tabs"
-                role="group"
-                aria-label="캠페인/adset(다중 선택)"
-              >
-                {groups.map((g) => {
-                  const active = activeGroupKeys.has(g.key)
-                  return (
-                    <button
-                      key={g.key}
-                      type="button"
-                      aria-pressed={active}
-                      className={`meta-insight-chart-modal__channel-tab${
-                        active ? ' is-active' : ''
-                      }`}
-                      onClick={() => toggleGroup(g.key)}
-                    >
-                      {g.label}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-            <div
-              className="meta-insight-chart-modal__channel-tabs"
-              role="group"
-              aria-label="채널(다중 선택)"
-            >
-              {CHANNEL_ORDER.map((key) => {
-                const active = channels.has(key)
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    aria-pressed={active}
-                    className={`meta-insight-chart-modal__channel-tab${
-                      active ? ' is-active' : ''
-                    }`}
-                    onClick={() => toggleChannel(key)}
-                  >
-                    {CHANNEL_STYLE[key].label}
-                  </button>
-                )
-              })}
-            </div>
+          <div
+            className="meta-insight-chart-modal__channel-tabs"
+            role="group"
+            aria-label="채널(다중 선택)"
+          >
+            {CHANNEL_ORDER.map((key) => {
+              const active = channels.has(key)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  aria-pressed={active}
+                  className={`meta-insight-chart-modal__channel-tab${
+                    active ? ' is-active' : ''
+                  }`}
+                  onClick={() => toggleChannel(key)}
+                >
+                  {CHANNEL_STYLE[key].label}
+                </button>
+              )
+            })}
           </div>
           <div className="meta-insight-chart-modal__header-actions">
             <button
@@ -505,6 +504,51 @@ export const MetaInsightChartModal = ({
         </header>
 
         <div className="meta-insight-chart-modal__controls" ref={controlsRef}>
+          {/* 캠페인/adset 탭에서만(그룹이 2개 이상일 때만) 뜬다 — 전체 요약
+              탭은 그룹이 하나뿐이라 고를 이유가 없다. */}
+          {groups.length > 1 && (
+            <div className="meta-insight-chart-modal__dropdown">
+              <button
+                type="button"
+                className={`meta-insight-chart-modal__dropdown-trigger${
+                  openMenu === 'group' ? ' is-open' : ''
+                }`}
+                aria-haspopup="true"
+                aria-expanded={openMenu === 'group'}
+                onClick={() =>
+                  setOpenMenu((m) => (m === 'group' ? null : 'group'))
+                }
+              >
+                {groupTriggerLabel}
+                <ChevronIcon />
+              </button>
+              {openMenu === 'group' && (
+                <div className="meta-insight-chart-modal__dropdown-menu meta-insight-chart-modal__group-menu">
+                  {groups.map((g) => (
+                    <label
+                      key={g.key}
+                      className="meta-insight-chart-modal__group-item"
+                    >
+                      <input
+                        type="checkbox"
+                        className="meta-insight-chart-modal__group-input"
+                        checked={activeGroupKeys.has(g.key)}
+                        onChange={() => toggleGroup(g.key)}
+                      />
+                      <span className="meta-insight-chart-modal__group-box">
+                        <span className="meta-insight-chart-modal__group-fill" />
+                        <CheckIcon />
+                      </span>
+                      <span className="meta-insight-chart-modal__group-label">
+                        {g.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="meta-insight-chart-modal__dropdown">
             <button
               type="button"
