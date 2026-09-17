@@ -57,11 +57,8 @@ const X_AXIS_LABEL: Record<InsightView, string> = {
   byGroupedWeek: '기간',
 }
 
-// 모달을 처음 열었을 때 기본으로 켜둘 지표 — 완전히 빈 화면으로 시작하지 않도록.
-const DEFAULT_LINE: readonly MetricKey[] = ['impressions']
-
-type SeriesKind = 'line' | 'bar'
-type MetricMode = SeriesKind | 'off'
+export type SeriesKind = 'line' | 'bar'
+export type MetricMode = SeriesKind | 'off'
 
 const MODE_OPTIONS: readonly MetricMode[] = ['off', 'line', 'bar']
 
@@ -236,12 +233,29 @@ export interface ChartGroup {
 }
 
 interface MetaInsightChartModalProps {
+  /** 그릴 수 있는 전체 후보 — 페이지에서 체크된 것만이 아니라 항상 전체
+   * 캠페인/adset(또는 전체 요약 하나) 목록이다. 어떤 걸 볼지는 이 모달 안의
+   * 그룹 드롭다운이 따로 고른다. */
   groups: readonly ChartGroup[]
+  /** 모달을 처음 열었을 때 기본으로 켜둘 그룹 — 보통 페이지에서 이미 체크해둔
+   * 항목들(그래야 표에서 보던 것과 같은 화면으로 시작한다). groups에 없는 키는
+   * 무시된다. */
+  defaultActiveGroupKeys?: readonly string[]
+  // 지표 선택(꺾은선/막대/끄기)은 캠페인/adset 교차표의 지표 선택과 같은
+  // 상태를 페이지(meta-insight.tsx)에서 그대로 물려받는다 — 그래프에서 지표를
+  // 바꾸면 표도 즉시 같이 바뀐다(반대도 마찬가지).
+  metricMode: ReadonlyMap<MetricKey, SeriesKind>
+  setMode: (key: MetricKey, mode: MetricMode) => void
+  clearAllMetrics: () => void
   onClose: () => void
 }
 
 export const MetaInsightChartModal = ({
   groups,
+  defaultActiveGroupKeys,
+  metricMode,
+  setMode,
+  clearAllMetrics,
   onClose,
 }: MetaInsightChartModalProps) => {
   const [view, setView] = useState<InsightView>('byDate')
@@ -250,20 +264,22 @@ export const MetaInsightChartModal = ({
   const [channels, setChannels] = useState<ReadonlySet<ChannelKey>>(
     () => new Set(['combined']),
   )
-  // 그룹(캠페인/adset)도 채널과 같은 방식의 다중 선택 — groups가 1개뿐이면(전체
-  // 요약 탭) 탭 자체를 숨기므로 이 상태는 사실상 항상 그 하나만 켜져 있게 된다.
+  // 그룹(캠페인/adset)도 채널과 같은 방식의 다중 선택 — 기본값은 페이지에서
+  // 이미 체크된 항목들(defaultActiveGroupKeys), 없으면 첫 후보 하나.
   const [activeGroupKeys, setActiveGroupKeys] = useState<ReadonlySet<string>>(
-    () => new Set(groups[0] ? [groups[0].key] : []),
+    () => {
+      const defaults = (defaultActiveGroupKeys ?? []).filter((key) =>
+        groups.some((g) => g.key === key),
+      )
+      return new Set(
+        defaults.length > 0 ? defaults : groups[0] ? [groups[0].key] : [],
+      )
+    },
   )
   const [expanded, setExpanded] = useState(false)
   // 색이 같은 계열로 겹쳐 보일 때(채널별 명도 차이) 배경에 따라 가독성이 갈려서
   // 차트만 라이트로 바꿔 볼 수 있게 둔다 — 모달 나머지 크롬은 다크 유지.
   const [chartTheme, setChartTheme] = useState<ChartTheme>('dark')
-  // 지표 하나당 종류(꺾은선/막대)를 최대 하나만 가진다 — radio처럼, 다른 종류를 누르면
-  // 그쪽으로 옮겨간다. Map에 없으면 미선택.
-  const [metricMode, setMetricMode] = useState<
-    ReadonlyMap<MetricKey, SeriesKind>
-  >(() => new Map(DEFAULT_LINE.map((key) => [key, 'line' as SeriesKind])))
   // 집계 기준 / 지표 선택을 드롭다운 한 줄로 압축 — 차트가 쓸 세로 공간을 최대한
   // 남겨두기 위해서다. 한 번에 하나만 열린다.
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null)
@@ -381,17 +397,6 @@ export const MetaInsightChartModal = ({
     () => rows.map((row) => labelOf(view, row)),
     [rows, view],
   )
-
-  const setMode = (key: MetricKey, mode: MetricMode) => {
-    setMetricMode((prev) => {
-      const next = new Map(prev)
-      if (mode === 'off') next.delete(key)
-      else next.set(key, mode)
-      return next
-    })
-  }
-
-  const clearAllMetrics = () => setMetricMode(new Map())
 
   const series: IndexSeries[] = useMemo(() => {
     // 축(rows)이 가리키는 지점들의 원본 키(날짜/요일/기간) — 그룹×채널별 rows에서

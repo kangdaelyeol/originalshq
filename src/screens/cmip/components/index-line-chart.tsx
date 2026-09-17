@@ -56,7 +56,7 @@ const PALETTE: Record<
   dark: {
     surface: '#161b22',
     grid: '#21262d',
-    muted: '#8b949e',
+    muted: '#d0d5dc',
     up: '#3fb950',
     down: '#ff7b72',
   },
@@ -262,17 +262,17 @@ export const IndexLineChart = ({
     [series],
   )
 
-  if (n === 0 || series.length === 0) {
-    return (
-      <div
-        className={`index-line-chart index-line-chart--empty${
-          theme === 'light' ? ' is-light' : ''
-        }`}
-      >
-        지표를 선택하면 그래프가 표시됩니다.
-      </div>
-    )
-  }
+  // 지표가 하나도 없으면 안내 문구만 보여준다 — 다만 이 경우에도 ResizeObserver가
+  // 관찰 중인 .index-line-chart__canvas div는 반드시 계속 렌더해야 한다. 예전엔
+  // 여기서 완전히 다른(canvas 없는) JSX로 early return을 해서, 지표를 모두
+  // 껐다가 다시 켤 때마다 canvas div가 통째로 언마운트·리마운트됐다 — 그런데
+  // 아래 useLayoutEffect는 의존성 배열이 []라 "그 컴포넌트가 처음 마운트될 때"
+  // 딱 한 번만 ResizeObserver를 붙이고, 이 div가 다시 생겨도 재부착되지 않는다.
+  // 그 결과 vbWidth/vbHeight가 예전(혹은 기본값) 크기에 그대로 멈춰버리고,
+  // 그 뒤로 실제 렌더 크기와 어긋난 채 preserveAspectRatio="none"이 내용을
+  // 세로로 늘리거나 찌그러뜨렸다(글자가 거대해지는 등). 고치는 방법은 이 div를
+  // 절대 언마운트하지 않는 것 — 비어있을 때도 같은 div 안에 안내 문구만 넣는다.
+  const isEmpty = n === 0 || series.length === 0
 
   const PLOT_W = vbWidth - MARGIN_LEFT - MARGIN_RIGHT
   const PLOT_H = vbHeight - MARGIN_TOP - MARGIN_BOTTOM
@@ -341,359 +341,381 @@ export const IndexLineChart = ({
 
   return (
     <div className={`index-line-chart${theme === 'light' ? ' is-light' : ''}`}>
-      <div className="index-line-chart__summary">
-        <span className="index-line-chart__summary-period">
-          {categories[summaryIndex]}
-        </span>
-        {prepared.map((s) => {
-          const isFocused = focused?.key === s.key
-          const dimmed = focused != null && !isFocused
-          const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
-            s.raw,
-            summaryIndex,
-          )
-          return (
-            <span
-              key={s.key}
-              className="index-line-chart__summary-item"
-              style={{ opacity: dimmed ? DIM_OPACITY : 1 }}
-            >
+      {!isEmpty && (
+        <div className="index-line-chart__summary">
+          <span className="index-line-chart__summary-period">
+            {categories[summaryIndex]}요일
+          </span>
+          {prepared.map((s) => {
+            const isFocused = focused?.key === s.key
+            const dimmed = focused != null && !isFocused
+            const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
+              s.raw,
+              summaryIndex,
+            )
+            return (
               <span
-                className="index-line-chart__summary-dot"
-                style={{ background: s.color }}
-              />
-              <span className="index-line-chart__summary-name">{s.label}</span>
-              <span className="index-line-chart__summary-value">
-                {rawNow == null ? '—' : s.format(rawNow)}
-              </span>
-              {deltaRaw != null && (
+                key={s.key}
+                className="index-line-chart__summary-item"
+                style={{ opacity: dimmed ? DIM_OPACITY : 1 }}
+              >
                 <span
-                  className="index-line-chart__summary-delta"
-                  style={{ color: DELTA_COLOR[dir] }}
-                >
-                  {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
-                  {deltaPct != null &&
-                    ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                  className="index-line-chart__summary-dot"
+                  style={{ background: s.color }}
+                />
+                <span className="index-line-chart__summary-name">
+                  {s.label}
                 </span>
-              )}
-            </span>
-          )
-        })}
-      </div>
+                <span className="index-line-chart__summary-value">
+                  {rawNow == null ? '—' : s.format(rawNow)}
+                </span>
+                {deltaRaw != null && (
+                  <span
+                    className="index-line-chart__summary-delta"
+                    style={{ color: DELTA_COLOR[dir] }}
+                  >
+                    {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
+                    {deltaPct != null &&
+                      ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                  </span>
+                )}
+              </span>
+            )
+          })}
+        </div>
+      )}
 
+      {/* ResizeObserver가 이 div를 계속 관찰해야 하므로, 비어있을 때도 절대
+          언마운트하지 않고 안내 문구로 내용만 바꾼다(위 isEmpty 주석 참고). */}
       <div className="index-line-chart__canvas" ref={wrapRef}>
-        <svg
-          className="index-line-chart__svg"
-          viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-          preserveAspectRatio="none"
-          role="img"
-          aria-label="지표 비교 그래프"
-        >
-          <text x={4} y={14} textAnchor="start" fontSize={17} fill={axisColor}>
-            {series.length > 1
-              ? `${axisSeries.label} (${axisSeries.unit})`
-              : `${axisSeries.label} (${axisSeries.unit})`}
-          </text>
-          {xAxisLabel && (
-            <text
-              x={MARGIN_LEFT + PLOT_W / 2}
-              y={vbHeight - 6}
-              textAnchor="middle"
-              fontSize={12}
-              fill={MUTED}
+        {isEmpty ? (
+          <div className="index-line-chart__empty-message">
+            지표를 선택하면 그래프가 표시됩니다.
+          </div>
+        ) : (
+          <>
+            <svg
+              className="index-line-chart__svg"
+              viewBox={`0 0 ${vbWidth} ${vbHeight}`}
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="지표 비교 그래프"
             >
-              {xAxisLabel}
-            </text>
-          )}
-
-          {/* 그리드 + y축 눈금 — 라벨링 중인 지표(axisSeries)의 실제값 기준 */}
-          {axisSeries.range.ticks.map((t) => (
-            <g key={t}>
-              <line
-                x1={MARGIN_LEFT}
-                x2={vbWidth - MARGIN_RIGHT}
-                y1={yIn(axisSeries.range, t)}
-                y2={yIn(axisSeries.range, t)}
-                stroke={GRID}
-                strokeWidth={1}
-              />
               <text
-                x={MARGIN_LEFT - 8}
-                y={yIn(axisSeries.range, t)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={12}
+                x={4}
+                y={14}
+                textAnchor="start"
+                fontSize={17}
                 fill={axisColor}
               >
-                {axisSeries.formatCompact(t)}
+                {series.length > 1
+                  ? `${axisSeries.label} (${axisSeries.unit})`
+                  : `${axisSeries.label} (${axisSeries.unit})`}
               </text>
-            </g>
-          ))}
-
-          {/* 포커스(호버/범례)된 지표의 평균값을 y축 위에 표시 — 평소엔 숨겨서
-              눈금과 섞이지 않다가, 그 지표를 볼 때만 기준값으로 드러난다. */}
-          {focused?.avg != null && (
-            <g>
-              <line
-                x1={MARGIN_LEFT - 5}
-                x2={MARGIN_LEFT}
-                y1={yIn(focused.range, focused.avg)}
-                y2={yIn(focused.range, focused.avg)}
-                stroke={focused.color}
-                strokeWidth={1.5}
-              />
-              <text
-                x={MARGIN_LEFT - 8}
-                y={yIn(focused.range, focused.avg)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize={11}
-                fontWeight={700}
-                fill={focused.color}
-              >
-                {focused.formatCompact(focused.avg)}
-              </text>
-            </g>
-          )}
-
-          {/* x축 라벨 */}
-          {categories.map((c, i) =>
-            i % labelStride === 0 || i === n - 1 ? (
-              <text
-                key={`x-${i}`}
-                x={xCenter(i)}
-                y={MARGIN_TOP + PLOT_H + 13}
-                textAnchor="middle"
-                fontSize={12}
-                fill={MUTED}
-              >
-                {c}
-              </text>
-            ) : null,
-          )}
-
-          {/* 지표 평균선 — 실제 값(선/막대) 뒤에 옅은 점선으로 깔아 기준점처럼 보이게 한다. */}
-          {prepared.map((s) => {
-            if (s.avg == null) return null
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            const y = yIn(s.range, s.avg)
-            return (
-              <line
-                key={`avg-${s.key}`}
-                x1={MARGIN_LEFT}
-                x2={vbWidth - MARGIN_RIGHT}
-                y1={y}
-                y2={y}
-                stroke={s.color}
-                strokeWidth={1.5}
-                strokeDasharray="4 3"
-                opacity={
-                  dimmed ? DIM_OPACITY : isFocused ? 0.7 : AVG_LINE_OPACITY
-                }
-              />
-            )
-          })}
-
-          {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
-            여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
-          {barSeries.map((s) => {
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            const yBase = yIn(s.range, Math.max(s.range.min, 0))
-            const w = Math.max(1, slotW - 1.5)
-            return s.raw.map((v, i) => {
-              if (v == null) return null
-              const yv = yIn(s.range, v)
-              const top = Math.min(yBase, yv)
-              const h = Math.max(1, Math.abs(yBase - yv))
-              return (
-                <rect
-                  key={`bar-${s.key}-${i}`}
-                  x={barCenterX(s.key, i) - w / 2}
-                  y={top}
-                  width={w}
-                  height={h}
-                  rx={1}
-                  fill={s.color}
-                  opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
-                />
-              )
-            })
-          })}
-
-          {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
-          {lineSeries.map((s) => {
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            return (
-              <path
-                key={s.key}
-                d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
-                fill="none"
-                stroke={s.color}
-                strokeWidth={isFocused ? 3 : 2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                opacity={dimmed ? DIM_OPACITY : 1}
-              />
-            )
-          })}
-
-          {/* 마커 — 꺾은선만 */}
-          {lineSeries.map((s) => {
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            return s.raw.map((v, i) => {
-              if (v == null) return null
-              const isHoverX = hover?.index === i
-              return (
-                <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
-                  <circle
-                    cx={xCenter(i)}
-                    cy={yIn(s.range, v)}
-                    r={isHoverX ? 6 : 5}
-                    fill={SURFACE}
-                  />
-                  <circle
-                    cx={xCenter(i)}
-                    cy={yIn(s.range, v)}
-                    r={isHoverX ? 4.5 : 3.5}
-                    fill={s.color}
-                  />
-                </g>
-              )
-            })
-          })}
-
-          {/* 점 값 라벨 — 선택한 모든 지표의 모든 점을 표기한다. 지표마다 독립 축이라
-            값이 겹칠 수 있어, 시리즈 순서에 따라 점의 위/아래로 번갈아 배치해 충돌을 줄인다. */}
-          {prepared.map((s, si) => {
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            const isBar = s.type === 'bar'
-            return s.raw.map((v, i) => {
-              if (v == null) return null
-              const y = yIn(s.range, v)
-              const cx = isBar ? barCenterX(s.key, i) : xCenter(i)
-              // 막대는 항상 막대 위. 꺾은선은 시리즈 순서로 위/아래 교대(상단 여백 넘으면 아래).
-              const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
-              return (
+              {xAxisLabel && (
                 <text
-                  key={`label-${s.key}-${i}`}
-                  x={cx}
-                  y={above ? (isBar ? y - 5 : y - 9) : y + 16}
+                  x={MARGIN_LEFT + PLOT_W / 2}
+                  y={vbHeight - 6}
                   textAnchor="middle"
                   fontSize={12}
-                  fill={series.length > 1 ? s.color : MUTED}
-                  stroke={SURFACE}
-                  strokeWidth={3}
-                  paintOrder="stroke"
-                  opacity={dimmed ? DIM_OPACITY : 1}
+                  fill={MUTED}
                 >
-                  {s.formatCompact(v)}
+                  {xAxisLabel}
                 </text>
-              )
-            })
-          })}
+              )}
 
-          {/* 크로스헤어 */}
-          {hover != null && (
-            <line
-              x1={xCenter(hover.index)}
-              x2={xCenter(hover.index)}
-              y1={MARGIN_TOP}
-              y2={MARGIN_TOP + PLOT_H}
-              stroke={GRID}
-              strokeWidth={1}
-            />
-          )}
-
-          {/* 히트 타깃 — 전체 시리즈가 x를 공유하므로 영역 하나로 처리 */}
-          <rect
-            x={MARGIN_LEFT}
-            y={MARGIN_TOP}
-            width={PLOT_W}
-            height={PLOT_H}
-            fill="transparent"
-            onPointerMove={handlePointerMove}
-            onPointerLeave={() => setHover(null)}
-          />
-        </svg>
-
-        {hover != null && (
-          // 호버 위치를 따라다니지 않고 차트 우측 상단에 고정 — 점 바로 위에 띄우면
-          // 시리즈가 많을 때 다른 요소를 가리거나 차트 밖으로 잘려 나갔다.
-          <div className="index-line-chart__tooltip">
-            <div className="index-line-chart__tooltip-label">
-              {categories[hover.index]}
-            </div>
-            {prepared.map((s) => {
-              const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
-                s.raw,
-                hover.index,
-              )
-
-              return (
-                <div
-                  key={s.key}
-                  className={`index-line-chart__tooltip-row${
-                    focused?.key === s.key
-                      ? ' is-focused'
-                      : focused
-                        ? ' is-dimmed'
-                        : ''
-                  }`}
-                >
-                  <span
-                    className="index-line-chart__tooltip-key"
-                    style={{ background: s.color }}
+              {/* 그리드 + y축 눈금 — 라벨링 중인 지표(axisSeries)의 실제값 기준 */}
+              {axisSeries.range.ticks.map((t) => (
+                <g key={t}>
+                  <line
+                    x1={MARGIN_LEFT}
+                    x2={vbWidth - MARGIN_RIGHT}
+                    y1={yIn(axisSeries.range, t)}
+                    y2={yIn(axisSeries.range, t)}
+                    stroke={GRID}
+                    strokeWidth={1}
                   />
-                  <span className="index-line-chart__tooltip-name">
-                    {s.label}
-                  </span>
-                  <span className="index-line-chart__tooltip-values">
-                    <span className="index-line-chart__tooltip-value">
-                      {rawNow == null ? '—' : s.format(rawNow)}
-                    </span>
-                    {deltaRaw != null && (
-                      <span
-                        className="index-line-chart__tooltip-delta"
-                        style={{ color: DELTA_COLOR[dir] }}
-                      >
-                        {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
-                        {deltaPct != null &&
-                          ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
-                      </span>
-                    )}
-                  </span>
+                  <text
+                    x={MARGIN_LEFT - 8}
+                    y={yIn(axisSeries.range, t)}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    fontSize={12}
+                    fill={axisColor}
+                  >
+                    {axisSeries.formatCompact(t)}
+                  </text>
+                </g>
+              ))}
+
+              {/* 포커스(호버/범례)된 지표의 평균값을 y축 위에 표시 — 평소엔 숨겨서
+                  눈금과 섞이지 않다가, 그 지표를 볼 때만 기준값으로 드러난다. */}
+              {focused?.avg != null && (
+                <g>
+                  <line
+                    x1={MARGIN_LEFT - 5}
+                    x2={MARGIN_LEFT}
+                    y1={yIn(focused.range, focused.avg)}
+                    y2={yIn(focused.range, focused.avg)}
+                    stroke={focused.color}
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={MARGIN_LEFT - 8}
+                    y={yIn(focused.range, focused.avg)}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    fontSize={11}
+                    fontWeight={700}
+                    fill={focused.color}
+                  >
+                    {focused.formatCompact(focused.avg)}
+                  </text>
+                </g>
+              )}
+
+              {/* x축 라벨 */}
+              {categories.map((c, i) =>
+                i % labelStride === 0 || i === n - 1 ? (
+                  <text
+                    key={`x-${i}`}
+                    x={xCenter(i)}
+                    y={MARGIN_TOP + PLOT_H + 15}
+                    textAnchor="middle"
+                    fontSize={12}
+                    fill={MUTED}
+                  >
+                    {c}
+                  </text>
+                ) : null,
+              )}
+
+              {/* 지표 평균선 — 실제 값(선/막대) 뒤에 옅은 점선으로 깔아 기준점처럼 보이게 한다. */}
+              {prepared.map((s) => {
+                if (s.avg == null) return null
+                const isFocused = focused?.key === s.key
+                const dimmed = focused != null && !isFocused
+                const y = yIn(s.range, s.avg)
+                return (
+                  <line
+                    key={`avg-${s.key}`}
+                    x1={MARGIN_LEFT}
+                    x2={vbWidth - MARGIN_RIGHT}
+                    y1={y}
+                    y2={y}
+                    stroke={s.color}
+                    strokeWidth={1.5}
+                    strokeDasharray="4 3"
+                    opacity={
+                      dimmed ? DIM_OPACITY : isFocused ? 0.7 : AVG_LINE_OPACITY
+                    }
+                  />
+                )
+              })}
+
+              {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
+                여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
+              {barSeries.map((s) => {
+                const isFocused = focused?.key === s.key
+                const dimmed = focused != null && !isFocused
+                const yBase = yIn(s.range, Math.max(s.range.min, 0))
+                const w = Math.max(1, slotW - 1.5)
+                return s.raw.map((v, i) => {
+                  if (v == null) return null
+                  const yv = yIn(s.range, v)
+                  const top = Math.min(yBase, yv)
+                  const h = Math.max(1, Math.abs(yBase - yv))
+                  return (
+                    <rect
+                      key={`bar-${s.key}-${i}`}
+                      x={barCenterX(s.key, i) - w / 2}
+                      y={top}
+                      width={w}
+                      height={h}
+                      rx={1}
+                      fill={s.color}
+                      opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
+                    />
+                  )
+                })
+              })}
+
+              {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
+              {lineSeries.map((s) => {
+                const isFocused = focused?.key === s.key
+                const dimmed = focused != null && !isFocused
+                return (
+                  <path
+                    key={s.key}
+                    d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
+                    fill="none"
+                    stroke={s.color}
+                    strokeWidth={isFocused ? 3 : 2}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    opacity={dimmed ? DIM_OPACITY : 1}
+                  />
+                )
+              })}
+
+              {/* 마커 — 꺾은선만 */}
+              {lineSeries.map((s) => {
+                const isFocused = focused?.key === s.key
+                const dimmed = focused != null && !isFocused
+                return s.raw.map((v, i) => {
+                  if (v == null) return null
+                  const isHoverX = hover?.index === i
+                  return (
+                    <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
+                      <circle
+                        cx={xCenter(i)}
+                        cy={yIn(s.range, v)}
+                        r={isHoverX ? 6 : 5}
+                        fill={SURFACE}
+                      />
+                      <circle
+                        cx={xCenter(i)}
+                        cy={yIn(s.range, v)}
+                        r={isHoverX ? 4.5 : 3.5}
+                        fill={s.color}
+                      />
+                    </g>
+                  )
+                })
+              })}
+
+              {/* 점 값 라벨 — 선택한 모든 지표의 모든 점을 표기한다. 지표마다 독립 축이라
+                값이 겹칠 수 있어, 시리즈 순서에 따라 점의 위/아래로 번갈아 배치해 충돌을 줄인다. */}
+              {prepared.map((s, si) => {
+                const isFocused = focused?.key === s.key
+                const dimmed = focused != null && !isFocused
+                const isBar = s.type === 'bar'
+                return s.raw.map((v, i) => {
+                  if (v == null) return null
+                  const y = yIn(s.range, v)
+                  const cx = isBar ? barCenterX(s.key, i) : xCenter(i)
+                  // 막대는 항상 막대 위. 꺾은선은 시리즈 순서로 위/아래 교대(상단 여백 넘으면 아래).
+                  const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
+                  return (
+                    <text
+                      key={`label-${s.key}-${i}`}
+                      x={cx}
+                      y={above ? (isBar ? y - 5 : y - 9) : y + 16}
+                      textAnchor="middle"
+                      fontSize={12}
+                      fill={series.length > 1 ? s.color : MUTED}
+                      stroke={SURFACE}
+                      strokeWidth={3}
+                      paintOrder="stroke"
+                      opacity={dimmed ? DIM_OPACITY : 1}
+                    >
+                      {s.formatCompact(v)}
+                    </text>
+                  )
+                })
+              })}
+
+              {/* 크로스헤어 */}
+              {hover != null && (
+                <line
+                  x1={xCenter(hover.index)}
+                  x2={xCenter(hover.index)}
+                  y1={MARGIN_TOP}
+                  y2={MARGIN_TOP + PLOT_H}
+                  stroke={GRID}
+                  strokeWidth={1}
+                />
+              )}
+
+              {/* 히트 타깃 — 전체 시리즈가 x를 공유하므로 영역 하나로 처리 */}
+              <rect
+                x={MARGIN_LEFT}
+                y={MARGIN_TOP}
+                width={PLOT_W}
+                height={PLOT_H}
+                fill="transparent"
+                onPointerMove={handlePointerMove}
+                onPointerLeave={() => setHover(null)}
+              />
+            </svg>
+
+            {hover != null && (
+              // 호버 위치를 따라다니지 않고 차트 우측 상단에 고정 — 점 바로 위에 띄우면
+              // 시리즈가 많을 때 다른 요소를 가리거나 차트 밖으로 잘려 나갔다.
+              <div className="index-line-chart__tooltip">
+                <div className="index-line-chart__tooltip-label">
+                  {categories[hover.index]}
                 </div>
-              )
-            })}
-          </div>
+                {prepared.map((s) => {
+                  const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
+                    s.raw,
+                    hover.index,
+                  )
+
+                  return (
+                    <div
+                      key={s.key}
+                      className={`index-line-chart__tooltip-row${
+                        focused?.key === s.key
+                          ? ' is-focused'
+                          : focused
+                            ? ' is-dimmed'
+                            : ''
+                      }`}
+                    >
+                      <span
+                        className="index-line-chart__tooltip-key"
+                        style={{ background: s.color }}
+                      />
+                      <span className="index-line-chart__tooltip-name">
+                        {s.label}
+                      </span>
+                      <span className="index-line-chart__tooltip-values">
+                        <span className="index-line-chart__tooltip-value">
+                          {rawNow == null ? '—' : s.format(rawNow)}
+                        </span>
+                        {deltaRaw != null && (
+                          <span
+                            className="index-line-chart__tooltip-delta"
+                            style={{ color: DELTA_COLOR[dir] }}
+                          >
+                            {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
+                            {deltaPct != null &&
+                              ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      <div className="index-line-chart__legend">
-        {series.map((s) => (
-          <span
-            key={s.key}
-            className={`index-line-chart__legend-item${
-              focused?.key === s.key ? ' is-focused' : ''
-            }`}
-            onPointerEnter={() => setLegendHoverKey(s.key)}
-            onPointerLeave={() => setLegendHoverKey(null)}
-          >
+      {!isEmpty && (
+        <div className="index-line-chart__legend">
+          {series.map((s) => (
             <span
-              className={`index-line-chart__legend-key${
-                s.type === 'bar' ? ' is-bar' : ''
+              key={s.key}
+              className={`index-line-chart__legend-item${
+                focused?.key === s.key ? ' is-focused' : ''
               }`}
-              style={{ background: s.color }}
-            />
-            {s.label}
-          </span>
-        ))}
-      </div>
+              onPointerEnter={() => setLegendHoverKey(s.key)}
+              onPointerLeave={() => setLegendHoverKey(null)}
+            >
+              <span
+                className={`index-line-chart__legend-key${
+                  s.type === 'bar' ? ' is-bar' : ''
+                }`}
+                style={{ background: s.color }}
+              />
+              {s.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

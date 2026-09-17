@@ -20,6 +20,8 @@ import { DateRangePicker } from './date-range-picker'
 import {
   MetaInsightChartModal,
   type ChartGroup,
+  type SeriesKind,
+  type MetricMode,
 } from './meta-insight-chart-modal'
 import { dateRange } from '../utils'
 import type { ISODate } from '../types'
@@ -832,9 +834,13 @@ export const MetaInsight = () => {
   const [selectedAdsetNames, setSelectedAdsetNames] = useState<
     ReadonlySet<string>
   >(() => new Set())
-  const [selectedMetricKeys, setSelectedMetricKeys] = useState<
-    ReadonlySet<MetricKey>
-  >(() => new Set(['impressions']))
+  // 캠페인/adset 교차표의 지표 선택 — 그래프 모달의 지표 선택(꺾은선/막대/끄기)과
+  // 같은 상태를 공유한다. 표는 "켜져 있는지"만 보고(line/bar 구분 없이), 그래프는
+  // 그 종류까지 쓴다 — 어느 쪽에서 지표를 바꾸든 서로 바로 반영된다.
+  const [metricMode, setMetricMode] = useState<
+    ReadonlyMap<MetricKey, SeriesKind>
+  >(() => new Map([['impressions', 'line']]))
+  const selectedMetricKeys: ReadonlySet<MetricKey> = new Set(metricMode.keys())
   // 캠페인/adset 교차표의 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지.
   const [showUnit, setShowUnit] = useState(false)
   // 캠페인/adset 교차표의 행 축(날짜/요일/주차) — 기본은 날짜별.
@@ -892,40 +898,62 @@ export const MetaInsight = () => {
       return next
     })
   }
+  // 표의 체크박스는 켬/끔만 다룬다 — 새로 켤 때는 그래프 쪽 기본값과 맞춰
+  // "꺾은선"으로 시작한다.
   const toggleMetric = (key: MetricKey) => {
-    setSelectedMetricKeys((prev) => {
-      const next = new Set(prev)
+    setMetricMode((prev) => {
+      const next = new Map(prev)
       if (next.has(key)) next.delete(key)
-      else next.add(key)
+      else next.set(key, 'line')
       return next
     })
   }
+  // 그래프 쪽은 종류(꺾은선/막대/끄기)까지 다룬다.
+  const setMetricModeFor = (key: MetricKey, mode: MetricMode) => {
+    setMetricMode((prev) => {
+      const next = new Map(prev)
+      if (mode === 'off') next.delete(key)
+      else next.set(key, mode)
+      return next
+    })
+  }
+  const clearAllMetrics = () => setMetricMode(new Map())
 
   const periodLabel = `${dateStart} ~ ${dateEnd}`
   const canonicalDates =
     combinedInsight?.series.combined.byDate.map((d) => d.date) ?? []
   const metricKeyList = [...selectedMetricKeys]
 
-  // 그래프 모달이 그릴 그룹 — 지금 보고 있는 탭 범위로 스코프한다. 전체 요약
-  // 탭은 계정 전체 하나뿐이고, 캠페인/adset 탭은 그 탭에서 다중 선택된 항목들
-  // 그대로다(페이지에서 이미 고른 것과 모달 안에서 보는 대상이 항상 같도록).
-  // CombinedCampaign/CombinedAdset이 이미 ChannelSplitSeries 모양(combined/meta/
-  // google)을 그대로 갖고 있어 series로 그대로 넘길 수 있다.
+  // 그래프 모달이 고를 수 있는 전체 후보 — 표에서 체크된 것만 보여주면 표에서
+  // 뺀 캠페인/adset은 그래프에서 아예 볼 수 없게 되므로, 항상 그 탭의 전체
+  // 목록을 넘긴다(전체 요약 탭은 계정 전체 하나뿐). 어떤 걸 볼지는 모달 안의
+  // 그룹 드롭다운이 따로 고른다. CombinedCampaign/CombinedAdset이 이미
+  // ChannelSplitSeries 모양(combined/meta/google)을 그대로 갖고 있어 series로
+  // 바로 넘길 수 있다.
   const chartGroups: ChartGroup[] = !combinedInsight
     ? []
     : resultTab === 'total'
       ? [{ key: 'total', label: '전체 요약', series: combinedInsight.series }]
       : resultTab === 'campaign'
-        ? campaigns
-            .filter((c) => selectedCampaignNames.has(c.campaignName))
-            .map((c) => ({
-              key: c.campaignName,
-              label: c.campaignName,
-              series: c,
-            }))
-        : adsets
-            .filter((a) => selectedAdsetNames.has(a.adsetName))
-            .map((a) => ({ key: a.adsetName, label: a.adsetName, series: a }))
+        ? campaigns.map((c) => ({
+            key: c.campaignName,
+            label: c.campaignName,
+            series: c,
+          }))
+        : adsets.map((a) => ({
+            key: a.adsetName,
+            label: a.adsetName,
+            series: a,
+          }))
+
+  // 모달을 처음 열 때 기본으로 켜둘 그룹 — 표에서 이미 체크해둔 것들과 같은
+  // 화면으로 시작한다. 그 뒤로는 그래프 안에서 자유롭게 더 고를 수 있다.
+  const chartDefaultActiveGroupKeys: readonly string[] =
+    resultTab === 'total'
+      ? ['total']
+      : resultTab === 'campaign'
+        ? [...selectedCampaignNames]
+        : [...selectedAdsetNames]
 
   return (
     <div className="meta-insight">
@@ -1143,6 +1171,10 @@ export const MetaInsight = () => {
       {chartOpen && chartGroups.length > 0 && (
         <MetaInsightChartModal
           groups={chartGroups}
+          defaultActiveGroupKeys={chartDefaultActiveGroupKeys}
+          metricMode={metricMode}
+          setMode={setMetricModeFor}
+          clearAllMetrics={clearAllMetrics}
           onClose={() => setChartOpen(false)}
         />
       )}

@@ -112,10 +112,12 @@ export const summarizeByCampaign = (
     .map(([campaignName, campaignRows]): CampaignSummary => {
       const adsetGroups = groupBy(campaignRows, (row) => row.adset_name)
       const adsets: AdsetSummary[] = Array.from(adsetGroups.entries())
-        .map(([adsetName, adsetRows]): AdsetSummary => ({
-          adsetName,
-          ...summarizeSeries(adsetRows, startDate, endDate),
-        }))
+        .map(
+          ([adsetName, adsetRows]): AdsetSummary => ({
+            adsetName,
+            ...summarizeSeries(adsetRows, startDate, endDate),
+          }),
+        )
         .sort((a, b) => a.adsetName.localeCompare(b.adsetName))
 
       return {
