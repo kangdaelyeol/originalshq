@@ -452,6 +452,62 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     font-weight: 600;
   }
 
+  &__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__compare-toggle {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+
+    &:hover:not(.is-active) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    &.is-active {
+      background: $color-accent;
+      border-color: $color-accent;
+      color: #fff;
+    }
+  }
+
+  // 대비 표시 켜면 지표 칸이 [증감/등락률][값] 두 부분으로 나뉜다 — 셀 자체는
+  // 계속 text-align:right(표 기본 규칙)라 이 안쪽 flex 정렬로 둘을 나란히 둔다.
+  &__metric-cell {
+    display: inline-flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  &__metric-delta {
+    font-size: 11.5px;
+    color: $color-muted;
+
+    &.is-up {
+      color: #3fb950;
+    }
+
+    &.is-down {
+      color: #ff7b72;
+    }
+  }
+
+  &__metric-value {
+    font-weight: 500;
+  }
+
   &__table-wrap {
     overflow-x: auto;
   }

@@ -195,6 +195,54 @@ interface ChannelBreakdown {
   google: MetricsSummary
 }
 
+type DeltaDir = 'up' | 'down' | 'flat'
+
+const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
+
+/** 두 값 사이의 증감/등락률 — prev가 없으면(첫 행 등) null. 표에 나열된 순서상
+ * "바로 앞 행"과 비교하는 데 쓴다 — 일별 표에선 전일대비, 주차별 표에선
+ * 전주대비가 되고, 요일별 표는 월~일 나열 순서상 바로 앞 요일과 비교한다(그
+ * 표들이 이미 나열하는 순서를 그대로 따르는 것이라 테이블 종류를 가리지 않는다).
+ * 메인 행뿐 아니라 채널별 펼침 행(각 채널의 이전 행 값)에도 그대로 쓴다. */
+function computeMetricDelta(
+  now: number,
+  prev: number | null,
+): { delta: number; pct: number | null; dir: DeltaDir } | null {
+  if (prev == null) return null
+  const delta = now - prev
+  const pct = prev !== 0 ? (delta / Math.abs(prev)) * 100 : null
+  const dir: DeltaDir = delta === 0 ? 'flat' : delta > 0 ? 'up' : 'down'
+  return { delta, pct, dir }
+}
+
+/** 지표 한 칸의 내용 — 대비 표시가 꺼져 있거나 비교할 이전 값이 없으면 값만,
+ * 켜져 있으면 왼쪽에 증감/등락률, 오른쪽에 값을 같이 보여준다. 메인 행과 채널별
+ * 펼침 행이 이 렌더링을 공유한다. */
+function MetricCell({
+  value,
+  prevValue,
+  format,
+  showCompare,
+}: {
+  value: number
+  prevValue: number | null
+  format: (v: number) => string
+  showCompare: boolean
+}) {
+  const cmp = showCompare ? computeMetricDelta(value, prevValue) : null
+  if (!cmp) return <>{format(value)}</>
+  return (
+    <span className="meta-insight__metric-cell">
+      <span className={`meta-insight__metric-delta is-${cmp.dir}`}>
+        {DELTA_ARROW[cmp.dir]} {format(Math.abs(cmp.delta))}
+        {cmp.pct != null &&
+          ` (${cmp.delta >= 0 ? '+' : '-'}${Math.abs(cmp.pct).toFixed(1)}%)`}
+      </span>
+      <span className="meta-insight__metric-value">{format(value)}</span>
+    </span>
+  )
+}
+
 function MetricsTable<T extends MetricsSummary>({
   rows,
   rowKey,
@@ -202,6 +250,7 @@ function MetricsTable<T extends MetricsSummary>({
   headValue,
   getChannelBreakdown,
   channels,
+  showCompare,
 }: {
   rows: readonly T[]
   rowKey: (row: T) => string
@@ -212,6 +261,8 @@ function MetricsTable<T extends MetricsSummary>({
   /** 펼쳤을 때 보여줄 채널 — 이 캠페인/adset에 아예 데이터가 없는 채널(예: Meta
    * 전용 캠페인의 Google)은 모든 행이 0으로만 나와서 무의미하니 미리 제외하고 받는다. */
   channels: readonly { key: 'meta' | 'google'; label: string }[]
+  /** 켜면 각 지표 칸 왼쪽에 바로 앞 행 대비 증감·등락률을 같이 보여준다. */
+  showCompare: boolean
 }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
 
@@ -245,10 +296,17 @@ function MetricsTable<T extends MetricsSummary>({
               <td colSpan={METRIC_FIELDS.length + 2}>데이터 없음</td>
             </tr>
           ) : (
-            rows.map((row) => {
+            rows.map((row, rowIndex) => {
               const key = rowKey(row)
               const isOpen = expanded.has(key)
               const breakdown = isOpen ? getChannelBreakdown(row) : null
+              // 채널별 펼침 행도 메인 행과 같은 방식(표에 나열된 순서상 바로 앞
+              // 행)으로 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니
+              // 이전 행을 같은 방식으로 한 번 더 분해해둔다.
+              const prevBreakdown =
+                isOpen && showCompare && rowIndex > 0
+                  ? getChannelBreakdown(rows[rowIndex - 1])
+                  : null
               return (
                 <Fragment key={key}>
                   <tr
@@ -274,7 +332,16 @@ function MetricsTable<T extends MetricsSummary>({
                     </td>
                     <td>{headValue(row)}</td>
                     {METRIC_FIELDS.map((f) => (
-                      <td key={f.key}>{f.formatCompact(row[f.key])}</td>
+                      <td key={f.key}>
+                        <MetricCell
+                          value={row[f.key]}
+                          prevValue={
+                            rowIndex > 0 ? rows[rowIndex - 1][f.key] : null
+                          }
+                          format={f.formatCompact}
+                          showCompare={showCompare}
+                        />
+                      </td>
                     ))}
                   </tr>
                   {breakdown &&
@@ -292,7 +359,16 @@ function MetricsTable<T extends MetricsSummary>({
                         </td>
                         {METRIC_FIELDS.map((f) => (
                           <td key={f.key}>
-                            {f.formatCompact(breakdown[channel.key][f.key])}
+                            <MetricCell
+                              value={breakdown[channel.key][f.key]}
+                              prevValue={
+                                prevBreakdown
+                                  ? prevBreakdown[channel.key][f.key]
+                                  : null
+                              }
+                              format={f.formatCompact}
+                              showCompare={showCompare}
+                            />
                           </td>
                         ))}
                       </tr>
@@ -419,6 +495,31 @@ interface ResultPanelProps {
   dateEnd: ISODate
 }
 
+/** 일별/요일별/주차별 성과 섹션 제목 + "대비 표시" 토글을 한 줄에 배치. */
+function SectionHead({
+  title,
+  active,
+  onToggle,
+}: {
+  title: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="meta-insight__section-head">
+      <h3 className="meta-insight__section-title">{title}</h3>
+      <button
+        type="button"
+        className={`meta-insight__compare-toggle${active ? ' is-active' : ''}`}
+        aria-pressed={active}
+        onClick={onToggle}
+      >
+        대비 표시
+      </button>
+    </div>
+  )
+}
+
 /** "전체 요약" 탭 전용 — Summary KPI 카드 + 일별/요일별/주차별 표. */
 function ResultPanel({
   periodLabel,
@@ -429,6 +530,15 @@ function ResultPanel({
   dateEnd,
 }: ResultPanelProps) {
   const [showChannelTotal, setShowChannelTotal] = useState(false)
+  // 일별/요일별/주차별 표마다 "대비 표시" 토글을 독립적으로 둔다 — 표 하나만
+  // 켜서 보고 싶은 경우가 많아서(예: 일별은 대비로, 주차별은 그냥 값만).
+  const [compareOn, setCompareOn] = useState({
+    byDate: false,
+    byDayOfWeek: false,
+    byGroupedWeek: false,
+  })
+  const toggleCompare = (key: keyof typeof compareOn) =>
+    setCompareOn((prev) => ({ ...prev, [key]: !prev[key] }))
 
   const dayCount = dateRange(dateStart, dateEnd).length
 
@@ -484,7 +594,11 @@ function ResultPanel({
       </section>
 
       <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">일별 성과</h3>
+        <SectionHead
+          title="일별 성과"
+          active={compareOn.byDate}
+          onToggle={() => toggleCompare('byDate')}
+        />
         {loading ? (
           <TableSkeleton headLabel="날짜" rowCount={dayCount} />
         ) : (
@@ -494,6 +608,7 @@ function ResultPanel({
             headLabel="날짜"
             headValue={(row) => row.date}
             channels={applicableChannels}
+            showCompare={compareOn.byDate}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -509,7 +624,11 @@ function ResultPanel({
       </section>
 
       <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">요일별 성과</h3>
+        <SectionHead
+          title="요일별 성과"
+          active={compareOn.byDayOfWeek}
+          onToggle={() => toggleCompare('byDayOfWeek')}
+        />
         {loading ? (
           <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
         ) : (
@@ -519,6 +638,7 @@ function ResultPanel({
             headLabel="요일"
             headValue={(row) => row.dayOfWeek}
             channels={applicableChannels}
+            showCompare={compareOn.byDayOfWeek}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -534,7 +654,11 @@ function ResultPanel({
       </section>
 
       <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">주차별 성과</h3>
+        <SectionHead
+          title="주차별 성과"
+          active={compareOn.byGroupedWeek}
+          onToggle={() => toggleCompare('byGroupedWeek')}
+        />
         {loading ? (
           <TableSkeleton
             headLabel="기간"
@@ -547,6 +671,7 @@ function ResultPanel({
             headLabel="기간"
             headValue={(row) => row.period}
             channels={applicableChannels}
+            showCompare={compareOn.byGroupedWeek}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
