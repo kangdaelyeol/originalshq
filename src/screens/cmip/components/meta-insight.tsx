@@ -17,7 +17,10 @@ import {
 } from '../client'
 import { METRIC_FIELDS, type MetricField } from './metric-fields'
 import { DateRangePicker } from './date-range-picker'
-import { MetaInsightChartModal } from './meta-insight-chart-modal'
+import {
+  MetaInsightChartModal,
+  type ChartGroup,
+} from './meta-insight-chart-modal'
 import { dateRange } from '../utils'
 import type { ISODate } from '../types'
 import '../styles/meta-insight.scss'
@@ -903,6 +906,27 @@ export const MetaInsight = () => {
     combinedInsight?.series.combined.byDate.map((d) => d.date) ?? []
   const metricKeyList = [...selectedMetricKeys]
 
+  // 그래프 모달이 그릴 그룹 — 지금 보고 있는 탭 범위로 스코프한다. 전체 요약
+  // 탭은 계정 전체 하나뿐이고, 캠페인/adset 탭은 그 탭에서 다중 선택된 항목들
+  // 그대로다(페이지에서 이미 고른 것과 모달 안에서 보는 대상이 항상 같도록).
+  // CombinedCampaign/CombinedAdset이 이미 ChannelSplitSeries 모양(combined/meta/
+  // google)을 그대로 갖고 있어 series로 그대로 넘길 수 있다.
+  const chartGroups: ChartGroup[] = !combinedInsight
+    ? []
+    : resultTab === 'total'
+      ? [{ key: 'total', label: '전체 요약', series: combinedInsight.series }]
+      : resultTab === 'campaign'
+        ? campaigns
+            .filter((c) => selectedCampaignNames.has(c.campaignName))
+            .map((c) => ({
+              key: c.campaignName,
+              label: c.campaignName,
+              series: c,
+            }))
+        : adsets
+            .filter((a) => selectedAdsetNames.has(a.adsetName))
+            .map((a) => ({ key: a.adsetName, label: a.adsetName, series: a }))
+
   return (
     <div className="meta-insight">
       <div className="meta-insight__query-row">
@@ -959,6 +983,12 @@ export const MetaInsight = () => {
               type="button"
               className="meta-insight__btn meta-insight__ghost"
               onClick={() => setChartOpen(true)}
+              disabled={chartGroups.length === 0}
+              title={
+                chartGroups.length === 0
+                  ? '그래프로 볼 항목을 먼저 선택해주세요.'
+                  : undefined
+              }
             >
               그래프로 보기
             </button>
@@ -1110,9 +1140,9 @@ export const MetaInsight = () => {
         </>
       )}
 
-      {chartOpen && combinedInsight && (
+      {chartOpen && chartGroups.length > 0 && (
         <MetaInsightChartModal
-          combined={combinedInsight}
+          groups={chartGroups}
           onClose={() => setChartOpen(false)}
         />
       )}

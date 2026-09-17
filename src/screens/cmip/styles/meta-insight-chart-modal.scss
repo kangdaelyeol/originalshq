@@ -51,14 +51,25 @@ $radius-lg: 8px;
 
   &__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: space-between;
+    gap: 12px;
+  }
+
+  // 캠페인/adset 탭에선 그룹 탭 + 채널 탭 두 줄이 쌓인다(전체 요약 탭은 그룹
+  // 탭이 없어 채널 탭 한 줄만 남는다) — header-actions는 항상 위쪽에 맞춘다.
+  &__header-tabs {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 
   &__header-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex: none;
   }
 
   &__expand {

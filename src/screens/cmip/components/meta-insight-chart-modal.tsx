@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type {
-  CombinedInsight,
+  ChannelSplitSeries,
   DateSummary,
   DayOfWeekSummary,
   MetricsSummary,
@@ -145,17 +145,43 @@ function hslToHex(h: number, s: number, l: number): string {
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v))
 
-/** 지표 기본색을 채널별로 살짝 다른 명도/채도의 같은 색 계열로 바꾼다. */
-function channelColor(baseColor: string, channelKey: ChannelKey): string {
-  const shift = CHANNEL_SHIFT[channelKey]
-  if (shift.hue === 0 && shift.saturation === 0 && shift.lightness === 0) {
-    return baseColor
+// 캠페인/adset처럼 "그룹"을 여러 개 동시에 켰을 때도 채널과 같은 방식으로
+// 구분한다 — 그룹 인덱스(선택 여부와 무관하게 항상 같은 그룹은 같은 인덱스라
+// 색이 고정됨)에 따라 색조/명도를 추가로 틀고, 채널 시프트와 더한다. 그룹×채널
+// 조합이 늘어날수록 색이 촘촘해지지만, 채널 30색 팔레트와 같은 트레이드오프로
+// 받아들인다(둘 다 동시에 여러 개 켜는 일은 실제로 드물다).
+const GROUP_HUE_STEP = 47 // 360과 서로소에 가까워, 그룹을 몇 개 켜도 색상이 금방 반복되지 않는다.
+const GROUP_LIGHTNESS_CYCLE = [0, -14, 12, -26, 22]
+
+function groupShift(index: number): {
+  hue: number
+  saturation: number
+  lightness: number
+} {
+  return {
+    hue: (index * GROUP_HUE_STEP) % 360,
+    saturation: 0,
+    lightness: GROUP_LIGHTNESS_CYCLE[index % GROUP_LIGHTNESS_CYCLE.length],
   }
+}
+
+/** 지표 기본색을 채널×그룹 조합별로 살짝 다른 색조/명도의 같은 색 계열로 바꾼다. */
+function seriesColor(
+  baseColor: string,
+  groupIndex: number,
+  channelKey: ChannelKey,
+): string {
+  const c = CHANNEL_SHIFT[channelKey]
+  const g = groupShift(groupIndex)
+  const hue = c.hue + g.hue
+  const saturation = c.saturation + g.saturation
+  const lightness = c.lightness + g.lightness
+  if (hue === 0 && saturation === 0 && lightness === 0) return baseColor
   const [h, s, l] = hexToHsl(baseColor)
   return hslToHex(
-    (h + shift.hue + 360) % 360,
-    clamp(s + shift.saturation, 15, 100),
-    clamp(l + shift.lightness, 15, 85),
+    (h + hue + 360) % 360,
+    clamp(s + saturation, 15, 100),
+    clamp(l + lightness, 15, 85),
   )
 }
 
@@ -178,13 +204,23 @@ function ChevronIcon() {
   )
 }
 
+/** 모달이 그릴 수 있는 하나의 "그룹" — 전체 요약 탭에서는 계정 전체 하나뿐이고,
+ * 캠페인/adset 탭에서는 페이지에서 다중 선택된 캠페인(또는 adset)마다 하나씩
+ * 생긴다. CombinedCampaign/CombinedAdset이 이미 ChannelSplitSeries 모양(combined/
+ * meta/google)을 그대로 갖고 있어 별도 변환 없이 넘길 수 있다. */
+export interface ChartGroup {
+  key: string
+  label: string
+  series: ChannelSplitSeries
+}
+
 interface MetaInsightChartModalProps {
-  combined: CombinedInsight
+  groups: readonly ChartGroup[]
   onClose: () => void
 }
 
 export const MetaInsightChartModal = ({
-  combined,
+  groups,
   onClose,
 }: MetaInsightChartModalProps) => {
   const [view, setView] = useState<InsightView>('byDate')
@@ -192,6 +228,11 @@ export const MetaInsightChartModal = ({
   // × 채널 최대 3개 = 최대 30개). 최소 하나는 항상 켜져 있어야 한다.
   const [channels, setChannels] = useState<ReadonlySet<ChannelKey>>(
     () => new Set(['combined']),
+  )
+  // 그룹(캠페인/adset)도 채널과 같은 방식의 다중 선택 — groups가 1개뿐이면(전체
+  // 요약 탭) 탭 자체를 숨기므로 이 상태는 사실상 항상 그 하나만 켜져 있게 된다.
+  const [activeGroupKeys, setActiveGroupKeys] = useState<ReadonlySet<string>>(
+    () => new Set(groups[0] ? [groups[0].key] : []),
   )
   const [expanded, setExpanded] = useState(false)
   // 색이 같은 계열로 겹쳐 보일 때(채널별 명도 차이) 배경에 따라 가독성이 갈려서
@@ -251,15 +292,30 @@ export const MetaInsightChartModal = ({
     })
   }
 
-  // 날짜축·기간 축소는 채널 선택과 무관하게 항상 "전체"(합집합) 기준 — 특정
-  // 채널만 켰다고 그 채널의 좁은 커버리지로 축이 줄어들면 안 된다(값이 없는
-  // 지점은 0으로 채워 그리면 된다).
-  const combinedSeries = combined.series.combined
+  const toggleGroup = (key: string) => {
+    setActiveGroupKeys((prev) => {
+      if (prev.has(key)) {
+        if (prev.size === 1) return prev // 최소 하나는 켜져 있어야 한다.
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      }
+      return new Set(prev).add(key)
+    })
+  }
+
+  const selectedGroups = groups.filter((g) => activeGroupKeys.has(g.key))
+
+  // 날짜축·기간 축소는 채널/그룹 선택과 무관하게 항상 "전체"(합집합) 기준 —
+  // 특정 채널/그룹만 켰다고 그 커버리지로 축이 줄어들면 안 된다(값이 없는
+  // 지점은 0으로 채워 그리면 된다). 모든 그룹이 같은 조회 범위로 만들어져
+  // byGroupedWeek 경계가 이미 동일하므로, 첫 번째 그룹 것을 기준으로 삼는다.
+  const combinedSeries = groups[0]?.series.combined
 
   // "일별" 보기에서만 실제 날짜 단위 데이터라 부분 기간 축소가 가능하다 — 요일별/
   // 주차별은 이미 집계된 값이라 원본 일자로 되짚어 재집계할 수 없다.
   const dateBounds = useMemo(() => {
-    const byDate = combinedSeries.byDate
+    const byDate = combinedSeries?.byDate ?? []
     if (byDate.length === 0) return null
     let min = byDate[0].date
     let max = byDate[0].date
@@ -287,7 +343,7 @@ export const MetaInsightChartModal = ({
   }
 
   const rows: readonly MetricsSummary[] = useMemo(() => {
-    const base = combinedSeries[view]
+    const base = combinedSeries?.[view] ?? []
     if (view !== 'byDate' || !dateNarrow) return base
     return (base as readonly DateSummary[]).filter(
       (row) => row.date >= dateNarrow.start && row.date <= dateNarrow.end,
@@ -311,25 +367,32 @@ export const MetaInsightChartModal = ({
   const clearAllMetrics = () => setMetricMode(new Map())
 
   const series: IndexSeries[] = useMemo(() => {
-    // 축(rows)이 가리키는 지점들의 원본 키(날짜/요일/기간) — 채널별 rows에서
-    // 같은 지점을 찾아 값을 맞춰 끼우는 데 쓴다. 그 지점이 없는 채널은 0.
+    // 축(rows)이 가리키는 지점들의 원본 키(날짜/요일/기간) — 그룹×채널별 rows에서
+    // 같은 지점을 찾아 값을 맞춰 끼우는 데 쓴다. 그 지점이 없으면 0.
     const rowKeys = rows.map((row) => rawKeyOf(view, row))
     const selectedChannels = CHANNEL_ORDER.filter((c) => channels.has(c))
+    // 그룹 색은 "지금 선택된 것 중 몇 번째"가 아니라 "전체 후보 중 몇 번째"로
+    // 고정한다 — 다른 그룹을 껐다 켰다 해도 이 그룹의 색은 항상 같아야 한다.
+    const groupIndex = new Map(groups.map((g, i) => [g.key, i]))
 
     const build = (
       f: MetricField,
       type: SeriesKind,
+      group: ChartGroup,
       channelKey: ChannelKey,
     ): IndexSeries => {
-      const channelRows = combined.series[channelKey][view]
+      const channelRows = group.series[channelKey][view]
       const byKey = new Map(
         channelRows.map((row) => [rawKeyOf(view, row), row]),
       )
-      const style = CHANNEL_STYLE[channelKey]
+      const channelStyle = CHANNEL_STYLE[channelKey]
+      const labelParts = [f.label]
+      if (selectedGroups.length > 1) labelParts.push(group.label)
+      if (channels.size > 1) labelParts.push(channelStyle.label)
       return {
-        key: `${f.key}:${channelKey}`,
-        label: channels.size > 1 ? `${f.label} · ${style.label}` : f.label,
-        color: channelColor(f.color, channelKey),
+        key: `${f.key}:${group.key}:${channelKey}`,
+        label: labelParts.join(' · '),
+        color: seriesColor(f.color, groupIndex.get(group.key) ?? 0, channelKey),
         type,
         unit: f.unit,
         raw: rowKeys.map((k) => byKey.get(k)?.[f.key] ?? 0),
@@ -337,18 +400,20 @@ export const MetaInsightChartModal = ({
         formatCompact: f.formatCompact,
       }
     }
-    const buildAllChannels = (f: MetricField, type: SeriesKind) =>
-      selectedChannels.map((ck) => build(f, type, ck))
+    const buildAllGroupsAndChannels = (f: MetricField, type: SeriesKind) =>
+      selectedGroups.flatMap((g) =>
+        selectedChannels.map((ck) => build(f, type, g, ck)),
+      )
 
     // 막대를 먼저 — 차트가 라인/마커를 그 위에 얹는다.
     const bars = METRIC_FIELDS.filter(
       (f) => metricMode.get(f.key) === 'bar',
-    ).flatMap((f) => buildAllChannels(f, 'bar'))
+    ).flatMap((f) => buildAllGroupsAndChannels(f, 'bar'))
     const lines = METRIC_FIELDS.filter(
       (f) => metricMode.get(f.key) === 'line',
-    ).flatMap((f) => buildAllChannels(f, 'line'))
+    ).flatMap((f) => buildAllGroupsAndChannels(f, 'line'))
     return [...bars, ...lines]
-  }, [rows, view, metricMode, channels, combined])
+  }, [rows, view, metricMode, channels, groups, selectedGroups])
 
   return (
     <div className="meta-insight-chart-modal" onClick={onClose}>
@@ -359,27 +424,55 @@ export const MetaInsightChartModal = ({
         onClick={(e) => e.stopPropagation()}
       >
         <header className="meta-insight-chart-modal__header">
-          <div
-            className="meta-insight-chart-modal__channel-tabs"
-            role="group"
-            aria-label="채널(다중 선택)"
-          >
-            {CHANNEL_ORDER.map((key) => {
-              const active = channels.has(key)
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  aria-pressed={active}
-                  className={`meta-insight-chart-modal__channel-tab${
-                    active ? ' is-active' : ''
-                  }`}
-                  onClick={() => toggleChannel(key)}
-                >
-                  {CHANNEL_STYLE[key].label}
-                </button>
-              )
-            })}
+          <div className="meta-insight-chart-modal__header-tabs">
+            {/* 캠페인/adset 탭에서만(그룹이 2개 이상일 때만) 뜬다 — 전체 요약
+                탭은 그룹이 하나뿐이라 탭을 보여줄 이유가 없다. */}
+            {groups.length > 1 && (
+              <div
+                className="meta-insight-chart-modal__channel-tabs"
+                role="group"
+                aria-label="캠페인/adset(다중 선택)"
+              >
+                {groups.map((g) => {
+                  const active = activeGroupKeys.has(g.key)
+                  return (
+                    <button
+                      key={g.key}
+                      type="button"
+                      aria-pressed={active}
+                      className={`meta-insight-chart-modal__channel-tab${
+                        active ? ' is-active' : ''
+                      }`}
+                      onClick={() => toggleGroup(g.key)}
+                    >
+                      {g.label}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <div
+              className="meta-insight-chart-modal__channel-tabs"
+              role="group"
+              aria-label="채널(다중 선택)"
+            >
+              {CHANNEL_ORDER.map((key) => {
+                const active = channels.has(key)
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    aria-pressed={active}
+                    className={`meta-insight-chart-modal__channel-tab${
+                      active ? ' is-active' : ''
+                    }`}
+                    onClick={() => toggleChannel(key)}
+                  >
+                    {CHANNEL_STYLE[key].label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div className="meta-insight-chart-modal__header-actions">
             <button
