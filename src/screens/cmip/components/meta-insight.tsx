@@ -58,6 +58,27 @@ function ChevronIcon() {
   )
 }
 
+/** 커스텀 체크박스(MultiSelectDropdown)의 체크 표시 — 네이티브 input은 시각적으로
+ * 숨기고(sr-only) 이 아이콘 + 박스로 대신 그린다. */
+function CheckIcon() {
+  return (
+    <svg
+      className="meta-insight__multi-select-check"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M3.5 8.5 6.5 11.5 12.5 4.5"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
 function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
   return (
     <div className="meta-insight__summary-grid">
@@ -523,10 +544,17 @@ function MultiSelectDropdown<T extends string>({
             <label key={o.key} className="meta-insight__multi-select-item">
               <input
                 type="checkbox"
+                className="meta-insight__multi-select-input"
                 checked={selected.has(o.key)}
                 onChange={() => onToggle(o.key)}
               />
-              {o.label}
+              <span className="meta-insight__multi-select-box">
+                <span className="meta-insight__multi-select-fill" />
+                <CheckIcon />
+              </span>
+              <span className="meta-insight__multi-select-label">
+                {o.label}
+              </span>
             </label>
           ))}
         </div>
