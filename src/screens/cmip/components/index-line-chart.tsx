@@ -335,56 +335,8 @@ export const IndexLineChart = ({
   const axisSeries = focused ?? prepared[0]
   const axisColor = series.length > 1 ? axisSeries.color : MUTED
 
-  // 상단 고정 요약 행이 가리키는 지점 — 평소엔 마지막(최신) 지점, 차트를 호버하면
-  // 그 지점으로 바뀐다(증권 차트 헤더가 크로스헤어를 따라가는 것과 같은 느낌).
-  const summaryIndex = hover?.index ?? n - 1
-
   return (
     <div className={`index-line-chart${theme === 'light' ? ' is-light' : ''}`}>
-      {!isEmpty && (
-        <div className="index-line-chart__summary">
-          <span className="index-line-chart__summary-period">
-            {categories[summaryIndex]}요일
-          </span>
-          {prepared.map((s) => {
-            const isFocused = focused?.key === s.key
-            const dimmed = focused != null && !isFocused
-            const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
-              s.raw,
-              summaryIndex,
-            )
-            return (
-              <span
-                key={s.key}
-                className="index-line-chart__summary-item"
-                style={{ opacity: dimmed ? DIM_OPACITY : 1 }}
-              >
-                <span
-                  className="index-line-chart__summary-dot"
-                  style={{ background: s.color }}
-                />
-                <span className="index-line-chart__summary-name">
-                  {s.label}
-                </span>
-                <span className="index-line-chart__summary-value">
-                  {rawNow == null ? '—' : s.format(rawNow)}
-                </span>
-                {deltaRaw != null && (
-                  <span
-                    className="index-line-chart__summary-delta"
-                    style={{ color: DELTA_COLOR[dir] }}
-                  >
-                    {DELTA_ARROW[dir]} {s.format(Math.abs(deltaRaw))}
-                    {deltaPct != null &&
-                      ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
-                  </span>
-                )}
-              </span>
-            )
-          })}
-        </div>
-      )}
-
       {/* ResizeObserver가 이 div를 계속 관찰해야 하므로, 비어있을 때도 절대
           언마운트하지 않고 안내 문구로 내용만 바꾼다(위 isEmpty 주석 참고). */}
       <div className="index-line-chart__canvas" ref={wrapRef}>
