@@ -106,6 +106,32 @@ export const dateRange = (startDate: string, endDate: string): string[] => {
   return out
 }
 
+// ────────────────────────────────────────────────────────────────────────
+// 호출 속도 제한 — 네이버 검색광고 API는 초당 요청 수 제한이 꽤 빡빡해서,
+// 캠페인/날짜 수만큼 Promise.all로 한 번에 쏘면(계정에 캠페인이 수십 개만
+// 있어도) 바로 429(Too Many Requests)가 난다. 그래서 "동시에 여러 개"가 아니라
+// "하나씩, 사이에 짧게 쉬면서" 호출하도록 강제한다.
+// ────────────────────────────────────────────────────────────────────────
+
+export const sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms))
+
+/** items를 순서대로 하나씩만 처리한다(동시 호출 없음) — 각 호출 사이에
+ * intervalMs만큼 쉰다. 네이버 API 호출부(/ncc/adgroups 캠페인별, /stats
+ * 날짜별)가 전부 이 함수를 거친다. */
+export const mapSequential = async <T, R>(
+  items: readonly T[],
+  fn: (item: T) => Promise<R>,
+  intervalMs = 250,
+): Promise<R[]> => {
+  const results: R[] = []
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0) await sleep(intervalMs)
+    results.push(await fn(items[i]))
+  }
+  return results
+}
+
 export const formatMD = (dateStr: string): string => {
   const d = new Date(dateStr)
   return `${d.getMonth() + 1}/${d.getDate()}`

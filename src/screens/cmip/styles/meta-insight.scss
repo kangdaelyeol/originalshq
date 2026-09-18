@@ -374,6 +374,13 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       width: auto;
       height: 13px;
     }
+
+    // 네이버도 정사각 아이콘이 아니라 "NAVER" 워드마크(원본 비율 약 5.56:1)라
+    // 구글과 같은 규칙(높이 고정, 폭은 비율대로)을 쓴다.
+    &--naver {
+      width: auto;
+      height: 11px;
+    }
   }
 
   &__chevron {

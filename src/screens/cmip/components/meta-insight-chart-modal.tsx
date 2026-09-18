@@ -70,21 +70,28 @@ const MODE_LABEL: Record<MetricMode, string> = {
 
 type MenuKey = 'view' | 'metric' | 'group'
 
-type ChannelKey = 'combined' | 'meta' | 'google'
+type ChannelKey = 'combined' | 'meta' | 'google' | 'naver'
 
-// 지금은 Meta/Google뿐이지만, 당근·네이버가 붙으면 이 목록만 늘리면 된다
+// 지금은 Meta/Google/Naver — 당근이 붙으면 이 목록만 늘리면 된다
 // (CombinedInsight.series가 그 채널 키를 갖게 되는 시점에 맞춰).
 const CHANNEL_STYLE: Record<ChannelKey, { label: string }> = {
   combined: { label: '전체' },
   meta: { label: 'Meta' },
   google: { label: 'Google' },
+  naver: { label: 'Naver' },
 }
-const CHANNEL_ORDER: readonly ChannelKey[] = ['combined', 'meta', 'google']
+const CHANNEL_ORDER: readonly ChannelKey[] = [
+  'combined',
+  'meta',
+  'google',
+  'naver',
+]
 
-// 지표 10개 × 채널 최대 3개 = 최대 30색. dash·투명도로 채널을 구분해봤더니 오히려
+// 지표 10개 × 채널 최대 4개 = 최대 40색. dash·투명도로 채널을 구분해봤더니 오히려
 // 헷갈려서, 지표 고유 색상(hue)은 유지한 채 채널마다 명도/채도만 다르게 바꿔서
 // "같은 지표 계열, 다른 채널"이 색으로 바로 구별되게 한다(전체=원색, Meta=밝게,
-// Google=어둡고 살짝 다른 색조). 채널이 늘어나면 CHANNEL_SHIFT에 한 줄만 추가하면 됨.
+// Google=어둡고 살짝 다른 색조, Naver=그와 또 다른 색조). 채널이 늘어나면
+// CHANNEL_SHIFT에 한 줄만 추가하면 됨.
 const CHANNEL_SHIFT: Record<
   ChannelKey,
   { hue: number; saturation: number; lightness: number }
@@ -92,6 +99,7 @@ const CHANNEL_SHIFT: Record<
   combined: { hue: 0, saturation: 0, lightness: 0 },
   meta: { hue: 0, saturation: 4, lightness: 16 },
   google: { hue: 10, saturation: -6, lightness: -15 },
+  naver: { hue: -20, saturation: 8, lightness: -5 },
 }
 
 function hexToHsl(hex: string): [number, number, number] {

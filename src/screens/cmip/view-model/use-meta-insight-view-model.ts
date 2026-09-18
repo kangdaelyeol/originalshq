@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import {
   getAllInsights,
   getGoogleInsights,
+  getNaverInsights,
   combineChannelInsights,
   CallableError,
   type CombinedInsight,
@@ -32,9 +33,12 @@ export const useMetaInsightViewModel = () => {
   // 구글 인사이트 — getGoogleInsights가 실제 Google Ads 연동(getGoogleCampaignInsight
   // + getGoogleAdsInsight)을 getAllInsights와 같은 모양으로 합쳐 돌려준다.
   const [googleData, setGoogleData] = useState<MetaInsightSummary | null>(null)
-  // total은 물론 캠페인/adset 단위까지 "종합(meta+google)/meta/google" 3분할로
-  // 미리 묶어둔다 — 당근·네이버 등 채널이 늘어나면 combineChannelInsights 쪽만
-  // 확장하면 된다.
+  // 네이버 인사이트 — getNaverInsights가 getAllInsights와 같은 모양(서버에서 이미
+  // total/byDate/byCampaign까지 집계)으로 돌려준다.
+  const [naverData, setNaverData] = useState<MetaInsightSummary | null>(null)
+  // total은 물론 캠페인/adset 단위까지 "종합(meta+google+naver)/meta/google/naver"
+  // 4분할로 미리 묶어둔다 — 당근 등 채널이 더 늘어나면 combineChannelInsights
+  // 쪽만 확장하면 된다.
   const [combinedInsight, setCombinedInsight] =
     useState<CombinedInsight | null>(null)
 
@@ -56,17 +60,25 @@ export const useMetaInsightViewModel = () => {
     try {
       const apiStart = formatForApi(start)
       const apiEnd = formatForApi(end)
-      const [metaResult, googleResult] = await Promise.all([
+      const [metaResult, googleResult, naverResult] = await Promise.all([
         getAllInsights(apiStart, apiEnd),
         getGoogleInsights(apiStart, apiEnd),
+        getNaverInsights(apiStart, apiEnd),
       ])
       setData(metaResult)
       setGoogleData(googleResult)
+      setNaverData(naverResult)
       setCombinedInsight(
-        combineChannelInsights(metaResult, googleResult, apiStart, apiEnd),
+        combineChannelInsights(
+          metaResult,
+          googleResult,
+          naverResult,
+          apiStart,
+          apiEnd,
+        ),
       )
     } catch (err) {
-      // Meta/Google 중 어느 쪽이 실패해도 여기로 온다 — CallableError는 항상
+      // Meta/Google/Naver 중 어느 쪽이 실패해도 여기로 온다 — CallableError는 항상
       // 구체적인 메시지를 담고 있어 이 폴백은 거의 쓰이지 않지만, 특정 채널
       // 이름으로 단정하지 않는다.
       setError(describeError(err, '인사이트 조회 중 오류가 발생했습니다.'))
@@ -94,6 +106,7 @@ export const useMetaInsightViewModel = () => {
     // 결과
     data,
     googleData,
+    naverData,
     combinedInsight,
     // 액션
     load,

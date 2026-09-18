@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
+import naverLogoPng from '../assets/naver_logo.png'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
 import type {
   DateSummary,
@@ -31,20 +32,25 @@ import '../styles/meta-insight.scss'
 
 type MetricKey = keyof MetricsSummary
 
-// 지금은 Meta/Google뿐이지만, 당근·네이버가 붙으면 이 목록만 늘리면 된다
+type ChannelKey = 'meta' | 'google' | 'naver'
+
+// 지금은 Meta/Google/Naver — 당근이 붙으면 이 목록만 늘리면 된다
 // (CombinedInsight.total/series가 그 채널 키를 갖게 되는 시점에 맞춰).
-const CHANNELS: readonly { key: 'meta' | 'google'; label: string }[] = [
+const CHANNELS: readonly { key: ChannelKey; label: string }[] = [
   { key: 'meta', label: 'Meta' },
   { key: 'google', label: 'Google' },
+  { key: 'naver', label: 'Naver' },
 ]
 
 // "Meta" 옆 텍스트 색 — 실제 브랜드 워드마크는 검정 글자지만, 이 표는 배경이
 // 어두워서 검정 그대로 쓰면 글자가 배경에 묻혀 안 보인다. 그래서 하양으로
-// 바꾼다(로고 아이콘 자체는 브랜드 블루를 그대로 유지). Google은 로고가 이미
-// 워드마크(전체 글자 이미지)라 텍스트를 따로 안 그리므로 이 값이 쓰이지 않는다.
-const CHANNEL_TEXT_COLOR: Record<'meta' | 'google', string> = {
+// 바꾼다(로고 아이콘 자체는 브랜드 블루를 그대로 유지). Google/Naver는 로고가
+// 이미 워드마크(전체 글자 이미지)라 텍스트를 따로 안 그리므로 이 값이 쓰이지
+// 않는다.
+const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
   meta: '#ffffff',
   google: '#4285f4',
+  naver: '#03c75a',
 }
 
 function MetaLogo() {
@@ -85,19 +91,31 @@ function GoogleLogo() {
   )
 }
 
-const CHANNEL_LOGO: Record<'meta' | 'google', () => ReactElement> = {
-  meta: MetaLogo,
-  google: GoogleLogo,
+// Google과 같은 이유로(로고 자체가 "NAVER" 워드마크) 옆에 텍스트를 따로 안 붙인다.
+function NaverLogo() {
+  return (
+    <img
+      className="meta-insight__channel-logo meta-insight__channel-logo--naver"
+      src={naverLogoPng}
+      alt=""
+    />
+  )
 }
 
-/** 채널 이름(Meta/Google)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별 펼침
- * 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일. Google은 로고가
- * 이미 워드마크(전체 글자)라 옆에 "Google" 텍스트를 또 안 붙인다. */
+const CHANNEL_LOGO: Record<ChannelKey, () => ReactElement> = {
+  meta: MetaLogo,
+  google: GoogleLogo,
+  naver: NaverLogo,
+}
+
+/** 채널 이름(Meta/Google/Naver)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별
+ * 펼침 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일. Google/Naver는
+ * 로고가 이미 워드마크(전체 글자)라 옆에 텍스트를 또 안 붙인다. */
 function ChannelLabel({
   channelKey,
   label,
 }: {
-  channelKey: 'meta' | 'google'
+  channelKey: ChannelKey
   label: string
 }) {
   const Logo = CHANNEL_LOGO[channelKey]
@@ -193,6 +211,7 @@ function KpiSkeletonGrid() {
 interface ChannelBreakdown {
   meta: MetricsSummary
   google: MetricsSummary
+  naver: MetricsSummary
 }
 
 type DeltaDir = 'up' | 'down' | 'flat'
@@ -260,7 +279,7 @@ function MetricsTable<T extends MetricsSummary>({
   getChannelBreakdown: (row: T) => ChannelBreakdown
   /** 펼쳤을 때 보여줄 채널 — 이 캠페인/adset에 아예 데이터가 없는 채널(예: Meta
    * 전용 캠페인의 Google)은 모든 행이 0으로만 나와서 무의미하니 미리 제외하고 받는다. */
-  channels: readonly { key: 'meta' | 'google'; label: string }[]
+  channels: readonly { key: ChannelKey; label: string }[]
   /** 켜면 각 지표 칸 왼쪽에 바로 앞 행 대비 증감·등락률을 같이 보여준다. */
   showCompare: boolean
 }) {
@@ -480,11 +499,13 @@ interface ResultPanelProps {
     combined: MetricsSummary
     meta: MetricsSummary
     google: MetricsSummary
+    naver: MetricsSummary
   }
   series: {
     combined: GroupedInsightSeries
     meta: GroupedInsightSeries
     google: GroupedInsightSeries
+    naver: GroupedInsightSeries
   }
   /** 재조회 중(날짜 범위 변경 등)엔 이전 결과가 그대로 남아있는 동안에도 Summary/
    * 표 칸을 스켈레톤으로 덮어서 "새로 불러오는 중"임을 보여준다. */
@@ -618,6 +639,10 @@ function ResultPanel({
                 series.google.byDate,
                 (d) => d === row.date,
               ),
+              naver: metricsForDateSubset(
+                series.naver.byDate,
+                (d) => d === row.date,
+              ),
             })}
           />
         )}
@@ -646,6 +671,10 @@ function ResultPanel({
               ),
               google: metricsForDateSubset(
                 series.google.byDate,
+                (d) => weekdayLabelOf(d) === row.dayOfWeek,
+              ),
+              naver: metricsForDateSubset(
+                series.naver.byDate,
                 (d) => weekdayLabelOf(d) === row.dayOfWeek,
               ),
             })}
@@ -679,6 +708,10 @@ function ResultPanel({
               ),
               google: metricsForDateSubset(
                 series.google.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+              naver: metricsForDateSubset(
+                series.naver.byDate,
                 (d) => d >= row.startDate && d <= row.endDate,
               ),
             })}
