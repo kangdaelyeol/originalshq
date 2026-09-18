@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 // 다크 팔레트 — 다른 cmip 화면들과 동일 톤(각 scss가 독립적으로 이 값들을 갖는
 // 게 이 코드베이스의 기존 관례라 그대로 따른다).
 $color-text: #e6edf3;
@@ -22,7 +24,7 @@ $radius-lg: 8px;
   flex-direction: column;
   gap: 16px;
   max-width: 900px;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   color: $color-text;
 
   &__notice {

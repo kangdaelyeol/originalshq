@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 // cmip 화면 셸 + 상단 탭. 자식 컴포넌트(MetaInsight / ReportGenerator)는 각자 스타일을
 // 가지되 동일한 다크 팔레트를 공유한다.
 $color-bg: #0d1117;
@@ -22,7 +24,7 @@ body:has(.cmip),
   padding: 24px 40px;
   background: $color-bg;
   color: $color-text;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   // 다크 배경에서 밝은 글씨가 굵고 번져 보이는 현상 보정 (서브픽셀 → grayscale)
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 .index-line-chart {
   // 다크(기본)/라이트 색 토큰 — TSX의 PALETTE와 짝을 맞춰 유지한다(그래프 본체는
   // SVG 안에서 JS로 직접 칠하고, 이 변수는 요약행/툴팁/범례처럼 CSS로 그리는
@@ -50,7 +52,7 @@
     display: block;
 
     text {
-      font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+      font-family: font-family.$font-pretendard;
     }
   }
 

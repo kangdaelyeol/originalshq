@@ -1,0 +1,19 @@
+// 실제 폰트 파일 로드는 index.html의 <link>(다른 외부 폰트와 동일한 패턴)가 한다 —
+// 이 scss가 여러 컴포넌트에서 @use될 때마다 CSS @import가 중복돼 번들에 여러 번
+// 섞이는 걸 피하기 위해서다. 이 파일은 font-family.$font-pretendard로 참조할 값만 든다.
+$font-pretendard:
+  'Pretendard Variable',
+  Pretendard,
+  -apple-system,
+  BlinkMacSystemFont,
+  system-ui,
+  Roboto,
+  'Helvetica Neue',
+  'Segoe UI',
+  'Apple SD Gothic Neo',
+  'Noto Sans KR',
+  'Malgun Gothic',
+  'Apple Color Emoji',
+  'Segoe UI Emoji',
+  'Segoe UI Symbol',
+  sans-serif;

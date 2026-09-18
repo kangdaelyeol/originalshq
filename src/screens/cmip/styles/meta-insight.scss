@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 // 다크 팔레트 (cmip 화면 공통 톤) — report-generator.scss와 동일 팔레트/구조를 재사용.
 $color-text: #e6edf3;
 $color-muted: #8b949e;
@@ -25,7 +27,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   flex-direction: column;
   gap: 16px;
   max-width: 1500px;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   color: $color-text;
 
   // 날짜 범위 선택기 — 여기서 "업데이트"를 누르면 바로 조회되므로 별도 조회

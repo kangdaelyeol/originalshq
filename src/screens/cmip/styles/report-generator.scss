@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 // 다크 팔레트 (cmip 화면 공통 톤)
 $color-text: #e6edf3;
 $color-muted: #8b949e;
@@ -21,7 +23,7 @@ $radius-lg: 8px;
   flex-direction: column;
   gap: 16px;
   max-width: 820px;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   color: $color-text;
 
   // ------------------------------------------------------------------ 입력 폼

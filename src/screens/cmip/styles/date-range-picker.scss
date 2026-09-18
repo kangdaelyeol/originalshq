@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 // 다크 팔레트 — 나머지 cmip 화면과 동일 톤.
 $color-text: #e6edf3;
 $color-muted: #8b949e;
@@ -13,7 +15,7 @@ $radius-lg: 8px;
 .date-range-picker {
   position: relative;
   display: inline-block;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   color: $color-text;
 
   // ------------------------------------------------------------------ 트리거

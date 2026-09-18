@@ -1,3 +1,5 @@
+@use './font-family.scss';
+
 $color-text: #1f2328;
 $color-muted: #57606a;
 $color-border: #d0d7de;
@@ -23,7 +25,7 @@ $radius-lg: 8px;
   flex-direction: column;
   gap: 16px;
   max-width: 560px;
-  font-family: -apple-system, 'Pretendard', 'Noto Sans KR', sans-serif;
+  font-family: font-family.$font-pretendard;
   color: $color-text;
 
   &__field {
