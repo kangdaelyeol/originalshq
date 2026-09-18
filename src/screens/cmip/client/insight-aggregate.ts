@@ -89,6 +89,45 @@ export function sumMetrics(
   return aggregateMetrics([a, b])
 }
 
+/**
+ * 채널을 합칠 때 전용 — 네이버처럼 frequency 지표 자체를 제공하지 않는 채널은
+ * (그 채널의 frequency가 진짜 0이 아니라 "측정 안 됨"인데도) impressions/clicks/
+ * spend/conversions처럼 그냥 합산해버리면, frequency 가중평균(노출수 기준)의
+ * 분모에는 그 채널 노출수가 그대로 들어가면서 분자 기여분(frequency×노출수)만
+ * 0이 되어 "종합" frequency가 실제보다 낮게 나온다. hasFrequency: false인 소스는
+ * frequency 가중평균 계산(분자·분모 둘 다)에서 완전히 제외하고, 나머지 지표는
+ * 소스 구분 없이 그대로 합산한다.
+ */
+export function sumMetricsWeighted(
+  entries: readonly { metrics: MetricsSummary; hasFrequency: boolean }[],
+): MetricsSummary {
+  const impressions = entries.reduce((s, e) => s + e.metrics.impressions, 0)
+  const clicks = entries.reduce((s, e) => s + e.metrics.clicks, 0)
+  const spend = entries.reduce((s, e) => s + e.metrics.spend, 0)
+  const conversions = entries.reduce((s, e) => s + e.metrics.conversions, 0)
+  const weightedFrequency = entries.reduce(
+    (s, e) =>
+      s + (e.hasFrequency ? e.metrics.frequency * e.metrics.impressions : 0),
+    0,
+  )
+  const frequencyWeight = entries.reduce(
+    (s, e) => s + (e.hasFrequency ? e.metrics.impressions : 0),
+    0,
+  )
+  return {
+    impressions,
+    clicks,
+    spend,
+    conversions,
+    ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
+    cpc: clicks > 0 ? spend / clicks : 0,
+    cpa: conversions > 0 ? spend / conversions : 0,
+    cvr: clicks > 0 ? (conversions / clicks) * 100 : 0,
+    cpm: impressions > 0 ? (spend / impressions) * 1000 : 0,
+    frequency: frequencyWeight > 0 ? weightedFrequency / frequencyWeight : 0,
+  }
+}
+
 /** 날짜별 데이터 두 묶음을 날짜 기준으로 합친다 — 겹치는 날짜는 두 채널 값을
  * 합산하고, 한쪽에만 있는 날짜는 그대로 가져간다. */
 export function mergeByDate(
@@ -103,6 +142,30 @@ export function mergeByDate(
   }
   return Array.from(byDate.entries())
     .map(([date, metrics]) => ({ date, ...metrics }))
+    .sort((x, y) => x.date.localeCompare(y.date))
+}
+
+/** mergeByDate의 다중 소스·채널 인지 버전 — sumMetricsWeighted와 같은 이유로,
+ * hasFrequency: false인 소스는 날짜별로 합칠 때도 frequency 가중평균에서 제외한다. */
+export function mergeByDateWeighted(
+  entries: readonly {
+    byDate: readonly DateSummary[]
+    hasFrequency: boolean
+  }[],
+): DateSummary[] {
+  const byDate = new Map<
+    ISODate,
+    { metrics: MetricsSummary; hasFrequency: boolean }[]
+  >()
+  for (const entry of entries) {
+    for (const row of entry.byDate) {
+      const list = byDate.get(row.date) ?? []
+      list.push({ metrics: row, hasFrequency: entry.hasFrequency })
+      byDate.set(row.date, list)
+    }
+  }
+  return Array.from(byDate.entries())
+    .map(([date, list]) => ({ date, ...sumMetricsWeighted(list) }))
     .sort((x, y) => x.date.localeCompare(y.date))
 }
 

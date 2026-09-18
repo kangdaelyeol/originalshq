@@ -11,9 +11,9 @@
  */
 import {
   emptySeries,
-  mergeByDate,
+  mergeByDateWeighted,
   seriesFromByDate,
-  sumMetrics,
+  sumMetricsWeighted,
 } from './insight-aggregate'
 import type {
   AdsetSummary,
@@ -52,6 +52,17 @@ export interface CombinedInsight {
   byCampaign: CombinedCampaign[]
 }
 
+// 네이버 검색광고 API는 frequency(도달 기반 평균 노출 빈도) 지표 자체를 제공하지
+// 않아 항상 0으로 채워 보낸다(channel/naver/utils.ts) — 진짜 0이 아니라 "측정
+// 안 됨"이다. sumMetricsWeighted/mergeByDateWeighted가 이 표시를 보고 네이버의
+// 노출수를 frequency 가중평균 분모에서 제외한다(그대로 두면 종합 frequency가
+// 실제보다 낮게 나온다). Meta/Google은 정상 제공하므로 true.
+const HAS_FREQUENCY: Record<'meta' | 'google' | 'naver', boolean> = {
+  meta: true,
+  google: true,
+  naver: false,
+}
+
 function uniqueNames<T>(
   lists: readonly (readonly T[])[],
   nameOf: (x: T) => string,
@@ -77,10 +88,11 @@ function combineGroupedSeries(
   const naverSeries = naver ?? emptySeries()
   return {
     combined: seriesFromByDate(
-      mergeByDate(
-        mergeByDate(metaSeries.byDate, googleSeries.byDate),
-        naverSeries.byDate,
-      ),
+      mergeByDateWeighted([
+        { byDate: metaSeries.byDate, hasFrequency: HAS_FREQUENCY.meta },
+        { byDate: googleSeries.byDate, hasFrequency: HAS_FREQUENCY.google },
+        { byDate: naverSeries.byDate, hasFrequency: HAS_FREQUENCY.naver },
+      ]),
       dateStart,
       dateEnd,
     ),
@@ -169,7 +181,11 @@ export function combineChannelInsights(
 ): CombinedInsight {
   return {
     total: {
-      combined: sumMetrics(sumMetrics(meta.total, google.total), naver.total),
+      combined: sumMetricsWeighted([
+        { metrics: meta.total, hasFrequency: HAS_FREQUENCY.meta },
+        { metrics: google.total, hasFrequency: HAS_FREQUENCY.google },
+        { metrics: naver.total, hasFrequency: HAS_FREQUENCY.naver },
+      ]),
       meta: meta.total,
       google: google.total,
       naver: naver.total,
