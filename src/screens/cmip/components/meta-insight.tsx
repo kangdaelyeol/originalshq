@@ -1535,13 +1535,32 @@ export const MetaInsight = () => {
                 view={pivotView}
               />
               <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">전체 Adset</h3>
+                <h3 className="meta-insight__section-title">캠페인별 전체 adset</h3>
                 <FullListTable
                   rows={adsets.map((a) => ({
                     key: a.adsetName,
                     name: a.adsetName,
                     metrics: aggregateMetrics(a.combined.byDate),
                   }))}
+                  headLabel="Adset"
+                  emptyLabel="adset 데이터 없음"
+                />
+              </section>
+              {/* 위 표는 현재 선택된 캠페인 하나에 딸린 adset만 보여준다 — 이 표는
+                  캠페인 구분 없이 전체 캠페인의 adset을 한데 모아 보여준다. 같은
+                  이름의 adset이 서로 다른 캠페인에 있을 수 있어(행 구분은 되지만
+                  이름만으로는 어느 캠페인 소속인지 알 수 없다) 표 자체는 동일한
+                  구성(FullListTable)을 그대로 쓴다. */}
+              <section className="meta-insight__section">
+                <h3 className="meta-insight__section-title">전체 Adset</h3>
+                <FullListTable
+                  rows={campaigns.flatMap((c) =>
+                    c.adsets.map((a) => ({
+                      key: `${c.campaignName}::${a.adsetName}`,
+                      name: a.adsetName,
+                      metrics: aggregateMetrics(a.combined.byDate),
+                    })),
+                  )}
                   headLabel="Adset"
                   emptyLabel="adset 데이터 없음"
                 />
