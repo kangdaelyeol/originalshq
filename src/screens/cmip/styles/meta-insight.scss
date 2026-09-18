@@ -682,6 +682,45 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
+  // 캠페인/adset 전체 목록 표 — pivot 표와 같은 이유(토글 컬럼이 없음)로 첫
+  // 컬럼(이름)만 왼쪽 정렬로 되돌린다.
+  &__table--full-list {
+    th:first-child,
+    td:first-child {
+      text-align: left !important;
+    }
+  }
+
+  // 정렬 가능한 헤더 — 버튼이지만 th 안 다른 텍스트처럼 보이게 색/폰트를 지운다.
+  &__sort-head {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  &__sort-arrows {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 0.65;
+    font-size: 8px;
+  }
+
+  &__sort-arrow {
+    color: $color-border;
+    transition: color 120ms ease;
+
+    &.is-active {
+      color: $color-accent;
+    }
+  }
+
   &__pivot-date-head {
     text-align: left !important;
   }

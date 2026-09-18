@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
@@ -1040,6 +1040,121 @@ function PivotSummary({
   )
 }
 
+// ------------------------------------------------------------------ 캠페인/adset 전체 목록
+type SortDir = 'asc' | 'desc'
+type FullListSortKey = 'name' | MetricKey
+
+interface FullListRow {
+  key: string
+  name: string
+  metrics: MetricsSummary
+}
+
+/** 정렬 중인 컬럼에만 방향(▲/▼)을 강조 표시 — 정렬 대상이 아닌 컬럼은 둘 다 옅게 둔다. */
+function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className="meta-insight__sort-arrows">
+      <span
+        className={`meta-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
+      >
+        ▲
+      </span>
+      <span
+        className={`meta-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
+      >
+        ▼
+      </span>
+    </span>
+  )
+}
+
+/** 캠페인/adset 탭 전용 — PivotSummary(체크박스로 고른 항목만)와 달리, 선택 여부와
+ * 무관하게 "전체" 캠페인(또는 전체 adset)을 조회 기간 전체 합계 기준(전체 요약
+ * 탭과 같은 10개 지표 컬럼)으로 한 행씩 보여준다. 나열 순서 기준이 모호하지
+ * 않도록, 컬럼 헤더를 눌러 그 지표 기준 오름차순/내림차순으로 정렬한다. */
+function FullListTable({
+  rows,
+  headLabel,
+  emptyLabel,
+}: {
+  rows: readonly FullListRow[]
+  headLabel: string
+  emptyLabel: string
+}) {
+  const [sort, setSort] = useState<{ key: FullListSortKey; dir: SortDir }>({
+    key: 'name',
+    dir: 'asc',
+  })
+
+  const toggleSort = (key: FullListSortKey) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        // 처음 누르는 컬럼은 이름은 오름차순(가나다순)부터, 지표는 내림차순
+        // (가장 큰 값부터)부터 — 지표는 보통 "제일 높은 값"이 먼저 보고 싶은
+        // 경우가 많아서다.
+        : { key, dir: key === 'name' ? 'asc' : 'desc' },
+    )
+  }
+
+  const sortedRows = useMemo(() => {
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...rows].sort((a, b) => {
+      if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
+      return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
+    })
+  }, [rows, sort])
+
+  return (
+    <div className="meta-insight__table-wrap">
+      <table className="meta-insight__table meta-insight__table--full-list">
+        <thead>
+          <tr>
+            <th>
+              <button
+                type="button"
+                className="meta-insight__sort-head"
+                onClick={() => toggleSort('name')}
+              >
+                {headLabel}
+                <SortArrows active={sort.key === 'name'} dir={sort.dir} />
+              </button>
+            </th>
+            {METRIC_FIELDS.map((f) => (
+              <th key={f.key}>
+                <button
+                  type="button"
+                  className="meta-insight__sort-head"
+                  onClick={() => toggleSort(f.key)}
+                >
+                  {f.label}
+                  <SortArrows active={sort.key === f.key} dir={sort.dir} />
+                </button>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {sortedRows.length === 0 ? (
+            <tr>
+              <td colSpan={METRIC_FIELDS.length + 1}>{emptyLabel}</td>
+            </tr>
+          ) : (
+            sortedRows.map((row) => (
+              <tr key={row.key}>
+                <td>{row.name}</td>
+                {METRIC_FIELDS.map((f) => (
+                  <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
+                ))}
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export const MetaInsight = () => {
   const {
     dateStart,
@@ -1374,36 +1489,64 @@ export const MetaInsight = () => {
             />
           )}
           {resultTab === 'campaign' && (
-            <PivotSummary
-              groups={campaigns
-                .filter((c) => selectedCampaignNames.has(c.campaignName))
-                .map((c) => ({
-                  key: c.campaignName,
-                  label: c.campaignName,
-                  byDate: c.combined.byDate,
-                }))}
-              metricKeys={metricKeyList}
-              dates={canonicalDates}
-              emptyLabel="표시할 캠페인을 선택해주세요."
-              showUnit={showUnit}
-              view={pivotView}
-            />
+            <>
+              <PivotSummary
+                groups={campaigns
+                  .filter((c) => selectedCampaignNames.has(c.campaignName))
+                  .map((c) => ({
+                    key: c.campaignName,
+                    label: c.campaignName,
+                    byDate: c.combined.byDate,
+                  }))}
+                metricKeys={metricKeyList}
+                dates={canonicalDates}
+                emptyLabel="표시할 캠페인을 선택해주세요."
+                showUnit={showUnit}
+                view={pivotView}
+              />
+              <section className="meta-insight__section">
+                <h3 className="meta-insight__section-title">전체 캠페인</h3>
+                <FullListTable
+                  rows={campaigns.map((c) => ({
+                    key: c.campaignName,
+                    name: c.campaignName,
+                    metrics: aggregateMetrics(c.combined.byDate),
+                  }))}
+                  headLabel="캠페인"
+                  emptyLabel="캠페인 데이터 없음"
+                />
+              </section>
+            </>
           )}
           {resultTab === 'adset' && (
-            <PivotSummary
-              groups={adsets
-                .filter((a) => selectedAdsetNames.has(a.adsetName))
-                .map((a) => ({
-                  key: a.adsetName,
-                  label: a.adsetName,
-                  byDate: a.combined.byDate,
-                }))}
-              metricKeys={metricKeyList}
-              dates={canonicalDates}
-              emptyLabel="표시할 adset을 선택해주세요."
-              showUnit={showUnit}
-              view={pivotView}
-            />
+            <>
+              <PivotSummary
+                groups={adsets
+                  .filter((a) => selectedAdsetNames.has(a.adsetName))
+                  .map((a) => ({
+                    key: a.adsetName,
+                    label: a.adsetName,
+                    byDate: a.combined.byDate,
+                  }))}
+                metricKeys={metricKeyList}
+                dates={canonicalDates}
+                emptyLabel="표시할 adset을 선택해주세요."
+                showUnit={showUnit}
+                view={pivotView}
+              />
+              <section className="meta-insight__section">
+                <h3 className="meta-insight__section-title">전체 Adset</h3>
+                <FullListTable
+                  rows={adsets.map((a) => ({
+                    key: a.adsetName,
+                    name: a.adsetName,
+                    metrics: aggregateMetrics(a.combined.byDate),
+                  }))}
+                  headLabel="Adset"
+                  emptyLabel="adset 데이터 없음"
+                />
+              </section>
+            </>
           )}
         </>
       )}
