@@ -39,6 +39,11 @@ import {
   getGoogleAdGroupInsight,
 } from './channel/google'
 import { GetGoogleInsightParams } from './channel/google/types'
+import {
+  getNaverInsight as fetchNaverInsight,
+  debugFetchNaverRaw,
+} from './channel/naver'
+import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
 
 const corsHandler = cors({ origin: true })
 
@@ -48,6 +53,8 @@ const metaAdsId = defineSecret('META_INSIGHT_ACCESS_TOKEN')
 const googleClientId = defineSecret('GOOGLE_CLIENT_ID')
 const googleClientSecret = defineSecret('GOOGLE_CLIENT_SECRET')
 const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
+const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
+const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
 
 // Google Cloud Console의 Authorized redirect URIs에 등록된 값과 반드시 동일해야
 // 한다 — oauthCallback(토큰 교환)과 getGoogleAuthUrl(동의 화면 URL 생성) 양쪽에서
@@ -687,6 +694,85 @@ export const getGoogleAdsInsight = onRequest(
           500,
           err instanceof Error ? err.message : 'Google Ads 인사이트 조회 실패',
         )
+      }
+    })
+  },
+)
+
+/**
+ * Naver 검색광고 인사이트 조회 엔드포인트 — Meta(getAllInsights)와 같은 모양
+ * (total/byDate/byDayOfWeek/byGroupedWeek/byCampaign)을 그대로 반환한다.
+ * CUSTOMER ID는 민감정보가 아니라 상수로 고정돼 있어(channel/naver/constants),
+ * Meta처럼 dateStart/dateEnd만 받으면 된다.
+ */
+export const getNaverInsight = onRequest(
+  { secrets: [naverAccessLicense, naverSecretKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const naverRes = await fetchNaverInsight(dateStart, dateEnd, {
+          apiKey: naverAccessLicense.value(),
+          secretKey: naverSecretKey.value(),
+          customerId: NAVER_CUSTOMER_ID,
+        })
+        res.status(200).send(naverRes)
+      } catch (err) {
+        sendError(
+          res,
+          500,
+          err instanceof Error ? err.message : 'Naver 인사이트 조회 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 디버그 전용 — getNaverInsight가 빈 데이터를 반환할 때, /ncc/campaigns,
+ * /ncc/adgroups, /stats 세 응답의 원본을 그대로 보여준다. 문제 확인되면 이
+ * 엔드포인트와 channel/naver/index.ts의 debugFetchNaverRaw는 지워도 된다.
+ */
+export const debugNaverRaw = onRequest(
+  { secrets: [naverAccessLicense, naverSecretKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const raw = await debugFetchNaverRaw(dateStart, dateEnd, {
+          apiKey: naverAccessLicense.value(),
+          secretKey: naverSecretKey.value(),
+          customerId: NAVER_CUSTOMER_ID,
+        })
+        res.status(200).send(raw)
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
       }
     })
   },
