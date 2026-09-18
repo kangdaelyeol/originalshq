@@ -30,6 +30,8 @@ interface TableActions {
   handleDeviceUpdate: (rowId: string, device: Device) => void
   deleteRow: (rowId: string) => void
   registerRow: (rowId: string) => Promise<void>
+  toggleTestRow: (rowId: string) => void
+  updateTestEventCode: (rowId: string, code: string) => void
 }
 
 interface TableState {
@@ -39,6 +41,9 @@ interface TableState {
   sortDirection: SortDirection
   editingCell: EditingCell | null
   rows: Lead[]
+  /** 행마다 "테스트" 체크 여부 + test_event_code 입력값 — 등록(contactLead/
+   * purchaseLead)에 얹어 보낼 값이라 Lead 데이터와 별개로 rowId로만 관리한다. */
+  testRows: Record<string, { checked: boolean; code: string }>
 }
 
 interface TableProps {
@@ -60,10 +65,19 @@ export const Table = ({ state, actions, type }: TableProps) => {
     deleteRow,
     registerRow,
     toggleFold,
+    toggleTestRow,
+    updateTestEventCode,
   } = actions
 
-  const { allChecked, sortField, sortDirection, rows, editingCell, fold } =
-    state
+  const {
+    allChecked,
+    sortField,
+    sortDirection,
+    rows,
+    editingCell,
+    fold,
+    testRows,
+  } = state
 
   const tableLabel =
     type === 'new'
@@ -164,6 +178,11 @@ export const Table = ({ state, actions, type }: TableProps) => {
             <div className="item device">상담기기</div>
             {type !== 'new' && <div className="item price">구매금액</div>}
             {type !== 'new' && <div className="item purchased">구매시각</div>}
+            {/* 구매 완료 표엔 더 등록할 액션(등록 버튼)이 없어 테스트 체크도
+                의미가 없으므로 같이 숨긴다. */}
+            {type !== LeadState.PURCHASED && (
+              <div className="item test">테스트</div>
+            )}
           </div>
 
           {/* Table Rows Section */}
@@ -376,6 +395,48 @@ export const Table = ({ state, actions, type }: TableProps) => {
                               ? formatTime(row.purchasedAt)
                               : '등록하기'}
                           </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Test checkbox + test_event_code — 켜두면 다음 "등록"
+                        클릭 때 Meta CAPI 호출에 test_event_code가 실려 나가
+                        이벤트 관리자의 테스트 이벤트로 잡힌다. */}
+                    {type !== LeadState.PURCHASED && (
+                      <div className="item test">
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={testRows[row.id]?.checked ?? false}
+                          onClick={() => toggleTestRow(row.id)}
+                          className={[
+                            testRows[row.id]?.checked ? 'checked' : '',
+                            'check-btn',
+                          ].join(' ')}
+                        >
+                          {testRows[row.id]?.checked && (
+                            <svg viewBox="0 0 14 14" fill="none">
+                              <path
+                                pathLength={40}
+                                d="M3 7.2 5.6 10 11 4"
+                                stroke="#eeeeee"
+                                strokeWidth="1.2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeDasharray={40}
+                              />
+                            </svg>
+                          )}
+                        </button>
+                        {testRows[row.id]?.checked && (
+                          <input
+                            className="test-event-code-input"
+                            placeholder="test_event_code"
+                            value={testRows[row.id]?.code ?? ''}
+                            onChange={(e) =>
+                              updateTestEventCode(row.id, e.target.value)
+                            }
+                          />
                         )}
                       </div>
                     )}

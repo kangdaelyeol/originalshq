@@ -179,6 +179,7 @@ export const leadClient = {
   updateStateToContact: async (
     body: Record<string, unknown>,
   ): Promise<ClientResponse<Lead>> => {
+    console.log(body)
     try {
       const response = await fetch(`${API_BASE}/contactLead`, {
         method: 'POST',

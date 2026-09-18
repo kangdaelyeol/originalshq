@@ -173,6 +173,27 @@
         border-left: none;
         border-right: 1px solid variables.$table-border-color;
       }
+      &.test {
+        width: 190px;
+        gap: 8px;
+        border-left: none;
+        border-right: 1px solid variables.$table-border-color;
+      }
+    }
+
+    // 테스트 체크박스 옆 test_event_code 입력칸 — .item.editable의 input과 같은
+    // 톤을 쓰되, 체크했을 때만 나타나는 좁은 칸이라 폭/정렬만 다르게 준다.
+    .test-event-code-input {
+      all: unset;
+      box-sizing: border-box;
+      width: 110px;
+      padding: 4px 6px;
+      background-color: #229ad638;
+      border: 1px solid #229ad6;
+      border-radius: 4px;
+      color: #eeeeee;
+      font-size: 12px;
+      text-align: center;
     }
 
     .table_row {

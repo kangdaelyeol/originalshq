@@ -38,6 +38,10 @@ type SendMetaEventParams = {
   lead: Omit<Lead, 'id'>
   customData?: Record<string, unknown>
   eventTimeMs: number
+  /** Meta 이벤트 관리자에서 테스트 이벤트로 확인할 때 쓰는 코드 — 테스트
+   * 이벤트마다 값이 달라서 호출부에서 그때그때 받아온다. 최상위(data와 형제)
+   * 필드라 event 객체 안이 아니라 payload 바로 아래 넣어야 한다. */
+  testEventCode?: string
 }
 
 type SendMetaEventResult =
@@ -51,8 +55,9 @@ export const sendMetaEvent = async ({
   lead,
   customData,
   eventTimeMs,
+  testEventCode,
 }: SendMetaEventParams): Promise<SendMetaEventResult> => {
-  const eventTime = Math.floor(eventTimeMs) / 1000
+  const eventTime = Math.floor(eventTimeMs / 1000)
 
   const actionSource = getActionSource(eventTime)
 
@@ -74,6 +79,9 @@ export const sendMetaEvent = async ({
         },
       },
     ],
+    // data와 같은 레벨(최상위)에 있어야 Meta 이벤트 관리자의 테스트 이벤트로
+    // 잡힌다 — event 객체 안에 넣으면 무시된다.
+    ...(testEventCode ? { test_event_code: testEventCode } : {}),
   }
 
   const response = await fetch(

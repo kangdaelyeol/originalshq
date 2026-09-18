@@ -42,6 +42,12 @@ export const useMainViewModel = () => {
     INITIAL_CREATE_LEAD_FORM,
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // 행마다 "테스트" 체크 여부 + test_event_code 입력값 — Lead 데이터가 아니라
+  // "등록"(contactLead/purchaseLead 호출) 시 잠깐 얹어 보낼 값이라 rowId로만
+  // 따로 관리한다. 이벤트마다 코드가 달라서 직접 입력하게 한다.
+  const [testRows, setTestRows] = useState<
+    Record<string, { checked: boolean; code: string }>
+  >({})
 
   const { searchValue, deviceFilter } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
@@ -121,10 +127,18 @@ export const useMainViewModel = () => {
     let body: Record<string, unknown>
     let res: ClientResponse<Lead>
 
+    // 체크됐고 값도 채워져 있을 때만 실어 보낸다 — 체크만 하고 코드를 안 채운
+    // 경우엔 평소(실 이벤트)처럼 보낸다.
+    const testInfo = testRows[targetLead.id]
+    const testEventCodeField =
+      testInfo?.checked && testInfo.code.trim()
+        ? { test_event_code: testInfo.code.trim() }
+        : {}
+
     setLoading(true)
     switch (targetLead.state) {
       case 'new':
-        body = { id: targetLead.id }
+        body = { id: targetLead.id, ...testEventCodeField }
         res = await leadClient.updateStateToContact(body)
         if (!res.ok) {
           console.error(res.error)
@@ -139,6 +153,7 @@ export const useMainViewModel = () => {
           id: targetLead.id,
           price: targetLead.price,
           purchasedAt: targetLead.purchasedAt,
+          ...testEventCodeField,
         }
         res = await leadClient.updateStateToPurchased(body)
         if (!res.ok) {
@@ -162,6 +177,13 @@ export const useMainViewModel = () => {
     setRows((prev) =>
       prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
     )
+    // 이번 등록에 쓴 테스트 체크는 초기화 — 다음 단계(예: 상담완료→구매완료)로
+    // 넘어가면 새로 정해야 한다.
+    setTestRows((prev) => {
+      const next = { ...prev }
+      delete next[targetLead.id]
+      return next
+    })
     setSelectedRow(null)
     showToast('registered')
     setLoading(false)
@@ -213,6 +235,23 @@ export const useMainViewModel = () => {
 
   const toggleAllChecked = () => {
     setAllChecked((prev) => !prev)
+  }
+
+  const toggleTestRow = (rowId: string) => {
+    setTestRows((prev) => {
+      const current = prev[rowId]
+      return {
+        ...prev,
+        [rowId]: { checked: !current?.checked, code: current?.code ?? '' },
+      }
+    })
+  }
+
+  const updateTestEventCode = (rowId: string, code: string) => {
+    setTestRows((prev) => ({
+      ...prev,
+      [rowId]: { checked: prev[rowId]?.checked ?? true, code },
+    }))
   }
 
   const startEditing = (rowId: string, field: EditingField) => {
@@ -398,9 +437,12 @@ export const useMainViewModel = () => {
       createOpen,
       isSubmitting,
       form: createForm,
+      testRows,
     },
     actions: {
       toggleAllChecked,
+      toggleTestRow,
+      updateTestEventCode,
       startEditing,
       handleFieldChange,
       stopEditing,

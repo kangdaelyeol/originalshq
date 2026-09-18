@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { Lead } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
-import { generateExternalId } from './utils'
+import { generateExternalId, normalizeDomesticPhone } from './utils'
 import {
   hasExternalId,
   validateContactLead,
@@ -78,7 +78,9 @@ export const createLead = onRequest((request, response) => {
 
       const input = validationRes.data
 
-      const digitsOnlyPhone = input.ph.replace(/\D/g, '')
+      const digitsOnlyPhone = normalizeDomesticPhone(
+        input.ph.replace(/\D/g, ''),
+      )
 
       const leadData: Omit<Lead, 'id'> = {
         createdAt: input.createdAt,
@@ -128,7 +130,9 @@ export const createLeadFromContact = onRequest((request, response) => {
 
       const input = validationRes.data
 
-      const digitsOnlyPhone = input.ph.replace(/\D/g, '')
+      const digitsOnlyPhone = normalizeDomesticPhone(
+        input.ph.replace(/\D/g, ''),
+      )
 
       const ip =
         (request.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
@@ -185,7 +189,7 @@ export const contactLead = onRequest(
           return
         }
 
-        const { id } = validationRes.data
+        const { id, testEventCode } = validationRes.data
 
         const docRef = db.collection('lead').doc(id)
         const snapshot = await docRef.get()
@@ -216,6 +220,7 @@ export const contactLead = onRequest(
           accessToken: metaAccessToken.value(),
           eventName: 'Contact',
           lead,
+          testEventCode,
           customData: {
             currency: 'KRW',
             value: DEVICE_EXPECTED_VALUE[lead.device],
@@ -268,7 +273,7 @@ export const purchaseLead = onRequest(
           return
         }
 
-        const { id, price, purchasedAt } = validationRes.data
+        const { id, price, purchasedAt, testEventCode } = validationRes.data
 
         const docRef = db.collection('lead').doc(id)
         const snapshot = await docRef.get()
@@ -296,6 +301,7 @@ export const purchaseLead = onRequest(
           accessToken: metaAccessToken.value(),
           eventName: 'Purchase',
           lead,
+          testEventCode,
           customData: { currency: 'KRW', value: price },
           eventTimeMs: purchasedAt,
         })

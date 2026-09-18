@@ -5,6 +5,7 @@ import {
   TimestampField,
   ValidationResponse,
 } from './types'
+import { normalizeDomesticPhone } from './utils'
 
 const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device'] as const
 
@@ -51,10 +52,33 @@ export const validateCreateLead = (
   return { ok: true, data: body as CreateLeadInput }
 }
 
+/** test_event_code는 선택값 — 있으면 문자열이어야 하고, 빈 문자열은 "안 보낸
+ * 것"과 같게 취급해 undefined로 정리한다(체크박스는 켰는데 값을 안 채운 경우
+ * 대비). */
+const parseTestEventCode = (
+  body: Record<string, unknown>,
+): ValidationResponse<string | undefined> => {
+  const { test_event_code: testEventCode } = body as {
+    test_event_code?: unknown
+  }
+
+  if (testEventCode === undefined || testEventCode === null) {
+    return { ok: true, data: undefined }
+  }
+
+  if (typeof testEventCode !== 'string') {
+    return { ok: false, error: 'test_event_code must be a string' }
+  }
+
+  const trimmed = testEventCode.trim()
+  return { ok: true, data: trimmed === '' ? undefined : trimmed }
+}
+
 export const validateContactLead = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
+  testEventCode?: string
 }> => {
   const { id } = body as { id?: string }
 
@@ -62,7 +86,10 @@ export const validateContactLead = (
     return { ok: false, error: 'id is required' }
   }
 
-  return { ok: true, data: { id } }
+  const testEventCodeRes = parseTestEventCode(body)
+  if (!testEventCodeRes.ok) return testEventCodeRes
+
+  return { ok: true, data: { id, testEventCode: testEventCodeRes.data } }
 }
 
 export const valiedateUpdateLeadPhone = (
@@ -79,7 +106,7 @@ export const valiedateUpdateLeadPhone = (
     return { ok: false, error: 'ph is required' }
   }
 
-  const digitsOnlyPhone = ph.replace(/\D/g, '')
+  const digitsOnlyPhone = normalizeDomesticPhone(ph.replace(/\D/g, ''))
   if (!digitsOnlyPhone) {
     return { ok: false, error: 'ph must contain digits' }
   }
@@ -192,7 +219,12 @@ export const validateUpdateTimestamp = (
 
 export const validatePurchaseLead = (
   body: Record<string, unknown>,
-): ValidationResponse<{ id: string; price: number; purchasedAt: number }> => {
+): ValidationResponse<{
+  id: string
+  price: number
+  purchasedAt: number
+  testEventCode?: string
+}> => {
   const { id, price, purchasedAt } = body as {
     id?: string
     price?: number
@@ -211,5 +243,11 @@ export const validatePurchaseLead = (
     return { ok: false, error: 'purchasedAt must be required' }
   }
 
-  return { ok: true, data: { id, price, purchasedAt } }
+  const testEventCodeRes = parseTestEventCode(body)
+  if (!testEventCodeRes.ok) return testEventCodeRes
+
+  return {
+    ok: true,
+    data: { id, price, purchasedAt, testEventCode: testEventCodeRes.data },
+  }
 }
