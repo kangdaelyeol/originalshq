@@ -152,6 +152,12 @@ $radius-lg: 8px;
     position: relative;
   }
 
+  // 대비 표시 드롭다운 — __controls 행에 다른 컨트롤이 몇 개 뜨든(일별에서만
+  // 뜨는 날짜 축소 포함) 항상 맨 오른쪽에 붙는다.
+  &__dropdown--compare {
+    margin-left: auto;
+  }
+
   &__dropdown-trigger {
     appearance: none;
     display: inline-flex;

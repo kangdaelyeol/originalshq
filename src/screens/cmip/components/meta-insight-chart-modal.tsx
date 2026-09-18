@@ -11,6 +11,7 @@ import { METRIC_FIELDS, type MetricField } from './metric-fields'
 import {
   IndexLineChart,
   type ChartTheme,
+  type CompareMode,
   type IndexSeries,
 } from './index-line-chart'
 import { DateRangeNarrow } from './date-range-narrow'
@@ -24,6 +25,14 @@ const VIEW_OPTIONS: readonly { value: InsightView; label: string }[] = [
   { value: 'byDate', label: '일별' },
   { value: 'byDayOfWeek', label: '요일별' },
   { value: 'byGroupedWeek', label: '주차별' },
+]
+
+// "대비 표시" — 포커스(호버/범례)된 지표에 한해 그래프 위에 추가 증감 라벨을
+// 얹는다(IndexLineChart의 CompareMode 참고).
+const COMPARE_OPTIONS: readonly { value: CompareMode; label: string }[] = [
+  { value: 'off', label: '끄기' },
+  { value: 'minmax', label: '최저·최고 값 표시' },
+  { value: 'all', label: '모든 지표값 표시' },
 ]
 
 function labelOf(view: InsightView, row: MetricsSummary): string {
@@ -68,7 +77,7 @@ const MODE_LABEL: Record<MetricMode, string> = {
   bar: '막대',
 }
 
-type MenuKey = 'view' | 'metric' | 'group'
+type MenuKey = 'view' | 'metric' | 'group' | 'compare'
 
 type ChannelKey = 'combined' | 'meta' | 'google' | 'naver'
 
@@ -284,6 +293,9 @@ export const MetaInsightChartModal = ({
       )
     },
   )
+  // "대비 표시" — 포커스된(호버/범례) 지표에 한해 그래프 위 추가 증감 라벨을
+  // 켠다. 기본은 끄기.
+  const [compareMode, setCompareMode] = useState<CompareMode>('off')
   const [expanded, setExpanded] = useState(false)
   // 색이 같은 계열로 겹쳐 보일 때(채널별 명도 차이) 배경에 따라 가독성이 갈려서
   // 차트만 라이트로 바꿔 볼 수 있게 둔다 — 모달 나머지 크롬은 다크 유지.
@@ -679,6 +691,51 @@ export const MetaInsightChartModal = ({
               onChange={(start, end) => setDateNarrow({ start, end })}
             />
           )}
+
+          {/* 대비 표시 — 컨트롤 행 맨 오른쪽에 고정(margin-left:auto). 그래프에서
+              특정 지표를 호버(또는 범례 호버)하면, 여기서 고른 방식대로 그 지표
+              위에 추가 증감 라벨이 뜬다(IndexLineChart 참고). */}
+          <div className="meta-insight-chart-modal__dropdown meta-insight-chart-modal__dropdown--compare">
+            <button
+              type="button"
+              className={`meta-insight-chart-modal__dropdown-trigger${
+                openMenu === 'compare' ? ' is-open' : ''
+              }`}
+              aria-haspopup="listbox"
+              aria-expanded={openMenu === 'compare'}
+              onClick={() =>
+                setOpenMenu((m) => (m === 'compare' ? null : 'compare'))
+              }
+            >
+              대비 표시:{' '}
+              {COMPARE_OPTIONS.find((o) => o.value === compareMode)?.label}
+              <ChevronIcon />
+            </button>
+            {openMenu === 'compare' && (
+              <div
+                className="meta-insight-chart-modal__dropdown-menu"
+                role="listbox"
+              >
+                {COMPARE_OPTIONS.map((o) => (
+                  <button
+                    key={o.value}
+                    type="button"
+                    role="option"
+                    aria-selected={compareMode === o.value}
+                    className={`meta-insight-chart-modal__dropdown-item${
+                      compareMode === o.value ? ' is-selected' : ''
+                    }`}
+                    onClick={() => {
+                      setCompareMode(o.value)
+                      setOpenMenu(null)
+                    }}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div
@@ -691,6 +748,7 @@ export const MetaInsightChartModal = ({
             series={series}
             xAxisLabel={X_AXIS_LABEL[view]}
             theme={chartTheme}
+            compareMode={compareMode}
           />
         </div>
       </div>

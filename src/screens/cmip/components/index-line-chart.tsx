@@ -23,6 +23,12 @@ export interface IndexSeries {
 
 export type ChartTheme = 'dark' | 'light'
 
+/** "대비 표시" 드롭다운 — 포커스(호버/범례)된 지표에 한해 켠다.
+ * 'off': 끄기(기본). 'minmax': 그 지표의 최저·최고 값 지점에만, 최근일(마지막
+ * 유효 지점) 값 대비 증감을 표시. 'all': 그 지표의 모든 지점에 직전 지점 대비
+ * 증감을 표시. */
+export type CompareMode = 'off' | 'minmax' | 'all'
+
 interface IndexLineChartProps {
   categories: readonly string[]
   series: readonly IndexSeries[]
@@ -30,6 +36,8 @@ interface IndexLineChartProps {
   /** 배경·격자·보조 텍스트 색 테마. 기본 'dark'. 겹쳐 보이는 시리즈가 많을 때
    * 같은 색 계열의 어두운 쪽 명도가 다크 배경에 묻힐 수 있어 라이트도 지원한다. */
   theme?: ChartTheme
+  /** 기본 'off'. */
+  compareMode?: CompareMode
 }
 
 // viewBox 크기를 실제 렌더 픽셀 크기에 맞춰 1 유닛 = 1px로 둔다. 이렇게 해야 차트
@@ -86,11 +94,13 @@ type DeltaDir = 'up' | 'down' | 'flat'
 
 const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
 
-/** index 지점 값과, 그 직전 지점 대비 증감(절대값·%·방향)을 계산한다.
- * 상단 고정 요약 행과 호버 툴팁이 이 계산을 공유한다. */
+/** index 지점 값과, refIndex 지점 값 대비 증감(절대값·%·방향)을 계산한다.
+ * refIndex가 null이면(비교 대상 없음) delta도 전부 null. 호버 툴팁(직전 지점 대비)과
+ * "대비 표시" on-chart 라벨(직전 지점 대비/최근일 대비)이 이 계산을 공유한다. */
 function computeDelta(
   raw: readonly number[],
   index: number,
+  refIndex: number | null,
 ): {
   rawNow: number | null
   deltaRaw: number | null
@@ -98,15 +108,47 @@ function computeDelta(
   dir: DeltaDir
 } {
   const rawNow = raw[index] ?? null
-  const rawPrev = index > 0 ? (raw[index - 1] ?? null) : null
-  const deltaRaw = rawNow != null && rawPrev != null ? rawNow - rawPrev : null
+  const rawRef = refIndex != null ? (raw[refIndex] ?? null) : null
+  const deltaRaw = rawNow != null && rawRef != null ? rawNow - rawRef : null
   const deltaPct =
-    deltaRaw != null && rawPrev != null && rawPrev !== 0
-      ? (deltaRaw / Math.abs(rawPrev)) * 100
+    deltaRaw != null && rawRef != null && rawRef !== 0
+      ? (deltaRaw / Math.abs(rawRef)) * 100
       : null
   const dir: DeltaDir =
     deltaRaw == null || deltaRaw === 0 ? 'flat' : deltaRaw > 0 ? 'up' : 'down'
   return { rawNow, deltaRaw, deltaPct, dir }
+}
+
+/** raw에서 값이 있는(null이 아닌) 마지막 지점의 인덱스 — "최근일" 기준점. */
+function lastValidIndex(raw: readonly (number | null)[]): number | null {
+  for (let i = raw.length - 1; i >= 0; i--) {
+    if (raw[i] != null) return i
+  }
+  return null
+}
+
+/** raw에서 값이 최소/최대인 지점의 인덱스(각각 첫 등장 기준) — "대비 표시"의
+ * 최저·최고 값 표시 모드가 어느 점에 라벨을 붙일지 고르는 데 쓴다. */
+function minMaxIndices(raw: readonly (number | null)[]): {
+  minIndex: number | null
+  maxIndex: number | null
+} {
+  let minIndex: number | null = null
+  let maxIndex: number | null = null
+  let minV = Infinity
+  let maxV = -Infinity
+  raw.forEach((v, i) => {
+    if (v == null) return
+    if (v < minV) {
+      minV = v
+      minIndex = i
+    }
+    if (v > maxV) {
+      maxV = v
+      maxIndex = i
+    }
+  })
+  return { minIndex, maxIndex }
 }
 
 /** roughStep 이상인 가장 가까운 "깔끔한" 스텝(1/2/5 × 10^n). */
@@ -173,6 +215,7 @@ export const IndexLineChart = ({
   series,
   xAxisLabel,
   theme = 'dark',
+  compareMode = 'off',
 }: IndexLineChartProps) => {
   const {
     surface: SURFACE,
@@ -567,6 +610,73 @@ export const IndexLineChart = ({
                 })
               })}
 
+              {/* 대비 표시 — 포커스(호버/범례)된 지표가 있고 compareMode가 켜져 있을 때만,
+                  그 지표에 한해 값 라벨 옆에 추가로 증감을 얹는다.
+                  - 'minmax': 최저·최고 지점에만, 최근일(마지막 유효 지점) 대비.
+                  - 'all': 모든 지점에, 직전 지점 대비(다른 표의 "대비 표시"와 같은 기준). */}
+              {focused != null &&
+                compareMode !== 'off' &&
+                (() => {
+                  const isBar = focused.type === 'bar'
+                  const si = prepared.findIndex((p) => p.key === focused.key)
+                  const lastIdx = lastValidIndex(focused.raw)
+                  const targetIndices: number[] =
+                    compareMode === 'all'
+                      ? focused.raw
+                          .map((v, i) => (v == null ? null : i))
+                          .filter((i): i is number => i != null)
+                      : Array.from(
+                          new Set(
+                            Object.values(minMaxIndices(focused.raw)).filter(
+                              (i): i is number => i != null,
+                            ),
+                          ),
+                        )
+
+                  return targetIndices.map((i) => {
+                    const refIndex =
+                      compareMode === 'all' ? (i > 0 ? i - 1 : null) : lastIdx
+                    if (refIndex == null || refIndex === i) return null
+                    const v = focused.raw[i]
+                    if (v == null) return null
+                    const { deltaRaw, deltaPct, dir } = computeDelta(
+                      focused.raw,
+                      i,
+                      refIndex,
+                    )
+                    if (deltaRaw == null) return null
+
+                    const y = yIn(focused.range, v)
+                    const cx = isBar ? barCenterX(focused.key, i) : xCenter(i)
+                    // 값 라벨(above면 y-9/-5, below면 y+16)과 안 겹치도록 한 칸 더 띄운다.
+                    const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
+                    const labelY = above
+                      ? isBar
+                        ? y - 18
+                        : y - 22
+                      : y + 29
+
+                    return (
+                      <text
+                        key={`compare-${focused.key}-${i}`}
+                        x={cx}
+                        y={labelY}
+                        textAnchor="middle"
+                        fontSize={11}
+                        fontWeight={700}
+                        fill={DELTA_COLOR[dir]}
+                        stroke={SURFACE}
+                        strokeWidth={3}
+                        paintOrder="stroke"
+                      >
+                        {DELTA_ARROW[dir]} {focused.formatCompact(Math.abs(deltaRaw))}
+                        {deltaPct != null &&
+                          ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
+                      </text>
+                    )
+                  })
+                })()}
+
               {/* 크로스헤어 */}
               {hover != null && (
                 <line
@@ -602,6 +712,7 @@ export const IndexLineChart = ({
                   const { rawNow, deltaRaw, deltaPct, dir } = computeDelta(
                     s.raw,
                     hover.index,
+                    hover.index > 0 ? hover.index - 1 : null,
                   )
 
                   return (
