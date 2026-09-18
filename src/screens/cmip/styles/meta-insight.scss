@@ -391,6 +391,60 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     height: 13px;
   }
 
+  // 지표 컬럼 헤더에 붙는 "?" — 채널마다 지원 범위가 다른 지표(현재 frequency)에
+  // 대한 설명을 호버로 보여준다. 표 헤더(th)는 기본이 오른쪽 정렬이라
+  // inline-flex로 라벨과 나란히 두면 그 정렬을 그대로 따라간다.
+  &__metric-head {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  &__info {
+    position: relative;
+    display: inline-flex;
+    color: $color-muted;
+    cursor: help;
+
+    &:hover &-tooltip,
+    &:focus-visible &-tooltip {
+      opacity: 1;
+      visibility: visible;
+    }
+  }
+
+  &__info-icon {
+    flex: none;
+    width: 13px;
+    height: 13px;
+  }
+
+  // 컬럼이 표 맨 오른쪽(frequency는 지표 중 마지막 컬럼)이라 오른쪽으로 열면
+  // 표 가로 스크롤 영역 밖으로 잘린다 — 아이콘 오른쪽 끝에 맞춰(right: 0)
+  // 왼쪽으로 펼친다. 헤더 아래로 여는 이유도 같다(표 자체가 세로로 길어서
+  // 위로 열면 __table-wrap 위쪽 경계에 잘리기 쉽다).
+  &__info-tooltip {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 5;
+    width: 240px;
+    padding: 8px 10px;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+    border: 1px solid $color-border;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+    color: $color-text;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    white-space: normal;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 120ms ease;
+  }
+
   &__kpi {
     display: flex;
     flex-direction: column;

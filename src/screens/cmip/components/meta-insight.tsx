@@ -178,6 +178,55 @@ function CheckIcon() {
   )
 }
 
+function InfoIcon() {
+  return (
+    <svg
+      className="meta-insight__info-icon"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth={1.3} />
+      <path
+        d="M8 7.2v4"
+        stroke="currentColor"
+        strokeWidth={1.3}
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="4.8" r="0.9" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** 지표 컬럼 헤더 라벨 — field.note가 있으면(현재 frequency만) 옆에 "?" 아이콘을
+ * 달아, 호버(또는 포커스, 키보드 접근성)하면 설명이 뜬다. 채널마다 그 지표를
+ * 지원하는 범위가 달라(예: 네이버는 frequency 자체가 없고, Google은 캠페인
+ * 단위에만 있음) 값만 보고는 헷갈릴 수 있는 지표를 위한 것 — 표 헤더 여러 곳
+ * (전체 요약/캠페인·adset 교차표/전체 목록)이 이 컴포넌트를 공유한다.
+ * label을 넘기면 field.label 대신 그걸 쓴다(단위가 붙은 "Frequency(회)" 같은
+ * 표시용 텍스트를 쓰면서 note는 그대로 field 기준으로 가져오는 경우). */
+function MetricHeaderLabel({
+  field,
+  label,
+}: {
+  field: MetricField
+  label?: string
+}) {
+  const text = label ?? field.label
+  if (!field.note) return <>{text}</>
+  return (
+    <span className="meta-insight__metric-head">
+      {text}
+      <span className="meta-insight__info" tabIndex={0}>
+        <InfoIcon />
+        <span className="meta-insight__info-tooltip" role="tooltip">
+          {field.note}
+        </span>
+      </span>
+    </span>
+  )
+}
+
 function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
   return (
     <div className="meta-insight__summary-grid">
@@ -305,7 +354,9 @@ function MetricsTable<T extends MetricsSummary>({
             />
             <th>{headLabel}</th>
             {METRIC_FIELDS.map((f) => (
-              <th key={f.key}>{f.label}</th>
+              <th key={f.key}>
+                <MetricHeaderLabel field={f} />
+              </th>
             ))}
           </tr>
         </thead>
@@ -977,7 +1028,10 @@ function PivotSummary({
                     key={`${g.key}-${f.key}`}
                     className="meta-insight__pivot-metric-head"
                   >
-                    {showUnit ? `${f.label}(${f.unit})` : f.label}
+                    <MetricHeaderLabel
+                      field={f}
+                      label={showUnit ? `${f.label}(${f.unit})` : undefined}
+                    />
                   </th>
                 )),
               )}
@@ -1130,6 +1184,16 @@ function FullListTable({
                   {f.label}
                   <SortArrows active={sort.key === f.key} dir={sort.dir} />
                 </button>
+                {/* 정렬 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이
+                    정렬 토글도 같이 눌러버린다. */}
+                {f.note && (
+                  <span className="meta-insight__info" tabIndex={0}>
+                    <InfoIcon />
+                    <span className="meta-insight__info-tooltip" role="tooltip">
+                      {f.note}
+                    </span>
+                  </span>
+                )}
               </th>
             ))}
           </tr>

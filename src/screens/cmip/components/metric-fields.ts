@@ -20,6 +20,9 @@ export interface MetricField {
    * 나머지 2개(CPM/Frequency)는 그 8개와 구분되도록 고른 보조 색상.
    */
   color: string
+  /** 있으면 표 컬럼 헤더에 "?" 아이콘을 같이 달아 호버 시 보여준다 — 채널마다
+   * 지원 범위가 달라 값만으로는 헷갈릴 수 있는 지표에 쓴다(현재는 frequency만). */
+  note?: string
 }
 
 const num = (v: number): string => v.toLocaleString()
@@ -35,6 +38,17 @@ const num2 = (v: number): string =>
   })
 const won2 = (v: number): string => `${num2(v)}원`
 const pct2 = (v: number): string => `${num2(v)}%`
+
+// conversions 전용 — Google은 전환 귀속(attribution) 모델 때문에 원본 값 자체가
+// 소수(예: 데이터 기반 귀속이 전환 1건을 여러 클릭에 나눠 배분)라 반올림하지
+// 않고 그대로 보여주는데, Meta/Naver(항상 정수)와 자릿수가 들쭉날쭉하면 표에서
+// 채널을 오갈 때 읽기 불편하다. 그래서 모든 채널이 소수 셋째 자리까지 고정
+// 표기하도록 맞춘다(정수 채널은 .000으로 채워짐) — 값 자체(집계·합산)는 그대로.
+const num3 = (v: number): string =>
+  v.toLocaleString(undefined, {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3,
+  })
 
 export const METRIC_FIELDS: readonly MetricField[] = [
   {
@@ -64,8 +78,8 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   {
     key: 'conversions',
     label: 'Conversions',
-    format: num,
-    formatCompact: num,
+    format: num3,
+    formatCompact: num3,
     unit: '건',
     color: '#c98500',
   },
@@ -116,5 +130,6 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2,
     unit: '회',
     color: '#b98d5e',
+    note: '네이버는 frequency 지표를 제공하지 않아 항상 0으로 표시됩니다. Google은 캠페인 단위 데이터에서만 실제 값을 제공하고, adset(광고그룹) 단위에서는 제공하지 않아 0으로 표시됩니다.',
   },
 ]
