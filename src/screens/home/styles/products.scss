@@ -1,4 +1,5 @@
 @use './variables.scss';
+@use './section-header.scss';
 
 /* ===================================
    Products Section
@@ -41,33 +42,35 @@
 }
 
 .product-card.featured {
-  border-color: rgba(255, 107, 53, 0.3);
-  background: rgba(255, 107, 53, 0.05);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .product-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
 }
 
+// 출시 완료 — 꽉 찬 흰 배경으로 가장 강조.
 .product-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: rgba(0, 255, 136, 0.1);
-  border: 1px solid rgba(0, 255, 136, 0.3);
+  background: #ffffff;
+  border: 1px solid #ffffff;
   border-radius: 50px;
   font-size: 12px;
   font-weight: 600;
-  color: #00ff88;
+  color: #000000;
   margin-bottom: 24px;
 }
 
+// 개발중 — 테두리만 있는 고스트 스타일로 한 단계 덜 강조.
 .product-badge.in-dev {
-  background: rgba(0, 217, 255, 0.1);
-  border-color: rgba(0, 217, 255, 0.3);
-  color: variables.$secondary-color;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.3);
+  color: variables.$text-secondary;
 }
 
 .product-icon {
@@ -87,7 +90,7 @@
 
 .product-card:hover .product-icon {
   background: variables.$gradient-primary;
-  color: white;
+  color: #000000;
   transform: scale(1.1) rotate(5deg);
 }
 

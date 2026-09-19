@@ -12,13 +12,13 @@
   background: variables.$gradient-primary;
   border: none;
   border-radius: 50%;
-  color: white;
+  color: #000000;
   font-size: 20px;
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
   transition: variables.$transition-smooth;
-  box-shadow: 0 4px 20px rgba(255, 107, 53, 0.3);
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
   z-index: 999;
 }
 
@@ -29,5 +29,5 @@
 
 .back-to-top:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(255, 107, 53, 0.5);
+  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.35);
 }

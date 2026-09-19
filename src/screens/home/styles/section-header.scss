@@ -1,0 +1,47 @@
+@use './variables.scss';
+
+/* ===================================
+   섹션 공용 헤더 — about/products/contact 세 섹션이 전부
+   .section-header > .section-badge + .section-title(.gradient-text 포함)
+   구조를 쓰는데, 정작 이 클래스들의 스타일이 어디에도 정의돼 있지 않아서
+   지금까지 브라우저 기본 스타일(꾸밈 없는 글자)로만 보였다 — 그게 화면마다
+   글자·레이아웃이 들쭉날쭉해 보이던 원인 중 하나. 세 섹션이 공유하도록
+   여기 한 곳에 정의한다.
+   =================================== */
+.section-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 64px;
+}
+
+.section-badge {
+  display: inline-block;
+  padding: 6px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: variables.$text-secondary;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: -0.5px;
+  color: variables.$text-primary;
+}
+
+/* 그라디언트였던 강조 텍스트 — 색을 빼고 흰색→회색으로, 그러데이션 질감은
+   그대로 유지해서 제목 안에서 시선이 자연스럽게 머무는 지점을 만든다. */
+.gradient-text {
+  background: variables.$gradient-primary;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

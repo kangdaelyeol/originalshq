@@ -1,5 +1,10 @@
+@use './variables.scss';
+
 /* ===================================
    Navigation Bar
+   원래 밝은 배경 기준(검은 글자·흰 드롭다운)으로 짜여 있던 걸, 페이지 전체가
+   검정 배경으로 바뀌면서 로고·글자가 검정 위에 검정으로 겹쳐 안 보이던 문제를
+   포함해 전체를 그레이스케일(흰 글자/회색 보조)로 다시 잡는다.
    =================================== */
 .originals-header {
   position: fixed;
@@ -7,12 +12,16 @@
   left: 0;
   width: 100%;
   z-index: 1000;
-  transition: var(--transition-smooth);
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  // 예전엔 정의된 적 없는 CSS 커스텀 프로퍼티(--transition-smooth)를 참조하고
+  // 있어서 transition이 아예 동작하지 않았다 — 다른 곳처럼 scss 변수로 고친다.
+  transition: variables.$transition-smooth;
+  border-bottom: 1px solid transparent;
+
   &.scrolled {
+    background: rgba(0, 0, 0, 0.72);
     backdrop-filter: blur(12px);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-    border-color: none;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    border-bottom-color: rgba(255, 255, 255, 0.08);
     .text__container {
       animation: fade-out 0.2s both;
     }
@@ -25,13 +34,15 @@
 
 .originals-header .wrapper {
   width: 100%;
-  max-width: 1200px;
+  max-width: 1280px;
+  margin: 0 auto;
   height: 70px;
   padding: 0 30px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   transition: all 0.2s ease;
+  box-sizing: border-box;
 
   .logo__container {
     display: flex;
@@ -45,14 +56,19 @@
       align-items: flex-start;
       gap: 5px;
 
+      // logo_text/logo_caption 원본이 검정/짙은 회색 글자라 검정 헤더 위에서
+      // 안 보였다 — invert로 흰색이 되게 한다(심볼은 자체 그라디언트라 그대로 둔다).
+      .logo-caption,
+      .logo-text {
+        filter: brightness(0) invert(1);
+        animation: fade-in 0.2s both;
+      }
       .logo-caption {
         margin-top: 3px;
         height: 7px;
-        animation: fade-in 0.2s both;
       }
       .logo-text {
         height: 18px;
-        animation: fade-in 0.2s both;
       }
     }
   }
@@ -63,9 +79,11 @@
     .link {
       font-size: 15px;
       font-weight: 500;
+      color: variables.$text-secondary;
       position: relative;
       padding: 8px 0;
-      transition: var(--transition-smooth);
+      transition: variables.$transition-smooth;
+      text-decoration: none;
       &::after {
         content: '';
         position: absolute;
@@ -73,8 +91,12 @@
         left: 0;
         width: 0;
         height: 1px;
-        background: black;
-        transition: var(--transition-smooth);
+        background: variables.$text-primary;
+        transition: variables.$transition-smooth;
+      }
+
+      &:hover {
+        color: variables.$text-primary;
       }
 
       &:hover::after {
@@ -93,9 +115,9 @@
   span {
     width: 28px;
     height: 3px;
-    background: black;
+    background: variables.$text-primary;
     border-radius: 2px;
-    transition: var(--transition-smooth);
+    transition: variables.$transition-smooth;
   }
 
   &.active span:nth-child(2) {
@@ -114,7 +136,8 @@
   padding: 10px 30px;
   top: 70px;
   left: 0;
-  background-color: white;
+  background-color: #000000;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   width: 100vw;
   height: calc(100vh - 70px);
   position: absolute;
@@ -125,11 +148,12 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: variables.$text-primary;
     transition: all 0.2s ease;
     font-size: 20px;
     font-weight: 500;
     &:hover {
-      color: #555;
+      color: variables.$text-secondary;
     }
     .icon {
       opacity: 0;

@@ -30,22 +30,27 @@
     line-height: 1.1;
     margin-bottom: 24px;
     letter-spacing: -1px;
+    color: variables.$text-primary;
   }
 
   .badge {
     display: inline-flex;
     align-items: center;
     gap: 10px;
+    padding: 6px 18px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.04);
     font-size: 14px;
     font-weight: 500;
-    color: #222;
+    color: variables.$text-secondary;
     margin-bottom: 20px;
     backdrop-filter: blur(10px);
   }
   .subtitle {
     font-size: clamp(18px, 3vw, 24px);
     font-weight: 500;
-    color: #222;
+    color: variables.$text-secondary;
     margin-bottom: 20px;
   }
   .cta {
@@ -66,21 +71,31 @@
     border-radius: 5px;
     cursor: pointer;
     text-decoration: none;
+    transition: variables.$transition-smooth;
   }
 
+  // 주요 CTA — 꽉 찬 흰 배경으로 가장 눈에 띄게.
   .btn-primary {
-    color: #222;
-    border: 1px solid #222;
+    color: #000000;
+    background: variables.$text-primary;
+    border: 1px solid variables.$text-primary;
   }
 
+  .btn-primary:hover {
+    background: variables.$text-secondary;
+    border-color: variables.$text-secondary;
+  }
+
+  // 보조 CTA — 테두리만 있는 고스트 스타일.
   .btn-secondary {
-    color: black;
-    border: 1px solid #222;
+    color: variables.$text-primary;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
   }
 
-  .btn:hover {
-    color: #777;
-    border-color: #777;
+  .btn-secondary:hover {
+    border-color: variables.$text-primary;
+    background: rgba(255, 255, 255, 0.06);
   }
 
   .logo-1 {

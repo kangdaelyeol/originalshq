@@ -1,24 +1,29 @@
 /* ===================================
    CSS Variables & Reset
+   블랙 + 그레이스케일 팔레트 — 예전엔 오렌지/시안 컬러 그라디언트를 썼지만,
+   화면 전체를 하나의 톤(검정 배경 + 흰색/회색 글자)으로 다듬는다. 변수 이름은
+   그대로 두고 값만 바꿔서, 이 변수들을 쓰는 다른 scss 파일은 손대지 않아도
+   자동으로 같이 바뀐다.
    =================================== */
 /* Colors */
-$primary-color: #ff6b35;
-$secondary-color: #00d9ff;
-$accent-color: #ffb627;
-$dark-bg: #0a0e27;
-$dark-secondary: #141b3d;
-$dark-tertiary: #1e2749;
+$primary-color: #ffffff;
+$secondary-color: #a3a3a3;
+$accent-color: #d4d4d4;
+$dark-bg: #000000;
+$dark-secondary: #030303;
+$dark-tertiary: #0a0a0a;
 $text-primary: #ffffff;
-$text-secondary: #b8c5d6;
-$text-muted: #7a8ba3;
+$text-secondary: #b3b3b3;
+$text-muted: #7a7a7a;
 
-/* Gradients */
-$gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ffb627 100%);
-$gradient-secondary: linear-gradient(135deg, #00d9ff 0%, #0099ff 100%);
+/* Gradients — 흰색→회색 톤으로, 강조가 필요한 곳(아이콘 배지, 로고, 큰 타이틀
+   일부)에 여전히 입체감을 주되 색상 자체는 더하지 않는다. */
+$gradient-primary: linear-gradient(135deg, #ffffff 0%, #9a9a9a 100%);
+$gradient-secondary: linear-gradient(135deg, #d4d4d4 0%, #8a8a8a 100%);
 $gradient-dark: linear-gradient(
   180deg,
-  rgba(10, 14, 39, 0.95) 0%,
-  rgba(20, 27, 61, 0.98) 100%
+  rgba(0, 0, 0, 0.95) 0%,
+  rgba(0, 0, 0, 0.98) 100%
 );
 
 /* Spacing */
@@ -30,7 +35,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 $transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
 /* Shadows */
-$shadow-small: 0 2px 8px rgba(0, 0, 0, 0.1);
-$shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.2);
-$shadow-large: 0 8px 32px rgba(0, 0, 0, 0.3);
-$shadow-glow: 0 0 30px rgba(255, 107, 53, 0.3);
+$shadow-small: 0 2px 8px rgba(0, 0, 0, 0.3);
+$shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
+$shadow-large: 0 8px 32px rgba(0, 0, 0, 0.5);
+$shadow-glow: 0 0 30px rgba(255, 255, 255, 0.15);

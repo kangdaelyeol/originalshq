@@ -1,4 +1,8 @@
 .home {
+  // 콘텐츠가 뷰포트보다 짧아도(또는 모바일 오버스크롤 시) 흰 배경이 비치지
+  // 않도록 최소 높이를 뷰포트 전체로 강제한다.
+  min-height: 100vh;
+  min-height: 100dvh;
   background-color: black;
 }
 
@@ -12,6 +16,10 @@
   line-height: 1.6;
   overflow-x: hidden;
   padding: 50px;
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+
   /* ===================================
      Animation Classes
      =================================== */

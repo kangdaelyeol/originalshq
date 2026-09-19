@@ -65,12 +65,12 @@ export const Header = () => {
                 className="hamburger__link"
               >
                 {config.label}
-                <ArrowRight size={25} color={'#555'} className="icon" />
+                <ArrowRight size={25} color={'#ffffff'} className="icon" />
               </HashLink>
             ))}
             <Link className="hamburger__link" to="/privacy">
               Privacy
-              <ArrowRight size={25} color={'#555'} className="icon" />
+              <ArrowRight size={25} color={'#ffffff'} className="icon" />
             </Link>
           </div>
         </div>
