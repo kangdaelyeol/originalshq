@@ -644,7 +644,10 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
       td:first-child,
       td:nth-child(2) {
-        background: $color-surface;
+        background-color: $color-td-first;
+      }
+      td:first-child {
+        background-color: $color-td-first;
       }
     }
   }

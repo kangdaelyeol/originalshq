@@ -311,6 +311,63 @@ function MetricCell({
   )
 }
 
+type SortDir = 'asc' | 'desc'
+
+/** 정렬 중인 컬럼에만 방향(▲/▼)을 강조 표시 — 정렬 대상이 아닌 컬럼은 둘 다 옅게
+ * 둔다. 전체 요약 표(MetricsTable)와 전체 목록 표(FullListTable) 둘 다 공유. */
+function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className="meta-insight__sort-arrows">
+      <span
+        className={`meta-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
+      >
+        ▲
+      </span>
+      <span
+        className={`meta-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
+      >
+        ▼
+      </span>
+    </span>
+  )
+}
+
+/** 정렬 가능한 지표 컬럼 헤더 — 정렬 버튼(라벨+화살표) 옆에, note가 있으면(현재
+ * frequency만) "?" 아이콘을 버튼 밖에 따로 둔다(버튼 안에 넣으면 "?" 클릭이
+ * 정렬 토글까지 같이 눌러버린다). MetricsTable/FullListTable 둘 다 공유. */
+function SortableMetricHeader({
+  field,
+  active,
+  dir,
+  onSort,
+}: {
+  field: MetricField
+  active: boolean
+  dir: SortDir
+  onSort: () => void
+}) {
+  return (
+    <>
+      <button
+        type="button"
+        className="meta-insight__sort-head"
+        onClick={onSort}
+      >
+        {field.label}
+        <SortArrows active={active} dir={dir} />
+      </button>
+      {field.note && (
+        <span className="meta-insight__info" tabIndex={0}>
+          <InfoIcon />
+          <span className="meta-insight__info-tooltip" role="tooltip">
+            {field.note}
+          </span>
+        </span>
+      )}
+    </>
+  )
+}
+
 function MetricsTable<T extends MetricsSummary>({
   rows,
   rowKey,
@@ -333,6 +390,38 @@ function MetricsTable<T extends MetricsSummary>({
   showCompare: boolean
 }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
+  // 붙인다. 다만 라벨(날짜/요일/기간) 컬럼은 문자열 그대로 정렬하면 요일("월"~
+  // "일")·기간("9/1~9/7")처럼 원래 순서가 사전순과 달라 깨지므로, rows(호출부가
+  // 이미 올바른 순서로 넘겨줌) 그대로/뒤집기로만 다룬다.
+  const [sort, setSort] = useState<{ key: 'label' | MetricKey; dir: SortDir }>(
+    { key: 'label', dir: 'asc' },
+  )
+
+  const toggleSort = (key: 'label' | MetricKey) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: key === 'label' ? 'asc' : 'desc' },
+    )
+  }
+
+  // "대비 표시"(바로 앞 지점 대비)는 정렬로 화면상 순서가 바뀌어도 항상 원본
+  // (시간순) 기준 직전 값을 봐야 의미가 있다 — 그 행이 원본 rows에서 실제로
+  // 몇 번째였는지 미리 룩업 테이블로 만들어둔다.
+  const originalIndexByKey = useMemo(
+    () => new Map(rows.map((row, i) => [rowKey(row), i] as const)),
+    [rows, rowKey],
+  )
+
+  const displayRows = useMemo(() => {
+    if (sort.key === 'label') {
+      return sort.dir === 'asc' ? rows : [...rows].reverse()
+    }
+    const dir = sort.dir === 'asc' ? 1 : -1
+    const key = sort.key
+    return [...rows].sort((a, b) => (a[key] - b[key]) * dir)
+  }, [rows, sort])
 
   const toggle = (key: string) => {
     setExpanded((prev) => {
@@ -352,30 +441,45 @@ function MetricsTable<T extends MetricsSummary>({
               className="meta-insight__table-toggle-head"
               aria-hidden="true"
             />
-            <th>{headLabel}</th>
+            <th>
+              <button
+                type="button"
+                className="meta-insight__sort-head"
+                onClick={() => toggleSort('label')}
+              >
+                {headLabel}
+                <SortArrows active={sort.key === 'label'} dir={sort.dir} />
+              </button>
+            </th>
             {METRIC_FIELDS.map((f) => (
               <th key={f.key}>
-                <MetricHeaderLabel field={f} />
+                <SortableMetricHeader
+                  field={f}
+                  active={sort.key === f.key}
+                  dir={sort.dir}
+                  onSort={() => toggleSort(f.key)}
+                />
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 ? (
+          {displayRows.length === 0 ? (
             <tr>
               <td colSpan={METRIC_FIELDS.length + 2}>데이터 없음</td>
             </tr>
           ) : (
-            rows.map((row, rowIndex) => {
+            displayRows.map((row) => {
               const key = rowKey(row)
               const isOpen = expanded.has(key)
               const breakdown = isOpen ? getChannelBreakdown(row) : null
-              // 채널별 펼침 행도 메인 행과 같은 방식(표에 나열된 순서상 바로 앞
-              // 행)으로 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니
-              // 이전 행을 같은 방식으로 한 번 더 분해해둔다.
+              const originalIndex = originalIndexByKey.get(key) ?? 0
+              // 채널별 펼침 행도 메인 행과 같은 방식(원본 순서상 바로 앞 행)으로
+              // 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니 이전
+              // 행을 같은 방식으로 한 번 더 분해해둔다.
               const prevBreakdown =
-                isOpen && showCompare && rowIndex > 0
-                  ? getChannelBreakdown(rows[rowIndex - 1])
+                isOpen && showCompare && originalIndex > 0
+                  ? getChannelBreakdown(rows[originalIndex - 1])
                   : null
               return (
                 <Fragment key={key}>
@@ -406,7 +510,9 @@ function MetricsTable<T extends MetricsSummary>({
                         <MetricCell
                           value={row[f.key]}
                           prevValue={
-                            rowIndex > 0 ? rows[rowIndex - 1][f.key] : null
+                            originalIndex > 0
+                              ? rows[originalIndex - 1][f.key]
+                              : null
                           }
                           format={f.formatCompact}
                           showCompare={showCompare}
@@ -1095,31 +1201,12 @@ function PivotSummary({
 }
 
 // ------------------------------------------------------------------ 캠페인/adset 전체 목록
-type SortDir = 'asc' | 'desc'
 type FullListSortKey = 'name' | MetricKey
 
 interface FullListRow {
   key: string
   name: string
   metrics: MetricsSummary
-}
-
-/** 정렬 중인 컬럼에만 방향(▲/▼)을 강조 표시 — 정렬 대상이 아닌 컬럼은 둘 다 옅게 둔다. */
-function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
-  return (
-    <span className="meta-insight__sort-arrows">
-      <span
-        className={`meta-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
-      >
-        ▲
-      </span>
-      <span
-        className={`meta-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
-      >
-        ▼
-      </span>
-    </span>
-  )
 }
 
 /** 캠페인/adset 탭 전용 — PivotSummary(체크박스로 고른 항목만)와 달리, 선택 여부와
@@ -1176,24 +1263,12 @@ function FullListTable({
             </th>
             {METRIC_FIELDS.map((f) => (
               <th key={f.key}>
-                <button
-                  type="button"
-                  className="meta-insight__sort-head"
-                  onClick={() => toggleSort(f.key)}
-                >
-                  {f.label}
-                  <SortArrows active={sort.key === f.key} dir={sort.dir} />
-                </button>
-                {/* 정렬 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이
-                    정렬 토글도 같이 눌러버린다. */}
-                {f.note && (
-                  <span className="meta-insight__info" tabIndex={0}>
-                    <InfoIcon />
-                    <span className="meta-insight__info-tooltip" role="tooltip">
-                      {f.note}
-                    </span>
-                  </span>
-                )}
+                <SortableMetricHeader
+                  field={f}
+                  active={sort.key === f.key}
+                  dir={sort.dir}
+                  onSort={() => toggleSort(f.key)}
+                />
               </th>
             ))}
           </tr>
