@@ -1,5 +1,10 @@
 import { useState } from 'react'
-import { MetaInsight, ReportGenerator, GoogleTestPanel } from './components'
+import {
+  MetaInsight,
+  ReportGenerator,
+  GoogleTestPanel,
+  Header,
+} from './components'
 import './styles/cmip.scss'
 
 type CmipTab = 'insight' | 'report' | 'google-test'
@@ -16,27 +21,30 @@ export default function CmipScreen() {
   const [tab, setTab] = useState<CmipTab>('insight')
 
   return (
-    <div className="cmip">
-      <nav className="cmip__tabs" role="tablist" aria-label="cmip">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            className={`cmip__tab${tab === t.id ? ' is-active' : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
+    <>
+      <Header />
+      <div className="cmip">
+        <nav className="cmip__tabs" role="tablist" aria-label="cmip">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.id}
+              className={`cmip__tab${tab === t.id ? ' is-active' : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-      <div className="cmip__panel" role="tabpanel">
-        {tab === 'insight' && <MetaInsight />}
-        {tab === 'report' && <ReportGenerator />}
-        {tab === 'google-test' && <GoogleTestPanel />}
+        <div className="cmip__panel" role="tabpanel">
+          {tab === 'insight' && <MetaInsight />}
+          {tab === 'report' && <ReportGenerator />}
+          {tab === 'google-test' && <GoogleTestPanel />}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
