@@ -29,6 +29,12 @@ body:has(.cmip),
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
+  // 모바일 — 가로 padding이 40px이면 좁은 화면에서 콘텐츠 영역이 그만큼
+  // 줄어들어(표·차트 등) 답답해 보인다. 세로는 그대로 두고 가로만 줄인다.
+  @media (max-width: 640px) {
+    padding: 24px 16px;
+  }
+
   &__tabs {
     display: flex;
     gap: 4px;
