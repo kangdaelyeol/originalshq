@@ -7,6 +7,7 @@ $color-border: #30363d;
 $color-border-soft: #21262d;
 $color-surface: #161b22;
 $color-canvas-subtle: #1c2128;
+$color-td-first: #000000;
 
 $color-error-bg: #2a1416;
 $color-error-text: #ff7b72;
@@ -756,6 +757,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
     td:first-child {
       background: $color-surface;
+      background-color: $color-td-first;
     }
 
     // 기본 규칙(위 &__table의 nth-child(2) 왼쪽 정렬)은 "토글 칸 다음(날짜 등)"을
@@ -779,6 +781,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     font: inherit;
     color: inherit;
     cursor: pointer;
+    &:hover {
+      color: rgb(212, 212, 212);
+    }
   }
 
   &__sort-arrows {
@@ -821,6 +826,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     left: 0;
     z-index: 1;
     background: $color-surface;
+    background-color: $color-td-first;
   }
 
   // 맨 위 두 행(합계/평균) — 나머지 날짜 행과 구분되도록 강조. 합계가 평균보다
@@ -884,11 +890,15 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
         white-space: normal;
         max-width: 140px;
       }
+      td:first-child {
+        background-color: $color-td-first;
+      }
     }
 
     &__pivot-sticky-col {
       white-space: normal;
       max-width: 140px;
+      background-color: $color-td-first;
     }
   }
 }

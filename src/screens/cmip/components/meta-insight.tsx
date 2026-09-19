@@ -1144,10 +1144,10 @@ function FullListTable({
     setSort((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        // 처음 누르는 컬럼은 이름은 오름차순(가나다순)부터, 지표는 내림차순
-        // (가장 큰 값부터)부터 — 지표는 보통 "제일 높은 값"이 먼저 보고 싶은
-        // 경우가 많아서다.
-        : { key, dir: key === 'name' ? 'asc' : 'desc' },
+        : // 처음 누르는 컬럼은 이름은 오름차순(가나다순)부터, 지표는 내림차순
+          // (가장 큰 값부터)부터 — 지표는 보통 "제일 높은 값"이 먼저 보고 싶은
+          // 경우가 많아서다.
+          { key, dir: key === 'name' ? 'asc' : 'desc' },
     )
   }
 
@@ -1576,7 +1576,7 @@ export const MetaInsight = () => {
                     name: c.campaignName,
                     metrics: aggregateMetrics(c.combined.byDate),
                   }))}
-                  headLabel="캠페인"
+                  headLabel="Campaign"
                   emptyLabel="캠페인 데이터 없음"
                 />
               </section>
@@ -1599,7 +1599,9 @@ export const MetaInsight = () => {
                 view={pivotView}
               />
               <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">캠페인별 전체 adset</h3>
+                <h3 className="meta-insight__section-title">
+                  캠페인별 전체 adset
+                </h3>
                 <FullListTable
                   rows={adsets.map((a) => ({
                     key: a.adsetName,
