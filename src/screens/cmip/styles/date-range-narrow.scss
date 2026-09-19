@@ -60,7 +60,7 @@ $radius-lg: 8px;
   &__popover {
     position: absolute;
     top: calc(100% + 6px);
-    left: 0;
+    right: 0;
     z-index: 10;
     width: 260px;
     padding: 12px;

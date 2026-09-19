@@ -75,7 +75,10 @@ $radius-lg: 8px;
   &__popover {
     position: absolute;
     top: calc(100% + 8px);
-    left: 0;
+    // 트리거(DateRangePicker)가 이제 meta-insight__result-tabs 행의 맨
+    // 오른쪽에 붙어 있어서, left: 0으로 열면 팝오버가 화면 오른쪽 밖으로
+    // 넘어갔다 — 오른쪽 끝을 트리거 오른쪽 끝에 맞춰 왼쪽으로 펼친다.
+    right: 0;
     z-index: 10;
     display: flex;
     background: $color-surface;
@@ -245,7 +248,8 @@ $radius-lg: 8px;
       cursor: not-allowed;
     }
 
-    &:hover:not(:disabled):not(.is-start):not(.is-end) .date-range-picker__cell-num {
+    &:hover:not(:disabled):not(.is-start):not(.is-end)
+      .date-range-picker__cell-num {
       background: $color-border-soft;
     }
   }
@@ -339,6 +343,49 @@ $radius-lg: 8px;
 
     &:hover {
       filter: brightness(1.08);
+    }
+  }
+
+  // ------------------------------------------------------------------ 모바일(≤640px)
+  // 팝오버가 원래 "프리셋 사이드바 + 두 달 나란히"라 가로 폭이 넓어(700px 안팎)
+  // 좁은 화면에서 오른쪽(또는 화면 밖)으로 넘친다 — 가로로 늘어놓던 요소를
+  // 전부 세로로 쌓아 폭을 달력 그리드 하나 폭(약 240px) 수준으로 줄인다.
+  @media (max-width: 800px) {
+    &__popover {
+      flex-direction: column;
+    }
+
+    // 프리셋을 맨 위로 — JSX상 이미 첫 번째 자식이라 column으로 바꾸는 것만
+    // 으로 자동으로 맨 위에 온다. 사이드바 폭·오른쪽 경계선만 위쪽 구분선으로 바꾼다.
+    &__presets {
+      width: 100%;
+      max-height: 160px;
+      overflow-y: auto;
+      border-right: none;
+      border-bottom: 1px solid $color-border-soft;
+    }
+
+    // prev버튼 → 두 달 → next버튼도 가로 한 줄이면 여전히 넘친다 — 이것도
+    // 세로로 쌓는다(버튼은 달력들 위아래로).
+    &__calendar-nav {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    &__nav-btn {
+      align-self: center;
+      margin-top: 0;
+    }
+
+    // 두 달을 나란히(가로) 두던 것도 좁은 화면에선 쌓아야 폭이 줄어든다.
+    &__months {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    // 날짜 직접 입력 두 칸도 혹시 좁은 화면에서 부족하면 다음 줄로 넘어가게.
+    &__range-inputs {
+      flex-wrap: wrap;
     }
   }
 }

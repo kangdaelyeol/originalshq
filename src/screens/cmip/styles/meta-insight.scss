@@ -33,10 +33,13 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
   // 날짜 범위 선택기 — 여기서 "업데이트"를 누르면 바로 조회되므로 별도 조회
   // 버튼은 없다. 로딩 중엔 옆에 짧은 안내만 띄운다.
+  // 이제 __result-tabs 행 안에 같이 들어간다 — margin-left: auto로 그 행의
+  // 맨 오른쪽에 붙는다(보기 단위 select/그래프 버튼이 있든 없든 항상).
   &__query-row {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: auto;
   }
 
   &__query-loading {
@@ -902,6 +905,33 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       white-space: normal;
       max-width: 140px;
       background-color: $color-td-first;
+    }
+
+    // 보기 단위 select + "그래프로 보기" 버튼이 좁은 화면에서 한 줄에 다 못
+    // 들어가 줄바꿈되면, margin-left: auto가 붙은 __query-row(DateRangePicker)가
+    // 그 줄바꿈 위치에 어중간하게 걸쳐 보였다 — 아예 세로로 쌓고, DOM상 마지막
+    // 자식인 __query-row가 위로 오도록 순서를 뒤집는다(column-reverse) —
+    // "전체 요약" select보다 DateRangePicker가 위에 온다.
+    &__result-tabs {
+      flex-direction: column-reverse;
+      align-items: stretch;
+    }
+
+    &__query-row {
+      // column-reverse 안에서는 margin-left: auto가 오른쪽 정렬 용도로
+      // 쓰이던 것과 의미가 달라져(가로 정렬 밀기 자체는 유지되지만 폭이
+      // auto라 애매하게 걸린다) — 이 폭에서는 트리거를 꽉 채워 보이도록
+      // 0으로 되돌린다.
+      margin-left: 0;
+    }
+
+    &__query-row .date-range-picker {
+      width: 100%;
+    }
+
+    &__result-tabs .date-range-picker__trigger {
+      width: 100%;
+      justify-content: space-between;
     }
   }
 }

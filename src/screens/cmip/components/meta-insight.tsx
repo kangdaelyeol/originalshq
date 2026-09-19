@@ -1451,44 +1451,17 @@ export const MetaInsight = () => {
 
   return (
     <div className="meta-insight">
-      <div className="meta-insight__query-row">
-        <DateRangePicker
-          dateStart={dateStart}
-          dateEnd={dateEnd}
-          onChange={(start, end) => {
-            setDateStart(start)
-            setDateEnd(end)
-            // dateStart/dateEnd state 반영을 기다리지 않고 방금 고른 범위로 바로
-            // 조회한다 — "업데이트" 버튼이 곧 조회 버튼을 겸한다.
-            loadRange(start, end)
-          }}
-          disabled={loading}
-        />
-        {loading && (
-          <span className="meta-insight__query-loading">조회하는 중…</span>
-        )}
-      </div>
-
-      {error && <div className="meta-insight__banner is-error">{error}</div>}
-
-      {/* 최초 조회 전엔 아직 combinedInsight 자체가 없어 ResultPanel이 아예
-          렌더되지 않는다 — 그 사이 화면이 텅 비어 보이지 않도록 ResultPanel이
-          로딩 중 보여줄 모양(Summary + 표 세 개)을 통째로 미리 깔아둔다. */}
-      {loading && !combinedInsight && (
-        <ResultSkeleton
-          periodLabel={periodLabel}
-          dateStart={dateStart}
-          dateEnd={dateEnd}
-        />
-      )}
-
-      {combinedInsight && (
-        <>
-          <div
-            className="meta-insight__result-tabs"
-            role="group"
-            aria-label="보기 단위"
-          >
+      {/* combinedInsight 유무와 무관하게 항상 보인다 — DateRangePicker가 이
+          안에 있어서, 최초 조회 실패 등으로 combinedInsight가 끝내 안 생겨도
+          날짜를 다시 골라 재조회할 방법이 사라지지 않는다. 보기 단위(select)와
+          "그래프로 보기"는 원래대로 데이터가 있을 때만 보인다. */}
+      <div
+        className="meta-insight__result-tabs"
+        role="group"
+        aria-label="보기 단위"
+      >
+        {combinedInsight && (
+          <>
             <select
               className="meta-insight__result-select"
               value={resultTab}
@@ -1514,8 +1487,45 @@ export const MetaInsight = () => {
             >
               그래프로 보기
             </button>
-          </div>
+          </>
+        )}
 
+        {/* 이 row 맨 오른쪽에 고정(margin-left: auto) — 보기 단위 select/그래프
+            버튼이 있든 없든 항상 오른쪽 끝에 붙는다. */}
+        <div className="meta-insight__query-row">
+          <DateRangePicker
+            dateStart={dateStart}
+            dateEnd={dateEnd}
+            onChange={(start, end) => {
+              setDateStart(start)
+              setDateEnd(end)
+              // dateStart/dateEnd state 반영을 기다리지 않고 방금 고른 범위로 바로
+              // 조회한다 — "업데이트" 버튼이 곧 조회 버튼을 겸한다.
+              loadRange(start, end)
+            }}
+            disabled={loading}
+          />
+          {loading && (
+            <span className="meta-insight__query-loading">조회하는 중…</span>
+          )}
+        </div>
+      </div>
+
+      {error && <div className="meta-insight__banner is-error">{error}</div>}
+
+      {/* 최초 조회 전엔 아직 combinedInsight 자체가 없어 ResultPanel이 아예
+          렌더되지 않는다 — 그 사이 화면이 텅 비어 보이지 않도록 ResultPanel이
+          로딩 중 보여줄 모양(Summary + 표 세 개)을 통째로 미리 깔아둔다. */}
+      {loading && !combinedInsight && (
+        <ResultSkeleton
+          periodLabel={periodLabel}
+          dateStart={dateStart}
+          dateEnd={dateEnd}
+        />
+      )}
+
+      {combinedInsight && (
+        <>
           {(resultTab === 'campaign' || resultTab === 'adset') && (
             <div
               className="meta-insight__metric-row"
