@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactElement } from 'react'
+import type { CSSProperties, ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
@@ -136,7 +136,7 @@ type ResultTab = 'total' | 'campaign' | 'adset'
 const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'total', label: '전체 요약' },
   { key: 'campaign', label: '캠페인' },
-  { key: 'adset', label: 'Adset' },
+  { key: 'adset', label: '광고셋' },
 ]
 
 function ChevronIcon() {
@@ -395,9 +395,10 @@ function MetricsTable<T extends MetricsSummary>({
   // 붙인다. 다만 라벨(날짜/요일/기간) 컬럼은 문자열 그대로 정렬하면 요일("월"~
   // "일")·기간("9/1~9/7")처럼 원래 순서가 사전순과 달라 깨지므로, rows(호출부가
   // 이미 올바른 순서로 넘겨줌) 그대로/뒤집기로만 다룬다.
-  const [sort, setSort] = useState<{ key: 'label' | MetricKey; dir: SortDir }>(
-    { key: 'label', dir: 'asc' },
-  )
+  const [sort, setSort] = useState<{ key: 'label' | MetricKey; dir: SortDir }>({
+    key: 'label',
+    dir: 'asc',
+  })
 
   const toggleSort = (key: 'label' | MetricKey) => {
     setSort((prev) =>
@@ -1241,6 +1242,26 @@ function FullListTable({
     dir: 'asc',
   })
 
+  // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
+  // 이름/채널 칸은 항상 보인다.
+  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<MetricKey>>(
+    () => new Set(METRIC_FIELDS.map((f) => f.key)),
+  )
+  const toggleColumn = (key: MetricKey) => {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+  const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
+
+  // 전환 목표(결과 유형) 뱃지 표시 여부 — Meta 캠페인에만 있는 값이라, 이
+  // 표에 Meta 캠페인이 하나도 없으면(예: adset 목록) 토글 자체를 안 보여준다.
+  const [showResultType, setShowResultType] = useState(true)
+  const hasResultType = rows.some((r) => r.resultType)
+
   const toggleSort = (key: FullListSortKey) => {
     setSort((prev) =>
       prev.key === key
@@ -1261,66 +1282,115 @@ function FullListTable({
   }, [rows, sort])
 
   return (
-    <div className="meta-insight__table-wrap">
-      <table className="meta-insight__table meta-insight__table--full-list">
-        <thead>
-          <tr>
-            <th>
-              <button
-                type="button"
-                className="meta-insight__sort-head"
-                onClick={() => toggleSort('name')}
-              >
-                {headLabel}
-                <SortArrows active={sort.key === 'name'} dir={sort.dir} />
-              </button>
-            </th>
-            <th>채널</th>
-            {METRIC_FIELDS.map((f) => (
-              <th key={f.key}>
-                <SortableMetricHeader
-                  field={f}
-                  active={sort.key === f.key}
-                  dir={sort.dir}
-                  onSort={() => toggleSort(f.key)}
-                />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {sortedRows.length === 0 ? (
+    <div className="meta-insight__full-list">
+      <div
+        className="meta-insight__full-list-toggles"
+        role="group"
+        aria-label="컬럼 표시"
+      >
+        {METRIC_FIELDS.map((f) => {
+          const active = visibleKeys.has(f.key)
+          return (
+            <button
+              key={f.key}
+              type="button"
+              className={`meta-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+              style={{ '--chip-color': f.color } as CSSProperties}
+              aria-pressed={active}
+              onClick={() => toggleColumn(f.key)}
+            >
+              {f.label}
+            </button>
+          )
+        })}
+        {hasResultType && (
+          <span className="meta-insight__full-list-toggle-item">
+            <button
+              type="button"
+              className={`meta-insight__full-list-toggle-btn${showResultType ? ' is-active' : ''}`}
+              aria-pressed={showResultType}
+              onClick={() => setShowResultType((v) => !v)}
+            >
+              전환 목표
+            </button>
+            {/* 토글 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이 토글까지
+                같이 눌러버린다(SortableMetricHeader와 같은 이유). */}
+            <span className="meta-insight__info" tabIndex={0}>
+              <InfoIcon />
+              <span className="meta-insight__info-tooltip" role="tooltip">
+                전환 목표(결과 유형)는 Meta 캠페인에만 표시됩니다 — Meta Ads
+                Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온
+                값으로, Google/Naver 캠페인엔 대응 개념이 없어 표시되지
+                않습니다.
+              </span>
+            </span>
+          </span>
+        )}
+      </div>
+
+      <div className="meta-insight__table-wrap">
+        <table className="meta-insight__table meta-insight__table--full-list">
+          <thead>
             <tr>
-              <td className='empty-label' colSpan={METRIC_FIELDS.length + 2}>{emptyLabel}</td>
+              <th>
+                <button
+                  type="button"
+                  className="meta-insight__sort-head"
+                  onClick={() => toggleSort('name')}
+                >
+                  {headLabel}
+                  <SortArrows active={sort.key === 'name'} dir={sort.dir} />
+                </button>
+              </th>
+              <th>Channel</th>
+              {visibleFields.map((f) => (
+                <th key={f.key}>
+                  <SortableMetricHeader
+                    field={f}
+                    active={sort.key === f.key}
+                    dir={sort.dir}
+                    onSort={() => toggleSort(f.key)}
+                  />
+                </th>
+              ))}
             </tr>
-          ) : (
-            sortedRows.map((row) => (
-              <tr key={row.key}>
-                <td>
-                  {row.name}
-                  {row.resultType && (
-                    <span className="meta-insight__result-type-badge">
-                      {row.resultType}
-                    </span>
-                  )}
+          </thead>
+          <tbody>
+            {sortedRows.length === 0 ? (
+              <tr>
+                <td className="empty-label" colSpan={visibleFields.length + 2}>
+                  {emptyLabel}
                 </td>
-                <td className="meta-insight__full-list-channels">
-                  {row.channels.map((ch) => (
-                    <ChannelLabel
-                      key={ch}
-                      channelKey={ch}
-                      label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
-                    />
-                  ))}
-                </td>
-                {METRIC_FIELDS.map((f) => (
-                  <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
-                ))}
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              sortedRows.map((row) => (
+                <tr key={row.key}>
+                  <td>
+                    {row.name}
+                    {showResultType && row.resultType && (
+                      <span className="meta-insight__result-type-badge">
+                        {row.resultType}
+                      </span>
+                    )}
+                  </td>
+                  <td className="meta-insight__full-list-channels">
+                    {row.channels.map((ch) => (
+                      <ChannelLabel
+                        key={ch}
+                        channelKey={ch}
+                        label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
+                      />
+                    ))}
+                  </td>
+                  {visibleFields.map((f) => (
+                    <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -1685,7 +1755,7 @@ export const MetaInsight = () => {
                 view={pivotView}
               />
               <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">전체 캠페인</h3>
+                <h3 className="meta-insight__section-title">전체 캠페인 합계 요약</h3>
                 <FullListTable
                   rows={campaigns.map((c) => ({
                     key: c.campaignName,
@@ -1718,7 +1788,7 @@ export const MetaInsight = () => {
               />
               <section className="meta-insight__section">
                 <h3 className="meta-insight__section-title">
-                  캠페인별 전체 adset
+                  캠페인별 전체 광고셋
                 </h3>
                 <FullListTable
                   rows={adsets.map((a) => ({
@@ -1737,7 +1807,7 @@ export const MetaInsight = () => {
                   이름만으로는 어느 캠페인 소속인지 알 수 없다) 표 자체는 동일한
                   구성(FullListTable)을 그대로 쓴다. */}
               <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">전체 Adset</h3>
+                <h3 className="meta-insight__section-title">전체 광고셋</h3>
                 <FullListTable
                   rows={campaigns.flatMap((c) =>
                     c.adsets.map((a) => ({

@@ -815,6 +815,70 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
+  // 전체 캠페인/adset 표 — 위에 컬럼 표시 토글 행, 아래에 표.
+  &__full-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__full-list-toggles {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  // 전환 목표 토글 — 버튼 + "?" 아이콘을 한 덩이로 묶어 다른 토글 버튼들과
+  // 같은 줄에서 나란히 흐르게 한다(flex-wrap: wrap인 부모 안에서 하나의
+  // 아이템처럼 줄바꿈되도록).
+  &__full-list-toggle-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  // 지표 칸 표시/숨김 토글 — 그래프 모달의 지표 선택 칩과 같은 방식(지표 고유
+  // 색을 --chip-color로 받아 켜졌을 때만 그 색으로 옅게 물들인다)으로 통일한다.
+  &__full-list-toggle-btn {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: 999px;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+
+    &:hover:not(.is-active) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    // --chip-color가 없는 토글(전환 목표처럼 지표 고유색이 없는 것)은
+    // 기본 accent色로 대체한다.
+    &.is-active {
+      background: color-mix(
+        in srgb,
+        var(--chip-color, #{$color-accent}) 28%,
+        $color-canvas-subtle
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--chip-color, #{$color-accent}) 55%,
+        $color-border
+      );
+      color: $color-text;
+      font-weight: 600;
+    }
+  }
+
   // 전체 캠페인/adset 표의 "채널" 칸 — 그 캠페인/adset에 실제 데이터가 있는
   // 채널 로고를 나열한다(대부분 하나, 같은 이름을 여러 채널에 써서 합쳐진
   // 경우만 여러 개).
@@ -831,8 +895,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     display: inline-block;
     margin-left: 8px;
     padding: 2px 8px;
-    border-radius: 999px;
-    background: $color-canvas-subtle;
     border: 1px solid $color-border;
     color: $color-muted;
     font-size: 11px;
