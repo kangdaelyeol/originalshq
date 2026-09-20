@@ -1276,7 +1276,7 @@ function FullListTable({
         <tbody>
           {sortedRows.length === 0 ? (
             <tr>
-              <td colSpan={METRIC_FIELDS.length + 1}>{emptyLabel}</td>
+              <td className='empty-label' colSpan={METRIC_FIELDS.length + 1}>{emptyLabel}</td>
             </tr>
           ) : (
             sortedRows.map((row) => (

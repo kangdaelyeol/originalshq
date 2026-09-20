@@ -13,7 +13,7 @@ $color-accent: #4493f8;
 html:has(.cmip),
 body:has(.cmip),
 #root:has(.cmip) {
-  background: $color-bg;
+  background: #000000;
 }
 
 .cmip {
@@ -22,7 +22,7 @@ body:has(.cmip),
   min-height: 100dvh;
   box-sizing: border-box;
   padding: 24px 40px;
-  background: $color-bg;
+  background: #000000;
   color: $color-text;
   font-family: font-family.$font-pretendard;
   // 다크 배경에서 밝은 글씨가 굵고 번져 보이는 현상 보정 (서브픽셀 → grayscale)

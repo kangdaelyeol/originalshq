@@ -7,7 +7,7 @@ $color-border: #30363d;
 $color-border-soft: #21262d;
 $color-surface: #161b22;
 $color-canvas-subtle: #1c2128;
-$color-td-first: #000000;
+$color-td-first: #111519;
 
 $color-error-bg: #2a1416;
 $color-error-text: #ff7b72;
@@ -110,6 +110,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   &__result-empty {
     font-size: 12.5px;
     color: $color-muted;
+    padding: 10px;
   }
 
   // ------------------------------------------------------------------ 다중 선택 드롭다운
