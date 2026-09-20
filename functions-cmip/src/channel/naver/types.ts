@@ -32,6 +32,8 @@ export interface NaverStatRow {
   salesAmt?: number
   /** 전환수 — 전환 추적(스크립트)을 붙인 계정만 값이 채워진다. */
   ccnt?: number
+  /** 전환매출액 — ccnt와 마찬가지로 전환 추적을 붙인 계정만 값이 채워진다. */
+  convAmt?: number
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -46,6 +48,7 @@ export interface NaverInsightRow {
   clicks: number
   spend: number
   conversions: number
+  revenue: number
   date_start: string
 }
 
@@ -61,6 +64,8 @@ export interface MetricsSummary {
   clicks: number
   spend: number
   conversions: number
+  /** 전환매출액 — convAmt 합계. 전환 추적을 안 붙인 계정/기간은 0. */
+  revenue: number
   ctr: number
   cpc: number
   cpa: number

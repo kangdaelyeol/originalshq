@@ -11,6 +11,10 @@ export interface MetricsSummary {
   clicks: number
   spend: number
   conversions: number
+  /** 전환매출액. 채널·전환 추적 설정에 따라 값이 안 잡힐 수 있어(예: 리드
+   * 목표 캠페인, 전환 추적 미설정 네이버 계정) 0이 "매출 없음"과 "측정 안 됨"
+   * 둘 다를 의미할 수 있다. */
+  revenue: number
   ctr: number
   cpc: number
   cpa: number
@@ -48,6 +52,9 @@ export interface AdsetSummary extends GroupedInsightSeries {
 export interface CampaignSummary extends GroupedInsightSeries {
   campaignName: string
   adsets: AdsetSummary[]
+  /** 결과 유형(Meta Ads Manager의 "결과" 컬럼) — Meta 캠페인만 채워 보낸다.
+   * Google/Naver 캠페인엔 대응 개념이 없어 항상 undefined. */
+  resultType?: string | null
 }
 
 export interface MetaInsightSummary {

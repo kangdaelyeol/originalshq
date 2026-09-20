@@ -132,7 +132,8 @@ export async function getGoogleInsight(
       metrics.cost_micros,
       metrics.impressions,
       metrics.clicks,
-      metrics.conversions
+      metrics.conversions,
+      metrics.conversions_value
     FROM campaign
     WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
     ORDER BY segments.date DESC
@@ -208,6 +209,7 @@ export async function getGoogleInsight(
       const impressions = Number(r.metrics?.impressions || 0) // Impressions
       const clicks = Number(r.metrics?.clicks || 0) // Clicks
       const conversions = Number(r.metrics?.conversions || 0) // Conversions
+      const conversionsValue = Number(r.metrics?.conversionsValue || 0) // 전환 가치(매출)
 
       // 파생 지표 계산 (0으로 나누기 방지)
       const ctr =
@@ -230,6 +232,7 @@ export async function getGoogleInsight(
         impressions,
         clicks,
         conversions,
+        conversionsValue,
         ctr,
         cpc,
         cpa,
@@ -289,7 +292,8 @@ export async function getGoogleAdGroupInsight(
       metrics.cost_micros,
       metrics.impressions,
       metrics.clicks,
-      metrics.conversions
+      metrics.conversions,
+      metrics.conversions_value
     FROM ad_group
     WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
     ORDER BY segments.date DESC
@@ -325,6 +329,7 @@ export async function getGoogleAdGroupInsight(
       const impressions = Number(r.metrics?.impressions || 0)
       const clicks = Number(r.metrics?.clicks || 0)
       const conversions = Number(r.metrics?.conversions || 0)
+      const conversionsValue = Number(r.metrics?.conversionsValue || 0)
 
       const ctr =
         impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0
@@ -345,6 +350,7 @@ export async function getGoogleAdGroupInsight(
         impressions,
         clicks,
         conversions,
+        conversionsValue,
         ctr,
         cpc,
         cpa,

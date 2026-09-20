@@ -38,6 +38,10 @@ export interface CombinedAdset extends ChannelSplitSeries {
 export interface CombinedCampaign extends ChannelSplitSeries {
   campaignName: string
   adsets: CombinedAdset[]
+  /** 결과 유형 — Meta 캠페인에만 있는 값이라, 이름이 같은 캠페인이 여러 채널에
+   * 걸쳐 있어도 Meta 쪽 값을 그대로 가져온다(Google/Naver는 대응 개념이 없어
+   * undefined). */
+  resultType?: string | null
 }
 
 export interface CombinedInsight {
@@ -165,6 +169,7 @@ function combineCampaigns(
         dateStart,
         dateEnd,
       ),
+      resultType: metaCampaign?.resultType,
     }
   })
 }

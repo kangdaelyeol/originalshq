@@ -147,6 +147,7 @@ function buildNaverInsight(
         clicks: Number(row.clkCnt || 0),
         spend: Number(row.salesAmt || 0),
         conversions: Number(row.ccnt || 0),
+        revenue: Number(row.convAmt || 0),
         date_start: date,
       }
       insight.push(insightRow)

@@ -84,6 +84,15 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     color: '#c98500',
   },
   {
+    key: 'revenue',
+    label: 'Revenue',
+    format: won,
+    formatCompact: num,
+    unit: '원',
+    color: '#c026d3',
+    note: '전환 추적 설정이나 캠페인 목표에 따라 값이 안 잡힐 수 있습니다(예: 리드 목표 캠페인, 전환 추적 미설정 네이버 계정) — 0이 "매출 없음"과 "측정 안 됨"을 구분하지 않고 함께 나타냅니다.',
+  },
+  {
     key: 'ctr',
     label: 'CTR',
     format: pct2,

@@ -26,6 +26,7 @@ export function emptyMetrics(): MetricsSummary {
     clicks: 0,
     spend: 0,
     conversions: 0,
+    revenue: 0,
     ctr: 0,
     cpc: 0,
     cpa: 0,
@@ -44,18 +45,22 @@ interface RawCounts {
   clicks: number
   spend: number
   conversions: number
+  /** 전환매출액 — 다른 카운트와 마찬가지로 그냥 합산한다(가중치 필요 없음). */
+  revenue: number
   /** frequency는 단순 합산 대상이 아니라 impressions 가중 평균으로 근사한다. */
   weightedFrequency: number
 }
 
 /** 원본 카운트 합계에서 비율 지표를 다시 계산한다. */
 export function deriveMetrics(counts: RawCounts): MetricsSummary {
-  const { impressions, clicks, spend, conversions, weightedFrequency } = counts
+  const { impressions, clicks, spend, conversions, revenue, weightedFrequency } =
+    counts
   return {
     impressions,
     clicks,
     spend,
     conversions,
+    revenue,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,
@@ -74,6 +79,7 @@ export function aggregateMetrics(
     clicks: rows.reduce((s, r) => s + r.clicks, 0),
     spend: rows.reduce((s, r) => s + r.spend, 0),
     conversions: rows.reduce((s, r) => s + r.conversions, 0),
+    revenue: rows.reduce((s, r) => s + r.revenue, 0),
     weightedFrequency: rows.reduce(
       (s, r) => s + r.frequency * r.impressions,
       0,
@@ -105,6 +111,7 @@ export function sumMetricsWeighted(
   const clicks = entries.reduce((s, e) => s + e.metrics.clicks, 0)
   const spend = entries.reduce((s, e) => s + e.metrics.spend, 0)
   const conversions = entries.reduce((s, e) => s + e.metrics.conversions, 0)
+  const revenue = entries.reduce((s, e) => s + e.metrics.revenue, 0)
   const weightedFrequency = entries.reduce(
     (s, e) =>
       s + (e.hasFrequency ? e.metrics.frequency * e.metrics.impressions : 0),
@@ -119,6 +126,7 @@ export function sumMetricsWeighted(
     clicks,
     spend,
     conversions,
+    revenue,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,

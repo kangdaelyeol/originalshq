@@ -64,11 +64,14 @@ function mockDailyMetrics(date: ISODate): MetricsSummary {
   const spend = Math.round(clicks * cpc)
   const cvr = range(rand, 2.5, 9)
   const conversions = Math.round((clicks * cvr) / 100)
+  // 전환당 평균 주문 금액을 얹어 매출도 나머지 지표와 무관하지 않게 만든다.
+  const revenue = Math.round(conversions * range(rand, 25000, 60000))
   return deriveMetrics({
     impressions,
     clicks,
     spend,
     conversions,
+    revenue,
     weightedFrequency: range(rand, 1.05, 2.8) * impressions,
   })
 }
@@ -87,11 +90,13 @@ function splitMetrics(base: MetricsSummary, weight: number): MetricsSummary {
   const clicks = Math.round(base.clicks * weight)
   const spend = Math.round(base.spend * weight)
   const conversions = Math.round(base.conversions * weight)
+  const revenue = Math.round(base.revenue * weight)
   return deriveMetrics({
     impressions,
     clicks,
     spend,
     conversions,
+    revenue,
     weightedFrequency: base.frequency * impressions,
   })
 }

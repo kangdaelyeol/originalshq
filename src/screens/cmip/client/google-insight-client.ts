@@ -49,6 +49,7 @@ interface GoogleRawMetrics {
   clicks: number
   cost: number
   conversions: number
+  conversionsValue: number
   frequency: number
 }
 
@@ -110,6 +111,7 @@ function toMetrics(row: GoogleRawMetrics): MetricsSummary {
     clicks: row.clicks,
     spend: row.cost,
     conversions: row.conversions,
+    revenue: row.conversionsValue,
     weightedFrequency: row.frequency * row.impressions,
   })
 }

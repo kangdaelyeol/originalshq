@@ -14,6 +14,7 @@ export interface GoogleInsightRow {
   impressions: number
   clicks: number
   conversions: number
+  conversionsValue: number
 }
 
 export interface AdsMetricsRow {
@@ -24,6 +25,7 @@ export interface AdsMetricsRow {
     impressions?: string | number
     clicks?: string | number
     conversions?: string | number
+    conversionsValue?: string | number
   }
 }
 
@@ -36,5 +38,6 @@ export interface AdGroupMetricsRow {
     impressions?: string | number
     clicks?: string | number
     conversions?: string | number
+    conversionsValue?: string | number
   }
 }

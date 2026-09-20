@@ -9,7 +9,7 @@ import {
   MetricsSummary,
   WeekSummary,
 } from './types'
-import { buildWeekRanges, formatMD, sumRows } from './utils'
+import { buildWeekRanges, formatMD, getResultType, sumRows } from './utils'
 
 const DAY_NAMES_BY_INDEX = ['일', '월', '화', '수', '목', '금', '토']
 const DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일']
@@ -120,10 +120,16 @@ export const summarizeByCampaign = (
         )
         .sort((a, b) => a.adsetName.localeCompare(b.adsetName))
 
+      // 결과 유형 — 캠페인은 보통 하나의 결과 목표로 운영되므로, 그 기간 안에서
+      // 결과 데이터가 있는 첫 행의 indicator를 대표값으로 쓴다.
+      const resultType =
+        campaignRows.map(getResultType).find((t) => t != null) ?? null
+
       return {
         campaignName,
         ...summarizeSeries(campaignRows, startDate, endDate),
         adsets,
+        resultType,
       }
     })
     .sort((a, b) => a.campaignName.localeCompare(b.campaignName))

@@ -4,6 +4,7 @@ import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
 import type {
+  ChannelSplitSeries,
   DateSummary,
   DayOfWeekSummary,
   GroupedInsightSeries,
@@ -1207,6 +1208,19 @@ interface FullListRow {
   key: string
   name: string
   metrics: MetricsSummary
+  /** 결과 유형 — Meta 캠페인에만 있다(adset 목록·Google/Naver 캠페인은 항상 없음). */
+  resultType?: string | null
+  /** 이 캠페인/adset에 실제 데이터가 있는 채널 — ResultPanel의 applicableChannels와
+   * 같은 기준(byDate가 비어있지 않은 채널만)으로 channelsOf가 계산해 채운다. */
+  channels: readonly ChannelKey[]
+}
+
+/** CombinedCampaign/CombinedAdset(둘 다 ChannelSplitSeries 모양)에서 실제로
+ * 데이터가 있는 채널만 뽑는다 — ResultPanel의 applicableChannels와 동일한 기준. */
+function channelsOf(entity: ChannelSplitSeries): ChannelKey[] {
+  return CHANNELS.filter((c) => entity[c.key].byDate.length > 0).map(
+    (c) => c.key,
+  )
 }
 
 /** 캠페인/adset 탭 전용 — PivotSummary(체크박스로 고른 항목만)와 달리, 선택 여부와
@@ -1261,6 +1275,7 @@ function FullListTable({
                 <SortArrows active={sort.key === 'name'} dir={sort.dir} />
               </button>
             </th>
+            <th>채널</th>
             {METRIC_FIELDS.map((f) => (
               <th key={f.key}>
                 <SortableMetricHeader
@@ -1276,12 +1291,28 @@ function FullListTable({
         <tbody>
           {sortedRows.length === 0 ? (
             <tr>
-              <td className='empty-label' colSpan={METRIC_FIELDS.length + 1}>{emptyLabel}</td>
+              <td className='empty-label' colSpan={METRIC_FIELDS.length + 2}>{emptyLabel}</td>
             </tr>
           ) : (
             sortedRows.map((row) => (
               <tr key={row.key}>
-                <td>{row.name}</td>
+                <td>
+                  {row.name}
+                  {row.resultType && (
+                    <span className="meta-insight__result-type-badge">
+                      {row.resultType}
+                    </span>
+                  )}
+                </td>
+                <td className="meta-insight__full-list-channels">
+                  {row.channels.map((ch) => (
+                    <ChannelLabel
+                      key={ch}
+                      channelKey={ch}
+                      label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
+                    />
+                  ))}
+                </td>
                 {METRIC_FIELDS.map((f) => (
                   <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
                 ))}
@@ -1660,6 +1691,8 @@ export const MetaInsight = () => {
                     key: c.campaignName,
                     name: c.campaignName,
                     metrics: aggregateMetrics(c.combined.byDate),
+                    resultType: c.resultType,
+                    channels: channelsOf(c),
                   }))}
                   headLabel="Campaign"
                   emptyLabel="캠페인 데이터 없음"
@@ -1692,6 +1725,7 @@ export const MetaInsight = () => {
                     key: a.adsetName,
                     name: a.adsetName,
                     metrics: aggregateMetrics(a.combined.byDate),
+                    channels: channelsOf(a),
                   }))}
                   headLabel="Adset"
                   emptyLabel="adset 데이터 없음"
@@ -1710,6 +1744,7 @@ export const MetaInsight = () => {
                       key: `${c.campaignName}::${a.adsetName}`,
                       name: a.adsetName,
                       metrics: aggregateMetrics(a.combined.byDate),
+                      channels: channelsOf(a),
                     })),
                   )}
                   headLabel="Adset"

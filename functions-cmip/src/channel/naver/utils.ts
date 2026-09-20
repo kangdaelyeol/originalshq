@@ -55,12 +55,14 @@ function calcMetrics(
   clicks: number,
   spend: number,
   conversions: number,
+  revenue: number,
 ): MetricsSummary {
   return {
     impressions,
     clicks,
     spend,
     conversions,
+    revenue,
     ctr: impressions > 0 ? round2((clicks / impressions) * 100) : 0,
     cpc: clicks > 0 ? round2(spend / clicks) : 0,
     cpa: conversions > 0 ? round2(spend / conversions) : 0,
@@ -75,8 +77,9 @@ export const sumRows = (rows: NaverInsightRow[]): MetricsSummary => {
   const clicks = rows.reduce((s, r) => s + (Number(r.clicks) || 0), 0)
   const spend = rows.reduce((s, r) => s + (Number(r.spend) || 0), 0)
   const conversions = rows.reduce((s, r) => s + (Number(r.conversions) || 0), 0)
+  const revenue = rows.reduce((s, r) => s + (Number(r.revenue) || 0), 0)
 
-  return calcMetrics(impressions, clicks, spend, conversions)
+  return calcMetrics(impressions, clicks, spend, conversions, revenue)
 }
 
 // ────────────────────────────────────────────────────────────────────────
