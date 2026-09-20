@@ -29,11 +29,6 @@
 }
 
 .xtool-main .wrapper {
-  .row_section {
-    overflow-y: scroll;
-    max-height: 600px;
-  }
-
   .table_container {
     margin-top: 10px;
     position: relative;
@@ -82,20 +77,14 @@
     border: 1px solid variables.$color-border;
     border-radius: 10px;
     overflow: hidden;
-    min-width: variables.$table-width;
-    .table_header {
-      display: flex;
-      border: 1px solid variables.$table-border-color;
-      border-radius: 5px 5px 0 0;
-      overflow: hidden;
-      background-color: variables.$table-header-bg-color;
-    }
+
     .table_left {
       height: 100%;
       width: 5px;
       top: 0;
       left: 0;
       position: absolute;
+      z-index: 1;
     }
 
     .table_left.new-read {
@@ -110,30 +99,133 @@
       background-color: variables.$color-purchase-complete;
     }
 
-    .item {
+    // 표 하나를 통째로 감싸는 스크롤 영역 — 가로(칼럼이 화면보다 넓을 때)·세로
+    // (행이 많을 때, 600px 넘으면) 둘 다 이 안에서만 스크롤된다. 예전엔 표 전체에
+    // min-width를 강제해서 페이지 자체가 가로로 밀렸는데, 이제 표마다 실제
+    // 칼럼 폭만큼만 자연스럽게 넓어지고(table-layout: fixed + 칼럼별 width),
+    // 이 영역을 넘는 만큼만 이 안에서 스크롤된다.
+    .table_scroll {
+      max-height: 600px;
+      overflow: auto;
+      border-radius: 5px 5px 0 0;
+    }
+
+    .lead_table {
+      // 부모 폭에 맞춰 늘어나거나 줄어들지 않고, 칼럼들의 실제 합계 폭만큼만
+      // 차지한다 — 이게 바로 "칼럼이 찌그러지던" 문제의 핵심 수정이다(표마다
+      // 칼럼 수가 달라 필요한 폭이 다른데 폭 하나를 공유해서 좁은 화면에서
+      // 비례로 눌렸었다).
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+      color: variables.$color-text;
+
+      th,
+      td {
+        box-sizing: border-box;
+        height: 50px;
+        text-align: center;
+        vertical-align: middle;
+        font-size: 14px;
+        font-weight: 400;
+        border-right: 1px solid variables.$table-border-color;
+        border-bottom: 1px solid variables.$table-border-color;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      thead th {
+        // sticky도 position 값이라 relative와 동시에 못 쓰지만, sticky 자체가
+        // 이미 위치 기준(anchor) 역할을 해서 SortButton(position: absolute)이
+        // 이 th를 기준으로 정확히 자리잡는다.
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background-color: variables.$table-header-bg-color;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      tbody td {
+        background-color: variables.$color-surface;
+      }
+
+      // 칼럼별 폭 — table-layout: fixed에서는 각 칼럼의 첫 행(보통 헤더)에
+      // 지정한 폭이 그 칼럼 전체(헤더+모든 행)에 그대로 적용된다. 헤더·행에
+      // 따로 폭을 맞출 필요 없이 클래스 하나로 항상 일치한다.
+      .col-cb {
+        width: 40px;
+      }
+      .col-created {
+        width: 230px;
+      }
+      .col-fn {
+        width: 100px;
+      }
+      .col-ph {
+        width: 150px;
+      }
+      .col-price {
+        width: 150px;
+      }
+      .col-device {
+        width: 110px;
+        padding: 0;
+      }
+      .col-purchased {
+        width: 230px;
+      }
+      .col-test {
+        width: 190px;
+      }
+      // register/delete/detail — 각 버튼(100px)과 정확히 같은 폭.
+      .col-register,
+      .col-delete,
+      .col-detail {
+        width: 100px;
+      }
+    }
+
+    // 테스트 체크박스 옆 test_event_code 입력칸 — .editable의 input과 같은
+    // 톤을 쓰되, 체크했을 때만 나타나는 좁은 칸이라 폭/정렬만 다르게 준다.
+    // td 안에서 체크박스 옆에 나란히 두는 간격은 flex gap 대신 margin으로 준다
+    // (td 자체를 flex로 만들면 table-layout: fixed의 칼럼 폭 계산이 깨진다).
+    .test-event-code-input {
+      all: unset;
       box-sizing: border-box;
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 50px;
-      button.check-btn {
-        all: unset;
-        cursor: pointer;
-        width: 18px;
-        height: 18px;
-        border-radius: 4px;
-        border: 1px solid variables.$table-border-color;
-        &:hover {
-          border: 1px solid variables.$color-text-muted;
-        }
-        &.checked {
-          background-color: variables.$color-accent;
-          border: 1px solid variables.$color-accent;
-        }
-        &.checked:hover {
-          filter: brightness(1.1);
-        }
+      width: 110px;
+      margin-left: 8px;
+      padding: 4px 6px;
+      background-color: variables.$color-accent-soft;
+      border: 1px solid variables.$color-accent;
+      border-radius: 4px;
+      color: variables.$color-text;
+      font-size: 12px;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    button.check-btn {
+      all: unset;
+      display: inline-block;
+      vertical-align: middle;
+      cursor: pointer;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid variables.$table-border-color;
+      &:hover {
+        border: 1px solid variables.$color-text-muted;
+      }
+      &.checked {
+        background-color: variables.$color-accent;
+        border: 1px solid variables.$color-accent;
+      }
+      &.checked:hover {
+        filter: brightness(1.1);
       }
       svg {
         width: 100%;
@@ -142,81 +234,9 @@
           animation: check-icon 0.2s cubic-bezier(0.29, 0.79, 0.64, 1) backwards;
         }
       }
-      &.cb {
-        width: 40px;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.created {
-        width: 230px;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.fn {
-        width: 100px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.ph {
-        width: 150px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.price {
-        width: 150px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.device {
-        width: 110px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.purchased {
-        width: 230px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      &.test {
-        width: 190px;
-        gap: 8px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
-      // register/delete/detail — 각 버튼(100px)과 정확히 같은 폭으로 맞춰서
-      // 헤더의 대응 칸(내용 없이 폭만 맞춘 placeholder)과 행의 칸이 어긋나지
-      // 않게 한다.
-      &.register,
-      &.delete,
-      &.detail {
-        width: 100px;
-        border-left: none;
-        border-right: 1px solid variables.$table-border-color;
-      }
     }
 
-    // 테스트 체크박스 옆 test_event_code 입력칸 — .item.editable의 input과 같은
-    // 톤을 쓰되, 체크했을 때만 나타나는 좁은 칸이라 폭/정렬만 다르게 준다.
-    .test-event-code-input {
-      all: unset;
-      box-sizing: border-box;
-      width: 110px;
-      padding: 4px 6px;
-      background-color: variables.$color-accent-soft;
-      border: 1px solid variables.$color-accent;
-      border-radius: 4px;
-      color: variables.$color-text;
-      font-size: 12px;
-      text-align: center;
-    }
-
-    .table_row {
-      display: flex;
-      height: 50px;
-      border-left: 1px solid variables.$table-border-color;
-      border-right: 1px solid variables.$table-border-color;
-      border-bottom: 1px solid variables.$table-border-color;
-    }
-
-    .item.editable {
+    td.editable {
       cursor: pointer;
       &:hover {
         background-color: rgba(255, 255, 255, 0.05);
@@ -236,13 +256,10 @@
       span {
         color: variables.$color-text;
         font-size: 14px;
-        overflow: hidden;
-        text-align: center;
       }
     }
 
-    .item.device {
-      padding: 0;
+    td.col-device {
       select {
         all: unset;
         cursor: pointer;
@@ -336,7 +353,6 @@
   }
 
   .table_divider {
-    min-width: variables.$table-width;
     padding: 0 5px;
     margin: 15px 0;
     box-sizing: border-box;
