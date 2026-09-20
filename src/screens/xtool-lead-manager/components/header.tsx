@@ -12,11 +12,13 @@ export const Header = () => {
           />
           <span className="title">Lead manager</span>
         </div>
-        <img
-          src="https://framerusercontent.com/images/tuTnWS8IWm4eabExSlzNTTtkeQk.png"
-          alt="enterprise logo"
-          className="enterprise-logo"
-        />
+        <div className="enterprise-logo-badge">
+          <img
+            src="https://framerusercontent.com/images/tuTnWS8IWm4eabExSlzNTTtkeQk.png"
+            alt="enterprise logo"
+            className="enterprise-logo"
+          />
+        </div>
       </div>
     </div>
   )

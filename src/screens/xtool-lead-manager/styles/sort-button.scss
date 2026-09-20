@@ -1,3 +1,5 @@
+@use './variables.scss';
+
 .sort_btn {
   all: unset;
   position: absolute;
@@ -16,20 +18,20 @@
 
   .arrow_up,
   .arrow_down {
-    fill: #5c6485;
+    fill: variables.$color-text-faint;
   }
 
   &:hover .arrow_up,
   &:hover .arrow_down {
-    fill: #9198b8;
+    fill: variables.$color-text-muted;
   }
 
   &.asc .arrow_up {
-    fill: #4fb8e8;
+    fill: variables.$color-accent;
   }
 
   &.desc .arrow_down {
-    fill: #4fb8e8;
+    fill: variables.$color-accent;
   }
 }
 

@@ -3,9 +3,25 @@ $font-sans: 'Inter', sans-serif;
 $font-mono: 'JetBrains Mono', monospace;
 $font-montserrat: 'Montserrat', sans-serif;
 $font-poppins: 'Poppins', sans-serif;
-$table-border-color: #7c88bd;
+
+// 블랙톤 다크 팔레트 — 예전엔 네이비/퍼플 계열(rgba(24,27,52) 등)이었는데,
+// 화면 전체를 검정 기반으로 통일한다. 상태 3색(new/read/purchase)은 신호
+// 색상 역할이라 그대로 유지.
+$color-bg: #000000;
+$color-surface: #0d1117;
+$color-surface-raised: #161b22;
+$color-border: #30363d;
+$color-border-soft: #21262d;
+$color-text: #e6edf3;
+$color-text-muted: #8b949e;
+$color-text-faint: #5c6485;
+$color-accent: #4493f8;
+$color-accent-soft: rgba(68, 147, 248, 0.15);
+$color-danger: #e5534b;
+
+$table-border-color: $color-border;
 $table-width: 1400px;
-$table-header-bg-color: #0000005c;
+$table-header-bg-color: $color-surface-raised;
 $color-new-read: rgb(17, 217, 37);
 $color-read-complete: rgb(23, 242, 184);
 $color-purchase-complete: rgb(247, 98, 254);

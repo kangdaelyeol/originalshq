@@ -1,4 +1,5 @@
-// device-filter.scss (또는 nav.scss에 추가)
+@use './variables.scss';
+
 .device_filter {
   position: relative;
 
@@ -12,9 +13,9 @@
     align-items: center;
     gap: 6px;
     padding: 8px 14px;
-    color: #c3c6d4;
+    color: variables.$color-text-muted;
     font-size: 14px;
-    border: 1px solid #4b547b;
+    border: 1px solid variables.$color-border;
     border-radius: 7px;
     cursor: pointer;
 
@@ -32,7 +33,7 @@
     }
 
     &:hover {
-      border-color: #c3c6d4;
+      border-color: variables.$color-text-muted;
     }
 
     &.open .chevron {
@@ -40,9 +41,9 @@
     }
 
     &.active {
-      border-color: #229ad6;
-      color: #4fb8e8;
-      background-color: #229ad61a;
+      border-color: variables.$color-accent;
+      color: variables.$color-accent;
+      background-color: variables.$color-accent-soft;
     }
   }
 
@@ -53,10 +54,10 @@
     min-width: 140px;
     box-sizing: border-box;
     padding: 6px;
-    background-color: rgb(30, 34, 62);
-    border: 1px solid #4b547b;
+    background-color: variables.$color-surface-raised;
+    border: 1px solid variables.$color-border;
     border-radius: 9px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
     z-index: 20;
     display: flex;
     flex-direction: column;
@@ -69,7 +70,7 @@
       padding: 8px 10px;
       border-radius: 6px;
       font-size: 13.5px;
-      color: #dfe1ec;
+      color: variables.$color-text;
       cursor: pointer;
       text-align: left;
 
@@ -78,14 +79,14 @@
       }
 
       &.selected {
-        color: #4fb8e8;
-        background-color: #229ad61a;
+        color: variables.$color-accent;
+        background-color: variables.$color-accent-soft;
       }
     }
 
     .menu_divider {
       height: 1px;
-      background-color: #383e63;
+      background-color: variables.$color-border;
       margin: 4px 2px;
     }
   }

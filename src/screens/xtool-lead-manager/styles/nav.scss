@@ -1,9 +1,11 @@
+@use './variables.scss';
+
 .lead_manager_nav {
   position: sticky;
   top: 60px;
   z-index: 1;
-  background-color: rgba(24, 27, 52);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.113);
+  background-color: variables.$color-bg;
+  border-bottom: 1px solid variables.$color-border;
   width: 100%;
   padding: 15px 0;
   .inner {
@@ -19,7 +21,7 @@
     left: 30px;
     width: 23px;
     height: 23px;
-    stroke: #c3c6d4;
+    stroke: variables.$color-text-muted;
     stroke-width: 5;
   }
   .search-btn {
@@ -29,7 +31,7 @@
     height: 40px;
     display: flex;
     align-items: center;
-    color: #c3c6d4;
+    color: variables.$color-text-muted;
     font-size: 18px;
     gap: 5px;
     padding: 8px 25px 8px 38px;
@@ -37,13 +39,13 @@
     border-radius: 5px;
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: rgba(255, 255, 255, 0.08);
     }
 
     svg.search {
       width: 23px;
       height: 23px;
-      stroke: #c3c6d4;
+      stroke: variables.$color-text-muted;
       stroke-width: 5;
     }
   }
@@ -57,18 +59,20 @@
       all: unset;
       box-sizing: border-box;
       height: 100%;
-      border: 1px solid #1a80b3;
+      border: 1px solid variables.$color-accent;
       border-radius: 7px;
       font-size: 18px;
       padding: 0 50px 0 40px;
       width: 240px;
+      color: variables.$color-text;
       transition: all 0.15s ease;
       &:focus,
       &:hover {
-        border-color: #229ad6;
+        border-color: variables.$color-accent;
+        filter: brightness(1.15);
       }
       &.typed {
-        background-color: #229ad638;
+        background-color: variables.$color-accent-soft;
       }
     }
     .reset-btn {
@@ -84,11 +88,14 @@
         cursor: pointer;
         width: 25px;
         height: 25px;
-        stroke-width: 1;
+        // CloseIcon은 stroke가 아니라 fill="currentColor"라 stroke가 아니라
+        // color로 지정해야 실제로 반영된다.
+        color: variables.$color-text-muted;
         border-radius: 4px;
         transition: all 0.1s ease;
         &:hover {
-          background-color: #0f587d;
+          background-color: variables.$color-surface-raised;
+          color: variables.$color-text;
         }
       }
     }

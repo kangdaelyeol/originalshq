@@ -1,9 +1,10 @@
 @use './variables.scss';
 
 .xtool-main {
-  background-color: rgba(24, 27, 52);
+  background-color: variables.$color-bg;
   min-height: 100vh;
   overflow: scroll;
+  color: variables.$color-text;
   .wrapper {
     padding: 0 20px;
   }
@@ -18,8 +19,9 @@
     justify-content: center;
     align-items: center;
     border-radius: 5px;
-    background-color: #000002;
-    opacity: 0.5;
+    background-color: variables.$color-surface-raised;
+    border: 1px solid variables.$color-border;
+    opacity: 0.7;
     &:hover {
       opacity: 1;
     }
@@ -47,7 +49,7 @@
     padding: 4px 8px;
     border-radius: 5px;
     &:hover {
-      background-color: #f7f9f910;
+      background-color: rgba(255, 255, 255, 0.06);
     }
     .arrow {
       width: 25px;
@@ -76,8 +78,8 @@
     position: relative;
     margin-top: 15px;
     padding: 10px;
-    background-color: rgb(48, 50, 78);
-    border: 1px solid #4b547b;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
     border-radius: 10px;
     overflow: hidden;
     min-width: variables.$table-width;
@@ -123,14 +125,14 @@
         border-radius: 4px;
         border: 1px solid variables.$table-border-color;
         &:hover {
-          border: 1px solid #e4e4e6;
+          border: 1px solid variables.$color-text-muted;
         }
         &.checked {
-          background-color: #0a4e70;
-          border: 1px solid #0a4e70;
+          background-color: variables.$color-accent;
+          border: 1px solid variables.$color-accent;
         }
         &.checked:hover {
-          background-color: #0e6895;
+          filter: brightness(1.1);
         }
       }
       svg {
@@ -179,6 +181,16 @@
         border-left: none;
         border-right: 1px solid variables.$table-border-color;
       }
+      // register/delete/detail — 각 버튼(100px)과 정확히 같은 폭으로 맞춰서
+      // 헤더의 대응 칸(내용 없이 폭만 맞춘 placeholder)과 행의 칸이 어긋나지
+      // 않게 한다.
+      &.register,
+      &.delete,
+      &.detail {
+        width: 100px;
+        border-left: none;
+        border-right: 1px solid variables.$table-border-color;
+      }
     }
 
     // 테스트 체크박스 옆 test_event_code 입력칸 — .item.editable의 input과 같은
@@ -188,10 +200,10 @@
       box-sizing: border-box;
       width: 110px;
       padding: 4px 6px;
-      background-color: #229ad638;
-      border: 1px solid #229ad6;
+      background-color: variables.$color-accent-soft;
+      border: 1px solid variables.$color-accent;
       border-radius: 4px;
-      color: #eeeeee;
+      color: variables.$color-text;
       font-size: 12px;
       text-align: center;
     }
@@ -214,15 +226,15 @@
         box-sizing: border-box;
         width: 90%;
         padding: 4px 6px;
-        background-color: #229ad638;
-        border: 1px solid #229ad6;
+        background-color: variables.$color-accent-soft;
+        border: 1px solid variables.$color-accent;
         border-radius: 4px;
-        color: #eeeeee;
+        color: variables.$color-text;
         font-size: 14px;
         text-align: center;
       }
       span {
-        color: #eeeeee;
+        color: variables.$color-text;
         font-size: 14px;
         overflow: hidden;
         text-align: center;
@@ -240,7 +252,7 @@
         justify-content: center;
         align-items: center;
         border-radius: 5px;
-        color: #eeeeee;
+        color: variables.$color-text;
         font-size: 17px;
         text-align: center;
         &:hover {
@@ -263,8 +275,8 @@
       text-align: center;
       cursor: pointer;
       padding: 6px 14px;
-      background-color: #0a4e70;
-      color: #eeeeee;
+      background-color: variables.$color-surface-raised;
+      color: variables.$color-text;
       font-size: 13px;
 
       &:disabled {
@@ -274,29 +286,35 @@
     }
 
     .register-btn {
+      background-color: variables.$color-accent;
       &:hover:not(:disabled) {
-        background-color: #0e6895;
+        filter: brightness(1.1);
       }
     }
 
     .badge.done {
       background-color: #16700a;
       &:hover:not(:disabled) {
-        background-color: #0e6895;
+        filter: brightness(1.1);
       }
     }
 
     .delete-btn {
-      background-color: #0909096b;
+      background-color: transparent;
+      border: 1px solid variables.$color-border;
       &:hover:not(:disabled) {
-        background-color: #0d0000;
+        background-color: rgba(229, 83, 75, 0.12);
+        border-color: variables.$color-danger;
+        color: variables.$color-danger;
       }
     }
 
     .detail-btn {
-      background-color: #2322226b;
+      background-color: transparent;
+      border: 1px solid variables.$color-border;
       &:hover:not(:disabled) {
-        background-color: #232222ce;
+        background-color: rgba(255, 255, 255, 0.06);
+        border-color: variables.$color-text-muted;
       }
     }
 
@@ -325,7 +343,7 @@
     .line {
       border-radius: 50px;
       height: 3px;
-      background-color: rgba(140, 178, 243, 0.245);
+      background-color: variables.$color-border-soft;
     }
   }
 }

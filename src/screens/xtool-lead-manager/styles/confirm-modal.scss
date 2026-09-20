@@ -1,3 +1,4 @@
+@use './variables.scss';
 // confirm-modal.scss
 .lead_manager_confirm_modal {
   position: fixed;
@@ -8,7 +9,7 @@
   min-width: 800px;
   min-height: 600px;
   z-index: 10;
-  background-color: rgba(0, 0, 0, 0.55);
+  background-color: rgba(0, 0, 0, 0.72);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -20,10 +21,10 @@
     min-width: 400px;
     min-height: auto;
     padding: 32px 28px 24px;
-    background-color: rgb(23, 26, 51);
-    border: 1px solid #383e63;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
     border-radius: 16px;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -44,25 +45,25 @@
     }
 
     &.delete .icon_wrap {
-      background-color: rgba(195, 74, 74, 0.15);
+      background-color: rgba(229, 83, 75, 0.15);
       color: #e88888;
     }
     &.register .icon_wrap {
-      background-color: rgba(10, 78, 112, 0.25);
-      color: #4fb8e8;
+      background-color: variables.$color-accent-soft;
+      color: variables.$color-accent;
     }
 
     .title {
       font-size: 18px;
       font-weight: 600;
-      color: #eeeeee;
+      color: variables.$color-text;
       text-align: center;
       margin-bottom: 8px;
     }
 
     .description {
       font-size: 13.5px;
-      color: #9198b8;
+      color: variables.$color-text-muted;
       text-align: center;
       line-height: 1.5;
       margin-bottom: 20px;
@@ -73,7 +74,7 @@
       width: 100%;
       padding: 14px 16px;
       background-color: rgba(255, 255, 255, 0.03);
-      border: 1px solid #383e63;
+      border: 1px solid variables.$color-border;
       border-radius: 10px;
       display: flex;
       flex-direction: column;
@@ -87,10 +88,10 @@
         font-size: 13.5px;
       }
       .label {
-        color: #7d84a3;
+        color: variables.$color-text-faint;
       }
       .value {
-        color: #dfe1ec;
+        color: variables.$color-text;
         font-weight: 500;
       }
     }
@@ -123,7 +124,7 @@
 
       .cancel {
         background-color: rgba(255, 255, 255, 0.06);
-        color: #c3c6d4;
+        color: variables.$color-text-muted;
         &:hover:not(:disabled) {
           background-color: rgba(255, 255, 255, 0.1);
         }
@@ -132,15 +133,15 @@
       .confirm {
         color: #ffffff;
         &.delete {
-          background-color: #c34a4a;
+          background-color: variables.$color-danger;
           &:hover:not(:disabled) {
-            background-color: #d55e5e;
+            filter: brightness(1.1);
           }
         }
         &.register {
-          background-color: #0a4e70;
+          background-color: variables.$color-accent;
           &:hover:not(:disabled) {
-            background-color: #0e6895;
+            filter: brightness(1.1);
           }
         }
       }

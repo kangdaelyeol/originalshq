@@ -183,6 +183,12 @@ export const Table = ({ state, actions, type }: TableProps) => {
             {type !== LeadState.PURCHASED && (
               <div className="item test">테스트</div>
             )}
+            {/* 아래 행(table_row)엔 register/delete/detail 칸이 있는데 헤더엔
+                대응하는 칸이 없어서, 폭이 좁아지면 헤더와 행의 칼럼 경계선이
+                어긋나 보였다 — 내용 없는 칸이라도 폭을 맞춰 넣는다. */}
+            {type !== LeadState.PURCHASED && <div className="item register" />}
+            <div className="item delete" />
+            <div className="item detail" />
           </div>
 
           {/* Table Rows Section */}

@@ -5,7 +5,8 @@
   position: sticky;
   top: 0;
   left: 0;
-  background-color: #292f4c;
+  background-color: variables.$color-bg;
+  border-bottom: 1px solid variables.$color-border;
   z-index: 1;
   .wrapper {
     box-sizing: border-box;
@@ -22,7 +23,7 @@
       padding: 5px 10px;
       border-radius: 5px;
       &:hover {
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(255, 255, 255, 0.06);
       }
     }
     .title {
@@ -31,13 +32,22 @@
       font-weight: 500;
       letter-spacing: -0.5px;
       user-select: none;
+      color: variables.$color-text;
       font-family: variables.$font-sans;
     }
     .xtool-logo {
       height: 30px;
     }
+    // 로고 원본이 짙은 회색 글자를 포함하고 있어 검정 배경에서 흐려 보인다 —
+    // cmip 헤더와 같은 방식으로 흰 배지 위에 얹어 항상 또렷하게 보이게 한다.
+    .enterprise-logo-badge {
+      display: inline-flex;
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
     .enterprise-logo {
-      height: 30px;
+      display: block;
+      height: 22px;
     }
   }
 }
