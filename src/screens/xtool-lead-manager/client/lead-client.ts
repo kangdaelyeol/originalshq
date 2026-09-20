@@ -11,6 +11,32 @@ export type ClientResponse<T> =
       error: string
     }
 
+const post = async (
+  endpoint: string,
+  body: Record<string, unknown>,
+): Promise<ClientResponse<Lead>> => {
+  try {
+    const response = await fetch(`${API_BASE}/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      return { ok: false, error: error.error ?? '요청 실패' }
+    }
+
+    const updatedLead = (await response.json()) as Lead
+    return { ok: true, data: updatedLead }
+  } catch (error) {
+    return {
+      ok: false,
+      error: `${endpoint} 실패: ${error instanceof Error ? error.message : 'unknown error'}`,
+    }
+  }
+}
+
 export const leadClient = {
   getAll: async (): Promise<
     ClientResponse<{ leads: Lead[]; count: number }>
@@ -63,174 +89,24 @@ export const leadClient = {
       }
     }
   },
-  updateDevice: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/updateLeadDevice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error: error.error ?? '수정 실패' }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error: `updateDevice 실패: ${error instanceof Error ? error.message : 'unknown Error'}`,
-      }
-    }
-  },
-  updateTimeStamp: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    const response = await fetch(`${API_BASE}/updateLeadTimestamp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.error ?? '수정 실패')
-    }
-
-    const updatedLead = (await response.json()) as Lead
-    return { ok: true, data: updatedLead }
-  },
-  updatePrice: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/updateLeadPrice`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error: error.error ?? '수정 실패' }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error: `leadClient-UpdatePrice error: ${error instanceof Error ? error.message : 'known error'}`,
-      }
-    }
-  },
-  updateFn: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/updateLeadFn`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error: error.error ?? '수정 실패' }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error: `leadClient-UpdateFn error: ${error instanceof Error ? error.message : 'known error'}`,
-      }
-    }
-  },
-  updatePh: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/updateLeadPhone`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error: error.error ?? '수정 실패' }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error: `leadClient-UpdatePh error: ${error instanceof Error ? error.message : 'known error'}`,
-      }
-    }
-  },
-  updateStateToContact: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    console.log(body)
-    try {
-      const response = await fetch(`${API_BASE}/contactLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'unknown error: leadclient-updateStateToContact',
-      }
-    }
-  },
-  updateStateToPurchased: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/purchaseLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error }
-      }
-
-      const updatedLead = (await response.json()) as Lead
-      return { ok: true, data: updatedLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'unknown error: leadclient-updateStateToPurchase',
-      }
-    }
-  },
+  updateTimeStamp: (body: Record<string, unknown>) =>
+    post('updateLeadTimestamp', body),
+  updateFn: (body: Record<string, unknown>) => post('updateLeadFn', body),
+  updatePh: (body: Record<string, unknown>) => post('updateLeadPhone', body),
+  updateRemarks: (body: Record<string, unknown>) =>
+    post('updateLeadRemarks', body),
+  registerConsultation: (body: Record<string, unknown>) =>
+    post('contactLead', body),
+  registerPurchase: (body: Record<string, unknown>) =>
+    post('purchaseLead', body),
+  updateConsultation: (body: Record<string, unknown>) =>
+    post('updateConsultation', body),
+  deleteConsultation: (body: Record<string, unknown>) =>
+    post('deleteConsultation', body),
+  updatePurchase: (body: Record<string, unknown>) =>
+    post('updatePurchase', body),
+  deletePurchase: (body: Record<string, unknown>) =>
+    post('deletePurchase', body),
   delete: async (
     body: Record<string, unknown>,
   ): Promise<ClientResponse<null>> => {

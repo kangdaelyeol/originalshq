@@ -11,9 +11,20 @@ export const Device = [
 
 export type Device = (typeof Device)[number]
 
-export const LeadState = ['new', 'contacted', 'purchased']
+/** 상담 1건 — 상담/구매를 여러 번 할 수 있어 리드 최상위가 아니라 배열 원소로 둔다. */
+export type ConsultationRecord = {
+  id: string
+  at: number
+  device: Device
+}
 
-export type LeadState = (typeof LeadState)[number]
+/** 구매 1건. */
+export type PurchaseRecord = {
+  id: string
+  at: number
+  device: Device
+  price: number
+}
 
 export type Lead = {
   id: string
@@ -27,10 +38,10 @@ export type Lead = {
   user_agent: string
   fn: string
   ph: string
-  device: Device
-  price: number
-  purchasedAt: number
-  state: LeadState
+  /** 내부 참고용 메모(회사명/직책/동반 구매자 등) — 정형화하지 않고 자유 텍스트로. */
+  remarks: string
+  consultations: ConsultationRecord[]
+  purchases: PurchaseRecord[]
   externalId?: string
 }
 
@@ -44,12 +55,11 @@ export type CreateLeadInput = {
   user_agent: string
   fn: string
   ph: string
-  device: Device
+  remarks?: string
   createdAt: number
-  state: LeadState
 }
 
-export const TimestampField = ['createdAt', 'purchasedAt'] as const
+export const TimestampField = ['createdAt'] as const
 
 export type TimestampField = (typeof TimestampField)[number]
 

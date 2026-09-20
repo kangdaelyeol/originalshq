@@ -3,11 +3,12 @@ import {
   ConfirmVariant,
   EditingField,
   INITIAL_CREATE_LEAD_FORM,
+  INITIAL_REGISTER_FORM,
   SortField,
   type CreateLeadFormValues,
   type EditingCell,
+  type RegisterFormValues,
   type SortDirection,
-  type TableFold,
 } from '@/screens/xtool-lead-manager/types'
 import { useFilterContext } from '@/screens/xtool-lead-manager/context'
 import { useToast } from '@/screens/xtool-lead-manager/hooks'
@@ -17,11 +18,7 @@ import {
   fromDatetimeLocalValue,
   sortLeads,
 } from '@/screens/xtool-lead-manager/utils'
-import type {
-  Device,
-  Lead,
-  LeadState,
-} from '@/screens/xtool-lead-manager/entity'
+import type { Device, Lead } from '@/screens/xtool-lead-manager/entity'
 import {
   leadClient,
   type ClientResponse,
@@ -33,6 +30,11 @@ export const useMainViewModel = () => {
   const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [selectedRow, setSelectedRow] = useState<Lead | null>(null)
   const [variant, setVariant] = useState<ConfirmVariant>(ConfirmVariant.DELETE)
+  const [registerForm, setRegisterForm] = useState<RegisterFormValues>(
+    INITIAL_REGISTER_FORM,
+  )
+  // 이력 모달(고객명 클릭) 대상 — 상담/구매 이력을 보여주고, 개별 항목을
+  // 수정·삭제하는 곳.
   const [detail, setDetail] = useState<Lead | null>(null)
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
@@ -75,12 +77,6 @@ export const useMainViewModel = () => {
     })()
   }, [fetchLeads])
 
-  const [fold, setFold] = useState<TableFold>({
-    new: false,
-    contacted: false,
-    purchased: false,
-  })
-
   const keywordFilteredRows = useMemo(
     () => filterLeadsByKeywords(rows, searchValue),
     [rows, searchValue],
@@ -96,15 +92,6 @@ export const useMainViewModel = () => {
     [sortedRows, deviceFilter],
   )
 
-  const toggleFold = (field: LeadState) => {
-    setFold((prev) => {
-      const newFold = { ...prev }
-      newFold[field] = !newFold[field]
-
-      return newFold
-    })
-  }
-
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
@@ -114,76 +101,101 @@ export const useMainViewModel = () => {
     }
   }
 
-  const registerCustomer = async (): Promise<void> => {
+  // rows(목록)와, 열려 있다면 detail(이력 모달)까지 같은 리드를 함께 최신화한다.
+  const applyLeadUpdate = (updatedLead: Lead) => {
+    setRows((prev) =>
+      prev.map((row) => (row.id === updatedLead.id ? updatedLead : row)),
+    )
+    setDetail((prev) =>
+      prev && prev.id === updatedLead.id ? updatedLead : prev,
+    )
+  }
+
+  const clearTestRow = (rowId: string) => {
+    setTestRows((prev) => {
+      const next = { ...prev }
+      delete next[rowId]
+      return next
+    })
+  }
+
+  const registerConsultation = async (): Promise<void> => {
     const targetLead = selectedRow
     if (!targetLead) return
 
-    const isContactStep = targetLead.state === 'new'
-    if (!isContactStep && targetLead.price <= 0) {
-      console.error('purchaseLead 호출에는 0보다 큰 price가 필요합니다')
-      return
-    }
-
-    let body: Record<string, unknown>
-    let res: ClientResponse<Lead>
-
-    // 체크됐고 값도 채워져 있을 때만 실어 보낸다 — 체크만 하고 코드를 안 채운
-    // 경우엔 평소(실 이벤트)처럼 보낸다.
     const testInfo = testRows[targetLead.id]
     const testEventCodeField =
       testInfo?.checked && testInfo.code.trim()
         ? { test_event_code: testInfo.code.trim() }
         : {}
+    const at = registerForm.at
+      ? fromDatetimeLocalValue(registerForm.at)
+      : undefined
 
     setLoading(true)
-    switch (targetLead.state) {
-      case 'new':
-        body = { id: targetLead.id, ...testEventCodeField }
-        res = await leadClient.updateStateToContact(body)
-        if (!res.ok) {
-          console.error(res.error)
-          setSelectedRow(null)
-          showToast('error')
-          setLoading(false)
-          return
-        }
-        break
-      case 'contacted':
-        body = {
-          id: targetLead.id,
-          price: targetLead.price,
-          purchasedAt: targetLead.purchasedAt,
-          ...testEventCodeField,
-        }
-        res = await leadClient.updateStateToPurchased(body)
-        if (!res.ok) {
-          console.error(res.error)
-          setSelectedRow(null)
-          showToast('error')
-          setLoading(false)
-          return
-        }
-        break
-      default:
-        console.error(`unexpected state: ${targetLead.state}`)
-        setSelectedRow(null)
-        showToast('error')
-        setLoading(false)
-        return
+    const body = {
+      id: targetLead.id,
+      device: registerForm.device,
+      ...(at ? { at } : {}),
+      ...testEventCodeField,
+    }
+    const res = await leadClient.registerConsultation(body)
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setSelectedRow(null)
+      setLoading(false)
+      return
     }
 
-    const updatedLead = res.data
+    applyLeadUpdate(res.data)
+    clearTestRow(targetLead.id)
+    setSelectedRow(null)
+    showToast('registered')
+    setLoading(false)
+  }
 
-    setRows((prev) =>
-      prev.map((row) => (row.id === targetLead.id ? updatedLead : row)),
-    )
-    // 이번 등록에 쓴 테스트 체크는 초기화 — 다음 단계(예: 상담완료→구매완료)로
-    // 넘어가면 새로 정해야 한다.
-    setTestRows((prev) => {
-      const next = { ...prev }
-      delete next[targetLead.id]
-      return next
-    })
+  const registerPurchase = async (): Promise<void> => {
+    const targetLead = selectedRow
+    if (!targetLead) return
+
+    const price = Number(registerForm.price)
+    if (!registerForm.price || Number.isNaN(price) || price <= 0) {
+      console.error('구매 등록에는 0보다 큰 price가 필요합니다')
+      showToast('error')
+      return
+    }
+
+    const testInfo = testRows[targetLead.id]
+    const testEventCodeField =
+      testInfo?.checked && testInfo.code.trim()
+        ? { test_event_code: testInfo.code.trim() }
+        : {}
+    const at = registerForm.at
+      ? fromDatetimeLocalValue(registerForm.at)
+      : undefined
+
+    setLoading(true)
+    const body = {
+      id: targetLead.id,
+      device: registerForm.device,
+      price,
+      ...(at ? { at } : {}),
+      ...testEventCodeField,
+    }
+    const res = await leadClient.registerPurchase(body)
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setSelectedRow(null)
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    clearTestRow(targetLead.id)
     setSelectedRow(null)
     showToast('registered')
     setLoading(false)
@@ -212,7 +224,9 @@ export const useMainViewModel = () => {
 
   const handleConfirmClick = async () => {
     if (variant === ConfirmVariant.DELETE) await deleteCustomer()
-    if (variant === ConfirmVariant.REGISTER) await registerCustomer()
+    if (variant === ConfirmVariant.REGISTER_CONSULTATION)
+      await registerConsultation()
+    if (variant === ConfirmVariant.REGISTER_PURCHASE) await registerPurchase()
   }
 
   const handleCancelConfirmClick = () => {
@@ -267,10 +281,7 @@ export const useMainViewModel = () => {
 
     if (field === EditingField.PHONE) {
       cleanedValue = value.replace(/\D/g, '')
-    } else if (
-      field === EditingField.CREATED_AT ||
-      field === EditingField.PURCHASED_AT
-    ) {
+    } else if (field === EditingField.CREATED_AT) {
       cleanedValue = fromDatetimeLocalValue(value)
     }
 
@@ -292,26 +303,12 @@ export const useMainViewModel = () => {
     }
 
     setLoading(true)
-    let numericPrice: number
     let numericTimestamp: number
     let body: Record<string, unknown>
     let res: ClientResponse<Lead>
 
     switch (field) {
-      case EditingField.PRICE:
-        numericPrice = Number(editedValue)
-        if (Number.isNaN(numericPrice)) {
-          console.error('가격은 숫자여야 합니다')
-          showToast('error')
-          setLoading(false)
-          setEditingCell(null)
-          return
-        }
-        body = { id: rowId, price: numericPrice }
-        res = await leadClient.updatePrice(body)
-        break
       case EditingField.CREATED_AT:
-      case EditingField.PURCHASED_AT:
         numericTimestamp = Number(editedValue)
         if (Number.isNaN(numericTimestamp)) {
           console.error('시각 값이 올바르지 않습니다')
@@ -324,12 +321,16 @@ export const useMainViewModel = () => {
         res = await leadClient.updateTimeStamp(body)
         break
       case EditingField.FIRST_NAME:
-        body = { id: rowId, [field]: editedValue }
+        body = { id: rowId, fn: editedValue }
         res = await leadClient.updateFn(body)
         break
       case EditingField.PHONE:
-        body = { id: rowId, [field]: editedValue }
+        body = { id: rowId, ph: editedValue }
         res = await leadClient.updatePh(body)
+        break
+      case EditingField.REMARKS:
+        body = { id: rowId, remarks: editedValue }
+        res = await leadClient.updateRemarks(body)
         break
     }
 
@@ -341,29 +342,7 @@ export const useMainViewModel = () => {
       return
     }
 
-    const updatedLead = res.data
-
-    setRows((prev) => prev.map((row) => (row.id === rowId ? updatedLead : row)))
-    showToast('updated')
-    setLoading(false)
-    setEditingCell(null)
-  }
-
-  const handleDeviceUpdate = async (rowId: string, device: Device) => {
-    setLoading(true)
-    const body = { id: rowId, device }
-    const response = await leadClient.updateDevice(body)
-
-    if (!response.ok) {
-      console.log(response.error)
-      setLoading(false)
-      setEditingCell(null)
-      return
-    }
-
-    const updatedLead = response.data
-
-    setRows((prev) => prev.map((row) => (row.id === rowId ? updatedLead : row)))
+    applyLeadUpdate(res.data)
     showToast('updated')
     setLoading(false)
     setEditingCell(null)
@@ -376,11 +355,107 @@ export const useMainViewModel = () => {
     setVariant(ConfirmVariant.DELETE)
   }
 
-  const registerRow = async (rowId: string) => {
+  const registerConsultationRow = (rowId: string) => {
     const row = rows.find((row) => row.id === rowId)
     if (!row) return
     setSelectedRow(row)
-    setVariant(ConfirmVariant.REGISTER)
+    setVariant(ConfirmVariant.REGISTER_CONSULTATION)
+    setRegisterForm(INITIAL_REGISTER_FORM)
+  }
+
+  const registerPurchaseRow = (rowId: string) => {
+    const row = rows.find((row) => row.id === rowId)
+    if (!row) return
+    setSelectedRow(row)
+    setVariant(ConfirmVariant.REGISTER_PURCHASE)
+    setRegisterForm(INITIAL_REGISTER_FORM)
+  }
+
+  const updateRegisterForm = (
+    field: keyof RegisterFormValues,
+    value: string,
+  ) => {
+    setRegisterForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const updateConsultationRecord = async (
+    leadId: string,
+    recordId: string,
+    updates: { at?: number; device?: Device },
+  ) => {
+    setLoading(true)
+    const res = await leadClient.updateConsultation({
+      id: leadId,
+      recordId,
+      ...updates,
+    })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('updated')
+    setLoading(false)
+  }
+
+  const deleteConsultationRecord = async (leadId: string, recordId: string) => {
+    setLoading(true)
+    const res = await leadClient.deleteConsultation({ id: leadId, recordId })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('deleted')
+    setLoading(false)
+  }
+
+  const updatePurchaseRecord = async (
+    leadId: string,
+    recordId: string,
+    updates: { at?: number; device?: Device; price?: number },
+  ) => {
+    setLoading(true)
+    const res = await leadClient.updatePurchase({
+      id: leadId,
+      recordId,
+      ...updates,
+    })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('updated')
+    setLoading(false)
+  }
+
+  const deletePurchaseRecord = async (leadId: string, recordId: string) => {
+    setLoading(true)
+    const res = await leadClient.deletePurchase({ id: leadId, recordId })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('deleted')
+    setLoading(false)
   }
 
   const openCreateModal = () => {
@@ -429,10 +504,10 @@ export const useMainViewModel = () => {
       rows: deviceFilteredRows,
       selectedRow,
       variant,
+      registerForm,
       detail,
       sortField,
       sortDirection,
-      fold,
       loading,
       createOpen,
       isSubmitting,
@@ -446,16 +521,20 @@ export const useMainViewModel = () => {
       startEditing,
       handleFieldChange,
       stopEditing,
-      handleDeviceUpdate,
       deleteRow,
-      registerRow,
+      registerConsultationRow,
+      registerPurchaseRow,
+      updateRegisterForm,
       handleEditingKeyDown,
       handleCancelConfirmClick,
       handleConfirmClick,
       showDetail,
       hideDetail,
+      updateConsultationRecord,
+      deleteConsultationRecord,
+      updatePurchaseRecord,
+      deletePurchaseRecord,
       toggleSort,
-      toggleFold,
       openCreateModal,
       closeCreateModal,
       handleCreateLeadClick,

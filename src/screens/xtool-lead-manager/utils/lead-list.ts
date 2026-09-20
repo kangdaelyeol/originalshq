@@ -30,10 +30,16 @@ export const sortLeads = (
   return sorted
 }
 
+// 상담/구매 어느 기록에서든 해당 기기가 한 번이라도 등장하면 그 고객을 보여준다
+// — 기기가 이제 리드 공통 필드가 아니라 상담/구매 기록마다 따로 있어서다.
 export const filterLeadsByDevice = (
   rows: Lead[],
   deviceFilter: DeviceFilterLabel,
 ) => {
   if (deviceFilter === DeviceFilterLabel.ALL) return rows
-  return rows.filter((row) => row.device === deviceFilter)
+  return rows.filter(
+    (row) =>
+      (row.consultations ?? []).some((c) => c.device === deviceFilter) ||
+      (row.purchases ?? []).some((p) => p.device === deviceFilter),
+  )
 }

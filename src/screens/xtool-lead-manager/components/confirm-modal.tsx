@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { ConfirmVariant } from '@/screens/xtool-lead-manager/types'
+import {
+  ConfirmVariant,
+  type RegisterFormValues,
+} from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/confirm-modal.scss'
-import type { Lead } from '@/screens/xtool-lead-manager/entity'
+import { Device, type Lead } from '@/screens/xtool-lead-manager/entity'
 
 const VARIANT_CONTENT: Record<
   ConfirmVariant,
@@ -18,10 +21,17 @@ const VARIANT_CONTENT: Record<
     confirmLabel: '삭제[Enter]',
     confirmingLabel: '삭제 중...',
   },
-  register: {
-    title: '전환 이벤트를 등록할까요?',
+  register_consultation: {
+    title: '상담을 등록할까요?',
     description:
-      '등록 후에는 취소할 수 없습니다. 정보를 다시 한번 확인해주세요.',
+      '등록하면 Meta로 전환 이벤트가 전송됩니다. 정보를 다시 한번 확인해주세요.',
+    confirmLabel: '등록[Enter]',
+    confirmingLabel: '등록 중...',
+  },
+  register_purchase: {
+    title: '구매를 등록할까요?',
+    description:
+      '등록하면 Meta로 전환 이벤트가 전송됩니다. 정보를 다시 한번 확인해주세요.',
     confirmLabel: '등록[Enter]',
     confirmingLabel: '등록 중...',
   },
@@ -30,16 +40,21 @@ const VARIANT_CONTENT: Record<
 export const ConfirmModal = ({
   lead,
   variant,
+  registerForm,
+  onUpdateRegisterForm,
   onConfirm,
   onCancel,
 }: {
   lead: Lead
   variant: ConfirmVariant
+  registerForm: RegisterFormValues
+  onUpdateRegisterForm: (field: keyof RegisterFormValues, value: string) => void
   onConfirm: () => Promise<void>
   onCancel: () => void
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const content = VARIANT_CONTENT[variant]
+  const isRegister = variant !== ConfirmVariant.DELETE
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -60,12 +75,15 @@ export const ConfirmModal = ({
 
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      // 등록 폼의 입력창에 포커스가 있을 때 Enter로 바로 확정되면 입력을
+      // 마치기도 전에 등록되기 쉬우므로, 등록 폼에서는 Enter 단축키를 끈다.
       if (e.key === 'Escape' && !isSubmitting) onCancel()
-      if (e.key === 'Enter' && !isSubmitting) await handleConfirm()
+      if (e.key === 'Enter' && !isSubmitting && !isRegister)
+        await handleConfirm()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [isSubmitting, onCancel, onConfirm, handleConfirm])
+  }, [isSubmitting, isRegister, onCancel, onConfirm, handleConfirm])
 
   const handleOverlayClick = () => {
     if (isSubmitting) return
@@ -75,7 +93,9 @@ export const ConfirmModal = ({
   return (
     <div className="lead_manager_confirm_modal" onClick={handleOverlayClick}>
       <div
-        className={['confirm_form', variant].join(' ')}
+        className={['confirm_form', isRegister ? 'register' : variant].join(
+          ' ',
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="icon_wrap">
@@ -127,17 +147,62 @@ export const ConfirmModal = ({
             <span className="label">전화번호</span>
             <span className="value">{lead.ph}</span>
           </div>
-          <div className="row">
-            <span className="label">상담기기</span>
-            <span className="value">{lead.device}</span>
-          </div>
-          {lead.state === 'contacted' && (
-            <div className="row">
-              <span className="label">구매금액</span>
-              <span className="value">{lead.price}</span>
-            </div>
-          )}
         </div>
+
+        {isRegister && (
+          <div className="register_form">
+            <div className="form_row">
+              <label className="label" htmlFor="register-device">
+                기기
+              </label>
+              <select
+                id="register-device"
+                className="control"
+                value={registerForm.device}
+                onChange={(e) => onUpdateRegisterForm('device', e.target.value)}
+              >
+                {Object.values(Device).map((device) => (
+                  <option key={device} value={device}>
+                    {device}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {variant === ConfirmVariant.REGISTER_PURCHASE && (
+              <div className="form_row">
+                <label className="label" htmlFor="register-price">
+                  구매 금액
+                </label>
+                <input
+                  id="register-price"
+                  className="control"
+                  type="number"
+                  min={0}
+                  placeholder="원"
+                  value={registerForm.price}
+                  onChange={(e) =>
+                    onUpdateRegisterForm('price', e.target.value)
+                  }
+                />
+              </div>
+            )}
+
+            <div className="form_row">
+              <label className="label" htmlFor="register-at">
+                시각
+              </label>
+              <input
+                id="register-at"
+                className="control"
+                type="datetime-local"
+                placeholder="지금"
+                value={registerForm.at}
+                onChange={(e) => onUpdateRegisterForm('at', e.target.value)}
+              />
+            </div>
+          </div>
+        )}
 
         <div className="actions">
           <button
@@ -150,7 +215,9 @@ export const ConfirmModal = ({
           </button>
           <button
             type="button"
-            className={['btn confirm', variant].join(' ')}
+            className={['btn confirm', isRegister ? 'register' : variant].join(
+              ' ',
+            )}
             onClick={handleConfirm}
             disabled={isSubmitting}
           >

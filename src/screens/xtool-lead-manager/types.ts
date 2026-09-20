@@ -1,4 +1,4 @@
-import { Device, LeadState } from './entity'
+import { Device } from './entity'
 
 export const DeviceFilterLabel = {
   ALL: '전체 기기',
@@ -13,16 +13,16 @@ export type DeviceFilterOption = keyof typeof DeviceFilterLabel
 export const EditingField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
-  PRICE: 'price',
+  REMARKS: 'remarks',
   CREATED_AT: 'createdAt',
-  PURCHASED_AT: 'purchasedAt',
 } as const
 
 export type EditingField = (typeof EditingField)[keyof typeof EditingField]
 
 export const ConfirmVariant = {
   DELETE: 'delete',
-  REGISTER: 'register',
+  REGISTER_CONSULTATION: 'register_consultation',
+  REGISTER_PURCHASE: 'register_purchase',
 } as const
 
 export type ConfirmVariant =
@@ -43,12 +43,6 @@ export type EditingCell = {
   field: EditingField
 } | null
 
-export interface TableFold {
-  new: boolean
-  contacted: boolean
-  purchased: boolean
-}
-
 export type CreateLeadFormValues = {
   utm_campaign: string
   utm_medium: string
@@ -59,9 +53,8 @@ export type CreateLeadFormValues = {
   user_agent: string
   fn: string
   ph: string
-  device: Device
+  remarks: string
   createdAt: string // <input type="datetime-local"> 바인딩용 문자열
-  state: LeadState
 }
 
 export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
@@ -74,9 +67,21 @@ export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
   user_agent: '',
   fn: '',
   ph: '',
-  device: 'F2Ultra',
+  remarks: '',
   createdAt: '',
-  state: 'new',
+}
+
+/** 상담/구매 "등록" 확인 모달에서 쓰는 최소 입력폼 — price는 구매 등록에서만 쓴다. */
+export type RegisterFormValues = {
+  device: Device
+  at: string // <input type="datetime-local"> 바인딩용 문자열, 빈 값이면 지금 시각
+  price: string
+}
+
+export const INITIAL_REGISTER_FORM: RegisterFormValues = {
+  device: 'F2Ultra',
+  at: '',
+  price: '',
 }
 
 export interface Timestamp {

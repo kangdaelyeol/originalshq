@@ -1,4 +1,7 @@
-import { createHash } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
+
+/** 상담/구매 배열 원소의 고유 id — 개별 항목 수정·삭제를 이 id로 지정한다. */
+export const generateRecordId = (): string => randomUUID()
 
 export type ActionSource = 'physical_store' | 'phone_call'
 

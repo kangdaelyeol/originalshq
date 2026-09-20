@@ -10,11 +10,17 @@ import {
 
 export const Main = () => {
   const { state, actions, component } = useMainViewModel()
-  const { selectedRow, variant, detail, loading, createOpen } = state
+  const { selectedRow, variant, registerForm, detail, loading, createOpen } =
+    state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
+    updateRegisterForm,
     hideDetail,
+    updateConsultationRecord,
+    deleteConsultationRecord,
+    updatePurchaseRecord,
+    deletePurchaseRecord,
     openCreateModal,
   } = actions
   const { ToastContainer } = component
@@ -22,27 +28,28 @@ export const Main = () => {
   return (
     <div className="xtool-main">
       <div className="wrapper">
-        <Table state={{ ...state }} actions={{ ...actions }} type="new" />
-
-        <div className="table_divider">
-          <div className="line" />
-        </div>
-        <Table state={{ ...state }} actions={{ ...actions }} type="contacted" />
-
-        <div className="table_divider">
-          <div className="line" />
-        </div>
-        <Table state={{ ...state }} actions={{ ...actions }} type="purchased" />
+        <Table state={{ ...state }} actions={{ ...actions }} />
       </div>
       {selectedRow && (
         <ConfirmModal
           lead={selectedRow}
           variant={variant}
+          registerForm={registerForm}
+          onUpdateRegisterForm={updateRegisterForm}
           onCancel={handleCancelConfirmClick}
           onConfirm={handleConfirmClick}
         />
       )}
-      {detail && <Detail lead={detail} onConfirm={hideDetail} />}
+      {detail && (
+        <Detail
+          lead={detail}
+          onConfirm={hideDetail}
+          onUpdateConsultation={updateConsultationRecord}
+          onDeleteConsultation={deleteConsultationRecord}
+          onUpdatePurchase={updatePurchaseRecord}
+          onDeletePurchase={deletePurchaseRecord}
+        />
+      )}
       {loading && <Loading />}
       {createOpen && (
         <CreateModal state={{ ...state }} actions={{ ...actions }} />

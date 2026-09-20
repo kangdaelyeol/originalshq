@@ -1,13 +1,12 @@
 import {
   CreateLeadInput,
   Device,
-  LeadState,
   TimestampField,
   ValidationResponse,
 } from './types'
 import { normalizeDomesticPhone } from './utils'
 
-const CREATE_LEAD_REQUIRED_FIELDS = ['ph', 'device'] as const
+const CREATE_LEAD_REQUIRED_FIELDS = ['ph'] as const
 
 export const hasExternalId = (body: Record<string, unknown>): boolean =>
   body.externalId ? true : false
@@ -32,15 +31,8 @@ export const validateCreateLead = (
     return { ok: false, error: 'createdAt must be number' }
   }
 
-  if (!LeadState.includes(body.state as string)) {
-    return {
-      ok: false,
-      error: `lead state must be one of: ${LeadState.join(', ')}`,
-    }
-  }
-
-  if (!Device.includes(body.device as Device)) {
-    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  if (body.remarks !== undefined && typeof body.remarks !== 'string') {
+    return { ok: false, error: 'remarks must be a string' }
   }
 
   const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
@@ -74,10 +66,29 @@ const parseTestEventCode = (
   return { ok: true, data: trimmed === '' ? undefined : trimmed }
 }
 
+/** 상담/구매 등록 공통 — device 필수, at은 선택(안 주면 호출부에서 Date.now()). */
+const parseDeviceAndAt = (
+  body: Record<string, unknown>,
+): ValidationResponse<{ device: Device; at?: number }> => {
+  const { device, at } = body as { device?: string; at?: number }
+
+  if (!device || !Device.includes(device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+
+  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
+    return { ok: false, error: 'at must be a positive number if provided' }
+  }
+
+  return { ok: true, data: { device: device as Device, at } }
+}
+
 export const validateContactLead = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
+  device: Device
+  at?: number
   testEventCode?: string
 }> => {
   const { id } = body as { id?: string }
@@ -86,10 +97,155 @@ export const validateContactLead = (
     return { ok: false, error: 'id is required' }
   }
 
+  const deviceRes = parseDeviceAndAt(body)
+  if (!deviceRes.ok) return deviceRes
+
   const testEventCodeRes = parseTestEventCode(body)
   if (!testEventCodeRes.ok) return testEventCodeRes
 
-  return { ok: true, data: { id, testEventCode: testEventCodeRes.data } }
+  return {
+    ok: true,
+    data: {
+      id,
+      device: deviceRes.data.device,
+      at: deviceRes.data.at,
+      testEventCode: testEventCodeRes.data,
+    },
+  }
+}
+
+export const validatePurchaseLead = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  device: Device
+  price: number
+  at?: number
+  testEventCode?: string
+}> => {
+  const { id, price } = body as { id?: string; price?: number }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+
+  if (typeof price !== 'number' || price <= 0) {
+    return { ok: false, error: 'price must be a positive number' }
+  }
+
+  const deviceRes = parseDeviceAndAt(body)
+  if (!deviceRes.ok) return deviceRes
+
+  const testEventCodeRes = parseTestEventCode(body)
+  if (!testEventCodeRes.ok) return testEventCodeRes
+
+  return {
+    ok: true,
+    data: {
+      id,
+      device: deviceRes.data.device,
+      price,
+      at: deviceRes.data.at,
+      testEventCode: testEventCodeRes.data,
+    },
+  }
+}
+
+/** consultation/purchase 개별 항목 수정 — 전부 선택값이지만(부분 수정 허용),
+ * 뭘 고칠지 하나도 없으면 의미가 없으니 최소 하나는 와야 한다. */
+export const validateUpdateConsultation = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  recordId: string
+  at?: number
+  device?: Device
+}> => {
+  const { id, recordId, at, device } = body as {
+    id?: string
+    recordId?: string
+    at?: number
+    device?: string
+  }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!recordId || typeof recordId !== 'string') {
+    return { ok: false, error: 'recordId is required' }
+  }
+  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
+    return { ok: false, error: 'at must be a positive number if provided' }
+  }
+  if (device !== undefined && !Device.includes(device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+  if (at === undefined && device === undefined) {
+    return { ok: false, error: 'at or device must be provided' }
+  }
+
+  return {
+    ok: true,
+    data: { id, recordId, at, device: device as Device | undefined },
+  }
+}
+
+export const validateUpdatePurchase = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  recordId: string
+  at?: number
+  device?: Device
+  price?: number
+}> => {
+  const { id, recordId, at, device, price } = body as {
+    id?: string
+    recordId?: string
+    at?: number
+    device?: string
+    price?: number
+  }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!recordId || typeof recordId !== 'string') {
+    return { ok: false, error: 'recordId is required' }
+  }
+  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
+    return { ok: false, error: 'at must be a positive number if provided' }
+  }
+  if (device !== undefined && !Device.includes(device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+  if (price !== undefined && (typeof price !== 'number' || price <= 0)) {
+    return { ok: false, error: 'price must be a positive number if provided' }
+  }
+  if (at === undefined && device === undefined && price === undefined) {
+    return { ok: false, error: 'at, device or price must be provided' }
+  }
+
+  return {
+    ok: true,
+    data: { id, recordId, at, device: device as Device | undefined, price },
+  }
+}
+
+export const validateDeleteRecord = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  recordId: string
+}> => {
+  const { id, recordId } = body as { id?: string; recordId?: string }
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!recordId || typeof recordId !== 'string') {
+    return { ok: false, error: 'recordId is required' }
+  }
+  return { ok: true, data: { id, recordId } }
 }
 
 export const valiedateUpdateLeadPhone = (
@@ -132,26 +288,23 @@ export const validateUpdateLeadFn = (
   return { ok: true, data: { id, fn } }
 }
 
-export const validateUpdateLeadDevice = (
+/** 비고는 내부 참고용 자유 텍스트라 fn과 달리 빈 문자열(지우기)도 허용한다. */
+export const validateUpdateLeadRemarks = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
-  device: string
+  remarks: string
 }> => {
-  const { id, device } = body as { id?: string; device?: string }
+  const { id, remarks } = body as { id?: string; remarks?: string }
 
   if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
   }
-
-  if (!device || typeof device !== 'string') {
-    return { ok: false, error: 'device is required' }
+  if (typeof remarks !== 'string') {
+    return { ok: false, error: 'remarks must be a string' }
   }
 
-  if (!Device.includes(device as Device)) {
-    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
-  }
-  return { ok: true, data: { id, device } }
+  return { ok: true, data: { id, remarks } }
 }
 
 export const validateDeleteLead = (
@@ -165,25 +318,6 @@ export const validateDeleteLead = (
   }
 
   return { ok: true, data: { id } }
-}
-
-export const validateUpdateLeadPrice = (
-  body: Record<string, unknown>,
-): ValidationResponse<{
-  id: string
-  price: number
-}> => {
-  const { id, price } = body as { id?: string; price?: number }
-
-  if (!id || typeof id !== 'string') {
-    return { ok: false, error: 'id is required' }
-  }
-
-  if (typeof price !== 'number') {
-    return { ok: false, error: 'price must be a non-negative number' }
-  }
-
-  return { ok: true, data: { id, price } }
 }
 
 export const validateUpdateTimestamp = (
@@ -215,39 +349,4 @@ export const validateUpdateTimestamp = (
   }
 
   return { ok: true, data: { id, field, value } }
-}
-
-export const validatePurchaseLead = (
-  body: Record<string, unknown>,
-): ValidationResponse<{
-  id: string
-  price: number
-  purchasedAt: number
-  testEventCode?: string
-}> => {
-  const { id, price, purchasedAt } = body as {
-    id?: string
-    price?: number
-    purchasedAt?: number
-  }
-
-  if (!id || typeof id !== 'string') {
-    return { ok: false, error: 'id is required' }
-  }
-
-  if (typeof price !== 'number' || price <= 0) {
-    return { ok: false, error: 'price must be a positive number' }
-  }
-
-  if (typeof purchasedAt !== 'number' || purchasedAt <= 0) {
-    return { ok: false, error: 'purchasedAt must be required' }
-  }
-
-  const testEventCodeRes = parseTestEventCode(body)
-  if (!testEventCodeRes.ok) return testEventCodeRes
-
-  return {
-    ok: true,
-    data: { id, price, purchasedAt, testEventCode: testEventCodeRes.data },
-  }
 }

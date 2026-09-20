@@ -1,5 +1,4 @@
 import { type CreateLeadFormValues } from '@/screens/xtool-lead-manager/types'
-import type { Device } from '@/screens/xtool-lead-manager/entity'
 import styles from '@/screens/xtool-lead-manager/styles/create-modal.module.scss'
 
 interface CreateModalState {
@@ -17,17 +16,6 @@ interface CreateModalProps {
   state: CreateModalState
   actions: CreateModalActions
 }
-
-const DEVICE_OPTIONS: Device[] = [
-  'F2Ultra',
-  'F2UltraUV',
-  'P3',
-  'DTF',
-  'Metalfab',
-  'F2',
-  'M2',
-  'o1',
-]
 
 const FormRow = ({
   label,
@@ -75,31 +63,13 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
           />
         </FormRow>
 
-        <FormRow label="기기 (device)" htmlFor="lead-device">
-          <select
-            id="lead-device"
+        <FormRow label="비고 (remarks)" htmlFor="lead-remarks">
+          <input
+            id="lead-remarks"
             className={styles.control}
-            value={form.device}
-            onChange={(e) => updateField('device', e.target.value)}
-          >
-            {DEVICE_OPTIONS.map((device) => (
-              <option key={device} value={device}>
-                {device}
-              </option>
-            ))}
-          </select>
-        </FormRow>
-
-        <FormRow label="상태 (state)" htmlFor="lead-state">
-          <select
-            id="lead-state"
-            className={styles.control}
-            value={form.state}
-            onChange={(e) => updateField('state', e.target.value)}
-          >
-            <option value="new">신규 (new)</option>
-            <option value="contacted">상담 완료 (contacted)</option>
-          </select>
+            value={form.remarks}
+            onChange={(e) => updateField('remarks', e.target.value)}
+          />
         </FormRow>
 
         <FormRow label="utm_campaign" htmlFor="lead-utm-campaign">

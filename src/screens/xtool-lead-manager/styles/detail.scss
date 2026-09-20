@@ -182,6 +182,144 @@
           }
         }
       }
+
+      .empty_state {
+        padding: 10px 0;
+        font-size: 13px;
+        color: variables.$color-text-faint;
+        font-style: italic;
+      }
+
+      // 상담/구매 이력 한 건 — 평소엔 기기·(금액)·시각을 한 줄로, 수정 모드일
+      // 땐 같은 자리에 입력 컨트롤을 대신 보여준다.
+      .record_list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .record_row {
+        box-sizing: border-box;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid variables.$color-border-soft;
+        border-radius: 8px;
+        font-size: 13px;
+
+        .device {
+          flex-shrink: 0;
+          padding: 2px 8px;
+          border-radius: 999px;
+          background-color: variables.$color-accent-soft;
+          color: variables.$color-accent;
+          font-size: 12px;
+        }
+
+        .price {
+          color: variables.$color-text;
+          font-weight: 500;
+        }
+
+        .at {
+          color: variables.$color-text-muted;
+          font-size: 12.5px;
+        }
+
+        .price,
+        .at {
+          margin-left: auto;
+        }
+
+        &.editing {
+          flex-wrap: wrap;
+
+          .control {
+            box-sizing: border-box;
+            flex: 1;
+            min-width: 110px;
+            height: 32px;
+            padding: 0 8px;
+            background-color: variables.$color-surface-raised;
+            border: 1px solid variables.$color-border;
+            border-radius: 6px;
+            color: variables.$color-text;
+            font-size: 12.5px;
+
+            &:focus {
+              outline: none;
+              border-color: variables.$color-accent;
+            }
+          }
+        }
+
+        .record_actions {
+          flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin-left: auto;
+        }
+
+        &.editing .record_actions {
+          margin-left: 0;
+          width: 100%;
+          justify-content: flex-end;
+        }
+
+        .icon_btn {
+          all: unset;
+          box-sizing: border-box;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          color: variables.$color-text-muted;
+          cursor: pointer;
+          svg {
+            width: 14px;
+            height: 14px;
+          }
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+            color: variables.$color-text;
+          }
+          &.danger:hover {
+            background-color: rgba(229, 83, 75, 0.15);
+            color: variables.$color-danger;
+          }
+        }
+
+        .save_btn,
+        .cancel_btn {
+          all: unset;
+          box-sizing: border-box;
+          padding: 5px 10px;
+          border-radius: 6px;
+          font-size: 12.5px;
+          cursor: pointer;
+        }
+
+        .save_btn {
+          background-color: variables.$color-accent;
+          color: #ffffff;
+          &:hover {
+            filter: brightness(1.1);
+          }
+        }
+
+        .cancel_btn {
+          background-color: rgba(255, 255, 255, 0.06);
+          color: variables.$color-text-muted;
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+          }
+        }
+      }
     }
 
     .footer {
