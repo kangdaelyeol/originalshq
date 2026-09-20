@@ -420,8 +420,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
   &__info-icon {
     flex: none;
-    width: 13px;
-    height: 13px;
+    width: 11px;
+    height: 11px;
+    margin-left: 2px;
   }
 
   // 컬럼이 표 맨 오른쪽(frequency는 지표 중 마지막 컬럼)이라 오른쪽으로 열면
@@ -843,7 +844,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   &__full-list-toggle-btn {
     appearance: none;
     border: 1px solid $color-border;
-    border-radius: 999px;
+    border-radius: 3px;
     background: $color-canvas-subtle;
     color: $color-muted;
     padding: 5px 12px;
@@ -875,7 +876,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
         $color-border
       );
       color: $color-text;
-      font-weight: 600;
+      font-weight: 500;
     }
   }
 
