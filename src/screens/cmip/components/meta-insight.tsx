@@ -63,7 +63,7 @@ const CHANNEL_CHIP_COLOR: Record<ChannelKey, string> = {
 }
 
 function MetaLogo() {
-  return <img className="meta-insight__channel-logo" src={metaIconPng} alt="" />
+  return <img className="channel-insight__channel-logo" src={metaIconPng} alt="" />
 }
 
 // 작은 "G" 아이콘 대신 실제 구글 워드마크(전체 로고) 전체를 쓴다 — 그 자체로
@@ -71,7 +71,7 @@ function MetaLogo() {
 function GoogleLogo() {
   return (
     <svg
-      className="meta-insight__channel-logo meta-insight__channel-logo--google"
+      className="channel-insight__channel-logo channel-insight__channel-logo--google"
       viewBox="0 0 272 92"
       aria-hidden
     >
@@ -104,7 +104,7 @@ function GoogleLogo() {
 function NaverLogo() {
   return (
     <img
-      className="meta-insight__channel-logo meta-insight__channel-logo--naver"
+      className="channel-insight__channel-logo channel-insight__channel-logo--naver"
       src={naverLogoPng}
       alt=""
     />
@@ -130,7 +130,7 @@ function ChannelLabel({
   const Logo = CHANNEL_LOGO[channelKey]
   return (
     <span
-      className="meta-insight__channel-label"
+      className="channel-insight__channel-label"
       style={{ color: CHANNEL_TEXT_COLOR[channelKey] }}
     >
       <Logo />
@@ -150,7 +150,7 @@ const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
 function ChevronIcon() {
   return (
     <svg
-      className="meta-insight__chevron"
+      className="channel-insight__chevron"
       viewBox="0 0 20 20"
       fill="none"
       aria-hidden
@@ -171,7 +171,7 @@ function ChevronIcon() {
 function CheckIcon() {
   return (
     <svg
-      className="meta-insight__multi-select-check"
+      className="channel-insight__multi-select-check"
       viewBox="0 0 16 16"
       fill="none"
       aria-hidden
@@ -190,7 +190,7 @@ function CheckIcon() {
 function InfoIcon() {
   return (
     <svg
-      className="meta-insight__info-icon"
+      className="channel-insight__info-icon"
       viewBox="0 0 16 16"
       fill="none"
       aria-hidden
@@ -224,11 +224,11 @@ function MetricHeaderLabel({
   const text = label ?? field.label
   if (!field.note) return <>{text}</>
   return (
-    <span className="meta-insight__metric-head">
+    <span className="channel-insight__metric-head">
       {text}
-      <span className="meta-insight__info" tabIndex={0}>
+      <span className="channel-insight__info" tabIndex={0}>
         <InfoIcon />
-        <span className="meta-insight__info-tooltip" role="tooltip">
+        <span className="channel-insight__info-tooltip" role="tooltip">
           {field.note}
         </span>
       </span>
@@ -238,11 +238,11 @@ function MetricHeaderLabel({
 
 function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
   return (
-    <div className="meta-insight__summary-grid">
+    <div className="channel-insight__summary-grid">
       {METRIC_FIELDS.map(({ key, label, format }) => (
-        <div key={key} className="meta-insight__kpi">
-          <span className="meta-insight__kpi-label">{label}</span>
-          <span className="meta-insight__kpi-value">
+        <div key={key} className="channel-insight__kpi">
+          <span className="channel-insight__kpi-label">{label}</span>
+          <span className="channel-insight__kpi-value">
             {format(metrics[key])}
           </span>
         </div>
@@ -255,11 +255,11 @@ function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
  * 그대로 흉내 내서(라벨 폭 짧게, 값 폭 길게) 레이아웃이 흔들리지 않게 한다. */
 function KpiSkeletonGrid() {
   return (
-    <div className="meta-insight__summary-grid" aria-hidden>
+    <div className="channel-insight__summary-grid" aria-hidden>
       {METRIC_FIELDS.map(({ key }) => (
-        <div key={key} className="meta-insight__kpi">
-          <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--label" />
-          <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--value" />
+        <div key={key} className="channel-insight__kpi">
+          <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--label" />
+          <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--value" />
         </div>
       ))}
     </div>
@@ -309,13 +309,13 @@ function MetricCell({
   const cmp = showCompare ? computeMetricDelta(value, prevValue) : null
   if (!cmp) return <>{format(value)}</>
   return (
-    <span className="meta-insight__metric-cell">
-      <span className={`meta-insight__metric-delta is-${cmp.dir}`}>
+    <span className="channel-insight__metric-cell">
+      <span className={`channel-insight__metric-delta is-${cmp.dir}`}>
         {DELTA_ARROW[cmp.dir]} {format(Math.abs(cmp.delta))}
         {cmp.pct != null &&
           ` (${cmp.delta >= 0 ? '+' : '-'}${Math.abs(cmp.pct).toFixed(1)}%)`}
       </span>
-      <span className="meta-insight__metric-value">{format(value)}</span>
+      <span className="channel-insight__metric-value">{format(value)}</span>
     </span>
   )
 }
@@ -326,14 +326,14 @@ type SortDir = 'asc' | 'desc'
  * 둔다. 전체 요약 표(MetricsTable)와 전체 목록 표(FullListTable) 둘 다 공유. */
 function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
   return (
-    <span className="meta-insight__sort-arrows">
+    <span className="channel-insight__sort-arrows">
       <span
-        className={`meta-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
+        className={`channel-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
       >
         ▲
       </span>
       <span
-        className={`meta-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
+        className={`channel-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
       >
         ▼
       </span>
@@ -359,16 +359,16 @@ function SortableMetricHeader({
     <>
       <button
         type="button"
-        className="meta-insight__sort-head"
+        className="channel-insight__sort-head"
         onClick={onSort}
       >
         {field.label}
         <SortArrows active={active} dir={dir} />
       </button>
       {field.note && (
-        <span className="meta-insight__info" tabIndex={0}>
+        <span className="channel-insight__info" tabIndex={0}>
           <InfoIcon />
-          <span className="meta-insight__info-tooltip" role="tooltip">
+          <span className="channel-insight__info-tooltip" role="tooltip">
             {field.note}
           </span>
         </span>
@@ -453,9 +453,9 @@ function MetricsTable<T extends MetricsSummary>({
   }
 
   return (
-    <div className="meta-insight__table-block">
+    <div className="channel-insight__table-block">
       <div
-        className="meta-insight__full-list-toggles"
+        className="channel-insight__full-list-toggles"
         role="group"
         aria-label="컬럼 표시"
       >
@@ -465,7 +465,7 @@ function MetricsTable<T extends MetricsSummary>({
             <button
               key={f.key}
               type="button"
-              className={`meta-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+              className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
               style={{ '--chip-color': f.color } as CSSProperties}
               aria-pressed={active}
               onClick={() => onToggleMetric(f.key)}
@@ -476,18 +476,18 @@ function MetricsTable<T extends MetricsSummary>({
         })}
       </div>
 
-      <div className="meta-insight__table-wrap">
-        <table className="meta-insight__table">
+      <div className="channel-insight__table-wrap">
+        <table className="channel-insight__table">
           <thead>
             <tr>
               <th
-                className="meta-insight__table-toggle-head"
+                className="channel-insight__table-toggle-head"
                 aria-hidden="true"
               />
               <th>
                 <button
                   type="button"
-                  className="meta-insight__sort-head"
+                  className="channel-insight__sort-head"
                   onClick={() => toggleSort('label')}
                 >
                   {headLabel}
@@ -527,7 +527,7 @@ function MetricsTable<T extends MetricsSummary>({
               return (
                 <Fragment key={key}>
                   <tr
-                    className="meta-insight__table-row--clickable"
+                    className="channel-insight__table-row--clickable"
                     role="button"
                     tabIndex={0}
                     aria-expanded={isOpen}
@@ -538,9 +538,9 @@ function MetricsTable<T extends MetricsSummary>({
                       toggle(key)
                     }}
                   >
-                    <td className="meta-insight__table-toggle-cell">
+                    <td className="channel-insight__table-toggle-cell">
                       <span
-                        className={`meta-insight__table-toggle${
+                        className={`channel-insight__table-toggle${
                           isOpen ? ' is-open' : ''
                         }`}
                       >
@@ -567,10 +567,10 @@ function MetricsTable<T extends MetricsSummary>({
                     channels.map((channel) => (
                       <tr
                         key={`${key}-${channel.key}`}
-                        className="meta-insight__table-row--channel"
+                        className="channel-insight__table-row--channel"
                       >
                         <td />
-                        <td className="meta-insight__table-channel-label">
+                        <td className="channel-insight__table-channel-label">
                           <ChannelLabel
                             channelKey={channel.key}
                             label={channel.label}
@@ -615,12 +615,12 @@ function TableSkeleton({
   rowCount: number
 }) {
   return (
-    <div className="meta-insight__table-wrap" aria-hidden>
-      <table className="meta-insight__table">
+    <div className="channel-insight__table-wrap" aria-hidden>
+      <table className="channel-insight__table">
         <thead>
           <tr>
             <th
-              className="meta-insight__table-toggle-head"
+              className="channel-insight__table-toggle-head"
               aria-hidden="true"
             />
             <th>{headLabel}</th>
@@ -632,13 +632,13 @@ function TableSkeleton({
         <tbody>
           {Array.from({ length: rowCount }, (_, i) => (
             <tr key={i}>
-              <td className="meta-insight__table-toggle-cell" />
+              <td className="channel-insight__table-toggle-cell" />
               <td>
-                <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--cell" />
+                <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--cell" />
               </td>
               {METRIC_FIELDS.map((f) => (
                 <td key={f.key}>
-                  <span className="meta-insight__skeleton-bar meta-insight__skeleton-bar--cell" />
+                  <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--cell" />
                 </td>
               ))}
             </tr>
@@ -664,27 +664,27 @@ function ResultSkeleton({
   const dayCount = dateRange(dateStart, dateEnd).length
 
   return (
-    <div className="meta-insight__result">
-      <section className="meta-insight__summary">
-        <div className="meta-insight__summary-head">
-          <span className="meta-insight__summary-label">Summary</span>
-          <span className="meta-insight__summary-period">{periodLabel}</span>
+    <div className="channel-insight__result">
+      <section className="channel-insight__summary">
+        <div className="channel-insight__summary-head">
+          <span className="channel-insight__summary-label">Summary</span>
+          <span className="channel-insight__summary-period">{periodLabel}</span>
         </div>
         <KpiSkeletonGrid />
       </section>
 
-      <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">일별 성과</h3>
+      <section className="channel-insight__section">
+        <h3 className="channel-insight__section-title">일별 성과</h3>
         <TableSkeleton headLabel="날짜" rowCount={dayCount} />
       </section>
 
-      <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">요일별 성과</h3>
+      <section className="channel-insight__section">
+        <h3 className="channel-insight__section-title">요일별 성과</h3>
         <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
       </section>
 
-      <section className="meta-insight__section">
-        <h3 className="meta-insight__section-title">주차별 성과</h3>
+      <section className="channel-insight__section">
+        <h3 className="channel-insight__section-title">주차별 성과</h3>
         <TableSkeleton
           headLabel="기간"
           rowCount={Math.max(1, Math.ceil(dayCount / 7))}
@@ -728,11 +728,11 @@ function SectionHead({
   onToggle: () => void
 }) {
   return (
-    <div className="meta-insight__section-head">
-      <h3 className="meta-insight__section-title">{title}</h3>
+    <div className="channel-insight__section-head">
+      <h3 className="channel-insight__section-title">{title}</h3>
       <button
         type="button"
-        className={`meta-insight__compare-toggle${active ? ' is-active' : ''}`}
+        className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
         aria-pressed={active}
         onClick={onToggle}
       >
@@ -796,11 +796,11 @@ function ResultPanel({
   )
 
   return (
-    <div className="meta-insight__result">
-      <section className="meta-insight__summary">
-        <div className="meta-insight__summary-head">
-          <span className="meta-insight__summary-label">Summary</span>
-          <span className="meta-insight__summary-period">{periodLabel}</span>
+    <div className="channel-insight__result">
+      <section className="channel-insight__summary">
+        <div className="channel-insight__summary-head">
+          <span className="channel-insight__summary-label">Summary</span>
+          <span className="channel-insight__summary-period">{periodLabel}</span>
         </div>
         {loading ? <KpiSkeletonGrid /> : <KpiGrid metrics={total.combined} />}
 
@@ -808,7 +808,7 @@ function ResultPanel({
           <>
             <button
               type="button"
-              className={`meta-insight__summary-toggle${
+              className={`channel-insight__summary-toggle${
                 showChannelTotal ? ' is-open' : ''
               }`}
               aria-expanded={showChannelTotal}
@@ -819,13 +819,13 @@ function ResultPanel({
             </button>
 
             {showChannelTotal && (
-              <div className="meta-insight__summary-channels">
+              <div className="channel-insight__summary-channels">
                 {applicableChannels.map((channel) => (
                   <div
                     key={channel.key}
-                    className="meta-insight__summary-channel"
+                    className="channel-insight__summary-channel"
                   >
-                    <span className="meta-insight__summary-channel-label">
+                    <span className="channel-insight__summary-channel-label">
                       <ChannelLabel
                         channelKey={channel.key}
                         label={channel.label}
@@ -840,7 +840,7 @@ function ResultPanel({
         )}
       </section>
 
-      <section className="meta-insight__section">
+      <section className="channel-insight__section">
         <SectionHead
           title="일별 성과"
           active={compareOn.byDate}
@@ -876,7 +876,7 @@ function ResultPanel({
         )}
       </section>
 
-      <section className="meta-insight__section">
+      <section className="channel-insight__section">
         <SectionHead
           title="요일별 성과"
           active={compareOn.byDayOfWeek}
@@ -912,7 +912,7 @@ function ResultPanel({
         )}
       </section>
 
-      <section className="meta-insight__section">
+      <section className="channel-insight__section">
         <SectionHead
           title="주차별 성과"
           active={compareOn.byGroupedWeek}
@@ -1002,10 +1002,10 @@ function MultiSelectDropdown<T extends string>({
       : (selectedOption?.label ?? `${selected.size}${countSuffix}`)
 
   return (
-    <div className="meta-insight__multi-select" ref={ref}>
+    <div className="channel-insight__multi-select" ref={ref}>
       <button
         type="button"
-        className={`meta-insight__result-select meta-insight__multi-select-trigger${
+        className={`channel-insight__result-select channel-insight__multi-select-trigger${
           open ? ' is-open' : ''
         }`}
         aria-haspopup="true"
@@ -1016,20 +1016,20 @@ function MultiSelectDropdown<T extends string>({
         <ChevronIcon />
       </button>
       {open && (
-        <div className="meta-insight__multi-select-menu">
+        <div className="channel-insight__multi-select-menu">
           {options.map((o) => (
-            <label key={o.key} className="meta-insight__multi-select-item">
+            <label key={o.key} className="channel-insight__multi-select-item">
               <input
                 type="checkbox"
-                className="meta-insight__multi-select-input"
+                className="channel-insight__multi-select-input"
                 checked={selected.has(o.key)}
                 onChange={() => onToggle(o.key)}
               />
-              <span className="meta-insight__multi-select-box">
-                <span className="meta-insight__multi-select-fill" />
+              <span className="channel-insight__multi-select-box">
+                <span className="channel-insight__multi-select-fill" />
                 <CheckIcon />
               </span>
-              <span className="meta-insight__multi-select-label">
+              <span className="channel-insight__multi-select-label">
                 {o.label}
               </span>
             </label>
@@ -1081,7 +1081,7 @@ function SplitDecimalValue({ text }: { text: string }) {
   return (
     <>
       {text.slice(0, dot)}
-      <span className="meta-insight__pivot-avg-decimal">{text.slice(dot)}</span>
+      <span className="channel-insight__pivot-avg-decimal">{text.slice(dot)}</span>
     </>
   )
 }
@@ -1121,8 +1121,8 @@ function PivotSummary({
 
   if (groups.length === 0 || metricFields.length === 0) {
     return (
-      <section className="meta-insight__summary">
-        <p className="meta-insight__result-empty">
+      <section className="channel-insight__summary">
+        <p className="channel-insight__result-empty">
           {groups.length === 0 ? emptyLabel : '표시할 지표를 선택해주세요.'}
         </p>
       </section>
@@ -1180,14 +1180,14 @@ function PivotSummary({
   }
 
   return (
-    <section className="meta-insight__summary meta-insight__pivot">
-      <div className="meta-insight__table-wrap">
-        <table className="meta-insight__table meta-insight__table--pivot">
+    <section className="channel-insight__summary channel-insight__pivot">
+      <div className="channel-insight__table-wrap">
+        <table className="channel-insight__table channel-insight__table--pivot">
           <thead>
             <tr>
               <th
                 rowSpan={2}
-                className="meta-insight__pivot-date-head meta-insight__pivot-sticky-col"
+                className="channel-insight__pivot-date-head channel-insight__pivot-sticky-col"
               >
                 {PIVOT_VIEW_OPTIONS.find((o) => o.value === view)?.label ??
                   '날짜'}
@@ -1196,7 +1196,7 @@ function PivotSummary({
                 <th
                   key={g.key}
                   colSpan={metricFields.length}
-                  className="meta-insight__pivot-group-head"
+                  className="channel-insight__pivot-group-head"
                 >
                   {g.label}
                 </th>
@@ -1207,7 +1207,7 @@ function PivotSummary({
                 metricFields.map((f) => (
                   <th
                     key={`${g.key}-${f.key}`}
-                    className="meta-insight__pivot-metric-head"
+                    className="channel-insight__pivot-metric-head"
                   >
                     <MetricHeaderLabel
                       field={f}
@@ -1227,8 +1227,8 @@ function PivotSummary({
               </tr>
             ) : (
               <>
-                <tr className="meta-insight__table-row--total">
-                  <td className="meta-insight__pivot-sticky-col">합계</td>
+                <tr className="channel-insight__table-row--total">
+                  <td className="channel-insight__pivot-sticky-col">합계</td>
                   {groupAverages.flatMap(({ key, agg }) =>
                     metricFields.map((f) => (
                       <td key={`${key}-${f.key}`}>
@@ -1237,8 +1237,8 @@ function PivotSummary({
                     )),
                   )}
                 </tr>
-                <tr className="meta-insight__table-row--average">
-                  <td className="meta-insight__pivot-sticky-col">평균</td>
+                <tr className="channel-insight__table-row--average">
+                  <td className="channel-insight__pivot-sticky-col">평균</td>
                   {groupAverages.flatMap(({ key, agg }) =>
                     metricFields.map((f) => (
                       <td key={`${key}-${f.key}`}>
@@ -1253,7 +1253,7 @@ function PivotSummary({
                 </tr>
                 {pivotRows.map((row) => (
                   <tr key={row.key}>
-                    <td className="meta-insight__pivot-sticky-col">
+                    <td className="channel-insight__pivot-sticky-col">
                       {row.label}
                     </td>
                     {groups.flatMap((g) => {
@@ -1369,15 +1369,15 @@ function FullListTable({
   }, [filteredRows, sort])
 
   return (
-    <div className="meta-insight__full-list">
+    <div className="channel-insight__full-list">
       <div
-        className="meta-insight__full-list-channel-filter"
+        className="channel-insight__full-list-channel-filter"
         role="group"
         aria-label="채널 필터"
       >
         <button
           type="button"
-          className={`meta-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
+          className={`channel-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
           aria-pressed={channelFilter === 'all'}
           onClick={() => setChannelFilter('all')}
         >
@@ -1387,7 +1387,7 @@ function FullListTable({
           <button
             key={c.key}
             type="button"
-            className={`meta-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
+            className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
             style={{ '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties}
             aria-pressed={channelFilter === c.key}
             onClick={() => setChannelFilter(c.key)}
@@ -1398,7 +1398,7 @@ function FullListTable({
       </div>
 
       <div
-        className="meta-insight__full-list-toggles"
+        className="channel-insight__full-list-toggles"
         role="group"
         aria-label="컬럼 표시"
       >
@@ -1408,7 +1408,7 @@ function FullListTable({
             <button
               key={f.key}
               type="button"
-              className={`meta-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+              className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
               style={{ '--chip-color': f.color } as CSSProperties}
               aria-pressed={active}
               onClick={() => toggleColumn(f.key)}
@@ -1418,10 +1418,10 @@ function FullListTable({
           )
         })}
         {hasResultType && (
-          <span className="meta-insight__full-list-toggle-item">
+          <span className="channel-insight__full-list-toggle-item">
             <button
               type="button"
-              className={`meta-insight__full-list-toggle-btn${showResultType ? ' is-active' : ''}`}
+              className={`channel-insight__full-list-toggle-btn${showResultType ? ' is-active' : ''}`}
               aria-pressed={showResultType}
               onClick={() => setShowResultType((v) => !v)}
             >
@@ -1429,9 +1429,9 @@ function FullListTable({
             </button>
             {/* 토글 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이 토글까지
                 같이 눌러버린다(SortableMetricHeader와 같은 이유). */}
-            <span className="meta-insight__info" tabIndex={0}>
+            <span className="channel-insight__info" tabIndex={0}>
               <InfoIcon />
-              <span className="meta-insight__info-tooltip" role="tooltip">
+              <span className="channel-insight__info-tooltip" role="tooltip">
                 전환 목표(결과 유형)는 Meta 캠페인에만 표시됩니다 — Meta Ads
                 Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온
                 값으로, Google/Naver 캠페인엔 대응 개념이 없어 표시되지
@@ -1442,14 +1442,14 @@ function FullListTable({
         )}
       </div>
 
-      <div className="meta-insight__table-wrap">
-        <table className="meta-insight__table meta-insight__table--full-list">
+      <div className="channel-insight__table-wrap">
+        <table className="channel-insight__table channel-insight__table--full-list">
           <thead>
             <tr>
               <th>
                 <button
                   type="button"
-                  className="meta-insight__sort-head"
+                  className="channel-insight__sort-head"
                   onClick={() => toggleSort('name')}
                 >
                   {headLabel}
@@ -1482,12 +1482,12 @@ function FullListTable({
                   <td>
                     {row.name}
                     {showResultType && row.resultType && (
-                      <span className="meta-insight__result-type-badge">
+                      <span className="channel-insight__result-type-badge">
                         {row.resultType}
                       </span>
                     )}
                   </td>
-                  <td className="meta-insight__full-list-channels">
+                  <td className="channel-insight__full-list-channels">
                     {row.channels.map((ch) => (
                       <ChannelLabel
                         key={ch}
@@ -1665,20 +1665,20 @@ export const MetaInsight = () => {
         : [...selectedAdsetNames]
 
   return (
-    <div className="meta-insight">
+    <div className="channel-insight">
       {/* combinedInsight 유무와 무관하게 항상 보인다 — DateRangePicker가 이
           안에 있어서, 최초 조회 실패 등으로 combinedInsight가 끝내 안 생겨도
           날짜를 다시 골라 재조회할 방법이 사라지지 않는다. 보기 단위(select)와
           "그래프로 보기"는 원래대로 데이터가 있을 때만 보인다. */}
       <div
-        className="meta-insight__result-tabs"
+        className="channel-insight__result-tabs"
         role="group"
         aria-label="보기 단위"
       >
         {combinedInsight && (
           <>
             <select
-              className="meta-insight__result-select"
+              className="channel-insight__result-select"
               value={resultTab}
               onChange={(e) => setResultTab(e.target.value as ResultTab)}
             >
@@ -1691,7 +1691,7 @@ export const MetaInsight = () => {
 
             <button
               type="button"
-              className="meta-insight__btn meta-insight__ghost"
+              className="channel-insight__btn channel-insight__ghost"
               onClick={() => setChartOpen(true)}
               disabled={chartGroups.length === 0}
               title={
@@ -1707,7 +1707,7 @@ export const MetaInsight = () => {
 
         {/* 이 row 맨 오른쪽에 고정(margin-left: auto) — 보기 단위 select/그래프
             버튼이 있든 없든 항상 오른쪽 끝에 붙는다. */}
-        <div className="meta-insight__query-row">
+        <div className="channel-insight__query-row">
           <DateRangePicker
             dateStart={dateStart}
             dateEnd={dateEnd}
@@ -1721,12 +1721,12 @@ export const MetaInsight = () => {
             disabled={loading}
           />
           {loading && (
-            <span className="meta-insight__query-loading">조회하는 중…</span>
+            <span className="channel-insight__query-loading">조회하는 중…</span>
           )}
         </div>
       </div>
 
-      {error && <div className="meta-insight__banner is-error">{error}</div>}
+      {error && <div className="channel-insight__banner is-error">{error}</div>}
 
       {/* 최초 조회 전엔 아직 combinedInsight 자체가 없어 ResultPanel이 아예
           렌더되지 않는다 — 그 사이 화면이 텅 비어 보이지 않도록 ResultPanel이
@@ -1743,13 +1743,13 @@ export const MetaInsight = () => {
         <>
           {(resultTab === 'campaign' || resultTab === 'adset') && (
             <div
-              className="meta-insight__metric-row"
+              className="channel-insight__metric-row"
               role="group"
               aria-label="지표 선택"
             >
               {/* 표의 행 축(날짜/요일/주차) — 캠페인 선택 드롭다운 왼쪽에 둔다. */}
               <select
-                className="meta-insight__result-select"
+                className="channel-insight__result-select"
                 value={pivotView}
                 onChange={(e) => setPivotView(e.target.value as PivotView)}
                 aria-label="보기 단위"
@@ -1764,7 +1764,7 @@ export const MetaInsight = () => {
               {/* 캠페인 탭 — 캠페인 다중 선택. */}
               {resultTab === 'campaign' &&
                 (campaigns.length === 0 ? (
-                  <span className="meta-insight__result-empty">
+                  <span className="channel-insight__result-empty">
                     캠페인 데이터 없음
                   </span>
                 ) : (
@@ -1783,12 +1783,12 @@ export const MetaInsight = () => {
               {/* adset 탭 — 캠페인은 단일 선택, adset은 다중 선택. */}
               {resultTab === 'adset' &&
                 (campaigns.length === 0 ? (
-                  <span className="meta-insight__result-empty">
+                  <span className="channel-insight__result-empty">
                     캠페인 데이터 없음
                   </span>
                 ) : (
                   <select
-                    className="meta-insight__result-select"
+                    className="channel-insight__result-select"
                     value={selectedCampaign?.campaignName ?? ''}
                     onChange={(e) => setSelectedCampaignName(e.target.value)}
                   >
@@ -1803,7 +1803,7 @@ export const MetaInsight = () => {
               {resultTab === 'adset' &&
                 selectedCampaign &&
                 (adsets.length === 0 ? (
-                  <span className="meta-insight__result-empty">
+                  <span className="channel-insight__result-empty">
                     adset 데이터 없음
                   </span>
                 ) : (
@@ -1831,7 +1831,7 @@ export const MetaInsight = () => {
               />
               <button
                 type="button"
-                className={`meta-insight__unit-toggle${
+                className={`channel-insight__unit-toggle${
                   showUnit ? ' is-active' : ''
                 }`}
                 aria-pressed={showUnit}
@@ -1868,8 +1868,8 @@ export const MetaInsight = () => {
                 showUnit={showUnit}
                 view={pivotView}
               />
-              <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">전체 캠페인 합계 요약</h3>
+              <section className="channel-insight__section">
+                <h3 className="channel-insight__section-title">전체 캠페인 합계 요약</h3>
                 <FullListTable
                   rows={campaigns.map((c) => ({
                     key: c.campaignName,
@@ -1900,8 +1900,8 @@ export const MetaInsight = () => {
                 showUnit={showUnit}
                 view={pivotView}
               />
-              <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">
+              <section className="channel-insight__section">
+                <h3 className="channel-insight__section-title">
                   캠페인별 전체 광고셋
                 </h3>
                 <FullListTable
@@ -1920,8 +1920,8 @@ export const MetaInsight = () => {
                   이름의 adset이 서로 다른 캠페인에 있을 수 있어(행 구분은 되지만
                   이름만으로는 어느 캠페인 소속인지 알 수 없다) 표 자체는 동일한
                   구성(FullListTable)을 그대로 쓴다. */}
-              <section className="meta-insight__section">
-                <h3 className="meta-insight__section-title">전체 광고셋</h3>
+              <section className="channel-insight__section">
+                <h3 className="channel-insight__section-title">전체 광고셋</h3>
                 <FullListTable
                   rows={campaigns.flatMap((c) =>
                     c.adsets.map((a) => ({

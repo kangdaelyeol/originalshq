@@ -23,7 +23,7 @@ $radius-lg: 8px;
 $pivot-total-bg: color-mix(in srgb, $color-accent 22%, $color-canvas-subtle);
 $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
-.meta-insight {
+.channel-insight {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -125,11 +125,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     align-items: center;
     gap: 6px;
 
-    .meta-insight__chevron {
+    .channel-insight__chevron {
       transition: transform 120ms ease;
     }
 
-    &.is-open .meta-insight__chevron {
+    &.is-open .channel-insight__chevron {
       transform: rotate(180deg);
     }
   }
@@ -330,11 +330,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       background: $color-surface;
     }
 
-    .meta-insight__chevron {
+    .channel-insight__chevron {
       transition: transform 120ms ease;
     }
 
-    &.is-open .meta-insight__chevron {
+    &.is-open .channel-insight__chevron {
       transform: rotate(180deg);
     }
   }
@@ -484,7 +484,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       $color-canvas-subtle 63%
     );
     background-size: 400% 100%;
-    animation: meta-insight-skeleton-shimmer 1.4s ease infinite;
+    animation: channel-insight-skeleton-shimmer 1.4s ease infinite;
 
     &--label {
       width: 46%;
@@ -628,7 +628,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     // 구조(1번째=이름, 2번째부터 바로 지표값)라 같이 제외한다 — 제외 안 하면
     // "2번째 칸(토글 옆)"용 left:28px 규칙이 여기선 "2번째 지표 칸(Impressions)"에
     // 적용돼, 훨씬 더 넓은 1번째 칸(이름) 위로 그 칸이 겹쳐 보이는 버그가 났다.
-    &:not(.meta-insight__table--pivot):not(.meta-insight__table--full-list) {
+    &:not(.channel-insight__table--pivot):not(.channel-insight__table--full-list) {
       th:first-child,
       td:first-child,
       th:nth-child(2),
@@ -677,11 +677,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     height: 22px;
     color: $color-muted;
 
-    .meta-insight__chevron {
+    .channel-insight__chevron {
       transition: transform 120ms ease;
     }
 
-    &.is-open .meta-insight__chevron {
+    &.is-open .channel-insight__chevron {
       transform: rotate(180deg);
     }
   }
@@ -703,7 +703,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       background: $color-canvas-subtle;
     }
 
-    &:hover .meta-insight__table-toggle {
+    &:hover .channel-insight__table-toggle {
       color: $color-text;
     }
 
@@ -960,7 +960,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       color: $color-text;
     }
 
-    .meta-insight__pivot-sticky-col {
+    .channel-insight__pivot-sticky-col {
       background: $pivot-total-bg;
     }
   }
@@ -973,7 +973,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       color: $color-text;
     }
 
-    .meta-insight__pivot-sticky-col {
+    .channel-insight__pivot-sticky-col {
       background: $pivot-average-bg;
     }
   }
@@ -995,8 +995,8 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   // 날짜/요일/기간, 캠페인·adset 교차표는 __pivot-sticky-col 전용 클래스,
   // 전체 목록 표는 토글 칸이 없어 1번째 칸이 이름) 셋을 각각 짚는다.
   @media (max-width: 640px) {
-    &__table:not(.meta-insight__table--pivot):not(
-        .meta-insight__table--full-list
+    &__table:not(.channel-insight__table--pivot):not(
+        .channel-insight__table--full-list
       ) {
       th:nth-child(2),
       td:nth-child(2) {
@@ -1051,7 +1051,7 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 }
 
-@keyframes meta-insight-skeleton-shimmer {
+@keyframes channel-insight-skeleton-shimmer {
   0% {
     background-position: 200% 50%;
   }
