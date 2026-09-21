@@ -387,15 +387,19 @@ function MetricsTable<T extends MetricsSummary>({
   showCompare,
   visibleKeys,
   onToggleMetric,
+  channelFilter,
+  onChannelFilterChange,
 }: {
   rows: readonly T[]
   rowKey: (row: T) => string
   headLabel: string
   headValue: (row: T) => string
-  /** 그 행(날짜/요일/주차)이 가리키는 기간의 채널별 total — 드롭다운으로 펼쳐 보여준다. */
+  /** 그 행(날짜/요일/주차)이 가리키는 기간의 채널별 total — 드롭다운으로 펼쳐 보여준다.
+   * channelFilter가 'all'이 아니면(이미 그 채널 하나만 보는 중이라) 아예 안 쓰인다. */
   getChannelBreakdown: (row: T) => ChannelBreakdown
   /** 펼쳤을 때 보여줄 채널 — 이 캠페인/adset에 아예 데이터가 없는 채널(예: Meta
-   * 전용 캠페인의 Google)은 모든 행이 0으로만 나와서 무의미하니 미리 제외하고 받는다. */
+   * 전용 캠페인의 Google)은 모든 행이 0으로만 나와서 무의미하니 미리 제외하고 받는다.
+   * channelFilter가 'all'이 아니면 호출부가 빈 배열을 넘겨 펼치기 자체를 끈다. */
   channels: readonly { key: ChannelKey; label: string }[]
   /** 켜면 각 지표 칸 왼쪽에 바로 앞 행 대비 증감·등락률을 같이 보여준다. */
   showCompare: boolean
@@ -405,6 +409,12 @@ function MetricsTable<T extends MetricsSummary>({
    * 넘겨준다. */
   visibleKeys: ReadonlySet<MetricKey>
   onToggleMetric: (key: MetricKey) => void
+  /** 채널 필터 — "전체"(combined 합계, 기본)이거나 특정 채널 하나. rows 자체를
+   * 어느 걸 넘길지(combined.byDate 대 meta.byDate 등)는 호출부가 결정하고,
+   * 여기서는 필터 버튼 상태만 그대로 받아 그리고 되돌려준다(값도 visibleKeys와
+   * 같은 이유로 ResultPanel이 들고 있다). */
+  channelFilter: 'all' | ChannelKey
+  onChannelFilterChange: (value: 'all' | ChannelKey) => void
 }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
@@ -454,6 +464,33 @@ function MetricsTable<T extends MetricsSummary>({
 
   return (
     <div className="channel-insight__table-block">
+      <div
+        className="channel-insight__full-list-channel-filter"
+        role="group"
+        aria-label="채널 필터"
+      >
+        <button
+          type="button"
+          className={`channel-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
+          aria-pressed={channelFilter === 'all'}
+          onClick={() => onChannelFilterChange('all')}
+        >
+          전체
+        </button>
+        {CHANNELS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
+            style={{ '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties}
+            aria-pressed={channelFilter === c.key}
+            onClick={() => onChannelFilterChange(c.key)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
       <div
         className="channel-insight__full-list-toggles"
         role="group"
@@ -514,7 +551,11 @@ function MetricsTable<T extends MetricsSummary>({
             ) : (
             displayRows.map((row) => {
               const key = rowKey(row)
-              const isOpen = expanded.has(key)
+              // 채널 필터가 걸려 있으면(이미 그 채널 하나만 보는 중이라)
+              // channels가 빈 배열로 넘어온다 — 펼쳐봐야 보여줄 채널별
+              // 분해가 없으므로 펼치기 자체를 끈다.
+              const canExpand = channels.length > 0
+              const isOpen = canExpand && expanded.has(key)
               const breakdown = isOpen ? getChannelBreakdown(row) : null
               const originalIndex = originalIndexByKey.get(key) ?? 0
               // 채널별 펼침 행도 메인 행과 같은 방식(원본 순서상 바로 앞 행)으로
@@ -527,25 +568,35 @@ function MetricsTable<T extends MetricsSummary>({
               return (
                 <Fragment key={key}>
                   <tr
-                    className="channel-insight__table-row--clickable"
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={isOpen}
-                    onClick={() => toggle(key)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter' && e.key !== ' ') return
-                      e.preventDefault()
-                      toggle(key)
-                    }}
+                    className={
+                      canExpand
+                        ? 'channel-insight__table-row--clickable'
+                        : undefined
+                    }
+                    role={canExpand ? 'button' : undefined}
+                    tabIndex={canExpand ? 0 : undefined}
+                    aria-expanded={canExpand ? isOpen : undefined}
+                    onClick={canExpand ? () => toggle(key) : undefined}
+                    onKeyDown={
+                      canExpand
+                        ? (e) => {
+                            if (e.key !== 'Enter' && e.key !== ' ') return
+                            e.preventDefault()
+                            toggle(key)
+                          }
+                        : undefined
+                    }
                   >
                     <td className="channel-insight__table-toggle-cell">
-                      <span
-                        className={`channel-insight__table-toggle${
-                          isOpen ? ' is-open' : ''
-                        }`}
-                      >
-                        <ChevronIcon />
-                      </span>
+                      {canExpand && (
+                        <span
+                          className={`channel-insight__table-toggle${
+                            isOpen ? ' is-open' : ''
+                          }`}
+                        >
+                          <ChevronIcon />
+                        </span>
+                      )}
                     </td>
                     <td>{headValue(row)}</td>
                     {visibleFields.map((f) => (
@@ -787,6 +838,18 @@ function ResultPanel({
       return { ...prev, [table]: next }
     })
 
+  // 일별/요일별/주차별 표마다 채널 필터("전체"=combined 또는 특정 채널)도
+  // 독립적으로 둔다 — visibleMetrics와 같은 이유로 ResultPanel에 둔다.
+  const [channelFilter, setChannelFilter] = useState<{
+    byDate: 'all' | ChannelKey
+    byDayOfWeek: 'all' | ChannelKey
+    byGroupedWeek: 'all' | ChannelKey
+  }>({ byDate: 'all', byDayOfWeek: 'all', byGroupedWeek: 'all' })
+  const setChannelFilterFor = (
+    table: keyof typeof channelFilter,
+    value: 'all' | ChannelKey,
+  ) => setChannelFilter((prev) => ({ ...prev, [table]: value }))
+
   const dayCount = dateRange(dateStart, dateEnd).length
 
   // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 캠페인의 Google)은
@@ -850,14 +913,20 @@ function ResultPanel({
           <TableSkeleton headLabel="날짜" rowCount={dayCount} />
         ) : (
           <MetricsTable<DateSummary>
-            rows={series.combined.byDate}
+            rows={
+              channelFilter.byDate === 'all'
+                ? series.combined.byDate
+                : series[channelFilter.byDate].byDate
+            }
             rowKey={(row) => row.date}
             headLabel="날짜"
             headValue={(row) => row.date}
-            channels={applicableChannels}
+            channels={channelFilter.byDate === 'all' ? applicableChannels : []}
             showCompare={compareOn.byDate}
             visibleKeys={visibleMetrics.byDate}
             onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
+            channelFilter={channelFilter.byDate}
+            onChannelFilterChange={(v) => setChannelFilterFor('byDate', v)}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -886,14 +955,24 @@ function ResultPanel({
           <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
         ) : (
           <MetricsTable<DayOfWeekSummary>
-            rows={series.combined.byDayOfWeek}
+            rows={
+              channelFilter.byDayOfWeek === 'all'
+                ? series.combined.byDayOfWeek
+                : series[channelFilter.byDayOfWeek].byDayOfWeek
+            }
             rowKey={(row) => row.dayOfWeek}
             headLabel="요일"
             headValue={(row) => row.dayOfWeek}
-            channels={applicableChannels}
+            channels={
+              channelFilter.byDayOfWeek === 'all' ? applicableChannels : []
+            }
             showCompare={compareOn.byDayOfWeek}
             visibleKeys={visibleMetrics.byDayOfWeek}
             onToggleMetric={(key) => toggleMetricVisible('byDayOfWeek', key)}
+            channelFilter={channelFilter.byDayOfWeek}
+            onChannelFilterChange={(v) =>
+              setChannelFilterFor('byDayOfWeek', v)
+            }
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -925,14 +1004,24 @@ function ResultPanel({
           />
         ) : (
           <MetricsTable<WeekSummary>
-            rows={series.combined.byGroupedWeek}
+            rows={
+              channelFilter.byGroupedWeek === 'all'
+                ? series.combined.byGroupedWeek
+                : series[channelFilter.byGroupedWeek].byGroupedWeek
+            }
             rowKey={(row) => row.period}
             headLabel="기간"
             headValue={(row) => row.period}
-            channels={applicableChannels}
+            channels={
+              channelFilter.byGroupedWeek === 'all' ? applicableChannels : []
+            }
             showCompare={compareOn.byGroupedWeek}
             visibleKeys={visibleMetrics.byGroupedWeek}
             onToggleMetric={(key) => toggleMetricVisible('byGroupedWeek', key)}
+            channelFilter={channelFilter.byGroupedWeek}
+            onChannelFilterChange={(v) =>
+              setChannelFilterFor('byGroupedWeek', v)
+            }
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,

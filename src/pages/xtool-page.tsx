@@ -5,7 +5,7 @@ import './xtool-global.scss'
 
 export const XtoolPage = () => {
   useEffect(() => {
-    document.body.style.backgroundColor = '#292f4c'
+    document.body.style.backgroundColor = '#000000'
   }, [])
   return (
     <div className="xtool-lead-manager">

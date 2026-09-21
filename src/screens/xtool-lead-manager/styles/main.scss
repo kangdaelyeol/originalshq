@@ -87,7 +87,6 @@
         // 이 th를 기준으로 정확히 자리잡는다.
         position: sticky;
         top: 0;
-        z-index: 1;
         background-color: variables.$table-header-bg-color;
         font-size: 14px;
         font-weight: 500;
