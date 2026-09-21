@@ -1,4 +1,4 @@
-import type { Lead } from '@/screens/xtool-lead-manager/entity'
+import { latestIntakeAt, type Lead } from '@/screens/xtool-lead-manager/entity'
 import {
   DeviceFilterLabel,
   SortField,
@@ -20,7 +20,9 @@ export const sortLeads = (
   sorted.sort((a, b) => {
     let res: number
     if (sortField === SortField.CREATED_AT) {
-      res = a.createdAt - b.createdAt
+      // Lead 최상위엔 더 이상 createdAt이 없다(intakes 배열로 옮김) — 가장
+      // 최근 접수 시각을 기준으로 정렬한다.
+      res = latestIntakeAt(a) - latestIntakeAt(b)
     } else {
       res = a[sortField].localeCompare(b[sortField], 'ko')
     }

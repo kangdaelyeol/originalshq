@@ -89,12 +89,14 @@ export const leadClient = {
       }
     }
   },
-  updateTimeStamp: (body: Record<string, unknown>) =>
-    post('updateLeadTimestamp', body),
   updateFn: (body: Record<string, unknown>) => post('updateLeadFn', body),
   updatePh: (body: Record<string, unknown>) => post('updateLeadPhone', body),
   updateRemarks: (body: Record<string, unknown>) =>
     post('updateLeadRemarks', body),
+  updateIntake: (body: Record<string, unknown>) =>
+    post('updateIntake', body),
+  deleteIntake: (body: Record<string, unknown>) =>
+    post('deleteIntake', body),
   registerConsultation: (body: Record<string, unknown>) =>
     post('contactLead', body),
   registerPurchase: (body: Record<string, unknown>) =>

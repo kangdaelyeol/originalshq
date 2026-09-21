@@ -3,6 +3,7 @@ import { formatPhoneNumber, formatTime } from '@/screens/xtool-lead-manager/util
 import { SortButton } from '@/screens/xtool-lead-manager/components'
 import type {
   ConsultationRecord,
+  IntakeRecord,
   Lead,
   PurchaseRecord,
 } from '@/screens/xtool-lead-manager/entity'
@@ -32,6 +33,12 @@ interface TableProps {
 
 const latestAt = (records: { at: number }[]): number =>
   records.reduce((max, r) => Math.max(max, r.at), 0)
+
+const intakeTitle = (records: IntakeRecord[]): string =>
+  records
+    .map((r) => `${formatTime(r.at)}${r.device ? ` · ${r.device}` : ''}`)
+    .reverse()
+    .join('\n')
 
 const consultationTitle = (records: ConsultationRecord[]): string =>
   records
@@ -100,8 +107,8 @@ export const Table = ({ state, actions }: TableProps) => {
                     )}
                   </button>
                 </th>
-                <th className="col-created">
-                  접수일
+                <th className="col-status">
+                  접수 현황
                   <SortButton
                     columnKey={SortField.CREATED_AT}
                     sortField={sortField}
@@ -138,6 +145,7 @@ export const Table = ({ state, actions }: TableProps) => {
                 // 마이그레이션 전의 옛 리드 문서엔 이 배열 필드 자체가 없을 수
                 // 있어(Firestore에 값이 없던 필드는 undefined로 온다) 방어적으로
                 // 기본값을 준다.
+                const intakes = row.intakes ?? []
                 const consultations = row.consultations ?? []
                 const purchases = row.purchases ?? []
 
@@ -175,11 +183,18 @@ export const Table = ({ state, actions }: TableProps) => {
                       </button>
                     </td>
 
-                    {/* CreatedAt cell */}
-                    <td className="col-created">
-                      <span>
-                        {row.createdAt !== 0 ? formatTime(row.createdAt) : '-'}
-                      </span>
+                    {/* Intake status cell */}
+                    <td className="col-status" title={intakeTitle(intakes)}>
+                      {intakes.length > 0 ? (
+                        <div className="status_stack">
+                          <span className="count">{intakes.length}건</span>
+                          <span className="latest">
+                            {formatTime(latestAt(intakes))}
+                          </span>
+                        </div>
+                      ) : (
+                        <span>-</span>
+                      )}
                     </td>
 
                     {/* First name Cell */}

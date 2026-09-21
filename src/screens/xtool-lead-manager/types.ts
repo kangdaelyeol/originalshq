@@ -14,7 +14,6 @@ export const EditingField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
   REMARKS: 'remarks',
-  CREATED_AT: 'createdAt',
 } as const
 
 export type EditingField = (typeof EditingField)[keyof typeof EditingField]

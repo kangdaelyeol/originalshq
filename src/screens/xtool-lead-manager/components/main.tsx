@@ -17,6 +17,8 @@ export const Main = () => {
     handleConfirmClick,
     updateRegisterForm,
     hideDetail,
+    updateIntakeRecord,
+    deleteIntakeRecord,
     updateConsultationRecord,
     deleteConsultationRecord,
     updatePurchaseRecord,
@@ -48,6 +50,8 @@ export const Main = () => {
         <Detail
           lead={detail}
           onConfirm={hideDetail}
+          onUpdateIntake={updateIntakeRecord}
+          onDeleteIntake={deleteIntakeRecord}
           onUpdateConsultation={updateConsultationRecord}
           onDeleteConsultation={deleteConsultationRecord}
           onUpdatePurchase={updatePurchaseRecord}

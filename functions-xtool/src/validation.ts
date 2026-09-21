@@ -1,9 +1,4 @@
-import {
-  CreateLeadInput,
-  Device,
-  TimestampField,
-  ValidationResponse,
-} from './types'
+import { CreateLeadInput, Device, ValidationResponse } from './types'
 import { normalizeDomesticPhone } from './utils'
 
 const CREATE_LEAD_REQUIRED_FIELDS = ['ph'] as const
@@ -33,6 +28,10 @@ export const validateCreateLead = (
 
   if (body.remarks !== undefined && typeof body.remarks !== 'string') {
     return { ok: false, error: 'remarks must be a string' }
+  }
+
+  if (body.device !== undefined && !Device.includes(body.device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
   }
 
   const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
@@ -151,8 +150,45 @@ export const validatePurchaseLead = (
   }
 }
 
-/** consultation/purchase 개별 항목 수정 — 전부 선택값이지만(부분 수정 허용),
- * 뭘 고칠지 하나도 없으면 의미가 없으니 최소 하나는 와야 한다. */
+/** 접수/consultation/purchase 개별 항목 수정 — 전부 선택값이지만(부분 수정
+ * 허용), 뭘 고칠지 하나도 없으면 의미가 없으니 최소 하나는 와야 한다. */
+export const validateUpdateIntake = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  recordId: string
+  at?: number
+  device?: Device
+}> => {
+  const { id, recordId, at, device } = body as {
+    id?: string
+    recordId?: string
+    at?: number
+    device?: string
+  }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!recordId || typeof recordId !== 'string') {
+    return { ok: false, error: 'recordId is required' }
+  }
+  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
+    return { ok: false, error: 'at must be a positive number if provided' }
+  }
+  if (device !== undefined && !Device.includes(device as Device)) {
+    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+  if (at === undefined && device === undefined) {
+    return { ok: false, error: 'at or device must be provided' }
+  }
+
+  return {
+    ok: true,
+    data: { id, recordId, at, device: device as Device | undefined },
+  }
+}
+
 export const validateUpdateConsultation = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
@@ -232,6 +268,7 @@ export const validateUpdatePurchase = (
   }
 }
 
+/** 접수/상담/구매 개별 항목 삭제 — 셋 다 같은 모양({id, recordId})이라 공유한다. */
 export const validateDeleteRecord = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
@@ -318,35 +355,4 @@ export const validateDeleteLead = (
   }
 
   return { ok: true, data: { id } }
-}
-
-export const validateUpdateTimestamp = (
-  body: Record<string, unknown>,
-): ValidationResponse<{
-  id: string
-  field: string
-  value: number
-}> => {
-  const { id, field, value } = body as {
-    id?: string
-    field?: string
-    value?: number
-  }
-
-  if (!id || typeof id !== 'string') {
-    return { ok: false, error: 'id is required' }
-  }
-
-  if (!field || !TimestampField.includes(field as TimestampField)) {
-    return {
-      ok: false,
-      error: `field must be one of: ${TimestampField.join(', ')}`,
-    }
-  }
-
-  if (typeof value !== 'number' || value < 0 || Number.isNaN(value)) {
-    return { ok: false, error: 'value must be a valid timestamp (ms)' }
-  }
-
-  return { ok: true, data: { id, field, value } }
 }

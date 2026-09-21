@@ -290,21 +290,6 @@ export const useMainViewModel = () => {
       case EditingField.REMARKS:
         res = await leadClient.updateRemarks({ id: leadId, remarks: value })
         break
-      case EditingField.CREATED_AT: {
-        const numericTimestamp = fromDatetimeLocalValue(value)
-        if (!numericTimestamp) {
-          console.error('시각 값이 올바르지 않습니다')
-          showToast('error')
-          setLoading(false)
-          return
-        }
-        res = await leadClient.updateTimeStamp({
-          id: leadId,
-          field,
-          value: numericTimestamp,
-        })
-        break
-      }
     }
 
     if (!res.ok) {
@@ -347,6 +332,46 @@ export const useMainViewModel = () => {
     value: string,
   ) => {
     setRegisterForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const updateIntakeRecord = async (
+    leadId: string,
+    recordId: string,
+    updates: { at?: number; device?: Device },
+  ) => {
+    setLoading(true)
+    const res = await leadClient.updateIntake({
+      id: leadId,
+      recordId,
+      ...updates,
+    })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('updated')
+    setLoading(false)
+  }
+
+  const deleteIntakeRecord = async (leadId: string, recordId: string) => {
+    setLoading(true)
+    const res = await leadClient.deleteIntake({ id: leadId, recordId })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('deleted')
+    setLoading(false)
   }
 
   const updateConsultationRecord = async (
@@ -497,6 +522,8 @@ export const useMainViewModel = () => {
       handleConfirmClick,
       showDetail,
       hideDetail,
+      updateIntakeRecord,
+      deleteIntakeRecord,
       updateConsultationRecord,
       deleteConsultationRecord,
       updatePurchaseRecord,

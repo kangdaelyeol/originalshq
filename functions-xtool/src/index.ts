@@ -5,7 +5,7 @@ import { onRequest } from 'firebase-functions/https'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
-import { ConsultationRecord, Lead, PurchaseRecord } from './types'
+import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import {
   generateExternalId,
@@ -20,10 +20,10 @@ import {
   validateDeleteRecord,
   validatePurchaseLead,
   validateUpdateConsultation,
+  validateUpdateIntake,
   validateUpdateLeadFn,
   validateUpdateLeadRemarks,
   validateUpdatePurchase,
-  validateUpdateTimestamp,
   valiedateUpdateLeadPhone,
 } from './validation'
 
@@ -47,10 +47,11 @@ export const listLeads = onRequest((request, response) => {
         return
       }
 
-      const snapshot = await db
-        .collection('lead')
-        .orderBy('createdAt', 'desc')
-        .get()
+      // createdAt은 더 이상 리드 최상위 필드가 아니라(intakes 배열로 옮김)
+      // orderBy 대상으로 못 쓴다 — Firestore는 orderBy 필드가 없는 문서를
+      // 결과에서 아예 빼버리므로, 여기서 정렬하지 않고 프론트(sortLeads,
+      // intakes 최신 시각 기준)에 맡긴다.
+      const snapshot = await db.collection('lead').get()
 
       const leads: Lead[] = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -89,7 +90,6 @@ export const createLead = onRequest((request, response) => {
       )
 
       const leadData: Omit<Lead, 'id'> = {
-        createdAt: input.createdAt,
         utm_campaign: input.utm_campaign ?? '',
         utm_medium: input.utm_medium ?? '',
         utm_source: input.utm_source ?? '',
@@ -100,6 +100,15 @@ export const createLead = onRequest((request, response) => {
         fn: input.fn ?? '',
         ph: digitsOnlyPhone,
         remarks: input.remarks ?? '',
+        // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다(수기
+        // 등록 모달처럼 기기 입력이 없는 호출부도 있어 optional).
+        intakes: [
+          {
+            id: generateRecordId(),
+            at: input.createdAt,
+            ...(input.device ? { device: input.device } : {}),
+          },
+        ],
         consultations: [],
         purchases: [],
         externalId: generateExternalId(digitsOnlyPhone),
@@ -146,7 +155,6 @@ export const createLeadFromContact = onRequest((request, response) => {
       const userAgent = request.headers['user-agent'] ?? ''
 
       const leadData: Omit<Lead, 'id'> = {
-        createdAt: input.createdAt,
         utm_campaign: input.utm_campaign ?? '',
         utm_medium: input.utm_medium ?? '',
         utm_source: input.utm_source ?? '',
@@ -157,6 +165,14 @@ export const createLeadFromContact = onRequest((request, response) => {
         fn: input.fn ?? '',
         ph: digitsOnlyPhone,
         remarks: input.remarks ?? '',
+        // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다.
+        intakes: [
+          {
+            id: generateRecordId(),
+            at: input.createdAt,
+            ...(input.device ? { device: input.device } : {}),
+          },
+        ],
         consultations: [],
         purchases: [],
         externalId: generateExternalId(digitsOnlyPhone),
@@ -344,6 +360,102 @@ export const purchaseLead = onRequest(
     })
   },
 )
+
+// ────────────────────────────────
+// updateIntake / deleteIntake — 접수 이력 개별 항목을 고치거나 지울 때 쓴다.
+// 등록 전용 엔드포인트(contactLead/purchaseLead 같은)는 없다 — 접수는
+// createLead/createLeadFromContact가 리드 생성 시 최초 1건을 만드는 것으로
+// 충분하고, 이후엔 이력 모달에서 그 1건을 고치거나(예: 시각 오타 정정)
+// 지우는 것만 지원한다.
+// ────────────────────────────────
+export const updateIntake = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateUpdateIntake(request.body)
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const { id, recordId, at, device } = validationRes.data
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+      const target = (lead.intakes ?? []).find((i) => i.id === recordId)
+
+      if (!target) {
+        response.status(404).send({ error: 'intake record not found' })
+        return
+      }
+
+      const intakes = (lead.intakes ?? []).map((i) =>
+        i.id === recordId
+          ? {
+              ...i,
+              ...(at !== undefined ? { at } : {}),
+              ...(device ? { device } : {}),
+            }
+          : i,
+      )
+
+      await docRef.update({ intakes })
+
+      response.status(200).send({ id: snapshot.id, ...lead, intakes })
+    } catch (error) {
+      logger.error('updateIntake 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+export const deleteIntake = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateDeleteRecord(request.body)
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const { id, recordId } = validationRes.data
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      const lead = snapshot.data() as Omit<Lead, 'id'>
+      const intakes = (lead.intakes ?? []).filter((i) => i.id !== recordId)
+
+      await docRef.update({ intakes })
+
+      response.status(200).send({ id: snapshot.id, ...lead, intakes })
+    } catch (error) {
+      logger.error('deleteIntake 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
 
 // ────────────────────────────────
 // updateConsultation / deleteConsultation / updatePurchase / deletePurchase
@@ -693,52 +805,6 @@ export const deleteLead = onRequest((request, response) => {
 })
 
 // ────────────────────────────────
-// updateLeadTimestamp - createdAt(접수일)만 대상
-// ────────────────────────────────
-export const updateLeadTimestamp = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      if (request.method !== 'POST') {
-        response.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-
-      const validationRes = validateUpdateTimestamp(request.body)
-
-      if (!validationRes.ok) {
-        response.status(400).send({ error: validationRes.error })
-        return
-      }
-
-      const { id, field, value } = validationRes.data
-
-      const docRef = db.collection('lead').doc(id)
-      const snapshot = await docRef.get()
-
-      if (!snapshot.exists) {
-        response.status(404).send({ error: 'lead not found' })
-        return
-      }
-
-      await docRef.update({ [field]: value })
-
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-
-      logger.info('리드 시각 수정 완료:', id, field, value)
-
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        [field as string]: value,
-      })
-    } catch (error) {
-      logger.error('updateLeadTimestamp 처리 실패:', error)
-      response.status(500).send({ error: '서버 오류' })
-    }
-  })
-})
-
-// ────────────────────────────────
 // migrateLeadsToArrays — 일회성 마이그레이션. 기존 state/createdAt/purchasedAt/
 // price/device 구조의 리드를 consultations/purchases 배열 구조로 변환해
 // 추가한다(기존 필드는 지우지 않고 그대로 둔다 — 새 코드가 안 읽으니 무해하고
@@ -822,6 +888,66 @@ export const migrateLeadsToArrays = onRequest((request, response) => {
       response.status(200).send({ migrated, skipped, total: snapshot.size })
     } catch (error) {
       logger.error('migrateLeadsToArrays 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// migrateLeadsToIntakes — 일회성 마이그레이션(2차). 리드 최상위 createdAt(+
+// 레거시 raw device — 지금 Lead 타입엔 없지만 옛 문서엔 아직 남아있다)을
+// intakes 배열로 옮긴다. createdAt 필드 자체는 지우지 않는다(다른 마이그레이션과
+// 같은 이유 — 무해하고 롤백 가능). migrateLeadsToArrays와 별도 함수로 둔 이유는
+// 그 함수가 이미 한 번 실행돼 모든 리드에 consultations 배열이 생겨서, 그
+// 재실행-안전 체크(Array.isArray(data.consultations))로는 이 마이그레이션을
+// 더 이상 걸러낼 수 없기 때문 — 여기서는 intakes 배열 존재 여부로 따로 체크한다.
+// 배포 후 한 번 호출해서 실행하고, 정상 확인되면 이 함수 자체를 지운다.
+// ────────────────────────────────
+export const migrateLeadsToIntakes = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const snapshot = await db.collection('lead').get()
+      let migrated = 0
+      let skipped = 0
+
+      for (const doc of snapshot.docs) {
+        const data = doc.data() as Record<string, unknown>
+
+        // 이미 마이그레이션된 문서는 다시 건드리지 않는다(재실행 안전).
+        if (Array.isArray(data.intakes)) {
+          skipped += 1
+          continue
+        }
+
+        const createdAt = (data.createdAt as number) ?? 0
+        const device = data.device as string | undefined
+
+        const intakes: IntakeRecord[] =
+          createdAt > 0
+            ? [
+                {
+                  id: generateRecordId(),
+                  at: createdAt,
+                  ...(device
+                    ? { device: device as IntakeRecord['device'] }
+                    : {}),
+                },
+              ]
+            : []
+
+        await doc.ref.update({ intakes })
+        migrated += 1
+      }
+
+      logger.info(`리드 접수 이력 마이그레이션 완료: ${migrated}건, 스킵 ${skipped}건`)
+      response.status(200).send({ migrated, skipped, total: snapshot.size })
+    } catch (error) {
+      logger.error('migrateLeadsToIntakes 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

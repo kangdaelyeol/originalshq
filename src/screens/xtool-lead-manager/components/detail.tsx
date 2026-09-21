@@ -3,6 +3,7 @@ import {
   Device,
   getLeadState,
   type ConsultationRecord,
+  type IntakeRecord,
   type Lead,
   type LeadState,
   type PurchaseRecord,
@@ -26,17 +27,6 @@ const UTM_LABEL: Record<string, string> = {
   utm_source: '유입 채널',
   utm_medium: '매체',
   utm_campaign: '캠페인',
-}
-
-function formatDateTime(ts: number) {
-  if (!ts) return '-'
-  return new Date(ts).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 function InfoRow({
@@ -170,6 +160,103 @@ const EditIcon = () => (
     />
   </svg>
 )
+
+interface IntakeRowProps {
+  leadId: string
+  record: IntakeRecord
+  onUpdate: (
+    leadId: string,
+    recordId: string,
+    updates: { at?: number; device?: Device },
+  ) => Promise<void>
+  onDelete: (leadId: string, recordId: string) => Promise<void>
+}
+
+/** 접수 이력 1건 — 상담/구매 이력과 같은 클릭-편집 패턴이지만 device가
+ * optional이다(지금 리드 생성 흐름엔 기기 입력이 없어 새 접수는 대부분 기기가
+ * 비어 있음). 수정 모드에 들어가면 기기를 하나 고르도록(비워두는 옵션은 없음)
+ * 해서 "값 없음 ↔ 값 있음"을 오가는 애매한 케이스를 피한다 — 기기를 지정하는
+ * 건 지원하되, 지정한 기기를 다시 지우는 것까지는 지원하지 않는다. */
+function IntakeRow({ leadId, record, onUpdate, onDelete }: IntakeRowProps) {
+  const [editing, setEditing] = useState(false)
+  const [device, setDevice] = useState<Device>(
+    record.device ?? Device.F2_ULTRA,
+  )
+  const [at, setAt] = useState(toDatetimeLocalValue(record.at))
+
+  if (editing) {
+    return (
+      <div className="record_row editing">
+        <select
+          className="control"
+          value={device}
+          onChange={(e) => setDevice(e.target.value as Device)}
+        >
+          {Object.values(Device).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <input
+          className="control"
+          type="datetime-local"
+          value={at}
+          onChange={(e) => setAt(e.target.value)}
+        />
+        <div className="record_actions">
+          <button
+            type="button"
+            className="save_btn"
+            onClick={async () => {
+              await onUpdate(leadId, record.id, {
+                device,
+                at: fromDatetimeLocalValue(at),
+              })
+              setEditing(false)
+            }}
+          >
+            저장
+          </button>
+          <button
+            type="button"
+            className="cancel_btn"
+            onClick={() => setEditing(false)}
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="record_row">
+      {record.device && <span className="device">{record.device}</span>}
+      <span className="at">{formatTime(record.at)}</span>
+      <div className="record_actions">
+        <button
+          type="button"
+          className="icon_btn"
+          onClick={() => setEditing(true)}
+        >
+          <EditIcon />
+        </button>
+        <button
+          type="button"
+          className="icon_btn danger"
+          onClick={() => {
+            if (window.confirm('이 접수 기록을 삭제할까요?')) {
+              onDelete(leadId, record.id)
+            }
+          }}
+        >
+          <DeleteIcon />
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface ConsultationRowProps {
   leadId: string
@@ -371,6 +458,8 @@ function PurchaseRow({ leadId, record, onUpdate, onDelete }: PurchaseRowProps) {
 export const Detail = ({
   lead,
   onConfirm,
+  onUpdateIntake,
+  onDeleteIntake,
   onUpdateConsultation,
   onDeleteConsultation,
   onUpdatePurchase,
@@ -382,6 +471,12 @@ export const Detail = ({
 }: {
   lead: Lead
   onConfirm: () => void
+  onUpdateIntake: (
+    leadId: string,
+    recordId: string,
+    updates: { at?: number; device?: Device },
+  ) => Promise<void>
+  onDeleteIntake: (leadId: string, recordId: string) => Promise<void>
   onUpdateConsultation: (
     leadId: string,
     recordId: string,
@@ -423,6 +518,7 @@ export const Detail = ({
 
   // 마이그레이션 전의 옛 리드 문서엔 이 배열 필드 자체가 없을 수 있어 방어적으로
   // 기본값을 둔다.
+  const sortedIntakes = [...(lead.intakes ?? [])].sort((a, b) => b.at - a.at)
   const sortedConsultations = [...(lead.consultations ?? [])].sort(
     (a, b) => b.at - a.at,
   )
@@ -472,15 +568,6 @@ export const Detail = ({
               mono
               onSave={onUpdateField}
             />
-            <EditableInfoRow
-              label="접수 시각"
-              field={EditingField.CREATED_AT}
-              leadId={lead.id}
-              rawValue={toDatetimeLocalValue(lead.createdAt)}
-              displayValue={formatDateTime(lead.createdAt)}
-              inputType="datetime-local"
-              onSave={onUpdateField}
-            />
           </section>
 
           <section className="section">
@@ -493,6 +580,27 @@ export const Detail = ({
               displayValue={lead.remarks}
               onSave={onUpdateField}
             />
+          </section>
+
+          <section className="section">
+            <div className="section_title">
+              접수 이력 ({sortedIntakes.length})
+            </div>
+            {sortedIntakes.length > 0 ? (
+              <div className="record_list">
+                {sortedIntakes.map((record) => (
+                  <IntakeRow
+                    key={record.id}
+                    leadId={lead.id}
+                    record={record}
+                    onUpdate={onUpdateIntake}
+                    onDelete={onDeleteIntake}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="empty_state">접수 이력이 없습니다</div>
+            )}
           </section>
 
           <section className="section">
