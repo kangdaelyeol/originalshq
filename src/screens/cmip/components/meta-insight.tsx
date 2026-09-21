@@ -14,6 +14,7 @@ import type {
 import {
   aggregateMetrics,
   emptyMetrics,
+  groupByCustomPeriod,
   groupByDayOfWeek,
   groupByWeek,
   metricsForDateSubset,
@@ -741,6 +742,16 @@ function ResultSkeleton({
           rowCount={Math.max(1, Math.ceil(dayCount / 7))}
         />
       </section>
+
+      {/* ResultPanel의 bucketSize 기본값(7)과 맞춘다 — 실제 값은 ResultPanel이
+          마운트된 뒤에나 알 수 있어(사용자가 바꿀 수 있는 상태), 최초 로딩
+          스켈레톤은 기본값 기준으로만 행 수를 맞춘다. */}
+      <section className="channel-insight__section">
+        <h3 className="channel-insight__section-title">
+          이전 일정 vs 지정 일정 비교분석
+        </h3>
+        <TableSkeleton headLabel="기간" rowCount={Math.floor(dayCount / 7)} />
+      </section>
     </div>
   )
 }
@@ -793,7 +804,64 @@ function SectionHead({
   )
 }
 
-/** "전체 요약" 탭 전용 — Summary KPI 카드 + 일별/요일별/주차별 표. */
+/** "이전 일정 vs 지정 일정" 비교표 전용 — 제목 + 구간 일수(N) 입력 + "대비
+ * 표시" 토글을 한 줄에 배치. 구간 일수를 바꾸면 그 즉시 조회 기간을 그 값
+ * 단위로 다시 나눠 표를 새로 그린다. */
+function CustomPeriodSectionHead({
+  title,
+  bucketSize,
+  onBucketSizeChange,
+  active,
+  onToggle,
+}: {
+  title: string
+  /** null = 입력칸이 비어있는 중(값을 지우고 새로 입력하는 과정) — 이때 표는
+   * "데이터 없음"으로 보여준다. 즉시 1로 되돌리면 backspace로 "1"을 지울 때
+   * 리렌더가 바로 다시 "1"을 채워 넣어 지워지지 않는 것처럼 보이는 문제가
+   * 있었다. */
+  bucketSize: number | null
+  onBucketSizeChange: (value: number | null) => void
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <div className="channel-insight__section-head">
+      <h3 className="channel-insight__section-title">{title}</h3>
+      <div className="channel-insight__section-head-actions">
+        <label className="channel-insight__period-size">
+          <input
+            type="number"
+            min={1}
+            step={1}
+            value={bucketSize ?? ''}
+            onChange={(e) => {
+              const raw = e.target.value
+              if (raw === '') {
+                onBucketSizeChange(null)
+                return
+              }
+              const parsed = Math.trunc(Number(raw))
+              onBucketSizeChange(
+                Number.isFinite(parsed) && parsed > 0 ? parsed : null,
+              )
+            }}
+          />
+          일 단위
+        </label>
+        <button
+          type="button"
+          className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
+          aria-pressed={active}
+          onClick={onToggle}
+        >
+          대비 표시
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** "전체 요약" 탭 전용 — Summary KPI 카드 + 일별/요일별/주차별/지정 기간 비교 표. */
 function ResultPanel({
   periodLabel,
   total,
@@ -809,6 +877,7 @@ function ResultPanel({
     byDate: false,
     byDayOfWeek: false,
     byGroupedWeek: false,
+    byCustomPeriod: false,
   })
   const toggleCompare = (key: keyof typeof compareOn) =>
     setCompareOn((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -826,6 +895,7 @@ function ResultPanel({
     byDate: allMetricKeys,
     byDayOfWeek: allMetricKeys,
     byGroupedWeek: allMetricKeys,
+    byCustomPeriod: allMetricKeys,
   })
   const toggleMetricVisible = (
     table: keyof typeof visibleMetrics,
@@ -844,11 +914,39 @@ function ResultPanel({
     byDate: 'all' | ChannelKey
     byDayOfWeek: 'all' | ChannelKey
     byGroupedWeek: 'all' | ChannelKey
-  }>({ byDate: 'all', byDayOfWeek: 'all', byGroupedWeek: 'all' })
+    byCustomPeriod: 'all' | ChannelKey
+  }>({
+    byDate: 'all',
+    byDayOfWeek: 'all',
+    byGroupedWeek: 'all',
+    byCustomPeriod: 'all',
+  })
   const setChannelFilterFor = (
     table: keyof typeof channelFilter,
     value: 'all' | ChannelKey,
   ) => setChannelFilter((prev) => ({ ...prev, [table]: value }))
+
+  // "이전 일정 vs 지정 일정" 비교표의 구간 일수(N) — 다른 상태와 같은 이유로
+  // ResultPanel에 둔다. 기본값 7은 그냥 흔한 단위(1주)일 뿐, 언제든 바꿀 수 있다.
+  // null은 입력칸을 지우는 중(아직 새 값을 안 정함) — 이때는 구간을 하나도
+  // 못 만드니 groupByCustomPeriod에 0을 넘겨 빈 배열을 받는다(그 함수의
+  // size<1 가드에 그대로 걸림 — MetricsTable이 빈 rows를 "데이터 없음"으로
+  // 보여준다).
+  const [bucketSize, setBucketSize] = useState<number | null>(7)
+  const customPeriodSource =
+    channelFilter.byCustomPeriod === 'all'
+      ? series.combined.byDate
+      : series[channelFilter.byCustomPeriod].byDate
+  const customPeriodRows = useMemo(
+    () =>
+      groupByCustomPeriod(
+        customPeriodSource,
+        dateStart,
+        dateEnd,
+        bucketSize ?? 0,
+      ),
+    [customPeriodSource, dateStart, dateEnd, bucketSize],
+  )
 
   const dayCount = dateRange(dateStart, dateEnd).length
 
@@ -1021,6 +1119,56 @@ function ResultPanel({
             channelFilter={channelFilter.byGroupedWeek}
             onChannelFilterChange={(v) =>
               setChannelFilterFor('byGroupedWeek', v)
+            }
+            getChannelBreakdown={(row) => ({
+              meta: metricsForDateSubset(
+                series.meta.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+              google: metricsForDateSubset(
+                series.google.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+              naver: metricsForDateSubset(
+                series.naver.byDate,
+                (d) => d >= row.startDate && d <= row.endDate,
+              ),
+            })}
+          />
+        )}
+      </section>
+
+      {/* 이전 일정 vs 지정 일정 비교분석 — 조회 기간을 최신일 기준으로
+          bucketSize일씩 묶는다(자세한 규칙은 groupByCustomPeriod 주석 참고).
+          위 세 표와 달리 구간 크기를 사용자가 직접 정한다. */}
+      <section className="channel-insight__section">
+        <CustomPeriodSectionHead
+          title="이전 일정 vs 지정 일정 비교분석"
+          bucketSize={bucketSize}
+          onBucketSizeChange={setBucketSize}
+          active={compareOn.byCustomPeriod}
+          onToggle={() => toggleCompare('byCustomPeriod')}
+        />
+        {loading ? (
+          <TableSkeleton
+            headLabel="기간"
+            rowCount={bucketSize ? Math.floor(dayCount / bucketSize) : 0}
+          />
+        ) : (
+          <MetricsTable<WeekSummary>
+            rows={customPeriodRows}
+            rowKey={(row) => row.period}
+            headLabel="기간"
+            headValue={(row) => row.period}
+            channels={
+              channelFilter.byCustomPeriod === 'all' ? applicableChannels : []
+            }
+            showCompare={compareOn.byCustomPeriod}
+            visibleKeys={visibleMetrics.byCustomPeriod}
+            onToggleMetric={(key) => toggleMetricVisible('byCustomPeriod', key)}
+            channelFilter={channelFilter.byCustomPeriod}
+            onChannelFilterChange={(v) =>
+              setChannelFilterFor('byCustomPeriod', v)
             }
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(

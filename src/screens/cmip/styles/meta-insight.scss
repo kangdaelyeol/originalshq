@@ -526,6 +526,50 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  // "이전 일정 vs 지정 일정 비교분석" 헤더 — 구간 일수(N) 입력과 "대비 표시"
+  // 토글을 오른쪽에 묶어, __section-head의 space-between이 [제목] vs [이 묶음]
+  // 두 덩이로만 나뉘게 한다.
+  &__section-head-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  &__period-size {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: $color-muted;
+
+    input {
+      appearance: none;
+      width: 48px;
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      background: $color-canvas-subtle;
+      color: $color-text;
+      padding: 4px 6px;
+      font-size: 12px;
+      font-family: inherit;
+      text-align: center;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent;
+      }
+
+      // 스피너 화살표는 이 작은 폭에서 입력창을 더 좁게 만들어 거슬린다.
+      &::-webkit-inner-spin-button,
+      &::-webkit-outer-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+    }
   }
 
   &__compare-toggle {

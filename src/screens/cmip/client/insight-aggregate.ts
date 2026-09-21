@@ -259,6 +259,58 @@ export function groupByWeek(
   })
 }
 
+/** "이전 일정 vs 지정 일정" 비교표 전용 구간 나누기 — buildWeekRanges와 반대
+ * 방향이다: 조회 범위의 가장 최신 날짜부터 거꾸로 size일씩 묶고, size의
+ * 배수로 안 떨어지는 나머지(가장 오래된 쪽)는 어느 구간에도 넣지 않고
+ * 버린다(예: 7일 범위를 3일 단위로 묶으면 최신 6일만 2구간으로 묶이고 가장
+ * 오래된 1일은 버려짐). 반환은 buildWeekRanges와 같이 오래된 구간부터
+ * 최신 구간 순서로 정렬한다. */
+function buildCustomPeriodRanges(
+  startDate: ISODate,
+  endDate: ISODate,
+  size: number,
+): { start: ISODate; end: ISODate }[] {
+  if (size < 1) return []
+
+  const totalDays = dateRange(startDate, endDate).length
+  const bucketCount = Math.floor(totalDays / size)
+  if (bucketCount === 0) return []
+
+  const ranges: { start: ISODate; end: ISODate }[] = []
+  let cursor = endDate
+
+  for (let i = 0; i < bucketCount; i++) {
+    const rangeEnd = cursor
+    const rangeStart = addDays(cursor, -(size - 1))
+    ranges.push({ start: rangeStart, end: rangeEnd })
+    cursor = addDays(rangeStart, -1)
+  }
+
+  return ranges.reverse()
+}
+
+/** byDate → "지정 기간(size일)" 단위로 묶은 구간별 합계. "이전 일정 vs 지정
+ * 일정 비교분석" 표에서 쓴다 — 같은 이유로 이 표도 대비 표시(showCompare)를
+ * 켜면 바로 앞 구간(더 오래된 구간) 대비를 보여준다. */
+export function groupByCustomPeriod(
+  byDate: readonly DateSummary[],
+  startDate: ISODate,
+  endDate: ISODate,
+  size: number,
+): WeekSummary[] {
+  return buildCustomPeriodRanges(startDate, endDate, size).map((range) => {
+    const rows = byDate.filter(
+      (row) => row.date >= range.start && row.date <= range.end,
+    )
+    return {
+      period: `${formatMD(range.start)}~${formatMD(range.end)}`,
+      startDate: range.start,
+      endDate: range.end,
+      ...aggregateMetrics(rows),
+    }
+  })
+}
+
 /** byDate 하나로부터 byDayOfWeek/byGroupedWeek까지 표준 방식으로 다시 묶는다.
  * startDate/endDate는 주차 경계의 기준이 되는 조회 범위 — byDate 자체의 실제
  * 커버리지가 아니라 항상 이 범위로 잘라야 채널 간 경계가 일치한다. */
