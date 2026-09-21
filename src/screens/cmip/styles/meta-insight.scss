@@ -816,11 +816,22 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
-  // 전체 캠페인/adset 표 — 위에 컬럼 표시 토글 행, 아래에 표.
+  // 전체 캠페인/adset 표 — 채널 필터 행, 컬럼 표시 토글 행, 아래에 표 순.
   &__full-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
+  }
+
+  // 채널 필터(전체/Meta/Google/Naver) — 컬럼 표시 토글과 같은 버튼 스타일
+  // (.full-list-toggle-btn)을 그대로 쓰되, 다중 선택(체크박스처럼 여러 개
+  // 동시에 켜짐)이 아니라 단일 선택(라디오처럼 하나만 켜짐)이라 그룹을 따로
+  // 둔다.
+  &__full-list-channel-filter {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   &__full-list-toggles {

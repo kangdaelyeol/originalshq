@@ -54,6 +54,14 @@ const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
   naver: '#03c75a',
 }
 
+// 전체 캠페인/adset 표의 채널 필터 버튼 chip 색 — 지표 토글 버튼과 같은
+// --chip-color 방식(켜졌을 때만 이 색으로 옅게 물듦)을 그대로 재사용한다.
+const CHANNEL_CHIP_COLOR: Record<ChannelKey, string> = {
+  meta: '#1877f2',
+  google: '#4285f4',
+  naver: '#03c75a',
+}
+
 function MetaLogo() {
   return <img className="meta-insight__channel-logo" src={metaIconPng} alt="" />
 }
@@ -1242,6 +1250,20 @@ function FullListTable({
     dir: 'asc',
   })
 
+  // 채널 필터 — "전체"가 기본이고, 특정 채널을 고르면 그 채널 데이터가 있는
+  // 행만 남긴다(row.channels 기준 — 이름이 같아 여러 채널이 합쳐진 행은 그
+  // 채널이 channels 배열에 있기만 하면 보인다).
+  const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>(
+    'all',
+  )
+  const filteredRows = useMemo(
+    () =>
+      channelFilter === 'all'
+        ? rows
+        : rows.filter((r) => r.channels.includes(channelFilter)),
+    [rows, channelFilter],
+  )
+
   // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
   // 이름/채널 칸은 항상 보인다.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<MetricKey>>(
@@ -1260,7 +1282,7 @@ function FullListTable({
   // 전환 목표(결과 유형) 뱃지 표시 여부 — Meta 캠페인에만 있는 값이라, 이
   // 표에 Meta 캠페인이 하나도 없으면(예: adset 목록) 토글 자체를 안 보여준다.
   const [showResultType, setShowResultType] = useState(true)
-  const hasResultType = rows.some((r) => r.resultType)
+  const hasResultType = filteredRows.some((r) => r.resultType)
 
   const toggleSort = (key: FullListSortKey) => {
     setSort((prev) =>
@@ -1275,14 +1297,41 @@ function FullListTable({
 
   const sortedRows = useMemo(() => {
     const dir = sort.dir === 'asc' ? 1 : -1
-    return [...rows].sort((a, b) => {
+    return [...filteredRows].sort((a, b) => {
       if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
       return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
     })
-  }, [rows, sort])
+  }, [filteredRows, sort])
 
   return (
     <div className="meta-insight__full-list">
+      <div
+        className="meta-insight__full-list-channel-filter"
+        role="group"
+        aria-label="채널 필터"
+      >
+        <button
+          type="button"
+          className={`meta-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
+          aria-pressed={channelFilter === 'all'}
+          onClick={() => setChannelFilter('all')}
+        >
+          전체
+        </button>
+        {CHANNELS.map((c) => (
+          <button
+            key={c.key}
+            type="button"
+            className={`meta-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
+            style={{ '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties}
+            aria-pressed={channelFilter === c.key}
+            onClick={() => setChannelFilter(c.key)}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
       <div
         className="meta-insight__full-list-toggles"
         role="group"
