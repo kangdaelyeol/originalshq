@@ -21,6 +21,10 @@ export const Main = () => {
     deleteConsultationRecord,
     updatePurchaseRecord,
     deletePurchaseRecord,
+    registerConsultationRow,
+    registerPurchaseRow,
+    deleteRow,
+    updateLeadField,
     openCreateModal,
   } = actions
   const { ToastContainer } = component
@@ -48,6 +52,10 @@ export const Main = () => {
           onDeleteConsultation={deleteConsultationRecord}
           onUpdatePurchase={updatePurchaseRecord}
           onDeletePurchase={deletePurchaseRecord}
+          onRegisterConsultation={() => registerConsultationRow(detail.id)}
+          onRegisterPurchase={() => registerPurchaseRow(detail.id)}
+          onDeleteLead={() => deleteRow(detail.id)}
+          onUpdateField={updateLeadField}
         />
       )}
       {loading && <Loading />}

@@ -1,15 +1,5 @@
-import {
-  EditingField,
-  SortField,
-  type EditingCell,
-  type SortDirection,
-} from '@/screens/xtool-lead-manager/types'
-import {
-  displayName,
-  formatPhoneNumber,
-  formatTime,
-  toDatetimeLocalValue,
-} from '@/screens/xtool-lead-manager/utils'
+import { SortField, type SortDirection } from '@/screens/xtool-lead-manager/types'
+import { formatPhoneNumber, formatTime } from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
 import type {
   ConsultationRecord,
@@ -20,14 +10,7 @@ import type {
 interface TableActions {
   toggleAllChecked: () => void
   toggleSort: (field: SortField) => void
-  startEditing: (rowId: string, field: EditingField) => void
-  handleFieldChange: (rowId: string, field: EditingField, value: string) => void
-  stopEditing: () => void
   showDetail: (rowId: string) => void
-  handleEditingKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void
-  deleteRow: (rowId: string) => void
-  registerConsultationRow: (rowId: string) => void
-  registerPurchaseRow: (rowId: string) => void
   toggleTestRow: (rowId: string) => void
   updateTestEventCode: (rowId: string, code: string) => void
 }
@@ -36,7 +19,6 @@ interface TableState {
   allChecked: boolean
   sortField: SortField
   sortDirection: SortDirection
-  editingCell: EditingCell | null
   rows: Lead[]
   /** 행마다 "테스트" 체크 여부 + test_event_code 입력값 — 등록(contactLead/
    * purchaseLead)에 얹어 보낼 값이라 Lead 데이터와 별개로 rowId로만 관리한다. */
@@ -75,28 +57,16 @@ const purchaseTitle = (records: PurchaseRecord[]): string =>
  * 안 생긴다.
  *
  * 상담/구매를 다건으로 지원하면서 신규유입/상담완료/구매완료 3개 보드로
- * 나눌 이유가 없어져 표 하나로 통합했다 — 각 행에는 항상 "상담 등록"/
- * "구매 등록" 버튼이 함께 있고, 고객명을 누르면 그 고객의 상담·구매 이력을
- * 모달로 볼 수 있다.
+ * 나눌 이유가 없어져 표 하나로 통합했다. 상담 등록/구매 등록/삭제, 그리고
+ * 셀 인라인 수정까지 전부 표에서 빼고 고객 상세 모달로 옮겼다 — 표는 이제
+ * 순수 조회용이고, 행을 누르면(체크박스·테스트 토글처럼 자기 클릭을 직접
+ * 처리하는 칸은 제외) 그 모달이 열린다.
  */
 export const Table = ({ state, actions }: TableProps) => {
-  const {
-    toggleAllChecked,
-    toggleSort,
-    handleFieldChange,
-    startEditing,
-    stopEditing,
-    showDetail,
-    handleEditingKeyDown,
-    deleteRow,
-    registerConsultationRow,
-    registerPurchaseRow,
-    toggleTestRow,
-    updateTestEventCode,
-  } = actions
+  const { toggleAllChecked, toggleSort, showDetail, toggleTestRow, updateTestEventCode } =
+    actions
 
-  const { allChecked, sortField, sortDirection, rows, editingCell, testRows } =
-    state
+  const { allChecked, sortField, sortDirection, rows, testRows } = state
 
   return (
     <div className="table_container">
@@ -161,25 +131,10 @@ export const Table = ({ state, actions }: TableProps) => {
                 <th className="col-status">상담 현황</th>
                 <th className="col-status">구매 현황</th>
                 <th className="col-test">테스트</th>
-                <th className="col-register" aria-hidden="true" />
-                <th className="col-register" aria-hidden="true" />
-                <th className="col-delete" aria-hidden="true" />
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => {
-                const isEditingFn =
-                  editingCell?.rowId === row.id &&
-                  editingCell?.field === EditingField.FIRST_NAME
-                const isEditingPh =
-                  editingCell?.rowId === row.id &&
-                  editingCell?.field === EditingField.PHONE
-                const isEditingRemarks =
-                  editingCell?.rowId === row.id &&
-                  editingCell?.field === EditingField.REMARKS
-                const isEditingCreatedAt =
-                  editingCell?.rowId === row.id &&
-                  editingCell?.field === EditingField.CREATED_AT
                 // 마이그레이션 전의 옛 리드 문서엔 이 배열 필드 자체가 없을 수
                 // 있어(Firestore에 값이 없던 필드는 undefined로 온다) 방어적으로
                 // 기본값을 준다.
@@ -187,9 +142,14 @@ export const Table = ({ state, actions }: TableProps) => {
                 const purchases = row.purchases ?? []
 
                 return (
-                  <tr key={row.id}>
-                    {/* Checkbox Cell */}
-                    <td className="col-cb">
+                  <tr
+                    key={row.id}
+                    className="row-clickable"
+                    onClick={() => showDetail(row.id)}
+                  >
+                    {/* Checkbox Cell — 자기 클릭을 직접 처리하니 행 클릭(상세
+                        모달 열기)으로 안 번지게 막는다. */}
+                    <td className="col-cb" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         role="checkbox"
@@ -216,126 +176,25 @@ export const Table = ({ state, actions }: TableProps) => {
                     </td>
 
                     {/* CreatedAt cell */}
-                    <td
-                      className="col-created editable"
-                      onClick={() =>
-                        !isEditingCreatedAt &&
-                        startEditing(row.id, EditingField.CREATED_AT)
-                      }
-                    >
-                      {isEditingCreatedAt ? (
-                        <input
-                          autoFocus
-                          type="datetime-local"
-                          value={toDatetimeLocalValue(row.createdAt)}
-                          onChange={(e) =>
-                            handleFieldChange(
-                              row.id,
-                              EditingField.CREATED_AT,
-                              e.target.value,
-                            )
-                          }
-                          onBlur={stopEditing}
-                          onKeyDown={handleEditingKeyDown}
-                        />
-                      ) : (
-                        <span>
-                          {row.createdAt !== 0
-                            ? formatTime(row.createdAt)
-                            : '등록하기'}
-                        </span>
-                      )}
+                    <td className="col-created">
+                      <span>
+                        {row.createdAt !== 0 ? formatTime(row.createdAt) : '-'}
+                      </span>
                     </td>
 
-                    {/* First name Cell — 클릭하면 이력 모달이 아니라 인라인
-                        수정(다른 필드와 동일), 이력 모달은 이름 옆 버튼으로 연다. */}
-                    <td
-                      className="col-fn editable"
-                      onClick={() =>
-                        !isEditingFn &&
-                        startEditing(row.id, EditingField.FIRST_NAME)
-                      }
-                    >
-                      {isEditingFn ? (
-                        <input
-                          autoFocus
-                          value={row.fn}
-                          onChange={(e) =>
-                            handleFieldChange(
-                              row.id,
-                              EditingField.FIRST_NAME,
-                              e.target.value,
-                            )
-                          }
-                          onBlur={stopEditing}
-                          onKeyDown={handleEditingKeyDown}
-                        />
-                      ) : (
-                        <button
-                          type="button"
-                          className="name-link"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            showDetail(row.id)
-                          }}
-                        >
-                          {displayName(row.fn)}
-                        </button>
-                      )}
+                    {/* First name Cell */}
+                    <td className="col-fn">
+                      <span>{row.fn || '이름 없음'}</span>
                     </td>
 
                     {/* Phone number Cell */}
-                    <td
-                      className="col-ph editable"
-                      onClick={() =>
-                        !isEditingPh &&
-                        startEditing(row.id, EditingField.PHONE)
-                      }
-                    >
-                      {isEditingPh ? (
-                        <input
-                          autoFocus
-                          value={row.ph}
-                          onChange={(e) =>
-                            handleFieldChange(
-                              row.id,
-                              EditingField.PHONE,
-                              e.target.value,
-                            )
-                          }
-                          onBlur={stopEditing}
-                          onKeyDown={handleEditingKeyDown}
-                        />
-                      ) : (
-                        <span>{formatPhoneNumber(row.ph)}</span>
-                      )}
+                    <td className="col-ph">
+                      <span>{formatPhoneNumber(row.ph)}</span>
                     </td>
 
                     {/* Remarks cell — 회사명/직책/동반 구매자 등 내부 참고용 메모 */}
-                    <td
-                      className="col-remarks editable"
-                      onClick={() =>
-                        !isEditingRemarks &&
-                        startEditing(row.id, EditingField.REMARKS)
-                      }
-                    >
-                      {isEditingRemarks ? (
-                        <input
-                          autoFocus
-                          value={row.remarks}
-                          onChange={(e) =>
-                            handleFieldChange(
-                              row.id,
-                              EditingField.REMARKS,
-                              e.target.value,
-                            )
-                          }
-                          onBlur={stopEditing}
-                          onKeyDown={handleEditingKeyDown}
-                        />
-                      ) : (
-                        <span>{row.remarks || '-'}</span>
-                      )}
+                    <td className="col-remarks">
+                      <span>{row.remarks || '-'}</span>
                     </td>
 
                     {/* Consultation status cell */}
@@ -358,10 +217,7 @@ export const Table = ({ state, actions }: TableProps) => {
                     </td>
 
                     {/* Purchase status cell */}
-                    <td
-                      className="col-status"
-                      title={purchaseTitle(purchases)}
-                    >
+                    <td className="col-status" title={purchaseTitle(purchases)}>
                       {purchases.length > 0 ? (
                         <div className="status_stack">
                           <span className="count">{purchases.length}건</span>
@@ -374,10 +230,12 @@ export const Table = ({ state, actions }: TableProps) => {
                       )}
                     </td>
 
-                    {/* Test checkbox + test_event_code — 켜두면 다음 등록
-                        (상담/구매 무관) 클릭 때 Meta CAPI 호출에 test_event_code가
-                        실려 나가 이벤트 관리자의 테스트 이벤트로 잡힌다. */}
-                    <td className="col-test">
+                    {/* Test checkbox + test_event_code — 켜두면 상세 모달에서
+                        다음 등록(상담/구매 무관) 클릭 때 Meta CAPI 호출에
+                        test_event_code가 실려 나가 이벤트 관리자의 테스트
+                        이벤트로 잡힌다. 자기 클릭을 직접 처리하니 행 클릭으로
+                        안 번지게 막는다. */}
+                    <td className="col-test" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         role="checkbox"
@@ -412,39 +270,6 @@ export const Table = ({ state, actions }: TableProps) => {
                           }
                         />
                       )}
-                    </td>
-
-                    {/* Register consultation button */}
-                    <td className="col-register">
-                      <button
-                        type="button"
-                        className="register-btn"
-                        onClick={() => registerConsultationRow(row.id)}
-                      >
-                        상담 등록
-                      </button>
-                    </td>
-
-                    {/* Register purchase button */}
-                    <td className="col-register">
-                      <button
-                        type="button"
-                        className="register-btn purchase"
-                        onClick={() => registerPurchaseRow(row.id)}
-                      >
-                        구매 등록
-                      </button>
-                    </td>
-
-                    {/* Delete button */}
-                    <td className="col-delete">
-                      <button
-                        type="button"
-                        className="delete-btn"
-                        onClick={() => deleteRow(row.id)}
-                      >
-                        삭제
-                      </button>
                     </td>
                   </tr>
                 )

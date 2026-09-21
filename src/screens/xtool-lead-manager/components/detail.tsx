@@ -7,7 +7,9 @@ import {
   type LeadState,
   type PurchaseRecord,
 } from '@/screens/xtool-lead-manager/entity'
+import { EditingField } from '@/screens/xtool-lead-manager/types'
 import {
+  formatPhoneNumber,
   formatTime,
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
@@ -56,6 +58,90 @@ function InfoRow({
         )}
       >
         {isEmpty ? '값 없음' : value}
+      </span>
+    </div>
+  )
+}
+
+/** 클릭하면 그 자리에서 바로 고치는 정보 행 — 표의 인라인 편집을 대신해
+ * 상세 모달로 옮긴 자리다. rawValue는 편집 입력에 넣을 원본 값(예: 전화번호는
+ * 숫자만, 접수 시각은 datetime-local 문자열), displayValue는 평소에 보여줄
+ * 포맷된 값이다. */
+function EditableInfoRow({
+  label,
+  field,
+  leadId,
+  rawValue,
+  displayValue,
+  mono = false,
+  inputType = 'text',
+  onSave,
+}: {
+  label: string
+  field: EditingField
+  leadId: string
+  rawValue: string
+  displayValue: string
+  mono?: boolean
+  inputType?: 'text' | 'datetime-local'
+  onSave: (leadId: string, field: EditingField, value: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(rawValue)
+
+  if (editing) {
+    return (
+      <div className="info_row editing">
+        <span className="label">{label}</span>
+        <div className="edit_control">
+          <input
+            autoFocus
+            type={inputType}
+            className="control"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false)
+            }}
+          />
+          <button
+            type="button"
+            className="save_btn"
+            onClick={async () => {
+              await onSave(leadId, field, draft)
+              setEditing(false)
+            }}
+          >
+            저장
+          </button>
+          <button
+            type="button"
+            className="cancel_btn"
+            onClick={() => setEditing(false)}
+          >
+            취소
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const isEmpty = !displayValue || displayValue === '-'
+  return (
+    <div
+      className="info_row editable"
+      onClick={() => {
+        setDraft(rawValue)
+        setEditing(true)
+      }}
+    >
+      <span className="label">{label}</span>
+      <span
+        className={['value', mono ? 'mono' : '', isEmpty ? 'empty' : ''].join(
+          ' ',
+        )}
+      >
+        {isEmpty ? '값 없음' : displayValue}
       </span>
     </div>
   )
@@ -289,6 +375,10 @@ export const Detail = ({
   onDeleteConsultation,
   onUpdatePurchase,
   onDeletePurchase,
+  onRegisterConsultation,
+  onRegisterPurchase,
+  onDeleteLead,
+  onUpdateField,
 }: {
   lead: Lead
   onConfirm: () => void
@@ -304,6 +394,14 @@ export const Detail = ({
     updates: { at?: number; device?: Device; price?: number },
   ) => Promise<void>
   onDeletePurchase: (leadId: string, recordId: string) => Promise<void>
+  onRegisterConsultation: () => void
+  onRegisterPurchase: () => void
+  onDeleteLead: () => void
+  onUpdateField: (
+    leadId: string,
+    field: EditingField,
+    value: string,
+  ) => Promise<void>
 }) => {
   const state = getLeadState(lead)
   const [uaExpanded, setUaExpanded] = useState(false)
@@ -357,14 +455,44 @@ export const Detail = ({
         <div className="body">
           <section className="section">
             <div className="section_title">기본 정보</div>
-            <InfoRow label="고객명" value={lead.fn} />
-            <InfoRow label="전화번호" value={lead.ph} mono />
-            <InfoRow label="접수 시각" value={formatDateTime(lead.createdAt)} />
+            <EditableInfoRow
+              label="고객명"
+              field={EditingField.FIRST_NAME}
+              leadId={lead.id}
+              rawValue={lead.fn}
+              displayValue={lead.fn}
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label="전화번호"
+              field={EditingField.PHONE}
+              leadId={lead.id}
+              rawValue={lead.ph}
+              displayValue={formatPhoneNumber(lead.ph)}
+              mono
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label="접수 시각"
+              field={EditingField.CREATED_AT}
+              leadId={lead.id}
+              rawValue={toDatetimeLocalValue(lead.createdAt)}
+              displayValue={formatDateTime(lead.createdAt)}
+              inputType="datetime-local"
+              onSave={onUpdateField}
+            />
           </section>
 
           <section className="section">
             <div className="section_title">비고</div>
-            <InfoRow label="메모" value={lead.remarks} />
+            <EditableInfoRow
+              label="메모"
+              field={EditingField.REMARKS}
+              leadId={lead.id}
+              rawValue={lead.remarks}
+              displayValue={lead.remarks}
+              onSave={onUpdateField}
+            />
           </section>
 
           <section className="section">
@@ -448,9 +576,34 @@ export const Detail = ({
         </div>
 
         <div className="footer">
-          <button type="button" className="btn confirm" onClick={onConfirm}>
-            확인
-          </button>
+          <div className="register_row">
+            <button
+              type="button"
+              className="btn register consultation"
+              onClick={onRegisterConsultation}
+            >
+              상담 등록
+            </button>
+            <button
+              type="button"
+              className="btn register purchase"
+              onClick={onRegisterPurchase}
+            >
+              구매 등록
+            </button>
+          </div>
+          <div className="bottom_row">
+            <button
+              type="button"
+              className="btn delete"
+              onClick={onDeleteLead}
+            >
+              삭제
+            </button>
+            <button type="button" className="btn confirm" onClick={onConfirm}>
+              확인
+            </button>
+          </div>
         </div>
       </div>
     </div>

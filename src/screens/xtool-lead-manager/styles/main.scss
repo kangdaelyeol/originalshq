@@ -124,18 +124,21 @@
       .col-test {
         width: 190px;
       }
-      // register(상담 등록/구매 등록 — 칼럼 2개)/delete — 각 버튼(100px)과
-      // 정확히 같은 폭.
-      .col-register,
-      .col-delete {
-        width: 100px;
+    }
+
+    // 행 전체를 누르면 고객 상세 모달이 열린다(체크박스·인라인 편집 칸·
+    // 테스트 토글은 각자 클릭을 직접 처리하므로 행 클릭에서 막아둔다).
+    tbody tr.row-clickable {
+      cursor: pointer;
+      &:hover td {
+        background-color: rgba(255, 255, 255, 0.04);
       }
     }
 
-    // 테스트 체크박스 옆 test_event_code 입력칸 — .editable의 input과 같은
-    // 톤을 쓰되, 체크했을 때만 나타나는 좁은 칸이라 폭/정렬만 다르게 준다.
-    // td 안에서 체크박스 옆에 나란히 두는 간격은 flex gap 대신 margin으로 준다
-    // (td 자체를 flex로 만들면 table-layout: fixed의 칼럼 폭 계산이 깨진다).
+    // 테스트 체크박스 옆 test_event_code 입력칸 — 체크했을 때만 나타나는
+    // 좁은 칸이라 폭/정렬을 따로 준다. td 안에서 체크박스 옆에 나란히 두는
+    // 간격은 flex gap 대신 margin으로 준다(td 자체를 flex로 만들면
+    // table-layout: fixed의 칼럼 폭 계산이 깨진다).
     .test-event-code-input {
       all: unset;
       box-sizing: border-box;
@@ -179,45 +182,11 @@
       }
     }
 
-    td.editable {
-      cursor: pointer;
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.05);
-      }
-      input {
-        all: unset;
-        box-sizing: border-box;
-        width: 90%;
-        padding: 4px 6px;
-        background-color: variables.$color-accent-soft;
-        border: 1px solid variables.$color-accent;
-        border-radius: 4px;
-        color: variables.$color-text;
-        font-size: 14px;
-        text-align: center;
-      }
-      span {
-        color: variables.$color-text;
-        font-size: 14px;
-      }
-    }
-
-    // 고객명 — 인라인 편집이 아닐 땐 버튼이라 클릭하면 이력 모달이 열린다.
-    .name-link {
-      all: unset;
-      box-sizing: border-box;
-      display: inline-block;
-      max-width: 100%;
-      color: variables.$color-accent;
+    // td.editable은 더 이상 없지만(수정은 상세 모달로 이동), 셀 안의 span
+    // 기본 색·크기는 여기서 계속 준다.
+    .lead_table td span {
+      color: variables.$color-text;
       font-size: 14px;
-      cursor: pointer;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      white-space: nowrap;
-      vertical-align: middle;
-      &:hover {
-        text-decoration: underline;
-      }
     }
 
     // 상담/구매 현황 칸 — 건수(진한 색)와 최근 시각(옅은 색)을 두 줄로.
@@ -236,50 +205,6 @@
       .latest {
         color: variables.$color-text-faint;
         font-size: 11.5px;
-      }
-    }
-
-    .register-btn,
-    .delete-btn {
-      all: unset;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      box-sizing: border-box;
-      width: 100%;
-      height: 100%;
-      text-align: center;
-      cursor: pointer;
-      padding: 6px 14px;
-      background-color: variables.$color-surface-raised;
-      color: variables.$color-text;
-      font-size: 13px;
-
-      &:disabled {
-        cursor: not-allowed;
-        opacity: 0.6;
-      }
-    }
-
-    .register-btn {
-      background-color: variables.$color-accent;
-      &:hover:not(:disabled) {
-        filter: brightness(1.1);
-      }
-      // 상담 등록과 구매 등록을 색으로 구분한다.
-      &.purchase {
-        background-color: variables.$color-purchase-complete;
-        color: #1a0a1b;
-      }
-    }
-
-    .delete-btn {
-      background-color: transparent;
-      border: 1px solid variables.$color-border;
-      &:hover:not(:disabled) {
-        background-color: rgba(229, 83, 75, 0.12);
-        border-color: variables.$color-danger;
-        color: variables.$color-danger;
       }
     }
 

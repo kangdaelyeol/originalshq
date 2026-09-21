@@ -38,11 +38,6 @@ export type SortField = (typeof SortField)[keyof typeof SortField]
 
 export type SortDirection = 'asc' | 'desc'
 
-export type EditingCell = {
-  rowId: string
-  field: EditingField
-} | null
-
 export type CreateLeadFormValues = {
   utm_campaign: string
   utm_medium: string

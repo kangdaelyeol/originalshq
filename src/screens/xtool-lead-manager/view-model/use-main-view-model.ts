@@ -6,7 +6,6 @@ import {
   INITIAL_REGISTER_FORM,
   SortField,
   type CreateLeadFormValues,
-  type EditingCell,
   type RegisterFormValues,
   type SortDirection,
 } from '@/screens/xtool-lead-manager/types'
@@ -27,7 +26,6 @@ import {
 export const useMainViewModel = () => {
   const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Lead[]>([])
-  const [editingCell, setEditingCell] = useState<EditingCell>(null)
   const [selectedRow, setSelectedRow] = useState<Lead | null>(null)
   const [variant, setVariant] = useState<ConfirmVariant>(ConfirmVariant.DELETE)
   const [registerForm, setRegisterForm] = useState<RegisterFormValues>(
@@ -216,6 +214,9 @@ export const useMainViewModel = () => {
       showToast('error')
     } else {
       setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
+      // 이력 모달이 지금 이 리드를 보여주는 중이었다면 더는 존재하지 않는
+      // 데이터를 붙들고 있게 되므로 같이 닫는다.
+      setDetail((prev) => (prev && prev.id === targetLead.id ? null : prev))
       showToast('deleted')
     }
     setSelectedRow(null)
@@ -243,10 +244,6 @@ export const useMainViewModel = () => {
     setDetail(null)
   }
 
-  const handleEditingKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Escape') stopEditing()
-  }
-
   const toggleAllChecked = () => {
     setAllChecked((prev) => !prev)
   }
@@ -268,84 +265,58 @@ export const useMainViewModel = () => {
     }))
   }
 
-  const startEditing = (rowId: string, field: EditingField) => {
-    setEditingCell({ rowId, field })
-  }
-
-  const handleFieldChange = (
-    rowId: string,
+  // 고객 상세 모달에서 기본 정보(고객명/전화번호/접수 시각) · 비고를 고칠 때
+  // 쓴다 — 필드별로 알맞은 client 호출을 골라서 보내고, 성공하면 rows와
+  // detail을 같이 최신화한다. value는 항상 입력창의 원본 문자열이고, 필드별
+  // 정제(전화번호 숫자만 남기기, 시각 문자열 → ms 변환)는 여기서 한다.
+  const updateLeadField = async (
+    leadId: string,
     field: EditingField,
     value: string,
-  ) => {
-    let cleanedValue: string | number = value
-
-    if (field === EditingField.PHONE) {
-      cleanedValue = value.replace(/\D/g, '')
-    } else if (field === EditingField.CREATED_AT) {
-      cleanedValue = fromDatetimeLocalValue(value)
-    }
-
-    setRows((prev) =>
-      prev.map((row) =>
-        row.id === rowId ? { ...row, [field]: cleanedValue } : row,
-      ),
-    )
-  }
-
-  const stopEditing = async () => {
-    if (!editingCell) return
-    const { rowId, field } = editingCell
-    const editedValue = rows.find((row) => row.id === rowId)?.[field]
-
-    if (editedValue === undefined) {
-      setEditingCell(null)
-      return
-    }
-
+  ): Promise<void> => {
     setLoading(true)
-    let numericTimestamp: number
-    let body: Record<string, unknown>
     let res: ClientResponse<Lead>
 
     switch (field) {
-      case EditingField.CREATED_AT:
-        numericTimestamp = Number(editedValue)
-        if (Number.isNaN(numericTimestamp)) {
+      case EditingField.FIRST_NAME:
+        res = await leadClient.updateFn({ id: leadId, fn: value })
+        break
+      case EditingField.PHONE:
+        res = await leadClient.updatePh({
+          id: leadId,
+          ph: value.replace(/\D/g, ''),
+        })
+        break
+      case EditingField.REMARKS:
+        res = await leadClient.updateRemarks({ id: leadId, remarks: value })
+        break
+      case EditingField.CREATED_AT: {
+        const numericTimestamp = fromDatetimeLocalValue(value)
+        if (!numericTimestamp) {
           console.error('시각 값이 올바르지 않습니다')
           showToast('error')
           setLoading(false)
-          setEditingCell(null)
           return
         }
-        body = { id: rowId, field, value: numericTimestamp }
-        res = await leadClient.updateTimeStamp(body)
+        res = await leadClient.updateTimeStamp({
+          id: leadId,
+          field,
+          value: numericTimestamp,
+        })
         break
-      case EditingField.FIRST_NAME:
-        body = { id: rowId, fn: editedValue }
-        res = await leadClient.updateFn(body)
-        break
-      case EditingField.PHONE:
-        body = { id: rowId, ph: editedValue }
-        res = await leadClient.updatePh(body)
-        break
-      case EditingField.REMARKS:
-        body = { id: rowId, remarks: editedValue }
-        res = await leadClient.updateRemarks(body)
-        break
+      }
     }
 
     if (!res.ok) {
       console.error(res.error)
       showToast('error')
       setLoading(false)
-      setEditingCell(null)
       return
     }
 
     applyLeadUpdate(res.data)
     showToast('updated')
     setLoading(false)
-    setEditingCell(null)
   }
 
   const deleteRow = (rowId: string) => {
@@ -500,7 +471,6 @@ export const useMainViewModel = () => {
   return {
     state: {
       allChecked,
-      editingCell,
       rows: deviceFilteredRows,
       selectedRow,
       variant,
@@ -518,14 +488,11 @@ export const useMainViewModel = () => {
       toggleAllChecked,
       toggleTestRow,
       updateTestEventCode,
-      startEditing,
-      handleFieldChange,
-      stopEditing,
+      updateLeadField,
       deleteRow,
       registerConsultationRow,
       registerPurchaseRow,
       updateRegisterForm,
-      handleEditingKeyDown,
       handleCancelConfirmClick,
       handleConfirmClick,
       showDetail,

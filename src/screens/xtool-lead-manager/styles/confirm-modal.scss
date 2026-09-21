@@ -8,7 +8,9 @@
   height: 100vh;
   min-width: 800px;
   min-height: 600px;
-  z-index: 10;
+  // 상세 모달(z-index: 10) 안에서 상담/구매 등록·삭제를 확인할 때도 이
+  // 모달이 항상 그 위에 떠야 해서 더 높은 값을 쓴다.
+  z-index: 20;
   background-color: rgba(0, 0, 0, 0.72);
   display: flex;
   justify-content: center;

@@ -181,6 +181,72 @@
             text-decoration: underline;
           }
         }
+
+        // 클릭해서 그 자리에서 바로 고치는 행(고객명/전화번호/접수 시각/메모)
+        // — 표의 인라인 편집을 대신해 여기로 옮겼다.
+        &.editable {
+          cursor: pointer;
+          border-radius: 6px;
+          margin: 0 -8px;
+          padding: 7px 8px;
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+          }
+        }
+
+        &.editing {
+          align-items: flex-start;
+        }
+
+        .edit_control {
+          flex: 1;
+          display: flex;
+          gap: 6px;
+
+          .control {
+            box-sizing: border-box;
+            flex: 1;
+            height: 32px;
+            padding: 0 8px;
+            background-color: variables.$color-surface-raised;
+            border: 1px solid variables.$color-border;
+            border-radius: 6px;
+            color: variables.$color-text;
+            font-size: 12.5px;
+
+            &:focus {
+              outline: none;
+              border-color: variables.$color-accent;
+            }
+          }
+
+          .save_btn,
+          .cancel_btn {
+            all: unset;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 12.5px;
+            cursor: pointer;
+          }
+
+          .save_btn {
+            background-color: variables.$color-accent;
+            color: #ffffff;
+            &:hover {
+              filter: brightness(1.1);
+            }
+          }
+
+          .cancel_btn {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: variables.$color-text-muted;
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+          }
+        }
       }
 
       .empty_state {
@@ -327,18 +393,25 @@
       padding: 16px 22px;
       border-top: 1px solid variables.$color-border;
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
 
-      .btn.confirm {
+      .register_row,
+      .bottom_row {
+        display: flex;
+        gap: 8px;
+      }
+
+      .btn {
         all: unset;
         box-sizing: border-box;
-        width: 100%;
+        flex: 1;
         height: 42px;
         display: flex;
         align-items: center;
         justify-content: center;
         border-radius: 9px;
-        background-color: variables.$color-accent;
-        color: #ffffff;
         font-size: 14px;
         font-weight: 500;
         cursor: pointer;
@@ -347,6 +420,34 @@
         &:hover {
           filter: brightness(1.1);
         }
+      }
+
+      // 상담/구매 등록 — 상담등록/구매등록 버튼을 색으로 구분한다(표에서
+      // 쓰던 색을 그대로 가져옴).
+      .btn.register.consultation {
+        background-color: variables.$color-accent;
+        color: #ffffff;
+      }
+      .btn.register.purchase {
+        background-color: variables.$color-purchase-complete;
+        color: #1a0a1b;
+      }
+
+      .btn.delete {
+        background-color: transparent;
+        border: 1px solid variables.$color-border;
+        color: variables.$color-text-muted;
+        &:hover {
+          filter: none;
+          background-color: rgba(229, 83, 75, 0.12);
+          border-color: variables.$color-danger;
+          color: variables.$color-danger;
+        }
+      }
+
+      .btn.confirm {
+        background-color: rgba(255, 255, 255, 0.06);
+        color: variables.$color-text;
       }
     }
   }
