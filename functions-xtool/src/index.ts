@@ -744,6 +744,15 @@ export const updateLeadTimestamp = onRequest((request, response) => {
 // 추가한다(기존 필드는 지우지 않고 그대로 둔다 — 새 코드가 안 읽으니 무해하고
 // 문제 생기면 롤백 가능). 배포 후 한 번 호출해서 실행하고, 정상 확인되면 이
 // 함수 자체를 지운다.
+//
+// 변환 규칙(사용자 확인 완료) — 옛 스키마엔 "상담 시각"을 따로 담는 필드가
+// 없고 createdAt이 그 역할을 겸했다(예전 화면에서도 이 컬럼 라벨이
+// "상담 시각"이었다 — 리드 구조 재설계 때 "접수일"로 바뀜). 그래서 아래
+// contactedAt은 곧 data.createdAt이다.
+//   1) state === 'contacted' && contactedAt 있음 → 상담 1건(consultations)
+//   2) state === 'purchased' && purchasedAt 있음 → 구매 1건(purchases)
+//   3) state === 'purchased' && contactedAt && purchasedAt 둘 다 있음
+//      → 상담 1건 + 구매 1건 모두 추가
 // ────────────────────────────────
 export const migrateLeadsToArrays = onRequest((request, response) => {
   corsHandler(request, response, async () => {
@@ -768,32 +777,38 @@ export const migrateLeadsToArrays = onRequest((request, response) => {
 
         const state = data.state as string | undefined
         const device = data.device as string | undefined
-        const createdAt = (data.createdAt as number) ?? 0
+        // 옛 스키마엔 상담 시각 전용 필드가 없어 createdAt이 그 역할을 겸한다.
+        const contactedAt = (data.createdAt as number) ?? 0
         const purchasedAt = (data.purchasedAt as number) ?? 0
         const price = (data.price as number) ?? 0
 
-        const consultations: ConsultationRecord[] =
-          state && state !== 'new' && device && createdAt
-            ? [
-                {
-                  id: generateRecordId(),
-                  at: createdAt,
-                  device: device as ConsultationRecord['device'],
-                },
-              ]
-            : []
+        const hasContact =
+          (state === 'contacted' || state === 'purchased') &&
+          !!device &&
+          contactedAt > 0
+        const hasPurchase =
+          state === 'purchased' && !!device && purchasedAt > 0 && price > 0
 
-        const purchases: PurchaseRecord[] =
-          state === 'purchased' && device && purchasedAt && price > 0
-            ? [
-                {
-                  id: generateRecordId(),
-                  at: purchasedAt,
-                  device: device as PurchaseRecord['device'],
-                  price,
-                },
-              ]
-            : []
+        const consultations: ConsultationRecord[] = hasContact
+          ? [
+              {
+                id: generateRecordId(),
+                at: contactedAt,
+                device: device as ConsultationRecord['device'],
+              },
+            ]
+          : []
+
+        const purchases: PurchaseRecord[] = hasPurchase
+          ? [
+              {
+                id: generateRecordId(),
+                at: purchasedAt,
+                device: device as PurchaseRecord['device'],
+                price,
+              },
+            ]
+          : []
 
         await doc.ref.update({
           consultations,
