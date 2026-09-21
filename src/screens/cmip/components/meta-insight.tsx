@@ -385,6 +385,8 @@ function MetricsTable<T extends MetricsSummary>({
   getChannelBreakdown,
   channels,
   showCompare,
+  visibleKeys,
+  onToggleMetric,
 }: {
   rows: readonly T[]
   rowKey: (row: T) => string
@@ -397,6 +399,12 @@ function MetricsTable<T extends MetricsSummary>({
   channels: readonly { key: ChannelKey; label: string }[]
   /** 켜면 각 지표 칸 왼쪽에 바로 앞 행 대비 증감·등락률을 같이 보여준다. */
   showCompare: boolean
+  /** 표시할 지표 컬럼 — 재조회할 때마다 이 표(MetricsTable) 자체가 로딩
+   * 스켈레톤과 자리를 바꿔치기(unmount/remount)해서, 상태를 여기 안에 두면
+   * 조회할 때마다 필터가 풀려버린다. 그래서 호출부(ResultPanel)가 들고 있다가
+   * 넘겨준다. */
+  visibleKeys: ReadonlySet<MetricKey>
+  onToggleMetric: (key: MetricKey) => void
 }) {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
@@ -433,6 +441,8 @@ function MetricsTable<T extends MetricsSummary>({
     return [...rows].sort((a, b) => (a[key] - b[key]) * dir)
   }, [rows, sort])
 
+  const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
+
   const toggle = (key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -443,42 +453,65 @@ function MetricsTable<T extends MetricsSummary>({
   }
 
   return (
-    <div className="meta-insight__table-wrap">
-      <table className="meta-insight__table">
-        <thead>
-          <tr>
-            <th
-              className="meta-insight__table-toggle-head"
-              aria-hidden="true"
-            />
-            <th>
-              <button
-                type="button"
-                className="meta-insight__sort-head"
-                onClick={() => toggleSort('label')}
-              >
-                {headLabel}
-                <SortArrows active={sort.key === 'label'} dir={sort.dir} />
-              </button>
-            </th>
-            {METRIC_FIELDS.map((f) => (
-              <th key={f.key}>
-                <SortableMetricHeader
-                  field={f}
-                  active={sort.key === f.key}
-                  dir={sort.dir}
-                  onSort={() => toggleSort(f.key)}
-                />
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {displayRows.length === 0 ? (
+    <div className="meta-insight__table-block">
+      <div
+        className="meta-insight__full-list-toggles"
+        role="group"
+        aria-label="컬럼 표시"
+      >
+        {METRIC_FIELDS.map((f) => {
+          const active = visibleKeys.has(f.key)
+          return (
+            <button
+              key={f.key}
+              type="button"
+              className={`meta-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+              style={{ '--chip-color': f.color } as CSSProperties}
+              aria-pressed={active}
+              onClick={() => onToggleMetric(f.key)}
+            >
+              {f.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <div className="meta-insight__table-wrap">
+        <table className="meta-insight__table">
+          <thead>
             <tr>
-              <td colSpan={METRIC_FIELDS.length + 2}>데이터 없음</td>
+              <th
+                className="meta-insight__table-toggle-head"
+                aria-hidden="true"
+              />
+              <th>
+                <button
+                  type="button"
+                  className="meta-insight__sort-head"
+                  onClick={() => toggleSort('label')}
+                >
+                  {headLabel}
+                  <SortArrows active={sort.key === 'label'} dir={sort.dir} />
+                </button>
+              </th>
+              {visibleFields.map((f) => (
+                <th key={f.key}>
+                  <SortableMetricHeader
+                    field={f}
+                    active={sort.key === f.key}
+                    dir={sort.dir}
+                    onSort={() => toggleSort(f.key)}
+                  />
+                </th>
+              ))}
             </tr>
-          ) : (
+          </thead>
+          <tbody>
+            {displayRows.length === 0 ? (
+              <tr>
+                <td colSpan={visibleFields.length + 2}>데이터 없음</td>
+              </tr>
+            ) : (
             displayRows.map((row) => {
               const key = rowKey(row)
               const isOpen = expanded.has(key)
@@ -515,7 +548,7 @@ function MetricsTable<T extends MetricsSummary>({
                       </span>
                     </td>
                     <td>{headValue(row)}</td>
-                    {METRIC_FIELDS.map((f) => (
+                    {visibleFields.map((f) => (
                       <td key={f.key}>
                         <MetricCell
                           value={row[f.key]}
@@ -543,7 +576,7 @@ function MetricsTable<T extends MetricsSummary>({
                             label={channel.label}
                           />
                         </td>
-                        {METRIC_FIELDS.map((f) => (
+                        {visibleFields.map((f) => (
                           <td key={f.key}>
                             <MetricCell
                               value={breakdown[channel.key][f.key]}
@@ -562,9 +595,10 @@ function MetricsTable<T extends MetricsSummary>({
                 </Fragment>
               )
             })
-          )}
-        </tbody>
-      </table>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
@@ -728,6 +762,31 @@ function ResultPanel({
   const toggleCompare = (key: keyof typeof compareOn) =>
     setCompareOn((prev) => ({ ...prev, [key]: !prev[key] }))
 
+  // 일별/요일별/주차별 표마다 지표 컬럼 표시 여부도 독립적으로 둔다(대비 표시와
+  // 같은 이유). ResultPanel(여기)에 두는 이유는, 표 자체(MetricsTable)는 날짜
+  // 범위를 바꿔 재조회할 때마다 로딩 스켈레톤과 자리를 바꿔치기(unmount/
+  // remount)하기 때문 — 상태를 MetricsTable 안에 두면 조회할 때마다 필터가
+  // 초기화돼버린다.
+  const allMetricKeys = useMemo(
+    () => new Set(METRIC_FIELDS.map((f) => f.key)),
+    [],
+  )
+  const [visibleMetrics, setVisibleMetrics] = useState({
+    byDate: allMetricKeys,
+    byDayOfWeek: allMetricKeys,
+    byGroupedWeek: allMetricKeys,
+  })
+  const toggleMetricVisible = (
+    table: keyof typeof visibleMetrics,
+    key: MetricKey,
+  ) =>
+    setVisibleMetrics((prev) => {
+      const next = new Set(prev[table])
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return { ...prev, [table]: next }
+    })
+
   const dayCount = dateRange(dateStart, dateEnd).length
 
   // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 캠페인의 Google)은
@@ -797,6 +856,8 @@ function ResultPanel({
             headValue={(row) => row.date}
             channels={applicableChannels}
             showCompare={compareOn.byDate}
+            visibleKeys={visibleMetrics.byDate}
+            onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -831,6 +892,8 @@ function ResultPanel({
             headValue={(row) => row.dayOfWeek}
             channels={applicableChannels}
             showCompare={compareOn.byDayOfWeek}
+            visibleKeys={visibleMetrics.byDayOfWeek}
+            onToggleMetric={(key) => toggleMetricVisible('byDayOfWeek', key)}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -868,6 +931,8 @@ function ResultPanel({
             headValue={(row) => row.period}
             channels={applicableChannels}
             showCompare={compareOn.byGroupedWeek}
+            visibleKeys={visibleMetrics.byGroupedWeek}
+            onToggleMetric={(key) => toggleMetricVisible('byGroupedWeek', key)}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
