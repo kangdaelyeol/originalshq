@@ -7,6 +7,7 @@ export const Device = [
   'M2',
   'F2',
   'o1',
+  '기타',
 ] as const
 
 export type Device = (typeof Device)[number]

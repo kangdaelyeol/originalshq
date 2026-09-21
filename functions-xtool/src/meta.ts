@@ -12,6 +12,7 @@ export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
   F2: 800000,
   M2: 570000,
   o1: 800000,
+  기타: 200000,
 }
 
 export const sha256 = (value: string) =>

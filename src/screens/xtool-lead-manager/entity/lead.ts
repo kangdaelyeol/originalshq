@@ -7,6 +7,7 @@ export const Device = {
   METAL_FAB: 'Metalfab',
   M2: 'M2',
   O1: 'o1',
+  ETC: '기타',
 } as const
 
 export type Device = (typeof Device)[keyof typeof Device]
