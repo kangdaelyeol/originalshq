@@ -78,3 +78,11 @@ export const getLeadState = (lead: Lead): LeadState => {
  * (이론상 없어야 하지만 방어적으로) 0. */
 export const latestIntakeAt = (lead: Lead): number =>
   (lead.intakes ?? []).reduce((max, i) => Math.max(max, i.at), 0)
+
+/** 리드의 가장 최근 접수 이력(레코드 전체) — 상담 등록 폼의 기본값(접수 일시·
+ * 기기)을 채울 때 쓴다. 접수 이력이 없으면 null. */
+export const latestIntake = (lead: Lead): IntakeRecord | null => {
+  const intakes = lead.intakes ?? []
+  if (intakes.length === 0) return null
+  return intakes.reduce((latest, i) => (i.at > latest.at ? i : latest))
+}

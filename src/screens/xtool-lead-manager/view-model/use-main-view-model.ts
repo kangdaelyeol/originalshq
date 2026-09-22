@@ -15,9 +15,10 @@ import {
   filterLeadsByDevice,
   filterLeadsByKeywords,
   fromDatetimeLocalValue,
+  toDatetimeLocalValue,
   sortLeads,
 } from '@/screens/xtool-lead-manager/utils'
-import type { Device, Lead } from '@/screens/xtool-lead-manager/entity'
+import { latestIntake, type Device, type Lead } from '@/screens/xtool-lead-manager/entity'
 import {
   leadClient,
   type ClientResponse,
@@ -316,7 +317,21 @@ export const useMainViewModel = () => {
     if (!row) return
     setSelectedRow(row)
     setVariant(ConfirmVariant.REGISTER_CONSULTATION)
-    setRegisterForm(INITIAL_REGISTER_FORM)
+    // 접수 이력이 있는 고객은 가장 최근 접수 건의 접수 일시·기기를 상담 등록
+    // 폼 초기값으로 채워준다 — 보통 문의(접수) 당시 정한 기기 그대로 상담하고,
+    // 시각도 그 근처라 매번 새로 입력하지 않아도 되게. 접수 기기가 비어있는
+    // 레코드(신규 접수 흐름은 기기 입력이 없음 — entity/lead.ts 주석 참고)면
+    // 기기는 기본값을 그대로 둔다.
+    const intake = latestIntake(row)
+    setRegisterForm(
+      intake
+        ? {
+            ...INITIAL_REGISTER_FORM,
+            device: intake.device ?? INITIAL_REGISTER_FORM.device,
+            at: toDatetimeLocalValue(intake.at),
+          }
+        : INITIAL_REGISTER_FORM,
+    )
   }
 
   const registerPurchaseRow = (rowId: string) => {
