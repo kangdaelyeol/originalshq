@@ -1935,6 +1935,12 @@ export const MetaInsight = () => {
   // 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다). combined.byDate/byDayOfWeek/
   // byGroupedWeek는 이미 각 캠페인/adset(ChannelSplitSeries 모양)이 갖고 있어
   // 그대로 넘기고, 채널 라벨 문자열만 미리 계산해서 얹는다.
+  const excelTotal = combinedInsight?.total ?? {
+    combined: emptyMetrics(),
+    meta: emptyMetrics(),
+    google: emptyMetrics(),
+    naver: emptyMetrics(),
+  }
   const excelSeries: ChannelSplitSeries = combinedInsight?.series ?? {
     combined: emptySeries(),
     meta: emptySeries(),
@@ -2250,6 +2256,7 @@ export const MetaInsight = () => {
             onClose={() => setExcelExportOpen(false)}
             dateStart={dateStart}
             dateEnd={dateEnd}
+            total={excelTotal}
             series={excelSeries}
             campaigns={excelCampaigns}
           />

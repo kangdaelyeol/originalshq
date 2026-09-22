@@ -13,6 +13,18 @@ import '../styles/excel-export-modal.scss'
 
 type MetricKey = keyof MetricsSummary
 
+type ChannelKey = 'meta' | 'google' | 'naver'
+
+// meta-insight.tsx의 CHANNELS와 같은 목록 — 순환 참조를 피하려고 이 모달
+// 안에 따로 둔다(meta-insight.tsx는 lazy import로 이 파일을 불러오는 쪽이라
+// 반대 방향 정적 import를 걸면 순환이 생긴다). 당근 등 채널이 늘면 이 목록도
+// meta-insight.tsx의 CHANNELS와 같이 늘려야 한다.
+const CHANNELS: readonly { key: ChannelKey; label: string }[] = [
+  { key: 'meta', label: 'Meta' },
+  { key: 'google', label: 'Google' },
+  { key: 'naver', label: 'Naver' },
+]
+
 /** CombinedCampaign/CombinedAdset에 표시용 채널 라벨 문자열("Meta, Google")을
  * 미리 얹은 모양 — 채널 로고/브랜드색 계산(channelsOf, CHANNELS)은
  * meta-insight.tsx에 있는 걸 그대로 쓰고, 이 모달은 다 계산된 문자열만 받아
@@ -87,6 +99,12 @@ const periodTitle = (label: string, bucketSize: number | null): string =>
 
 function writeTotalSheet(
   wb: ExcelJS.Workbook,
+  total: {
+    combined: MetricsSummary
+    meta: MetricsSummary
+    google: MetricsSummary
+    naver: MetricsSummary
+  },
   series: ChannelSplitSeries,
   fields: readonly MetricField[],
   dateStart: string,
@@ -96,49 +114,99 @@ function writeTotalSheet(
   const ws = wb.addWorksheet('전체요약')
   setColumnWidths(ws, 1 + fields.length)
 
+  // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 계정의 Google)은
+  // 펼쳐봐야 모든 행이 0으로만 나와서 의미가 없으니 미리 걸러낸다 — 화면의
+  // "자세히 보기" 채널 카드, 채널 필터와 같은 기준.
+  const applicableChannels = CHANNELS.filter(
+    (c) => series[c.key].byDate.length > 0,
+  )
+
   let row = 1
+
+  // 화면 맨 위 Summary 카드(channel-insight__summary)에 대응 — 전체(combined)
+  // 총계 1행 + 데이터가 있는 채널마다 1행.
   row = writeTable(
     ws,
     row,
-    '일별 성과',
-    ['날짜', ...metricHeaders(fields)],
-    series.combined.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+    '요약',
+    ['Channel', ...metricHeaders(fields)],
+    [
+      ['전체', ...metricValues(total.combined, fields)],
+      ...applicableChannels.map((c) => [
+        c.label,
+        ...metricValues(total[c.key], fields),
+      ]),
+    ],
   )
-  row = writeTable(
-    ws,
-    row,
-    '요일별 성과',
-    ['요일', ...metricHeaders(fields)],
-    series.combined.byDayOfWeek.map((d) => [
-      d.dayOfWeek,
-      ...metricValues(d, fields),
-    ]),
-  )
-  row = writeTable(
-    ws,
-    row,
-    '주차별 성과',
-    ['기간', ...metricHeaders(fields)],
-    series.combined.byGroupedWeek.map((w) => [
-      w.period,
-      ...metricValues(w, fields),
-    ]),
-  )
-  const customRows = bucketSize
-    ? groupByCustomPeriod(
-        series.combined.byDate,
-        dateStart,
-        dateEnd,
-        bucketSize,
+
+  const timeTables: readonly {
+    title: string
+    headLabel: string
+    rowsOf: (
+      s: ChannelSplitSeries[ChannelKey | 'combined'],
+    ) => (string | number)[][]
+  }[] = [
+    {
+      title: '일별 성과',
+      headLabel: '날짜',
+      rowsOf: (s) => s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+    },
+    {
+      title: '요일별 성과',
+      headLabel: '요일',
+      rowsOf: (s) =>
+        s.byDayOfWeek.map((d) => [d.dayOfWeek, ...metricValues(d, fields)]),
+    },
+    {
+      title: '주차별 성과',
+      headLabel: '기간',
+      rowsOf: (s) =>
+        s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, fields)]),
+    },
+  ]
+
+  // 일별/요일별/주차별 각각 — combined 표 하나 다음에 채널별(Meta/Google/Naver
+  // 중 실제 데이터 있는 것만) 표를 바로 이어 쌓는다.
+  for (const t of timeTables) {
+    row = writeTable(ws, row, t.title, [t.headLabel, ...metricHeaders(fields)], t.rowsOf(series.combined))
+    for (const c of applicableChannels) {
+      row = writeTable(
+        ws,
+        row,
+        `${c.label} ${t.title}`,
+        [t.headLabel, ...metricHeaders(fields)],
+        t.rowsOf(series[c.key]),
       )
-    : []
-  writeTable(
+    }
+  }
+
+  // 이전 일정 vs 지정 일정 — combined 다음 채널별.
+  const customRowsOf = (byDate: ChannelSplitSeries['combined']['byDate']) =>
+    bucketSize
+      ? groupByCustomPeriod(byDate, dateStart, dateEnd, bucketSize)
+      : []
+  row = writeTable(
     ws,
     row,
     periodTitle('이전 일정 vs 지정 일정 비교분석', bucketSize),
     ['기간', ...metricHeaders(fields)],
-    customRows.map((w) => [w.period, ...metricValues(w, fields)]),
+    customRowsOf(series.combined.byDate).map((w) => [
+      w.period,
+      ...metricValues(w, fields),
+    ]),
   )
+  for (const c of applicableChannels) {
+    row = writeTable(
+      ws,
+      row,
+      periodTitle(`${c.label} 이전 일정 vs 지정 일정 비교분석`, bucketSize),
+      ['기간', ...metricHeaders(fields)],
+      customRowsOf(series[c.key].byDate).map((w) => [
+        w.period,
+        ...metricValues(w, fields),
+      ]),
+    )
+  }
 }
 
 function writeCampaignSheet(
@@ -299,19 +367,27 @@ interface ExcelExportModalProps {
   onClose: () => void
   dateStart: string
   dateEnd: string
+  total: {
+    combined: MetricsSummary
+    meta: MetricsSummary
+    google: MetricsSummary
+    naver: MetricsSummary
+  }
   series: ChannelSplitSeries
   campaigns: readonly ExportCampaign[]
 }
 
 /** "엑셀 다운로드" 버튼에서 여는 모달 — 전체요약/캠페인/애드셋 중 시트로
  * 내보낼 것(복수 선택)과, 각 시트에 실을 지표(복수 선택, 기본 전체)를 고르면
- * 하나의 .xlsx 파일에 고른 시트를 모두 담아 내려받는다. 시트마다 일별/요일별/
- * 주차별/이전-지정 일정 비교분석 표를 전부(캠페인·애드셋은 그 단위별로) 위아래로
- * 쌓아 담는다. */
+ * 하나의 .xlsx 파일에 고른 시트를 모두 담아 내려받는다. 전체요약 시트는 맨 위에
+ * 요약(채널별 총계) 표를 두고, 일별/요일별/주차별/이전-지정 일정 비교분석마다
+ * combined 표 + 채널별(Meta/Google/Naver 중 데이터 있는 것만) 표를 이어 쌓는다.
+ * 캠페인·애드셋 시트는 그 단위별로 같은 시간 축 표들을 쌓는다. */
 export function ExcelExportModal({
   onClose,
   dateStart,
   dateEnd,
+  total,
   series,
   campaigns,
 }: ExcelExportModalProps) {
@@ -359,6 +435,7 @@ export function ExcelExportModal({
       if (sheets.has('total')) {
         writeTotalSheet(
           wb,
+          total,
           series,
           selectedFields,
           dateStart,
