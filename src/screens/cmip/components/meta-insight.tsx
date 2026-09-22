@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  Fragment,
+  Suspense,
+  lazy,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
@@ -28,7 +36,21 @@ import {
   type SeriesKind,
   type MetricMode,
 } from './meta-insight-chart-modal'
+import type {
+  ExcelAdsetRow,
+  ExcelCampaignRow,
+  ExcelDailyRow,
+} from './excel-export-modal'
 import { dateRange } from '../utils'
+
+// exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
+// 진입 시 항상 받아지는 번들에 넣지 않는다. 타입은 위에서 이미 type-only로
+// 가져왔으니(컴파일 시 지워짐) 번들 분리에 영향 없다.
+const ExcelExportModal = lazy(() =>
+  import('./excel-export-modal').then((m) => ({
+    default: m.ExcelExportModal,
+  })),
+)
 import type { ISODate } from '../types'
 import '../styles/meta-insight.scss'
 
@@ -64,7 +86,9 @@ const CHANNEL_CHIP_COLOR: Record<ChannelKey, string> = {
 }
 
 function MetaLogo() {
-  return <img className="channel-insight__channel-logo" src={metaIconPng} alt="" />
+  return (
+    <img className="channel-insight__channel-logo" src={metaIconPng} alt="" />
+  )
 }
 
 // 작은 "G" 아이콘 대신 실제 구글 워드마크(전체 로고) 전체를 쓴다 — 그 자체로
@@ -483,7 +507,9 @@ function MetricsTable<T extends MetricsSummary>({
             key={c.key}
             type="button"
             className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
-            style={{ '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties}
+            style={
+              { '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties
+            }
             aria-pressed={channelFilter === c.key}
             onClick={() => onChannelFilterChange(c.key)}
           >
@@ -550,103 +576,103 @@ function MetricsTable<T extends MetricsSummary>({
                 <td colSpan={visibleFields.length + 2}>데이터 없음</td>
               </tr>
             ) : (
-            displayRows.map((row) => {
-              const key = rowKey(row)
-              // 채널 필터가 걸려 있으면(이미 그 채널 하나만 보는 중이라)
-              // channels가 빈 배열로 넘어온다 — 펼쳐봐야 보여줄 채널별
-              // 분해가 없으므로 펼치기 자체를 끈다.
-              const canExpand = channels.length > 0
-              const isOpen = canExpand && expanded.has(key)
-              const breakdown = isOpen ? getChannelBreakdown(row) : null
-              const originalIndex = originalIndexByKey.get(key) ?? 0
-              // 채널별 펼침 행도 메인 행과 같은 방식(원본 순서상 바로 앞 행)으로
-              // 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니 이전
-              // 행을 같은 방식으로 한 번 더 분해해둔다.
-              const prevBreakdown =
-                isOpen && showCompare && originalIndex > 0
-                  ? getChannelBreakdown(rows[originalIndex - 1])
-                  : null
-              return (
-                <Fragment key={key}>
-                  <tr
-                    className={
-                      canExpand
-                        ? 'channel-insight__table-row--clickable'
-                        : undefined
-                    }
-                    role={canExpand ? 'button' : undefined}
-                    tabIndex={canExpand ? 0 : undefined}
-                    aria-expanded={canExpand ? isOpen : undefined}
-                    onClick={canExpand ? () => toggle(key) : undefined}
-                    onKeyDown={
-                      canExpand
-                        ? (e) => {
-                            if (e.key !== 'Enter' && e.key !== ' ') return
-                            e.preventDefault()
-                            toggle(key)
-                          }
-                        : undefined
-                    }
-                  >
-                    <td className="channel-insight__table-toggle-cell">
-                      {canExpand && (
-                        <span
-                          className={`channel-insight__table-toggle${
-                            isOpen ? ' is-open' : ''
-                          }`}
-                        >
-                          <ChevronIcon />
-                        </span>
-                      )}
-                    </td>
-                    <td>{headValue(row)}</td>
-                    {visibleFields.map((f) => (
-                      <td key={f.key}>
-                        <MetricCell
-                          value={row[f.key]}
-                          prevValue={
-                            originalIndex > 0
-                              ? rows[originalIndex - 1][f.key]
-                              : null
-                          }
-                          format={f.formatCompact}
-                          showCompare={showCompare}
-                        />
+              displayRows.map((row) => {
+                const key = rowKey(row)
+                // 채널 필터가 걸려 있으면(이미 그 채널 하나만 보는 중이라)
+                // channels가 빈 배열로 넘어온다 — 펼쳐봐야 보여줄 채널별
+                // 분해가 없으므로 펼치기 자체를 끈다.
+                const canExpand = channels.length > 0
+                const isOpen = canExpand && expanded.has(key)
+                const breakdown = isOpen ? getChannelBreakdown(row) : null
+                const originalIndex = originalIndexByKey.get(key) ?? 0
+                // 채널별 펼침 행도 메인 행과 같은 방식(원본 순서상 바로 앞 행)으로
+                // 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니 이전
+                // 행을 같은 방식으로 한 번 더 분해해둔다.
+                const prevBreakdown =
+                  isOpen && showCompare && originalIndex > 0
+                    ? getChannelBreakdown(rows[originalIndex - 1])
+                    : null
+                return (
+                  <Fragment key={key}>
+                    <tr
+                      className={
+                        canExpand
+                          ? 'channel-insight__table-row--clickable'
+                          : undefined
+                      }
+                      role={canExpand ? 'button' : undefined}
+                      tabIndex={canExpand ? 0 : undefined}
+                      aria-expanded={canExpand ? isOpen : undefined}
+                      onClick={canExpand ? () => toggle(key) : undefined}
+                      onKeyDown={
+                        canExpand
+                          ? (e) => {
+                              if (e.key !== 'Enter' && e.key !== ' ') return
+                              e.preventDefault()
+                              toggle(key)
+                            }
+                          : undefined
+                      }
+                    >
+                      <td className="channel-insight__table-toggle-cell">
+                        {canExpand && (
+                          <span
+                            className={`channel-insight__table-toggle${
+                              isOpen ? ' is-open' : ''
+                            }`}
+                          >
+                            <ChevronIcon />
+                          </span>
+                        )}
                       </td>
-                    ))}
-                  </tr>
-                  {breakdown &&
-                    channels.map((channel) => (
-                      <tr
-                        key={`${key}-${channel.key}`}
-                        className="channel-insight__table-row--channel"
-                      >
-                        <td />
-                        <td className="channel-insight__table-channel-label">
-                          <ChannelLabel
-                            channelKey={channel.key}
-                            label={channel.label}
+                      <td>{headValue(row)}</td>
+                      {visibleFields.map((f) => (
+                        <td key={f.key}>
+                          <MetricCell
+                            value={row[f.key]}
+                            prevValue={
+                              originalIndex > 0
+                                ? rows[originalIndex - 1][f.key]
+                                : null
+                            }
+                            format={f.formatCompact}
+                            showCompare={showCompare}
                           />
                         </td>
-                        {visibleFields.map((f) => (
-                          <td key={f.key}>
-                            <MetricCell
-                              value={breakdown[channel.key][f.key]}
-                              prevValue={
-                                prevBreakdown
-                                  ? prevBreakdown[channel.key][f.key]
-                                  : null
-                              }
-                              format={f.formatCompact}
-                              showCompare={showCompare}
+                      ))}
+                    </tr>
+                    {breakdown &&
+                      channels.map((channel) => (
+                        <tr
+                          key={`${key}-${channel.key}`}
+                          className="channel-insight__table-row--channel"
+                        >
+                          <td />
+                          <td className="channel-insight__table-channel-label">
+                            <ChannelLabel
+                              channelKey={channel.key}
+                              label={channel.label}
                             />
                           </td>
-                        ))}
-                      </tr>
-                    ))}
-                </Fragment>
-              )
-            })
+                          {visibleFields.map((f) => (
+                            <td key={f.key}>
+                              <MetricCell
+                                value={breakdown[channel.key][f.key]}
+                                prevValue={
+                                  prevBreakdown
+                                    ? prevBreakdown[channel.key][f.key]
+                                    : null
+                                }
+                                format={f.formatCompact}
+                                showCompare={showCompare}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                  </Fragment>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -874,10 +900,10 @@ function ResultPanel({
   // 일별/요일별/주차별 표마다 "대비 표시" 토글을 독립적으로 둔다 — 표 하나만
   // 켜서 보고 싶은 경우가 많아서(예: 일별은 대비로, 주차별은 그냥 값만).
   const [compareOn, setCompareOn] = useState({
-    byDate: false,
-    byDayOfWeek: false,
-    byGroupedWeek: false,
-    byCustomPeriod: false,
+    byDate: true,
+    byDayOfWeek: true,
+    byGroupedWeek: true,
+    byCustomPeriod: true,
   })
   const toggleCompare = (key: keyof typeof compareOn) =>
     setCompareOn((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -1068,9 +1094,7 @@ function ResultPanel({
             visibleKeys={visibleMetrics.byDayOfWeek}
             onToggleMetric={(key) => toggleMetricVisible('byDayOfWeek', key)}
             channelFilter={channelFilter.byDayOfWeek}
-            onChannelFilterChange={(v) =>
-              setChannelFilterFor('byDayOfWeek', v)
-            }
+            onChannelFilterChange={(v) => setChannelFilterFor('byDayOfWeek', v)}
             getChannelBreakdown={(row) => ({
               meta: metricsForDateSubset(
                 series.meta.byDate,
@@ -1318,7 +1342,9 @@ function SplitDecimalValue({ text }: { text: string }) {
   return (
     <>
       {text.slice(0, dot)}
-      <span className="channel-insight__pivot-avg-decimal">{text.slice(dot)}</span>
+      <span className="channel-insight__pivot-avg-decimal">
+        {text.slice(dot)}
+      </span>
     </>
   )
 }
@@ -1555,9 +1581,7 @@ function FullListTable({
   // 채널 필터 — "전체"가 기본이고, 특정 채널을 고르면 그 채널 데이터가 있는
   // 행만 남긴다(row.channels 기준 — 이름이 같아 여러 채널이 합쳐진 행은 그
   // 채널이 channels 배열에 있기만 하면 보인다).
-  const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>(
-    'all',
-  )
+  const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>('all')
   const filteredRows = useMemo(
     () =>
       channelFilter === 'all'
@@ -1625,7 +1649,9 @@ function FullListTable({
             key={c.key}
             type="button"
             className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
-            style={{ '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties}
+            style={
+              { '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties
+            }
             aria-pressed={channelFilter === c.key}
             onClick={() => setChannelFilter(c.key)}
           >
@@ -1670,9 +1696,8 @@ function FullListTable({
               <InfoIcon />
               <span className="channel-insight__info-tooltip" role="tooltip">
                 전환 목표(결과 유형)는 Meta 캠페인에만 표시됩니다 — Meta Ads
-                Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온
-                값으로, Google/Naver 캠페인엔 대응 개념이 없어 표시되지
-                않습니다.
+                Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온 값으로,
+                Google/Naver 캠페인엔 대응 개념이 없어 표시되지 않습니다.
               </span>
             </span>
           </span>
@@ -1901,6 +1926,36 @@ export const MetaInsight = () => {
         ? [...selectedCampaignNames]
         : [...selectedAdsetNames]
 
+  // ------------------------------------------------------------------ 엑셀 다운로드
+  const [excelExportOpen, setExcelExportOpen] = useState(false)
+
+  const channelLabelsOf = (entity: ChannelSplitSeries): string =>
+    channelsOf(entity)
+      .map((k) => CHANNELS.find((c) => c.key === k)?.label ?? k)
+      .join(', ')
+
+  // 세 후보 시트 모두 "전체 캠페인 합계 요약"/"전체 광고셋" 표(FullListTable)와
+  // 같은 소스에서 뽑는다 — 채널 필터 등 화면 토글 상태와 무관하게 항상 전체
+  // 데이터를 담는다(엑셀에서 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다).
+  const excelDailyRows: ExcelDailyRow[] =
+    combinedInsight?.series.combined.byDate.map((d) => ({
+      date: d.date,
+      metrics: d,
+    })) ?? []
+  const excelCampaignRows: ExcelCampaignRow[] = campaigns.map((c) => ({
+    name: c.campaignName,
+    channels: channelLabelsOf(c),
+    resultType: c.resultType ?? '',
+    metrics: aggregateMetrics(c.combined.byDate),
+  }))
+  const excelAdsetRows: ExcelAdsetRow[] = campaigns.flatMap((c) =>
+    c.adsets.map((a) => ({
+      name: a.adsetName,
+      channels: channelLabelsOf(a),
+      metrics: aggregateMetrics(a.combined.byDate),
+    })),
+  )
+
   return (
     <div className="channel-insight">
       {/* combinedInsight 유무와 무관하게 항상 보인다 — DateRangePicker가 이
@@ -1938,6 +1993,14 @@ export const MetaInsight = () => {
               }
             >
               그래프로 보기
+            </button>
+
+            <button
+              type="button"
+              className="channel-insight__btn channel-insight__ghost"
+              onClick={() => setExcelExportOpen(true)}
+            >
+              엑셀 다운로드
             </button>
           </>
         )}
@@ -2106,7 +2169,9 @@ export const MetaInsight = () => {
                 view={pivotView}
               />
               <section className="channel-insight__section">
-                <h3 className="channel-insight__section-title">전체 캠페인 합계 요약</h3>
+                <h3 className="channel-insight__section-title">
+                  전체 캠페인 합계 요약
+                </h3>
                 <FullListTable
                   rows={campaigns.map((c) => ({
                     key: c.campaignName,
@@ -2186,6 +2251,19 @@ export const MetaInsight = () => {
           clearAllMetrics={clearAllMetrics}
           onClose={() => setChartOpen(false)}
         />
+      )}
+
+      {excelExportOpen && (
+        <Suspense fallback={null}>
+          <ExcelExportModal
+            onClose={() => setExcelExportOpen(false)}
+            dateStart={dateStart}
+            dateEnd={dateEnd}
+            dailyRows={excelDailyRows}
+            campaignRows={excelCampaignRows}
+            adsetRows={excelAdsetRows}
+          />
+        </Suspense>
       )}
     </div>
   )

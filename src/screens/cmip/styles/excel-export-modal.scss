@@ -1,0 +1,196 @@
+@use './font-family.scss';
+
+$color-text: #e6edf3;
+$color-muted: #8b949e;
+$color-border: #30363d;
+$color-canvas-subtle: #1c2128;
+$color-surface: #161b22;
+$color-accent: #4493f8;
+
+$radius: 6px;
+$radius-lg: 8px;
+
+.excel-export-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(1, 4, 9, 0.65);
+  animation: excel-export-modal-fade-in 0.15s ease;
+
+  &__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    max-width: 520px;
+    padding: 20px 22px 22px;
+    background: $color-surface;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    font-family: font-family.$font-pretendard;
+    color: $color-text;
+    animation: excel-export-modal-pop-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  &__close {
+    all: unset;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius;
+    color: $color-muted;
+    cursor: pointer;
+    font-size: 13px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: $color-text;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  &__section-title {
+    margin-bottom: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $color-muted;
+  }
+
+  &__chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  // 지표 토글 버튼(meta-insight.tsx의 full-list-toggle-btn)과 같은
+  // --chip-color 방식 — 켜졌을 때만 지표 고유색으로 옅게 물든다.
+  &__chip {
+    appearance: none;
+    border: 1px solid $color-border;
+    border-radius: 3px;
+    background: $color-canvas-subtle;
+    color: $color-muted;
+    padding: 5px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    transition:
+      background 120ms ease,
+      color 120ms ease,
+      border-color 120ms ease;
+
+    &:hover:not(.is-active) {
+      color: $color-text;
+      border-color: $color-muted;
+    }
+
+    &.is-active {
+      background: color-mix(
+        in srgb,
+        var(--chip-color, #{$color-accent}) 28%,
+        $color-canvas-subtle
+      );
+      border-color: color-mix(
+        in srgb,
+        var(--chip-color, #{$color-accent}) 55%,
+        $color-border
+      );
+      color: $color-text;
+    }
+  }
+
+  &__hint {
+    margin: 0;
+    font-size: 12.5px;
+    color: $color-muted;
+  }
+
+  &__footer {
+    display: flex;
+    gap: 8px;
+  }
+
+  &__btn {
+    all: unset;
+    box-sizing: border-box;
+    flex: 1;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius;
+    font-size: 13.5px;
+    font-weight: 500;
+    cursor: pointer;
+    text-align: center;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+
+  &__ghost {
+    background: rgba(255, 255, 255, 0.06);
+    color: $color-muted;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  &__primary {
+    background: $color-accent;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      filter: brightness(1.1);
+    }
+  }
+}
+
+@keyframes excel-export-modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes excel-export-modal-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
