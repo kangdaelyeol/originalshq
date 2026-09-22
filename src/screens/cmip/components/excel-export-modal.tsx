@@ -3,6 +3,7 @@ import * as ExcelJS from 'exceljs'
 import {
   aggregateMetrics,
   groupByCustomPeriod,
+  groupByMonth,
   type ChannelSplitSeries,
   type CombinedAdset,
   type CombinedCampaign,
@@ -139,6 +140,9 @@ function writeTotalSheet(
     ],
   )
 
+  // 표 순서: 요약(위에서 이미 씀) → 월간 → 주간 → 일간 → 이전 일정 vs
+  // 지정 일정(아래 별도 블록). 요일별(월~일 반복 집계)은 이 "기간을 점점
+  // 좁혀가며 보기" 흐름과 안 맞아 뺐다.
   const timeTables: readonly {
     title: string
     headLabel: string
@@ -147,15 +151,13 @@ function writeTotalSheet(
     ) => (string | number)[][]
   }[] = [
     {
-      title: '일별 성과',
-      headLabel: '날짜',
-      rowsOf: (s) => s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
-    },
-    {
-      title: '요일별 성과',
-      headLabel: '요일',
+      title: '월간 성과',
+      headLabel: '월',
       rowsOf: (s) =>
-        s.byDayOfWeek.map((d) => [d.dayOfWeek, ...metricValues(d, fields)]),
+        groupByMonth(s.byDate).map((w) => [
+          w.period,
+          ...metricValues(w, fields),
+        ]),
     },
     {
       title: '주차별 성과',
@@ -163,9 +165,14 @@ function writeTotalSheet(
       rowsOf: (s) =>
         s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, fields)]),
     },
+    {
+      title: '일별 성과',
+      headLabel: '날짜',
+      rowsOf: (s) => s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+    },
   ]
 
-  // 일별/요일별/주차별 각각 — combined 표 하나 다음에 채널별(Meta/Google/Naver
+  // 월간/주차별/일별 각각 — combined 표 하나 다음에 채널별(Meta/Google/Naver
   // 중 실제 데이터 있는 것만) 표를 바로 이어 쌓는다.
   for (const t of timeTables) {
     row = writeTable(ws, row, t.title, [t.headLabel, ...metricHeaders(fields)], t.rowsOf(series.combined))
@@ -207,6 +214,31 @@ function writeTotalSheet(
       ]),
     )
   }
+
+  // 맨 마지막 — 요일별(월~일 반복 집계)은 "기간을 점점 좁혀가며 보기" 흐름과
+  // 다른 축이라 따로 맨 뒤에 둔다. combined 다음 채널별.
+  row = writeTable(
+    ws,
+    row,
+    '요일별 성과',
+    ['요일', ...metricHeaders(fields)],
+    series.combined.byDayOfWeek.map((d) => [
+      d.dayOfWeek,
+      ...metricValues(d, fields),
+    ]),
+  )
+  for (const c of applicableChannels) {
+    row = writeTable(
+      ws,
+      row,
+      `${c.label} 요일별 성과`,
+      ['요일', ...metricHeaders(fields)],
+      series[c.key].byDayOfWeek.map((d) => [
+        d.dayOfWeek,
+        ...metricValues(d, fields),
+      ]),
+    )
+  }
 }
 
 function writeCampaignSheet(
@@ -236,26 +268,13 @@ function writeCampaignSheet(
   row = writeTable(
     ws,
     row,
-    '캠페인별 일별 성과',
-    ['Campaign', '날짜', ...metricHeaders(fields)],
+    '캠페인별 월간 성과',
+    ['Campaign', '월', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
-      c.combined.byDate.map((d) => [
+      groupByMonth(c.combined.byDate).map((w) => [
         c.campaignName,
-        d.date,
-        ...metricValues(d, fields),
-      ]),
-    ),
-  )
-  row = writeTable(
-    ws,
-    row,
-    '캠페인별 요일별 성과',
-    ['Campaign', '요일', ...metricHeaders(fields)],
-    campaigns.flatMap((c) =>
-      c.combined.byDayOfWeek.map((d) => [
-        c.campaignName,
-        d.dayOfWeek,
-        ...metricValues(d, fields),
+        w.period,
+        ...metricValues(w, fields),
       ]),
     ),
   )
@@ -272,7 +291,20 @@ function writeCampaignSheet(
       ]),
     ),
   )
-  writeTable(
+  row = writeTable(
+    ws,
+    row,
+    '캠페인별 일별 성과',
+    ['Campaign', '날짜', ...metricHeaders(fields)],
+    campaigns.flatMap((c) =>
+      c.combined.byDate.map((d) => [
+        c.campaignName,
+        d.date,
+        ...metricValues(d, fields),
+      ]),
+    ),
+  )
+  row = writeTable(
     ws,
     row,
     periodTitle('캠페인별 이전 일정 vs 지정 일정 비교분석', bucketSize),
@@ -282,6 +314,21 @@ function writeCampaignSheet(
         ? groupByCustomPeriod(c.combined.byDate, dateStart, dateEnd, bucketSize)
         : []
       ).map((w) => [c.campaignName, w.period, ...metricValues(w, fields)]),
+    ),
+  )
+  // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
+  // 따로 맨 뒤에 둔다.
+  writeTable(
+    ws,
+    row,
+    '캠페인별 요일별 성과',
+    ['Campaign', '요일', ...metricHeaders(fields)],
+    campaigns.flatMap((c) =>
+      c.combined.byDayOfWeek.map((d) => [
+        c.campaignName,
+        d.dayOfWeek,
+        ...metricValues(d, fields),
+      ]),
     ),
   )
 }
@@ -313,26 +360,13 @@ function writeAdsetSheet(
   row = writeTable(
     ws,
     row,
-    '애드셋별 일별 성과',
-    ['Adset', '날짜', ...metricHeaders(fields)],
+    '애드셋별 월간 성과',
+    ['Adset', '월', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
-      a.combined.byDate.map((d) => [
+      groupByMonth(a.combined.byDate).map((w) => [
         a.adsetName,
-        d.date,
-        ...metricValues(d, fields),
-      ]),
-    ),
-  )
-  row = writeTable(
-    ws,
-    row,
-    '애드셋별 요일별 성과',
-    ['Adset', '요일', ...metricHeaders(fields)],
-    adsets.flatMap((a) =>
-      a.combined.byDayOfWeek.map((d) => [
-        a.adsetName,
-        d.dayOfWeek,
-        ...metricValues(d, fields),
+        w.period,
+        ...metricValues(w, fields),
       ]),
     ),
   )
@@ -349,7 +383,20 @@ function writeAdsetSheet(
       ]),
     ),
   )
-  writeTable(
+  row = writeTable(
+    ws,
+    row,
+    '애드셋별 일별 성과',
+    ['Adset', '날짜', ...metricHeaders(fields)],
+    adsets.flatMap((a) =>
+      a.combined.byDate.map((d) => [
+        a.adsetName,
+        d.date,
+        ...metricValues(d, fields),
+      ]),
+    ),
+  )
+  row = writeTable(
     ws,
     row,
     periodTitle('애드셋별 이전 일정 vs 지정 일정 비교분석', bucketSize),
@@ -359,6 +406,21 @@ function writeAdsetSheet(
         ? groupByCustomPeriod(a.combined.byDate, dateStart, dateEnd, bucketSize)
         : []
       ).map((w) => [a.adsetName, w.period, ...metricValues(w, fields)]),
+    ),
+  )
+  // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
+  // 따로 맨 뒤에 둔다.
+  writeTable(
+    ws,
+    row,
+    '애드셋별 요일별 성과',
+    ['Adset', '요일', ...metricHeaders(fields)],
+    adsets.flatMap((a) =>
+      a.combined.byDayOfWeek.map((d) => [
+        a.adsetName,
+        d.dayOfWeek,
+        ...metricValues(d, fields),
+      ]),
     ),
   )
 }
@@ -503,7 +565,11 @@ export function ExcelExportModal({
         <div className="excel-export-modal__body">
           <section className="excel-export-modal__section">
             <div className="excel-export-modal__section-title">시트 선택</div>
-            <p className="excel-export-modal__desc"></p>
+            <p className="excel-export-modal__desc">
+              시트마다 전체요약(총계) · 월간 · 주간 · 일간 · 이전 일정 vs 지정
+              일정 비교분석 · 요일별 표를 이 순서로 담습니다(캠페인·애드셋은
+              그 단위별로 나눠서).
+            </p>
             <div
               className="excel-export-modal__chip-row"
               role="group"

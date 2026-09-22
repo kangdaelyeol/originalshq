@@ -200,6 +200,32 @@ export function groupByDayOfWeek(
   })
 }
 
+/** byDate → 월간 성과(등장하는 달만, 오래된 달부터). groupByWeek(조회 범위
+ * 기준으로 자르는 "주차")와 달리 여기는 실제 캘린더 월 경계(1일~말일)를
+ * 쓴다 — 조회 범위가 월 중간에서 시작/끝나면 그 달은 실제로 걸리는 날짜만
+ * 합산된다(달력상 1일부터가 아님). WeekSummary와 같은 모양(period/startDate/
+ * endDate + 지표)을 재사용한다 — 엑셀 "월간 성과" 표 전용. */
+export function groupByMonth(byDate: readonly DateSummary[]): WeekSummary[] {
+  const groups = new Map<string, DateSummary[]>()
+  for (const row of byDate) {
+    const monthKey = row.date.slice(0, 7) // "YYYY-MM"
+    const g = groups.get(monthKey)
+    if (g) g.push(row)
+    else groups.set(monthKey, [row])
+  }
+  return Array.from(groups.keys())
+    .sort()
+    .map((monthKey) => {
+      const rows = groups.get(monthKey)!
+      return {
+        period: monthKey.replace('-', '.'),
+        startDate: rows[0].date,
+        endDate: rows[rows.length - 1].date,
+        ...aggregateMetrics(rows),
+      }
+    })
+}
+
 /** byDate 중 predicate를 만족하는 날짜들만 골라 합친 지표 — 표의 한 행(날짜/요일/
  * 주차)이 가리키는 날짜 구간에 대해 다른 채널의 값을 그대로 되짚어 구할 때 쓴다.
  * 채널마다 요일별/주차별 집계 경계가 달라도(예: functions-cmip의 주차 구간과
