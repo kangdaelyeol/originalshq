@@ -73,7 +73,10 @@ const INTEGER_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'impressions',
   'clicks',
 ])
-const DECIMAL_FORMAT = '0.00'
+// #,##0 — 천 단위 구분 쉼표. 노출수·스펜드처럼 큰 값이 쉼표 없이 죽 이어져
+// 자릿수를 세기 어려웠던 걸 보완한다.
+const DECIMAL_FORMAT = '#,##0.00'
+const INTEGER_FORMAT = '#,##0'
 
 /** 표 하나를 시트의 startRow부터 그려 넣고, 다음 표가 시작할 행 번호를
  * 돌려준다(제목 행 + 헤더 행 + 데이터 행들 + (있으면) 평균 행 + 빈 줄 하나).
@@ -82,7 +85,12 @@ const DECIMAL_FORMAT = '0.00'
  * 좌표를 직접 지정한다. fields는 headers/rows의 맨 뒤 fields.length개 칸이
  * 지표 칸이라는 뜻 — 그 칸에만 소수 서식·평균 계산을 적용하고, 앞쪽 라벨
  * 칸(이름/날짜 등)은 건드리지 않는다. showAverage=false는 "요약"류(이미
- * 합계·총계인 표라 그 행들을 다시 평균 내는 게 의미가 없는 표)에 쓴다. */
+ * 합계·총계인 표라 그 행들을 다시 평균 내는 게 의미가 없는 표)에 쓴다.
+ * groupRows=true면 제목 행만 빼고(헤더+데이터+평균) 하나의 outlineLevel
+ * 그룹으로 묶어서, 표 하나를 제목만 남기고 접었다 펼 수 있게 한다 —
+ * 일별 성과처럼 데이터 행이 많은 표에서 쓴다. 이 표 안에는(캠페인/애드셋
+ * 블록과 달리) 빈 줄이 없어서 별도 height 보정 없이도 outlineLevel이
+ * 정상 저장된다. */
 function writeTable(
   ws: ExcelJS.Worksheet,
   startRow: number,
@@ -91,6 +99,7 @@ function writeTable(
   rows: readonly (string | number)[][],
   fields: readonly MetricField[],
   showAverage = true,
+  groupRows = false,
 ): number {
   const titleCell = ws.getCell(startRow, 1)
   titleCell.value = title
@@ -115,11 +124,15 @@ function writeTable(
       const cell = ws.getCell(headerRowIndex + 1 + ri, ci + 1)
       cell.value = value
       const field = fields[ci - labelColumnCount]
-      if (field && !INTEGER_METRIC_KEYS.has(field.key)) {
-        cell.numFmt = DECIMAL_FORMAT
+      if (field) {
+        cell.numFmt = INTEGER_METRIC_KEYS.has(field.key)
+          ? INTEGER_FORMAT
+          : DECIMAL_FORMAT
       }
     })
   })
+
+  let lastContentRow = headerRowIndex + rows.length
 
   if (showAverage && rows.length > 0) {
     const avgRowIndex = headerRowIndex + 1 + rows.length
@@ -139,15 +152,71 @@ function writeTable(
       cell.font = { italic: true }
     })
 
-    return avgRowIndex + 2
+    lastContentRow = avgRowIndex
   }
 
-  return headerRowIndex + rows.length + 2
+  // 제목 행(startRow)은 그룹 밖에 둬서 접어도 표 제목만은 남는다 — 헤더~
+  // 평균(또는 마지막 데이터 행)까지만 묶는다.
+  if (groupRows) {
+    for (let r = headerRowIndex; r <= lastContentRow; r++) {
+      const gr = ws.getRow(r)
+      gr.outlineLevel = 1
+      gr.hidden = false
+    }
+  }
+
+  return lastContentRow + 2
 }
 
 function setColumnWidths(ws: ExcelJS.Worksheet, count: number) {
   ws.getColumn(1).width = 26
   for (let i = 2; i <= count; i++) ws.getColumn(i).width = 16
+}
+
+/** 캠페인·애드셋마다 표 블록(월간~요일별 5개)이 하나씩 쌓이는 구간에서,
+ * 어디까지가 한 캠페인/애드셋 몫인지 한눈에 끊어 보이도록 굵은 색 띠를
+ * 한 줄 긋는다. 표 사이(같은 엔티티 안)의 평범한 빈 줄보다 훨씬 눈에 띄게
+ * 해서 "여기서 다음 캠페인/애드셋으로 넘어간다"는 게 스크롤만 해도 바로
+ * 보이게 한다. */
+function writeDivider(
+  ws: ExcelJS.Worksheet,
+  row: number,
+  columnCount: number,
+): number {
+  for (let ci = 1; ci <= columnCount; ci++) {
+    const cell = ws.getCell(row, ci)
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4493F8' },
+    }
+  }
+  return row + 2
+}
+
+/** 캠페인/애드셋 블록 맨 위에 두는 대제목 — 그 아래 표들(월간~요일별)은
+ * outlineLevel로 묶여서 접히는데, 이 행은 그 그룹 밖(outlineLevel 0)에 둬서
+ * 접었을 때도 안 사라진다. 그룹을 접으면 "[캠페인A] 월간 성과" 같은 표
+ * 제목까지 같이 숨어버려서 뭘 접은 건지 알 수 없었던 문제(대제목이 없던
+ * 이전 버전)를 이걸로 해결한다 — 접혀 있어도 이 행만은 항상 보인다. */
+function writeEntityHeading(
+  ws: ExcelJS.Worksheet,
+  row: number,
+  title: string,
+  columnCount: number,
+): number {
+  const cell = ws.getCell(row, 1)
+  cell.value = title
+  cell.font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } }
+  for (let ci = 1; ci <= columnCount; ci++) {
+    ws.getCell(row, ci).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF21262D' },
+    }
+  }
+  ws.mergeCells(row, 1, row, columnCount)
+  return row + 1
 }
 
 const periodTitle = (label: string, bucketSize: number | null): string =>
@@ -170,6 +239,12 @@ function writeTotalSheet(
   bucketSize: number | null,
 ) {
   const ws = wb.addWorksheet('전체요약')
+  // summaryBelow: true → 표마다 제목 행만 남기고 접었다 펼 수 있는 컨트롤이
+  // 그 표 바로 아래(다음 표 시작 전 빈 줄 자리)에 뜬다.
+  ws.properties.outlineProperties = {
+    summaryBelow: true,
+    summaryRight: false,
+  }
   setColumnWidths(ws, 1 + fields.length)
 
   // 이 캠페인/adset에 데이터가 아예 없는 채널(예: Meta 전용 계정의 Google)은
@@ -197,6 +272,7 @@ function writeTotalSheet(
     ],
     fields,
     false,
+    true,
   )
 
   // 표 순서: 요약(위에서 이미 씀) → 월간 → 주간 → 일간 → 이전 일정 vs
@@ -241,6 +317,8 @@ function writeTotalSheet(
       [t.headLabel, ...metricHeaders(fields)],
       t.rowsOf(series.combined),
       fields,
+      true,
+      true,
     )
     for (const c of applicableChannels) {
       row = writeTable(
@@ -250,6 +328,8 @@ function writeTotalSheet(
         [t.headLabel, ...metricHeaders(fields)],
         t.rowsOf(series[c.key]),
         fields,
+        true,
+        true,
       )
     }
   }
@@ -269,6 +349,8 @@ function writeTotalSheet(
       ...metricValues(w, fields),
     ]),
     fields,
+    true,
+    true,
   )
   for (const c of applicableChannels) {
     row = writeTable(
@@ -281,6 +363,8 @@ function writeTotalSheet(
         ...metricValues(w, fields),
       ]),
       fields,
+      true,
+      true,
     )
   }
 
@@ -295,6 +379,8 @@ function writeTotalSheet(
       ...metricValues(d, fields),
     ]),
     fields,
+    true,
+    true,
   )
   for (const c of applicableChannels) {
     row = writeTable(
@@ -307,6 +393,8 @@ function writeTotalSheet(
         ...metricValues(d, fields),
       ]),
       fields,
+      true,
+      true,
     )
   }
 }
@@ -334,6 +422,12 @@ function writeCampaignSheet(
   bucketSize: number | null,
 ) {
   const ws = wb.addWorksheet(sheetName)
+  // summaryBelow: true → 캠페인마다 아래에서 묶는(outlineLevel) 행 그룹의
+  // 접기/펼치기(+/-) 컨트롤이 그 캠페인 블록 바로 아래(구분선 자리)에 뜬다.
+  ws.properties.outlineProperties = {
+    summaryBelow: true,
+    summaryRight: false,
+  }
   setColumnWidths(ws, 3 + fields.length)
 
   const seriesOf = (c: ExportCampaign) => c[channelSelector]
@@ -352,6 +446,7 @@ function writeCampaignSheet(
     ]),
     fields,
     false,
+    true,
   )
   row = writeTable(
     ws,
@@ -366,6 +461,8 @@ function writeCampaignSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -380,6 +477,8 @@ function writeCampaignSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -394,6 +493,8 @@ function writeCampaignSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -407,10 +508,11 @@ function writeCampaignSheet(
       ).map((w) => [c.campaignName, w.period, ...metricValues(w, fields)]),
     ),
     fields,
+    true,
+    true,
   )
-  // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
-  // 따로 맨 뒤에 둔다.
-  writeTable(
+  // 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라 따로 맨 뒤에 둔다.
+  row = writeTable(
     ws,
     row,
     '캠페인별 요일별 성과',
@@ -423,7 +525,94 @@ function writeCampaignSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
+
+  // 추가 — 여기까지의 "캠페인별 OO 성과" 표는 여러 캠페인의 행을 한 표에
+  // 모아서(Campaign 칸에 같은 이름이 쭉 반복) 보여주는 방식이라, 캠페인 하나를
+  // 통째로 놓고 보기엔 불편하다. 그래서 캠페인마다 자기 표 블록(월간→주차별→
+  // 일별→지정기간→요일별)을 따로 하나씩 더 만든다 — 캠페인 수만큼 표가
+  // 늘어나지만, 캠페인 단위로 훑어보기엔 이쪽이 낫다.
+  const campaignColumnCount = 3 + fields.length
+  for (const c of campaigns) {
+    row = writeEntityHeading(ws, row, `■ ${c.campaignName}`, campaignColumnCount)
+    const blockStart = row
+    const s = seriesOf(c)
+    row = writeTable(
+      ws,
+      row,
+      `[${c.campaignName}] 월간 성과`,
+      ['월', ...metricHeaders(fields)],
+      groupByMonth(s.byDate).map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${c.campaignName}] 주차별 성과`,
+      ['기간', ...metricHeaders(fields)],
+      s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${c.campaignName}] 일별 성과`,
+      ['날짜', ...metricHeaders(fields)],
+      s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      periodTitle(
+        `[${c.campaignName}] 이전 일정 vs 지정 일정 비교분석`,
+        bucketSize,
+      ),
+      ['기간', ...metricHeaders(fields)],
+      (bucketSize
+        ? groupByCustomPeriod(s.byDate, dateStart, dateEnd, bucketSize)
+        : []
+      ).map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${c.campaignName}] 요일별 성과`,
+      ['요일', ...metricHeaders(fields)],
+      s.byDayOfWeek.map((d) => [d.dayOfWeek, ...metricValues(d, fields)]),
+      fields,
+    )
+
+    // 대제목 아래 5개 표(월간~요일별) 전체를 한 그룹(outlineLevel 1)으로
+    // 묶어서, 엑셀에서 그 캠페인 몫만 통째로 접었다 펼 수 있게 한다 — 5개
+    // 표를 각각 따로 접는 게 아니라 하나의 컨트롤로 한 번에. row가 이미
+    // 다음 표 시작 위치(마지막 행 + 2)로 넘어가 있으니 실제 마지막 행은
+    // row - 2. hidden = false는 기본 펼침 상태를 명시적으로 고정한다(접힌
+    // 채로 저장되는 일이 없도록).
+    //
+    // height도 같이 명시하는 이유 — ExcelJS의 Row.model()은 "셀이 하나도
+    // 없고 height도 없는" 행이면 그 행 자체를 통째로 null(=존재하지 않는
+    // 행)로 취급해 저장한다. 표 사이에 남겨둔 빈 줄(어떤 셀도 안 건드린
+    // 진짜 빈 행)이 정확히 이 케이스라, outlineLevel을 줘도 저장 시점에
+    // 같이 버려져서 그 지점에서 그룹이 끊기고 — 그 결과 5개 표가 각각 따로
+    // 접히는 것처럼 보였다. height를 주면 그 행도 "존재하는 행"이 되어
+    // outlineLevel이 온전히 저장되고, 표들 사이 끊김 없이 하나의 그룹으로
+    // 이어진다.
+    const blockEnd = row - 2
+    for (let r = blockStart; r <= blockEnd; r++) {
+      const gr = ws.getRow(r)
+      gr.outlineLevel = 1
+      gr.hidden = false
+      if (!gr.height) gr.height = 15
+    }
+
+    // 캠페인 사이 구분선 — summaryBelow 설정상 이 자리가 접기 컨트롤의 앵커도
+    // 겸하므로, 마지막 캠페인 뒤에도(그 블록의 접기 컨트롤이 뜨려면 필요) 그린다.
+    row = writeDivider(ws, row, campaignColumnCount)
+  }
 }
 
 /** 애드셋 시트 하나를 쓴다 — writeCampaignSheet와 같은 방식. adsets는 호출부가
@@ -440,6 +629,10 @@ function writeAdsetSheet(
   bucketSize: number | null,
 ) {
   const ws = wb.addWorksheet(sheetName)
+  ws.properties.outlineProperties = {
+    summaryBelow: true,
+    summaryRight: false,
+  }
   setColumnWidths(ws, 2 + fields.length)
 
   const seriesOf = (a: CombinedAdset) => a[channelSelector]
@@ -457,6 +650,7 @@ function writeAdsetSheet(
     ]),
     fields,
     false,
+    true,
   )
   row = writeTable(
     ws,
@@ -471,6 +665,8 @@ function writeAdsetSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -485,6 +681,8 @@ function writeAdsetSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -499,6 +697,8 @@ function writeAdsetSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
   row = writeTable(
     ws,
@@ -512,10 +712,11 @@ function writeAdsetSheet(
       ).map((w) => [a.adsetName, w.period, ...metricValues(w, fields)]),
     ),
     fields,
+    true,
+    true,
   )
-  // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
-  // 따로 맨 뒤에 둔다.
-  writeTable(
+  // 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라 따로 맨 뒤에 둔다.
+  row = writeTable(
     ws,
     row,
     '애드셋별 요일별 성과',
@@ -528,7 +729,78 @@ function writeAdsetSheet(
       ]),
     ),
     fields,
+    true,
+    true,
   )
+
+  // 추가 — writeCampaignSheet와 같은 이유(맨 위 주석 참고): 애드셋마다 자기
+  // 표 블록을 따로 하나씩 더 만든다.
+  const adsetColumnCount = 2 + fields.length
+  for (const a of adsets) {
+    row = writeEntityHeading(ws, row, `■ ${a.adsetName}`, adsetColumnCount)
+    const blockStart = row
+    const s = seriesOf(a)
+    row = writeTable(
+      ws,
+      row,
+      `[${a.adsetName}] 월간 성과`,
+      ['월', ...metricHeaders(fields)],
+      groupByMonth(s.byDate).map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${a.adsetName}] 주차별 성과`,
+      ['기간', ...metricHeaders(fields)],
+      s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${a.adsetName}] 일별 성과`,
+      ['날짜', ...metricHeaders(fields)],
+      s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      periodTitle(
+        `[${a.adsetName}] 이전 일정 vs 지정 일정 비교분석`,
+        bucketSize,
+      ),
+      ['기간', ...metricHeaders(fields)],
+      (bucketSize
+        ? groupByCustomPeriod(s.byDate, dateStart, dateEnd, bucketSize)
+        : []
+      ).map((w) => [w.period, ...metricValues(w, fields)]),
+      fields,
+    )
+    row = writeTable(
+      ws,
+      row,
+      `[${a.adsetName}] 요일별 성과`,
+      ['요일', ...metricHeaders(fields)],
+      s.byDayOfWeek.map((d) => [d.dayOfWeek, ...metricValues(d, fields)]),
+      fields,
+    )
+
+    // 이 애드셋 블록 행 전체를 한 그룹(outlineLevel 1)으로 묶는다 — 이유(및
+    // height를 같이 주는 이유)는 writeCampaignSheet의 같은 자리 주석 참고.
+    const blockEnd = row - 2
+    for (let r = blockStart; r <= blockEnd; r++) {
+      const gr = ws.getRow(r)
+      gr.outlineLevel = 1
+      gr.hidden = false
+      if (!gr.height) gr.height = 15
+    }
+
+    // 애드셋 사이 구분선 — summaryBelow 설정상 접기 컨트롤의 앵커도 겸하므로
+    // 마지막 애드셋 뒤에도 그린다.
+    row = writeDivider(ws, row, adsetColumnCount)
+  }
 }
 
 interface ExcelExportModalProps {
@@ -601,28 +873,35 @@ export function ExcelExportModal({
       wb.creator = 'Originals CMIP'
       wb.created = new Date()
 
+      // 어떤 시트가 실제로 만들어질지 먼저 정한다(체크 여부 + 데이터 있는
+      // 채널만) — 이 계획대로 아래서 실제 시트를 만든다.
+      type PlannedSheet =
+        | { kind: 'total' }
+        | {
+            kind: 'campaign'
+            name: string
+            selector: ChannelSelector
+            data: readonly ExportCampaign[]
+          }
+        | {
+            kind: 'adset'
+            name: string
+            selector: ChannelSelector
+            data: readonly (CombinedAdset & { channelLabel: string })[]
+          }
+
+      const planned: PlannedSheet[] = []
+
       if (sheets.has('total')) {
-        writeTotalSheet(
-          wb,
-          total,
-          series,
-          selectedFields,
-          dateStart,
-          dateEnd,
-          bucketSize,
-        )
+        planned.push({ kind: 'total' })
       }
       if (sheets.has('campaign')) {
-        writeCampaignSheet(
-          wb,
-          '캠페인',
-          campaigns,
-          'combined',
-          selectedFields,
-          dateStart,
-          dateEnd,
-          bucketSize,
-        )
+        planned.push({
+          kind: 'campaign',
+          name: '캠페인',
+          selector: 'combined',
+          data: campaigns,
+        })
         // 매체별 캠페인 시트 — 그 채널 데이터가 있는 캠페인이 하나도 없으면
         // (예: Naver 캠페인을 한 번도 안 돌린 계정) 빈 시트를 만들지 않는다.
         for (const c of CHANNELS) {
@@ -630,41 +909,65 @@ export function ExcelExportModal({
             (campaign) => campaign[c.key].byDate.length > 0,
           )
           if (channelCampaigns.length === 0) continue
-          writeCampaignSheet(
-            wb,
-            `캠페인-${c.label}`,
-            channelCampaigns,
-            c.key,
-            selectedFields,
-            dateStart,
-            dateEnd,
-            bucketSize,
-          )
+          planned.push({
+            kind: 'campaign',
+            name: `캠페인-${c.label}`,
+            selector: c.key,
+            data: channelCampaigns,
+          })
         }
       }
       if (sheets.has('adset')) {
         const allAdsets = campaigns.flatMap((c) => c.adsets)
-        writeAdsetSheet(
-          wb,
-          '애드셋',
-          allAdsets,
-          'combined',
-          selectedFields,
-          dateStart,
-          dateEnd,
-          bucketSize,
-        )
+        planned.push({
+          kind: 'adset',
+          name: '애드셋',
+          selector: 'combined',
+          data: allAdsets,
+        })
         // 매체별 애드셋 시트 — 캠페인과 같은 이유로, 데이터 있는 것만.
         for (const c of CHANNELS) {
           const channelAdsets = allAdsets.filter(
             (adset) => adset[c.key].byDate.length > 0,
           )
           if (channelAdsets.length === 0) continue
+          planned.push({
+            kind: 'adset',
+            name: `애드셋-${c.label}`,
+            selector: c.key,
+            data: channelAdsets,
+          })
+        }
+      }
+
+      for (const p of planned) {
+        if (p.kind === 'total') {
+          writeTotalSheet(
+            wb,
+            total,
+            series,
+            selectedFields,
+            dateStart,
+            dateEnd,
+            bucketSize,
+          )
+        } else if (p.kind === 'campaign') {
+          writeCampaignSheet(
+            wb,
+            p.name,
+            p.data,
+            p.selector,
+            selectedFields,
+            dateStart,
+            dateEnd,
+            bucketSize,
+          )
+        } else {
           writeAdsetSheet(
             wb,
-            `애드셋-${c.label}`,
-            channelAdsets,
-            c.key,
+            p.name,
+            p.data,
+            p.selector,
             selectedFields,
             dateStart,
             dateEnd,
@@ -718,7 +1021,8 @@ export function ExcelExportModal({
               그 단위별로 나눠서). 요약류를 제외한 표는 맨 밑에 지표별 평균
               행이 같이 붙습니다. 캠페인·애드셋은 채널 합산 시트 외에
               "캠페인-Meta"처럼 매체별 시트도 데이터가 있는 채널만 골라
-              추가로 담습니다.
+              추가로 담습니다. 캠페인·애드셋마다 표 블록을 접었다 펼 수
+              있습니다.
             </p>
             <div
               className="excel-export-modal__chip-row"
