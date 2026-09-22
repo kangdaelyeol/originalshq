@@ -1,5 +1,5 @@
 /**
- * meta-insight-chart-modal 전용 — 지표 기본색(METRIC_FIELDS의 color)을 채널×그룹
+ * channel-insight-chart-modal 전용 — 지표 기본색(METRIC_FIELDS의 color)을 채널×그룹
  * 조합별로 살짝 다른 색조/명도의 같은 색 계열로 바꾸는 색상 계산. React 상태와 무관한
  * 순수 함수/데이터라 view-model이 아니라 이 파일로 분리해둔다.
  */

@@ -11,7 +11,7 @@ $color-accent: #4493f8;
 $radius: 6px;
 $radius-lg: 8px;
 
-.meta-insight-chart-modal {
+.channel-insight-chart-modal {
   position: fixed;
   inset: 0;
   z-index: 20;
@@ -20,7 +20,7 @@ $radius-lg: 8px;
   justify-content: center;
   padding: 24px;
   background: rgba(1, 4, 9, 0.65);
-  animation: meta-insight-chart-modal-fade-in 0.15s ease;
+  animation: channel-insight-chart-modal-fade-in 0.15s ease;
 
   
 
@@ -41,7 +41,7 @@ $radius-lg: 8px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
     font-family: font-family.$font-pretendard;
     color: $color-text;
-    animation: meta-insight-chart-modal-pop-in 0.16s
+    animation: channel-insight-chart-modal-pop-in 0.16s
       cubic-bezier(0.2, 0.9, 0.3, 1.1);
     // width는 애니메이션시키지 않는다 — 차트의 viewBox가 ResizeObserver로 실제 렌더
     // 크기를 뒤쫓는 구조라, 폭이 CSS transition으로 매 프레임 보간되면 그 사이 viewBox가
@@ -189,7 +189,7 @@ $radius-lg: 8px;
     color: $color-muted;
     transition: transform 120ms ease;
 
-    .meta-insight-chart-modal__dropdown-trigger.is-open & {
+    .channel-insight-chart-modal__dropdown-trigger.is-open & {
       transform: rotate(180deg);
     }
   }
@@ -453,7 +453,7 @@ $radius-lg: 8px;
   }
 }
 
-@keyframes meta-insight-chart-modal-fade-in {
+@keyframes channel-insight-chart-modal-fade-in {
   from {
     opacity: 0;
   }
@@ -462,7 +462,7 @@ $radius-lg: 8px;
   }
 }
 
-@keyframes meta-insight-chart-modal-pop-in {
+@keyframes channel-insight-chart-modal-pop-in {
   from {
     opacity: 0;
     transform: scale(0.97) translateY(4px);

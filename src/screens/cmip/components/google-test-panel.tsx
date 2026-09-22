@@ -6,7 +6,7 @@ import '../styles/google-test-panel.scss'
 const won = (v: number): string => `${v.toLocaleString()}원`
 
 /**
- * Google Ads 실 연동 확인 전용 화면 — 실 서비스(meta-insight)는 이미
+ * Google Ads 실 연동 확인 전용 화면 — 실 서비스(channel-insight)는 이미
  * google-insight-client.ts로 진짜 데이터를 쓰고 있고, 이 패널은 그와 무관하게
  * "OAuth·두 인사이트 엔드포인트가 개별적으로 잘 동작하는지"를 원본 응답 그대로
  * 확인하는 진단 도구다. 흐름:

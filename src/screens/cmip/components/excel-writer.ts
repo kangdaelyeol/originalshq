@@ -19,7 +19,7 @@ import type { MetricField, MetricKey } from './metric-fields'
 
 /** CombinedCampaign/CombinedAdset에 표시용 채널 라벨 문자열("Meta, Google")을
  * 미리 얹은 모양 — 채널 로고/브랜드색 계산(channelsOf, CHANNELS)은
- * meta-insight.tsx에 있는 걸 그대로 쓰고, 이 모듈은 다 계산된 문자열만 받아
+ * channel-insight.tsx에 있는 걸 그대로 쓰고, 이 모듈은 다 계산된 문자열만 받아
  * 엑셀 셀에 그대로 찍는다. */
 export type ExportCampaign = CombinedCampaign & {
   channelLabel: string

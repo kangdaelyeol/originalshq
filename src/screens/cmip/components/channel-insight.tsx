@@ -2,12 +2,12 @@ import { Fragment, Suspense, lazy, useEffect } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
-import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
+import { useChannelInsightViewModel } from '../view-model/use-channel-insight-view-model'
 import {
-  useMetaInsightPageViewModel,
+  useChannelInsightPageViewModel,
   type ResultTab,
   type PivotView,
-} from '../view-model/use-meta-insight-page-view-model'
+} from '../view-model/use-channel-insight-page-view-model'
 import { useResultPanelViewModel } from '../view-model/use-result-panel-view-model'
 import { useMetricsTableViewModel } from '../view-model/use-metrics-table-view-model'
 import {
@@ -36,7 +36,7 @@ import {
 import { METRIC_FIELDS, type MetricField, type MetricKey } from './metric-fields'
 import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
-import { MetaInsightChartModal } from './meta-insight-chart-modal'
+import { ChannelInsightChartModal } from './channel-insight-chart-modal'
 import { PeriodTestPanel } from './period-test-panel'
 import { dateRange } from '../utils'
 
@@ -48,7 +48,7 @@ const ExcelExportModal = lazy(() =>
   })),
 )
 import type { ISODate } from '../types'
-import '../styles/meta-insight.scss'
+import '../styles/channel-insight.scss'
 
 // "Meta" 옆 텍스트 색 — 실제 브랜드 워드마크는 검정 글자지만, 이 표는 배경이
 // 어두워서 검정 그대로 쓰면 글자가 배경에 묻혀 안 보인다. 그래서 하양으로
@@ -1555,7 +1555,7 @@ function FullListTable({
   )
 }
 
-export const MetaInsight = () => {
+export const ChannelInsight = () => {
   const {
     dateStart,
     setDateStart,
@@ -1566,7 +1566,7 @@ export const MetaInsight = () => {
     combinedInsight,
     load,
     loadRange,
-  } = useMetaInsightViewModel()
+  } = useChannelInsightViewModel()
 
   // 페이지에 들어오면 기본 기간(최근 7일)으로 바로 조회 — "조회" 버튼 없이도
   // 데이터가 바로 보이도록. 마운트 시 한 번만.
@@ -1607,7 +1607,7 @@ export const MetaInsight = () => {
     setShowUnit,
     setPivotView,
     setExcelExportOpen,
-  } = useMetaInsightPageViewModel(combinedInsight, dateStart, dateEnd)
+  } = useChannelInsightPageViewModel(combinedInsight, dateStart, dateEnd)
 
   return (
     <div className="channel-insight">
@@ -1903,7 +1903,7 @@ export const MetaInsight = () => {
       )}
 
       {chartOpen && chartGroups.length > 0 && (
-        <MetaInsightChartModal
+        <ChannelInsightChartModal
           groups={chartGroups}
           defaultActiveGroupKeys={chartDefaultActiveGroupKeys}
           metricMode={metricMode}

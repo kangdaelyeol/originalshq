@@ -4,19 +4,19 @@ import { IndexLineChart } from './index-line-chart'
 import { CHANNEL_ORDER, CHANNEL_STYLE } from './chart-colors'
 import { DateRangeNarrow } from './date-range-narrow'
 import {
-  useMetaInsightChartModalViewModel,
+  useChannelInsightChartModalViewModel,
   type InsightView,
   type MetricKey,
-} from '../view-model/use-meta-insight-chart-modal-view-model'
+} from '../view-model/use-channel-insight-chart-modal-view-model'
 import type {
   ChartGroup,
   MetricMode,
   SeriesKind,
-} from '../view-model/use-meta-insight-chart-modal-view-model'
+} from '../view-model/use-channel-insight-chart-modal-view-model'
 import type { CompareMode } from './index-line-chart-types'
-import '../styles/meta-insight-chart-modal.scss'
+import '../styles/channel-insight-chart-modal.scss'
 
-export type { ChartGroup, MetricMode, SeriesKind } from '../view-model/use-meta-insight-chart-modal-view-model'
+export type { ChartGroup, MetricMode, SeriesKind } from '../view-model/use-channel-insight-chart-modal-view-model'
 
 const VIEW_OPTIONS: readonly { value: InsightView; label: string }[] = [
   { value: 'byDate', label: '일별' },
@@ -49,7 +49,7 @@ const MODE_LABEL: Record<MetricMode, string> = {
 function ChevronIcon() {
   return (
     <svg
-      className="meta-insight-chart-modal__chevron"
+      className="channel-insight-chart-modal__chevron"
       viewBox="0 0 20 20"
       fill="none"
       aria-hidden
@@ -70,7 +70,7 @@ function ChevronIcon() {
 function CheckIcon() {
   return (
     <svg
-      className="meta-insight-chart-modal__group-check"
+      className="channel-insight-chart-modal__group-check"
       viewBox="0 0 16 16"
       fill="none"
       aria-hidden
@@ -86,7 +86,7 @@ function CheckIcon() {
   )
 }
 
-interface MetaInsightChartModalProps {
+interface ChannelInsightChartModalProps {
   /** 그릴 수 있는 전체 후보 — 페이지에서 체크된 것만이 아니라 항상 전체
    * 캠페인/adset(또는 전체 요약 하나) 목록이다. 어떤 걸 볼지는 이 모달 안의
    * 그룹 드롭다운이 따로 고른다. */
@@ -96,7 +96,7 @@ interface MetaInsightChartModalProps {
    * 무시된다. */
   defaultActiveGroupKeys?: readonly string[]
   // 지표 선택(꺾은선/막대/끄기)은 캠페인/adset 교차표의 지표 선택과 같은
-  // 상태를 페이지(meta-insight.tsx)에서 그대로 물려받는다 — 그래프에서 지표를
+  // 상태를 페이지(channel-insight.tsx)에서 그대로 물려받는다 — 그래프에서 지표를
   // 바꾸면 표도 즉시 같이 바뀐다(반대도 마찬가지).
   metricMode: ReadonlyMap<MetricKey, SeriesKind>
   setMode: (key: MetricKey, mode: MetricMode) => void
@@ -104,14 +104,14 @@ interface MetaInsightChartModalProps {
   onClose: () => void
 }
 
-export const MetaInsightChartModal = ({
+export const ChannelInsightChartModal = ({
   groups,
   defaultActiveGroupKeys,
   metricMode,
   setMode,
   clearAllMetrics,
   onClose,
-}: MetaInsightChartModalProps) => {
+}: ChannelInsightChartModalProps) => {
   const {
     view,
     channels,
@@ -134,7 +134,7 @@ export const MetaInsightChartModal = ({
     setChartTheme,
     setOpenMenu,
     setDateNarrow,
-  } = useMetaInsightChartModalViewModel(
+  } = useChannelInsightChartModalViewModel(
     groups,
     defaultActiveGroupKeys,
     metricMode,
@@ -142,16 +142,16 @@ export const MetaInsightChartModal = ({
   )
 
   return (
-    <div className="meta-insight-chart-modal" onClick={onClose}>
+    <div className="channel-insight-chart-modal" onClick={onClose}>
       <div
-        className={`meta-insight-chart-modal__panel${
+        className={`channel-insight-chart-modal__panel${
           expanded ? ' is-expanded' : ''
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="meta-insight-chart-modal__header">
+        <header className="channel-insight-chart-modal__header">
           <div
-            className="meta-insight-chart-modal__channel-tabs"
+            className="channel-insight-chart-modal__channel-tabs"
             role="group"
             aria-label="채널(다중 선택)"
           >
@@ -162,7 +162,7 @@ export const MetaInsightChartModal = ({
                   key={key}
                   type="button"
                   aria-pressed={active}
-                  className={`meta-insight-chart-modal__channel-tab${
+                  className={`channel-insight-chart-modal__channel-tab${
                     active ? ' is-active' : ''
                   }`}
                   onClick={() => toggleChannel(key)}
@@ -172,10 +172,10 @@ export const MetaInsightChartModal = ({
               )
             })}
           </div>
-          <div className="meta-insight-chart-modal__header-actions">
+          <div className="channel-insight-chart-modal__header-actions">
             <button
               type="button"
-              className="meta-insight-chart-modal__expand"
+              className="channel-insight-chart-modal__expand"
               onClick={() =>
                 setChartTheme((t) => (t === 'dark' ? 'light' : 'dark'))
               }
@@ -185,7 +185,7 @@ export const MetaInsightChartModal = ({
             </button>
             <button
               type="button"
-              className="meta-insight-chart-modal__expand"
+              className="channel-insight-chart-modal__expand"
               onClick={() => setExpanded((v) => !v)}
               aria-pressed={expanded}
             >
@@ -193,7 +193,7 @@ export const MetaInsightChartModal = ({
             </button>
             <button
               type="button"
-              className="meta-insight-chart-modal__close"
+              className="channel-insight-chart-modal__close"
               onClick={onClose}
               aria-label="닫기"
             >
@@ -202,14 +202,14 @@ export const MetaInsightChartModal = ({
           </div>
         </header>
 
-        <div className="meta-insight-chart-modal__controls" ref={controlsRef}>
+        <div className="channel-insight-chart-modal__controls" ref={controlsRef}>
           {/* 캠페인/adset 탭에서만(그룹이 2개 이상일 때만) 뜬다 — 전체 요약
               탭은 그룹이 하나뿐이라 고를 이유가 없다. */}
           {groups.length > 1 && (
-            <div className="meta-insight-chart-modal__dropdown">
+            <div className="channel-insight-chart-modal__dropdown">
               <button
                 type="button"
-                className={`meta-insight-chart-modal__dropdown-trigger${
+                className={`channel-insight-chart-modal__dropdown-trigger${
                   openMenu === 'group' ? ' is-open' : ''
                 }`}
                 aria-haspopup="true"
@@ -222,23 +222,23 @@ export const MetaInsightChartModal = ({
                 <ChevronIcon />
               </button>
               {openMenu === 'group' && (
-                <div className="meta-insight-chart-modal__dropdown-menu meta-insight-chart-modal__group-menu">
+                <div className="channel-insight-chart-modal__dropdown-menu channel-insight-chart-modal__group-menu">
                   {groups.map((g) => (
                     <label
                       key={g.key}
-                      className="meta-insight-chart-modal__group-item"
+                      className="channel-insight-chart-modal__group-item"
                     >
                       <input
                         type="checkbox"
-                        className="meta-insight-chart-modal__group-input"
+                        className="channel-insight-chart-modal__group-input"
                         checked={activeGroupKeys.has(g.key)}
                         onChange={() => toggleGroup(g.key)}
                       />
-                      <span className="meta-insight-chart-modal__group-box">
-                        <span className="meta-insight-chart-modal__group-fill" />
+                      <span className="channel-insight-chart-modal__group-box">
+                        <span className="channel-insight-chart-modal__group-fill" />
                         <CheckIcon />
                       </span>
-                      <span className="meta-insight-chart-modal__group-label">
+                      <span className="channel-insight-chart-modal__group-label">
                         {g.label}
                       </span>
                     </label>
@@ -248,10 +248,10 @@ export const MetaInsightChartModal = ({
             </div>
           )}
 
-          <div className="meta-insight-chart-modal__dropdown">
+          <div className="channel-insight-chart-modal__dropdown">
             <button
               type="button"
-              className={`meta-insight-chart-modal__dropdown-trigger${
+              className={`channel-insight-chart-modal__dropdown-trigger${
                 openMenu === 'view' ? ' is-open' : ''
               }`}
               aria-haspopup="listbox"
@@ -263,7 +263,7 @@ export const MetaInsightChartModal = ({
             </button>
             {openMenu === 'view' && (
               <div
-                className="meta-insight-chart-modal__dropdown-menu"
+                className="channel-insight-chart-modal__dropdown-menu"
                 role="listbox"
               >
                 {VIEW_OPTIONS.map((o) => (
@@ -272,7 +272,7 @@ export const MetaInsightChartModal = ({
                     type="button"
                     role="option"
                     aria-selected={view === o.value}
-                    className={`meta-insight-chart-modal__dropdown-item${
+                    className={`channel-insight-chart-modal__dropdown-item${
                       view === o.value ? ' is-selected' : ''
                     }`}
                     onClick={() => {
@@ -287,10 +287,10 @@ export const MetaInsightChartModal = ({
             )}
           </div>
 
-          <div className="meta-insight-chart-modal__dropdown">
+          <div className="channel-insight-chart-modal__dropdown">
             <button
               type="button"
-              className={`meta-insight-chart-modal__dropdown-trigger${
+              className={`channel-insight-chart-modal__dropdown-trigger${
                 openMenu === 'metric' ? ' is-open' : ''
               }`}
               aria-haspopup="true"
@@ -303,23 +303,23 @@ export const MetaInsightChartModal = ({
               <ChevronIcon />
             </button>
             {openMenu === 'metric' && (
-              <div className="meta-insight-chart-modal__dropdown-menu meta-insight-chart-modal__metric-menu">
+              <div className="channel-insight-chart-modal__dropdown-menu channel-insight-chart-modal__metric-menu">
                 {METRIC_FIELDS.map((f) => {
                   const mode: MetricMode = metricMode.get(f.key) ?? 'off'
                   return (
                     <div
                       key={f.key}
-                      className="meta-insight-chart-modal__metric-row"
+                      className="channel-insight-chart-modal__metric-row"
                     >
                       <span
-                        className="meta-insight-chart-modal__metric-row-dot"
+                        className="channel-insight-chart-modal__metric-row-dot"
                         style={{ background: f.color }}
                       />
-                      <span className="meta-insight-chart-modal__metric-row-label">
+                      <span className="channel-insight-chart-modal__metric-row-label">
                         {f.label}
                       </span>
                       <div
-                        className="meta-insight-chart-modal__metric-row-toggle"
+                        className="channel-insight-chart-modal__metric-row-toggle"
                         role="group"
                         aria-label={f.label}
                       >
@@ -327,7 +327,7 @@ export const MetaInsightChartModal = ({
                           <button
                             key={opt}
                             type="button"
-                            className={`meta-insight-chart-modal__metric-toggle-btn${
+                            className={`channel-insight-chart-modal__metric-toggle-btn${
                               mode === opt ? ' is-active' : ''
                             }${opt !== 'off' ? ' is-colorable' : ''}`}
                             style={{ '--chip-color': f.color } as CSSProperties}
@@ -341,10 +341,10 @@ export const MetaInsightChartModal = ({
                     </div>
                   )
                 })}
-                <div className="meta-insight-chart-modal__metric-menu-actions">
+                <div className="channel-insight-chart-modal__metric-menu-actions">
                   <button
                     type="button"
-                    className="meta-insight-chart-modal__metric-menu-action"
+                    className="channel-insight-chart-modal__metric-menu-action"
                     disabled={metricMode.size === 0}
                     onClick={clearAllMetrics}
                   >
@@ -369,10 +369,10 @@ export const MetaInsightChartModal = ({
           {/* 대비 표시 — 컨트롤 행 맨 오른쪽에 고정(margin-left:auto). 그래프에서
               특정 지표를 호버(또는 범례 호버)하면, 여기서 고른 방식대로 그 지표
               위에 추가 증감 라벨이 뜬다(IndexLineChart 참고). */}
-          <div className="meta-insight-chart-modal__dropdown meta-insight-chart-modal__dropdown--compare">
+          <div className="channel-insight-chart-modal__dropdown channel-insight-chart-modal__dropdown--compare">
             <button
               type="button"
-              className={`meta-insight-chart-modal__dropdown-trigger${
+              className={`channel-insight-chart-modal__dropdown-trigger${
                 openMenu === 'compare' ? ' is-open' : ''
               }`}
               aria-haspopup="listbox"
@@ -387,7 +387,7 @@ export const MetaInsightChartModal = ({
             </button>
             {openMenu === 'compare' && (
               <div
-                className="meta-insight-chart-modal__dropdown-menu"
+                className="channel-insight-chart-modal__dropdown-menu"
                 role="listbox"
               >
                 {COMPARE_OPTIONS.map((o) => (
@@ -396,7 +396,7 @@ export const MetaInsightChartModal = ({
                     type="button"
                     role="option"
                     aria-selected={compareMode === o.value}
-                    className={`meta-insight-chart-modal__dropdown-item${
+                    className={`channel-insight-chart-modal__dropdown-item${
                       compareMode === o.value ? ' is-selected' : ''
                     }`}
                     onClick={() => {
@@ -413,7 +413,7 @@ export const MetaInsightChartModal = ({
         </div>
 
         <div
-          className={`meta-insight-chart-modal__chart-single${
+          className={`channel-insight-chart-modal__chart-single${
             chartTheme === 'light' ? ' is-light' : ''
           }`}
         >

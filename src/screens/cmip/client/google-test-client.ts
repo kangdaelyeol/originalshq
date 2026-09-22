@@ -2,7 +2,7 @@
  * Google Ads 연동 테스트 전용 클라이언트 — functions-cmip에 새로 추가된
  * getGoogleAuthUrl/getGoogleAuthStatus/getGoogleCampaignInsight(캠페인 단위)/
  * getGoogleAdsInsight(adGroup=adset 단위)를 그대로 호출한다. 실 서비스 화면
- * (meta-insight, google-insight-client.ts가 담당)과는 무관하고, GoogleTestPanel
+ * (channel-insight, google-insight-client.ts가 담당)과는 무관하고, GoogleTestPanel
  * 에서 "진짜 연동이 되는지"만 확인하는 용도다.
  */
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'

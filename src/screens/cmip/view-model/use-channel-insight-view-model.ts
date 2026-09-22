@@ -22,7 +22,7 @@ const DEFAULT_RANGE_DAYS = 7
  */
 const formatForApi = (value: string): ISODate => toISO(fromISO(value))
 
-export const useMetaInsightViewModel = () => {
+export const useChannelInsightViewModel = () => {
   const [dateEnd, setDateEnd] = useState<ISODate>(() => addDays(todayISO(), -1))
   const [dateStart, setDateStart] = useState<ISODate>(() =>
     addDays(todayISO(), -DEFAULT_RANGE_DAYS),

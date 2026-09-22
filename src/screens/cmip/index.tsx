@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  MetaInsight,
+  ChannelInsight,
   ReportGenerator,
   GoogleTestPanel,
   Header,
@@ -40,7 +40,7 @@ export default function CmipScreen() {
         </nav>
 
         <div className="cmip__panel" role="tabpanel">
-          {tab === 'insight' && <MetaInsight />}
+          {tab === 'insight' && <ChannelInsight />}
           {tab === 'report' && <ReportGenerator />}
           {tab === 'google-test' && <GoogleTestPanel />}
         </div>

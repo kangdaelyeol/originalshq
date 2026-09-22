@@ -126,7 +126,7 @@ $radius-lg: 8px;
     }
   }
 
-  // 지표 토글 버튼(meta-insight.tsx의 full-list-toggle-btn)과 같은
+  // 지표 토글 버튼(channel-insight.tsx의 full-list-toggle-btn)과 같은
   // --chip-color 방식 — 켜졌을 때만 지표 고유색으로 옅게 물든다.
   &__chip {
     appearance: none;

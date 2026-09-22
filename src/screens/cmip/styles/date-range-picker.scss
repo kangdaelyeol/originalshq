@@ -75,7 +75,7 @@ $radius-lg: 8px;
   &__popover {
     position: absolute;
     top: calc(100% + 8px);
-    // 트리거(DateRangePicker)가 이제 meta-insight__result-tabs 행의 맨
+    // 트리거(DateRangePicker)가 이제 channel-insight__result-tabs 행의 맨
     // 오른쪽에 붙어 있어서, left: 0으로 열면 팝오버가 화면 오른쪽 밖으로
     // 넘어갔다 — 오른쪽 끝을 트리거 오른쪽 끝에 맞춰 왼쪽으로 펼친다.
     right: 0;

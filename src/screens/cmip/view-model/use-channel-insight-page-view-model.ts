@@ -12,7 +12,7 @@ import type {
   ChartGroup,
   MetricMode,
   SeriesKind,
-} from './use-meta-insight-chart-modal-view-model'
+} from './use-channel-insight-chart-modal-view-model'
 import type { ISODate } from '../types'
 
 export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest'
@@ -21,11 +21,11 @@ export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest'
  * 날짜/요일/주차 중 무엇으로 묶을지. */
 export type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
 
-/** MetaInsight 페이지 전용 상태 — useMetaInsightViewModel(날짜 범위/조회)과는
+/** ChannelInsight 페이지 전용 상태 — useChannelInsightViewModel(날짜 범위/조회)과는
  * 별개로, 탭 전환·캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
  * 모달/엑셀 모달 열림 여부, 그리고 이들로부터 파생되는 값(선택된 캠페인,
  * 그래프 모달 후보 그룹, 엑셀로 넘길 데이터 등)까지 계산해서 돌려준다. */
-export const useMetaInsightPageViewModel = (
+export const useChannelInsightPageViewModel = (
   combinedInsight: CombinedInsight | null,
   dateStart: ISODate,
   dateEnd: ISODate,

@@ -19,7 +19,7 @@ type DeltaDir = 'up' | 'down' | 'flat'
 
 const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
 
-/** 바로 앞 구간(더 오래된 구간) 대비 증감 — meta-insight.tsx의 computeMetricDelta,
+/** 바로 앞 구간(더 오래된 구간) 대비 증감 — channel-insight.tsx의 computeMetricDelta,
  * index-line-chart.tsx의 computeDelta와 같은 계산을 이 파일 전용으로 작게 다시
  * 둔다(이미 이 코드베이스 여러 곳이 같은 계산을 각자 갖고 있는 패턴 — 표 하나
  * 전용의 단순 계산이라 공용 훅으로 묶기보다 모듈 독립성을 우선한다). */
@@ -83,17 +83,22 @@ export function PeriodTestPanel({
               {entityType === 'campaign' ? '캠페인' : 'adset'} 데이터 없음
             </span>
           ) : (
-            <select
-              className="channel-insight__result-select"
-              value={entityName ?? ''}
-              onChange={(e) => setEntityName(e.target.value)}
-            >
-              {entityOptions.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+            <div className="segmented-toggle">
+              <div className="segmented-toggle__label">
+                {entityType === 'campaign' ? '캠페인' : 'adset'}
+              </div>
+              <select
+                className="channel-insight__result-select"
+                value={entityName ?? ''}
+                onChange={(e) => setEntityName(e.target.value)}
+              >
+                {entityOptions.map((o) => (
+                  <option key={o.key} value={o.key}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
         </div>
       </section>

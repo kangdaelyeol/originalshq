@@ -1,6 +1,6 @@
 /**
- * meta-insight.tsx와 excel-writer.ts(엑셀 다운로드) 양쪽에서 같이 쓰는 채널 키/
- * 목록 — 예전엔 excel-export-modal.tsx가 lazy import(meta-insight.tsx →
+ * channel-insight.tsx와 excel-writer.ts(엑셀 다운로드) 양쪽에서 같이 쓰는 채널 키/
+ * 목록 — 예전엔 excel-export-modal.tsx가 lazy import(channel-insight.tsx →
  * excel-export-modal.tsx 방향)라 반대 방향 정적 import를 걸면 순환 참조가
  * 생겨서 이 목록을 그 파일 안에 그대로 복제해뒀었다. excel 쓰기 로직이 순수
  * 모듈(excel-writer.ts)로 빠지면서 그 순환 우려가 없어져 한 곳으로 합친다.

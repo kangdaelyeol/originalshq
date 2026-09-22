@@ -61,10 +61,10 @@ function rawKeyOf(view: InsightView, row: MetricsSummary): string {
   }
 }
 
-/** meta-insight-chart-modal 전용 상태 — 축(view)/채널·그룹 다중 선택/대비 표시/
+/** channel-insight-chart-modal 전용 상태 — 축(view)/채널·그룹 다중 선택/대비 표시/
  * 확대·테마/드롭다운 열림/일별 부분 기간 축소를 다루고, 이들로부터 그래프에 넘길
  * categories/series까지 계산해서 돌려준다. */
-export const useMetaInsightChartModalViewModel = (
+export const useChannelInsightChartModalViewModel = (
   groups: readonly ChartGroup[],
   defaultActiveGroupKeys: readonly string[] | undefined,
   metricMode: ReadonlyMap<MetricKey, SeriesKind>,
