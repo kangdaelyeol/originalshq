@@ -1,13 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  addDays,
-  addMonths,
-  fromISO,
-  startOfMonth,
-  todayISO,
-  toISO,
-} from '../utils'
+import { useMemo } from 'react'
+import { addMonths, fromISO, todayISO, toISO } from '../utils'
 import type { ISODate } from '../types'
+import { CUSTOM_KEY, PRESETS } from './date-range-presets'
+import { useDateRangePickerViewModel } from '../view-model/use-date-range-picker-view-model'
 import '../styles/date-range-picker.scss'
 
 interface DateRangePickerProps {
@@ -17,105 +12,8 @@ interface DateRangePickerProps {
   disabled?: boolean
 }
 
-interface Preset {
-  key: string
-  label: string
-  range: () => [ISODate, ISODate]
-}
-
-const CUSTOM_KEY = 'custom'
-
-/** "지난 N일"의 기준일 — 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로 센다. */
-function lastNDaysEndingYesterday(n: number): [ISODate, ISODate] {
-  const end = addDays(todayISO(), -1)
-  return [addDays(end, -(n - 1)), end]
-}
-
-/** GA 스타일 날짜 프리셋. */
-const PRESETS: readonly Preset[] = [
-  {
-    key: 'today',
-    label: '오늘',
-    range: () => [todayISO(), todayISO()],
-  },
-  {
-    key: 'yesterday',
-    label: '어제',
-    range: () => {
-      const y = addDays(todayISO(), -1)
-      return [y, y]
-    },
-  },
-  {
-    key: 'today_yesterday',
-    label: '오늘과 어제',
-    range: () => [addDays(todayISO(), -1), todayISO()],
-  },
-  {
-    key: 'last7',
-    label: '지난 7일',
-    range: () => lastNDaysEndingYesterday(7),
-  },
-  {
-    key: 'last14',
-    label: '지난 14일',
-    range: () => lastNDaysEndingYesterday(14),
-  },
-  {
-    key: 'last28',
-    label: '지난 28일',
-    range: () => lastNDaysEndingYesterday(28),
-  },
-  {
-    key: 'last30',
-    label: '지난 30일',
-    range: () => lastNDaysEndingYesterday(30),
-  },
-  {
-    key: 'this_week',
-    label: '이번 주',
-    range: () => {
-      const t = todayISO()
-      const dow = fromISO(t).getUTCDay()
-      return [addDays(t, -dow), t]
-    },
-  },
-  {
-    key: 'last_week',
-    label: '지난 주',
-    range: () => {
-      const t = todayISO()
-      const dow = fromISO(t).getUTCDay()
-      const thisWeekStart = addDays(t, -dow)
-      const end = addDays(thisWeekStart, -1)
-      return [addDays(end, -6), end]
-    },
-  },
-  {
-    key: 'this_month',
-    label: '이번 달',
-    range: () => [startOfMonth(todayISO()), todayISO()],
-  },
-  {
-    key: 'last_month',
-    label: '지난 달',
-    range: () => {
-      const end = addDays(startOfMonth(todayISO()), -1)
-      return [startOfMonth(end), end]
-    },
-  },
-]
-
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
 const MONTH_LABELS = Array.from({ length: 12 }, (_, i) => `${i + 1}월`)
-
-function matchPreset(start: ISODate, end: ISODate): string {
-  const found = PRESETS.find((p) => {
-    const [s, e] = p.range()
-    return s === start && e === end
-  })
-  return found?.key ?? CUSTOM_KEY
-}
 
 function formatDisplay(iso: ISODate): string {
   return iso.replaceAll('-', '.')
@@ -307,111 +205,36 @@ export const DateRangePicker = ({
   onChange,
   disabled = false,
 }: DateRangePickerProps) => {
-  const [open, setOpen] = useState(false)
-  const [draftStart, setDraftStart] = useState(dateStart)
-  const [draftEnd, setDraftEnd] = useState(dateEnd)
-  // true인 동안은 "시작일은 정했고 끝나는 날을 고르는 중" — 다음 클릭이 끝나는 날이 된다.
-  const [pickingEnd, setPickingEnd] = useState(false)
-  const [hoverDay, setHoverDay] = useState<ISODate | null>(null)
-  const [rightMonthStart, setRightMonthStart] = useState(() =>
-    startOfMonth(dateEnd),
-  )
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  const openPopover = () => {
-    setDraftStart(dateStart)
-    setDraftEnd(dateEnd)
-    setPickingEnd(false)
-    setHoverDay(null)
-    setRightMonthStart(startOfMonth(dateEnd))
-    setOpen(true)
-  }
-
-  useEffect(() => {
-    if (!open) return
-    const handlePointerDown = (e: PointerEvent) => {
-      if (!containerRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open])
-
-  const activeKey = matchPreset(draftStart, draftEnd)
-
-  const applyPreset = (p: Preset) => {
-    const [s, e] = p.range()
-    setDraftStart(s)
-    setDraftEnd(e)
-    setPickingEnd(false)
-    setHoverDay(null)
-    setRightMonthStart(startOfMonth(e))
-  }
-
-  const handleDayClick = (day: ISODate) => {
-    if (!pickingEnd) {
-      setDraftStart(day)
-      setDraftEnd(day)
-      setPickingEnd(true)
-    } else {
-      if (day < draftStart) {
-        setDraftEnd(draftStart)
-        setDraftStart(day)
-      } else {
-        setDraftEnd(day)
-      }
-      setPickingEnd(false)
-      setHoverDay(null)
-    }
-  }
-
-  const handleTypedStart = (value: ISODate) => {
-    setDraftStart(value)
-    if (value > draftEnd) setDraftEnd(value)
-    setPickingEnd(false)
-  }
-
-  const handleTypedEnd = (value: ISODate) => {
-    setDraftEnd(value)
-    if (value < draftStart) setDraftStart(value)
-    setPickingEnd(false)
-  }
-
-  const handleApply = () => {
-    onChange(draftStart, draftEnd)
-    setOpen(false)
-  }
-
-  const leftMonthStart = addMonths(rightMonthStart, -1)
-
-  const yearOptions = useMemo(() => {
-    const y = fromISO(todayISO()).getUTCFullYear()
-    return Array.from({ length: 6 }, (_, i) => y - 5 + i)
-  }, [])
-
-  // 드래그로 범위를 고르는 중이면 마우스가 지나간 지점까지 미리 보여준다.
-  const [previewLo, previewHi]: [ISODate, ISODate] =
-    pickingEnd && hoverDay
-      ? hoverDay < draftStart
-        ? [hoverDay, draftStart]
-        : [draftStart, hoverDay]
-      : [draftStart, draftEnd]
-
-  const triggerPresetLabel =
-    PRESETS.find((p) => p.key === activeKey)?.label ?? '직접 입력'
+  const {
+    draftStart,
+    draftEnd,
+    setHoverDay,
+    setRightMonthStart,
+    open,
+    activeKey,
+    leftMonthStart,
+    rightMonthStart,
+    yearOptions,
+    previewLo,
+    previewHi,
+    triggerPresetLabel,
+    containerRef,
+    openPopover,
+    close,
+    applyPreset,
+    handleDayClick,
+    handleTypedStart,
+    handleTypedEnd,
+    handleApply,
+    setPickingEnd,
+  } = useDateRangePickerViewModel(dateStart, dateEnd, onChange)
 
   return (
     <div className="date-range-picker" ref={containerRef}>
       <button
         type="button"
         className={`date-range-picker__trigger${open ? ' is-open' : ''}`}
-        onClick={() => (open ? setOpen(false) : openPopover())}
+        onClick={() => (open ? close() : openPopover())}
         disabled={disabled}
         aria-haspopup="true"
         aria-expanded={open}
@@ -523,7 +346,7 @@ export const DateRangePicker = ({
               <button
                 type="button"
                 className="date-range-picker__cancel"
-                onClick={() => setOpen(false)}
+                onClick={close}
               >
                 취소
               </button>
