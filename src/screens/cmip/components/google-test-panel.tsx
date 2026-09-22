@@ -1,31 +1,9 @@
-import { useState } from 'react'
-import {
-  getGoogleAuthUrl,
-  getGoogleAuthStatus,
-  getGoogleCampaignInsightRaw,
-  getGoogleAdGroupInsightRaw,
-  CallableError,
-  type GoogleAuthStatusResult,
-  type GoogleCampaignInsightRow,
-  type GoogleAdGroupInsightRow,
-} from '../client'
-import { addDays, todayISO } from '../utils'
+import { useGoogleTestPanelViewModel } from '../view-model/use-google-test-panel-view-model'
+import type { InsightLevel } from '../view-model/use-google-test-panel-view-model'
+import type { GoogleAdGroupInsightRow } from '../client'
 import '../styles/google-test-panel.scss'
 
-const describeError = (err: unknown, fallback: string): string =>
-  err instanceof CallableError || err instanceof Error ? err.message : fallback
-
 const won = (v: number): string => `${v.toLocaleString()}원`
-
-type InsightLevel = 'campaign' | 'adgroup'
-
-interface InsightState {
-  totalCount: number
-  dateStart: string
-  dateEnd: string
-  rows: GoogleCampaignInsightRow[] | GoogleAdGroupInsightRow[]
-  level: InsightLevel
-}
 
 /**
  * Google Ads 실 연동 확인 전용 화면 — 실 서비스(meta-insight)는 이미
@@ -39,98 +17,31 @@ interface InsightState {
  *      "인사이트 조회"로 실제 데이터가 들어오는지 확인.
  */
 export function GoogleTestPanel() {
-  const [brandId, setBrandId] = useState('')
-  const [customerId, setCustomerId] = useState('')
-  const [loginCustomerId, setLoginCustomerId] = useState('')
-  const [level, setLevel] = useState<InsightLevel>('campaign')
-  const [dateStart, setDateStart] = useState(() => addDays(todayISO(), -7))
-  const [dateEnd, setDateEnd] = useState(() => addDays(todayISO(), -1))
-
-  const [status, setStatus] = useState<GoogleAuthStatusResult | null>(null)
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [statusError, setStatusError] = useState<string | null>(null)
-
-  const [authLoading, setAuthLoading] = useState(false)
-  const [authError, setAuthError] = useState<string | null>(null)
-
-  const [insight, setInsight] = useState<InsightState | null>(null)
-  const [insightLoading, setInsightLoading] = useState(false)
-  const [insightError, setInsightError] = useState<string | null>(null)
-
-  const checkStatus = async () => {
-    if (!brandId) {
-      setStatusError('brandId를 입력해주세요.')
-      return
-    }
-    setStatusError(null)
-    setStatusLoading(true)
-    try {
-      setStatus(await getGoogleAuthStatus(brandId))
-    } catch (err) {
-      setStatusError(describeError(err, '연동 상태 확인에 실패했습니다.'))
-      setStatus(null)
-    } finally {
-      setStatusLoading(false)
-    }
-  }
-
-  const startAuth = async () => {
-    if (!brandId) {
-      setAuthError('brandId를 입력해주세요.')
-      return
-    }
-    setAuthError(null)
-    setAuthLoading(true)
-    try {
-      const { url } = await getGoogleAuthUrl(brandId)
-      // 팝업 차단을 피하려면 이 클릭 핸들러 안에서 바로 열어야 한다(비동기 완료
-      // 후 열면 브라우저가 사용자 제스처와 무관한 창으로 보고 막을 수 있다) —
-      // 다만 fetch가 끝나야 URL을 알 수 있으니, 완전히 막히면 안내만 보여준다.
-      const win = window.open(url, '_blank', 'noopener,noreferrer')
-      if (!win) {
-        setAuthError(
-          '팝업이 차단된 것 같습니다. 브라우저 팝업 허용 후 다시 시도하거나, 아래 링크를 직접 열어주세요: ' +
-            url,
-        )
-      }
-    } catch (err) {
-      setAuthError(describeError(err, 'Google 연동 URL 발급에 실패했습니다.'))
-    } finally {
-      setAuthLoading(false)
-    }
-  }
-
-  const fetchInsight = async () => {
-    if (!brandId || !customerId || !loginCustomerId) {
-      setInsightError(
-        'brandId, customerId, loginCustomerId를 모두 입력해주세요.',
-      )
-      return
-    }
-    setInsightError(null)
-    setInsightLoading(true)
-    try {
-      const req = { brandId, dateStart, dateEnd, customerId, loginCustomerId }
-      const result =
-        level === 'campaign'
-          ? await getGoogleCampaignInsightRaw(req)
-          : await getGoogleAdGroupInsightRaw(req)
-      setInsight({
-        totalCount: result.totalCount,
-        dateStart: result.dateStart,
-        dateEnd: result.dateEnd,
-        rows: result.rows,
-        level,
-      })
-    } catch (err) {
-      setInsightError(
-        describeError(err, 'Google 인사이트 조회에 실패했습니다.'),
-      )
-      setInsight(null)
-    } finally {
-      setInsightLoading(false)
-    }
-  }
+  const {
+    brandId,
+    setBrandId,
+    customerId,
+    setCustomerId,
+    loginCustomerId,
+    setLoginCustomerId,
+    level,
+    setLevel,
+    dateStart,
+    setDateStart,
+    dateEnd,
+    setDateEnd,
+    status,
+    statusLoading,
+    statusError,
+    authLoading,
+    authError,
+    insight,
+    insightLoading,
+    insightError,
+    checkStatus,
+    startAuth,
+    fetchInsight,
+  } = useGoogleTestPanelViewModel()
 
   return (
     <div className="google-test-panel">
