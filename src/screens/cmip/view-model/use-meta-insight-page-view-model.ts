@@ -15,7 +15,7 @@ import type {
 } from './use-meta-insight-chart-modal-view-model'
 import type { ISODate } from '../types'
 
-export type ResultTab = 'total' | 'campaign' | 'adset'
+export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest'
 
 /** 캠페인/adset 탭의 "보기 단위" — 교차표(PivotSummary)의 행 축(첫 컬럼)을
  * 날짜/요일/주차 중 무엇으로 묶을지. */
@@ -141,6 +141,8 @@ export const useMetaInsightPageViewModel = (
   // 그룹 드롭다운이 따로 고른다. CombinedCampaign/CombinedAdset이 이미
   // ChannelSplitSeries 모양(combined/meta/google)을 그대로 갖고 있어 series로
   // 바로 넘길 수 있다.
+  // periodTest(매체별 테스트) 탭은 그래프/엑셀 대상이 아니라 빈 배열 —
+  // "그래프로 보기" 버튼이 chartGroups.length===0로 자연히 비활성화된다.
   const chartGroups: ChartGroup[] = !combinedInsight
     ? []
     : resultTab === 'total'
@@ -151,11 +153,13 @@ export const useMetaInsightPageViewModel = (
             label: c.campaignName,
             series: c,
           }))
-        : adsets.map((a) => ({
-            key: a.adsetName,
-            label: a.adsetName,
-            series: a,
-          }))
+        : resultTab === 'adset'
+          ? adsets.map((a) => ({
+              key: a.adsetName,
+              label: a.adsetName,
+              series: a,
+            }))
+          : []
 
   // 모달을 처음 열 때 기본으로 켜둘 그룹 — 표에서 이미 체크해둔 것들과 같은
   // 화면으로 시작한다. 그 뒤로는 그래프 안에서 자유롭게 더 고를 수 있다.

@@ -37,6 +37,7 @@ import { METRIC_FIELDS, type MetricField, type MetricKey } from './metric-fields
 import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
 import { MetaInsightChartModal } from './meta-insight-chart-modal'
+import { PeriodTestPanel } from './period-test-panel'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
@@ -151,6 +152,7 @@ const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'total', label: '전체 요약' },
   { key: 'campaign', label: '캠페인' },
   { key: 'adset', label: '광고셋' },
+  { key: 'periodTest', label: '매체별 테스트' },
 ]
 
 function ChevronIcon() {
@@ -1889,6 +1891,13 @@ export const MetaInsight = () => {
                 />
               </section>
             </>
+          )}
+          {resultTab === 'periodTest' && (
+            <PeriodTestPanel
+              combinedInsight={combinedInsight}
+              dateStart={dateStart}
+              dateEnd={dateEnd}
+            />
           )}
         </>
       )}

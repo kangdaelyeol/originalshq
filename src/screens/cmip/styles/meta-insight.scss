@@ -585,6 +585,47 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
+  // "매체별 테스트" 탭 — 구분(캠페인/애드셋) 토글 + 엔티티 선택 한 줄.
+  &__period-test-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  // 구간(시작일~종료일) 행 목록 — 한 줄에 하나씩.
+  &__period-test-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0 12px;
+  }
+
+  &__period-test-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: $color-muted;
+    font-size: 13px;
+
+    input[type='date'] {
+      appearance: none;
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      background: $color-canvas-subtle;
+      color: $color-text;
+      padding: 6px 8px;
+      font-size: 13px;
+      font-family: inherit;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent;
+      }
+    }
+  }
+
   &__compare-toggle {
     appearance: none;
     border: 1px solid $color-border;
@@ -693,7 +734,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     // 구조(1번째=이름, 2번째부터 바로 지표값)라 같이 제외한다 — 제외 안 하면
     // "2번째 칸(토글 옆)"용 left:28px 규칙이 여기선 "2번째 지표 칸(Impressions)"에
     // 적용돼, 훨씬 더 넓은 1번째 칸(이름) 위로 그 칸이 겹쳐 보이는 버그가 났다.
-    &:not(.channel-insight__table--pivot):not(.channel-insight__table--full-list) {
+    &:not(.channel-insight__table--pivot):not(.channel-insight__table--full-list):not(
+        .channel-insight__table--period-test
+      ) {
       th:first-child,
       td:first-child,
       th:nth-child(2),
@@ -844,6 +887,31 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
     th:nth-child(3),
     td:nth-child(3) {
+      text-align: right !important;
+    }
+  }
+
+  // "매체별 테스트" 탭 표 — full-list와 같은 이유(토글 칸이 없음)로 기본
+  // 규칙(2번째 칸 왼쪽 정렬 + 1·2번째 칸 sticky + $color-td-first 배경)이
+  // 여기선 잘못 걸린다. 표 뒤집기로 두 방향(지표가 행/구간이 행) 다 1번째
+  // 칸만 라벨(지표명 또는 구간 라벨)이고 2번째 칸부터는 곧바로 숫자값이라,
+  // full-list처럼 1번째 칸만 sticky+배경+왼쪽 정렬로 두고 2번째 칸은 나머지
+  // 값 칸들과 똑같은 평범한 오른쪽 정렬 칸으로 되돌린다.
+  &__table--period-test {
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      text-align: left !important;
+    }
+
+    td:first-child {
+      background-color: $color-td-first;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
       text-align: right !important;
     }
   }

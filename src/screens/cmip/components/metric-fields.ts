@@ -85,15 +85,21 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     unit: '건',
     color: '#c98500',
   },
-  {
-    key: 'revenue',
-    label: 'Revenue',
-    format: won,
-    formatCompact: num,
-    unit: '원',
-    color: '#c026d3',
-    note: '전환 추적 설정이나 캠페인 목표에 따라 값이 안 잡힐 수 있습니다(예: 리드 목표 캠페인, 전환 추적 미설정 네이버 계정) — 0이 "매출 없음"과 "측정 안 됨"을 구분하지 않고 함께 나타냅니다.',
-  },
+  // revenue는 실제 매출과 전환 목표(캠페인 최적화 기준)에 따른 기댓값이 섞여
+  // 들어와서 실제 매출액 계산에는 의미가 없다는 판단으로 잠깐 숨긴다 — 데이터
+  // 자체(MetricsSummary.revenue)는 그대로 두고 이 표시 목록에서만 뺀다. KPI
+  // 카드/표/그래프/엑셀 다운로드가 전부 METRIC_FIELDS 하나를 기준으로 렌더하니
+  // 여기 하나만 빼면 전체 화면에서 한 번에 사라진다. 다시 보여줘야 하면 이
+  // 블록 주석만 풀면 된다.
+  // {
+  //   key: 'revenue',
+  //   label: 'Revenue',
+  //   format: won,
+  //   formatCompact: num,
+  //   unit: '원',
+  //   color: '#c026d3',
+  //   note: '전환 추적 설정이나 캠페인 목표에 따라 값이 안 잡힐 수 있습니다(예: 리드 목표 캠페인, 전환 추적 미설정 네이버 계정) — 0이 "매출 없음"과 "측정 안 됨"을 구분하지 않고 함께 나타냅니다.',
+  // },
   {
     key: 'ctr',
     label: 'CTR',
