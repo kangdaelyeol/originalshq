@@ -274,6 +274,16 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     display: flex;
     flex-direction: column;
     gap: 16px;
+    // column 방향 flex item의 min-width 기본값은 auto — 즉 "내용물이 원하는
+    // 최소 폭(min-content)보다는 안 줄어든다"는 뜻이다. 안에 있는 표는 셀이
+    // white-space: nowrap이라 컬럼이 많아지면(지표 10개+) min-content 폭이
+    // 꽤 넓어지는데, 이 min-width:auto 때문에 __result가 그 폭 밑으로 못
+    // 줄어들고, 그 폭 요구가 그대로 위(.channel-insight)까지 새어 나가 표에
+    // 로우가 1개뿐이어도(즉 세로로는 전혀 안 길어도) 페이지 전체가 가로로
+    // 스크롤돼버렸다. min-width: 0으로 그 하한을 없애면 이 flex item이 정상
+    // 폭까지 줄어들 수 있게 되고, 그러면 안쪽 __table-wrap의 overflow-x: auto가
+    // 원래 의도대로 표 자체 안에서만 스크롤을 가둔다.
+    min-width: 0;
   }
 
   &__summary {
@@ -513,6 +523,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     display: flex;
     flex-direction: column;
     gap: 8px;
+    // __result와 같은 이유(위 주석 참고) — 이 섹션도 column 방향 flex item이라
+    // min-width: 0이 없으면 안의 넓은 표 폭이 그대로 새어 나간다.
+    min-width: 0;
   }
 
   &__section-title {
@@ -623,6 +636,14 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
   &__table-wrap {
     overflow-x: auto;
+    // 이 요소 자신이 __table-block/__full-list(둘 다 column 방향 flex
+    // container)의 flex item이다 — 위 __result/__section 등에 적용한
+    // min-width: 0과 같은 이유지만, 여기가 실제로 overflow-x: auto를 갖고
+    // 있는 당사자라 더 직접적이다: 이 min-width: 0이 없으면 표의
+    // min-content 폭 밑으로 자신이 못 줄어들어서, 바로 위 overflow-x: auto가
+    // 있어도 트리거될 일이 없다(넘치는 게 없으니까) — 대신 그 폭 그대로
+    // 부모까지 계속 새어 나가 페이지 전체가 가로 스크롤되는 원인이 됐다.
+    min-width: 0;
   }
 
   &__table {
@@ -861,18 +882,21 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 
   // 전체 캠페인/adset 표 — 채널 필터 행, 컬럼 표시 토글 행, 아래에 표 순.
+  // min-width: 0은 __result/__section과 같은 이유(그 두 규칙 옆 주석 참고).
   &__full-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
   }
 
   // 일별/요일별/주차별 성과 표(MetricsTable) — 지표 컬럼 표시 토글 행 + 표.
-  // &__full-list와 같은 세로 배치.
+  // &__full-list와 같은 세로 배치(+ 같은 이유의 min-width: 0).
   &__table-block {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
   }
 
   // 채널 필터(전체/Meta/Google/Naver) — 컬럼 표시 토글과 같은 버튼 스타일

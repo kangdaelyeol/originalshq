@@ -16,6 +16,13 @@ type MetricKey = keyof MetricsSummary
 
 type ChannelKey = 'meta' | 'google' | 'naver'
 
+/** 캠페인/애드셋 시트가 어느 데이터를 쓸지 — 'combined'는 기존 "캠페인"/
+ * "애드셋" 시트(채널 합산), 그 외엔 "캠페인-Meta"류 매체별 시트(그 채널
+ * 데이터만). ExportCampaign/CombinedAdset 둘 다 ChannelSplitSeries 모양이라
+ * (combined/meta/google/naver 네 키를 그대로 갖고 있어) entity[selector]로
+ * 바로 그 채널의 GroupedInsightSeries를 꺼낼 수 있다. */
+type ChannelSelector = 'combined' | ChannelKey
+
 // meta-insight.tsx의 CHANNELS와 같은 목록 — 순환 참조를 피하려고 이 모달
 // 안에 따로 둔다(meta-insight.tsx는 lazy import로 이 파일을 불러오는 쪽이라
 // 반대 방향 정적 import를 걸면 순환이 생긴다). 당근 등 채널이 늘면 이 목록도
@@ -43,25 +50,47 @@ const SHEET_OPTIONS: readonly { key: SheetKey; label: string }[] = [
   { key: 'adset', label: '애드셋' },
 ]
 
+// 원/회/건처럼 개수·금액성 단위는 헤더에 안 붙인다(값만 봐도 뜻이 분명하고,
+// 붙이면 컬럼이 쓸데없이 넓어진다) — %만 값의 의미(비율)를 헷갈리기 쉬워서 남긴다.
 const metricHeaders = (fields: readonly MetricField[]): string[] =>
-  fields.map((f) => `${f.label} (${f.unit})`)
+  fields.map((f) => (f.unit === '%' ? `${f.label} (%)` : f.label))
+
+// 소수점 있는 값(전환수·지표 비율 등)은 엑셀 General 서식이 부동소수점 오차까지
+// 그대로 보여줄 수 있어(예: 12.345678913519) 여기서 미리 소수 둘째 자리로
+// 반올림해 넣는다. 정수 지표(impressions/clicks 등)는 반올림해도 그대로다.
+const round2 = (v: number): number => Math.round(v * 100) / 100
 
 const metricValues = (
   metrics: MetricsSummary,
   fields: readonly MetricField[],
-): number[] => fields.map((f) => metrics[f.key])
+): number[] => fields.map((f) => round2(metrics[f.key]))
+
+// impressions/clicks는 "횟수"라 낱개 값은 항상 정수다 — 그 칸엔 소수 서식을
+// 안 준다(정수인데 "12.00"처럼 보이면 오히려 어색하다). 다만 이 두 지표도
+// 여러 행의 평균은 자연히 소수가 되므로(예: 일평균 클릭 45.7회), 평균 행
+// 에서는 이 구분 없이 전부 소수 둘째 자리로 보여준다.
+const INTEGER_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
+  'impressions',
+  'clicks',
+])
+const DECIMAL_FORMAT = '0.00'
 
 /** 표 하나를 시트의 startRow부터 그려 넣고, 다음 표가 시작할 행 번호를
- * 돌려준다(제목 행 + 헤더 행 + 데이터 행들 + 빈 줄 하나). 한 시트 안에
- * 컬럼 구성이 서로 다른 표를 여러 개 쌓아야 해서, ws.columns(시트 전체에
- * 적용되는 고정 컬럼 스키마)나 ws.addRow(키 매핑) 대신 셀 좌표를 직접
- * 지정한다. */
+ * 돌려준다(제목 행 + 헤더 행 + 데이터 행들 + (있으면) 평균 행 + 빈 줄 하나).
+ * 한 시트 안에 컬럼 구성이 서로 다른 표를 여러 개 쌓아야 해서, ws.columns
+ * (시트 전체에 적용되는 고정 컬럼 스키마)나 ws.addRow(키 매핑) 대신 셀
+ * 좌표를 직접 지정한다. fields는 headers/rows의 맨 뒤 fields.length개 칸이
+ * 지표 칸이라는 뜻 — 그 칸에만 소수 서식·평균 계산을 적용하고, 앞쪽 라벨
+ * 칸(이름/날짜 등)은 건드리지 않는다. showAverage=false는 "요약"류(이미
+ * 합계·총계인 표라 그 행들을 다시 평균 내는 게 의미가 없는 표)에 쓴다. */
 function writeTable(
   ws: ExcelJS.Worksheet,
   startRow: number,
   title: string,
   headers: readonly string[],
   rows: readonly (string | number)[][],
+  fields: readonly MetricField[],
+  showAverage = true,
 ): number {
   const titleCell = ws.getCell(startRow, 1)
   titleCell.value = title
@@ -79,11 +108,39 @@ function writeTable(
     }
   })
 
+  const labelColumnCount = headers.length - fields.length
+
   rows.forEach((row, ri) => {
     row.forEach((value, ci) => {
-      ws.getCell(headerRowIndex + 1 + ri, ci + 1).value = value
+      const cell = ws.getCell(headerRowIndex + 1 + ri, ci + 1)
+      cell.value = value
+      const field = fields[ci - labelColumnCount]
+      if (field && !INTEGER_METRIC_KEYS.has(field.key)) {
+        cell.numFmt = DECIMAL_FORMAT
+      }
     })
   })
+
+  if (showAverage && rows.length > 0) {
+    const avgRowIndex = headerRowIndex + 1 + rows.length
+    const labelCell = ws.getCell(avgRowIndex, 1)
+    labelCell.value = '평균'
+    labelCell.font = { italic: true, bold: true }
+
+    fields.forEach((_, fi) => {
+      const ci = labelColumnCount + fi
+      const sum = rows.reduce((s, r) => {
+        const v = r[ci]
+        return s + (typeof v === 'number' ? v : 0)
+      }, 0)
+      const cell = ws.getCell(avgRowIndex, ci + 1)
+      cell.value = round2(sum / rows.length)
+      cell.numFmt = DECIMAL_FORMAT
+      cell.font = { italic: true }
+    })
+
+    return avgRowIndex + 2
+  }
 
   return headerRowIndex + rows.length + 2
 }
@@ -125,7 +182,7 @@ function writeTotalSheet(
   let row = 1
 
   // 화면 맨 위 Summary 카드(channel-insight__summary)에 대응 — 전체(combined)
-  // 총계 1행 + 데이터가 있는 채널마다 1행.
+  // 총계 1행 + 데이터가 있는 채널마다 1행. 이미 총계들이라 평균 행은 안 붙인다.
   row = writeTable(
     ws,
     row,
@@ -138,11 +195,13 @@ function writeTotalSheet(
         ...metricValues(total[c.key], fields),
       ]),
     ],
+    fields,
+    false,
   )
 
   // 표 순서: 요약(위에서 이미 씀) → 월간 → 주간 → 일간 → 이전 일정 vs
-  // 지정 일정(아래 별도 블록). 요일별(월~일 반복 집계)은 이 "기간을 점점
-  // 좁혀가며 보기" 흐름과 안 맞아 뺐다.
+  // 지정 일정(아래 별도 블록) → 요일별(맨 마지막, 별도 블록). 요일별(월~일
+  // 반복 집계)은 이 "기간을 점점 좁혀가며 보기" 흐름과 안 맞아 따로 뺐다.
   const timeTables: readonly {
     title: string
     headLabel: string
@@ -175,7 +234,14 @@ function writeTotalSheet(
   // 월간/주차별/일별 각각 — combined 표 하나 다음에 채널별(Meta/Google/Naver
   // 중 실제 데이터 있는 것만) 표를 바로 이어 쌓는다.
   for (const t of timeTables) {
-    row = writeTable(ws, row, t.title, [t.headLabel, ...metricHeaders(fields)], t.rowsOf(series.combined))
+    row = writeTable(
+      ws,
+      row,
+      t.title,
+      [t.headLabel, ...metricHeaders(fields)],
+      t.rowsOf(series.combined),
+      fields,
+    )
     for (const c of applicableChannels) {
       row = writeTable(
         ws,
@@ -183,6 +249,7 @@ function writeTotalSheet(
         `${c.label} ${t.title}`,
         [t.headLabel, ...metricHeaders(fields)],
         t.rowsOf(series[c.key]),
+        fields,
       )
     }
   }
@@ -201,6 +268,7 @@ function writeTotalSheet(
       w.period,
       ...metricValues(w, fields),
     ]),
+    fields,
   )
   for (const c of applicableChannels) {
     row = writeTable(
@@ -212,11 +280,11 @@ function writeTotalSheet(
         w.period,
         ...metricValues(w, fields),
       ]),
+      fields,
     )
   }
 
-  // 맨 마지막 — 요일별(월~일 반복 집계)은 "기간을 점점 좁혀가며 보기" 흐름과
-  // 다른 축이라 따로 맨 뒤에 둔다. combined 다음 채널별.
+  // 맨 마지막 — 요일별. combined 다음 채널별.
   row = writeTable(
     ws,
     row,
@@ -226,6 +294,7 @@ function writeTotalSheet(
       d.dayOfWeek,
       ...metricValues(d, fields),
     ]),
+    fields,
   )
   for (const c of applicableChannels) {
     row = writeTable(
@@ -237,20 +306,37 @@ function writeTotalSheet(
         d.dayOfWeek,
         ...metricValues(d, fields),
       ]),
+      fields,
     )
   }
 }
 
+const channelSelectorLabel = (
+  selector: ChannelSelector,
+  fallback: string,
+): string =>
+  selector === 'combined'
+    ? fallback
+    : (CHANNELS.find((c) => c.key === selector)?.label ?? selector)
+
+/** 캠페인 시트 하나를 쓴다 — channelSelector가 'combined'면 기존 "캠페인"
+ * 시트(채널 합산: c.combined), 그 외(meta/google/naver)면 그 채널 데이터만
+ * (c.meta/c.google/c.naver)으로 완전히 같은 표 구성을 다시 만든다. 채널별
+ * 시트는 호출부가 이미 그 채널 데이터가 있는 캠페인만 추려서 넘긴다. */
 function writeCampaignSheet(
   wb: ExcelJS.Workbook,
+  sheetName: string,
   campaigns: readonly ExportCampaign[],
+  channelSelector: ChannelSelector,
   fields: readonly MetricField[],
   dateStart: string,
   dateEnd: string,
   bucketSize: number | null,
 ) {
-  const ws = wb.addWorksheet('캠페인')
+  const ws = wb.addWorksheet(sheetName)
   setColumnWidths(ws, 3 + fields.length)
+
+  const seriesOf = (c: ExportCampaign) => c[channelSelector]
 
   let row = 1
   row = writeTable(
@@ -260,10 +346,12 @@ function writeCampaignSheet(
     ['Campaign', 'Channel', '전환 목표', ...metricHeaders(fields)],
     campaigns.map((c) => [
       c.campaignName,
-      c.channelLabel,
+      channelSelectorLabel(channelSelector, c.channelLabel),
       c.resultType ?? '',
-      ...metricValues(aggregateMetrics(c.combined.byDate), fields),
+      ...metricValues(aggregateMetrics(seriesOf(c).byDate), fields),
     ]),
+    fields,
+    false,
   )
   row = writeTable(
     ws,
@@ -271,12 +359,13 @@ function writeCampaignSheet(
     '캠페인별 월간 성과',
     ['Campaign', '월', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
-      groupByMonth(c.combined.byDate).map((w) => [
+      groupByMonth(seriesOf(c).byDate).map((w) => [
         c.campaignName,
         w.period,
         ...metricValues(w, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -284,12 +373,13 @@ function writeCampaignSheet(
     '캠페인별 주차별 성과',
     ['Campaign', '기간', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
-      c.combined.byGroupedWeek.map((w) => [
+      seriesOf(c).byGroupedWeek.map((w) => [
         c.campaignName,
         w.period,
         ...metricValues(w, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -297,12 +387,13 @@ function writeCampaignSheet(
     '캠페인별 일별 성과',
     ['Campaign', '날짜', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
-      c.combined.byDate.map((d) => [
+      seriesOf(c).byDate.map((d) => [
         c.campaignName,
         d.date,
         ...metricValues(d, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -311,10 +402,11 @@ function writeCampaignSheet(
     ['Campaign', '기간', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
       (bucketSize
-        ? groupByCustomPeriod(c.combined.byDate, dateStart, dateEnd, bucketSize)
+        ? groupByCustomPeriod(seriesOf(c).byDate, dateStart, dateEnd, bucketSize)
         : []
       ).map((w) => [c.campaignName, w.period, ...metricValues(w, fields)]),
     ),
+    fields,
   )
   // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
   // 따로 맨 뒤에 둔다.
@@ -324,26 +416,33 @@ function writeCampaignSheet(
     '캠페인별 요일별 성과',
     ['Campaign', '요일', ...metricHeaders(fields)],
     campaigns.flatMap((c) =>
-      c.combined.byDayOfWeek.map((d) => [
+      seriesOf(c).byDayOfWeek.map((d) => [
         c.campaignName,
         d.dayOfWeek,
         ...metricValues(d, fields),
       ]),
     ),
+    fields,
   )
 }
 
+/** 애드셋 시트 하나를 쓴다 — writeCampaignSheet와 같은 방식. adsets는 호출부가
+ * (channelSelector가 'combined'가 아니면) 이미 그 채널 데이터가 있는
+ * 애드셋만 추려서 넘긴다. */
 function writeAdsetSheet(
   wb: ExcelJS.Workbook,
-  campaigns: readonly ExportCampaign[],
+  sheetName: string,
+  adsets: readonly (CombinedAdset & { channelLabel: string })[],
+  channelSelector: ChannelSelector,
   fields: readonly MetricField[],
   dateStart: string,
   dateEnd: string,
   bucketSize: number | null,
 ) {
-  const adsets = campaigns.flatMap((c) => c.adsets)
-  const ws = wb.addWorksheet('애드셋')
+  const ws = wb.addWorksheet(sheetName)
   setColumnWidths(ws, 2 + fields.length)
+
+  const seriesOf = (a: CombinedAdset) => a[channelSelector]
 
   let row = 1
   row = writeTable(
@@ -353,9 +452,11 @@ function writeAdsetSheet(
     ['Adset', 'Channel', ...metricHeaders(fields)],
     adsets.map((a) => [
       a.adsetName,
-      a.channelLabel,
-      ...metricValues(aggregateMetrics(a.combined.byDate), fields),
+      channelSelectorLabel(channelSelector, a.channelLabel),
+      ...metricValues(aggregateMetrics(seriesOf(a).byDate), fields),
     ]),
+    fields,
+    false,
   )
   row = writeTable(
     ws,
@@ -363,12 +464,13 @@ function writeAdsetSheet(
     '애드셋별 월간 성과',
     ['Adset', '월', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
-      groupByMonth(a.combined.byDate).map((w) => [
+      groupByMonth(seriesOf(a).byDate).map((w) => [
         a.adsetName,
         w.period,
         ...metricValues(w, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -376,12 +478,13 @@ function writeAdsetSheet(
     '애드셋별 주차별 성과',
     ['Adset', '기간', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
-      a.combined.byGroupedWeek.map((w) => [
+      seriesOf(a).byGroupedWeek.map((w) => [
         a.adsetName,
         w.period,
         ...metricValues(w, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -389,12 +492,13 @@ function writeAdsetSheet(
     '애드셋별 일별 성과',
     ['Adset', '날짜', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
-      a.combined.byDate.map((d) => [
+      seriesOf(a).byDate.map((d) => [
         a.adsetName,
         d.date,
         ...metricValues(d, fields),
       ]),
     ),
+    fields,
   )
   row = writeTable(
     ws,
@@ -403,10 +507,11 @@ function writeAdsetSheet(
     ['Adset', '기간', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
       (bucketSize
-        ? groupByCustomPeriod(a.combined.byDate, dateStart, dateEnd, bucketSize)
+        ? groupByCustomPeriod(seriesOf(a).byDate, dateStart, dateEnd, bucketSize)
         : []
       ).map((w) => [a.adsetName, w.period, ...metricValues(w, fields)]),
     ),
+    fields,
   )
   // 맨 마지막 — 요일별은 "기간을 점점 좁혀가며 보기" 흐름과 다른 축이라
   // 따로 맨 뒤에 둔다.
@@ -416,12 +521,13 @@ function writeAdsetSheet(
     '애드셋별 요일별 성과',
     ['Adset', '요일', ...metricHeaders(fields)],
     adsets.flatMap((a) =>
-      a.combined.byDayOfWeek.map((d) => [
+      seriesOf(a).byDayOfWeek.map((d) => [
         a.adsetName,
         d.dayOfWeek,
         ...metricValues(d, fields),
       ]),
     ),
+    fields,
   )
 }
 
@@ -442,9 +548,10 @@ interface ExcelExportModalProps {
 /** "엑셀 다운로드" 버튼에서 여는 모달 — 전체요약/캠페인/애드셋 중 시트로
  * 내보낼 것(복수 선택)과, 각 시트에 실을 지표(복수 선택, 기본 전체)를 고르면
  * 하나의 .xlsx 파일에 고른 시트를 모두 담아 내려받는다. 전체요약 시트는 맨 위에
- * 요약(채널별 총계) 표를 두고, 일별/요일별/주차별/이전-지정 일정 비교분석마다
- * combined 표 + 채널별(Meta/Google/Naver 중 데이터 있는 것만) 표를 이어 쌓는다.
- * 캠페인·애드셋 시트는 그 단위별로 같은 시간 축 표들을 쌓는다. */
+ * 요약(채널별 총계) 표를 두고, 월간/주간/일간/이전-지정 일정 비교분석/요일별
+ * 마다 combined 표 + 채널별(Meta/Google/Naver 중 데이터 있는 것만) 표를 이어
+ * 쌓는다. 캠페인·애드셋 시트는 그 단위별로 같은 시간 축 표들을 쌓는다. 시간
+ * 축 표(요약류 제외)는 맨 밑에 지표별 평균 행이 같이 붙는다. */
 export function ExcelExportModal({
   onClose,
   dateStart,
@@ -508,22 +615,62 @@ export function ExcelExportModal({
       if (sheets.has('campaign')) {
         writeCampaignSheet(
           wb,
+          '캠페인',
           campaigns,
+          'combined',
           selectedFields,
           dateStart,
           dateEnd,
           bucketSize,
         )
+        // 매체별 캠페인 시트 — 그 채널 데이터가 있는 캠페인이 하나도 없으면
+        // (예: Naver 캠페인을 한 번도 안 돌린 계정) 빈 시트를 만들지 않는다.
+        for (const c of CHANNELS) {
+          const channelCampaigns = campaigns.filter(
+            (campaign) => campaign[c.key].byDate.length > 0,
+          )
+          if (channelCampaigns.length === 0) continue
+          writeCampaignSheet(
+            wb,
+            `캠페인-${c.label}`,
+            channelCampaigns,
+            c.key,
+            selectedFields,
+            dateStart,
+            dateEnd,
+            bucketSize,
+          )
+        }
       }
       if (sheets.has('adset')) {
+        const allAdsets = campaigns.flatMap((c) => c.adsets)
         writeAdsetSheet(
           wb,
-          campaigns,
+          '애드셋',
+          allAdsets,
+          'combined',
           selectedFields,
           dateStart,
           dateEnd,
           bucketSize,
         )
+        // 매체별 애드셋 시트 — 캠페인과 같은 이유로, 데이터 있는 것만.
+        for (const c of CHANNELS) {
+          const channelAdsets = allAdsets.filter(
+            (adset) => adset[c.key].byDate.length > 0,
+          )
+          if (channelAdsets.length === 0) continue
+          writeAdsetSheet(
+            wb,
+            `애드셋-${c.label}`,
+            channelAdsets,
+            c.key,
+            selectedFields,
+            dateStart,
+            dateEnd,
+            bucketSize,
+          )
+        }
       }
 
       const buffer = await wb.xlsx.writeBuffer()
@@ -568,7 +715,10 @@ export function ExcelExportModal({
             <p className="excel-export-modal__desc">
               시트마다 전체요약(총계) · 월간 · 주간 · 일간 · 이전 일정 vs 지정
               일정 비교분석 · 요일별 표를 이 순서로 담습니다(캠페인·애드셋은
-              그 단위별로 나눠서).
+              그 단위별로 나눠서). 요약류를 제외한 표는 맨 밑에 지표별 평균
+              행이 같이 붙습니다. 캠페인·애드셋은 채널 합산 시트 외에
+              "캠페인-Meta"처럼 매체별 시트도 데이터가 있는 채널만 골라
+              추가로 담습니다.
             </p>
             <div
               className="excel-export-modal__chip-row"
