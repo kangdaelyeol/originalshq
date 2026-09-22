@@ -4,6 +4,8 @@
  */
 import type { MetricsSummary } from '../client'
 
+export type MetricKey = keyof MetricsSummary
+
 export interface MetricField {
   key: keyof MetricsSummary
   label: string

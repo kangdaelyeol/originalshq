@@ -1,18 +1,24 @@
-import {
-  Fragment,
-  Suspense,
-  lazy,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { Fragment, Suspense, lazy, useEffect } from 'react'
 import type { CSSProperties, ReactElement } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useMetaInsightViewModel } from '../view-model/use-meta-insight-view-model'
+import {
+  useMetaInsightPageViewModel,
+  type ResultTab,
+  type PivotView,
+} from '../view-model/use-meta-insight-page-view-model'
+import { useResultPanelViewModel } from '../view-model/use-result-panel-view-model'
+import { useMetricsTableViewModel } from '../view-model/use-metrics-table-view-model'
+import {
+  useMultiSelectDropdownViewModel,
+  type MultiSelectOption,
+} from '../view-model/use-multi-select-dropdown-view-model'
+import {
+  useFullListTableViewModel,
+  type FullListRow,
+} from '../view-model/use-full-list-table-view-model'
 import type {
-  ChannelSplitSeries,
   DateSummary,
   DayOfWeekSummary,
   GroupedInsightSeries,
@@ -22,27 +28,19 @@ import type {
 import {
   aggregateMetrics,
   emptyMetrics,
-  emptySeries,
-  groupByCustomPeriod,
   groupByDayOfWeek,
   groupByWeek,
   metricsForDateSubset,
   weekdayLabelOf,
 } from '../client'
-import { METRIC_FIELDS, type MetricField } from './metric-fields'
+import { METRIC_FIELDS, type MetricField, type MetricKey } from './metric-fields'
+import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
-import {
-  MetaInsightChartModal,
-  type ChartGroup,
-  type SeriesKind,
-  type MetricMode,
-} from './meta-insight-chart-modal'
-import type { ExportCampaign } from './excel-export-modal'
+import { MetaInsightChartModal } from './meta-insight-chart-modal'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
-// 진입 시 항상 받아지는 번들에 넣지 않는다. 타입은 위에서 이미 type-only로
-// 가져왔으니(컴파일 시 지워짐) 번들 분리에 영향 없다.
+// 진입 시 항상 받아지는 번들에 넣지 않는다.
 const ExcelExportModal = lazy(() =>
   import('./excel-export-modal').then((m) => ({
     default: m.ExcelExportModal,
@@ -50,18 +48,6 @@ const ExcelExportModal = lazy(() =>
 )
 import type { ISODate } from '../types'
 import '../styles/meta-insight.scss'
-
-type MetricKey = keyof MetricsSummary
-
-type ChannelKey = 'meta' | 'google' | 'naver'
-
-// 지금은 Meta/Google/Naver — 당근이 붙으면 이 목록만 늘리면 된다
-// (CombinedInsight.total/series가 그 채널 키를 갖게 되는 시점에 맞춰).
-const CHANNELS: readonly { key: ChannelKey; label: string }[] = [
-  { key: 'meta', label: 'Meta' },
-  { key: 'google', label: 'Google' },
-  { key: 'naver', label: 'Naver' },
-]
 
 // "Meta" 옆 텍스트 색 — 실제 브랜드 워드마크는 검정 글자지만, 이 표는 배경이
 // 어두워서 검정 그대로 쓰면 글자가 배경에 묻혀 안 보인다. 그래서 하양으로
@@ -160,8 +146,6 @@ function ChannelLabel({
     </span>
   )
 }
-
-type ResultTab = 'total' | 'campaign' | 'adset'
 
 const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'total', label: '전체 요약' },
@@ -438,51 +422,10 @@ function MetricsTable<T extends MetricsSummary>({
   channelFilter: 'all' | ChannelKey
   onChannelFilterChange: (value: 'all' | ChannelKey) => void
 }) {
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
-  // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
-  // 붙인다. 다만 라벨(날짜/요일/기간) 컬럼은 문자열 그대로 정렬하면 요일("월"~
-  // "일")·기간("9/1~9/7")처럼 원래 순서가 사전순과 달라 깨지므로, rows(호출부가
-  // 이미 올바른 순서로 넘겨줌) 그대로/뒤집기로만 다룬다.
-  const [sort, setSort] = useState<{ key: 'label' | MetricKey; dir: SortDir }>({
-    key: 'label',
-    dir: 'asc',
-  })
-
-  const toggleSort = (key: 'label' | MetricKey) => {
-    setSort((prev) =>
-      prev.key === key
-        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : { key, dir: key === 'label' ? 'asc' : 'desc' },
-    )
-  }
-
-  // "대비 표시"(바로 앞 지점 대비)는 정렬로 화면상 순서가 바뀌어도 항상 원본
-  // (시간순) 기준 직전 값을 봐야 의미가 있다 — 그 행이 원본 rows에서 실제로
-  // 몇 번째였는지 미리 룩업 테이블로 만들어둔다.
-  const originalIndexByKey = useMemo(
-    () => new Map(rows.map((row, i) => [rowKey(row), i] as const)),
-    [rows, rowKey],
-  )
-
-  const displayRows = useMemo(() => {
-    if (sort.key === 'label') {
-      return sort.dir === 'asc' ? rows : [...rows].reverse()
-    }
-    const dir = sort.dir === 'asc' ? 1 : -1
-    const key = sort.key
-    return [...rows].sort((a, b) => (a[key] - b[key]) * dir)
-  }, [rows, sort])
+  const { expanded, sort, originalIndexByKey, displayRows, toggleSort, toggle } =
+    useMetricsTableViewModel(rows, rowKey)
 
   const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
-
-  const toggle = (key: string) => {
-    setExpanded((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
 
   return (
     <div className="channel-insight__table-block">
@@ -893,83 +836,19 @@ function ResultPanel({
   dateStart,
   dateEnd,
 }: ResultPanelProps) {
-  const [showChannelTotal, setShowChannelTotal] = useState(false)
-  // 일별/요일별/주차별 표마다 "대비 표시" 토글을 독립적으로 둔다 — 표 하나만
-  // 켜서 보고 싶은 경우가 많아서(예: 일별은 대비로, 주차별은 그냥 값만).
-  const [compareOn, setCompareOn] = useState({
-    byDate: true,
-    byDayOfWeek: true,
-    byGroupedWeek: true,
-    byCustomPeriod: true,
-  })
-  const toggleCompare = (key: keyof typeof compareOn) =>
-    setCompareOn((prev) => ({ ...prev, [key]: !prev[key] }))
-
-  // 일별/요일별/주차별 표마다 지표 컬럼 표시 여부도 독립적으로 둔다(대비 표시와
-  // 같은 이유). ResultPanel(여기)에 두는 이유는, 표 자체(MetricsTable)는 날짜
-  // 범위를 바꿔 재조회할 때마다 로딩 스켈레톤과 자리를 바꿔치기(unmount/
-  // remount)하기 때문 — 상태를 MetricsTable 안에 두면 조회할 때마다 필터가
-  // 초기화돼버린다.
-  const allMetricKeys = useMemo(
-    () => new Set(METRIC_FIELDS.map((f) => f.key)),
-    [],
-  )
-  const [visibleMetrics, setVisibleMetrics] = useState({
-    byDate: allMetricKeys,
-    byDayOfWeek: allMetricKeys,
-    byGroupedWeek: allMetricKeys,
-    byCustomPeriod: allMetricKeys,
-  })
-  const toggleMetricVisible = (
-    table: keyof typeof visibleMetrics,
-    key: MetricKey,
-  ) =>
-    setVisibleMetrics((prev) => {
-      const next = new Set(prev[table])
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return { ...prev, [table]: next }
-    })
-
-  // 일별/요일별/주차별 표마다 채널 필터("전체"=combined 또는 특정 채널)도
-  // 독립적으로 둔다 — visibleMetrics와 같은 이유로 ResultPanel에 둔다.
-  const [channelFilter, setChannelFilter] = useState<{
-    byDate: 'all' | ChannelKey
-    byDayOfWeek: 'all' | ChannelKey
-    byGroupedWeek: 'all' | ChannelKey
-    byCustomPeriod: 'all' | ChannelKey
-  }>({
-    byDate: 'all',
-    byDayOfWeek: 'all',
-    byGroupedWeek: 'all',
-    byCustomPeriod: 'all',
-  })
-  const setChannelFilterFor = (
-    table: keyof typeof channelFilter,
-    value: 'all' | ChannelKey,
-  ) => setChannelFilter((prev) => ({ ...prev, [table]: value }))
-
-  // "이전 일정 vs 지정 일정" 비교표의 구간 일수(N) — 다른 상태와 같은 이유로
-  // ResultPanel에 둔다. 기본값 7은 그냥 흔한 단위(1주)일 뿐, 언제든 바꿀 수 있다.
-  // null은 입력칸을 지우는 중(아직 새 값을 안 정함) — 이때는 구간을 하나도
-  // 못 만드니 groupByCustomPeriod에 0을 넘겨 빈 배열을 받는다(그 함수의
-  // size<1 가드에 그대로 걸림 — MetricsTable이 빈 rows를 "데이터 없음"으로
-  // 보여준다).
-  const [bucketSize, setBucketSize] = useState<number | null>(7)
-  const customPeriodSource =
-    channelFilter.byCustomPeriod === 'all'
-      ? series.combined.byDate
-      : series[channelFilter.byCustomPeriod].byDate
-  const customPeriodRows = useMemo(
-    () =>
-      groupByCustomPeriod(
-        customPeriodSource,
-        dateStart,
-        dateEnd,
-        bucketSize ?? 0,
-      ),
-    [customPeriodSource, dateStart, dateEnd, bucketSize],
-  )
+  const {
+    showChannelTotal,
+    compareOn,
+    visibleMetrics,
+    channelFilter,
+    bucketSize,
+    customPeriodRows,
+    setShowChannelTotal,
+    toggleCompare,
+    toggleMetricVisible,
+    setChannelFilterFor,
+    setBucketSize,
+  } = useResultPanelViewModel(series, dateStart, dateEnd)
 
   const dayCount = dateRange(dateStart, dateEnd).length
 
@@ -1215,11 +1094,6 @@ function ResultPanel({
 // ------------------------------------------------------------------ 다중 선택 드롭다운
 // 캠페인 탭의 캠페인 선택, adset 탭의 adset 선택, 지표 선택이 공유하는 체크박스
 // 팝오버. 지표 선택엔 MetricKey를, 나머지엔 일반 string을 써서 제네릭으로 뒀다.
-interface MultiSelectOption<T extends string> {
-  key: T
-  label: string
-}
-
 function MultiSelectDropdown<T extends string>({
   options,
   selected,
@@ -1233,31 +1107,8 @@ function MultiSelectDropdown<T extends string>({
   emptyLabel: string
   countSuffix: string
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const handlePointerDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false)
-    }
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open])
-
-  const selectedOption =
-    selected.size === 1 ? options.find((o) => selected.has(o.key)) : undefined
-  const triggerLabel =
-    selected.size === 0
-      ? emptyLabel
-      : (selectedOption?.label ?? `${selected.size}${countSuffix}`)
+  const { open, ref, triggerLabel, toggleOpen } =
+    useMultiSelectDropdownViewModel(options, selected, emptyLabel, countSuffix)
 
   return (
     <div className="channel-insight__multi-select" ref={ref}>
@@ -1268,7 +1119,7 @@ function MultiSelectDropdown<T extends string>({
         }`}
         aria-haspopup="true"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggleOpen}
       >
         {triggerLabel}
         <ChevronIcon />
@@ -1345,10 +1196,6 @@ function SplitDecimalValue({ text }: { text: string }) {
     </>
   )
 }
-
-/** 캠페인/adset 탭의 "보기 단위" — 표의 첫 컬럼(행 축)을 날짜/요일/주차 중
- * 무엇으로 묶을지. */
-type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
 
 const PIVOT_VIEW_OPTIONS: readonly { value: PivotView; label: string }[] = [
   { value: 'byDate', label: '날짜별' },
@@ -1536,26 +1383,6 @@ function PivotSummary({
 }
 
 // ------------------------------------------------------------------ 캠페인/adset 전체 목록
-type FullListSortKey = 'name' | MetricKey
-
-interface FullListRow {
-  key: string
-  name: string
-  metrics: MetricsSummary
-  /** 결과 유형 — Meta 캠페인에만 있다(adset 목록·Google/Naver 캠페인은 항상 없음). */
-  resultType?: string | null
-  /** 이 캠페인/adset에 실제 데이터가 있는 채널 — ResultPanel의 applicableChannels와
-   * 같은 기준(byDate가 비어있지 않은 채널만)으로 channelsOf가 계산해 채운다. */
-  channels: readonly ChannelKey[]
-}
-
-/** CombinedCampaign/CombinedAdset(둘 다 ChannelSplitSeries 모양)에서 실제로
- * 데이터가 있는 채널만 뽑는다 — ResultPanel의 applicableChannels와 동일한 기준. */
-function channelsOf(entity: ChannelSplitSeries): ChannelKey[] {
-  return CHANNELS.filter((c) => entity[c.key].byDate.length > 0).map(
-    (c) => c.key,
-  )
-}
 
 /** 캠페인/adset 탭 전용 — PivotSummary(체크박스로 고른 항목만)와 달리, 선택 여부와
  * 무관하게 "전체" 캠페인(또는 전체 adset)을 조회 기간 전체 합계 기준(전체 요약
@@ -1570,61 +1397,19 @@ function FullListTable({
   headLabel: string
   emptyLabel: string
 }) {
-  const [sort, setSort] = useState<{ key: FullListSortKey; dir: SortDir }>({
-    key: 'name',
-    dir: 'asc',
-  })
-
-  // 채널 필터 — "전체"가 기본이고, 특정 채널을 고르면 그 채널 데이터가 있는
-  // 행만 남긴다(row.channels 기준 — 이름이 같아 여러 채널이 합쳐진 행은 그
-  // 채널이 channels 배열에 있기만 하면 보인다).
-  const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>('all')
-  const filteredRows = useMemo(
-    () =>
-      channelFilter === 'all'
-        ? rows
-        : rows.filter((r) => r.channels.includes(channelFilter)),
-    [rows, channelFilter],
-  )
-
-  // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
-  // 이름/채널 칸은 항상 보인다.
-  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<MetricKey>>(
-    () => new Set(METRIC_FIELDS.map((f) => f.key)),
-  )
-  const toggleColumn = (key: MetricKey) => {
-    setVisibleKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
+  const {
+    sort,
+    channelFilter,
+    visibleKeys,
+    showResultType,
+    hasResultType,
+    sortedRows,
+    setChannelFilter,
+    toggleColumn,
+    setShowResultType,
+    toggleSort,
+  } = useFullListTableViewModel(rows)
   const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
-
-  // 전환 목표(결과 유형) 뱃지 표시 여부 — Meta 캠페인에만 있는 값이라, 이
-  // 표에 Meta 캠페인이 하나도 없으면(예: adset 목록) 토글 자체를 안 보여준다.
-  const [showResultType, setShowResultType] = useState(true)
-  const hasResultType = filteredRows.some((r) => r.resultType)
-
-  const toggleSort = (key: FullListSortKey) => {
-    setSort((prev) =>
-      prev.key === key
-        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : // 처음 누르는 컬럼은 이름은 오름차순(가나다순)부터, 지표는 내림차순
-          // (가장 큰 값부터)부터 — 지표는 보통 "제일 높은 값"이 먼저 보고 싶은
-          // 경우가 많아서다.
-          { key, dir: key === 'name' ? 'asc' : 'desc' },
-    )
-  }
-
-  const sortedRows = useMemo(() => {
-    const dir = sort.dir === 'asc' ? 1 : -1
-    return [...filteredRows].sort((a, b) => {
-      if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
-      return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
-    })
-  }, [filteredRows, sort])
 
   return (
     <div className="channel-insight__full-list">
@@ -1787,171 +1572,40 @@ export const MetaInsight = () => {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-  const [chartOpen, setChartOpen] = useState(false)
-  const [resultTab, setResultTab] = useState<ResultTab>('total')
 
-  // adset 탭에서 "어느 캠페인의 adset을 볼지"는 단일 선택 — 캠페인 탭의 다중
-  // 선택과는 별개 상태다.
-  const [selectedCampaignName, setSelectedCampaignName] = useState<
-    string | null
-  >(null)
-  // 캠페인 탭: 캠페인 다중 선택. adset 탭: (선택된 캠페인 안의) adset 다중 선택.
-  const [selectedCampaignNames, setSelectedCampaignNames] = useState<
-    ReadonlySet<string>
-  >(() => new Set())
-  const [selectedAdsetNames, setSelectedAdsetNames] = useState<
-    ReadonlySet<string>
-  >(() => new Set())
-  // 캠페인/adset 교차표의 지표 선택 — 그래프 모달의 지표 선택(꺾은선/막대/끄기)과
-  // 같은 상태를 공유한다. 표는 "켜져 있는지"만 보고(line/bar 구분 없이), 그래프는
-  // 그 종류까지 쓴다 — 어느 쪽에서 지표를 바꾸든 서로 바로 반영된다.
-  const [metricMode, setMetricMode] = useState<
-    ReadonlyMap<MetricKey, SeriesKind>
-  >(() => new Map([['impressions', 'line']]))
-  const selectedMetricKeys: ReadonlySet<MetricKey> = new Set(metricMode.keys())
-  // 캠페인/adset 교차표의 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지.
-  const [showUnit, setShowUnit] = useState(false)
-  // 캠페인/adset 교차표의 행 축(날짜/요일/주차) — 기본은 날짜별.
-  const [pivotView, setPivotView] = useState<PivotView>('byDate')
-
-  const campaigns = combinedInsight?.byCampaign ?? []
-  // 이름이 목록에 없으면(처음 진입, 재조회로 캠페인이 바뀜 등) 첫 캠페인으로
-  // 자연스럽게 대체 — 별도 리셋 로직 없이 항상 유효한 선택을 유지한다.
-  const selectedCampaign =
-    campaigns.find((c) => c.campaignName === selectedCampaignName) ??
-    campaigns[0] ??
-    null
-  const adsets = selectedCampaign?.adsets ?? []
-
-  // 캠페인 목록 자체가 바뀌면(재조회 등) 다중 선택을 첫 캠페인 하나로 리셋한다 —
-  // 같은 목록 안에서 사용자가 전부 해제한 것(빈 선택)은 그대로 존중한다. 렌더 중
-  // 비교해서 바뀐 시점에만 반영("prop 변화에 맞춰 state 조정하기" 패턴).
-  const campaignListKey = campaigns.map((c) => c.campaignName).join('|')
-  const [syncedCampaignListKey, setSyncedCampaignListKey] = useState<
-    string | null
-  >(null)
-  if (campaignListKey !== syncedCampaignListKey) {
-    setSyncedCampaignListKey(campaignListKey)
-    setSelectedCampaignNames(
-      new Set(campaigns[0] ? [campaigns[0].campaignName] : []),
-    )
-  }
-
-  // adset 탭에서 보는 캠페인이 바뀌거나 그 adset 목록이 바뀌면 adset 다중 선택을
-  // 그 캠페인의 첫 adset 하나로 리셋한다.
-  const adsetListKey = `${selectedCampaign?.campaignName ?? ''}::${adsets
-    .map((a) => a.adsetName)
-    .join('|')}`
-  const [syncedAdsetListKey, setSyncedAdsetListKey] = useState<string | null>(
-    null,
-  )
-  if (adsetListKey !== syncedAdsetListKey) {
-    setSyncedAdsetListKey(adsetListKey)
-    setSelectedAdsetNames(new Set(adsets[0] ? [adsets[0].adsetName] : []))
-  }
-
-  const toggleCampaignMulti = (name: string) => {
-    setSelectedCampaignNames((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
-  const toggleAdsetMulti = (name: string) => {
-    setSelectedAdsetNames((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
-  // 표의 체크박스는 켬/끔만 다룬다 — 새로 켤 때는 그래프 쪽 기본값과 맞춰
-  // "꺾은선"으로 시작한다.
-  const toggleMetric = (key: MetricKey) => {
-    setMetricMode((prev) => {
-      const next = new Map(prev)
-      if (next.has(key)) next.delete(key)
-      else next.set(key, 'line')
-      return next
-    })
-  }
-  // 그래프 쪽은 종류(꺾은선/막대/끄기)까지 다룬다.
-  const setMetricModeFor = (key: MetricKey, mode: MetricMode) => {
-    setMetricMode((prev) => {
-      const next = new Map(prev)
-      if (mode === 'off') next.delete(key)
-      else next.set(key, mode)
-      return next
-    })
-  }
-  const clearAllMetrics = () => setMetricMode(new Map())
-
-  const periodLabel = `${dateStart} ~ ${dateEnd}`
-  const canonicalDates =
-    combinedInsight?.series.combined.byDate.map((d) => d.date) ?? []
-  const metricKeyList = [...selectedMetricKeys]
-
-  // 그래프 모달이 고를 수 있는 전체 후보 — 표에서 체크된 것만 보여주면 표에서
-  // 뺀 캠페인/adset은 그래프에서 아예 볼 수 없게 되므로, 항상 그 탭의 전체
-  // 목록을 넘긴다(전체 요약 탭은 계정 전체 하나뿐). 어떤 걸 볼지는 모달 안의
-  // 그룹 드롭다운이 따로 고른다. CombinedCampaign/CombinedAdset이 이미
-  // ChannelSplitSeries 모양(combined/meta/google)을 그대로 갖고 있어 series로
-  // 바로 넘길 수 있다.
-  const chartGroups: ChartGroup[] = !combinedInsight
-    ? []
-    : resultTab === 'total'
-      ? [{ key: 'total', label: '전체 요약', series: combinedInsight.series }]
-      : resultTab === 'campaign'
-        ? campaigns.map((c) => ({
-            key: c.campaignName,
-            label: c.campaignName,
-            series: c,
-          }))
-        : adsets.map((a) => ({
-            key: a.adsetName,
-            label: a.adsetName,
-            series: a,
-          }))
-
-  // 모달을 처음 열 때 기본으로 켜둘 그룹 — 표에서 이미 체크해둔 것들과 같은
-  // 화면으로 시작한다. 그 뒤로는 그래프 안에서 자유롭게 더 고를 수 있다.
-  const chartDefaultActiveGroupKeys: readonly string[] =
-    resultTab === 'total'
-      ? ['total']
-      : resultTab === 'campaign'
-        ? [...selectedCampaignNames]
-        : [...selectedAdsetNames]
-
-  // ------------------------------------------------------------------ 엑셀 다운로드
-  const [excelExportOpen, setExcelExportOpen] = useState(false)
-
-  const channelLabelsOf = (entity: ChannelSplitSeries): string =>
-    channelsOf(entity)
-      .map((k) => CHANNELS.find((c) => c.key === k)?.label ?? k)
-      .join(', ')
-
-  // 채널 필터 등 화면 토글 상태와 무관하게 항상 전체 데이터를 담는다(엑셀에서
-  // 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다). combined.byDate/byDayOfWeek/
-  // byGroupedWeek는 이미 각 캠페인/adset(ChannelSplitSeries 모양)이 갖고 있어
-  // 그대로 넘기고, 채널 라벨 문자열만 미리 계산해서 얹는다.
-  const excelTotal = combinedInsight?.total ?? {
-    combined: emptyMetrics(),
-    meta: emptyMetrics(),
-    google: emptyMetrics(),
-    naver: emptyMetrics(),
-  }
-  const excelSeries: ChannelSplitSeries = combinedInsight?.series ?? {
-    combined: emptySeries(),
-    meta: emptySeries(),
-    google: emptySeries(),
-    naver: emptySeries(),
-  }
-  const excelCampaigns: ExportCampaign[] = campaigns.map((c) => ({
-    ...c,
-    channelLabel: channelLabelsOf(c),
-    adsets: c.adsets.map((a) => ({ ...a, channelLabel: channelLabelsOf(a) })),
-  }))
+  const {
+    chartOpen,
+    resultTab,
+    selectedCampaignNames,
+    selectedAdsetNames,
+    metricMode,
+    selectedMetricKeys,
+    showUnit,
+    pivotView,
+    campaigns,
+    selectedCampaign,
+    adsets,
+    periodLabel,
+    canonicalDates,
+    metricKeyList,
+    chartGroups,
+    chartDefaultActiveGroupKeys,
+    excelExportOpen,
+    excelTotal,
+    excelSeries,
+    excelCampaigns,
+    setChartOpen,
+    setResultTab,
+    setSelectedCampaignName,
+    toggleCampaignMulti,
+    toggleAdsetMulti,
+    toggleMetric,
+    setMetricModeFor,
+    clearAllMetrics,
+    setShowUnit,
+    setPivotView,
+    setExcelExportOpen,
+  } = useMetaInsightPageViewModel(combinedInsight, dateStart, dateEnd)
 
   return (
     <div className="channel-insight">
