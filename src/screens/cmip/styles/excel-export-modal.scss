@@ -81,10 +81,49 @@ $radius-lg: 8px;
     color: $color-muted;
   }
 
+  &__desc {
+    margin: -4px 0 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: $color-muted;
+  }
+
   &__chip-row {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+  }
+
+  &__period-size {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: $color-muted;
+
+    input {
+      appearance: none;
+      width: 56px;
+      border: 1px solid $color-border;
+      border-radius: $radius;
+      background: $color-canvas-subtle;
+      color: $color-text;
+      padding: 6px 8px;
+      font-size: 13px;
+      font-family: inherit;
+      text-align: center;
+
+      &:focus {
+        outline: none;
+        border-color: $color-accent;
+      }
+
+      &::-webkit-inner-spin-button,
+      &::-webkit-outer-spin-button {
+        appearance: none;
+        margin: 0;
+      }
+    }
   }
 
   // 지표 토글 버튼(meta-insight.tsx의 full-list-toggle-btn)과 같은

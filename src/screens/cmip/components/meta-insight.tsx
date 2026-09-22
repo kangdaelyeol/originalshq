@@ -22,6 +22,7 @@ import type {
 import {
   aggregateMetrics,
   emptyMetrics,
+  emptySeries,
   groupByCustomPeriod,
   groupByDayOfWeek,
   groupByWeek,
@@ -36,11 +37,7 @@ import {
   type SeriesKind,
   type MetricMode,
 } from './meta-insight-chart-modal'
-import type {
-  ExcelAdsetRow,
-  ExcelCampaignRow,
-  ExcelDailyRow,
-} from './excel-export-modal'
+import type { ExportCampaign } from './excel-export-modal'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
@@ -1934,27 +1931,21 @@ export const MetaInsight = () => {
       .map((k) => CHANNELS.find((c) => c.key === k)?.label ?? k)
       .join(', ')
 
-  // 세 후보 시트 모두 "전체 캠페인 합계 요약"/"전체 광고셋" 표(FullListTable)와
-  // 같은 소스에서 뽑는다 — 채널 필터 등 화면 토글 상태와 무관하게 항상 전체
-  // 데이터를 담는다(엑셀에서 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다).
-  const excelDailyRows: ExcelDailyRow[] =
-    combinedInsight?.series.combined.byDate.map((d) => ({
-      date: d.date,
-      metrics: d,
-    })) ?? []
-  const excelCampaignRows: ExcelCampaignRow[] = campaigns.map((c) => ({
-    name: c.campaignName,
-    channels: channelLabelsOf(c),
-    resultType: c.resultType ?? '',
-    metrics: aggregateMetrics(c.combined.byDate),
+  // 채널 필터 등 화면 토글 상태와 무관하게 항상 전체 데이터를 담는다(엑셀에서
+  // 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다). combined.byDate/byDayOfWeek/
+  // byGroupedWeek는 이미 각 캠페인/adset(ChannelSplitSeries 모양)이 갖고 있어
+  // 그대로 넘기고, 채널 라벨 문자열만 미리 계산해서 얹는다.
+  const excelSeries: ChannelSplitSeries = combinedInsight?.series ?? {
+    combined: emptySeries(),
+    meta: emptySeries(),
+    google: emptySeries(),
+    naver: emptySeries(),
+  }
+  const excelCampaigns: ExportCampaign[] = campaigns.map((c) => ({
+    ...c,
+    channelLabel: channelLabelsOf(c),
+    adsets: c.adsets.map((a) => ({ ...a, channelLabel: channelLabelsOf(a) })),
   }))
-  const excelAdsetRows: ExcelAdsetRow[] = campaigns.flatMap((c) =>
-    c.adsets.map((a) => ({
-      name: a.adsetName,
-      channels: channelLabelsOf(a),
-      metrics: aggregateMetrics(a.combined.byDate),
-    })),
-  )
 
   return (
     <div className="channel-insight">
@@ -2259,9 +2250,8 @@ export const MetaInsight = () => {
             onClose={() => setExcelExportOpen(false)}
             dateStart={dateStart}
             dateEnd={dateEnd}
-            dailyRows={excelDailyRows}
-            campaignRows={excelCampaignRows}
-            adsetRows={excelAdsetRows}
+            series={excelSeries}
+            campaigns={excelCampaigns}
           />
         </Suspense>
       )}
