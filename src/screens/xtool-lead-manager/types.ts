@@ -50,8 +50,12 @@ export type CreateLeadFormValues = {
   remarks: string
   createdAt: string // <input type="datetime-local"> 바인딩용 문자열
   /** 접수 기기 — 그냥 "등록"(고객 정보만)에서도 최초 접수에 실어 보내고,
-   * "상담 등록"(고객 정보 + 상담 동시 등록)에서는 상담 기기로도 그대로 쓴다. */
+   * "상담 등록"/"구매 등록"(고객 정보 + 상담/구매 동시 등록)에서는 상담/구매
+   * 기기로도 그대로 쓴다. */
   device: Device
+  /** "구매 등록"에서만 쓰는 구매 금액 — 나머지 버튼("등록"/"상담 등록")에는
+   * 필요 없어 빈 문자열로 둬도 무방하다. */
+  price: string
 }
 
 export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
@@ -67,6 +71,7 @@ export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
   remarks: '',
   createdAt: '',
   device: 'F2Ultra',
+  price: '',
 }
 
 /** 상담/구매 "등록" 확인 모달에서 쓰는 최소 입력폼 — price는 구매 등록에서만 쓴다. */

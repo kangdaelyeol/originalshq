@@ -1,7 +1,7 @@
 import * as crypto from 'crypto'
 import * as logger from 'firebase-functions/logger'
 import { Lead, Device } from './types'
-import { getActionSource } from './utils'
+import { getActionSource, type ActionSource } from './utils'
 
 export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
   F2Ultra: 104500,
@@ -50,8 +50,8 @@ type SendMetaEventParams = {
 }
 
 type SendMetaEventResult =
-  | { ok: true; result: unknown }
-  | { ok: false; result: unknown }
+  | { ok: true; result: unknown; actionSource: ActionSource; eventId?: string }
+  | { ok: false; result: unknown; actionSource: ActionSource }
 
 export const sendMetaEvent = async ({
   pixelId,
@@ -104,9 +104,9 @@ export const sendMetaEvent = async ({
 
   if (!response.ok) {
     logger.error(`Meta CAPI(${eventName}) 전송 실패:`, result)
-    return { ok: false, result }
+    return { ok: false, result, actionSource }
   }
 
   logger.info(`Meta CAPI(${eventName}) 전송 성공:`, result)
-  return { ok: true, result }
+  return { ok: true, result, actionSource, eventId }
 }

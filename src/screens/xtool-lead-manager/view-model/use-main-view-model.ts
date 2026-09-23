@@ -571,6 +571,51 @@ export const useMainViewModel = () => {
     setIsSubmitting(false)
   }
 
+  // "구매 등록"도 같은 방식이지만, 이 흐름은 상담/접수 과정 없이 바로 구매만
+  // 확정된 경우를 위한 것이라(예: 기존 채널로 이미 구매 의사를 확인한 고객을
+  // CS가 사후에 시스템에 입력하는 경우) 상담(contactLead)은 등록하지 않고
+  // 구매(purchaseLead)만 이어서 호출한다 — 고객 정보 생성은 어차피 최초 접수
+  // 1건을 같이 만들지만(리드 생성 자체의 고정 동작), 상담 이력은 안 남긴다.
+  const handleCreateLeadAndPurchaseClick = async () => {
+    const price = Number(createForm.price)
+    if (!createForm.price || Number.isNaN(price) || price <= 0) {
+      console.error('구매 등록에는 0보다 큰 price가 필요합니다')
+      showToast('error')
+      return
+    }
+
+    setIsSubmitting(true)
+    const body = buildCreateLeadBody()
+    const createRes = await leadClient.create(body)
+
+    if (!createRes.ok) {
+      console.error(createRes.error)
+      showToast('error')
+      setIsSubmitting(false)
+      return
+    }
+
+    const purchaseRes = await leadClient.registerPurchase({
+      id: createRes.data.id,
+      device: createForm.device,
+      price,
+      at: body.createdAt,
+    })
+
+    await fetchLeads()
+    closeCreateModal()
+
+    if (!purchaseRes.ok) {
+      console.error(purchaseRes.error)
+      showToast('partial')
+      setIsSubmitting(false)
+      return
+    }
+
+    showToast('registered')
+    setIsSubmitting(false)
+  }
+
   return {
     state: {
       allChecked,
@@ -616,6 +661,7 @@ export const useMainViewModel = () => {
       closeCreateModal,
       handleCreateLeadClick,
       handleCreateLeadAndConsultClick,
+      handleCreateLeadAndPurchaseClick,
       updateField,
     },
     component: {

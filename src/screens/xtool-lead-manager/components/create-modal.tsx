@@ -13,6 +13,9 @@ interface CreateModalActions {
   handleCreateLeadClick: () => Promise<void>
   /** 고객 정보 등록 + 상담 등록(Meta CAPI 포함)을 한 번에 처리한다. */
   handleCreateLeadAndConsultClick: () => Promise<void>
+  /** 고객 정보 등록 + 구매 등록(Meta CAPI 포함)을 한 번에 처리한다 — 상담/접수
+   * 과정 없이 구매만 확정된 경우용이라 상담은 등록하지 않는다. */
+  handleCreateLeadAndPurchaseClick: () => Promise<void>
 }
 
 interface CreateModalProps {
@@ -44,6 +47,7 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
     updateField,
     handleCreateLeadClick,
     handleCreateLeadAndConsultClick,
+    handleCreateLeadAndPurchaseClick,
   } = actions
 
   return (
@@ -153,7 +157,7 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
           />
         </FormRow>
 
-        {/* 접수 기기 — "상담 등록"을 누르면 이 값이 상담 기기로도 그대로 쓰인다. */}
+        {/* 접수 기기 — "상담 등록"/"구매 등록"을 누르면 이 값이 그대로 쓰인다. */}
         <FormRow label="기기" htmlFor="lead-device">
           <select
             id="lead-device"
@@ -167,6 +171,19 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
               </option>
             ))}
           </select>
+        </FormRow>
+
+        {/* "구매 등록"에서만 쓴다 — 나머지 버튼("등록"/"상담 등록")은 무시. */}
+        <FormRow label="구매 금액" htmlFor="lead-price">
+          <input
+            id="lead-price"
+            type="number"
+            min={0}
+            placeholder="원"
+            className={styles.control}
+            value={form.price}
+            onChange={(e) => updateField('price', e.target.value)}
+          />
         </FormRow>
 
         <div className={styles.footer}>
@@ -190,6 +207,13 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
             disabled={isSubmitting}
           >
             {isSubmitting ? '등록 중...' : '상담 등록'}
+          </button>
+          <button
+            className={`${styles.btn} ${styles['btn--primary']}`}
+            onClick={handleCreateLeadAndPurchaseClick}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? '등록 중...' : '구매 등록'}
           </button>
         </div>
       </div>

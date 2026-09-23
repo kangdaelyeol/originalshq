@@ -35,12 +35,16 @@ export type ConsultationRecord = {
   eventId?: string
 }
 
-/** 구매 1건. */
+/** 구매 1건. externalId/eventId는 ConsultationRecord와 같은 이유(이 구매를
+ * 등록할 때 Meta CAPI에 실제로 실어 보낸 값의 스냅샷 — 이벤트 매니저와
+ * 대조용)로 둔다. */
 export type PurchaseRecord = {
   id: string
   at: number
   device: Device
   price: number
+  externalId?: string
+  eventId?: string
 }
 
 export type Lead = {

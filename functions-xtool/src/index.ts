@@ -273,6 +273,17 @@ export const contactLead = onRequest(
           externalId: lead.externalId ?? '',
         })
 
+        logger.info('contactLead 성공:', {
+          leadId: id,
+          recordId: record.id,
+          device,
+          at: new Date(record.at).toISOString(),
+          actionSource: capiResult.actionSource,
+          eventId: capiResult.eventId,
+          externalId: lead.externalId,
+          testEventCode: testEventCode ?? null,
+        })
+
         response.status(200).send({
           id: snapshot.id,
           ...lead,
@@ -323,6 +334,7 @@ export const purchaseLead = onRequest(
         if (!hasEid) lead.externalId = generateExternalId(lead.ph)
 
         const eventTimeMs = at ?? Date.now()
+        const eventId = generateEventId()
 
         const capiResult = await sendMetaEvent({
           pixelId: metaPixelId.value(),
@@ -332,6 +344,7 @@ export const purchaseLead = onRequest(
           testEventCode,
           customData: { currency: 'KRW', value: price },
           eventTimeMs,
+          eventId,
         })
 
         if (!capiResult.ok) {
@@ -346,12 +359,26 @@ export const purchaseLead = onRequest(
           at: eventTimeMs,
           device,
           price,
+          externalId: lead.externalId,
+          eventId,
         }
         const purchases = [...(lead.purchases ?? []), record]
 
         await docRef.update({
           purchases,
           externalId: lead.externalId ?? '',
+        })
+
+        logger.info('purchaseLead 성공:', {
+          leadId: id,
+          recordId: record.id,
+          device,
+          price,
+          at: new Date(record.at).toISOString(),
+          actionSource: capiResult.actionSource,
+          eventId: capiResult.eventId,
+          externalId: lead.externalId,
+          testEventCode: testEventCode ?? null,
         })
 
         response.status(200).send({
@@ -648,6 +675,21 @@ export const resendConsultation = onRequest(
         await docRef.update({
           consultations,
           externalId: lead.externalId ?? '',
+        })
+
+        // action_source가 이번엔 뭘로 나갔는지(website인지 physical_store인지)를
+        // 포함해서 남긴다 — Firebase 콘솔 로그에서 이 재전송이 실제로 광고 성과
+        // 측정에 잡힐 건인지를 sendMetaEvent 내부 로그(원본 응답만 찍힘)와 별개로
+        // 바로 확인할 수 있게 하기 위함.
+        logger.info('resendConsultation 성공:', {
+          leadId: id,
+          recordId,
+          device: target.device,
+          at: new Date(target.at).toISOString(),
+          actionSource: capiResult.actionSource,
+          eventId: capiResult.eventId,
+          externalId: lead.externalId,
+          testEventCode: testEventCode ?? null,
         })
 
         response.status(200).send({

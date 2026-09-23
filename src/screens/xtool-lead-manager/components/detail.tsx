@@ -471,30 +471,39 @@ function PurchaseRow({ leadId, record, onUpdate, onDelete }: PurchaseRowProps) {
   }
 
   return (
-    <div className="record_row">
-      <span className="device">{record.device}</span>
-      <span className="price">{record.price.toLocaleString('ko-KR')}원</span>
-      <span className="at">{formatTime(record.at)}</span>
-      <div className="record_actions">
-        <button
-          type="button"
-          className="icon_btn"
-          onClick={() => setEditing(true)}
-        >
-          <EditIcon />
-        </button>
-        <button
-          type="button"
-          className="icon_btn danger"
-          onClick={() => {
-            if (window.confirm('이 구매 기록을 삭제할까요?')) {
-              onDelete(leadId, record.id)
-            }
-          }}
-        >
-          <DeleteIcon />
-        </button>
+    <div className="record_row_wrap">
+      <div className="record_row">
+        <span className="device">{record.device}</span>
+        <span className="price">{record.price.toLocaleString('ko-KR')}원</span>
+        <span className="at">{formatTime(record.at)}</span>
+        <div className="record_actions">
+          <button
+            type="button"
+            className="icon_btn"
+            onClick={() => setEditing(true)}
+          >
+            <EditIcon />
+          </button>
+          <button
+            type="button"
+            className="icon_btn danger"
+            onClick={() => {
+              if (window.confirm('이 구매 기록을 삭제할까요?')) {
+                onDelete(leadId, record.id)
+              }
+            }}
+          >
+            <DeleteIcon />
+          </button>
+        </div>
       </div>
+      {/* ConsultationRow와 같은 이유 — CAPI로 실제 보낸 값의 스냅샷. */}
+      {(record.eventId || record.externalId) && (
+        <div className="record_meta">
+          {record.eventId && <span>event_id: {record.eventId}</span>}
+          {record.externalId && <span>external_id: {record.externalId}</span>}
+        </div>
+      )}
     </div>
   )
 }
