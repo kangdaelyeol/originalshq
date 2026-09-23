@@ -149,6 +149,25 @@ const DeleteIcon = () => (
   </svg>
 )
 
+const ResendIcon = () => (
+  <svg viewBox="0 0 20 20" fill="none">
+    <path
+      d="M4 10a6 6 0 0 1 10.24-4.24M16 10a6 6 0 0 1-10.24 4.24"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M14.5 3v3h-3M5.5 17v-3h3"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+)
+
 const EditIcon = () => (
   <svg viewBox="0 0 20 20" fill="none">
     <path
@@ -267,6 +286,7 @@ interface ConsultationRowProps {
     updates: { at?: number; device?: Device },
   ) => Promise<void>
   onDelete: (leadId: string, recordId: string) => Promise<void>
+  onResend: (leadId: string, recordId: string) => Promise<void>
 }
 
 function ConsultationRow({
@@ -274,6 +294,7 @@ function ConsultationRow({
   record,
   onUpdate,
   onDelete,
+  onResend,
 }: ConsultationRowProps) {
   const [editing, setEditing] = useState(false)
   const [device, setDevice] = useState<Device>(record.device)
@@ -326,29 +347,52 @@ function ConsultationRow({
   }
 
   return (
-    <div className="record_row">
-      <span className="device">{record.device}</span>
-      <span className="at">{formatTime(record.at)}</span>
-      <div className="record_actions">
-        <button
-          type="button"
-          className="icon_btn"
-          onClick={() => setEditing(true)}
-        >
-          <EditIcon />
-        </button>
-        <button
-          type="button"
-          className="icon_btn danger"
-          onClick={() => {
-            if (window.confirm('이 상담 기록을 삭제할까요?')) {
-              onDelete(leadId, record.id)
-            }
-          }}
-        >
-          <DeleteIcon />
-        </button>
+    <div className="record_row_wrap">
+      <div className="record_row">
+        <span className="device">{record.device}</span>
+        <span className="at">{formatTime(record.at)}</span>
+        <div className="record_actions">
+          <button
+            type="button"
+            className="icon_btn"
+            title="Meta CAPI 이벤트 다시 보내기"
+            onClick={() => {
+              if (window.confirm('이 상담 건의 Meta 이벤트를 다시 보낼까요?')) {
+                onResend(leadId, record.id)
+              }
+            }}
+          >
+            <ResendIcon />
+          </button>
+          <button
+            type="button"
+            className="icon_btn"
+            onClick={() => setEditing(true)}
+          >
+            <EditIcon />
+          </button>
+          <button
+            type="button"
+            className="icon_btn danger"
+            onClick={() => {
+              if (window.confirm('이 상담 기록을 삭제할까요?')) {
+                onDelete(leadId, record.id)
+              }
+            }}
+          >
+            <DeleteIcon />
+          </button>
+        </div>
       </div>
+      {/* CAPI로 마지막에 실제 보낸 값의 스냅샷 — 이벤트 매니저에서 이
+          상담 건이 어느 이벤트로 잡혔는지 대조해볼 때 쓴다. 둘 다 없으면
+          (마이그레이션 전 레코드) 아예 안 보여준다. */}
+      {(record.eventId || record.externalId) && (
+        <div className="record_meta">
+          {record.eventId && <span>event_id: {record.eventId}</span>}
+          {record.externalId && <span>external_id: {record.externalId}</span>}
+        </div>
+      )}
     </div>
   )
 }
@@ -462,6 +506,7 @@ export const Detail = ({
   onDeleteIntake,
   onUpdateConsultation,
   onDeleteConsultation,
+  onResendConsultation,
   onUpdatePurchase,
   onDeletePurchase,
   onRegisterConsultation,
@@ -483,6 +528,7 @@ export const Detail = ({
     updates: { at?: number; device?: Device },
   ) => Promise<void>
   onDeleteConsultation: (leadId: string, recordId: string) => Promise<void>
+  onResendConsultation: (leadId: string, recordId: string) => Promise<void>
   onUpdatePurchase: (
     leadId: string,
     recordId: string,
@@ -616,6 +662,7 @@ export const Detail = ({
                     record={record}
                     onUpdate={onUpdateConsultation}
                     onDelete={onDeleteConsultation}
+                    onResend={onResendConsultation}
                   />
                 ))}
               </div>

@@ -8,6 +8,7 @@ import { defineSecret } from 'firebase-functions/params'
 import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import {
+  generateEventId,
   generateExternalId,
   generateRecordId,
   normalizeDomesticPhone,
@@ -19,6 +20,7 @@ import {
   validateDeleteLead,
   validateDeleteRecord,
   validatePurchaseLead,
+  validateResendConsultation,
   validateUpdateConsultation,
   validateUpdateIntake,
   validateUpdateLeadFn,
@@ -232,6 +234,7 @@ export const contactLead = onRequest(
         if (!hasEid) lead.externalId = generateExternalId(lead.ph)
 
         const eventTimeMs = at ?? Date.now()
+        const eventId = generateEventId()
 
         const capiResult = await sendMetaEvent({
           pixelId: metaPixelId.value(),
@@ -244,6 +247,7 @@ export const contactLead = onRequest(
             value: DEVICE_EXPECTED_VALUE[device],
           },
           eventTimeMs,
+          eventId,
         })
 
         if (!capiResult.ok) {
@@ -257,6 +261,8 @@ export const contactLead = onRequest(
           id: generateRecordId(),
           at: eventTimeMs,
           device,
+          externalId: lead.externalId,
+          eventId,
         }
         // Firestore는 배열 원소를 부분 수정할 수 없어, 전체를 읽어 append한
         // 뒤 통째로 되쓴다(data/importer.ts의 read-modify-write와 같은 결).
@@ -552,6 +558,110 @@ export const deleteConsultation = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// resendConsultation — 상담 이력 1건의 Meta CAPI "Contact" 이벤트를 다시
+// 보낸다. 새 이력을 추가하지 않고 그 레코드의 device/at을 그대로 재사용해
+// 이벤트만 다시 쏜다 — 주로 (1) 이전에 전송이 실패했던 건 재시도, (2)
+// getActionSource 버그로 잘못 physical_store로 나갔던 7일 이내 건을 고친
+// 코드로 다시 보내 website로 바로잡는 용도. 보낼 때마다 event_id를 새로
+// 발급해 externalId/eventId를 그 레코드에 덮어쓴다(마지막으로 어떤 값으로
+// 보냈는지가 남아야 이벤트 매니저와 대조할 수 있다).
+// ────────────────────────────────
+export const resendConsultation = onRequest(
+  { secrets: [metaPixelId, metaAccessToken] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const validationRes = validateResendConsultation(request.body)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
+
+        const { id, recordId, testEventCode } = validationRes.data
+
+        const docRef = db.collection('lead').doc(id)
+        const snapshot = await docRef.get()
+
+        if (!snapshot.exists) {
+          response.status(404).send({ error: 'lead not found' })
+          return
+        }
+
+        const lead = snapshot.data() as Omit<Lead, 'id'>
+        const target = (lead.consultations ?? []).find((c) => c.id === recordId)
+
+        if (!target) {
+          response.status(404).send({ error: 'consultation record not found' })
+          return
+        }
+
+        if (!lead.ph) {
+          response.status(400).send({ error: 'lead has no ph to contact' })
+          return
+        }
+
+        const hasEid = hasExternalId(lead)
+        if (!hasEid) lead.externalId = generateExternalId(lead.ph)
+
+        const eventId = generateEventId()
+
+        // event_time은 원래 상담 시각(target.at) 그대로 쓴다 — 재전송이라고
+        // "지금"으로 새로 잡으면 실제로 언제 상담했는지가 아니라 언제
+        // 재전송했는지가 기록돼버린다. getActionSource도 이 시각 기준으로
+        // 다시 계산되므로, 상담 이후 7일이 지났다면(원래 등록 때 버그로
+        // physical_store로 나갔던 것과 무관하게) 여전히 physical_store로
+        // 나간다 — 이건 API의 하드 제약이라 재전송으로도 못 바꾼다.
+        const capiResult = await sendMetaEvent({
+          pixelId: metaPixelId.value(),
+          accessToken: metaAccessToken.value(),
+          eventName: 'Contact',
+          lead,
+          testEventCode,
+          customData: {
+            currency: 'KRW',
+            value: DEVICE_EXPECTED_VALUE[target.device],
+          },
+          eventTimeMs: target.at,
+          eventId,
+        })
+
+        if (!capiResult.ok) {
+          response
+            .status(502)
+            .send({ error: 'Meta CAPI 전송 실패', detail: capiResult.result })
+          return
+        }
+
+        const consultations = (lead.consultations ?? []).map((c) =>
+          c.id === recordId
+            ? { ...c, externalId: lead.externalId, eventId }
+            : c,
+        )
+
+        await docRef.update({
+          consultations,
+          externalId: lead.externalId ?? '',
+        })
+
+        response.status(200).send({
+          id: snapshot.id,
+          ...lead,
+          consultations,
+        })
+      } catch (error) {
+        logger.error('resendConsultation 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
 
 export const updatePurchase = onRequest((request, response) => {
   corsHandler(request, response, async () => {

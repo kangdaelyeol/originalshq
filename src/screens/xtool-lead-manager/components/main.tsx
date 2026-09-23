@@ -29,6 +29,7 @@ export const Main = () => {
     deleteIntakeRecord,
     updateConsultationRecord,
     deleteConsultationRecord,
+    resendConsultationRecord,
     updatePurchaseRecord,
     deletePurchaseRecord,
     registerConsultationRow,
@@ -63,6 +64,7 @@ export const Main = () => {
           onDeleteIntake={deleteIntakeRecord}
           onUpdateConsultation={updateConsultationRecord}
           onDeleteConsultation={deleteConsultationRecord}
+          onResendConsultation={resendConsultationRecord}
           onUpdatePurchase={updatePurchaseRecord}
           onDeletePurchase={deletePurchaseRecord}
           onRegisterConsultation={() => registerConsultationRow(detail.id)}

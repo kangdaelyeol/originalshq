@@ -429,6 +429,25 @@ export const useMainViewModel = () => {
     setLoading(false)
   }
 
+  // 상담 이력 1건의 Meta CAPI 이벤트를 다시 보낸다(새 이력 추가 아님) —
+  // 전송 실패 재시도, 또는 getActionSource 버그로 잘못 나간 과거 건을 고친
+  // 코드로 다시 보내 바로잡는 용도.
+  const resendConsultationRecord = async (leadId: string, recordId: string) => {
+    setLoading(true)
+    const res = await leadClient.resendConsultation({ id: leadId, recordId })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('updated')
+    setLoading(false)
+  }
+
   const updatePurchaseRecord = async (
     leadId: string,
     recordId: string,
@@ -589,6 +608,7 @@ export const useMainViewModel = () => {
       deleteIntakeRecord,
       updateConsultationRecord,
       deleteConsultationRecord,
+      resendConsultationRecord,
       updatePurchaseRecord,
       deletePurchaseRecord,
       toggleSort,

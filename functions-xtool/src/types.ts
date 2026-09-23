@@ -22,11 +22,17 @@ export type IntakeRecord = {
   device?: Device
 }
 
-/** 상담 1건 — 상담/구매를 여러 번 할 수 있어 리드 최상위가 아니라 배열 원소로 둔다. */
+/** 상담 1건 — 상담/구매를 여러 번 할 수 있어 리드 최상위가 아니라 배열 원소로 둔다.
+ * externalId/eventId는 이 상담을 등록(또는 재전송)할 때 Meta CAPI에 실제로
+ * 실어 보낸 값의 스냅샷 — 나중에 "이 상담 건이 정확히 어떤 이벤트로 잡혔는지"
+ * 이벤트 매니저에서 대조해볼 수 있도록 남겨둔다. 재전송하면 그때 값으로
+ * 덮어쓴다. */
 export type ConsultationRecord = {
   id: string
   at: number
   device: Device
+  externalId?: string
+  eventId?: string
 }
 
 /** 구매 1건. */

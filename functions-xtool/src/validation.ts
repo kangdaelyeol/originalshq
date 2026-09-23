@@ -150,6 +150,34 @@ export const validatePurchaseLead = (
   }
 }
 
+/** 상담 이력 1건의 Meta CAPI 이벤트 재전송 — device/at은 요청에서 새로
+ * 받지 않고 저장된 그 레코드 값을 그대로 쓴다(호출부에서 조회 후 사용).
+ * id/recordId만 있으면 되고 test_event_code는 선택. */
+export const validateResendConsultation = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  recordId: string
+  testEventCode?: string
+}> => {
+  const { id, recordId } = body as { id?: string; recordId?: string }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (!recordId || typeof recordId !== 'string') {
+    return { ok: false, error: 'recordId is required' }
+  }
+
+  const testEventCodeRes = parseTestEventCode(body)
+  if (!testEventCodeRes.ok) return testEventCodeRes
+
+  return {
+    ok: true,
+    data: { id, recordId, testEventCode: testEventCodeRes.data },
+  }
+}
+
 /** 접수/consultation/purchase 개별 항목 수정 — 전부 선택값이지만(부분 수정
  * 허용), 뭘 고칠지 하나도 없으면 의미가 없으니 최소 하나는 와야 한다. */
 export const validateUpdateIntake = (

@@ -43,6 +43,10 @@ type SendMetaEventParams = {
    * 이벤트마다 값이 달라서 호출부에서 그때그때 받아온다. 최상위(data와 형제)
    * 필드라 event 객체 안이 아니라 payload 바로 아래 넣어야 한다. */
   testEventCode?: string
+  /** data[].event_id — 넘기면 그대로 실어 보낸다(호출부가 utils.generateEventId로
+   * 미리 발급) — 호출부가 그 값을 응답 후 레코드에 저장해 "이 이벤트가 실제로
+   * 뭘로 잡혔는지" 나중에 이벤트 매니저와 대조할 수 있게 한다. */
+  eventId?: string
 }
 
 type SendMetaEventResult =
@@ -57,6 +61,7 @@ export const sendMetaEvent = async ({
   customData,
   eventTimeMs,
   testEventCode,
+  eventId,
 }: SendMetaEventParams): Promise<SendMetaEventResult> => {
   const eventTime = Math.floor(eventTimeMs / 1000)
 
@@ -68,6 +73,7 @@ export const sendMetaEvent = async ({
         event_name: eventName,
         event_time: eventTime,
         action_source: actionSource,
+        ...(eventId ? { event_id: eventId } : {}),
         ...(customData ? { custom_data: customData } : {}),
         user_data: {
           ph: hashPhoneVariants(lead.ph),

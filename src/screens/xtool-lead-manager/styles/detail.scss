@@ -264,6 +264,26 @@
         gap: 6px;
       }
 
+      // 상담 이력만 event_id/external_id 스냅샷을 같이 보여줄 수 있어 record_row
+      // 하나를 감싸는 래퍼가 필요하다(record_list의 직계 자식) — record_row
+      // 자체 레이아웃(flex row)은 그대로 두고 메타 줄만 그 아래 별도로 둔다.
+      .record_row_wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .record_meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 0 10px;
+        font-family: variables.$font-mono;
+        font-size: 10.5px;
+        color: variables.$color-text-faint;
+        word-break: break-all;
+      }
+
       .record_row {
         box-sizing: border-box;
         display: flex;

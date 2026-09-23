@@ -98,6 +98,8 @@ export const leadClient = {
     post('deleteIntake', body),
   registerConsultation: (body: Record<string, unknown>) =>
     post('contactLead', body),
+  resendConsultation: (body: Record<string, unknown>) =>
+    post('resendConsultation', body),
   registerPurchase: (body: Record<string, unknown>) =>
     post('purchaseLead', body),
   updateConsultation: (body: Record<string, unknown>) =>
