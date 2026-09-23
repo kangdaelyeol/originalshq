@@ -20,7 +20,7 @@ import {
   validateDeleteLead,
   validateDeleteRecord,
   validatePurchaseLead,
-  validateResendConsultation,
+  validateResendRecord,
   validateUpdateConsultation,
   validateUpdateIntake,
   validateUpdateLeadFn,
@@ -605,7 +605,7 @@ export const resendConsultation = onRequest(
           return
         }
 
-        const validationRes = validateResendConsultation(request.body)
+        const validationRes = validateResendRecord(request.body)
         if (!validationRes.ok) {
           response.status(400).send({ error: validationRes.error })
           return
@@ -796,6 +796,111 @@ export const deletePurchase = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// resendPurchase — resendConsultation과 완전히 같은 패턴, 대상만 구매 이력.
+// 구매 이력 1건의 Meta CAPI "Purchase" 이벤트를 다시 보낸다. 새 이력을
+// 추가하지 않고 그 레코드의 device/price/at을 그대로 재사용한다.
+// ────────────────────────────────
+export const resendPurchase = onRequest(
+  { secrets: [metaPixelId, metaAccessToken] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const validationRes = validateResendRecord(request.body)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
+
+        const { id, recordId, testEventCode } = validationRes.data
+
+        const docRef = db.collection('lead').doc(id)
+        const snapshot = await docRef.get()
+
+        if (!snapshot.exists) {
+          response.status(404).send({ error: 'lead not found' })
+          return
+        }
+
+        const lead = snapshot.data() as Omit<Lead, 'id'>
+        const target = (lead.purchases ?? []).find((p) => p.id === recordId)
+
+        if (!target) {
+          response.status(404).send({ error: 'purchase record not found' })
+          return
+        }
+
+        if (!lead.ph) {
+          response.status(400).send({ error: 'lead has no ph to contact' })
+          return
+        }
+
+        const hasEid = hasExternalId(lead)
+        if (!hasEid) lead.externalId = generateExternalId(lead.ph)
+
+        const eventId = generateEventId()
+
+        // resendConsultation과 같은 이유로 event_time은 원래 구매 시각
+        // (target.at) 그대로 쓴다.
+        const capiResult = await sendMetaEvent({
+          pixelId: metaPixelId.value(),
+          accessToken: metaAccessToken.value(),
+          eventName: 'Purchase',
+          lead,
+          testEventCode,
+          customData: { currency: 'KRW', value: target.price },
+          eventTimeMs: target.at,
+          eventId,
+        })
+
+        if (!capiResult.ok) {
+          response
+            .status(502)
+            .send({ error: 'Meta CAPI 전송 실패', detail: capiResult.result })
+          return
+        }
+
+        const purchases = (lead.purchases ?? []).map((p) =>
+          p.id === recordId
+            ? { ...p, externalId: lead.externalId, eventId }
+            : p,
+        )
+
+        await docRef.update({
+          purchases,
+          externalId: lead.externalId ?? '',
+        })
+
+        logger.info('resendPurchase 성공:', {
+          leadId: id,
+          recordId,
+          device: target.device,
+          price: target.price,
+          at: new Date(target.at).toISOString(),
+          actionSource: capiResult.actionSource,
+          eventId: capiResult.eventId,
+          externalId: lead.externalId,
+          testEventCode: testEventCode ?? null,
+        })
+
+        response.status(200).send({
+          id: snapshot.id,
+          ...lead,
+          purchases,
+        })
+      } catch (error) {
+        logger.error('resendPurchase 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
 
 // ────────────────────────────────
 // updateLeadPhone

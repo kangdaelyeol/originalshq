@@ -102,6 +102,8 @@ export const leadClient = {
     post('resendConsultation', body),
   registerPurchase: (body: Record<string, unknown>) =>
     post('purchaseLead', body),
+  resendPurchase: (body: Record<string, unknown>) =>
+    post('resendPurchase', body),
   updateConsultation: (body: Record<string, unknown>) =>
     post('updateConsultation', body),
   deleteConsultation: (body: Record<string, unknown>) =>

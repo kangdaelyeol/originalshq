@@ -488,6 +488,24 @@ export const useMainViewModel = () => {
     setLoading(false)
   }
 
+  // resendConsultationRecord와 같은 이유(전송 실패 재시도, action_source
+  // 버그로 잘못 나간 과거 건 바로잡기) — 대상만 구매 이력.
+  const resendPurchaseRecord = async (leadId: string, recordId: string) => {
+    setLoading(true)
+    const res = await leadClient.resendPurchase({ id: leadId, recordId })
+
+    if (!res.ok) {
+      console.error(res.error)
+      showToast('error')
+      setLoading(false)
+      return
+    }
+
+    applyLeadUpdate(res.data)
+    showToast('updated')
+    setLoading(false)
+  }
+
   const openCreateModal = () => {
     setCreateForm(INITIAL_CREATE_LEAD_FORM)
     setCreateOpen(true)
@@ -656,6 +674,7 @@ export const useMainViewModel = () => {
       resendConsultationRecord,
       updatePurchaseRecord,
       deletePurchaseRecord,
+      resendPurchaseRecord,
       toggleSort,
       openCreateModal,
       closeCreateModal,

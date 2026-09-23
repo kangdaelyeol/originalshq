@@ -150,10 +150,11 @@ export const validatePurchaseLead = (
   }
 }
 
-/** 상담 이력 1건의 Meta CAPI 이벤트 재전송 — device/at은 요청에서 새로
- * 받지 않고 저장된 그 레코드 값을 그대로 쓴다(호출부에서 조회 후 사용).
- * id/recordId만 있으면 되고 test_event_code는 선택. */
-export const validateResendConsultation = (
+/** 상담/구매 이력 1건의 Meta CAPI 이벤트 재전송 — device/at(/price)는 요청에서
+ * 새로 받지 않고 저장된 그 레코드 값을 그대로 쓴다(호출부에서 조회 후 사용).
+ * id/recordId만 있으면 되고 test_event_code는 선택 — validateDeleteRecord와
+ * 같은 이유로 상담/구매 둘 다 이 하나를 공유한다. */
+export const validateResendRecord = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string

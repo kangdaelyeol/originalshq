@@ -406,9 +406,16 @@ interface PurchaseRowProps {
     updates: { at?: number; device?: Device; price?: number },
   ) => Promise<void>
   onDelete: (leadId: string, recordId: string) => Promise<void>
+  onResend: (leadId: string, recordId: string) => Promise<void>
 }
 
-function PurchaseRow({ leadId, record, onUpdate, onDelete }: PurchaseRowProps) {
+function PurchaseRow({
+  leadId,
+  record,
+  onUpdate,
+  onDelete,
+  onResend,
+}: PurchaseRowProps) {
   const [editing, setEditing] = useState(false)
   const [device, setDevice] = useState<Device>(record.device)
   const [at, setAt] = useState(toDatetimeLocalValue(record.at))
@@ -480,6 +487,18 @@ function PurchaseRow({ leadId, record, onUpdate, onDelete }: PurchaseRowProps) {
           <button
             type="button"
             className="icon_btn"
+            title="Meta CAPI 이벤트 다시 보내기"
+            onClick={() => {
+              if (window.confirm('이 구매 건의 Meta 이벤트를 다시 보낼까요?')) {
+                onResend(leadId, record.id)
+              }
+            }}
+          >
+            <ResendIcon />
+          </button>
+          <button
+            type="button"
+            className="icon_btn"
             onClick={() => setEditing(true)}
           >
             <EditIcon />
@@ -518,6 +537,7 @@ export const Detail = ({
   onResendConsultation,
   onUpdatePurchase,
   onDeletePurchase,
+  onResendPurchase,
   onRegisterConsultation,
   onRegisterPurchase,
   onDeleteLead,
@@ -544,6 +564,7 @@ export const Detail = ({
     updates: { at?: number; device?: Device; price?: number },
   ) => Promise<void>
   onDeletePurchase: (leadId: string, recordId: string) => Promise<void>
+  onResendPurchase: (leadId: string, recordId: string) => Promise<void>
   onRegisterConsultation: () => void
   onRegisterPurchase: () => void
   onDeleteLead: () => void
@@ -693,6 +714,7 @@ export const Detail = ({
                     record={record}
                     onUpdate={onUpdatePurchase}
                     onDelete={onDeletePurchase}
+                    onResend={onResendPurchase}
                   />
                 ))}
               </div>
