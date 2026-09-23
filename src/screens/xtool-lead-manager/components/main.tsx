@@ -2,6 +2,7 @@ import '@/screens/xtool-lead-manager/styles/main.scss'
 import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import {
   ConfirmModal,
+  ConsultationSummary,
   CreateModal,
   Detail,
   Loading,
@@ -10,8 +11,15 @@ import {
 
 export const Main = () => {
   const { state, actions, component } = useMainViewModel()
-  const { selectedRow, variant, registerForm, detail, loading, createOpen } =
-    state
+  const {
+    selectedRow,
+    variant,
+    registerForm,
+    detail,
+    loading,
+    createOpen,
+    allRows,
+  } = state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -34,6 +42,7 @@ export const Main = () => {
   return (
     <div className="xtool-main">
       <div className="wrapper">
+        <ConsultationSummary leads={allRows} />
         <Table state={{ ...state }} actions={{ ...actions }} />
       </div>
       {selectedRow && (

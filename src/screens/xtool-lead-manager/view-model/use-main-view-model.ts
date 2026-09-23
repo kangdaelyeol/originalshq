@@ -486,15 +486,19 @@ export const useMainViewModel = () => {
     setCreateForm((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleCreateLeadClick = async () => {
-    setIsSubmitting(true)
+  // 비워두면 다른 시각 입력들과 같은 관례로 "지금"을 쓴다 — 예전엔 0(1970년)을
+  // 그대로 보내던 버그가 있었다.
+  const buildCreateLeadBody = () => {
     const createdAtMs = createForm.createdAt
       ? new Date(createForm.createdAt).getTime()
-      : 0
+      : Date.now()
 
-    const body = { ...createForm, createdAt: createdAtMs }
+    return { ...createForm, createdAt: createdAtMs }
+  }
 
-    const res = await leadClient.create(body)
+  const handleCreateLeadClick = async () => {
+    setIsSubmitting(true)
+    const res = await leadClient.create(buildCreateLeadBody())
 
     if (!res.ok) {
       console.error(res.error)
@@ -508,10 +512,54 @@ export const useMainViewModel = () => {
     setIsSubmitting(false)
   }
 
+  // 패널에서 고객 정보를 등록함과 동시에 상담까지 한 번에 등록한다 — 방금
+  // 만든 리드의 id로 곧바로 contactLead(상담 등록 + Meta "Contact" CAPI 전송)를
+  // 이어서 호출한다. 상담 시각은 폼의 접수 일시와 같은 값을 그대로 쓴다(수기
+  // 등록은 보통 "지금 막 상담한 고객을 입력"하는 흐름이라 접수와 상담이 사실상
+  // 같은 시점). 리드 생성엔 성공했는데 상담 등록만 실패하면(네트워크 등) 리드가
+  // 이미 만들어져 있으니 'error'가 아니라 'partial'로 구분해서 알린다 — 그래야
+  // 같은 고객을 중복 등록하지 않고, 표에 뜬 그 리드의 "상담 등록" 버튼으로
+  // 재시도할 수 있다.
+  const handleCreateLeadAndConsultClick = async () => {
+    setIsSubmitting(true)
+    const body = buildCreateLeadBody()
+    const createRes = await leadClient.create(body)
+
+    if (!createRes.ok) {
+      console.error(createRes.error)
+      showToast('error')
+      setIsSubmitting(false)
+      return
+    }
+
+    const consultRes = await leadClient.registerConsultation({
+      id: createRes.data.id,
+      device: createForm.device,
+      at: body.createdAt,
+    })
+
+    await fetchLeads()
+    closeCreateModal()
+
+    if (!consultRes.ok) {
+      console.error(consultRes.error)
+      showToast('partial')
+      setIsSubmitting(false)
+      return
+    }
+
+    showToast('registered')
+    setIsSubmitting(false)
+  }
+
   return {
     state: {
       allChecked,
       rows: deviceFilteredRows,
+      // 메인 표(rows)는 검색어·정렬·기기 필터가 다 걸린 결과다. 상담 기기
+      // 서머리는 그 필터들과 무관하게 항상 전체 리드를 기준으로 자체 필터링을
+      // 하는 별도 리포트라 가공 전 원본을 그대로 넘긴다.
+      allRows: rows,
       selectedRow,
       variant,
       registerForm,
@@ -547,6 +595,7 @@ export const useMainViewModel = () => {
       openCreateModal,
       closeCreateModal,
       handleCreateLeadClick,
+      handleCreateLeadAndConsultClick,
       updateField,
     },
     component: {

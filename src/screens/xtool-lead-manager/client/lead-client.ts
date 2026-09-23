@@ -60,9 +60,7 @@ export const leadClient = {
       }
     }
   },
-  create: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<null>> => {
+  create: async (body: Record<string, unknown>): Promise<ClientResponse<Lead>> => {
     try {
       const response = await fetch(`${API_BASE}/createLead`, {
         method: 'POST',
@@ -75,10 +73,11 @@ export const leadClient = {
         return { ok: false, error: error.error ?? '등록 실패' }
       }
 
-      return {
-        ok: true,
-        data: null,
-      }
+      // 백엔드(createLead)가 이미 생성된 리드 전체({id, ...})를 응답으로
+      // 돌려준다 — "고객 등록 + 상담 등록"을 이어서 호출하려면 방금 만든
+      // 리드의 id가 필요해서 더 이상 버리지 않고 그대로 반환한다.
+      const createdLead = (await response.json()) as Lead
+      return { ok: true, data: createdLead }
     } catch (error) {
       return {
         ok: false,

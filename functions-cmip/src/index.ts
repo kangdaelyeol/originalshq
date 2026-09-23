@@ -55,6 +55,7 @@ const googleClientSecret = defineSecret('GOOGLE_CLIENT_SECRET')
 const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
 const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
 const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
+const momdayApiKey = defineSecret('MONDAY_API_KEY')
 
 // Google Cloud Console의 Authorized redirect URIs에 등록된 값과 반드시 동일해야
 // 한다 — oauthCallback(토큰 교환)과 getGoogleAuthUrl(동의 화면 URL 생성) 양쪽에서

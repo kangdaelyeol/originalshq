@@ -1,0 +1,172 @@
+@use './variables.scss';
+
+.consultation_summary {
+  margin-top: 20px;
+  padding: 14px;
+  background-color: variables.$color-surface;
+  border: 1px solid variables.$color-border;
+  border-radius: 10px;
+
+  .consultation_summary_head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+
+    .title {
+      font-size: 15px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+
+    .count {
+      font-size: 13px;
+      color: variables.$color-text-muted;
+    }
+
+    // 드롭다운을 헤드 오른쪽 끝에 고정.
+    .device_multiselect {
+      position: relative;
+      margin-left: auto;
+    }
+  }
+
+  // ------------------------------------------------------------ 다중 선택 드롭다운
+  // device-filter.scss(단일 선택)와 같은 톤으로 맞추되, 체크박스 목록이라
+  // 메뉴만 조금 다르다.
+  .device_multiselect_btn {
+    all: unset;
+    position: relative;
+    box-sizing: border-box;
+    height: 40px;
+    min-width: 190px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 34px 8px 14px;
+    color: variables.$color-text-muted;
+    font-size: 14px;
+    border: 1px solid variables.$color-border;
+    border-radius: 7px;
+    cursor: pointer;
+
+    .chevron_box {
+      position: absolute;
+      right: 15px;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      .chevron {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    &:hover {
+      border-color: variables.$color-text-muted;
+    }
+
+    &.open .chevron {
+      transform: rotate(180deg);
+    }
+
+    &.active {
+      border-color: variables.$color-accent;
+      color: variables.$color-accent;
+      background-color: variables.$color-accent-soft;
+    }
+  }
+
+  .device_multiselect_menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 190px;
+    box-sizing: border-box;
+    padding: 6px;
+    background-color: variables.$color-surface-raised;
+    border: 1px solid variables.$color-border;
+    border-radius: 9px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .device_multiselect_item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 13.5px;
+      color: variables.$color-text;
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.06);
+      }
+
+      input {
+        accent-color: variables.$color-accent;
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ 표
+  // main.scss의 .lead_table과 같은 톤(테두리·헤더 배경·폭 규칙)으로 맞춘다.
+  .consultation_summary_table_wrap {
+    max-height: 400px;
+    overflow: auto;
+    border-radius: 5px;
+  }
+
+  .consultation_summary_table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    color: variables.$color-text;
+
+    th,
+    td {
+      box-sizing: border-box;
+      height: 46px;
+      padding: 0 10px;
+      text-align: center;
+      vertical-align: middle;
+      font-size: 13.5px;
+      font-weight: 400;
+      border-right: 1px solid variables.$table-border-color;
+      border-bottom: 1px solid variables.$table-border-color;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      &:last-child {
+        border-right: none;
+      }
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      // 정렬 버튼(SortButton)이 오른쪽에 absolute로 얹히니, 짧은 헤더 텍스트와
+      // 안 겹치게 오른쪽 여백을 넉넉히 둔다 — 메인 표 헤더와 같은 이유.
+      padding-right: 28px;
+      background-color: variables.$table-header-bg-color;
+      font-size: 13.5px;
+      font-weight: 500;
+    }
+
+    tbody td {
+      background-color: variables.$color-surface;
+    }
+
+    td.empty {
+      color: variables.$color-text-muted;
+    }
+  }
+}

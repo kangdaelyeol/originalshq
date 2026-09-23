@@ -1,4 +1,5 @@
 import { type CreateLeadFormValues } from '@/screens/xtool-lead-manager/types'
+import { Device } from '@/screens/xtool-lead-manager/entity'
 import styles from '@/screens/xtool-lead-manager/styles/create-modal.module.scss'
 
 interface CreateModalState {
@@ -10,6 +11,8 @@ interface CreateModalActions {
   closeCreateModal: () => void
   updateField: (field: keyof CreateLeadFormValues, value: string) => void
   handleCreateLeadClick: () => Promise<void>
+  /** 고객 정보 등록 + 상담 등록(Meta CAPI 포함)을 한 번에 처리한다. */
+  handleCreateLeadAndConsultClick: () => Promise<void>
 }
 
 interface CreateModalProps {
@@ -36,7 +39,12 @@ const FormRow = ({
 
 export const CreateModal = ({ state, actions }: CreateModalProps) => {
   const { form, isSubmitting } = state
-  const { closeCreateModal, updateField, handleCreateLeadClick } = actions
+  const {
+    closeCreateModal,
+    updateField,
+    handleCreateLeadClick,
+    handleCreateLeadAndConsultClick,
+  } = actions
 
   return (
     <div className={styles.overlay}>
@@ -145,6 +153,22 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
           />
         </FormRow>
 
+        {/* 접수 기기 — "상담 등록"을 누르면 이 값이 상담 기기로도 그대로 쓰인다. */}
+        <FormRow label="기기" htmlFor="lead-device">
+          <select
+            id="lead-device"
+            className={styles.control}
+            value={form.device}
+            onChange={(e) => updateField('device', e.target.value)}
+          >
+            {Object.values(Device).map((device) => (
+              <option key={device} value={device}>
+                {device}
+              </option>
+            ))}
+          </select>
+        </FormRow>
+
         <div className={styles.footer}>
           <button
             className={`${styles.btn} ${styles['btn--ghost']}`}
@@ -154,11 +178,18 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
             취소
           </button>
           <button
-            className={`${styles.btn} ${styles['btn--primary']}`}
+            className={`${styles.btn} ${styles['btn--ghost']}`}
             onClick={handleCreateLeadClick}
             disabled={isSubmitting}
           >
             {isSubmitting ? '등록 중...' : '등록'}
+          </button>
+          <button
+            className={`${styles.btn} ${styles['btn--primary']}`}
+            onClick={handleCreateLeadAndConsultClick}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? '등록 중...' : '상담 등록'}
           </button>
         </div>
       </div>
