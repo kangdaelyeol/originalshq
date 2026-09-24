@@ -180,6 +180,66 @@ const EditIcon = () => (
   </svg>
 )
 
+/** Meta 이벤트 재전송 직전에 "테스트 이벤트로 보낼지"를 그 자리에서 고르는
+ * 패널 — 예전엔 표의 행마다 있던 테스트 체크박스/코드 입력을 재전송 시점
+ * 하나로 옮긴 자리라, window.confirm 대신 이 패널의 취소/보내기 버튼이
+ * 확인 역할까지 겸한다. */
+function ResendPanel({
+  onResend,
+  onClose,
+}: {
+  onResend: (testEventCode?: string) => Promise<void>
+  onClose: () => void
+}) {
+  const [isTest, setIsTest] = useState(false)
+  const [code, setCode] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  return (
+    <div className="resend_panel" onClick={(e) => e.stopPropagation()}>
+      <label className="toggle">
+        <input
+          type="checkbox"
+          checked={isTest}
+          onChange={() => setIsTest((v) => !v)}
+        />
+        <span>테스트 이벤트로 전송</span>
+      </label>
+      {isTest && (
+        <input
+          className="code_input"
+          placeholder="test_event_code"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+        />
+      )}
+      <div className="actions">
+        <button
+          type="button"
+          className="cancel_btn"
+          onClick={onClose}
+          disabled={submitting}
+        >
+          취소
+        </button>
+        <button
+          type="button"
+          className="save_btn"
+          disabled={submitting}
+          onClick={async () => {
+            setSubmitting(true)
+            await onResend(isTest && code.trim() ? code.trim() : undefined)
+            setSubmitting(false)
+            onClose()
+          }}
+        >
+          {submitting ? '전송 중...' : '보내기'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 interface IntakeRowProps {
   leadId: string
   record: IntakeRecord
@@ -286,7 +346,11 @@ interface ConsultationRowProps {
     updates: { at?: number; device?: Device },
   ) => Promise<void>
   onDelete: (leadId: string, recordId: string) => Promise<void>
-  onResend: (leadId: string, recordId: string) => Promise<void>
+  onResend: (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => Promise<void>
 }
 
 function ConsultationRow({
@@ -299,6 +363,7 @@ function ConsultationRow({
   const [editing, setEditing] = useState(false)
   const [device, setDevice] = useState<Device>(record.device)
   const [at, setAt] = useState(toDatetimeLocalValue(record.at))
+  const [resendOpen, setResendOpen] = useState(false)
 
   if (editing) {
     return (
@@ -356,11 +421,7 @@ function ConsultationRow({
             type="button"
             className="icon_btn"
             title="Meta CAPI 이벤트 다시 보내기"
-            onClick={() => {
-              if (window.confirm('이 상담 건의 Meta 이벤트를 다시 보낼까요?')) {
-                onResend(leadId, record.id)
-              }
-            }}
+            onClick={() => setResendOpen((v) => !v)}
           >
             <ResendIcon />
           </button>
@@ -384,6 +445,14 @@ function ConsultationRow({
           </button>
         </div>
       </div>
+      {resendOpen && (
+        <ResendPanel
+          onResend={(testEventCode) =>
+            onResend(leadId, record.id, testEventCode)
+          }
+          onClose={() => setResendOpen(false)}
+        />
+      )}
       {/* CAPI로 마지막에 실제 보낸 값의 스냅샷 — 이벤트 매니저에서 이
           상담 건이 어느 이벤트로 잡혔는지 대조해볼 때 쓴다. 둘 다 없으면
           (마이그레이션 전 레코드) 아예 안 보여준다. */}
@@ -406,7 +475,11 @@ interface PurchaseRowProps {
     updates: { at?: number; device?: Device; price?: number },
   ) => Promise<void>
   onDelete: (leadId: string, recordId: string) => Promise<void>
-  onResend: (leadId: string, recordId: string) => Promise<void>
+  onResend: (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => Promise<void>
 }
 
 function PurchaseRow({
@@ -420,6 +493,7 @@ function PurchaseRow({
   const [device, setDevice] = useState<Device>(record.device)
   const [at, setAt] = useState(toDatetimeLocalValue(record.at))
   const [price, setPrice] = useState(String(record.price))
+  const [resendOpen, setResendOpen] = useState(false)
 
   if (editing) {
     return (
@@ -488,11 +562,7 @@ function PurchaseRow({
             type="button"
             className="icon_btn"
             title="Meta CAPI 이벤트 다시 보내기"
-            onClick={() => {
-              if (window.confirm('이 구매 건의 Meta 이벤트를 다시 보낼까요?')) {
-                onResend(leadId, record.id)
-              }
-            }}
+            onClick={() => setResendOpen((v) => !v)}
           >
             <ResendIcon />
           </button>
@@ -516,6 +586,14 @@ function PurchaseRow({
           </button>
         </div>
       </div>
+      {resendOpen && (
+        <ResendPanel
+          onResend={(testEventCode) =>
+            onResend(leadId, record.id, testEventCode)
+          }
+          onClose={() => setResendOpen(false)}
+        />
+      )}
       {/* ConsultationRow와 같은 이유 — CAPI로 실제 보낸 값의 스냅샷. */}
       {(record.eventId || record.externalId) && (
         <div className="record_meta">
@@ -557,14 +635,22 @@ export const Detail = ({
     updates: { at?: number; device?: Device },
   ) => Promise<void>
   onDeleteConsultation: (leadId: string, recordId: string) => Promise<void>
-  onResendConsultation: (leadId: string, recordId: string) => Promise<void>
+  onResendConsultation: (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => Promise<void>
   onUpdatePurchase: (
     leadId: string,
     recordId: string,
     updates: { at?: number; device?: Device; price?: number },
   ) => Promise<void>
   onDeletePurchase: (leadId: string, recordId: string) => Promise<void>
-  onResendPurchase: (leadId: string, recordId: string) => Promise<void>
+  onResendPurchase: (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => Promise<void>
   onRegisterConsultation: () => void
   onRegisterPurchase: () => void
   onDeleteLead: () => void

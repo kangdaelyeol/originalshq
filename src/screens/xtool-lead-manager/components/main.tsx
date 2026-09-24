@@ -24,6 +24,8 @@ export const Main = () => {
     handleCancelConfirmClick,
     handleConfirmClick,
     updateRegisterForm,
+    toggleRegisterFormTest,
+    updateRegisterFormTestCode,
     hideDetail,
     updateIntakeRecord,
     deleteIntakeRecord,
@@ -44,8 +46,8 @@ export const Main = () => {
   return (
     <div className="xtool-main">
       <div className="wrapper">
-        <ConsultationSummary leads={allRows} />
         <Table state={{ ...state }} actions={{ ...actions }} />
+        <ConsultationSummary leads={allRows} />
       </div>
       {selectedRow && (
         <ConfirmModal
@@ -53,6 +55,8 @@ export const Main = () => {
           variant={variant}
           registerForm={registerForm}
           onUpdateRegisterForm={updateRegisterForm}
+          onToggleTest={toggleRegisterFormTest}
+          onUpdateTestCode={updateRegisterFormTestCode}
           onCancel={handleCancelConfirmClick}
           onConfirm={handleConfirmClick}
         />

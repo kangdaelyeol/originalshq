@@ -135,6 +135,25 @@
           }
         }
       }
+
+      // 테스트 이벤트 체크박스 + (켜면 나타나는) test_event_code 입력 — 나머지
+      // form_row와 달리 라벨/컨트롤을 세로로 안 쌓고 한 줄에 둔다.
+      .test_toggle_row {
+        gap: 8px;
+
+        .test_toggle {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12.5px;
+          color: variables.$color-text-muted;
+          cursor: pointer;
+
+          input[type='checkbox'] {
+            accent-color: variables.$color-accent;
+          }
+        }
+      }
     }
 
     .actions {

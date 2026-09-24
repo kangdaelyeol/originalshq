@@ -87,6 +87,14 @@ export const getLeadState = (lead: Lead): LeadState => {
 export const latestIntakeAt = (lead: Lead): number =>
   (lead.intakes ?? []).reduce((max, i) => Math.max(max, i.at), 0)
 
+/** 리드의 가장 최근 상담/구매 시각 — latestIntakeAt과 같은 이유(정렬 비교값)로
+ * 둔다. 상담/구매 여러 건 중 최신 일자를 기준으로 삼는다. */
+export const latestConsultationAt = (lead: Lead): number =>
+  (lead.consultations ?? []).reduce((max, c) => Math.max(max, c.at), 0)
+
+export const latestPurchaseAt = (lead: Lead): number =>
+  (lead.purchases ?? []).reduce((max, p) => Math.max(max, p.at), 0)
+
 /** 리드의 가장 최근 접수 이력(레코드 전체) — 상담 등록 폼의 기본값(접수 일시·
  * 기기)을 채울 때 쓴다. 접수 이력이 없으면 null. */
 export const latestIntake = (lead: Lead): IntakeRecord | null => {

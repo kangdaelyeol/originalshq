@@ -42,6 +42,8 @@ export const ConfirmModal = ({
   variant,
   registerForm,
   onUpdateRegisterForm,
+  onToggleTest,
+  onUpdateTestCode,
   onConfirm,
   onCancel,
 }: {
@@ -49,6 +51,8 @@ export const ConfirmModal = ({
   variant: ConfirmVariant
   registerForm: RegisterFormValues
   onUpdateRegisterForm: (field: keyof RegisterFormValues, value: string) => void
+  onToggleTest: () => void
+  onUpdateTestCode: (code: string) => void
   onConfirm: () => Promise<void>
   onCancel: () => void
 }) => {
@@ -200,6 +204,28 @@ export const ConfirmModal = ({
                 value={registerForm.at}
                 onChange={(e) => onUpdateRegisterForm('at', e.target.value)}
               />
+            </div>
+
+            {/* 켜두면 이번 Meta CAPI 전송에 test_event_code가 실려 나가
+                이벤트 관리자의 테스트 이벤트로 잡힌다. */}
+            <div className="form_row test_toggle_row">
+              <label className="test_toggle" htmlFor="register-is-test">
+                <input
+                  id="register-is-test"
+                  type="checkbox"
+                  checked={registerForm.isTest}
+                  onChange={onToggleTest}
+                />
+                <span>테스트 이벤트로 전송</span>
+              </label>
+              {registerForm.isTest && (
+                <input
+                  className="control"
+                  placeholder="test_event_code"
+                  value={registerForm.testEventCode}
+                  onChange={(e) => onUpdateTestCode(e.target.value)}
+                />
+              )}
             </div>
           </div>
         )}

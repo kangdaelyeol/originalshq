@@ -20,9 +20,10 @@ const ALL_DEVICES = Object.values(Device)
  * 모아 보여주는 별도 리포트다. */
 export const ConsultationSummary = ({ leads }: { leads: Lead[] }) => {
   const [open, setOpen] = useState(false)
-  // 기본은 전체 기기 선택 — 열자마자 상담 이력 전체가 보이고, 거기서 줄여나간다.
+  // 기본은 미선택 — 필요한 기기만 골라서 보는 용도라, 열자마자 전체를
+  // 보여주기보다 사용자가 직접 고르게 한다.
   const [selectedDevices, setSelectedDevices] = useState<ReadonlySet<Device>>(
-    () => new Set(ALL_DEVICES),
+    () => new Set(),
   )
   const wrapRef = useRef<HTMLDivElement>(null)
   useOutsideClick(wrapRef, () => setOpen(false))

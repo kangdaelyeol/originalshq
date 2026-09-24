@@ -1,5 +1,7 @@
 import {
+  latestConsultationAt,
   latestIntakeAt,
+  latestPurchaseAt,
   type Device,
   type Lead,
 } from '@/screens/xtool-lead-manager/entity'
@@ -9,10 +11,21 @@ import {
   type SortDirection,
 } from '@/screens/xtool-lead-manager/types'
 
+/** 이름/비고는 입력 그대로(대소문자만 무시) 부분일치, 전화번호는 숫자만
+ * 남겨서 비교한다 — ph는 저장 시점에 이미 숫자만 남아있어서, "010-1234"처럼
+ * 하이픈을 섞어 검색해도 매치되게 하려면 검색어 쪽도 숫자만 뽑아야 한다.
+ * 검색어에 숫자가 하나도 없으면(순수 이름/비고 검색) 전화번호 비교는 건너뛴다
+ * — 안 그러면 빈 문자열이 모든 ph의 부분 문자열로 잡혀 전부 매치돼버린다. */
 export const filterLeadsByKeywords = (rows: Lead[], keyword: string) => {
   const trimmed = keyword.trim().toLowerCase()
   if (!trimmed) return rows
-  return rows.filter((row) => row.fn.toLowerCase().includes(trimmed))
+  const digitsOnly = trimmed.replace(/\D/g, '')
+  return rows.filter(
+    (row) =>
+      row.fn.toLowerCase().includes(trimmed) ||
+      row.remarks.toLowerCase().includes(trimmed) ||
+      (digitsOnly !== '' && row.ph.includes(digitsOnly)),
+  )
 }
 
 export const sortLeads = (
@@ -23,12 +36,20 @@ export const sortLeads = (
   const sorted = [...rows]
   sorted.sort((a, b) => {
     let res: number
-    if (sortField === SortField.CREATED_AT) {
-      // Lead 최상위엔 더 이상 createdAt이 없다(intakes 배열로 옮김) — 가장
-      // 최근 접수 시각을 기준으로 정렬한다.
-      res = latestIntakeAt(a) - latestIntakeAt(b)
-    } else {
-      res = a[sortField].localeCompare(b[sortField], 'ko')
+    switch (sortField) {
+      // Lead 최상위엔 더 이상 createdAt이 없다(intakes 배열로 옮김) — 접수/
+      // 상담/구매 모두 여러 건일 수 있어, 가장 최근 시각을 기준으로 정렬한다.
+      case SortField.CREATED_AT:
+        res = latestIntakeAt(a) - latestIntakeAt(b)
+        break
+      case SortField.CONSULTATION_AT:
+        res = latestConsultationAt(a) - latestConsultationAt(b)
+        break
+      case SortField.PURCHASE_AT:
+        res = latestPurchaseAt(a) - latestPurchaseAt(b)
+        break
+      default:
+        res = a[sortField].localeCompare(b[sortField], 'ko')
     }
     return sortDirection === 'asc' ? res : -res
   })

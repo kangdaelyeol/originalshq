@@ -6,6 +6,7 @@ import {
   INITIAL_REGISTER_FORM,
   SortField,
   type CreateLeadFormValues,
+  type PageSize,
   type RegisterFormValues,
   type SortDirection,
 } from '@/screens/xtool-lead-manager/types'
@@ -25,7 +26,6 @@ import {
 } from '@/screens/xtool-lead-manager/client'
 
 export const useMainViewModel = () => {
-  const [allChecked, setAllChecked] = useState(false)
   const [rows, setRows] = useState<Lead[]>([])
   const [selectedRow, setSelectedRow] = useState<Lead | null>(null)
   const [variant, setVariant] = useState<ConfirmVariant>(ConfirmVariant.DELETE)
@@ -43,12 +43,8 @@ export const useMainViewModel = () => {
     INITIAL_CREATE_LEAD_FORM,
   )
   const [isSubmitting, setIsSubmitting] = useState(false)
-  // 행마다 "테스트" 체크 여부 + test_event_code 입력값 — Lead 데이터가 아니라
-  // "등록"(contactLead/purchaseLead 호출) 시 잠깐 얹어 보낼 값이라 rowId로만
-  // 따로 관리한다. 이벤트마다 코드가 달라서 직접 입력하게 한다.
-  const [testRows, setTestRows] = useState<
-    Record<string, { checked: boolean; code: string }>
-  >({})
+  const [pageSize, setPageSize] = useState<PageSize>(15)
+  const [page, setPage] = useState(1)
 
   const { searchValue, deviceFilter } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
@@ -91,6 +87,29 @@ export const useMainViewModel = () => {
     [sortedRows, deviceFilter],
   )
 
+  const totalRows = deviceFilteredRows.length
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
+
+  const pagedRows = useMemo(
+    () => deviceFilteredRows.slice((page - 1) * pageSize, page * pageSize),
+    [deviceFilteredRows, page, pageSize],
+  )
+
+  // 검색어·정렬·기기 필터·페이지당 개수 중 뭐든 바뀌면 지금 보던 페이지 번호가
+  // 더 이상 유효하지 않을 수 있어(예: 3페이지를 보다가 검색으로 결과가 1페이지
+  // 분량으로 줄어드는 경우) 항상 1페이지로 되돌린다. setState를 이펙트 안에서
+  // 동기 호출하면 렌더가 한 번 더 연쇄되므로, 렌더 중에 이전 키와 비교해서
+  // 바뀌었을 때만 즉시 되돌리는 패턴을 쓴다(React가 권장하는 "prop이 바뀌면
+  // state를 초기화" 대체 방식).
+  const paginationResetKey = `${searchValue}|${deviceFilter}|${sortField}|${sortDirection}|${pageSize}`
+  const [prevPaginationResetKey, setPrevPaginationResetKey] = useState(
+    paginationResetKey,
+  )
+  if (paginationResetKey !== prevPaginationResetKey) {
+    setPrevPaginationResetKey(paginationResetKey)
+    setPage(1)
+  }
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
@@ -98,6 +117,14 @@ export const useMainViewModel = () => {
       setSortField(field)
       setSortDirection('desc')
     }
+  }
+
+  const goToPrevPage = () => {
+    setPage((prev) => Math.max(1, prev - 1))
+  }
+
+  const goToNextPage = () => {
+    setPage((prev) => Math.min(totalPages, prev + 1))
   }
 
   // rows(목록)와, 열려 있다면 detail(이력 모달)까지 같은 리드를 함께 최신화한다.
@@ -110,22 +137,13 @@ export const useMainViewModel = () => {
     )
   }
 
-  const clearTestRow = (rowId: string) => {
-    setTestRows((prev) => {
-      const next = { ...prev }
-      delete next[rowId]
-      return next
-    })
-  }
-
   const registerConsultation = async (): Promise<void> => {
     const targetLead = selectedRow
     if (!targetLead) return
 
-    const testInfo = testRows[targetLead.id]
     const testEventCodeField =
-      testInfo?.checked && testInfo.code.trim()
-        ? { test_event_code: testInfo.code.trim() }
+      registerForm.isTest && registerForm.testEventCode.trim()
+        ? { test_event_code: registerForm.testEventCode.trim() }
         : {}
     const at = registerForm.at
       ? fromDatetimeLocalValue(registerForm.at)
@@ -149,7 +167,6 @@ export const useMainViewModel = () => {
     }
 
     applyLeadUpdate(res.data)
-    clearTestRow(targetLead.id)
     setSelectedRow(null)
     showToast('registered')
     setLoading(false)
@@ -166,10 +183,9 @@ export const useMainViewModel = () => {
       return
     }
 
-    const testInfo = testRows[targetLead.id]
     const testEventCodeField =
-      testInfo?.checked && testInfo.code.trim()
-        ? { test_event_code: testInfo.code.trim() }
+      registerForm.isTest && registerForm.testEventCode.trim()
+        ? { test_event_code: registerForm.testEventCode.trim() }
         : {}
     const at = registerForm.at
       ? fromDatetimeLocalValue(registerForm.at)
@@ -194,7 +210,6 @@ export const useMainViewModel = () => {
     }
 
     applyLeadUpdate(res.data)
-    clearTestRow(targetLead.id)
     setSelectedRow(null)
     showToast('registered')
     setLoading(false)
@@ -235,35 +250,21 @@ export const useMainViewModel = () => {
     setSelectedRow(null)
   }
 
-  const showDetail = (rowId: string) => {
-    const row = rows.find((row) => row.id === rowId)
-    if (!row) return
-    setDetail(row)
-  }
+  // 표의 각 행(LeadRow)에 그대로 내려가는 콜백 prop — useCallback 없이 매번
+  // 새 함수를 만들면 React.memo(LeadRow)가 "props가 바뀌었다"고 오판해
+  // 검색어를 칠 때마다(row 자체는 그대로여도) 모든 행을 다시 렌더한다. rows가
+  // 실제로 바뀔 때만(재조회 등) 새로 만든다.
+  const showDetail = useCallback(
+    (rowId: string) => {
+      const row = rows.find((row) => row.id === rowId)
+      if (!row) return
+      setDetail(row)
+    },
+    [rows],
+  )
 
   const hideDetail = () => {
     setDetail(null)
-  }
-
-  const toggleAllChecked = () => {
-    setAllChecked((prev) => !prev)
-  }
-
-  const toggleTestRow = (rowId: string) => {
-    setTestRows((prev) => {
-      const current = prev[rowId]
-      return {
-        ...prev,
-        [rowId]: { checked: !current?.checked, code: current?.code ?? '' },
-      }
-    })
-  }
-
-  const updateTestEventCode = (rowId: string, code: string) => {
-    setTestRows((prev) => ({
-      ...prev,
-      [rowId]: { checked: prev[rowId]?.checked ?? true, code },
-    }))
   }
 
   // 고객 상세 모달에서 기본 정보(고객명/전화번호/접수 시각) · 비고를 고칠 때
@@ -349,6 +350,14 @@ export const useMainViewModel = () => {
     setRegisterForm((prev) => ({ ...prev, [field]: value }))
   }
 
+  const toggleRegisterFormTest = () => {
+    setRegisterForm((prev) => ({ ...prev, isTest: !prev.isTest }))
+  }
+
+  const updateRegisterFormTestCode = (code: string) => {
+    setRegisterForm((prev) => ({ ...prev, testEventCode: code }))
+  }
+
   const updateIntakeRecord = async (
     leadId: string,
     recordId: string,
@@ -431,10 +440,19 @@ export const useMainViewModel = () => {
 
   // 상담 이력 1건의 Meta CAPI 이벤트를 다시 보낸다(새 이력 추가 아님) —
   // 전송 실패 재시도, 또는 getActionSource 버그로 잘못 나간 과거 건을 고친
-  // 코드로 다시 보내 바로잡는 용도.
-  const resendConsultationRecord = async (leadId: string, recordId: string) => {
+  // 코드로 다시 보내 바로잡는 용도. testEventCode를 주면 이번 재전송만 테스트
+  // 이벤트로 표시된다(상세 모달의 ↻ 버튼에서 선택적으로 입력).
+  const resendConsultationRecord = async (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => {
     setLoading(true)
-    const res = await leadClient.resendConsultation({ id: leadId, recordId })
+    const res = await leadClient.resendConsultation({
+      id: leadId,
+      recordId,
+      ...(testEventCode ? { test_event_code: testEventCode } : {}),
+    })
 
     if (!res.ok) {
       console.error(res.error)
@@ -490,9 +508,17 @@ export const useMainViewModel = () => {
 
   // resendConsultationRecord와 같은 이유(전송 실패 재시도, action_source
   // 버그로 잘못 나간 과거 건 바로잡기) — 대상만 구매 이력.
-  const resendPurchaseRecord = async (leadId: string, recordId: string) => {
+  const resendPurchaseRecord = async (
+    leadId: string,
+    recordId: string,
+    testEventCode?: string,
+  ) => {
     setLoading(true)
-    const res = await leadClient.resendPurchase({ id: leadId, recordId })
+    const res = await leadClient.resendPurchase({
+      id: leadId,
+      recordId,
+      ...(testEventCode ? { test_event_code: testEventCode } : {}),
+    })
 
     if (!res.ok) {
       console.error(res.error)
@@ -521,6 +547,14 @@ export const useMainViewModel = () => {
     }
 
     setCreateForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const toggleCreateFormTest = () => {
+    setCreateForm((prev) => ({ ...prev, isTest: !prev.isTest }))
+  }
+
+  const updateCreateFormTestCode = (code: string) => {
+    setCreateForm((prev) => ({ ...prev, testEventCode: code }))
   }
 
   // 비워두면 다른 시각 입력들과 같은 관례로 "지금"을 쓴다 — 예전엔 0(1970년)을
@@ -569,10 +603,15 @@ export const useMainViewModel = () => {
       return
     }
 
+    const testEventCodeField =
+      createForm.isTest && createForm.testEventCode.trim()
+        ? { test_event_code: createForm.testEventCode.trim() }
+        : {}
     const consultRes = await leadClient.registerConsultation({
       id: createRes.data.id,
       device: createForm.device,
       at: body.createdAt,
+      ...testEventCodeField,
     })
 
     await fetchLeads()
@@ -613,11 +652,16 @@ export const useMainViewModel = () => {
       return
     }
 
+    const testEventCodeField =
+      createForm.isTest && createForm.testEventCode.trim()
+        ? { test_event_code: createForm.testEventCode.trim() }
+        : {}
     const purchaseRes = await leadClient.registerPurchase({
       id: createRes.data.id,
       device: createForm.device,
       price,
       at: body.createdAt,
+      ...testEventCodeField,
     })
 
     await fetchLeads()
@@ -636,8 +680,9 @@ export const useMainViewModel = () => {
 
   return {
     state: {
-      allChecked,
-      rows: deviceFilteredRows,
+      // 표에는 검색어·정렬·기기 필터에 더해 페이지당 개수·현재 페이지까지
+      // 적용된 한 페이지 분량만 넘긴다.
+      rows: pagedRows,
       // 메인 표(rows)는 검색어·정렬·기기 필터가 다 걸린 결과다. 상담 기기
       // 서머리는 그 필터들과 무관하게 항상 전체 리드를 기준으로 자체 필터링을
       // 하는 별도 리포트라 가공 전 원본을 그대로 넘긴다.
@@ -652,17 +697,19 @@ export const useMainViewModel = () => {
       createOpen,
       isSubmitting,
       form: createForm,
-      testRows,
+      pageSize,
+      page,
+      totalPages,
+      totalRows,
     },
     actions: {
-      toggleAllChecked,
-      toggleTestRow,
-      updateTestEventCode,
       updateLeadField,
       deleteRow,
       registerConsultationRow,
       registerPurchaseRow,
       updateRegisterForm,
+      toggleRegisterFormTest,
+      updateRegisterFormTestCode,
       handleCancelConfirmClick,
       handleConfirmClick,
       showDetail,
@@ -674,6 +721,9 @@ export const useMainViewModel = () => {
       resendConsultationRecord,
       updatePurchaseRecord,
       deletePurchaseRecord,
+      setPageSize,
+      goToPrevPage,
+      goToNextPage,
       resendPurchaseRecord,
       toggleSort,
       openCreateModal,
@@ -682,6 +732,8 @@ export const useMainViewModel = () => {
       handleCreateLeadAndConsultClick,
       handleCreateLeadAndPurchaseClick,
       updateField,
+      toggleCreateFormTest,
+      updateCreateFormTestCode,
     },
     component: {
       ToastContainer,

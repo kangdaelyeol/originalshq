@@ -99,9 +99,6 @@
       // 칼럼별 폭 — table-layout: fixed에서는 각 칼럼의 첫 행(보통 헤더)에
       // 지정한 폭이 그 칼럼 전체(헤더+모든 행)에 그대로 적용된다. 헤더·행에
       // 따로 폭을 맞출 필요 없이 클래스 하나로 항상 일치한다.
-      .col-cb {
-        width: 40px;
-      }
       .col-fn {
         width: 100px;
       }
@@ -117,64 +114,13 @@
         width: 190px;
         white-space: normal;
       }
-      .col-test {
-        width: 190px;
-      }
     }
 
-    // 행 전체를 누르면 고객 상세 모달이 열린다(체크박스·인라인 편집 칸·
-    // 테스트 토글은 각자 클릭을 직접 처리하므로 행 클릭에서 막아둔다).
+    // 행 전체를 누르면 고객 상세 모달이 열린다.
     tbody tr.row-clickable {
       cursor: pointer;
       &:hover td {
         background-color: rgba(255, 255, 255, 0.04);
-      }
-    }
-
-    // 테스트 체크박스 옆 test_event_code 입력칸 — 체크했을 때만 나타나는
-    // 좁은 칸이라 폭/정렬을 따로 준다. td 안에서 체크박스 옆에 나란히 두는
-    // 간격은 flex gap 대신 margin으로 준다(td 자체를 flex로 만들면
-    // table-layout: fixed의 칼럼 폭 계산이 깨진다).
-    .test-event-code-input {
-      all: unset;
-      box-sizing: border-box;
-      width: 110px;
-      margin-left: 8px;
-      padding: 4px 6px;
-      background-color: variables.$color-accent-soft;
-      border: 1px solid variables.$color-accent;
-      border-radius: 4px;
-      color: variables.$color-text;
-      font-size: 12px;
-      text-align: center;
-      vertical-align: middle;
-    }
-
-    button.check-btn {
-      all: unset;
-      display: inline-block;
-      vertical-align: middle;
-      cursor: pointer;
-      width: 18px;
-      height: 18px;
-      border-radius: 4px;
-      border: 1px solid variables.$table-border-color;
-      &:hover {
-        border: 1px solid variables.$color-text-muted;
-      }
-      &.checked {
-        background-color: variables.$color-accent;
-        border: 1px solid variables.$color-accent;
-      }
-      &.checked:hover {
-        filter: brightness(1.1);
-      }
-      svg {
-        width: 100%;
-        height: 100%;
-        path {
-          animation: check-icon 0.2s cubic-bezier(0.29, 0.79, 0.64, 1) backwards;
-        }
       }
     }
 
@@ -204,6 +150,81 @@
       }
     }
 
+    // 표 아래 페이지네이션 바 — 왼쪽엔 전체 건수, 오른쪽엔 페이지당 개수
+    // 드롭다운 + 이전/다음 페이지 버튼.
+    .table_pagination {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 6px 2px;
+
+      .total_count {
+        font-size: 13px;
+        color: variables.$color-text-faint;
+      }
+
+      .page_size_select select {
+        box-sizing: border-box;
+        height: 32px;
+        padding: 0 10px;
+        background-color: variables.$color-surface-raised;
+        border: 1px solid variables.$color-border;
+        border-radius: 6px;
+        color: variables.$color-text;
+        font-size: 12.5px;
+        cursor: pointer;
+
+        &:focus {
+          outline: none;
+          border-color: variables.$color-accent;
+        }
+      }
+
+      .page_nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-left: 14px;
+
+        .page_indicator {
+          font-size: 12.5px;
+          color: variables.$color-text-muted;
+          min-width: 48px;
+          text-align: center;
+        }
+
+        .page_nav_btn {
+          all: unset;
+          box-sizing: border-box;
+          width: 26px;
+          height: 26px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 6px;
+          border: 1px solid variables.$color-border;
+          color: variables.$color-text-muted;
+          cursor: pointer;
+
+          svg {
+            width: 14px;
+            height: 14px;
+          }
+
+          &:hover:not(:disabled) {
+            background-color: rgba(255, 255, 255, 0.06);
+            color: variables.$color-text;
+          }
+
+          &:disabled {
+            cursor: not-allowed;
+            opacity: 0.4;
+          }
+        }
+      }
+    }
+
     .new-btn {
       border: 1px solid variables.$table-border-color;
       height: 45px;
@@ -219,14 +240,5 @@
         background-color: rgba(255, 255, 255, 0.05);
       }
     }
-  }
-}
-
-@keyframes check-icon {
-  from {
-    stroke-dashoffset: 40;
-  }
-  to {
-    stroke-dashoffset: 0;
   }
 }

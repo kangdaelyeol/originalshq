@@ -10,6 +10,8 @@ interface CreateModalState {
 interface CreateModalActions {
   closeCreateModal: () => void
   updateField: (field: keyof CreateLeadFormValues, value: string) => void
+  toggleCreateFormTest: () => void
+  updateCreateFormTestCode: (code: string) => void
   handleCreateLeadClick: () => Promise<void>
   /** 고객 정보 등록 + 상담 등록(Meta CAPI 포함)을 한 번에 처리한다. */
   handleCreateLeadAndConsultClick: () => Promise<void>
@@ -45,6 +47,8 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
   const {
     closeCreateModal,
     updateField,
+    toggleCreateFormTest,
+    updateCreateFormTestCode,
     handleCreateLeadClick,
     handleCreateLeadAndConsultClick,
     handleCreateLeadAndPurchaseClick,
@@ -185,6 +189,29 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
             onChange={(e) => updateField('price', e.target.value)}
           />
         </FormRow>
+
+        {/* "상담 등록"/"구매 등록"이 이어서 보내는 Meta CAPI 호출에만
+            영향을 준다 — 그냥 "등록"은 CAPI를 호출하지 않아 무시된다. */}
+        <label className={styles.checkboxRow} htmlFor="lead-is-test">
+          <input
+            id="lead-is-test"
+            type="checkbox"
+            checked={form.isTest}
+            onChange={toggleCreateFormTest}
+          />
+          <span>테스트 이벤트로 전송</span>
+        </label>
+        {form.isTest && (
+          <FormRow label="test_event_code" htmlFor="lead-test-event-code">
+            <input
+              id="lead-test-event-code"
+              className={styles.control}
+              placeholder="test_event_code"
+              value={form.testEventCode}
+              onChange={(e) => updateCreateFormTestCode(e.target.value)}
+            />
+          </FormRow>
+        )}
 
         <div className={styles.footer}>
           <button
