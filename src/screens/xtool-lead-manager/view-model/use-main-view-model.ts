@@ -46,7 +46,7 @@ export const useMainViewModel = () => {
   const [pageSize, setPageSize] = useState<PageSize>(15)
   const [page, setPage] = useState(1)
 
-  const { searchValue, deviceFilter } = useFilterContext()
+  const { searchValue, selectedDevices } = useFilterContext()
   const { showToast, ToastContainer } = useToast()
 
   const fetchLeads = useCallback(async () => {
@@ -83,8 +83,8 @@ export const useMainViewModel = () => {
   )
 
   const deviceFilteredRows = useMemo(
-    () => filterLeadsByDevice(sortedRows, deviceFilter),
-    [sortedRows, deviceFilter],
+    () => filterLeadsByDevice(sortedRows, selectedDevices),
+    [sortedRows, selectedDevices],
   )
 
   const totalRows = deviceFilteredRows.length
@@ -101,7 +101,8 @@ export const useMainViewModel = () => {
   // 동기 호출하면 렌더가 한 번 더 연쇄되므로, 렌더 중에 이전 키와 비교해서
   // 바뀌었을 때만 즉시 되돌리는 패턴을 쓴다(React가 권장하는 "prop이 바뀌면
   // state를 초기화" 대체 방식).
-  const paginationResetKey = `${searchValue}|${deviceFilter}|${sortField}|${sortDirection}|${pageSize}`
+  const selectedDevicesKey = [...selectedDevices].sort().join(',')
+  const paginationResetKey = `${searchValue}|${selectedDevicesKey}|${sortField}|${sortDirection}|${pageSize}`
   const [prevPaginationResetKey, setPrevPaginationResetKey] = useState(
     paginationResetKey,
   )
@@ -683,10 +684,6 @@ export const useMainViewModel = () => {
       // 표에는 검색어·정렬·기기 필터에 더해 페이지당 개수·현재 페이지까지
       // 적용된 한 페이지 분량만 넘긴다.
       rows: pagedRows,
-      // 메인 표(rows)는 검색어·정렬·기기 필터가 다 걸린 결과다. 상담 기기
-      // 서머리는 그 필터들과 무관하게 항상 전체 리드를 기준으로 자체 필터링을
-      // 하는 별도 리포트라 가공 전 원본을 그대로 넘긴다.
-      allRows: rows,
       selectedRow,
       variant,
       registerForm,

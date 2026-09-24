@@ -4,9 +4,16 @@ import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
 import {
   CloseIcon,
   DeviceFilter,
+  PaginationBar,
 } from '@/screens/xtool-lead-manager/components'
+import type { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 
-export const Nav = () => {
+// 페이지네이션 상태(pageSize/page/totalPages/totalRows)와 그 액션은
+// useMainViewModel이 갖고 있다 — Nav는 Main의 형제(둘 다 FilterContextProvider의
+// 자식)라 그 훅을 직접 부를 수 없어, 부모(index.tsx)에서 한 번만 호출해 내려준다.
+type NavProps = Pick<ReturnType<typeof useMainViewModel>, 'state' | 'actions'>
+
+export const Nav = ({ state, actions }: NavProps) => {
   const {
     searchActive,
     searchRef,
@@ -14,9 +21,11 @@ export const Nav = () => {
     resetSearchValue,
     activeSearch,
     handleSearchChange,
-    deviceFilter,
-    setDeviceFilter,
+    selectedDevices,
+    toggleDevice,
   } = useFilterContext()
+  const { pageSize, page, totalPages, totalRows } = state
+  const { setPageSize, goToPrevPage, goToNextPage } = actions
 
   const typed = searchValue?.trim() !== ''
 
@@ -48,7 +57,19 @@ export const Nav = () => {
             </button>
           )}
         </div>
-        <DeviceFilter value={deviceFilter} onChange={setDeviceFilter} />
+        <DeviceFilter
+          selectedDevices={selectedDevices}
+          onToggleDevice={toggleDevice}
+        />
+        <PaginationBar
+          pageSize={pageSize}
+          page={page}
+          totalPages={totalPages}
+          totalRows={totalRows}
+          onSetPageSize={setPageSize}
+          onPrevPage={goToPrevPage}
+          onNextPage={goToNextPage}
+        />
       </div>
     </div>
   )

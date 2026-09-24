@@ -1,25 +1,21 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
-import { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
+import type { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
 import {
   ConfirmModal,
-  ConsultationSummary,
   CreateModal,
   Detail,
   Loading,
   Table,
 } from '@/screens/xtool-lead-manager/components'
 
-export const Main = () => {
-  const { state, actions, component } = useMainViewModel()
-  const {
-    selectedRow,
-    variant,
-    registerForm,
-    detail,
-    loading,
-    createOpen,
-    allRows,
-  } = state
+// Nav와 페이지네이션 상태를 공유해야 해서(둘 다 useMainViewModel 결과가
+// 필요) 이 훅은 더 이상 여기서 직접 호출하지 않는다 — 부모(index.tsx)가 한
+// 번만 호출해 Main·Nav 양쪽에 내려준다.
+type MainProps = ReturnType<typeof useMainViewModel>
+
+export const Main = ({ state, actions, component }: MainProps) => {
+  const { selectedRow, variant, registerForm, detail, loading, createOpen } =
+    state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -47,7 +43,6 @@ export const Main = () => {
     <div className="xtool-main">
       <div className="wrapper">
         <Table state={{ ...state }} actions={{ ...actions }} />
-        <ConsultationSummary leads={allRows} />
       </div>
       {selectedRow && (
         <ConfirmModal

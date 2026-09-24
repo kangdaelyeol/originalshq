@@ -1,9 +1,8 @@
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import '@/screens/xtool-lead-manager/styles/sort-button.scss'
 
-/** 컬럼 정렬 토글 버튼 — 메인 표(SortField)뿐 아니라 상담 기기 서머리 표
- * (ConsultationSummarySortField)처럼 다른 컬럼 키 집합을 쓰는 표에서도 그대로
- * 재사용할 수 있게 제네릭으로 뒀다. */
+/** 컬럼 정렬 토글 버튼 — 다른 컬럼 키 집합을 쓰는 표에서도 그대로 재사용할 수
+ * 있게 제네릭으로 뒀다. */
 export const SortButton = <T extends string>({
   columnKey,
   sortField,

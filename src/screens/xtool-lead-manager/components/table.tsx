@@ -1,10 +1,5 @@
 import { memo, useMemo } from 'react'
-import {
-  PAGE_SIZE_OPTIONS,
-  SortField,
-  type PageSize,
-  type SortDirection,
-} from '@/screens/xtool-lead-manager/types'
+import { SortField, type SortDirection } from '@/screens/xtool-lead-manager/types'
 import { formatPhoneNumber, formatTime } from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
 import type {
@@ -17,19 +12,12 @@ import type {
 interface TableActions {
   toggleSort: (field: SortField) => void
   showDetail: (rowId: string) => void
-  setPageSize: (size: PageSize) => void
-  goToPrevPage: () => void
-  goToNextPage: () => void
 }
 
 interface TableState {
   sortField: SortField
   sortDirection: SortDirection
   rows: Lead[]
-  pageSize: PageSize
-  page: number
-  totalPages: number
-  totalRows: number
 }
 
 interface TableProps {
@@ -167,13 +155,13 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
  * 순수 조회용이고, 행을 누르면 그 모달이 열린다. 체크박스(선택)·테스트
  * 토글 칸도 실제로 쓰는 일괄 동작이 없어 제거했다 — 테스트 이벤트 전송은
  * 상담/구매 등록 확인 모달과 상세 모달의 ↻(재전송) 버튼에서 그 자리에서
- * 바로 켜고 코드를 입력하도록 옮겼다.
+ * 바로 켜고 코드를 입력하도록 옮겼다. 페이지네이션 컨트롤은 상단 nav로
+ * 옮겼다(PaginationBar) — rows는 여기 넘어오는 시점에 이미 한 페이지 분량만
+ * 걸러져 있다.
  */
 export const Table = ({ state, actions }: TableProps) => {
-  const { toggleSort, showDetail, setPageSize, goToPrevPage, goToNextPage } =
-    actions
-  const { sortField, sortDirection, rows, pageSize, page, totalPages, totalRows } =
-    state
+  const { toggleSort, showDetail } = actions
+  const { sortField, sortDirection, rows } = state
 
   return (
     <div className="table_container">
@@ -244,63 +232,6 @@ export const Table = ({ state, actions }: TableProps) => {
               ))}
             </tbody>
           </table>
-        </div>
-
-        <div className="table_pagination">
-          <span className="total_count">총 {totalRows}건</span>
-
-          <div className="page_size_select">
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value) as PageSize)}
-            >
-              {PAGE_SIZE_OPTIONS.map((size) => (
-                <option key={size} value={size}>
-                  {size}개씩 보기
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="page_nav">
-            <button
-              type="button"
-              className="page_nav_btn"
-              onClick={goToPrevPage}
-              disabled={page <= 1}
-              aria-label="이전 페이지"
-            >
-              <svg viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M12.5 5 7.5 10l5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <span className="page_indicator">
-              {page} / {totalPages}
-            </span>
-            <button
-              type="button"
-              className="page_nav_btn"
-              onClick={goToNextPage}
-              disabled={page >= totalPages}
-              aria-label="다음 페이지"
-            >
-              <svg viewBox="0 0 20 20" fill="none">
-                <path
-                  d="M7.5 5 12.5 10l-5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
     </div>

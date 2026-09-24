@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
+import type { Device } from '@/screens/xtool-lead-manager/entity'
 
 interface FilterContextValue {
   resetSearchValue: () => void
@@ -8,8 +8,10 @@ interface FilterContextValue {
   searchRef: React.RefObject<HTMLDivElement | null>
   searchActive: boolean
   searchValue: string
-  deviceFilter: DeviceFilterLabel
-  setDeviceFilter: (device: DeviceFilterLabel) => void
+  /** 표를 필터링할 기기 다중 선택 — 비어 있으면(기본) 전체 기기를 보여준다.
+   * 상담/구매 이력 중 어느 하나라도 선택된 기기와 일치하면 그 고객을 보여준다. */
+  selectedDevices: ReadonlySet<Device>
+  toggleDevice: (device: Device) => void
 }
 
 export const FilterContext = createContext({} as FilterContextValue)

@@ -10,10 +10,84 @@
   padding: 15px 0;
   .inner {
     display: flex;
+    align-items: center;
     gap: 20px;
     position: relative;
     margin: 0 auto;
     padding: 0 20px;
+  }
+
+  // 표 페이지네이션 — 표 바로 아래 있으면 표가 길 때 스크롤해야 보여서
+  // 여기(검색·기기 필터 옆)로 옮겼다. nav 오른쪽 끝에 붙인다.
+  .pagination_bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+
+    .total_count {
+      font-size: 13px;
+      color: variables.$color-text-faint;
+    }
+
+    .page_size_select select {
+      box-sizing: border-box;
+      height: 34px;
+      padding: 0 10px;
+      background-color: variables.$color-surface-raised;
+      border: 1px solid variables.$color-border;
+      border-radius: 6px;
+      color: variables.$color-text;
+      font-size: 12.5px;
+      cursor: pointer;
+
+      &:focus {
+        outline: none;
+        border-color: variables.$color-accent;
+      }
+    }
+
+    .page_nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      .page_indicator {
+        font-size: 12.5px;
+        color: variables.$color-text-muted;
+        min-width: 48px;
+        text-align: center;
+      }
+
+      .page_nav_btn {
+        all: unset;
+        box-sizing: border-box;
+        width: 26px;
+        height: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        border: 1px solid variables.$color-border;
+        color: variables.$color-text-muted;
+        cursor: pointer;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+
+        &:hover:not(:disabled) {
+          background-color: rgba(255, 255, 255, 0.06);
+          color: variables.$color-text;
+        }
+
+        &:disabled {
+          cursor: not-allowed;
+          opacity: 0.4;
+        }
+      }
+    }
   }
   svg.search {
     position: absolute;

@@ -7,13 +7,13 @@ import {
 } from 'react'
 import { useOutsideClick } from '@/screens/xtool-lead-manager/hooks'
 import { FilterContext } from '@/screens/xtool-lead-manager/context'
-import { DeviceFilterLabel } from '@/screens/xtool-lead-manager/types'
+import type { Device } from '@/screens/xtool-lead-manager/entity'
 
 export const FilterContextProvider = ({ children }: PropsWithChildren) => {
   const [searchActive, setSearchActive] = useState(false)
   const [searchValue, setSearchValue] = useState('')
-  const [deviceFilter, setDeviceFilter] = useState<DeviceFilterLabel>(
-    DeviceFilterLabel.ALL,
+  const [selectedDevices, setSelectedDevices] = useState<ReadonlySet<Device>>(
+    () => new Set(),
   )
   const searchRef = useRef<HTMLDivElement>(null)
 
@@ -30,6 +30,15 @@ export const FilterContextProvider = ({ children }: PropsWithChildren) => {
     [],
   )
 
+  const toggleDevice = useCallback((device: Device) => {
+    setSelectedDevices((prev) => {
+      const next = new Set(prev)
+      if (next.has(device)) next.delete(device)
+      else next.add(device)
+      return next
+    })
+  }, [])
+
   // 검색창 입력마다 이 value 객체를 새로 만들면 참조가 매번 바뀌어, 표처럼
   // 무거운 하위 트리까지 memo 여부와 무관하게 컨텍스트 재구독으로 다시
   // 그려진다 — 실제로 바뀐 값이 있을 때만 새 객체를 만들도록 묶는다.
@@ -41,8 +50,8 @@ export const FilterContextProvider = ({ children }: PropsWithChildren) => {
       activeSearch,
       resetSearchValue,
       handleSearchChange,
-      deviceFilter,
-      setDeviceFilter,
+      selectedDevices,
+      toggleDevice,
     }),
     [
       searchActive,
@@ -50,7 +59,8 @@ export const FilterContextProvider = ({ children }: PropsWithChildren) => {
       activeSearch,
       resetSearchValue,
       handleSearchChange,
-      deviceFilter,
+      selectedDevices,
+      toggleDevice,
     ],
   )
 

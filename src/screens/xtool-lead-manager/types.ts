@@ -1,15 +1,5 @@
 import { Device } from './entity'
 
-export const DeviceFilterLabel = {
-  ALL: '전체 기기',
-  ...Device,
-} as const
-
-export type DeviceFilterLabel =
-  (typeof DeviceFilterLabel)[keyof typeof DeviceFilterLabel]
-
-export type DeviceFilterOption = keyof typeof DeviceFilterLabel
-
 export const EditingField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
