@@ -131,6 +131,12 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+
+            .row_head_actions {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+            }
           }
         }
 
@@ -202,6 +208,28 @@
           flex: 1;
           display: flex;
           gap: 6px;
+
+          // User Agent처럼 값이 길어 textarea가 필요한 행 — input+버튼을
+          // 한 줄에 나란히 두는 기본 레이아웃 대신 textarea를 위에, 저장/취소
+          // 버튼을 그 아래 줄에 오른쪽 정렬로 둔다.
+          &.column {
+            flex-direction: column;
+
+            .control {
+              width: 100%;
+              min-height: 70px;
+              resize: vertical;
+              padding: 8px;
+              font-family: variables.$font-mono;
+              line-height: 1.4;
+            }
+
+            .edit_actions {
+              display: flex;
+              justify-content: flex-end;
+              gap: 6px;
+            }
+          }
 
           .control {
             box-sizing: border-box;
@@ -282,6 +310,16 @@
         font-size: 10.5px;
         color: variables.$color-text-faint;
         word-break: break-all;
+      }
+
+      // 상담 건 메모 — event_id/external_id 같은 기술적 스냅샷(record_meta)과
+      // 달리 사람이 쓴 내용이라 더 눈에 띄게, 일반 텍스트 크기로 보여준다.
+      .record_note {
+        padding: 0 10px;
+        font-size: 12.5px;
+        color: variables.$color-text-muted;
+        word-break: break-word;
+        white-space: pre-wrap;
       }
 
       // 상담/구매 이력의 ↻(재전송) 버튼을 누르면 나타나는 패널 — 테스트
@@ -417,6 +455,12 @@
               outline: none;
               border-color: variables.$color-accent;
             }
+          }
+
+          // 메모는 기기/시각(짧은 칩 형태) 옆이 아니라 항상 자기 줄을 혼자
+          // 쓰도록 강제한다 — 다른 값들과 폭을 다투면 너무 좁아져 쓰기 불편하다.
+          .note_control {
+            flex-basis: 100%;
           }
         }
 

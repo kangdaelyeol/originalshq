@@ -293,6 +293,15 @@ export const useMainViewModel = () => {
       case EditingField.REMARKS:
         res = await leadClient.updateRemarks({ id: leadId, remarks: value })
         break
+      // 유입경로/추적정보 섹션의 나머지 필드(utm_source/utm_medium/
+      // utm_campaign/ip/fbc/fbp/user_agent) — 전부 같은 모양이라 필드별
+      // 분기 없이 하나의 범용 엔드포인트로 보낸다.
+      default:
+        res = await leadClient.updateTrackingField({
+          id: leadId,
+          field,
+          value,
+        })
     }
 
     if (!res.ok) {
@@ -402,7 +411,7 @@ export const useMainViewModel = () => {
   const updateConsultationRecord = async (
     leadId: string,
     recordId: string,
-    updates: { at?: number; device?: Device },
+    updates: { at?: number; device?: Device; note?: string },
   ) => {
     setLoading(true)
     const res = await leadClient.updateConsultation({

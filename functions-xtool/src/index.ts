@@ -25,6 +25,7 @@ import {
   validateUpdateIntake,
   validateUpdateLeadFn,
   validateUpdateLeadRemarks,
+  validateUpdateLeadTrackingField,
   validateUpdatePurchase,
   valiedateUpdateLeadPhone,
 } from './validation'
@@ -509,7 +510,7 @@ export const updateConsultation = onRequest((request, response) => {
         return
       }
 
-      const { id, recordId, at, device } = validationRes.data
+      const { id, recordId, at, device, note } = validationRes.data
 
       const docRef = db.collection('lead').doc(id)
       const snapshot = await docRef.get()
@@ -533,6 +534,7 @@ export const updateConsultation = onRequest((request, response) => {
               ...c,
               ...(at !== undefined ? { at } : {}),
               ...(device ? { device } : {}),
+              ...(note !== undefined ? { note } : {}),
             }
           : c,
       )
@@ -1016,6 +1018,47 @@ export const updateLeadRemarks = onRequest((request, response) => {
       response.status(200).send({ id, ...snapshot.data(), remarks })
     } catch (error) {
       logger.error('updateLeadRemarks 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// updateLeadTrackingField — 유입경로/추적정보 섹션(utm_source/utm_medium/
+// utm_campaign/ip/fbc/fbp/user_agent)의 자유 텍스트 필드. 전부 같은 모양이라
+// updateLeadFn/updateLeadPhone/updateLeadRemarks처럼 필드마다 엔드포인트를
+// 따로 두지 않고 field로 골라 하나로 처리한다.
+// ────────────────────────────────
+export const updateLeadTrackingField = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateUpdateLeadTrackingField(request.body)
+
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const { id, field, value } = validationRes.data
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ [field]: value })
+
+      response.status(200).send({ id, ...snapshot.data(), [field]: value })
+    } catch (error) {
+      logger.error('updateLeadTrackingField 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

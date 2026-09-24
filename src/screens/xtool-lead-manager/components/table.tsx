@@ -85,6 +85,21 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
 
   return (
     <tr className="row-clickable" onClick={() => onShowDetail(row.id)}>
+      {/* Phone number Cell */}
+      <td className="col-ph">
+        <span>{formatPhoneNumber(row.ph)}</span>
+      </td>
+
+      {/* First name Cell */}
+      <td className="col-fn">
+        <span>{row.fn || '이름 없음'}</span>
+      </td>
+
+      {/* Remarks cell — 회사명/직책/동반 구매자 등 내부 참고용 메모 */}
+      <td className="col-remarks">
+        <span>{row.remarks || '-'}</span>
+      </td>
+
       {/* Intake status cell */}
       <td className="col-status" title={intakeTitleText}>
         {intakes.length > 0 ? (
@@ -95,21 +110,6 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
         ) : (
           <span>-</span>
         )}
-      </td>
-
-      {/* First name Cell */}
-      <td className="col-fn">
-        <span>{row.fn || '이름 없음'}</span>
-      </td>
-
-      {/* Phone number Cell */}
-      <td className="col-ph">
-        <span>{formatPhoneNumber(row.ph)}</span>
-      </td>
-
-      {/* Remarks cell — 회사명/직책/동반 구매자 등 내부 참고용 메모 */}
-      <td className="col-remarks">
-        <span>{row.remarks || '-'}</span>
       </td>
 
       {/* Consultation status cell */}
@@ -170,10 +170,10 @@ export const Table = ({ state, actions }: TableProps) => {
           <table className="lead_table">
             <thead>
               <tr>
-                <th className="col-status">
-                  접수 현황
+                <th className="col-ph">
+                  전화번호
                   <SortButton
-                    columnKey={SortField.CREATED_AT}
+                    columnKey={SortField.PHONE}
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={toggleSort}
@@ -188,19 +188,19 @@ export const Table = ({ state, actions }: TableProps) => {
                     onSort={toggleSort}
                   />
                 </th>
-                <th className="col-ph">
-                  전화번호
+                <th className="col-remarks">
+                  비고
                   <SortButton
-                    columnKey={SortField.PHONE}
+                    columnKey={SortField.REMARKS}
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={toggleSort}
                   />
                 </th>
-                <th className="col-remarks">
-                  비고
+                <th className="col-status">
+                  접수 현황
                   <SortButton
-                    columnKey={SortField.REMARKS}
+                    columnKey={SortField.CREATED_AT}
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={toggleSort}

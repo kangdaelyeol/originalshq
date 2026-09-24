@@ -29,30 +29,6 @@ const UTM_LABEL: Record<string, string> = {
   utm_campaign: '캠페인',
 }
 
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-}) {
-  const isEmpty = !value || value === '-'
-  return (
-    <div className="info_row">
-      <span className="label">{label}</span>
-      <span
-        className={['value', mono ? 'mono' : '', isEmpty ? 'empty' : ''].join(
-          ' ',
-        )}
-      >
-        {isEmpty ? '값 없음' : value}
-      </span>
-    </div>
-  )
-}
-
 /** 클릭하면 그 자리에서 바로 고치는 정보 행 — 표의 인라인 편집을 대신해
  * 상세 모달로 옮긴 자리다. rawValue는 편집 입력에 넣을 원본 값(예: 전화번호는
  * 숫자만, 접수 시각은 datetime-local 문자열), displayValue는 평소에 보여줄
@@ -132,6 +108,100 @@ function EditableInfoRow({
         )}
       >
         {isEmpty ? '값 없음' : displayValue}
+      </span>
+    </div>
+  )
+}
+
+/** User Agent 전용 편집 행 — 값이 길어서 EditableInfoRow의 한 줄(label+value)
+ * 레이아웃 대신 세로로 쌓고(column), 평소엔 한 줄로 잘라 보여주다가 "전체
+ * 보기"로 펼칠 수 있게 한 기존 동작은 그대로 두면서 편집만 추가한다. */
+function EditableUserAgentRow({
+  leadId,
+  rawValue,
+  onSave,
+}: {
+  leadId: string
+  rawValue: string
+  onSave: (leadId: string, field: EditingField, value: string) => Promise<void>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [draft, setDraft] = useState(rawValue)
+
+  if (editing) {
+    return (
+      <div className="info_row column editing">
+        <span className="label">User Agent</span>
+        <div className="edit_control column">
+          <textarea
+            autoFocus
+            className="control"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setEditing(false)
+            }}
+          />
+          <div className="edit_actions">
+            <button
+              type="button"
+              className="save_btn"
+              onClick={async () => {
+                await onSave(leadId, EditingField.USER_AGENT, draft)
+                setEditing(false)
+              }}
+            >
+              저장
+            </button>
+            <button
+              type="button"
+              className="cancel_btn"
+              onClick={() => setEditing(false)}
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const isEmpty = !rawValue
+  return (
+    <div className="info_row column">
+      <div className="row_head">
+        <span className="label">User Agent</span>
+        <div className="row_head_actions">
+          {!isEmpty && (
+            <button
+              type="button"
+              className="expand_btn"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded ? '접기' : '전체 보기'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="expand_btn"
+            onClick={() => {
+              setDraft(rawValue)
+              setEditing(true)
+            }}
+          >
+            수정
+          </button>
+        </div>
+      </div>
+      <span
+        className={[
+          'value mono ua',
+          expanded ? 'expanded' : '',
+          isEmpty ? 'empty' : '',
+        ].join(' ')}
+      >
+        {isEmpty ? '값 없음' : rawValue}
       </span>
     </div>
   )
@@ -343,7 +413,7 @@ interface ConsultationRowProps {
   onUpdate: (
     leadId: string,
     recordId: string,
-    updates: { at?: number; device?: Device },
+    updates: { at?: number; device?: Device; note?: string },
   ) => Promise<void>
   onDelete: (leadId: string, recordId: string) => Promise<void>
   onResend: (
@@ -363,6 +433,8 @@ function ConsultationRow({
   const [editing, setEditing] = useState(false)
   const [device, setDevice] = useState<Device>(record.device)
   const [at, setAt] = useState(toDatetimeLocalValue(record.at))
+  // Monday CRM에서 나중에 이 값을 채워 넣을 예정 — 그 전까지는 수기 입력.
+  const [note, setNote] = useState(record.note ?? '')
   const [resendOpen, setResendOpen] = useState(false)
 
   if (editing) {
@@ -385,6 +457,12 @@ function ConsultationRow({
           value={at}
           onChange={(e) => setAt(e.target.value)}
         />
+        <input
+          className="control note_control"
+          placeholder="메모"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
         <div className="record_actions">
           <button
             type="button"
@@ -393,6 +471,7 @@ function ConsultationRow({
               await onUpdate(leadId, record.id, {
                 device,
                 at: fromDatetimeLocalValue(at),
+                note,
               })
               setEditing(false)
             }}
@@ -453,6 +532,7 @@ function ConsultationRow({
           onClose={() => setResendOpen(false)}
         />
       )}
+      {record.note && <div className="record_note">{record.note}</div>}
       {/* CAPI로 마지막에 실제 보낸 값의 스냅샷 — 이벤트 매니저에서 이
           상담 건이 어느 이벤트로 잡혔는지 대조해볼 때 쓴다. 둘 다 없으면
           (마이그레이션 전 레코드) 아예 안 보여준다. */}
@@ -632,7 +712,7 @@ export const Detail = ({
   onUpdateConsultation: (
     leadId: string,
     recordId: string,
-    updates: { at?: number; device?: Device },
+    updates: { at?: number; device?: Device; note?: string },
   ) => Promise<void>
   onDeleteConsultation: (leadId: string, recordId: string) => Promise<void>
   onResendConsultation: (
@@ -661,7 +741,6 @@ export const Detail = ({
   ) => Promise<void>
 }) => {
   const state = getLeadState(lead)
-  const [uaExpanded, setUaExpanded] = useState(false)
 
   useEffect(() => {
     document.body.style.overflow = 'hidden'
@@ -735,7 +814,7 @@ export const Detail = ({
           <section className="section">
             <div className="section_title">비고</div>
             <EditableInfoRow
-              label="메모"
+              label="비고"
               field={EditingField.REMARKS}
               leadId={lead.id}
               rawValue={lead.remarks}
@@ -811,39 +890,66 @@ export const Detail = ({
 
           <section className="section">
             <div className="section_title">유입 경로</div>
-            <InfoRow label={UTM_LABEL.utm_source} value={lead.utm_source} />
-            <InfoRow label={UTM_LABEL.utm_medium} value={lead.utm_medium} />
-            <InfoRow label={UTM_LABEL.utm_campaign} value={lead.utm_campaign} />
+            <EditableInfoRow
+              label={UTM_LABEL.utm_source}
+              field={EditingField.UTM_SOURCE}
+              leadId={lead.id}
+              rawValue={lead.utm_source}
+              displayValue={lead.utm_source}
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label={UTM_LABEL.utm_medium}
+              field={EditingField.UTM_MEDIUM}
+              leadId={lead.id}
+              rawValue={lead.utm_medium}
+              displayValue={lead.utm_medium}
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label={UTM_LABEL.utm_campaign}
+              field={EditingField.UTM_CAMPAIGN}
+              leadId={lead.id}
+              rawValue={lead.utm_campaign}
+              displayValue={lead.utm_campaign}
+              onSave={onUpdateField}
+            />
           </section>
 
           <section className="section">
             <div className="section_title">추적 정보</div>
-            <InfoRow label="IP 주소" value={lead.ip} mono />
-            <InfoRow label="FBC" value={lead.fbc} mono />
-            <InfoRow label="FBP" value={lead.fbp} mono />
-            <div className="info_row column">
-              <div className="row_head">
-                <span className="label">User Agent</span>
-                {lead.user_agent && (
-                  <button
-                    type="button"
-                    className="expand_btn"
-                    onClick={() => setUaExpanded((v) => !v)}
-                  >
-                    {uaExpanded ? '접기' : '전체 보기'}
-                  </button>
-                )}
-              </div>
-              <span
-                className={[
-                  'value mono ua',
-                  uaExpanded ? 'expanded' : '',
-                  !lead.user_agent ? 'empty' : '',
-                ].join(' ')}
-              >
-                {lead.user_agent || '값 없음'}
-              </span>
-            </div>
+            <EditableInfoRow
+              label="IP 주소"
+              field={EditingField.IP}
+              leadId={lead.id}
+              rawValue={lead.ip}
+              displayValue={lead.ip}
+              mono
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label="FBC"
+              field={EditingField.FBC}
+              leadId={lead.id}
+              rawValue={lead.fbc}
+              displayValue={lead.fbc}
+              mono
+              onSave={onUpdateField}
+            />
+            <EditableInfoRow
+              label="FBP"
+              field={EditingField.FBP}
+              leadId={lead.id}
+              rawValue={lead.fbp}
+              displayValue={lead.fbp}
+              mono
+              onSave={onUpdateField}
+            />
+            <EditableUserAgentRow
+              leadId={lead.id}
+              rawValue={lead.user_agent}
+              onSave={onUpdateField}
+            />
           </section>
         </div>
 

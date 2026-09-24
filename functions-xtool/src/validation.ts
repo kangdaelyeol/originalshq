@@ -225,12 +225,14 @@ export const validateUpdateConsultation = (
   recordId: string
   at?: number
   device?: Device
+  note?: string
 }> => {
-  const { id, recordId, at, device } = body as {
+  const { id, recordId, at, device, note } = body as {
     id?: string
     recordId?: string
     at?: number
     device?: string
+    note?: string
   }
 
   if (!id || typeof id !== 'string') {
@@ -245,13 +247,16 @@ export const validateUpdateConsultation = (
   if (device !== undefined && !Device.includes(device as Device)) {
     return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
   }
-  if (at === undefined && device === undefined) {
-    return { ok: false, error: 'at or device must be provided' }
+  if (note !== undefined && typeof note !== 'string') {
+    return { ok: false, error: 'note must be a string if provided' }
+  }
+  if (at === undefined && device === undefined && note === undefined) {
+    return { ok: false, error: 'at, device, or note must be provided' }
   }
 
   return {
     ok: true,
-    data: { id, recordId, at, device: device as Device | undefined },
+    data: { id, recordId, at, device: device as Device | undefined, note },
   }
 }
 
@@ -371,6 +376,60 @@ export const validateUpdateLeadRemarks = (
   }
 
   return { ok: true, data: { id, remarks } }
+}
+
+const EDITABLE_LEAD_TRACKING_FIELDS = [
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'ip',
+  'fbc',
+  'fbp',
+  'user_agent',
+] as const
+
+export type EditableLeadTrackingField =
+  (typeof EDITABLE_LEAD_TRACKING_FIELDS)[number]
+
+/** 유입경로/추적정보 섹션의 자유 텍스트 필드들 — 전부 같은 모양(문자열, 빈
+ * 값 허용)이라 필드마다 엔드포인트를 따로 안 만들고 field로 골라 하나로
+ * 묶는다. fn/ph/remarks는 각자 특별한 처리(externalId 재생성, 필수값 검증)가
+ * 있어 기존 전용 엔드포인트를 그대로 둔다. */
+export const validateUpdateLeadTrackingField = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  field: EditableLeadTrackingField
+  value: string
+}> => {
+  const { id, field, value } = body as {
+    id?: string
+    field?: string
+    value?: string
+  }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (
+    !field ||
+    !EDITABLE_LEAD_TRACKING_FIELDS.includes(field as EditableLeadTrackingField)
+  ) {
+    return {
+      ok: false,
+      error: `field must be one of: ${EDITABLE_LEAD_TRACKING_FIELDS.join(
+        ', ',
+      )}`,
+    }
+  }
+  if (typeof value !== 'string') {
+    return { ok: false, error: 'value must be a string' }
+  }
+
+  return {
+    ok: true,
+    data: { id, field: field as EditableLeadTrackingField, value },
+  }
 }
 
 export const validateDeleteLead = (

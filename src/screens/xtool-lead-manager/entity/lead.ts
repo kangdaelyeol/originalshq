@@ -40,6 +40,9 @@ export type ConsultationRecord = {
   device: Device
   externalId?: string
   eventId?: string
+  /** 이 상담 건에 대한 메모 — 나중에 Monday CRM에 쌓인 상담 메모를 이 필드로
+   * 가져올 예정이라 미리 스키마를 만들어둔다. 그 전까지는 수기 입력도 가능. */
+  note?: string
 }
 
 /** 구매 1건. externalId/eventId는 ConsultationRecord와 같은 이유(이 구매를

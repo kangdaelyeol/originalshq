@@ -4,6 +4,13 @@ export const EditingField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
   REMARKS: 'remarks',
+  UTM_SOURCE: 'utm_source',
+  UTM_MEDIUM: 'utm_medium',
+  UTM_CAMPAIGN: 'utm_campaign',
+  IP: 'ip',
+  FBC: 'fbc',
+  FBP: 'fbp',
+  USER_AGENT: 'user_agent',
 } as const
 
 export type EditingField = (typeof EditingField)[keyof typeof EditingField]
