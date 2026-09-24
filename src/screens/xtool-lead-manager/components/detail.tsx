@@ -64,7 +64,7 @@ function EditableInfoRow({
           <input
             autoFocus
             type={inputType}
-            className="control"
+            className={['control', mono ? 'mono' : ''].join(' ')}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {

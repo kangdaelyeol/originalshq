@@ -254,6 +254,11 @@
 
         .label {
           flex-shrink: 0;
+          // 라벨 글자 수가 필드마다 달라(고객명/비고/유입 채널/IP 주소 등)
+          // 고정 폭이 없으면 편집 모드에 들어갈 때마다 입력창 시작 위치가
+          // 행마다 들쭉날쭉해 보인다 — 최소 폭을 줘서 항상 같은 자리에서
+          // 시작하게 한다.
+          min-width: 84px;
           font-size: 13.5px;
           color: variables.$color-text-muted;
         }
@@ -312,10 +317,6 @@
           }
         }
 
-        &.editing {
-          align-items: flex-start;
-        }
-
         .edit_control {
           flex: 1;
           display: flex;
@@ -353,6 +354,12 @@
             border-radius: 6px;
             color: variables.$color-text;
             font-size: 12.5px;
+
+            // 평소 보여주는 값(.value.mono)과 같은 글꼴을 써서, 편집 모드에
+            // 들어가도 IP/FBC/FBP 같은 값의 생김새가 안 바뀌게 한다.
+            &.mono {
+              font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+            }
 
             &:focus {
               outline: none;
