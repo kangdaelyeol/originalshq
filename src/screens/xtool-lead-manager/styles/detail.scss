@@ -15,6 +15,118 @@
   align-items: center;
   animation: overlay-fade-in 0.15s ease;
 
+  // 상세 폼 왼쪽에 검색된 고객 목록을 나란히 둔다 — 예전엔 .detail_form만
+  // 바로 가운데 있었는데, 그 자리를 이 flex row가 대신하고 detail_form은
+  // 그 안의 오른쪽 칸이 됐다.
+  .detail_layout {
+    display: flex;
+    align-items: stretch;
+    gap: 16px;
+    max-height: 80vh;
+  }
+
+  .detail_side_list {
+    box-sizing: border-box;
+    width: 300px;
+    max-height: 80vh;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
+    border-radius: 16px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: modal-pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+
+    .detail_side_list_head {
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 18px;
+      border-bottom: 1px solid variables.$color-border;
+      flex-shrink: 0;
+
+      .title {
+        font-size: 14px;
+        font-weight: 600;
+        color: variables.$color-text;
+      }
+
+      .count {
+        font-size: 12px;
+        color: variables.$color-text-muted;
+      }
+    }
+
+    // flex 부모 안에서 세로 스크롤이 실제로 동작하려면 min-height: 0이
+    // 필요하다(기본값 auto면 내용만큼 커져서 부모의 max-height를 무시하고
+    // 넘친다) — table_scroll(main.scss)에는 없던 문제인데, 거기는 flex
+    // 부모가 아니라 필요 없었다.
+    .detail_side_list_scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+    }
+
+    .detail_side_list_table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+
+      th,
+      td {
+        box-sizing: border-box;
+        max-width: 110px;
+        padding: 8px 10px;
+        text-align: left;
+        font-size: 12.5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-bottom: 1px solid variables.$color-border-soft;
+      }
+
+      // 전화번호는 잘리면 안 되는 값이라 다른 컬럼과 달리 max-width/ellipsis를
+      // 걷어낸다 — "width: 1%"는 table-layout이 auto일 때 이 칼럼을 내용만큼만
+      // 차지하게 만드는 관례적 트릭으로, 나머지 칼럼(고객명/비고)이 남는
+      // 공간을 나눠 갖고 필요하면 계속 줄임표로 잘리게 둔다.
+      .col-ph {
+        width: 1%;
+        max-width: none;
+        overflow: visible;
+        text-overflow: unset;
+      }
+
+      thead th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        padding-right: 22px;
+        background-color: variables.$table-header-bg-color;
+        color: variables.$color-text-muted;
+        font-weight: 500;
+      }
+
+      tbody tr {
+        cursor: pointer;
+
+        &:hover td {
+          background-color: rgba(255, 255, 255, 0.04);
+        }
+
+        &.active td {
+          background-color: variables.$color-accent-soft;
+          color: variables.$color-accent;
+        }
+      }
+
+      tbody td {
+        color: variables.$color-text;
+      }
+    }
+  }
+
   .detail_form {
     box-sizing: border-box;
     width: 520px;

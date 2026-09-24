@@ -693,6 +693,9 @@ export const useMainViewModel = () => {
       // 표에는 검색어·정렬·기기 필터에 더해 페이지당 개수·현재 페이지까지
       // 적용된 한 페이지 분량만 넘긴다.
       rows: pagedRows,
+      // 상세 모달 왼쪽의 고객 목록용 — 같은 검색어·정렬·기기 필터가 걸린
+      // 결과지만, 훑어보기용이라 페이지네이션은 적용하지 않고 전체를 준다.
+      filteredRows: deviceFilteredRows,
       selectedRow,
       variant,
       registerForm,

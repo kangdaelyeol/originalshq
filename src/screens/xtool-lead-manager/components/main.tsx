@@ -14,8 +14,15 @@ import {
 type MainProps = ReturnType<typeof useMainViewModel>
 
 export const Main = ({ state, actions, component }: MainProps) => {
-  const { selectedRow, variant, registerForm, detail, loading, createOpen } =
-    state
+  const {
+    selectedRow,
+    variant,
+    registerForm,
+    detail,
+    loading,
+    createOpen,
+    filteredRows,
+  } = state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -23,6 +30,7 @@ export const Main = ({ state, actions, component }: MainProps) => {
     toggleRegisterFormTest,
     updateRegisterFormTestCode,
     hideDetail,
+    showDetail,
     updateIntakeRecord,
     deleteIntakeRecord,
     updateConsultationRecord,
@@ -59,6 +67,8 @@ export const Main = ({ state, actions, component }: MainProps) => {
       {detail && (
         <Detail
           lead={detail}
+          leads={filteredRows}
+          onSelectLead={showDetail}
           onConfirm={hideDetail}
           onUpdateIntake={updateIntakeRecord}
           onDeleteIntake={deleteIntakeRecord}

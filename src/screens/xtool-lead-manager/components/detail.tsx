@@ -15,6 +15,7 @@ import {
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from '@/screens/xtool-lead-manager/utils'
+import { DetailSideList } from '@/screens/xtool-lead-manager/components'
 import '@/screens/xtool-lead-manager/styles/detail.scss'
 
 const STATE_LABEL: Record<LeadState, string> = {
@@ -687,6 +688,8 @@ function PurchaseRow({
 
 export const Detail = ({
   lead,
+  leads,
+  onSelectLead,
   onConfirm,
   onUpdateIntake,
   onDeleteIntake,
@@ -702,6 +705,9 @@ export const Detail = ({
   onUpdateField,
 }: {
   lead: Lead
+  /** 왼쪽 고객 목록에 뿌릴 검색된 전체 고객 — 지금 열려 있는 lead와는 별개다. */
+  leads: Lead[]
+  onSelectLead: (rowId: string) => void
   onConfirm: () => void
   onUpdateIntake: (
     leadId: string,
@@ -769,218 +775,227 @@ export const Detail = ({
 
   return (
     <div className="lead_manager_detail_modal" onClick={onConfirm}>
-      <div className="detail_form" onClick={(e) => e.stopPropagation()}>
-        <div className="header">
-          <div className="header_title">
-            <span className={['state_badge', state].join(' ')}>
-              {STATE_LABEL[state]}
-            </span>
-            <span className="customer_name">{lead.fn || '이름 없음'}</span>
+      <div className="detail_layout" onClick={(e) => e.stopPropagation()}>
+        <DetailSideList
+          leads={leads}
+          activeLeadId={lead.id}
+          onSelect={onSelectLead}
+        />
+        <div className="detail_form">
+          <div className="header">
+            <div className="header_title">
+              <span className={['state_badge', state].join(' ')}>
+                {STATE_LABEL[state]}
+              </span>
+              <span className="customer_name">{lead.fn || '이름 없음'}</span>
+            </div>
+            <button type="button" className="close_btn" onClick={onConfirm}>
+              <svg viewBox="0 0 20 20" fill="none">
+                <path
+                  d="M5 5l10 10M15 5 5 15"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
           </div>
-          <button type="button" className="close_btn" onClick={onConfirm}>
-            <svg viewBox="0 0 20 20" fill="none">
-              <path
-                d="M5 5l10 10M15 5 5 15"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
+
+          <div className="body">
+            <section className="section">
+              <div className="section_title">기본 정보</div>
+              <EditableInfoRow
+                label="고객명"
+                field={EditingField.FIRST_NAME}
+                leadId={lead.id}
+                rawValue={lead.fn}
+                displayValue={lead.fn}
+                onSave={onUpdateField}
               />
-            </svg>
-          </button>
-        </div>
+              <EditableInfoRow
+                label="전화번호"
+                field={EditingField.PHONE}
+                leadId={lead.id}
+                rawValue={lead.ph}
+                displayValue={formatPhoneNumber(lead.ph)}
+                mono
+                onSave={onUpdateField}
+              />
+              {/* 직책·회사명·동반 구매자 등 내부 참고용 메모라 기본 정보에
+                  속한다 — 예전엔 따로 섹션이었다. */}
+              <EditableInfoRow
+                label="비고"
+                field={EditingField.REMARKS}
+                leadId={lead.id}
+                rawValue={lead.remarks}
+                displayValue={lead.remarks}
+                onSave={onUpdateField}
+              />
+            </section>
 
-        <div className="body">
-          <section className="section">
-            <div className="section_title">기본 정보</div>
-            <EditableInfoRow
-              label="고객명"
-              field={EditingField.FIRST_NAME}
-              leadId={lead.id}
-              rawValue={lead.fn}
-              displayValue={lead.fn}
-              onSave={onUpdateField}
-            />
-            <EditableInfoRow
-              label="전화번호"
-              field={EditingField.PHONE}
-              leadId={lead.id}
-              rawValue={lead.ph}
-              displayValue={formatPhoneNumber(lead.ph)}
-              mono
-              onSave={onUpdateField}
-            />
-          </section>
-
-          <section className="section">
-            <div className="section_title">비고</div>
-            <EditableInfoRow
-              label="비고"
-              field={EditingField.REMARKS}
-              leadId={lead.id}
-              rawValue={lead.remarks}
-              displayValue={lead.remarks}
-              onSave={onUpdateField}
-            />
-          </section>
-
-          <section className="section">
-            <div className="section_title">
-              접수 이력 ({sortedIntakes.length})
-            </div>
-            {sortedIntakes.length > 0 ? (
-              <div className="record_list">
-                {sortedIntakes.map((record) => (
-                  <IntakeRow
-                    key={record.id}
-                    leadId={lead.id}
-                    record={record}
-                    onUpdate={onUpdateIntake}
-                    onDelete={onDeleteIntake}
-                  />
-                ))}
+            <section className="section">
+              <div className="section_title">
+                접수 이력 ({sortedIntakes.length})
               </div>
-            ) : (
-              <div className="empty_state">접수 이력이 없습니다</div>
-            )}
-          </section>
+              {sortedIntakes.length > 0 ? (
+                <div className="record_list">
+                  {sortedIntakes.map((record) => (
+                    <IntakeRow
+                      key={record.id}
+                      leadId={lead.id}
+                      record={record}
+                      onUpdate={onUpdateIntake}
+                      onDelete={onDeleteIntake}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty_state">접수 이력이 없습니다</div>
+              )}
+            </section>
 
-          <section className="section">
-            <div className="section_title">
-              상담 이력 ({sortedConsultations.length})
-            </div>
-            {sortedConsultations.length > 0 ? (
-              <div className="record_list">
-                {sortedConsultations.map((record) => (
-                  <ConsultationRow
-                    key={record.id}
-                    leadId={lead.id}
-                    record={record}
-                    onUpdate={onUpdateConsultation}
-                    onDelete={onDeleteConsultation}
-                    onResend={onResendConsultation}
-                  />
-                ))}
+            <section className="section">
+              <div className="section_title">
+                상담 이력 ({sortedConsultations.length})
               </div>
-            ) : (
-              <div className="empty_state">상담 이력이 없습니다</div>
-            )}
-          </section>
+              {sortedConsultations.length > 0 ? (
+                <div className="record_list">
+                  {sortedConsultations.map((record) => (
+                    <ConsultationRow
+                      key={record.id}
+                      leadId={lead.id}
+                      record={record}
+                      onUpdate={onUpdateConsultation}
+                      onDelete={onDeleteConsultation}
+                      onResend={onResendConsultation}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty_state">상담 이력이 없습니다</div>
+              )}
+            </section>
 
-          <section className="section">
-            <div className="section_title">
-              구매 이력 ({sortedPurchases.length})
-            </div>
-            {sortedPurchases.length > 0 ? (
-              <div className="record_list">
-                {sortedPurchases.map((record) => (
-                  <PurchaseRow
-                    key={record.id}
-                    leadId={lead.id}
-                    record={record}
-                    onUpdate={onUpdatePurchase}
-                    onDelete={onDeletePurchase}
-                    onResend={onResendPurchase}
-                  />
-                ))}
+            <section className="section">
+              <div className="section_title">
+                구매 이력 ({sortedPurchases.length})
               </div>
-            ) : (
-              <div className="empty_state">구매 이력이 없습니다</div>
-            )}
-          </section>
+              {sortedPurchases.length > 0 ? (
+                <div className="record_list">
+                  {sortedPurchases.map((record) => (
+                    <PurchaseRow
+                      key={record.id}
+                      leadId={lead.id}
+                      record={record}
+                      onUpdate={onUpdatePurchase}
+                      onDelete={onDeletePurchase}
+                      onResend={onResendPurchase}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="empty_state">구매 이력이 없습니다</div>
+              )}
+            </section>
 
-          <section className="section">
-            <div className="section_title">유입 경로</div>
-            <EditableInfoRow
-              label={UTM_LABEL.utm_source}
-              field={EditingField.UTM_SOURCE}
-              leadId={lead.id}
-              rawValue={lead.utm_source}
-              displayValue={lead.utm_source}
-              onSave={onUpdateField}
-            />
-            <EditableInfoRow
-              label={UTM_LABEL.utm_medium}
-              field={EditingField.UTM_MEDIUM}
-              leadId={lead.id}
-              rawValue={lead.utm_medium}
-              displayValue={lead.utm_medium}
-              onSave={onUpdateField}
-            />
-            <EditableInfoRow
-              label={UTM_LABEL.utm_campaign}
-              field={EditingField.UTM_CAMPAIGN}
-              leadId={lead.id}
-              rawValue={lead.utm_campaign}
-              displayValue={lead.utm_campaign}
-              onSave={onUpdateField}
-            />
-          </section>
+            <section className="section">
+              <div className="section_title">유입 경로</div>
+              <EditableInfoRow
+                label={UTM_LABEL.utm_source}
+                field={EditingField.UTM_SOURCE}
+                leadId={lead.id}
+                rawValue={lead.utm_source}
+                displayValue={lead.utm_source}
+                onSave={onUpdateField}
+              />
+              <EditableInfoRow
+                label={UTM_LABEL.utm_medium}
+                field={EditingField.UTM_MEDIUM}
+                leadId={lead.id}
+                rawValue={lead.utm_medium}
+                displayValue={lead.utm_medium}
+                onSave={onUpdateField}
+              />
+              <EditableInfoRow
+                label={UTM_LABEL.utm_campaign}
+                field={EditingField.UTM_CAMPAIGN}
+                leadId={lead.id}
+                rawValue={lead.utm_campaign}
+                displayValue={lead.utm_campaign}
+                onSave={onUpdateField}
+              />
+            </section>
 
-          <section className="section">
-            <div className="section_title">추적 정보</div>
-            <EditableInfoRow
-              label="IP 주소"
-              field={EditingField.IP}
-              leadId={lead.id}
-              rawValue={lead.ip}
-              displayValue={lead.ip}
-              mono
-              onSave={onUpdateField}
-            />
-            <EditableInfoRow
-              label="FBC"
-              field={EditingField.FBC}
-              leadId={lead.id}
-              rawValue={lead.fbc}
-              displayValue={lead.fbc}
-              mono
-              onSave={onUpdateField}
-            />
-            <EditableInfoRow
-              label="FBP"
-              field={EditingField.FBP}
-              leadId={lead.id}
-              rawValue={lead.fbp}
-              displayValue={lead.fbp}
-              mono
-              onSave={onUpdateField}
-            />
-            <EditableUserAgentRow
-              leadId={lead.id}
-              rawValue={lead.user_agent}
-              onSave={onUpdateField}
-            />
-          </section>
-        </div>
-
-        <div className="footer">
-          <div className="register_row">
-            <button
-              type="button"
-              className="btn register consultation"
-              onClick={onRegisterConsultation}
-            >
-              상담 등록
-            </button>
-            <button
-              type="button"
-              className="btn register purchase"
-              onClick={onRegisterPurchase}
-            >
-              구매 등록
-            </button>
+            <section className="section">
+              <div className="section_title">추적 정보</div>
+              <EditableInfoRow
+                label="IP 주소"
+                field={EditingField.IP}
+                leadId={lead.id}
+                rawValue={lead.ip}
+                displayValue={lead.ip}
+                mono
+                onSave={onUpdateField}
+              />
+              <EditableInfoRow
+                label="FBC"
+                field={EditingField.FBC}
+                leadId={lead.id}
+                rawValue={lead.fbc}
+                displayValue={lead.fbc}
+                mono
+                onSave={onUpdateField}
+              />
+              <EditableInfoRow
+                label="FBP"
+                field={EditingField.FBP}
+                leadId={lead.id}
+                rawValue={lead.fbp}
+                displayValue={lead.fbp}
+                mono
+                onSave={onUpdateField}
+              />
+              <EditableUserAgentRow
+                leadId={lead.id}
+                rawValue={lead.user_agent}
+                onSave={onUpdateField}
+              />
+            </section>
           </div>
-          <div className="bottom_row">
-            <button
-              type="button"
-              className="btn delete"
-              onClick={onDeleteLead}
-            >
-              삭제
-            </button>
-            <button type="button" className="btn confirm" onClick={onConfirm}>
-              확인
-            </button>
+
+          <div className="footer">
+            <div className="register_row">
+              <button
+                type="button"
+                className="btn register consultation"
+                onClick={onRegisterConsultation}
+              >
+                상담 등록
+              </button>
+              <button
+                type="button"
+                className="btn register purchase"
+                onClick={onRegisterPurchase}
+              >
+                구매 등록
+              </button>
+            </div>
+            <div className="bottom_row">
+              <button
+                type="button"
+                className="btn delete"
+                onClick={onDeleteLead}
+              >
+                삭제
+              </button>
+              <button
+                type="button"
+                className="btn confirm"
+                onClick={onConfirm}
+              >
+                확인
+              </button>
+            </div>
           </div>
         </div>
       </div>
