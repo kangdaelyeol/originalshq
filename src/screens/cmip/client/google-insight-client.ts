@@ -112,6 +112,10 @@ function toMetrics(row: GoogleRawMetrics): MetricsSummary {
     spend: row.cost,
     conversions: row.conversions,
     revenue: row.conversionsValue,
+    // Google Ads 응답엔 오프라인 매출 개념이 없다 — normalizeInsightSummary가
+    // 어차피 한 번 더 0으로 채우지만, deriveMetrics 자체가 요구하는 필드라
+    // 여기서도 명시한다.
+    offlineRevenue: 0,
     weightedFrequency: row.frequency * row.impressions,
   })
 }

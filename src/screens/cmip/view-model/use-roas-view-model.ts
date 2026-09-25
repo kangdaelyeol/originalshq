@@ -122,5 +122,15 @@ export const useRoasViewModel = (
     )
   })()
 
-  return { grouping, setGrouping, total, rows }
+  // 평균 행 — "합계"(total, 조회 기간 전체 기준이라 grouping과 무관하게 항상
+  // 같음)를 지금 표에 보이는 행 수로 나눈다. spend/offlineRevenue는 그렇게
+  // 나누고, roas는 그 평균 spend/offlineRevenue에서 다시 계산한다(비율을
+  // 그대로 평균 내지 않는다 — 어차피 total.roas와 같은 값이 나오지만, 코드
+  // 상으로도 "합계 기준으로 비율을 다시 계산한다"는 원칙을 그대로 따른다).
+  const average: RoasMetrics =
+    rows.length > 0
+      ? toMetrics(total.offlineRevenue / rows.length, total.spend / rows.length)
+      : toMetrics(0, 0)
+
+  return { grouping, setGrouping, total, average, rows }
 }

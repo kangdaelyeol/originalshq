@@ -430,6 +430,12 @@ function MetricsTable<T extends MetricsSummary>({
     useMetricsTableViewModel(rows, rowKey)
 
   const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
+  // 맨 아래 합계/평균 행 — 정렬·채널 필터와 무관하게 항상 이 표에 실제로 보이는
+  // rows(=현재 channelFilter 기준 전체) 전체를 기준으로 한다. PivotSummary의
+  // 합계/평균 행(맨 위)과 같은 계산(averageValueOf)을 공유하되, 여기는 일수가
+  // 아니라 "이 표에 있는 행 수"로 나눈다 — 일별 표는 행 하나가 하루라 결과가
+  // 같고, 요일별·주차별·지정 기간 표는 "행 평균"이 더 자연스럽다.
+  const totals = rows.length > 0 ? aggregateMetrics(rows) : null
 
   return (
     <div className="channel-insight__table-block">
@@ -617,6 +623,30 @@ function MetricsTable<T extends MetricsSummary>({
                   </Fragment>
                 )
               })
+            )}
+            {totals && (
+              <>
+                <tr className="channel-insight__table-row--total">
+                  <td />
+                  <td>합계</td>
+                  {visibleFields.map((f) => (
+                    <td key={f.key}>{f.formatCompact(totals[f.key])}</td>
+                  ))}
+                </tr>
+                <tr className="channel-insight__table-row--average">
+                  <td />
+                  <td>평균</td>
+                  {visibleFields.map((f) => (
+                    <td key={f.key}>
+                      <SplitDecimalValue
+                        text={f.formatCompact(
+                          averageValueOf(f, totals, rows.length),
+                        )}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              </>
             )}
           </tbody>
         </table>
@@ -1168,6 +1198,7 @@ const SUM_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'clicks',
   'spend',
   'conversions',
+  'offlineRevenue',
 ])
 
 /** 평균 행의 표시값 — formatCompact(num())는 소수 자릿수를 강제하지 않아, 일수로

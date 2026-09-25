@@ -101,6 +101,15 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   //   note: '전환 추적 설정이나 캠페인 목표에 따라 값이 안 잡힐 수 있습니다(예: 리드 목표 캠페인, 전환 추적 미설정 네이버 계정) — 0이 "매출 없음"과 "측정 안 됨"을 구분하지 않고 함께 나타냅니다.',
   // },
   {
+    key: 'offlineRevenue',
+    label: '오프라인 매출',
+    format: won,
+    formatCompact: num,
+    unit: '원',
+    color: '#2dd4bf',
+    note: '매장에서 실제 결제된 금액(Monday CRM 기준)입니다. 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Monday 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시됩니다.',
+  },
+  {
     key: 'ctr',
     label: 'CTR',
     format: pct2,
@@ -148,5 +157,14 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     unit: '회',
     color: '#b98d5e',
     note: '네이버는 frequency 지표를 제공하지 않아 항상 0으로 표시됩니다. Google은 캠페인 단위 데이터에서만 실제 값을 제공하고, adset(광고그룹) 단위에서는 제공하지 않아 0으로 표시됩니다.',
+  },
+  {
+    key: 'roas',
+    label: 'ROAS',
+    format: pct2,
+    formatCompact: num2,
+    unit: '%',
+    color: '#f59e0b',
+    note: '오프라인 매출(Monday CRM 기준 매장 결제액) ÷ 광고비입니다. offlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
   },
 ]

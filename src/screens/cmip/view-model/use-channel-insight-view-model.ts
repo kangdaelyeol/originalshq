@@ -5,6 +5,7 @@ import {
   getNaverInsights,
   getOfflineRevenue,
   combineChannelInsights,
+  normalizeInsightSummary,
   CallableError,
   type CombinedInsight,
   type MetaInsightSummary,
@@ -68,13 +69,20 @@ export const useChannelInsightViewModel = () => {
     try {
       const apiStart = formatForApi(start)
       const apiEnd = formatForApi(end)
-      const [metaResult, googleResult, naverResult, offlineRevenueResult] =
+      const [metaRaw, googleRaw, naverRaw, offlineRevenueResult] =
         await Promise.all([
           getAllInsights(apiStart, apiEnd),
           getGoogleInsights(apiStart, apiEnd),
           getNaverInsights(apiStart, apiEnd),
           getOfflineRevenue(apiStart, apiEnd),
         ])
+      // Meta/Google/Naver는 offlineRevenue 개념 자체를 모르는 백엔드에서 와서
+      // 그 필드가 아예 없다 — KpiGrid 등이 MetricsSummary를 곧장(aggregateMetrics를
+      // 안 거치고) 렌더하는 자리에서 값이 undefined인 채로 쓰이지 않도록, 저장/
+      // 합치기 전에 한 번 0으로 채워 넣는다.
+      const metaResult = normalizeInsightSummary(metaRaw)
+      const googleResult = normalizeInsightSummary(googleRaw)
+      const naverResult = normalizeInsightSummary(naverRaw)
       setData(metaResult)
       setGoogleData(googleResult)
       setNaverData(naverResult)
@@ -86,6 +94,7 @@ export const useChannelInsightViewModel = () => {
           naverResult,
           apiStart,
           apiEnd,
+          offlineRevenueResult,
         ),
       )
     } catch (err) {

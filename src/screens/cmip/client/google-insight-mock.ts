@@ -72,6 +72,7 @@ function mockDailyMetrics(date: ISODate): MetricsSummary {
     spend,
     conversions,
     revenue,
+    offlineRevenue: 0,
     weightedFrequency: range(rand, 1.05, 2.8) * impressions,
   })
 }
@@ -97,6 +98,7 @@ function splitMetrics(base: MetricsSummary, weight: number): MetricsSummary {
     spend,
     conversions,
     revenue,
+    offlineRevenue: 0,
     weightedFrequency: base.frequency * impressions,
   })
 }

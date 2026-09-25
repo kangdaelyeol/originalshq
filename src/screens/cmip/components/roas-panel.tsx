@@ -97,7 +97,7 @@ export function RoasPanel({
   combinedInsight: CombinedInsight | null
   offlineRevenue: OfflineRevenueSummary | null
 }) {
-  const { grouping, setGrouping, total, rows } = useRoasViewModel(
+  const { grouping, setGrouping, total, average, rows } = useRoasViewModel(
     combinedInsight,
     offlineRevenue,
   )
@@ -167,6 +167,18 @@ export function RoasPanel({
                     </tr>
                   )
                 })}
+                <tr className="channel-insight__table-row--total">
+                  <td>합계</td>
+                  {ROAS_FIELDS.map((f) => (
+                    <td key={f.key}>{f.formatCompact(total[f.key])}</td>
+                  ))}
+                </tr>
+                <tr className="channel-insight__table-row--average">
+                  <td>평균</td>
+                  {ROAS_FIELDS.map((f) => (
+                    <td key={f.key}>{f.formatCompact(average[f.key])}</td>
+                  ))}
+                </tr>
               </tbody>
             </table>
           </div>
