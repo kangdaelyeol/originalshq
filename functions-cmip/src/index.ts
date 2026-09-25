@@ -1,5 +1,7 @@
 import { onRequest } from 'firebase-functions/v2/https'
+import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { setGlobalOptions } from 'firebase-functions/v2'
+import * as logger from 'firebase-functions/logger'
 import cors from 'cors'
 import {
   db,
@@ -786,7 +788,9 @@ export const debugNaverRaw = onRequest(
 /**
  * Monday CRM(오프라인 매출 보드)을 지금 상태로 Firestore(offlineSales
  * 컬렉션)에 재동기화한다 — 기존 문서를 전부 지우고 새로 받아온 값으로
- * 다시 채운다. 자동 주기(onSchedule)는 아직 없어 수동으로만 호출한다.
+ * 다시 채운다. 아래 syncOfflineSalesScheduled가 영업시간 중 주기적으로 이
+ * 로직을 그대로 재사용해 자동 호출하고, 이 엔드포인트는 그 사이 급하게
+ * 최신화가 필요할 때 수동으로 바로 트리거하는 용도로 남겨둔다.
  */
 export const syncOfflineSales = onRequest(
   { secrets: [mondayApiKey] },
@@ -842,3 +846,31 @@ export const getOfflineRevenue = onRequest((req, res) => {
     }
   })
 })
+
+/**
+ * Monday CRM 오프라인 매출을 영업시간 중 3시간 간격(10/13/16/19시, KST)으로
+ * 자동 재동기화한다 — 이 저장소의 첫 onSchedule 함수. 24시간 내내가 아니라
+ * 영업시간대만 도는 이유: CRM이 영업시간에만 쓰이니 그 시간에만 최신이면
+ * 충분하고, Monday API 호출 횟수도 그만큼 줄어든다. 요일 구분 없이 매일
+ * 돈다 — 매장이 주말에도 열려 있으면 그날도 최신화돼야 하니 평일로 좁히지
+ * 않았다. HTTP 응답이 없는 트리거라 onRequest 버전(sendError)과 달리 성공/
+ * 실패를 로그로만 남긴다 — Firebase 콘솔 로그에서 확인한다.
+ */
+export const syncOfflineSalesScheduled = onSchedule(
+  {
+    schedule: '0 10,13,16,19 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [mondayApiKey],
+  },
+  async () => {
+    try {
+      const result = await syncOfflineSalesFromMonday(mondayApiKey.value())
+      logger.info('오프라인 매출 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        '오프라인 매출 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
+  },
+)
