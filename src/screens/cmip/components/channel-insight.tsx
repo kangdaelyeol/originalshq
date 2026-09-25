@@ -1,5 +1,5 @@
 import { Fragment, Suspense, lazy, useEffect } from 'react'
-import type { CSSProperties, ReactElement } from 'react'
+import type { CSSProperties, ReactElement, ReactNode } from 'react'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useChannelInsightViewModel } from '../view-model/use-channel-insight-view-model'
@@ -752,6 +752,35 @@ function ResultSkeleton({
         </h3>
         <TableSkeleton headLabel="기간" rowCount={Math.floor(dayCount / 7)} />
       </section>
+    </div>
+  )
+}
+
+/** 캠페인/adset/매체별 테스트/ROAS 탭 전용 — "전체 요약"(ResultPanel)처럼 표마다
+ * 정확한 모양의 스켈레톤을 다 만드는 대신, 재조회 중(loading)엔 그 탭에 이미
+ * 그려져 있던(직전 기간 기준) 내용을 흐리게 깔아두고 그 위에 "조회하는 중…"
+ * 배지를 띄운다. combinedInsight는 재조회가 끝나야 새 값으로 바뀌므로, 이
+ * 처리가 없으면 다른 기간을 골라도 화면은 이전 기간 값을 그대로 보여준 채
+ * 아무 신호도 주지 않는다(전체 요약 탭만 ResultPanel이 loading prop을 직접
+ * 받아 이 문제가 없었다). */
+function TabLoadingOverlay({
+  loading,
+  children,
+}: {
+  loading: boolean
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={`channel-insight__tab-content${loading ? ' is-loading' : ''}`}
+    >
+      {children}
+      {loading && (
+        <div className="channel-insight__tab-loading-badge" aria-live="polite">
+          <span className="channel-insight__spinner" aria-hidden />
+          조회하는 중…
+        </div>
+      )}
     </div>
   )
 }
@@ -1707,9 +1736,6 @@ export const ChannelInsight = () => {
             }}
             disabled={loading}
           />
-          {loading && (
-            <span className="channel-insight__query-loading">조회하는 중…</span>
-          )}
         </div>
       </div>
 
@@ -1840,7 +1866,7 @@ export const ChannelInsight = () => {
             />
           )}
           {resultTab === 'campaign' && (
-            <>
+            <TabLoadingOverlay loading={loading}>
               <PivotSummary
                 groups={campaigns
                   .filter((c) => selectedCampaignNames.has(c.campaignName))
@@ -1871,10 +1897,10 @@ export const ChannelInsight = () => {
                   emptyLabel="캠페인 데이터 없음"
                 />
               </section>
-            </>
+            </TabLoadingOverlay>
           )}
           {resultTab === 'adset' && (
-            <>
+            <TabLoadingOverlay loading={loading}>
               <PivotSummary
                 groups={adsets
                   .filter((a) => selectedAdsetNames.has(a.adsetName))
@@ -1924,20 +1950,24 @@ export const ChannelInsight = () => {
                   emptyLabel="adset 데이터 없음"
                 />
               </section>
-            </>
+            </TabLoadingOverlay>
           )}
           {resultTab === 'periodTest' && (
-            <PeriodTestPanel
-              combinedInsight={combinedInsight}
-              dateStart={dateStart}
-              dateEnd={dateEnd}
-            />
+            <TabLoadingOverlay loading={loading}>
+              <PeriodTestPanel
+                combinedInsight={combinedInsight}
+                dateStart={dateStart}
+                dateEnd={dateEnd}
+              />
+            </TabLoadingOverlay>
           )}
           {resultTab === 'roas' && (
-            <RoasPanel
-              combinedInsight={combinedInsight}
-              offlineRevenue={offlineRevenueData}
-            />
+            <TabLoadingOverlay loading={loading}>
+              <RoasPanel
+                combinedInsight={combinedInsight}
+                offlineRevenue={offlineRevenueData}
+              />
+            </TabLoadingOverlay>
           )}
         </>
       )}

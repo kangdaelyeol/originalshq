@@ -32,7 +32,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   color: $color-text;
 
   // 날짜 범위 선택기 — 여기서 "업데이트"를 누르면 바로 조회되므로 별도 조회
-  // 버튼은 없다. 로딩 중엔 옆에 짧은 안내만 띄운다.
+  // 버튼은 없다. 로딩 중 표시는 탭 로딩 배지(__tab-loading-badge) 하나로
+  // 충분해 여기엔 따로 안내를 안 둔다(예전엔 둘 다 있어서 로딩 표시가
+  // 두 번 겹쳐 보였다).
   // 이제 __result-tabs 행 안에 같이 들어간다 — margin-left: auto로 그 행의
   // 맨 오른쪽에 붙는다(보기 단위 select/그래프 버튼이 있든 없든 항상).
   &__query-row {
@@ -42,9 +44,17 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     margin-left: auto;
   }
 
-  &__query-loading {
-    font-size: 12.5px;
-    color: $color-muted;
+  // 조회 중 표시(탭 로딩 배지) 공용 스피너 — 테두리 4면 중 위쪽만 강조색을
+  // 줘서 회전 애니메이션으로 도는 것처럼 보이게 하는 표준 CSS 스피너 기법.
+  &__spinner {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    border: 2px solid color-mix(in srgb, $color-accent 25%, transparent);
+    border-top-color: $color-accent;
+    animation: channel-insight-spin 0.7s linear infinite;
   }
 
   &__btn {
@@ -1123,6 +1133,40 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     color: $color-muted;
   }
 
+  // ------------------------------------------------------------------ 탭 재조회 중 표시
+  // 캠페인/adset/매체별 테스트/ROAS 탭 — 전체 요약(ResultPanel)처럼 표마다 정확한
+  // 스켈레톤을 두는 대신, 재조회 중엔 직전 기간 값을 흐리게 깐 채 배지 하나로
+  // "지금 보이는 값이 최신이 아니다"를 알린다.
+  &__tab-content {
+    position: relative;
+
+    &.is-loading > *:not(.channel-insight__tab-loading-badge) {
+      opacity: 0.35;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+  }
+
+  &__tab-loading-badge {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 999px;
+    background: $color-canvas-subtle;
+    border: 1px solid $color-border;
+    color: $color-text;
+    font-size: 12.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+
   // ------------------------------------------------------------------ 모바일(≤640px)
   // 표 제목(라벨) 칸 — 기본은 white-space: nowrap이라 캠페인/adset 이름처럼 긴
   // 텍스트가 칸 폭을 한없이 밀어서, 좁은 화면에서 표 대부분이 그 칸 하나에
@@ -1193,5 +1237,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
   100% {
     background-position: -200% 50%;
+  }
+}
+
+@keyframes channel-insight-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
