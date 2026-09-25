@@ -3,10 +3,12 @@ import {
   getAllInsights,
   getGoogleInsights,
   getNaverInsights,
+  getOfflineRevenue,
   combineChannelInsights,
   CallableError,
   type CombinedInsight,
   type MetaInsightSummary,
+  type OfflineRevenueSummary,
 } from '../client'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
@@ -36,6 +38,12 @@ export const useChannelInsightViewModel = () => {
   // 네이버 인사이트 — getNaverInsights가 getAllInsights와 같은 모양(서버에서 이미
   // total/byDate/byCampaign까지 집계)으로 돌려준다.
   const [naverData, setNaverData] = useState<MetaInsightSummary | null>(null)
+  // 오프라인 매출(Monday CRM, ROAS 탭 전용) — 광고 채널과 모양이 달라(impressions/
+  // clicks 없음, totalPaid/revenue/discount) combinedInsight로 합치지 않고 따로
+  // 둔다. 같은 dateStart/dateEnd로 같이 조회해 ROAS 탭도 별도 조회 버튼 없이
+  // 바로 보이게 한다.
+  const [offlineRevenueData, setOfflineRevenueData] =
+    useState<OfflineRevenueSummary | null>(null)
   // total은 물론 캠페인/adset 단위까지 "종합(meta+google+naver)/meta/google/naver"
   // 4분할로 미리 묶어둔다 — 당근 등 채널이 더 늘어나면 combineChannelInsights
   // 쪽만 확장하면 된다.
@@ -60,14 +68,17 @@ export const useChannelInsightViewModel = () => {
     try {
       const apiStart = formatForApi(start)
       const apiEnd = formatForApi(end)
-      const [metaResult, googleResult, naverResult] = await Promise.all([
-        getAllInsights(apiStart, apiEnd),
-        getGoogleInsights(apiStart, apiEnd),
-        getNaverInsights(apiStart, apiEnd),
-      ])
+      const [metaResult, googleResult, naverResult, offlineRevenueResult] =
+        await Promise.all([
+          getAllInsights(apiStart, apiEnd),
+          getGoogleInsights(apiStart, apiEnd),
+          getNaverInsights(apiStart, apiEnd),
+          getOfflineRevenue(apiStart, apiEnd),
+        ])
       setData(metaResult)
       setGoogleData(googleResult)
       setNaverData(naverResult)
+      setOfflineRevenueData(offlineRevenueResult)
       setCombinedInsight(
         combineChannelInsights(
           metaResult,
@@ -107,6 +118,7 @@ export const useChannelInsightViewModel = () => {
     data,
     googleData,
     naverData,
+    offlineRevenueData,
     combinedInsight,
     // 액션
     load,

@@ -15,7 +15,7 @@ import type {
 } from './use-channel-insight-chart-modal-view-model'
 import type { ISODate } from '../types'
 
-export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest'
+export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest' | 'roas'
 
 /** 캠페인/adset 탭의 "보기 단위" — 교차표(PivotSummary)의 행 축(첫 컬럼)을
  * 날짜/요일/주차 중 무엇으로 묶을지. */
@@ -141,7 +141,7 @@ export const useChannelInsightPageViewModel = (
   // 그룹 드롭다운이 따로 고른다. CombinedCampaign/CombinedAdset이 이미
   // ChannelSplitSeries 모양(combined/meta/google)을 그대로 갖고 있어 series로
   // 바로 넘길 수 있다.
-  // periodTest(매체별 테스트) 탭은 그래프/엑셀 대상이 아니라 빈 배열 —
+  // periodTest(매체별 테스트)·roas(ROAS) 탭은 그래프/엑셀 대상이 아니라 빈 배열 —
   // "그래프로 보기" 버튼이 chartGroups.length===0로 자연히 비활성화된다.
   const chartGroups: ChartGroup[] = !combinedInsight
     ? []

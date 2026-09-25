@@ -38,6 +38,7 @@ import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
 import { ChannelInsightChartModal } from './channel-insight-chart-modal'
 import { PeriodTestPanel } from './period-test-panel'
+import { RoasPanel } from './roas-panel'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
@@ -153,6 +154,7 @@ const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'campaign', label: '캠페인' },
   { key: 'adset', label: '광고셋' },
   { key: 'periodTest', label: '매체별 테스트' },
+  { key: 'roas', label: 'ROAS' },
 ]
 
 function ChevronIcon() {
@@ -1564,6 +1566,7 @@ export const ChannelInsight = () => {
     loading,
     error,
     combinedInsight,
+    offlineRevenueData,
     load,
     loadRange,
   } = useChannelInsightViewModel()
@@ -1897,6 +1900,12 @@ export const ChannelInsight = () => {
               combinedInsight={combinedInsight}
               dateStart={dateStart}
               dateEnd={dateEnd}
+            />
+          )}
+          {resultTab === 'roas' && (
+            <RoasPanel
+              combinedInsight={combinedInsight}
+              offlineRevenue={offlineRevenueData}
             />
           )}
         </>

@@ -1,0 +1,84 @@
+/**
+ * getOfflineRevenue 클라이언트 — functions-cmip `getOfflineRevenue`(onRequest, GET)
+ * 호출. getAllInsights/getNaverInsight와 완전히 같은 모양(GET + dateStart/dateEnd
+ * 쿼리, 서버가 total/byDate/byDayOfWeek/byGroupedWeek까지 이미 집계해서 반환)이라
+ * insight-client.ts와 거의 동일하게 구현한다. Monday CRM 오프라인 매출 보드
+ * 원본이라 impressions/clicks 같은 광고 지표는 없고, 서버가 byMonth까지 함께
+ * 낸다(광고 채널 쪽엔 없는 4번째 버킷 — groupByMonth로 프론트에서 파생하는
+ * 대신 서버가 직접 계산해서 준다).
+ */
+import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
+import type { ISODate } from '../types'
+import { CallableError } from './csv-client'
+
+export interface OfflineRevenueMetrics {
+  /** 총 결제금액 — 매출 집계의 기준값(revenue - discount). */
+  totalPaid: number
+  /** 매출액(할인 반영 전). */
+  revenue: number
+  /** 할인액. */
+  discount: number
+  /** 결제 라인(품목/할부 이자 등) 건수 — 고객(주문) 단위가 아니라 subitem 단위. */
+  lineCount: number
+}
+
+export interface OfflineRevenueDateSummary extends OfflineRevenueMetrics {
+  date: ISODate
+}
+
+export interface OfflineRevenueDayOfWeekSummary extends OfflineRevenueMetrics {
+  dayOfWeek: string
+}
+
+export interface OfflineRevenueWeekSummary extends OfflineRevenueMetrics {
+  period: string
+  startDate: ISODate
+  endDate: ISODate
+}
+
+export interface OfflineRevenueMonthSummary extends OfflineRevenueMetrics {
+  period: string
+  startDate: ISODate
+  endDate: ISODate
+}
+
+export interface OfflineRevenueSummary {
+  total: OfflineRevenueMetrics
+  byDate: OfflineRevenueDateSummary[]
+  byDayOfWeek: OfflineRevenueDayOfWeekSummary[]
+  byGroupedWeek: OfflineRevenueWeekSummary[]
+  byMonth: OfflineRevenueMonthSummary[]
+}
+
+interface ErrorBody {
+  error?: string
+}
+
+export async function getOfflineRevenue(
+  dateStart: ISODate,
+  dateEnd: ISODate,
+): Promise<OfflineRevenueSummary> {
+  const params = new URLSearchParams({ dateStart, dateEnd })
+  const res = await fetch(
+    `${CMIP_API_BASE}/getOfflineRevenue?${params.toString()}`,
+  )
+
+  let body: unknown
+  try {
+    body = await res.json()
+  } catch {
+    throw new CallableError(
+      'getOfflineRevenue 응답을 해석할 수 없습니다.',
+      res.status,
+    )
+  }
+
+  if (!res.ok) {
+    const message =
+      (body as ErrorBody)?.error ??
+      `getOfflineRevenue 호출에 실패했습니다. (HTTP ${res.status})`
+    throw new CallableError(message, res.status)
+  }
+
+  return body as OfflineRevenueSummary
+}
