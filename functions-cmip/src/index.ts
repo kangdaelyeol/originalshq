@@ -44,6 +44,10 @@ import {
   debugFetchNaverRaw,
 } from './channel/naver'
 import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
+import {
+  getOfflineRevenue as fetchOfflineRevenue,
+  syncOfflineSalesFromMonday,
+} from './monday-crm'
 
 const corsHandler = cors({ origin: true })
 
@@ -55,7 +59,7 @@ const googleClientSecret = defineSecret('GOOGLE_CLIENT_SECRET')
 const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
 const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
 const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
-const momdayApiKey = defineSecret('MONDAY_API_KEY')
+const mondayApiKey = defineSecret('MONDAY_API_KEY')
 
 // Google Cloud Console의 Authorized redirect URIs에 등록된 값과 반드시 동일해야
 // 한다 — oauthCallback(토큰 교환)과 getGoogleAuthUrl(동의 화면 URL 생성) 양쪽에서
@@ -778,3 +782,63 @@ export const debugNaverRaw = onRequest(
     })
   },
 )
+
+/**
+ * Monday CRM(오프라인 매출 보드)을 지금 상태로 Firestore(offlineSales
+ * 컬렉션)에 재동기화한다 — 기존 문서를 전부 지우고 새로 받아온 값으로
+ * 다시 채운다. 자동 주기(onSchedule)는 아직 없어 수동으로만 호출한다.
+ */
+export const syncOfflineSales = onRequest(
+  { secrets: [mondayApiKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'POST') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      try {
+        const result = await syncOfflineSalesFromMonday(mondayApiKey.value())
+        res.status(200).send(result)
+      } catch (err) {
+        sendError(
+          res,
+          500,
+          err instanceof Error ? err.message : 'Monday 오프라인 매출 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 오프라인 매출 조회 — Meta/Naver 인사이트(getMetaInsight/getNaverInsight)와
+ * 같은 GET + dateStart/dateEnd 쿼리 방식. Monday를 실시간으로 부르지 않고
+ * syncOfflineSales로 미리 동기화해둔 Firestore에서 읽으므로 시크릿이 필요 없다.
+ */
+export const getOfflineRevenue = onRequest((req, res) => {
+  corsHandler(req, res, async () => {
+    if (req.method !== 'GET') {
+      res.status(405).send({ error: 'Method Not Allowed' })
+      return
+    }
+
+    const validationRes = validateGetInsightBody(req.query)
+    if (!validationRes.ok) {
+      sendError(res, 400, validationRes.error)
+      return
+    }
+    const { dateStart, dateEnd } = validationRes.data
+
+    try {
+      const result = await fetchOfflineRevenue(dateStart, dateEnd)
+      res.status(200).send(result)
+    } catch (err) {
+      sendError(
+        res,
+        500,
+        err instanceof Error ? err.message : '오프라인 매출 조회 실패',
+      )
+    }
+  })
+})
