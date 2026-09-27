@@ -15,6 +15,10 @@ import {
   type MultiSelectOption,
 } from '../view-model/use-multi-select-dropdown-view-model'
 import {
+  useSingleSelectDropdownViewModel,
+  type SingleSelectOption,
+} from '../view-model/use-single-select-dropdown-view-model'
+import {
   useFullListTableViewModel,
   type FullListRow,
 } from '../view-model/use-full-list-table-view-model'
@@ -1245,6 +1249,70 @@ function MultiSelectDropdown<T extends string>({
   )
 }
 
+/** "보기 단위"(전체 요약/캠페인/adset/…), pivot 축(날짜별/요일별/주차별), adset
+ * 탭의 캠페인 선택이 공유하는 네이티브 <select> 대체용 커스텀 드롭다운.
+ * MultiSelectDropdown과 같은 톤(트리거 버튼 + 팝오버 메뉴)이지만 체크박스가
+ * 아니라 클릭하면 바로 선택되고 닫힌다. 트리거에 포커스가 있으면 방향키로도
+ * 메뉴를 펼치지 않고 값을 바로 바꿀 수 있다(네이티브 select와 같은 동작 —
+ * useSingleSelectDropdownViewModel의 handleTriggerKeyDown 참고). */
+function SingleSelectDropdown<T extends string>({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  options: readonly SingleSelectOption<T>[]
+  value: T
+  onChange: (value: T) => void
+  ariaLabel?: string
+}) {
+  const { open, ref, selectedLabel, toggleOpen, close, handleTriggerKeyDown } =
+    useSingleSelectDropdownViewModel(options, value, onChange)
+
+  return (
+    <div className="channel-insight__single-select" ref={ref}>
+      <button
+        type="button"
+        className={`channel-insight__result-select channel-insight__single-select-trigger${
+          open ? ' is-open' : ''
+        }`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={toggleOpen}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        {selectedLabel}
+        <ChevronIcon />
+      </button>
+      {open && (
+        <ul
+          className="channel-insight__single-select-menu"
+          role="listbox"
+          aria-label={ariaLabel}
+        >
+          {options.map((o) => (
+            <li
+              key={o.value}
+              role="option"
+              aria-selected={o.value === value}
+              className={`channel-insight__single-select-item${
+                o.value === value ? ' is-selected' : ''
+              }`}
+              onClick={() => {
+                onChange(o.value)
+                close()
+              }}
+            >
+              {o.label}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 // ------------------------------------------------------------------ 캠페인/adset 교차표
 interface PivotGroup {
   key: string
@@ -1721,17 +1789,12 @@ export const ChannelInsight = () => {
       >
         {combinedInsight && (
           <>
-            <select
-              className="channel-insight__result-select"
+            <SingleSelectDropdown<ResultTab>
+              options={RESULT_TABS.map((t) => ({ value: t.key, label: t.label }))}
               value={resultTab}
-              onChange={(e) => setResultTab(e.target.value as ResultTab)}
-            >
-              {RESULT_TABS.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
+              onChange={setResultTab}
+              ariaLabel="보기 단위"
+            />
 
             <button
               type="button"
@@ -1797,18 +1860,12 @@ export const ChannelInsight = () => {
               aria-label="지표 선택"
             >
               {/* 표의 행 축(날짜/요일/주차) — 캠페인 선택 드롭다운 왼쪽에 둔다. */}
-              <select
-                className="channel-insight__result-select"
+              <SingleSelectDropdown<PivotView>
+                options={PIVOT_VIEW_OPTIONS}
                 value={pivotView}
-                onChange={(e) => setPivotView(e.target.value as PivotView)}
-                aria-label="보기 단위"
-              >
-                {PIVOT_VIEW_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+                onChange={setPivotView}
+                ariaLabel="보기 단위"
+              />
 
               {/* 캠페인 탭 — 캠페인 다중 선택. */}
               {resultTab === 'campaign' &&
@@ -1836,17 +1893,15 @@ export const ChannelInsight = () => {
                     캠페인 데이터 없음
                   </span>
                 ) : (
-                  <select
-                    className="channel-insight__result-select"
+                  <SingleSelectDropdown
+                    options={campaigns.map((c) => ({
+                      value: c.campaignName,
+                      label: c.campaignName,
+                    }))}
                     value={selectedCampaign?.campaignName ?? ''}
-                    onChange={(e) => setSelectedCampaignName(e.target.value)}
-                  >
-                    {campaigns.map((c) => (
-                      <option key={c.campaignName} value={c.campaignName}>
-                        {c.campaignName}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={setSelectedCampaignName}
+                    ariaLabel="캠페인 선택"
+                  />
                 ))}
 
               {resultTab === 'adset' &&
