@@ -55,7 +55,10 @@ import {
   checkCafe24AuthStatus,
   debugFetchCafe24OrdersRaw,
   exchangeAndSaveCafe24Tokens,
+  getCafe24Revenue as fetchCafe24Revenue,
+  syncCafe24Orders as syncCafe24OrdersFromApi,
 } from './cafe24'
+import { addDays, todayISO } from './channel/utils'
 
 const corsHandler = cors({ origin: true })
 
@@ -1040,3 +1043,123 @@ export const debugCafe24OrdersRaw = onRequest(
     })
   },
 )
+
+// ────────────────────────────────
+// Cafe24 주문(매출) 데이터 — 동기화 + 조회. Monday CRM과 달리 매일 계속
+// 쌓이는 데이터라 보드 전체를 매번 다 지우고 다시 받는 방식이 아니라, 요청
+// 범위(백필은 넓게, 롤링 재동기화는 최근 N일만 좁게)만큼만 가져와 upsert한다
+// (cafe24/firestore.ts 참고 — 주문은 사라지지 않고 상태만 바뀌어서 삭제가
+// 필요 없다).
+// ────────────────────────────────
+
+// 롤링 재동기화 기본 범위 — 취소/환불은 보통 최근 주문에서 일어나므로 이
+// 정도면 상태 변경을 놓치지 않으면서도 매번 다시 받는 양이 과하지 않다.
+const CAFE24_SYNC_WINDOW_DAYS = 30
+
+/**
+ * Cafe24 주문을 지정한 기간만큼 가져와 Firestore(cafe24Orders)에 upsert한다.
+ * body에 startDate/endDate를 안 주면 기본으로 "최근 30일"을 동기화한다 —
+ * 과거 데이터를 한 번에 넓게 백필하고 싶을 때만 명시적으로 범위를 넘기면
+ * 된다(3개월 넘는 범위도 cafe24/utils.ts가 알아서 나눠 호출한다).
+ */
+export const syncCafe24Orders = onRequest(
+  { secrets: [cafe24ClientId, cafe24SecretKey], timeoutSeconds: 300 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -CAFE24_SYNC_WINDOW_DAYS)
+
+      try {
+        const result = await syncCafe24OrdersFromApi(
+          cafe24MainId,
+          cafe24ClientId.value(),
+          cafe24SecretKey.value(),
+          dateStart,
+          dateEnd,
+        )
+        response.status(200).send(result)
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Cafe24 주문 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * Cafe24 주문을 매일 자정(KST) 최근 30일 롤링 재동기화한다 — 온라인 스토어
+ * 주문은 영업시간 개념이 없어(24시간 발생) Monday처럼 영업시간대만 도는
+ * 대신, 하루 한 번이면 취소/환불 등 상태 변경을 반영하기에 충분하다고 보고
+ * 하루 주기로 잡았다. 더 자주 반영해야 하면 이 schedule만 바꾸면 된다.
+ */
+export const syncCafe24OrdersScheduled = onSchedule(
+  {
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [cafe24ClientId, cafe24SecretKey],
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const dateEnd = todayISO()
+    const dateStart = addDays(dateEnd, -CAFE24_SYNC_WINDOW_DAYS)
+    try {
+      const result = await syncCafe24OrdersFromApi(
+        cafe24MainId,
+        cafe24ClientId.value(),
+        cafe24SecretKey.value(),
+        dateStart,
+        dateEnd,
+      )
+      logger.info('Cafe24 주문 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        'Cafe24 주문 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
+  },
+)
+
+/**
+ * Cafe24 매출 조회 — Monday CRM의 getOfflineRevenue와 같은 GET +
+ * dateStart/dateEnd 쿼리 방식. Cafe24를 실시간으로 부르지 않고
+ * syncCafe24Orders로 미리 동기화해둔 Firestore에서 읽으므로 시크릿이
+ * 필요 없다.
+ */
+export const getCafe24Revenue = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'GET') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+
+    const validationRes = validateGetInsightBody(request.query)
+    if (!validationRes.ok) {
+      sendError(response, 400, validationRes.error)
+      return
+    }
+    const { dateStart, dateEnd } = validationRes.data
+
+    try {
+      const result = await fetchCafe24Revenue(dateStart, dateEnd)
+      response.status(200).send(result)
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : 'Cafe24 매출 조회 실패',
+      )
+    }
+  })
+})
