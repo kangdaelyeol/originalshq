@@ -315,6 +315,41 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
+  // ------------------------------------------------------------------ ROAS 추이 그래프 (roas-panel.tsx)
+  &__roas-chart {
+    margin-top: 4px;
+  }
+
+  &__roas-chart-svg {
+    display: block;
+    width: 100%;
+    height: 200px;
+  }
+
+  &__roas-chart-grid {
+    stroke: $color-border;
+    stroke-width: 1;
+  }
+
+  &__roas-chart-axis {
+    font-size: 11px;
+    fill: $color-muted;
+  }
+
+  &__roas-chart-bar {
+    fill: #3fb950;
+    opacity: 0.85;
+    transition: opacity 120ms ease;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &.is-negative {
+      fill: #ff7b72;
+    }
+  }
+
   // ------------------------------------------------------------------ 지표 선택 (캠페인/adset 탭)
   &__metric-row {
     display: flex;
@@ -627,6 +662,14 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     align-items: center;
     gap: 10px;
     flex-wrap: wrap;
+  }
+
+  // SegmentedToggle(segmented-toggle.scss)가 갖고 있던 라벨과 같은 톤 — 그
+  // 컴포넌트를 SingleSelectDropdown으로 바꾼 자리(ROAS 탭 그룹핑 등)에서
+  // 드롭다운 앞에 붙이는 짧은 안내 텍스트.
+  &__section-head-hint {
+    font-size: 13px;
+    color: $color-muted;
   }
 
   &__period-size {
