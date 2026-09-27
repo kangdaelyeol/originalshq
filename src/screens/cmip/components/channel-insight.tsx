@@ -1229,6 +1229,7 @@ const SUM_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'conversions',
   'offlineRevenue',
   'onlineRevenue',
+  'totalRevenue',
 ])
 
 /** 평균 행의 표시값 — formatCompact(num())는 소수 자릿수를 강제하지 않아, 일수로

@@ -46,6 +46,12 @@ const ROAS_FIELDS: readonly RoasField[] = [
     format: won,
     formatCompact: won,
   },
+  {
+    key: 'totalRevenue',
+    label: '총 매출',
+    format: won,
+    formatCompact: won,
+  },
   { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
 ]
 

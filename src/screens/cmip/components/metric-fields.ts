@@ -119,6 +119,15 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     note: '자사몰에서 실제 결제된 금액(Cafe24 주문 기준, 부분취소·환불 반영)입니다. offlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Cafe24 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시됩니다.',
   },
   {
+    key: 'totalRevenue',
+    label: '총 매출',
+    format: won,
+    formatCompact: num,
+    unit: '원',
+    color: '#f97316',
+    note: '오프라인 매출 + 온라인 매출 합계입니다. 두 값과 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
+  },
+  {
     key: 'ctr',
     label: 'CTR',
     format: pct2,

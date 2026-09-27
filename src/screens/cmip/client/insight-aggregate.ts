@@ -29,6 +29,7 @@ export function emptyMetrics(): MetricsSummary {
     revenue: 0,
     offlineRevenue: 0,
     onlineRevenue: 0,
+    totalRevenue: 0,
     roas: 0,
     ctr: 0,
     cpc: 0,
@@ -79,8 +80,9 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
     revenue,
     offlineRevenue,
     onlineRevenue,
-    // ROAS는 매출 출처(오프라인/온라인)를 합쳐서 광고비 대비로 본다 —
-    // 채널별/출처별 기여도는 offlineRevenue/onlineRevenue를 따로 보면 된다.
+    // 오프라인+온라인 합계 — ROAS도 이 값을 분자로 쓴다. 채널별/출처별
+    // 기여도는 offlineRevenue/onlineRevenue를 따로 보면 된다.
+    totalRevenue: offlineRevenue + onlineRevenue,
     roas:
       spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
@@ -161,6 +163,7 @@ export function sumMetricsWeighted(
     revenue,
     offlineRevenue,
     onlineRevenue,
+    totalRevenue: offlineRevenue + onlineRevenue,
     roas:
       spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,

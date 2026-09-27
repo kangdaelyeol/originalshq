@@ -110,16 +110,15 @@ function mergeExternalRevenueIntoByDate(
   const merged = byDate.map((row) => {
     const offlineRevenue = offlineByDateMap.get(row.date) ?? 0
     const onlineRevenue = onlineByDateMap.get(row.date) ?? 0
+    const totalRevenue = offlineRevenue + onlineRevenue
     return {
       ...row,
       offlineRevenue,
       onlineRevenue,
+      totalRevenue,
       // row.roas는 광고만 합친 시점(오프라인/온라인 매출=0 기준)에 계산된
       // 값이라 방금 얹은 실제 매출로 다시 계산해야 한다.
-      roas:
-        row.spend > 0
-          ? ((offlineRevenue + onlineRevenue) / row.spend) * 100
-          : 0,
+      roas: row.spend > 0 ? (totalRevenue / row.spend) * 100 : 0,
     }
   })
 
@@ -132,11 +131,14 @@ function mergeExternalRevenueIntoByDate(
     if (!existingDates.has(d.date)) missingDates.add(d.date)
   }
   for (const date of missingDates) {
+    const offlineRevenue = offlineByDateMap.get(date) ?? 0
+    const onlineRevenue = onlineByDateMap.get(date) ?? 0
     merged.push({
       ...emptyMetrics(),
       date,
-      offlineRevenue: offlineByDateMap.get(date) ?? 0,
-      onlineRevenue: onlineByDateMap.get(date) ?? 0,
+      offlineRevenue,
+      onlineRevenue,
+      totalRevenue: offlineRevenue + onlineRevenue,
     })
   }
 
@@ -274,6 +276,7 @@ export function combineChannelInsights(
   ])
   const combinedOfflineRevenue = offlineRevenue?.total.totalPaid ?? 0
   const combinedOnlineRevenue = onlineRevenue?.total.paymentAmount ?? 0
+  const combinedTotalRevenue = combinedOfflineRevenue + combinedOnlineRevenue
 
   return {
     total: {
@@ -281,14 +284,13 @@ export function combineChannelInsights(
         ...adCombinedTotal,
         offlineRevenue: combinedOfflineRevenue,
         onlineRevenue: combinedOnlineRevenue,
+        totalRevenue: combinedTotalRevenue,
         // sumMetricsWeighted가 이미 roas를 계산했지만 그건 ad-only
         // offlineRevenue/onlineRevenue(=0) 기준이라, 방금 얹은 실제 매출로
         // 다시 계산해야 한다.
         roas:
           adCombinedTotal.spend > 0
-            ? ((combinedOfflineRevenue + combinedOnlineRevenue) /
-                adCombinedTotal.spend) *
-              100
+            ? (combinedTotalRevenue / adCombinedTotal.spend) * 100
             : 0,
       },
       meta: meta.total,

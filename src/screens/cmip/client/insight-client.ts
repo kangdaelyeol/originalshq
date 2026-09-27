@@ -27,6 +27,10 @@ export interface MetricsSummary {
    * vs 온라인 자사몰) — 매출을 "어디서 났는지"까지 구분해서 보기 위해
    * 오프라인과 합치지 않고 별도 필드로 둔다. */
   onlineRevenue: number
+  /** offlineRevenue + onlineRevenue 합계 — 매출을 출처 구분 없이 한눈에 볼 때
+   * 쓴다. offlineRevenue/onlineRevenue와 같은 이유로 combined(종합) 합계에만
+   * 실제 값이 들어가고, 개별 채널·캠페인·adset은 항상 0이다. */
+  totalRevenue: number
   /** 광고비 대비 매출(오프라인+온라인 합산) — offlineRevenue와 같은 이유로
    * combined(종합) 합계에서만 의미 있는 값이고, 개별 채널·캠페인·adset은
    * 항상 0이다. 퍼센트(250 = 250%, 광고비의 2.5배). */
@@ -87,6 +91,7 @@ const withZeroExternalRevenue = <T extends MetricsSummary>(m: T): T => ({
   ...m,
   offlineRevenue: m.offlineRevenue ?? 0,
   onlineRevenue: m.onlineRevenue ?? 0,
+  totalRevenue: m.totalRevenue ?? 0,
   roas: m.roas ?? 0,
 })
 

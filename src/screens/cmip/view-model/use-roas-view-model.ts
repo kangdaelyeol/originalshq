@@ -20,6 +20,8 @@ export interface RoasMetrics {
   spend: number
   offlineRevenue: number
   onlineRevenue: number
+  /** offlineRevenue + onlineRevenue. */
+  totalRevenue: number
   /** 광고비 대비 (오프라인+온라인) 매출 — 퍼센트(예: 250은 250%, 광고비의
    * 2.5배). 광고비가 0이면 나눌 수 없어 0으로 둔다. */
   roas: number
@@ -45,6 +47,7 @@ const toMetrics = (
   spend,
   offlineRevenue,
   onlineRevenue,
+  totalRevenue: offlineRevenue + onlineRevenue,
   roas: calcRoas(offlineRevenue, onlineRevenue, spend),
 })
 
