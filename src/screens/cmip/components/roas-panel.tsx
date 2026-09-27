@@ -10,6 +10,7 @@ import {
   type RoasMetrics,
   type RoasRow,
 } from '../view-model/use-roas-view-model'
+import { useRoasTrendChartViewModel } from '../view-model/use-roas-trend-chart-view-model'
 
 const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
   { value: RoasGrouping.DATE, label: '일별' },
@@ -103,12 +104,11 @@ function MetricValueCell({
 }
 
 // ------------------------------------------------------------------ ROAS 추이 시각화
-// SVG viewBox를 고정 논리 좌표(1000×220)로 두고 preserveAspectRatio="none"으로
-// 늘려서, index-line-chart.tsx처럼 ResizeObserver로 실제 px 크기를 재지 않고도
-// 반응형으로 그린다 — 이 차트는 "기간별 추이" 표를 보완하는 간단한 막대 그래프
-// 하나뿐이라, 그 정도로 무거운 장치 없이도 충분하다(모듈 독립성 우선).
-const CHART_VB_W = 1000
-const CHART_VB_H = 220
+// viewBox를 고정 논리 크기로 두고 preserveAspectRatio="none"으로 컨테이너에
+// 맞춰 늘리면, 실제 렌더 비율이 그 논리 크기의 가로세로 비율과 달라 좌표계
+// 전체가 가로/세로로 다르게 늘어난다(폰트·선이 옆으로 퍼져 보임) — 그래서
+// index-line-chart.tsx와 같은 방식(useRoasTrendChartViewModel)으로 실제 렌더
+// 픽셀 크기를 측정해 viewBox로 그대로 쓴다(1 유닛 = 1px).
 const CHART_MARGIN = { top: 24, right: 12, bottom: 26, left: 46 }
 
 /** y축 최댓값을 100 단위로 올림 — 150%면 200까지, 480%면 500까지처럼 눈금이
@@ -126,9 +126,10 @@ function roundUpToHundred(value: number): number {
  * __metric-delta.is-up/is-down과 같은 색) — ROAS 100%(광고비만큼 매출이 났는지)
  * 기준으로 갈린다. */
 function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
+  const { ref, vbWidth, vbHeight } = useRoasTrendChartViewModel()
   const n = rows.length
-  const plotW = CHART_VB_W - CHART_MARGIN.left - CHART_MARGIN.right
-  const plotH = CHART_VB_H - CHART_MARGIN.top - CHART_MARGIN.bottom
+  const plotW = vbWidth - CHART_MARGIN.left - CHART_MARGIN.right
+  const plotH = vbHeight - CHART_MARGIN.top - CHART_MARGIN.bottom
   const plotBottom = CHART_MARGIN.top + plotH
   const maxValue = roundUpToHundred(
     Math.max(100, ...rows.map((r) => r.metrics.roas)) * 1.15,
@@ -141,10 +142,10 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
   const ticks = [0, maxValue / 2, maxValue]
 
   return (
-    <div className="channel-insight__roas-chart">
+    <div className="channel-insight__roas-chart" ref={ref}>
       <svg
         className="channel-insight__roas-chart-svg"
-        viewBox={`0 0 ${CHART_VB_W} ${CHART_VB_H}`}
+        viewBox={`0 0 ${vbWidth} ${vbHeight}`}
         preserveAspectRatio="none"
         role="img"
         aria-label="기간별 ROAS 추이 그래프"
@@ -153,7 +154,7 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
           <g key={t}>
             <line
               x1={CHART_MARGIN.left}
-              x2={CHART_VB_W - CHART_MARGIN.right}
+              x2={vbWidth - CHART_MARGIN.right}
               y1={yOf(t)}
               y2={yOf(t)}
               className="channel-insight__roas-chart-grid"
@@ -190,7 +191,7 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
               {(i % labelStride === 0 || i === n - 1) && (
                 <text
                   x={xOf(i) + barW / 2}
-                  y={CHART_VB_H - 8}
+                  y={vbHeight - 8}
                   textAnchor="middle"
                   className="channel-insight__roas-chart-axis"
                 >
