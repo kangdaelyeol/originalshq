@@ -1228,6 +1228,7 @@ const SUM_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'spend',
   'conversions',
   'offlineRevenue',
+  'onlineRevenue',
 ])
 
 /** 평균 행의 표시값 — formatCompact(num())는 소수 자릿수를 강제하지 않아, 일수로
@@ -1627,6 +1628,7 @@ export const ChannelInsight = () => {
     error,
     combinedInsight,
     offlineRevenueData,
+    onlineRevenueData,
     load,
     loadRange,
   } = useChannelInsightViewModel()
@@ -1966,6 +1968,7 @@ export const ChannelInsight = () => {
               <RoasPanel
                 combinedInsight={combinedInsight}
                 offlineRevenue={offlineRevenueData}
+                onlineRevenue={onlineRevenueData}
               />
             </TabLoadingOverlay>
           )}

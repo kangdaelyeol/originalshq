@@ -1,4 +1,8 @@
-import type { CombinedInsight, OfflineRevenueSummary } from '../client'
+import type {
+  Cafe24RevenueSummary,
+  CombinedInsight,
+  OfflineRevenueSummary,
+} from '../client'
 import { SegmentedToggle } from './segmented-toggle'
 import {
   RoasGrouping,
@@ -33,6 +37,12 @@ const ROAS_FIELDS: readonly RoasField[] = [
   {
     key: 'offlineRevenue',
     label: '오프라인 매출',
+    format: won,
+    formatCompact: won,
+  },
+  {
+    key: 'onlineRevenue',
+    label: '온라인 매출',
     format: won,
     formatCompact: won,
   },
@@ -86,23 +96,28 @@ function MetricValueCell({
 }
 
 /** "ROAS" 탭 — 광고비(combinedInsight, Meta+Google+Naver 합산)와 오프라인
- * 매출(offlineRevenue, Monday CRM)을 같은 기간 기준으로 짝지어 광고비 대비
- * 오프라인 매출(ROAS)을 보여준다. 온라인 전환매출(MetricsSummary.revenue)이
- * 아니라 매장에서 실제로 결제된 금액 기준이라, 온라인 전환 추적이 부정확한
- * 채널(예: 문의 목적 캠페인)에서도 실제 성과를 볼 수 있다. */
+ * 매출(offlineRevenue, Monday CRM 매장 결제액) + 온라인 매출(onlineRevenue,
+ * Cafe24 자사몰 결제액)을 같은 기간 기준으로 짝지어 광고비 대비 매출(ROAS)을
+ * 보여준다. 온라인/오프라인을 합치지 않고 별도 컬럼으로 나눠 어느 채널의
+ * 매출인지 구분해서 볼 수 있게 한다. 두 매출 모두 광고 전환매출
+ * (MetricsSummary.revenue)이 아니라 실제로 결제된 금액 기준이라, 전환 추적이
+ * 부정확한 채널(예: 문의 목적 캠페인)에서도 실제 성과를 볼 수 있다. */
 export function RoasPanel({
   combinedInsight,
   offlineRevenue,
+  onlineRevenue,
 }: {
   combinedInsight: CombinedInsight | null
   offlineRevenue: OfflineRevenueSummary | null
+  onlineRevenue: Cafe24RevenueSummary | null
 }) {
   const { grouping, setGrouping, total, average, rows } = useRoasViewModel(
     combinedInsight,
     offlineRevenue,
+    onlineRevenue,
   )
 
-  if (!combinedInsight || !offlineRevenue) {
+  if (!combinedInsight || !offlineRevenue || !onlineRevenue) {
     return <p className="channel-insight__result-empty">데이터 없음</p>
   }
 

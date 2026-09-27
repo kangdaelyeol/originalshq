@@ -4,12 +4,14 @@ import {
   getGoogleInsights,
   getNaverInsights,
   getOfflineRevenue,
+  getCafe24Revenue,
   combineChannelInsights,
   normalizeInsightSummary,
   CallableError,
   type CombinedInsight,
   type MetaInsightSummary,
   type OfflineRevenueSummary,
+  type Cafe24RevenueSummary,
 } from '../client'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
@@ -45,6 +47,11 @@ export const useChannelInsightViewModel = () => {
   // 바로 보이게 한다.
   const [offlineRevenueData, setOfflineRevenueData] =
     useState<OfflineRevenueSummary | null>(null)
+  // 온라인 매출(Cafe24, ROAS 탭 전용) — offlineRevenueData와 같은 이유로
+  // combinedInsight와 따로 둔다. 오프라인/온라인을 구분해서 보여줘야 해서
+  // 하나로 합치지 않는다.
+  const [onlineRevenueData, setOnlineRevenueData] =
+    useState<Cafe24RevenueSummary | null>(null)
   // total은 물론 캠페인/adset 단위까지 "종합(meta+google+naver)/meta/google/naver"
   // 4분할로 미리 묶어둔다 — 당근 등 채널이 더 늘어나면 combineChannelInsights
   // 쪽만 확장하면 된다.
@@ -69,12 +76,13 @@ export const useChannelInsightViewModel = () => {
     try {
       const apiStart = formatForApi(start)
       const apiEnd = formatForApi(end)
-      const [metaRaw, googleRaw, naverRaw, offlineRevenueResult] =
+      const [metaRaw, googleRaw, naverRaw, offlineRevenueResult, onlineRevenueResult] =
         await Promise.all([
           getAllInsights(apiStart, apiEnd),
           getGoogleInsights(apiStart, apiEnd),
           getNaverInsights(apiStart, apiEnd),
           getOfflineRevenue(apiStart, apiEnd),
+          getCafe24Revenue(apiStart, apiEnd),
         ])
       // Meta/Google/Naver는 offlineRevenue 개념 자체를 모르는 백엔드에서 와서
       // 그 필드가 아예 없다 — KpiGrid 등이 MetricsSummary를 곧장(aggregateMetrics를
@@ -87,6 +95,7 @@ export const useChannelInsightViewModel = () => {
       setGoogleData(googleResult)
       setNaverData(naverResult)
       setOfflineRevenueData(offlineRevenueResult)
+      setOnlineRevenueData(onlineRevenueResult)
       setCombinedInsight(
         combineChannelInsights(
           metaResult,
@@ -95,6 +104,7 @@ export const useChannelInsightViewModel = () => {
           apiStart,
           apiEnd,
           offlineRevenueResult,
+          onlineRevenueResult,
         ),
       )
     } catch (err) {
@@ -128,6 +138,7 @@ export const useChannelInsightViewModel = () => {
     googleData,
     naverData,
     offlineRevenueData,
+    onlineRevenueData,
     combinedInsight,
     // 액션
     load,

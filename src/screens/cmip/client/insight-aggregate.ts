@@ -28,6 +28,7 @@ export function emptyMetrics(): MetricsSummary {
     conversions: 0,
     revenue: 0,
     offlineRevenue: 0,
+    onlineRevenue: 0,
     roas: 0,
     ctr: 0,
     cpc: 0,
@@ -52,6 +53,8 @@ interface RawCounts {
   /** 오프라인 매출 — revenue와 같은 이유로 그냥 합산. rows에 값이 없으면(정규화
    * 전 원본 채널 데이터 등) 0으로 취급한다. */
   offlineRevenue: number
+  /** 온라인 매출 — offlineRevenue와 같은 이유로 그냥 합산. */
+  onlineRevenue: number
   /** frequency는 단순 합산 대상이 아니라 impressions 가중 평균으로 근사한다. */
   weightedFrequency: number
 }
@@ -65,6 +68,7 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
     conversions,
     revenue,
     offlineRevenue,
+    onlineRevenue,
     weightedFrequency,
   } = counts
   return {
@@ -74,7 +78,11 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
     conversions,
     revenue,
     offlineRevenue,
-    roas: spend > 0 ? (offlineRevenue / spend) * 100 : 0,
+    onlineRevenue,
+    // ROAS는 매출 출처(오프라인/온라인)를 합쳐서 광고비 대비로 본다 —
+    // 채널별/출처별 기여도는 offlineRevenue/onlineRevenue를 따로 보면 된다.
+    roas:
+      spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,
@@ -95,6 +103,7 @@ export function aggregateMetrics(
     conversions: rows.reduce((s, r) => s + r.conversions, 0),
     revenue: rows.reduce((s, r) => s + r.revenue, 0),
     offlineRevenue: rows.reduce((s, r) => s + (r.offlineRevenue ?? 0), 0),
+    onlineRevenue: rows.reduce((s, r) => s + (r.onlineRevenue ?? 0), 0),
     weightedFrequency: rows.reduce(
       (s, r) => s + r.frequency * r.impressions,
       0,
@@ -131,6 +140,10 @@ export function sumMetricsWeighted(
     (s, e) => s + (e.metrics.offlineRevenue ?? 0),
     0,
   )
+  const onlineRevenue = entries.reduce(
+    (s, e) => s + (e.metrics.onlineRevenue ?? 0),
+    0,
+  )
   const weightedFrequency = entries.reduce(
     (s, e) =>
       s + (e.hasFrequency ? e.metrics.frequency * e.metrics.impressions : 0),
@@ -147,7 +160,9 @@ export function sumMetricsWeighted(
     conversions,
     revenue,
     offlineRevenue,
-    roas: spend > 0 ? (offlineRevenue / spend) * 100 : 0,
+    onlineRevenue,
+    roas:
+      spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,
