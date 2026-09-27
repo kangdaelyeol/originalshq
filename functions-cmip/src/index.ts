@@ -50,6 +50,12 @@ import {
   getOfflineRevenue as fetchOfflineRevenue,
   syncOfflineSalesFromMonday,
 } from './monday-crm'
+import {
+  buildCafe24AuthUrl,
+  checkCafe24AuthStatus,
+  debugFetchCafe24OrdersRaw,
+  exchangeAndSaveCafe24Tokens,
+} from './cafe24'
 
 const corsHandler = cors({ origin: true })
 
@@ -62,12 +68,21 @@ const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
 const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
 const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
 const mondayApiKey = defineSecret('MONDAY_API_KEY')
+const cafe24ClientId = defineSecret('CAFE24_CLIENT_ID')
+const cafe24SecretKey = defineSecret('CAFE24_SECRET_KEY')
+const cafe24MainId = 'hiswill00'
 
 // Google Cloud Console의 Authorized redirect URIs에 등록된 값과 반드시 동일해야
 // 한다 — oauthCallback(토큰 교환)과 getGoogleAuthUrl(동의 화면 URL 생성) 양쪽에서
 // 같은 값을 써야 "redirect_uri_mismatch" 없이 오간다.
 const GOOGLE_OAUTH_REDIRECT_URI =
   'https://asia-northeast3-xtool-63b29.cloudfunctions.net/oauthCallback'
+
+// Cafe24 개발자센터의 앱 설정(redirect_uri)에 이 값 그대로 등록해야 한다 —
+// getCafe24AuthUrl(동의 화면 URL 생성)과 cafe24OauthCallback(토큰 교환) 양쪽이
+// 같은 값을 써야 Cafe24가 "redirect_uri 불일치" 없이 콜백을 돌려준다.
+const CAFE24_OAUTH_REDIRECT_URI =
+  'https://asia-northeast3-xtool-63b29.cloudfunctions.net/cafe24OauthCallback'
 
 function sendError(
   response: import('express').Response,
@@ -808,7 +823,9 @@ export const syncOfflineSales = onRequest(
         sendError(
           res,
           500,
-          err instanceof Error ? err.message : 'Monday 오프라인 매출 동기화 실패',
+          err instanceof Error
+            ? err.message
+            : 'Monday 오프라인 매출 동기화 실패',
         )
       }
     })
@@ -872,5 +889,154 @@ export const syncOfflineSalesScheduled = onSchedule(
         err instanceof Error ? err.message : err,
       )
     }
+  },
+)
+
+// ────────────────────────────────
+// Cafe24 OAuth — 온라인 스토어 매출(주문) 연동의 인증 부분. 주문 데이터 조회
+// 엔드포인트는 이 인증이 끝난 뒤 이어서 추가한다.
+// ────────────────────────────────
+
+/**
+ * Cafe24 로그인/동의 화면 URL 발급 — 프론트가 이 URL을 새 탭으로 연다.
+ * state는 CSRF 방지용 — 브랜드 구분이 필요 없는 단일 몰 연동이라 고정값을
+ * 쓴다(cafe24OauthCallback에서 그대로 되돌아오는지만 확인).
+ */
+export const getCafe24AuthUrl = onRequest(
+  { secrets: [cafe24ClientId] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      try {
+        const url = buildCafe24AuthUrl(
+          cafe24MainId,
+          cafe24ClientId.value(),
+          CAFE24_OAUTH_REDIRECT_URI,
+          'cafe24',
+        )
+        response.status(200).send({ url })
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+/**
+ * Cafe24 OAuth 2.0 콜백 엔드포인트
+ * - Cafe24 개발자센터 앱 설정의 Redirect URI에 입력할 URL:
+ *   https://asia-northeast3-xtool-63b29.cloudfunctions.net/cafe24OauthCallback
+ */
+export const cafe24OauthCallback = onRequest(
+  { secrets: [cafe24ClientId, cafe24SecretKey] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+
+      const { code, state, error, error_description: errorDescription } =
+        request.query as {
+          code?: string
+          state?: string
+          error?: string
+          error_description?: string
+        }
+
+      if (error) {
+        sendError(response, 400, `Cafe24 OAuth Error: ${errorDescription || error}`)
+        return
+      }
+      if (!code) {
+        sendError(response, 400, 'Authorization code(code)가 누락되었습니다.')
+        return
+      }
+      if (state !== 'cafe24') {
+        sendError(response, 400, 'state 값이 올바르지 않습니다.')
+        return
+      }
+
+      try {
+        await exchangeAndSaveCafe24Tokens(
+          code,
+          cafe24MainId,
+          CAFE24_OAUTH_REDIRECT_URI,
+          cafe24ClientId.value(),
+          cafe24SecretKey.value(),
+        )
+        response.status(200).send({
+          success: true,
+          message: 'Cafe24 연동 및 토큰 저장이 완료되었습니다.',
+        })
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Cafe24 OAuth 인증 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 이 몰에 Cafe24 refreshToken이 저장돼 있는지 확인 — "연동 시작"과 "조회"
+ * 중 뭘 먼저 눌러야 하는지 UI가 판단하는 용도(Google Ads의
+ * getGoogleAuthStatus와 같은 역할).
+ */
+export const getCafe24AuthStatus = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'GET') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    try {
+      const result = await checkCafe24AuthStatus()
+      response.status(200).send(result)
+    } catch (err) {
+      sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+    }
+  })
+})
+
+/**
+ * 디버그 전용 — 주문 목록 API의 실제 응답(필드명이 정확히 뭔지)을 눈으로
+ * 확인하기 위한 용도(debugNaverRaw와 같은 패턴). 필드 확인되면 이 엔드포인트와
+ * cafe24/index.ts의 debugFetchCafe24OrdersRaw는 지워도 된다.
+ * 사용 예: ?startDate=2026-09-01&endDate=2026-09-27
+ */
+export const debugCafe24OrdersRaw = onRequest(
+  { secrets: [cafe24ClientId, cafe24SecretKey] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = request.query as {
+        startDate?: string
+        endDate?: string
+      }
+      if (!startDate || !endDate) {
+        sendError(response, 400, 'startDate, endDate 필요')
+        return
+      }
+      try {
+        const raw = await debugFetchCafe24OrdersRaw(
+          cafe24MainId,
+          cafe24ClientId.value(),
+          cafe24SecretKey.value(),
+          startDate,
+          endDate,
+        )
+        response.status(200).send(raw)
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
   },
 )
