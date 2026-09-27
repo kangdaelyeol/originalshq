@@ -34,6 +34,21 @@ import {
   weekdayLabelOf,
 } from '../client'
 import { METRIC_FIELDS, type MetricField, type MetricKey } from './metric-fields'
+
+/** 오프라인/온라인 매출·총 매출·ROAS는 계정 전체(종합) 기준으로만 실제 값이
+ * 들어가고 Meta/Google/Naver 개별 채널 값은 그 개념 자체가 없어 항상 0이다
+ * (metric-fields.ts 각 필드의 note 참고). 채널별 성과를 보여주는 자리(채널별
+ * KPI 카드, 표의 채널별 펼침 행, 채널 필터로 특정 채널만 보는 표)에서는 의미
+ * 없는 0을 늘어놓지 않도록 이 지표들을 뺀다. */
+const ACCOUNT_ONLY_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
+  'offlineRevenue',
+  'onlineRevenue',
+  'totalRevenue',
+  'roas',
+])
+
+const channelSafeFields = (fields: readonly MetricField[]): MetricField[] =>
+  fields.filter((f) => !ACCOUNT_ONLY_METRIC_KEYS.has(f.key))
 import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
 import { ChannelInsightChartModal } from './channel-insight-chart-modal'
@@ -246,10 +261,19 @@ function MetricHeaderLabel({
   )
 }
 
-function KpiGrid({ metrics }: { metrics: MetricsSummary }) {
+function KpiGrid({
+  metrics,
+  channelScoped,
+}: {
+  metrics: MetricsSummary
+  /** true면 Meta/Google/Naver 개별 채널 KPI 카드 — 매출/ROAS 지표는 그 채널
+   * 값이 항상 0이라(ACCOUNT_ONLY_METRIC_KEYS) 아예 보여주지 않는다. */
+  channelScoped?: boolean
+}) {
+  const fields = channelScoped ? channelSafeFields(METRIC_FIELDS) : METRIC_FIELDS
   return (
     <div className="channel-insight__summary-grid">
-      {METRIC_FIELDS.map(({ key, label, format }) => (
+      {fields.map(({ key, label, format }) => (
         <div key={key} className="channel-insight__kpi">
           <span className="channel-insight__kpi-label">{label}</span>
           <span className="channel-insight__kpi-value">
@@ -429,7 +453,12 @@ function MetricsTable<T extends MetricsSummary>({
   const { expanded, sort, originalIndexByKey, displayRows, toggleSort, toggle } =
     useMetricsTableViewModel(rows, rowKey)
 
-  const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
+  // channelFilter가 특정 채널이면 rows 자체가 그 채널 단독 값(호출부가 넘겨줌)이라
+  // 매출/ROAS 지표가 항상 0으로만 나온다 — 컬럼 토글 목록·표시 컬럼 둘 다에서
+  // 아예 뺀다(토글 버튼만 남겨두면 눌러도 아무 변화가 없어 혼란스럽다).
+  const toggleableFields =
+    channelFilter === 'all' ? METRIC_FIELDS : channelSafeFields(METRIC_FIELDS)
+  const visibleFields = toggleableFields.filter((f) => visibleKeys.has(f.key))
   // 맨 아래 합계/평균 행 — 정렬·채널 필터와 무관하게 항상 이 표에 실제로 보이는
   // rows(=현재 channelFilter 기준 전체) 전체를 기준으로 한다. PivotSummary의
   // 합계/평균 행(맨 위)과 같은 계산(averageValueOf)을 공유하되, 여기는 일수가
@@ -473,7 +502,7 @@ function MetricsTable<T extends MetricsSummary>({
         role="group"
         aria-label="컬럼 표시"
       >
-        {METRIC_FIELDS.map((f) => {
+        {toggleableFields.map((f) => {
           const active = visibleKeys.has(f.key)
           return (
             <button
@@ -604,20 +633,24 @@ function MetricsTable<T extends MetricsSummary>({
                               label={channel.label}
                             />
                           </td>
-                          {visibleFields.map((f) => (
-                            <td key={f.key}>
-                              <MetricCell
-                                value={breakdown[channel.key][f.key]}
-                                prevValue={
-                                  prevBreakdown
-                                    ? prevBreakdown[channel.key][f.key]
-                                    : null
-                                }
-                                format={f.formatCompact}
-                                showCompare={showCompare}
-                              />
-                            </td>
-                          ))}
+                          {visibleFields.map((f) =>
+                            ACCOUNT_ONLY_METRIC_KEYS.has(f.key) ? (
+                              <td key={f.key}>—</td>
+                            ) : (
+                              <td key={f.key}>
+                                <MetricCell
+                                  value={breakdown[channel.key][f.key]}
+                                  prevValue={
+                                    prevBreakdown
+                                      ? prevBreakdown[channel.key][f.key]
+                                      : null
+                                  }
+                                  format={f.formatCompact}
+                                  showCompare={showCompare}
+                                />
+                              </td>
+                            ),
+                          )}
                         </tr>
                       ))}
                   </Fragment>
@@ -957,7 +990,7 @@ function ResultPanel({
                         label={channel.label}
                       />
                     </span>
-                    <KpiGrid metrics={total[channel.key]} />
+                    <KpiGrid metrics={total[channel.key]} channelScoped />
                   </div>
                 ))}
               </div>
