@@ -108,8 +108,15 @@ function MetricValueCell({
 // 맞춰 늘리면, 실제 렌더 비율이 그 논리 크기의 가로세로 비율과 달라 좌표계
 // 전체가 가로/세로로 다르게 늘어난다(폰트·선이 옆으로 퍼져 보임) — 그래서
 // index-line-chart.tsx와 같은 방식(useRoasTrendChartViewModel)으로 실제 렌더
-// 픽셀 크기를 측정해 viewBox로 그대로 쓴다(1 유닛 = 1px).
-const CHART_MARGIN = { top: 24, right: 12, bottom: 26, left: 46 }
+// 픽셀 크기를 측정해 viewBox로 그대로 쓴다(1 유닛 = 1px). top을 다른 여백보다
+// 넉넉히 둔 건 막대마다 지푯값+대비 두 줄 라벨이 막대 위에 쌓이기 때문 —
+// 좁으면 가장 높은 막대의 라벨이 플롯 밖(y<0)으로 잘려 나간다.
+const CHART_MARGIN = { top: 34, right: 12, bottom: 26, left: 46 }
+
+// 값·대비 라벨에 까는 halo(텍스트 뒤 배경색 stroke)용 — index-line-chart.tsx의
+// PALETTE.dark.surface와 같은 값(다크 테마 표면색)이다. CSS 변수가 아니라 SVG
+// stroke 속성에 리터럴로 넣어야 해서 여기 그대로 상수로 둔다.
+const CHART_SURFACE = '#161b22'
 
 /** y축 최댓값을 100 단위로 올림 — 150%면 200까지, 480%면 500까지처럼 눈금이
  * 딱 떨어지게 한다. ROAS가 전부 낮아도(예: 40%) 100% 기준선은 항상 보이도록
@@ -124,15 +131,24 @@ function roundUpToHundred(value: number): number {
  * 막대 색은 이 앱 전역에서 "증가/양호"를 뜻하는 초록(#3fb950)과 "감소/부진"을
  * 뜻하는 빨강(#ff7b72)을 그대로 재사용한다(channel-insight.scss의
  * __metric-delta.is-up/is-down과 같은 색) — ROAS 100%(광고비만큼 매출이 났는지)
- * 기준으로 갈린다. */
-function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
+ * 기준으로 갈린다. 평균 점선은 표의 "평균" 행(useRoasViewModel의 average)과
+ * 같은 값을 그대로 써서, 표와 그래프가 서로 다른 평균을 보여주지 않게 한다.
+ * 막대마다 지푯값과 바로 앞 막대 대비 증감(퍼센트 포인트)을 항상 표시한다 —
+ * 표의 MetricValueCell과 같은 계산(computeDelta)을 그대로 쓴다. */
+function RoasTrendChart({
+  rows,
+  average,
+}: {
+  rows: readonly RoasRow[]
+  average: RoasMetrics
+}) {
   const { ref, vbWidth, vbHeight } = useRoasTrendChartViewModel()
   const n = rows.length
   const plotW = vbWidth - CHART_MARGIN.left - CHART_MARGIN.right
   const plotH = vbHeight - CHART_MARGIN.top - CHART_MARGIN.bottom
   const plotBottom = CHART_MARGIN.top + plotH
   const maxValue = roundUpToHundred(
-    Math.max(100, ...rows.map((r) => r.metrics.roas)) * 1.15,
+    Math.max(100, average.roas, ...rows.map((r) => r.metrics.roas)) * 1.25,
   )
   const bandW = plotW / n
   const barW = Math.min(bandW * 0.56, 34)
@@ -140,6 +156,7 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
   const xOf = (i: number) => CHART_MARGIN.left + bandW * i + (bandW - barW) / 2
   const labelStride = Math.max(1, Math.ceil(n / 8))
   const ticks = [0, maxValue / 2, maxValue]
+  const avgY = yOf(average.roas)
 
   return (
     <div className="channel-insight__roas-chart" ref={ref}>
@@ -174,6 +191,11 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
         {rows.map((row, i) => {
           const barY = yOf(row.metrics.roas)
           const h = Math.max(0, plotBottom - barY)
+          const prevRow = i > 0 ? rows[i - 1] : null
+          const delta = prevRow
+            ? computeDelta(row.metrics.roas, prevRow.metrics.roas)
+            : null
+          const cx = xOf(i) + barW / 2
           return (
             <g key={row.key}>
               <rect
@@ -188,9 +210,35 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
               >
                 <title>{`${row.label}: ${row.metrics.roas.toFixed(1)}%`}</title>
               </rect>
+              {delta && (
+                <text
+                  x={cx}
+                  y={barY - 20}
+                  textAnchor="middle"
+                  stroke={CHART_SURFACE}
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  className={`channel-insight__roas-chart-delta is-${delta.dir}`}
+                >
+                  {DELTA_ARROW[delta.dir]}{' '}
+                  {delta.delta >= 0 ? '+' : '-'}
+                  {Math.abs(delta.delta).toFixed(1)}%p
+                </text>
+              )}
+              <text
+                x={cx}
+                y={barY - 6}
+                textAnchor="middle"
+                stroke={CHART_SURFACE}
+                strokeWidth={3}
+                paintOrder="stroke"
+                className="channel-insight__roas-chart-value"
+              >
+                {row.metrics.roas.toFixed(1)}%
+              </text>
               {(i % labelStride === 0 || i === n - 1) && (
                 <text
-                  x={xOf(i) + barW / 2}
+                  x={cx}
                   y={vbHeight - 8}
                   textAnchor="middle"
                   className="channel-insight__roas-chart-axis"
@@ -201,6 +249,27 @@ function RoasTrendChart({ rows }: { rows: readonly RoasRow[] }) {
             </g>
           )
         })}
+
+        {/* 평균 점선 — 표의 "평균" 행과 같은 값. 막대보다 먼저 그리면 막대에
+            가려지므로 맨 뒤(막대 다음)에 그린다. */}
+        <line
+          x1={CHART_MARGIN.left}
+          x2={vbWidth - CHART_MARGIN.right}
+          y1={avgY}
+          y2={avgY}
+          className="channel-insight__roas-chart-avg-line"
+        />
+        <text
+          x={vbWidth - CHART_MARGIN.right}
+          y={avgY - 6}
+          textAnchor="end"
+          stroke={CHART_SURFACE}
+          strokeWidth={3}
+          paintOrder="stroke"
+          className="channel-insight__roas-chart-avg-label"
+        >
+          평균 {average.roas.toFixed(1)}%
+        </text>
       </svg>
     </div>
   )
@@ -311,7 +380,7 @@ export function RoasPanel({
               </table>
             </div>
 
-            <RoasTrendChart rows={rows} />
+            <RoasTrendChart rows={rows} average={average} />
           </>
         )}
       </section>

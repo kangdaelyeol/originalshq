@@ -34,22 +34,13 @@ import {
   metricsForDateSubset,
   weekdayLabelOf,
 } from '../client'
-import { METRIC_FIELDS, type MetricField, type MetricKey } from './metric-fields'
-
-/** 오프라인/온라인 매출·총 매출·ROAS는 계정 전체(종합) 기준으로만 실제 값이
- * 들어가고 Meta/Google/Naver 개별 채널 값은 그 개념 자체가 없어 항상 0이다
- * (metric-fields.ts 각 필드의 note 참고). 채널별 성과를 보여주는 자리(채널별
- * KPI 카드, 표의 채널별 펼침 행, 채널 필터로 특정 채널만 보는 표)에서는 의미
- * 없는 0을 늘어놓지 않도록 이 지표들을 뺀다. */
-const ACCOUNT_ONLY_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
-  'offlineRevenue',
-  'onlineRevenue',
-  'totalRevenue',
-  'roas',
-])
-
-const channelSafeFields = (fields: readonly MetricField[]): MetricField[] =>
-  fields.filter((f) => !ACCOUNT_ONLY_METRIC_KEYS.has(f.key))
+import {
+  ACCOUNT_ONLY_METRIC_KEYS,
+  channelSafeFields,
+  METRIC_FIELDS,
+  type MetricField,
+  type MetricKey,
+} from './metric-fields'
 import { CHANNELS, channelsOf, type ChannelKey } from './channels'
 import { DateRangePicker } from './date-range-picker'
 import { ChannelInsightChartModal } from './channel-insight-chart-modal'

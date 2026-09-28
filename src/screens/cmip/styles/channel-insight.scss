@@ -350,6 +350,44 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
+  // 막대 위 지푯값(ROAS %) — 항상 표시.
+  &__roas-chart-value {
+    font-size: 11px;
+    font-weight: 600;
+    fill: $color-text;
+  }
+
+  // 막대 위 바로 앞 막대 대비 증감(%p) — channel-insight__metric-delta.is-up/
+  // is-down과 같은 색을 재사용해 표·그래프 사이에 색 의미가 어긋나지 않게 한다.
+  &__roas-chart-delta {
+    font-size: 10.5px;
+    font-weight: 700;
+    fill: $color-muted;
+
+    &.is-up {
+      fill: #3fb950;
+    }
+
+    &.is-down {
+      fill: #ff7b72;
+    }
+  }
+
+  // 평균 점선 — 표의 "평균" 행과 같은 값을 그대로 그린다.
+  &__roas-chart-avg-line {
+    stroke: $color-text;
+    stroke-width: 1.5;
+    stroke-dasharray: 5 3;
+    opacity: 0.5;
+  }
+
+  &__roas-chart-avg-label {
+    font-size: 11px;
+    font-weight: 600;
+    fill: $color-text;
+    opacity: 0.75;
+  }
+
   // ------------------------------------------------------------------ 지표 선택 (캠페인/adset 탭)
   &__metric-row {
     display: flex;

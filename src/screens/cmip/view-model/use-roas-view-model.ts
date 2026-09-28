@@ -51,13 +51,43 @@ const toMetrics = (
   roas: calcRoas(offlineRevenue, onlineRevenue, spend),
 })
 
+/** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
+ * 탭(useRoasViewModel)과 엑셀 ROAS 시트(excel-writer.ts)가 공유한다. */
+export function computeRoasTotal(
+  combinedInsight: CombinedInsight | null,
+  offlineRevenue: OfflineRevenueSummary | null,
+  onlineRevenue: Cafe24RevenueSummary | null,
+): RoasMetrics {
+  return toMetrics(
+    offlineRevenue?.total.totalPaid ?? 0,
+    onlineRevenue?.total.paymentAmount ?? 0,
+    combinedInsight?.total.combined.spend ?? 0,
+  )
+}
+
+/** "평균" — 합계를 지금 보이는 행 수로 나눈다. spend/offlineRevenue/
+ * onlineRevenue를 먼저 나누고 roas는 그 평균값들에서 다시 계산한다(비율을
+ * 그대로 평균 내지 않는다 — 어차피 total.roas와 같은 값이 나오지만, 코드
+ * 상으로도 "합계 기준으로 비율을 다시 계산한다"는 원칙을 그대로 따른다). */
+export function computeRoasAverage(
+  total: RoasMetrics,
+  rowCount: number,
+): RoasMetrics {
+  return rowCount > 0
+    ? toMetrics(
+        total.offlineRevenue / rowCount,
+        total.onlineRevenue / rowCount,
+        total.spend / rowCount,
+      )
+    : toMetrics(0, 0, 0)
+}
+
 /**
- * ROAS(광고비 대비 오프라인+온라인 매출) 탭 — combinedInsight(광고비,
- * Meta+Google+Naver 이미 합산됨), offlineRevenue(Monday CRM 오프라인 매출)와
- * onlineRevenue(Cafe24 온라인 매출, 둘 다 별도 조회)를 날짜/요일/주차/월
- * 키로 짝지어 ROAS를 계산한다. 세 데이터 모두 이미 useChannelInsightViewModel이
- * 같은 dateStart/dateEnd로 조회해 갖고 있어(period-test 탭처럼) 이 훅 자체는
- * 새 네트워크 호출을 하지 않고 순수 파생만 한다.
+ * combinedInsight(광고비, Meta+Google+Naver 이미 합산됨), offlineRevenue
+ * (Monday CRM 오프라인 매출)와 onlineRevenue(Cafe24 온라인 매출, 둘 다 별도
+ * 조회)를 날짜/요일/주차/월 키로 짝지어 grouping 하나에 대한 ROAS 행을
+ * 계산한다. ROAS 탭(useRoasViewModel)과 엑셀 ROAS 시트(excel-writer.ts —
+ * 화면과 달리 4개 grouping을 전부 시트에 쌓는다)가 공유한다.
  *
  * 키(날짜/요일/주차)는 항상 combinedInsight.series.combined 쪽(seriesFromByDate가
  * 조회 범위 전체를 0으로 채워 만든 완전한 시리즈)을 기준으로 순회하고,
@@ -67,20 +97,13 @@ const toMetrics = (
  * combinedInsight.series에 자체 필드가 없어 원래도 groupByMonth로 광고비 쪽을
  * 직접 파생시켜 기준으로 썼다 — 나머지 grouping도 그와 같은 방식으로 통일한다).
  */
-export const useRoasViewModel = (
+export function computeRoasRows(
+  grouping: RoasGrouping,
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
-) => {
-  const [grouping, setGrouping] = useState<RoasGrouping>(RoasGrouping.DATE)
-
-  const total: RoasMetrics = toMetrics(
-    offlineRevenue?.total.totalPaid ?? 0,
-    onlineRevenue?.total.paymentAmount ?? 0,
-    combinedInsight?.total.combined.spend ?? 0,
-  )
-
-  const rows: RoasRow[] = (() => {
+): RoasRow[] {
+  {
     if (!combinedInsight) return []
 
     if (grouping === RoasGrouping.MONTH) {
@@ -168,21 +191,32 @@ export const useRoasViewModel = (
         ),
       }),
     )
-  })()
+  }
+}
 
-  // 평균 행 — "합계"(total, 조회 기간 전체 기준이라 grouping과 무관하게 항상
-  // 같음)를 지금 표에 보이는 행 수로 나눈다. spend/offlineRevenue/onlineRevenue는
-  // 그렇게 나누고, roas는 그 평균값들에서 다시 계산한다(비율을 그대로 평균
-  // 내지 않는다 — 어차피 total.roas와 같은 값이 나오지만, 코드 상으로도
-  // "합계 기준으로 비율을 다시 계산한다"는 원칙을 그대로 따른다).
-  const average: RoasMetrics =
-    rows.length > 0
-      ? toMetrics(
-          total.offlineRevenue / rows.length,
-          total.onlineRevenue / rows.length,
-          total.spend / rows.length,
-        )
-      : toMetrics(0, 0, 0)
+/**
+ * ROAS(광고비 대비 오프라인+온라인 매출) 탭 — 세 데이터 모두 이미
+ * useChannelInsightViewModel이 같은 dateStart/dateEnd로 조회해 갖고 있어
+ * (period-test 탭처럼) 이 훅 자체는 새 네트워크 호출을 하지 않고 computeRoasTotal/
+ * computeRoasRows/computeRoasAverage(위)를 grouping state와 엮어 순수 파생만
+ * 한다. 이 세 함수는 엑셀 ROAS 시트(excel-writer.ts)도 그대로 가져다 쓴다 —
+ * 화면과 엑셀이 서로 다른 계산 결과를 보여주지 않도록 로직을 한 곳에 둔다.
+ */
+export const useRoasViewModel = (
+  combinedInsight: CombinedInsight | null,
+  offlineRevenue: OfflineRevenueSummary | null,
+  onlineRevenue: Cafe24RevenueSummary | null,
+) => {
+  const [grouping, setGrouping] = useState<RoasGrouping>(RoasGrouping.DATE)
+
+  const total = computeRoasTotal(combinedInsight, offlineRevenue, onlineRevenue)
+  const rows = computeRoasRows(
+    grouping,
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
+  )
+  const average = computeRoasAverage(total, rows.length)
 
   return { grouping, setGrouping, total, average, rows }
 }

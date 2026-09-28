@@ -186,3 +186,19 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     note: '(오프라인 매출 + 온라인 매출) ÷ 광고비입니다. 오프라인은 Monday CRM 기준 매장 결제액, 온라인은 Cafe24 기준 자사몰 결제액입니다. offlineRevenue/onlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
   },
 ]
+
+/** 오프라인/온라인 매출·총 매출·ROAS는 계정 전체(종합) 기준으로만 실제 값이
+ * 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 값은 그 개념 자체가
+ * 없어 항상 0이다(위 각 필드의 note 참고). 채널별/캠페인별/adset별 성과를
+ * 보여주는 자리(화면의 채널별 KPI 카드·표의 채널별 펼침 행, 엑셀의 채널·
+ * 캠페인·애드셋 시트)에서는 의미 없는 0을 늘어놓지 않도록 이 지표들을 뺀다. */
+export const ACCOUNT_ONLY_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
+  'offlineRevenue',
+  'onlineRevenue',
+  'totalRevenue',
+  'roas',
+])
+
+export const channelSafeFields = (
+  fields: readonly MetricField[],
+): MetricField[] => fields.filter((f) => !ACCOUNT_ONLY_METRIC_KEYS.has(f.key))

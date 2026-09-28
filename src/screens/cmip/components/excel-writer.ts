@@ -15,7 +15,12 @@ import {
   type MetricsSummary,
 } from '../client'
 import { CHANNELS, type ChannelKey } from './channels'
-import type { MetricField, MetricKey } from './metric-fields'
+import {
+  ACCOUNT_ONLY_METRIC_KEYS,
+  channelSafeFields,
+  type MetricField,
+  type MetricKey,
+} from './metric-fields'
 
 /** CombinedCampaign/CombinedAdset에 표시용 채널 라벨 문자열("Meta, Google")을
  * 미리 얹은 모양 — 채널 로고/브랜드색 계산(channelsOf, CHANNELS)은
@@ -245,10 +250,19 @@ export function writeTotalSheet(
     (c) => series[c.key].byDate.length > 0,
   )
 
+  // 오프라인/온라인 매출·총 매출·ROAS는 계정 전체(종합) 기준으로만 실제 값이
+  // 들어가고 Meta/Google/Naver 개별 채널 값은 항상 0이다 — 채널별 표에서는
+  // 이 컬럼들을 아예 뺀다(channel-insight.tsx의 채널별 KPI 카드·표와 같은
+  // 이유). "요약" 표의 "전체" 행만 예외로 fields(전체) 그대로 쓴다.
+  const channelFields = channelSafeFields(fields)
+
   let row = 1
 
   // 화면 맨 위 Summary 카드(channel-insight__summary)에 대응 — 전체(combined)
   // 총계 1행 + 데이터가 있는 채널마다 1행. 이미 총계들이라 평균 행은 안 붙인다.
+  // 채널 행은 컬럼 자체는 "전체" 행과 맞추되(표 하나라 컬럼 수가 같아야 함),
+  // 계정 전체 전용 지표 칸만 빈 칸으로 둔다 — channelSafeFields로 아예
+  // 컬럼을 빼면 "전체" 행의 실제 값까지 표에서 사라지기 때문이다.
   row = writeTable(
     ws,
     row,
@@ -258,7 +272,11 @@ export function writeTotalSheet(
       ['전체', ...metricValues(total.combined, fields)],
       ...applicableChannels.map((c) => [
         c.label,
-        ...metricValues(total[c.key], fields),
+        ...fields.map((f) =>
+          ACCOUNT_ONLY_METRIC_KEYS.has(f.key)
+            ? ''
+            : round2(total[c.key][f.key]),
+        ),
       ]),
     ],
     fields,
@@ -274,27 +292,29 @@ export function writeTotalSheet(
     headLabel: string
     rowsOf: (
       s: ChannelSplitSeries[ChannelKey | 'combined'],
+      flds: readonly MetricField[],
     ) => (string | number)[][]
   }[] = [
     {
       title: '월간 성과',
       headLabel: '월',
-      rowsOf: (s) =>
+      rowsOf: (s, flds) =>
         groupByMonth(s.byDate).map((w) => [
           w.period,
-          ...metricValues(w, fields),
+          ...metricValues(w, flds),
         ]),
     },
     {
       title: '주차별 성과',
       headLabel: '기간',
-      rowsOf: (s) =>
-        s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, fields)]),
+      rowsOf: (s, flds) =>
+        s.byGroupedWeek.map((w) => [w.period, ...metricValues(w, flds)]),
     },
     {
       title: '일별 성과',
       headLabel: '날짜',
-      rowsOf: (s) => s.byDate.map((d) => [d.date, ...metricValues(d, fields)]),
+      rowsOf: (s, flds) =>
+        s.byDate.map((d) => [d.date, ...metricValues(d, flds)]),
     },
   ]
 
@@ -306,7 +326,7 @@ export function writeTotalSheet(
       row,
       t.title,
       [t.headLabel, ...metricHeaders(fields)],
-      t.rowsOf(series.combined),
+      t.rowsOf(series.combined, fields),
       fields,
       true,
       true,
@@ -316,9 +336,9 @@ export function writeTotalSheet(
         ws,
         row,
         `${c.label} ${t.title}`,
-        [t.headLabel, ...metricHeaders(fields)],
-        t.rowsOf(series[c.key]),
-        fields,
+        [t.headLabel, ...metricHeaders(channelFields)],
+        t.rowsOf(series[c.key], channelFields),
+        channelFields,
         true,
         true,
       )
@@ -348,12 +368,12 @@ export function writeTotalSheet(
       ws,
       row,
       periodTitle(`${c.label} 이전 일정 vs 지정 일정 비교분석`, bucketSize),
-      ['기간', ...metricHeaders(fields)],
+      ['기간', ...metricHeaders(channelFields)],
       customRowsOf(series[c.key].byDate).map((w) => [
         w.period,
-        ...metricValues(w, fields),
+        ...metricValues(w, channelFields),
       ]),
-      fields,
+      channelFields,
       true,
       true,
     )
@@ -378,12 +398,12 @@ export function writeTotalSheet(
       ws,
       row,
       `${c.label} 요일별 성과`,
-      ['요일', ...metricHeaders(fields)],
+      ['요일', ...metricHeaders(channelFields)],
       series[c.key].byDayOfWeek.map((d) => [
         d.dayOfWeek,
-        ...metricValues(d, fields),
+        ...metricValues(d, channelFields),
       ]),
-      fields,
+      channelFields,
       true,
       true,
     )
@@ -407,11 +427,15 @@ export function writeCampaignSheet(
   sheetName: string,
   campaigns: readonly ExportCampaign[],
   channelSelector: ChannelSelector,
-  fields: readonly MetricField[],
+  allFields: readonly MetricField[],
   dateStart: string,
   dateEnd: string,
   bucketSize: number | null,
 ) {
+  // 오프라인/온라인 매출·총 매출·ROAS는 캠페인 단위에 귀속시킬 방법이 없어
+  // channelSelector와 무관하게(combined 포함) 항상 0이다 — 이 시트 전체에서
+  // 아예 뺀다(channel-insight.tsx의 채널별 KPI 카드·표와 같은 이유).
+  const fields = channelSafeFields(allFields)
   const ws = wb.addWorksheet(sheetName)
   // summaryBelow: true → 캠페인마다 아래에서 묶는(outlineLevel) 행 그룹의
   // 접기/펼치기(+/-) 컨트롤이 그 캠페인 블록 바로 아래(구분선 자리)에 뜬다.
@@ -614,11 +638,14 @@ export function writeAdsetSheet(
   sheetName: string,
   adsets: readonly (CombinedAdset & { channelLabel: string })[],
   channelSelector: ChannelSelector,
-  fields: readonly MetricField[],
+  allFields: readonly MetricField[],
   dateStart: string,
   dateEnd: string,
   bucketSize: number | null,
 ) {
+  // writeCampaignSheet와 같은 이유 — adset 단위도 매출/ROAS를 항상 0으로만
+  // 갖고 있어 아예 뺀다.
+  const fields = channelSafeFields(allFields)
   const ws = wb.addWorksheet(sheetName)
   ws.properties.outlineProperties = {
     summaryBelow: true,
