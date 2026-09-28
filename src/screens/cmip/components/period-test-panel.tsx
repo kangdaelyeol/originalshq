@@ -1,11 +1,17 @@
 import type { CombinedInsight } from '../client'
 import type { ISODate } from '../types'
-import { METRIC_FIELDS } from './metric-fields'
+import { channelSafeFields, METRIC_FIELDS } from './metric-fields'
 import { SegmentedToggle } from './segmented-toggle'
 import {
   usePeriodTestViewModel,
   type PeriodTestEntityType,
 } from '../view-model/use-period-test-view-model'
+
+// 이 패널은 항상 캠페인/adset 하나(entity)의 combined 값만 보여준다 — 오프라인/
+// 온라인/총 매출·ROAS는 그 단위에 귀속시킬 방법이 없어 항상 0이라(metric-
+// fields.ts의 ACCOUNT_ONLY_METRIC_KEYS, channel-insight.tsx의 채널별 표와
+// 같은 이유) 아예 뺀다.
+const PERIOD_TEST_FIELDS = channelSafeFields(METRIC_FIELDS)
 
 const ENTITY_TYPE_OPTIONS: readonly {
   value: PeriodTestEntityType
@@ -182,7 +188,7 @@ export function PeriodTestPanel({
                     </tr>
                   </thead>
                   <tbody>
-                    {METRIC_FIELDS.map((f) => (
+                    {PERIOD_TEST_FIELDS.map((f) => (
                       <tr key={f.key}>
                         <td>{f.label}</td>
                         {rows.map((row, i) => (
@@ -206,7 +212,7 @@ export function PeriodTestPanel({
                   <thead>
                     <tr>
                       <th>구간</th>
-                      {METRIC_FIELDS.map((f) => (
+                      {PERIOD_TEST_FIELDS.map((f) => (
                         <th key={f.key}>{f.label}</th>
                       ))}
                     </tr>
@@ -217,7 +223,7 @@ export function PeriodTestPanel({
                       return (
                         <tr key={row.id}>
                           <td>{row.label}</td>
-                          {METRIC_FIELDS.map((f) => (
+                          {PERIOD_TEST_FIELDS.map((f) => (
                             <MetricValueCell
                               key={f.key}
                               value={row.metrics[f.key]}

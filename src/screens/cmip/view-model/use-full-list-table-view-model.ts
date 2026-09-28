@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { MetricsSummary } from '../client'
-import { METRIC_FIELDS, type MetricKey } from '../components/metric-fields'
+import {
+  channelSafeFields,
+  METRIC_FIELDS,
+  type MetricKey,
+} from '../components/metric-fields'
 import type { ChannelKey } from '../components/channels'
 
 type SortDir = 'asc' | 'desc'
@@ -40,9 +44,12 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   )
 
   // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
-  // 이름/채널 칸은 항상 보인다.
+  // 이름/채널 칸은 항상 보인다. 오프라인/온라인/총 매출·ROAS는 캠페인/adset
+  // 단위에 귀속시킬 방법이 없어 항상 0이라(channelSafeFields) 애초에 토글
+  // 대상에도 안 넣는다 — channel-insight.tsx의 FullListTable이 컬럼 목록
+  // 자체를 이 필드들 뺀 걸로만 그린다.
   const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<MetricKey>>(
-    () => new Set(METRIC_FIELDS.map((f) => f.key)),
+    () => new Set(channelSafeFields(METRIC_FIELDS).map((f) => f.key)),
   )
   const toggleColumn = (key: MetricKey) => {
     setVisibleKeys((prev) => {

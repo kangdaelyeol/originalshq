@@ -10,11 +10,12 @@ import './styles/cmip.scss'
 type CmipTab = 'insight' | 'report' | 'google-test'
 
 // '리포트 생성' 탭은 당분간 숨김 — 필요해지면 이 배열에 다시 추가하면 된다.
-// 'google-test'는 실 서비스 탭이 아니라 새로 붙인 Google Ads 연동(OAuth·데이터
-// 추출)이 실제로 동작하는지 확인하기 위한 임시 테스트 탭이다.
+// 'google-test'(Google Ads 연동 OAuth·데이터 추출 확인용 임시 탭)도 실 서비스
+// 탭이 아니라 개발자 전용이라 같은 이유로 당분간 숨긴다 — 필요해지면 아래
+// 주석을 풀면 된다.
 const TABS: readonly { id: CmipTab; label: string }[] = [
   { id: 'insight', label: '인사이트 조회' },
-  { id: 'google-test', label: 'Google 연동 테스트' },
+  // { id: 'google-test', label: 'Google 연동 테스트' },
 ]
 
 export default function CmipScreen() {

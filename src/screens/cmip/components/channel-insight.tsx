@@ -1315,7 +1315,12 @@ function PivotSummary({
   showUnit: boolean
   view: PivotView
 }) {
-  const metricFields = METRIC_FIELDS.filter((f) => metricKeys.includes(f.key))
+  // 캠페인/adset 단위는 오프라인/온라인/총 매출·ROAS를 귀속시킬 방법이 없어
+  // 항상 0이라(ACCOUNT_ONLY_METRIC_KEYS) 사용자가 지표 선택에서 골랐더라도
+  // 이 표에서는 아예 뺀다.
+  const metricFields = channelSafeFields(METRIC_FIELDS).filter((f) =>
+    metricKeys.includes(f.key),
+  )
 
   if (groups.length === 0 || metricFields.length === 0) {
     return (
@@ -1500,7 +1505,10 @@ function FullListTable({
     setShowResultType,
     toggleSort,
   } = useFullListTableViewModel(rows)
-  const visibleFields = METRIC_FIELDS.filter((f) => visibleKeys.has(f.key))
+  // 이 표의 각 행은 캠페인/adset 하나(채널 필터와 무관하게 항상 combined
+  // 값)라 오프라인/온라인/총 매출·ROAS는 항상 0이다 — 아예 뺀다.
+  const listFields = channelSafeFields(METRIC_FIELDS)
+  const visibleFields = listFields.filter((f) => visibleKeys.has(f.key))
 
   return (
     <div className="channel-insight__full-list">
@@ -1538,7 +1546,7 @@ function FullListTable({
         role="group"
         aria-label="컬럼 표시"
       >
-        {METRIC_FIELDS.map((f) => {
+        {listFields.map((f) => {
           const active = visibleKeys.has(f.key)
           return (
             <button
