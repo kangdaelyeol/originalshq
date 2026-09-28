@@ -103,95 +103,93 @@ export function computeRoasRows(
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
 ): RoasRow[] {
-  {
-    if (!combinedInsight) return []
+  if (!combinedInsight) return []
 
-    if (grouping === RoasGrouping.MONTH) {
-      const spendByMonth = groupByMonth(combinedInsight.series.combined.byDate)
-      const offlineByPeriod = new Map(
-        (offlineRevenue?.byMonth ?? []).map((m) => [m.period, m.totalPaid]),
-      )
-      const onlineByPeriod = new Map(
-        (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.paymentAmount]),
-      )
-      return spendByMonth.map(
-        (m): RoasRow => ({
-          key: m.period,
-          label: m.period,
-          metrics: toMetrics(
-            offlineByPeriod.get(m.period) ?? 0,
-            onlineByPeriod.get(m.period) ?? 0,
-            m.spend,
-          ),
-        }),
-      )
-    }
-
-    if (grouping === RoasGrouping.DAY_OF_WEEK) {
-      const offlineByDay = new Map(
-        (offlineRevenue?.byDayOfWeek ?? []).map((d) => [d.dayOfWeek, d.totalPaid]),
-      )
-      const onlineByDay = new Map(
-        (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-          d.dayOfWeek,
-          d.paymentAmount,
-        ]),
-      )
-      return combinedInsight.series.combined.byDayOfWeek.map(
-        (d): RoasRow => ({
-          key: d.dayOfWeek,
-          label: d.dayOfWeek,
-          metrics: toMetrics(
-            offlineByDay.get(d.dayOfWeek) ?? 0,
-            onlineByDay.get(d.dayOfWeek) ?? 0,
-            d.spend,
-          ),
-        }),
-      )
-    }
-
-    if (grouping === RoasGrouping.WEEK) {
-      const offlineByPeriod = new Map(
-        (offlineRevenue?.byGroupedWeek ?? []).map((w) => [w.period, w.totalPaid]),
-      )
-      const onlineByPeriod = new Map(
-        (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-          w.period,
-          w.paymentAmount,
-        ]),
-      )
-      return combinedInsight.series.combined.byGroupedWeek.map(
-        (w): RoasRow => ({
-          key: w.period,
-          label: w.period,
-          metrics: toMetrics(
-            offlineByPeriod.get(w.period) ?? 0,
-            onlineByPeriod.get(w.period) ?? 0,
-            w.spend,
-          ),
-        }),
-      )
-    }
-
-    // byDate
-    const offlineByDate = new Map(
-      (offlineRevenue?.byDate ?? []).map((d) => [d.date, d.totalPaid]),
+  if (grouping === RoasGrouping.MONTH) {
+    const spendByMonth = groupByMonth(combinedInsight.series.combined.byDate)
+    const offlineByPeriod = new Map(
+      (offlineRevenue?.byMonth ?? []).map((m) => [m.period, m.totalPaid]),
     )
-    const onlineByDate = new Map(
-      (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.paymentAmount]),
+    const onlineByPeriod = new Map(
+      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.paymentAmount]),
     )
-    return combinedInsight.series.combined.byDate.map(
-      (d): RoasRow => ({
-        key: d.date,
-        label: formatMD(d.date),
+    return spendByMonth.map(
+      (m): RoasRow => ({
+        key: m.period,
+        label: m.period,
         metrics: toMetrics(
-          offlineByDate.get(d.date) ?? 0,
-          onlineByDate.get(d.date) ?? 0,
+          offlineByPeriod.get(m.period) ?? 0,
+          onlineByPeriod.get(m.period) ?? 0,
+          m.spend,
+        ),
+      }),
+    )
+  }
+
+  if (grouping === RoasGrouping.DAY_OF_WEEK) {
+    const offlineByDay = new Map(
+      (offlineRevenue?.byDayOfWeek ?? []).map((d) => [d.dayOfWeek, d.totalPaid]),
+    )
+    const onlineByDay = new Map(
+      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
+        d.dayOfWeek,
+        d.paymentAmount,
+      ]),
+    )
+    return combinedInsight.series.combined.byDayOfWeek.map(
+      (d): RoasRow => ({
+        key: d.dayOfWeek,
+        label: d.dayOfWeek,
+        metrics: toMetrics(
+          offlineByDay.get(d.dayOfWeek) ?? 0,
+          onlineByDay.get(d.dayOfWeek) ?? 0,
           d.spend,
         ),
       }),
     )
   }
+
+  if (grouping === RoasGrouping.WEEK) {
+    const offlineByPeriod = new Map(
+      (offlineRevenue?.byGroupedWeek ?? []).map((w) => [w.period, w.totalPaid]),
+    )
+    const onlineByPeriod = new Map(
+      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
+        w.period,
+        w.paymentAmount,
+      ]),
+    )
+    return combinedInsight.series.combined.byGroupedWeek.map(
+      (w): RoasRow => ({
+        key: w.period,
+        label: w.period,
+        metrics: toMetrics(
+          offlineByPeriod.get(w.period) ?? 0,
+          onlineByPeriod.get(w.period) ?? 0,
+          w.spend,
+        ),
+      }),
+    )
+  }
+
+  // byDate
+  const offlineByDate = new Map(
+    (offlineRevenue?.byDate ?? []).map((d) => [d.date, d.totalPaid]),
+  )
+  const onlineByDate = new Map(
+    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.paymentAmount]),
+  )
+  return combinedInsight.series.combined.byDate.map(
+    (d): RoasRow => ({
+      key: d.date,
+      label: formatMD(d.date),
+      metrics: toMetrics(
+        offlineByDate.get(d.date) ?? 0,
+        onlineByDate.get(d.date) ?? 0,
+        d.spend,
+      ),
+    }),
+  )
 }
 
 /**

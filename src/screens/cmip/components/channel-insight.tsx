@@ -2008,6 +2008,9 @@ export const ChannelInsight = () => {
             total={excelTotal}
             series={excelSeries}
             campaigns={excelCampaigns}
+            combinedInsight={combinedInsight}
+            offlineRevenue={offlineRevenueData}
+            onlineRevenue={onlineRevenueData}
           />
         </Suspense>
       )}

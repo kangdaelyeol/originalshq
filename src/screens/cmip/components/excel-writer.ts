@@ -9,18 +9,27 @@ import {
   aggregateMetrics,
   groupByCustomPeriod,
   groupByMonth,
+  type Cafe24RevenueSummary,
   type ChannelSplitSeries,
   type CombinedAdset,
   type CombinedCampaign,
+  type CombinedInsight,
   type MetricsSummary,
+  type OfflineRevenueSummary,
 } from '../client'
 import { CHANNELS, type ChannelKey } from './channels'
 import {
   ACCOUNT_ONLY_METRIC_KEYS,
   channelSafeFields,
   type MetricField,
-  type MetricKey,
 } from './metric-fields'
+import {
+  RoasGrouping,
+  computeRoasAverage,
+  computeRoasRows,
+  computeRoasTotal,
+  type RoasMetrics,
+} from '../view-model/use-roas-view-model'
 
 /** CombinedCampaign/CombinedAdset에 표시용 채널 라벨 문자열("Meta, Google")을
  * 미리 얹은 모양 — 채널 로고/브랜드색 계산(channelsOf, CHANNELS)은
@@ -31,12 +40,13 @@ export type ExportCampaign = CombinedCampaign & {
   adsets: readonly (CombinedAdset & { channelLabel: string })[]
 }
 
-export type SheetKey = 'total' | 'campaign' | 'adset'
+export type SheetKey = 'total' | 'campaign' | 'adset' | 'roas'
 
 export const SHEET_OPTIONS: readonly { key: SheetKey; label: string }[] = [
   { key: 'total', label: '전체 요약' },
   { key: 'campaign', label: '캠페인' },
   { key: 'adset', label: '애드셋' },
+  { key: 'roas', label: 'ROAS' },
 ]
 
 /** 캠페인/애드셋 시트가 어느 데이터를 쓸지 — 'combined'는 기존 "캠페인"/
@@ -65,7 +75,7 @@ const metricValues = (
 // 안 준다(정수인데 "12.00"처럼 보이면 오히려 어색하다). 다만 이 두 지표도
 // 여러 행의 평균은 자연히 소수가 되므로(예: 일평균 클릭 45.7회), 평균 행
 // 에서는 이 구분 없이 전부 소수 둘째 자리로 보여준다.
-const INTEGER_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
+const INTEGER_METRIC_KEYS: ReadonlySet<string> = new Set([
   'impressions',
   'clicks',
 ])
@@ -93,7 +103,12 @@ function writeTable(
   title: string,
   headers: readonly string[],
   rows: readonly (string | number)[][],
-  fields: readonly MetricField[],
+  // MetricField 대신 { key: string }만 요구한다 — ROAS 시트(writeRoasSheet)는
+  // MetricsSummary가 아니라 RoasMetrics 필드를 쓰므로 keyof MetricsSummary로
+  // 좁혀진 MetricField를 그대로 못 쓴다. 이 함수가 field에서 실제로 쓰는 건
+  // key뿐(정수/소수 서식 판단)이라 이렇게 넓혀도 기존 호출부(MetricField[])는
+  // 그대로 호환된다.
+  fields: readonly { key: string }[],
   showAverage = true,
   groupRows = false,
 ): number {
@@ -821,6 +836,98 @@ export function writeAdsetSheet(
   }
 }
 
+// ROAS 시트 전용 지표 목록 — spend/offlineRevenue/onlineRevenue/totalRevenue/
+// roas는 MetricsSummary가 아니라 RoasMetrics(use-roas-view-model.ts)에만 있는
+// 값이라 METRIC_FIELDS(metric-fields.ts)에 못 끼워 넣고, roas-panel.tsx의
+// ROAS_FIELDS와 같은 이유로 여기서도 이 시트 전용으로 따로 둔다. 전부 금액·
+// 비율이라(INTEGER_METRIC_KEYS에 없음) writeTable이 알아서 소수 서식을 준다.
+interface RoasExportField {
+  key: keyof RoasMetrics
+  label: string
+}
+const ROAS_EXPORT_FIELDS: readonly RoasExportField[] = [
+  { key: 'spend', label: '광고비' },
+  { key: 'offlineRevenue', label: '오프라인 매출' },
+  { key: 'onlineRevenue', label: '온라인 매출' },
+  { key: 'totalRevenue', label: '총 매출' },
+  { key: 'roas', label: 'ROAS (%)' },
+]
+const roasValues = (m: RoasMetrics): number[] =>
+  ROAS_EXPORT_FIELDS.map((f) => round2(m[f.key]))
+
+/** ROAS 시트 — roas-panel.tsx(화면의 ROAS 탭)와 정확히 같은 계산
+ * (computeRoasTotal/computeRoasRows/computeRoasAverage, use-roas-view-model.ts
+ * 공유)을 쓴다. 화면은 그룹핑을 하나씩 골라보지만, 엑셀은 4개 그룹핑
+ * (월별→주차별→일별→요일별, 다른 시트들과 같은 "굵은 단위부터" 순서)을 전부
+ * 쌓는다. 각 표 끝에 "합계"(조회 기간 전체, grouping과 무관하게 항상 같음)와
+ * "평균"(그 표에 보이는 행 수 기준)을 직접 덧붙이고 writeTable의 자동 평균
+ * 행(showAverage)은 꺼둔다 — roas 같은 비율은 단순히 행들을 평균 내면 안 되고
+ * 평균 낸 매출/광고비에서 다시 계산해야 하는데(computeRoasAverage), 그 규칙이
+ * writeTable의 범용 평균 계산과 다르기 때문이다. */
+export function writeRoasSheet(
+  wb: ExcelJS.Workbook,
+  combinedInsight: CombinedInsight | null,
+  offlineRevenue: OfflineRevenueSummary | null,
+  onlineRevenue: Cafe24RevenueSummary | null,
+) {
+  const ws = wb.addWorksheet('ROAS')
+  ws.properties.outlineProperties = {
+    summaryBelow: true,
+    summaryRight: false,
+  }
+  setColumnWidths(ws, 1 + ROAS_EXPORT_FIELDS.length)
+
+  const headers = ['기간', ...ROAS_EXPORT_FIELDS.map((f) => f.label)]
+  const total = computeRoasTotal(combinedInsight, offlineRevenue, onlineRevenue)
+
+  let row = 1
+  row = writeTable(
+    ws,
+    row,
+    'ROAS 요약',
+    ['구분', ...ROAS_EXPORT_FIELDS.map((f) => f.label)],
+    [['합계', ...roasValues(total)]],
+    ROAS_EXPORT_FIELDS,
+    false,
+    true,
+  )
+
+  const groupings: readonly { title: string; grouping: RoasGrouping }[] = [
+    { title: '월별 성과', grouping: RoasGrouping.MONTH },
+    { title: '주차별 성과', grouping: RoasGrouping.WEEK },
+    { title: '일별 성과', grouping: RoasGrouping.DATE },
+    { title: '요일별 성과', grouping: RoasGrouping.DAY_OF_WEEK },
+  ]
+  for (const g of groupings) {
+    const rows = computeRoasRows(
+      g.grouping,
+      combinedInsight,
+      offlineRevenue,
+      onlineRevenue,
+    )
+    const average = computeRoasAverage(total, rows.length)
+    const tableRows = [
+      ...rows.map((r) => [r.label, ...roasValues(r.metrics)]),
+      ...(rows.length > 0
+        ? [
+            ['합계', ...roasValues(total)],
+            ['평균', ...roasValues(average)],
+          ]
+        : []),
+    ]
+    row = writeTable(
+      ws,
+      row,
+      g.title,
+      headers,
+      tableRows,
+      ROAS_EXPORT_FIELDS,
+      false,
+      true,
+    )
+  }
+}
+
 /** 체크된 시트 + 실제 데이터가 있는 채널만 걸러서 "무엇을 어떤 이름/채널
  * 선택자로 만들지" 계획한다 — handleExport는 이 계획대로 write*Sheet를
  * 호출하기만 하면 된다. */
@@ -838,6 +945,7 @@ export type PlannedSheet =
       selector: ChannelSelector
       data: readonly (CombinedAdset & { channelLabel: string })[]
     }
+  | { kind: 'roas' }
 
 export function planExcelSheets(
   sheets: ReadonlySet<SheetKey>,
@@ -891,6 +999,9 @@ export function planExcelSheets(
         data: channelAdsets,
       })
     }
+  }
+  if (sheets.has('roas')) {
+    planned.push({ kind: 'roas' })
   }
 
   return planned

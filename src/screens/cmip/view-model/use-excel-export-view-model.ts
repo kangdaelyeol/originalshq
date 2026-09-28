@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import * as ExcelJS from 'exceljs'
-import type { ChannelSplitSeries, MetricsSummary } from '../client'
+import type {
+  Cafe24RevenueSummary,
+  ChannelSplitSeries,
+  CombinedInsight,
+  MetricsSummary,
+  OfflineRevenueSummary,
+} from '../client'
 import { METRIC_FIELDS, type MetricKey } from '../components/metric-fields'
 import {
   planExcelSheets,
   writeAdsetSheet,
   writeCampaignSheet,
+  writeRoasSheet,
   writeTotalSheet,
   SHEET_OPTIONS,
   type ExportCampaign,
@@ -23,6 +30,12 @@ interface UseExcelExportViewModelArgs {
   }
   series: ChannelSplitSeries
   campaigns: readonly ExportCampaign[]
+  // ROAS 시트 전용 — 나머지 시트(전체요약/캠페인/애드셋)와 달리 오프라인/온라인
+  // 매출은 combinedInsight/total/series에 없는 별도 조회 데이터라 따로 받는다
+  // (roas-panel.tsx가 RoasPanel에서 받는 것과 같은 3개 데이터).
+  combinedInsight: CombinedInsight | null
+  offlineRevenue: OfflineRevenueSummary | null
+  onlineRevenue: Cafe24RevenueSummary | null
   onExported: () => void
 }
 
@@ -37,6 +50,9 @@ export const useExcelExportViewModel = ({
   total,
   series,
   campaigns,
+  combinedInsight,
+  offlineRevenue,
+  onlineRevenue,
   onExported,
 }: UseExcelExportViewModelArgs) => {
   const [sheets, setSheets] = useState<ReadonlySet<SheetKey>>(
@@ -106,7 +122,7 @@ export const useExcelExportViewModel = ({
             dateEnd,
             bucketSize,
           )
-        } else {
+        } else if (p.kind === 'adset') {
           writeAdsetSheet(
             wb,
             p.name,
@@ -117,6 +133,8 @@ export const useExcelExportViewModel = ({
             dateEnd,
             bucketSize,
           )
+        } else {
+          writeRoasSheet(wb, combinedInsight, offlineRevenue, onlineRevenue)
         }
       }
 

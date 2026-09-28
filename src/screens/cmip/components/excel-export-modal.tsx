@@ -1,5 +1,11 @@
 import type { CSSProperties } from 'react'
-import type { ChannelSplitSeries, MetricsSummary } from '../client'
+import type {
+  Cafe24RevenueSummary,
+  ChannelSplitSeries,
+  CombinedInsight,
+  MetricsSummary,
+  OfflineRevenueSummary,
+} from '../client'
 import { METRIC_FIELDS } from './metric-fields'
 import { SHEET_OPTIONS, type ExportCampaign } from './excel-writer'
 import { useExcelExportViewModel } from '../view-model/use-excel-export-view-model'
@@ -19,6 +25,10 @@ interface ExcelExportModalProps {
   }
   series: ChannelSplitSeries
   campaigns: readonly ExportCampaign[]
+  // ROAS 시트 전용 — use-excel-export-view-model.ts 참고.
+  combinedInsight: CombinedInsight | null
+  offlineRevenue: OfflineRevenueSummary | null
+  onlineRevenue: Cafe24RevenueSummary | null
 }
 
 /** "엑셀 다운로드" 버튼에서 여는 모달 — 전체요약/캠페인/애드셋 중 시트로
@@ -37,6 +47,9 @@ export function ExcelExportModal({
   total,
   series,
   campaigns,
+  combinedInsight,
+  offlineRevenue,
+  onlineRevenue,
 }: ExcelExportModalProps) {
   const {
     sheets,
@@ -54,6 +67,9 @@ export function ExcelExportModal({
     total,
     series,
     campaigns,
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
     onExported: onClose,
   })
 
@@ -85,7 +101,9 @@ export function ExcelExportModal({
               행이 같이 붙습니다. 캠페인·애드셋은 채널 합산 시트 외에
               "캠페인-Meta"처럼 매체별 시트도 데이터가 있는 채널만 골라
               추가로 담습니다. 캠페인·애드셋마다 표 블록을 접었다 펼 수
-              있습니다.
+              있습니다. ROAS 시트는 화면의 ROAS 탭과 같은 지표(광고비·오프라인
+              /온라인/총 매출·ROAS)를 월별·주차별·일별·요일별로 나눠 담고,
+              지표 선택과 무관하게 항상 이 5개 지표만 담습니다.
             </p>
             <div
               className="excel-export-modal__chip-row"
