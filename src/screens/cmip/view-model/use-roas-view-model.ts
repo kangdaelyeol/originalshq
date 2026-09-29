@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   groupByMonth,
+  type Cafe24RevenueMetrics,
   type Cafe24RevenueSummary,
   type CombinedInsight,
   type OfflineRevenueSummary,
@@ -19,8 +20,19 @@ export type RoasGrouping = (typeof RoasGrouping)[keyof typeof RoasGrouping]
 export interface RoasMetrics {
   spend: number
   offlineRevenue: number
+  /** ROAS 계산용 온라인 매출 — onlineRevenueCafe24(카페24 화면과 맞춘 순매출)
+   * 에서 순 적립금 사용액(onlinePointsSpent - onlinePointsRefunded)을 한 번 더
+   * 뺀다. 적립금 결제는 광고 성과로 새로 들어온 돈이 아니라 이미 쌓여있던
+   * 포인트를 쓴 것뿐이라 광고비 대비 성과(ROAS)를 볼 때는 매출에서 빼는 게
+   * 더 맞다는 판단 — "모든 사람이 봐야 하는" 카페24 온라인 매출 표를 정리하며
+   * 이 구분을 명확히 했다. totalRevenue/roas 계산에 이 값을 쓴다. */
   onlineRevenue: number
-  /** offlineRevenue + onlineRevenue. */
+  /** 카페24 매출액 — 관리자 화면 "일별 매출내역"과 원 단위까지 맞춘 순매출
+   * (= onlineGrossPayment - onlineShippingFee - onlineRefundAmount, 적립금
+   * 포함). ROAS 계산에는 안 쓰고 참고용으로만 보여준다(onlineRevenue 주석
+   * 참고). */
+  onlineRevenueCafe24: number
+  /** offlineRevenue + onlineRevenue(ROAS용). */
   totalRevenue: number
   /** 광고비 대비 (오프라인+온라인) 매출 — 퍼센트(예: 250은 250%, 광고비의
    * 2.5배). 광고비가 0이면 나눌 수 없어 0으로 둔다. */
@@ -35,24 +47,26 @@ export interface RoasMetrics {
    * roas-panel.tsx는 "ROAS 요약"(total)에만 표시하고 기간별 표/평균에는
    * 안 쓴다 — computeRoasRows/computeRoasAverage는 항상 0으로 둔다. */
   deferredBalance: number
-  /** 온라인 매출(Cafe24)에서 이미 제외된 배송비 합계 — 순매출은 "총매출 -
-   * 배송비"로 정의돼있어(client/cafe24-revenue-client.ts 참고) 여기 안
-   * 포함된다. installmentInterest와 같은 이유로 참고용. */
+  /** 온라인 매출(Cafe24)에서 그 기간에 "결제"로 귀속된 금액 합계(총 결제액,
+   * 배송비·적립금 포함, 환불 차감 전) — Cafe24RevenueMetrics.grossPayment
+   * 그대로. */
+  onlineGrossPayment: number
+  /** 온라인 매출(Cafe24)에서 그 기간에 "환불"로 귀속된 금액 합계(환불액,
+   * 적립금/예치금 환불분 포함) — Cafe24RevenueMetrics.refundAmount 그대로. */
+  onlineRefundAmount: number
+  /** 온라인 매출(Cafe24)에 포함된 배송비 합계 — 참고용. */
   onlineShippingFee: number
-  /** 온라인 매출(Cafe24)에 이미 포함된 적립금 사용액 합계 — 예전엔 매출에서
-   * 뺐었는데 카페24 관리자 화면과 맞추기 위해 지금은 순매출에 포함돼 있다
-   * (client/cafe24-revenue-client.ts 참고). 얼마가 적립금 결제인지 참고용으로
-   * 계속 따로 보여준다. */
+  /** 온라인 매출(Cafe24)에 포함된 적립금 사용액 합계(결제일 기준, 환불 전) —
+   * 참고용. */
   onlinePointsSpent: number
-  /** 온라인 매출(Cafe24)의 환불에 포함된 적립금 환불액 합계 — 순 적립금
-   * 사용액(그 기간에 쓴 적립금 - 그 기간에 환불된 적립금)을 보고 싶을 때
-   * onlinePointsSpent에서 이 값을 뺀다. */
+  /** 온라인 매출(Cafe24)의 환불에 포함된 적립금 환불액 합계(환불완료일
+   * 기준) — 참고용. 순 적립금 사용액 = onlinePointsSpent - onlinePointsRefunded. */
   onlinePointsRefunded: number
-  /** 온라인 매출(Cafe24)에서 이미 제외된 쿠폰 등 주문 단위 할인 합계
-   * (onlineShippingFee와 같은 이유로 참고용). */
+  /** 온라인 매출(Cafe24)에서 이미 제외된 쿠폰 등 주문 단위 할인 합계 —
+   * 참고용. */
   onlineCouponDiscount: number
-  /** 온라인 매출(Cafe24)에서 이미 제외된 스마트스토어 채널 "마켓할인" 합계
-   * (onlineShippingFee와 같은 이유로 참고용). */
+  /** 온라인 매출(Cafe24)에서 이미 제외된 스마트스토어 채널 "마켓할인" 합계 —
+   * 참고용. */
   onlineMarketDiscount: number
 }
 
@@ -68,31 +82,64 @@ const calcRoas = (
   spend: number,
 ): number => (spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0)
 
-const toMetrics = (
-  offlineRevenue: number,
-  onlineRevenue: number,
-  spend: number,
-  installmentInterest = 0,
-  deferredBalance = 0,
-  onlineShippingFee = 0,
-  onlinePointsSpent = 0,
-  onlineCouponDiscount = 0,
-  onlineMarketDiscount = 0,
-  onlinePointsRefunded = 0,
-): RoasMetrics => ({
-  spend,
-  offlineRevenue,
-  onlineRevenue,
-  totalRevenue: offlineRevenue + onlineRevenue,
-  roas: calcRoas(offlineRevenue, onlineRevenue, spend),
-  installmentInterest,
-  deferredBalance,
-  onlineShippingFee,
-  onlinePointsSpent,
-  onlinePointsRefunded,
-  onlineCouponDiscount,
-  onlineMarketDiscount,
-})
+/** toMetrics 입력 — offlineRevenue/onlineRevenueCafe24/spend만 필수고 나머지는
+ * 전부 참고용 항목이라 기본값 0을 둔다. 필드가 계속 늘어나서(할부이자,
+ * 미수금, 배송비, 적립금×2, 쿠폰할인, 마켓할인, 총결제액, 환불액...) 위치로
+ * 구분하는 positional 인자 대신 객체로 받는다 — 순서를 헷갈려 엉뚱한 값이
+ * 들어가는 실수를 막기 위해서다. */
+interface ToMetricsInput {
+  offlineRevenue: number
+  /** 카페24 화면 기준 순매출(= grossPayment - shippingFee - refundAmount,
+   * 적립금 포함) — 여기서 순 적립금을 뺀 값이 RoasMetrics.onlineRevenue(ROAS용)
+   * 가 된다. */
+  onlineRevenueCafe24: number
+  spend: number
+  installmentInterest?: number
+  deferredBalance?: number
+  onlineGrossPayment?: number
+  onlineRefundAmount?: number
+  onlineShippingFee?: number
+  onlinePointsSpent?: number
+  onlinePointsRefunded?: number
+  onlineCouponDiscount?: number
+  onlineMarketDiscount?: number
+}
+
+const toMetrics = (input: ToMetricsInput): RoasMetrics => {
+  const {
+    offlineRevenue,
+    onlineRevenueCafe24,
+    spend,
+    installmentInterest = 0,
+    deferredBalance = 0,
+    onlineGrossPayment = 0,
+    onlineRefundAmount = 0,
+    onlineShippingFee = 0,
+    onlinePointsSpent = 0,
+    onlinePointsRefunded = 0,
+    onlineCouponDiscount = 0,
+    onlineMarketDiscount = 0,
+  } = input
+  const netPointsSpent = onlinePointsSpent - onlinePointsRefunded
+  const onlineRevenue = onlineRevenueCafe24 - netPointsSpent
+  return {
+    spend,
+    offlineRevenue,
+    onlineRevenue,
+    onlineRevenueCafe24,
+    totalRevenue: offlineRevenue + onlineRevenue,
+    roas: calcRoas(offlineRevenue, onlineRevenue, spend),
+    installmentInterest,
+    deferredBalance,
+    onlineGrossPayment,
+    onlineRefundAmount,
+    onlineShippingFee,
+    onlinePointsSpent,
+    onlinePointsRefunded,
+    onlineCouponDiscount,
+    onlineMarketDiscount,
+  }
+}
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
  * 탭(useRoasViewModel)과 엑셀 ROAS 시트(excel-writer.ts)가 공유한다. */
@@ -101,42 +148,100 @@ export function computeRoasTotal(
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
 ): RoasMetrics {
-  return toMetrics(
-    offlineRevenue?.total.totalPaid ?? 0,
-    onlineRevenue?.total.paymentAmount ?? 0,
-    combinedInsight?.total.combined.spend ?? 0,
-    offlineRevenue?.total.installmentInterest ?? 0,
-    offlineRevenue?.total.deferredBalance ?? 0,
-    onlineRevenue?.total.shippingFee ?? 0,
-    onlineRevenue?.total.pointsSpent ?? 0,
-    onlineRevenue?.total.couponDiscount ?? 0,
-    onlineRevenue?.total.marketDiscount ?? 0,
-    onlineRevenue?.total.pointsRefunded ?? 0,
-  )
+  return toMetrics({
+    offlineRevenue: offlineRevenue?.total.totalPaid ?? 0,
+    onlineRevenueCafe24: onlineRevenue?.total.paymentAmount ?? 0,
+    spend: combinedInsight?.total.combined.spend ?? 0,
+    installmentInterest: offlineRevenue?.total.installmentInterest ?? 0,
+    deferredBalance: offlineRevenue?.total.deferredBalance ?? 0,
+    onlineGrossPayment: onlineRevenue?.total.grossPayment ?? 0,
+    onlineRefundAmount: onlineRevenue?.total.refundAmount ?? 0,
+    onlineShippingFee: onlineRevenue?.total.shippingFee ?? 0,
+    onlinePointsSpent: onlineRevenue?.total.pointsSpent ?? 0,
+    onlinePointsRefunded: onlineRevenue?.total.pointsRefunded ?? 0,
+    onlineCouponDiscount: onlineRevenue?.total.couponDiscount ?? 0,
+    onlineMarketDiscount: onlineRevenue?.total.marketDiscount ?? 0,
+  })
 }
 
 /** "평균" — 합계를 지금 보이는 행 수로 나눈다. spend/offlineRevenue/
- * onlineRevenue를 먼저 나누고 roas는 그 평균값들에서 다시 계산한다(비율을
- * 그대로 평균 내지 않는다 — 어차피 total.roas와 같은 값이 나오지만, 코드
- * 상으로도 "합계 기준으로 비율을 다시 계산한다"는 원칙을 그대로 따른다). */
+ * onlineRevenueCafe24를 먼저 나누고 roas는 그 평균값들에서 다시 계산한다
+ * (비율을 그대로 평균 내지 않는다 — 어차피 total.roas와 같은 값이 나오지만,
+ * 코드 상으로도 "합계 기준으로 비율을 다시 계산한다"는 원칙을 그대로
+ * 따른다). */
 export function computeRoasAverage(
   total: RoasMetrics,
   rowCount: number,
 ): RoasMetrics {
-  return rowCount > 0
-    ? toMetrics(
-        total.offlineRevenue / rowCount,
-        total.onlineRevenue / rowCount,
-        total.spend / rowCount,
-        total.installmentInterest / rowCount,
-        0,
-        total.onlineShippingFee / rowCount,
-        total.onlinePointsSpent / rowCount,
-        total.onlineCouponDiscount / rowCount,
-        total.onlineMarketDiscount / rowCount,
-        total.onlinePointsRefunded / rowCount,
-      )
-    : toMetrics(0, 0, 0)
+  if (rowCount <= 0) {
+    return toMetrics({ offlineRevenue: 0, onlineRevenueCafe24: 0, spend: 0 })
+  }
+  return toMetrics({
+    offlineRevenue: total.offlineRevenue / rowCount,
+    onlineRevenueCafe24: total.onlineRevenueCafe24 / rowCount,
+    spend: total.spend / rowCount,
+    installmentInterest: total.installmentInterest / rowCount,
+    onlineGrossPayment: total.onlineGrossPayment / rowCount,
+    onlineRefundAmount: total.onlineRefundAmount / rowCount,
+    onlineShippingFee: total.onlineShippingFee / rowCount,
+    onlinePointsSpent: total.onlinePointsSpent / rowCount,
+    onlinePointsRefunded: total.onlinePointsRefunded / rowCount,
+    onlineCouponDiscount: total.onlineCouponDiscount / rowCount,
+    onlineMarketDiscount: total.onlineMarketDiscount / rowCount,
+  })
+}
+
+/** onlineRevenue(Cafe24RevenueSummary)의 한 grouping 배열(byMonth/byDayOfWeek/
+ * byGroupedWeek/byDate)에서 ToMetricsInput의 online* 필드들을 뽑아 기간 키로
+ * 조회할 수 있는 Map 묶음을 만든다 — computeRoasRows의 4개 분기가 반복하던
+ * "필드마다 Map 하나씩"을 한 번에 만들어 공유한다. T를
+ * Cafe24RevenueMetrics(모든 그룹핑 요약이 공통으로 extends하는 타입)로
+ * 제약해서 필드 접근에 타입 캐스트가 필요 없게 한다. */
+const ONLINE_METRICS_FIELDS = [
+  'paymentAmount',
+  'grossPayment',
+  'refundAmount',
+  'shippingFee',
+  'pointsSpent',
+  'pointsRefunded',
+  'couponDiscount',
+  'marketDiscount',
+] as const
+
+function buildOnlineMaps<T extends Cafe24RevenueMetrics>(
+  rows: readonly T[],
+  keyOf: (row: T) => string,
+): Record<(typeof ONLINE_METRICS_FIELDS)[number], Map<string, number>> {
+  const maps = {} as Record<
+    (typeof ONLINE_METRICS_FIELDS)[number],
+    Map<string, number>
+  >
+  for (const field of ONLINE_METRICS_FIELDS) {
+    maps[field] = new Map(rows.map((row) => [keyOf(row), row[field]]))
+  }
+  return maps
+}
+
+function toMetricsFromOnlineMaps(
+  offlineRevenue: number,
+  spend: number,
+  installmentInterest: number,
+  key: string,
+  online: ReturnType<typeof buildOnlineMaps>,
+): RoasMetrics {
+  return toMetrics({
+    offlineRevenue,
+    onlineRevenueCafe24: online.paymentAmount.get(key) ?? 0,
+    spend,
+    installmentInterest,
+    onlineGrossPayment: online.grossPayment.get(key) ?? 0,
+    onlineRefundAmount: online.refundAmount.get(key) ?? 0,
+    onlineShippingFee: online.shippingFee.get(key) ?? 0,
+    onlinePointsSpent: online.pointsSpent.get(key) ?? 0,
+    onlinePointsRefunded: online.pointsRefunded.get(key) ?? 0,
+    onlineCouponDiscount: online.couponDiscount.get(key) ?? 0,
+    onlineMarketDiscount: online.marketDiscount.get(key) ?? 0,
+  })
 }
 
 /**
@@ -167,45 +272,23 @@ export function computeRoasRows(
     const offlineByPeriod = new Map(
       (offlineRevenue?.byMonth ?? []).map((m) => [m.period, m.totalPaid]),
     )
-    const onlineByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.paymentAmount]),
-    )
     const interestByPeriod = new Map(
       (offlineRevenue?.byMonth ?? []).map((m) => [
         m.period,
         m.installmentInterest,
       ]),
     )
-    const shippingByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.shippingFee]),
-    )
-    const pointsByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.pointsSpent]),
-    )
-    const couponByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.couponDiscount]),
-    )
-    const marketDiscountByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.marketDiscount]),
-    )
-    const pointsRefundedByPeriod = new Map(
-      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.pointsRefunded]),
-    )
+    const online = buildOnlineMaps(onlineRevenue?.byMonth ?? [], (m) => m.period)
     return spendByMonth.map(
       (m): RoasRow => ({
         key: m.period,
         label: m.period,
-        metrics: toMetrics(
+        metrics: toMetricsFromOnlineMaps(
           offlineByPeriod.get(m.period) ?? 0,
-          onlineByPeriod.get(m.period) ?? 0,
           m.spend,
           interestByPeriod.get(m.period) ?? 0,
-          0,
-          shippingByPeriod.get(m.period) ?? 0,
-          pointsByPeriod.get(m.period) ?? 0,
-          couponByPeriod.get(m.period) ?? 0,
-          marketDiscountByPeriod.get(m.period) ?? 0,
-          pointsRefundedByPeriod.get(m.period) ?? 0,
+          m.period,
+          online,
         ),
       }),
     )
@@ -215,63 +298,26 @@ export function computeRoasRows(
     const offlineByDay = new Map(
       (offlineRevenue?.byDayOfWeek ?? []).map((d) => [d.dayOfWeek, d.totalPaid]),
     )
-    const onlineByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.paymentAmount,
-      ]),
-    )
     const interestByDay = new Map(
       (offlineRevenue?.byDayOfWeek ?? []).map((d) => [
         d.dayOfWeek,
         d.installmentInterest,
       ]),
     )
-    const shippingByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.shippingFee,
-      ]),
-    )
-    const pointsByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.pointsSpent,
-      ]),
-    )
-    const couponByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.couponDiscount,
-      ]),
-    )
-    const marketDiscountByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.marketDiscount,
-      ]),
-    )
-    const pointsRefundedByDay = new Map(
-      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
-        d.dayOfWeek,
-        d.pointsRefunded,
-      ]),
+    const online = buildOnlineMaps(
+      onlineRevenue?.byDayOfWeek ?? [],
+      (d) => d.dayOfWeek,
     )
     return combinedInsight.series.combined.byDayOfWeek.map(
       (d): RoasRow => ({
         key: d.dayOfWeek,
         label: d.dayOfWeek,
-        metrics: toMetrics(
+        metrics: toMetricsFromOnlineMaps(
           offlineByDay.get(d.dayOfWeek) ?? 0,
-          onlineByDay.get(d.dayOfWeek) ?? 0,
           d.spend,
           interestByDay.get(d.dayOfWeek) ?? 0,
-          0,
-          shippingByDay.get(d.dayOfWeek) ?? 0,
-          pointsByDay.get(d.dayOfWeek) ?? 0,
-          couponByDay.get(d.dayOfWeek) ?? 0,
-          marketDiscountByDay.get(d.dayOfWeek) ?? 0,
-          pointsRefundedByDay.get(d.dayOfWeek) ?? 0,
+          d.dayOfWeek,
+          online,
         ),
       }),
     )
@@ -281,63 +327,26 @@ export function computeRoasRows(
     const offlineByPeriod = new Map(
       (offlineRevenue?.byGroupedWeek ?? []).map((w) => [w.period, w.totalPaid]),
     )
-    const onlineByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.paymentAmount,
-      ]),
-    )
     const interestByPeriod = new Map(
       (offlineRevenue?.byGroupedWeek ?? []).map((w) => [
         w.period,
         w.installmentInterest,
       ]),
     )
-    const shippingByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.shippingFee,
-      ]),
-    )
-    const pointsByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.pointsSpent,
-      ]),
-    )
-    const couponByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.couponDiscount,
-      ]),
-    )
-    const marketDiscountByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.marketDiscount,
-      ]),
-    )
-    const pointsRefundedByPeriod = new Map(
-      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
-        w.period,
-        w.pointsRefunded,
-      ]),
+    const online = buildOnlineMaps(
+      onlineRevenue?.byGroupedWeek ?? [],
+      (w) => w.period,
     )
     return combinedInsight.series.combined.byGroupedWeek.map(
       (w): RoasRow => ({
         key: w.period,
         label: w.period,
-        metrics: toMetrics(
+        metrics: toMetricsFromOnlineMaps(
           offlineByPeriod.get(w.period) ?? 0,
-          onlineByPeriod.get(w.period) ?? 0,
           w.spend,
           interestByPeriod.get(w.period) ?? 0,
-          0,
-          shippingByPeriod.get(w.period) ?? 0,
-          pointsByPeriod.get(w.period) ?? 0,
-          couponByPeriod.get(w.period) ?? 0,
-          marketDiscountByPeriod.get(w.period) ?? 0,
-          pointsRefundedByPeriod.get(w.period) ?? 0,
+          w.period,
+          online,
         ),
       }),
     )
@@ -347,42 +356,20 @@ export function computeRoasRows(
   const offlineByDate = new Map(
     (offlineRevenue?.byDate ?? []).map((d) => [d.date, d.totalPaid]),
   )
-  const onlineByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.paymentAmount]),
-  )
   const interestByDate = new Map(
     (offlineRevenue?.byDate ?? []).map((d) => [d.date, d.installmentInterest]),
   )
-  const shippingByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.shippingFee]),
-  )
-  const pointsByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.pointsSpent]),
-  )
-  const couponByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.couponDiscount]),
-  )
-  const marketDiscountByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.marketDiscount]),
-  )
-  const pointsRefundedByDate = new Map(
-    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.pointsRefunded]),
-  )
+  const online = buildOnlineMaps(onlineRevenue?.byDate ?? [], (d) => d.date)
   return combinedInsight.series.combined.byDate.map(
     (d): RoasRow => ({
       key: d.date,
       label: formatMD(d.date),
-      metrics: toMetrics(
+      metrics: toMetricsFromOnlineMaps(
         offlineByDate.get(d.date) ?? 0,
-        onlineByDate.get(d.date) ?? 0,
         d.spend,
         interestByDate.get(d.date) ?? 0,
-        0,
-        shippingByDate.get(d.date) ?? 0,
-        pointsByDate.get(d.date) ?? 0,
-        couponByDate.get(d.date) ?? 0,
-        marketDiscountByDate.get(d.date) ?? 0,
-        pointsRefundedByDate.get(d.date) ?? 0,
+        d.date,
+        online,
       ),
     }),
   )
