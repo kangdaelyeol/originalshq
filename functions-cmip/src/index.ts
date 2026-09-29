@@ -1040,9 +1040,12 @@ export const getCafe24AuthStatus = onRequest((request, response) => {
 
 /**
  * 디버그 전용 — 주문 목록 API의 실제 응답(필드명이 정확히 뭔지)을 눈으로
- * 확인하기 위한 용도(debugNaverRaw와 같은 패턴). 필드 확인되면 이 엔드포인트와
- * cafe24/index.ts의 debugFetchCafe24OrdersRaw는 지워도 된다.
- * 사용 예: ?startDate=2026-09-01&endDate=2026-09-27
+ * 확인하거나, 카페24 관리자 매출 리포트와 우리 집계(getCafe24Revenue)가
+ * 다르게 나올 때 원본 주문을 직접 훑어보는 용도(debugNaverRaw와 같은 패턴).
+ * dateType(선택, 기본 order_date)으로 cancel_date 등 다른 기준을 넣어
+ * "이 기간에 취소/환불된 주문"처럼 다르게 조회해볼 수 있다(카페24가 실제로
+ * 지원하는 값인지는 호출해서 확인 — 지원 안 하면 API가 에러를 돌려준다).
+ * 사용 예: ?startDate=2026-08-01&endDate=2026-08-31&dateType=cancel_date
  */
 export const debugCafe24OrdersRaw = onRequest(
   { secrets: [cafe24ClientId, cafe24SecretKey] },
@@ -1052,9 +1055,10 @@ export const debugCafe24OrdersRaw = onRequest(
         sendError(response, 405, 'Method Not Allowed')
         return
       }
-      const { startDate, endDate } = request.query as {
+      const { startDate, endDate, dateType } = request.query as {
         startDate?: string
         endDate?: string
+        dateType?: string
       }
       if (!startDate || !endDate) {
         sendError(response, 400, 'startDate, endDate 필요')
@@ -1067,6 +1071,7 @@ export const debugCafe24OrdersRaw = onRequest(
           cafe24SecretKey.value(),
           startDate,
           endDate,
+          dateType,
         )
         response.status(200).send(raw)
       } catch (err) {

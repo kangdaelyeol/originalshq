@@ -171,11 +171,15 @@ export async function getCafe24AccessToken(
 }
 
 /**
- * 디버그 전용 — 공식 문서 사이트가 JS로 렌더링되는 SPA라 주문 목록 API의
- * 실제 응답 필드명(매출 관련 필드가 정확히 뭔지)을 문서만으로 확인하지
- * 못했다. 실제 토큰으로 소량만 호출해 원본 응답을 그대로 반환한다 — 실제
- * 필드 확인되면 이 함수와 index.ts의 debugCafe24OrdersRaw 엔드포인트는
- * 지워도 된다(debugFetchNaverRaw와 같은 패턴).
+ * 디버그 전용 — 처음엔 공식 문서 사이트가 JS로 렌더링되는 SPA라 주문 목록
+ * API의 실제 응답 필드명을 확인하려고 만들었는데, 이제는 카페24 관리자
+ * 매출 리포트와 우리 집계(getCafe24Revenue)가 다르게 나올 때(예: 관리자
+ * "환불합계"가 취소/환불 처리일 기준인지, 우리처럼 order_date 기준인지)
+ * 원본 주문을 직접 훑어보는 용도로도 쓴다. dateType으로 order_date 대신
+ * cancel_date 등 다른 기준을 넣어볼 수 있고(카페24가 지원하는지는 실제
+ * 호출해서 확인), limit/페이지네이션 없이 5건만 보던 것과 달리 이제
+ * cafe24/client.ts의 fetchOrdersForSingleRange와 같은 방식으로 links.next를
+ * 끝까지 따라가 구간 안 전체 주문을 원본 그대로 반환한다.
  */
 export async function debugFetchCafe24OrdersRaw(
   mallId: string,
@@ -183,27 +187,37 @@ export async function debugFetchCafe24OrdersRaw(
   clientSecret: string,
   startDate: string,
   endDate: string,
-): Promise<unknown> {
+  dateType = 'order_date',
+): Promise<{ orders: unknown[]; count: number }> {
   const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  }
 
-  const params = new URLSearchParams({
+  const firstParams = new URLSearchParams({
     shop_no: '1',
     start_date: startDate,
     end_date: endDate,
-    date_type: 'order_date',
-    limit: '5',
+    date_type: dateType,
+    limit: '100',
   })
 
-  const res = await fetch(`${apiBase(mallId)}/admin/orders?${params.toString()}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-  })
+  const orders: unknown[] = []
+  let url: string | null = `${apiBase(mallId)}/admin/orders?${firstParams.toString()}`
 
-  const data = await res.json()
-  if (!res.ok) {
-    throw new Error(`Cafe24 주문 조회 실패: ${JSON.stringify(data)}`)
+  while (url) {
+    const res: Response = await fetch(url, { headers })
+    const data = (await res.json()) as {
+      orders?: unknown[]
+      links?: { rel: string; href: string }[]
+    }
+    if (!res.ok) {
+      throw new Error(`Cafe24 주문 조회 실패: ${JSON.stringify(data)}`)
+    }
+    orders.push(...(data.orders ?? []))
+    url = data.links?.find((l) => l.rel === 'next')?.href ?? null
   }
-  return data
+
+  return { orders, count: orders.length }
 }

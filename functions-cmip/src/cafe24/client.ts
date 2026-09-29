@@ -20,10 +20,17 @@ interface Cafe24RawOrder {
   order_date: string
   member_id: string | null
   paid: 'T' | 'F'
-  canceled: 'T' | 'F'
+  // 'M'은 부분취소(주문 일부 품목만 취소) — actual_order_amount.payment_amount가
+  // 이미 그 부분취소를 반영한 순액이라, 'T'(전체취소)만 아니면 매출로 센다.
+  canceled: 'T' | 'F' | 'M'
   /** 부분취소/환불까지 반영된 실제 결제 금액 — initial_order_amount(최초
    * 주문 시점)와 달리 이 값을 매출로 쓴다. */
   actual_order_amount: Cafe24AmountBreakdown
+  /** 네이버페이 포인트(선불금)로 결제한 금액 — actual_order_amount.payment_amount에
+   * 전혀 반영되지 않는 별도 필드다(포인트로 전액 결제하면 payment_amount가
+   * 0으로 나온다). 실제 결제된 매출이라(내부 적립금 사용과 달리 할인이
+   * 아님) payment_amount에 더해서 매출로 센다. */
+  naver_point: string | null
 }
 
 interface Cafe24OrdersResponse {
@@ -39,7 +46,12 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
     memberId: raw.member_id,
     paid: raw.paid === 'T',
     canceled: raw.canceled === 'T',
-    paymentAmount: Number(raw.actual_order_amount.payment_amount) || 0,
+    // naver_point(네이버페이 포인트 결제액)는 payment_amount에 전혀 안 잡혀서
+    // 따로 더한다 — 전액 포인트 결제 건은 payment_amount가 0으로 나와도
+    // 이걸 더하면 실제 결제금액이 복원된다.
+    paymentAmount:
+      (Number(raw.actual_order_amount.payment_amount) || 0) +
+      (Number(raw.naver_point) || 0),
   }
 }
 
