@@ -7,11 +7,19 @@ const OFFLINE_SALES_BOARD_ID = '5027377796'
 
 // item(고객/접수) 컬럼 — 접수일.
 const ITEM_DATE_COLUMN_ID = 'date_mm1g8781'
+// item(고객/접수) 컬럼 — 그 item의 subitem 이름들을 모아 보여주는 미러(lookup)
+// 컬럼. display_value가 정확히 "분할납부"면 그 item 자체가 기존 계약의 분할
+// 납부 회차 수금 건이라는 뜻이다(buildOfflineSaleRows가 item째로 건너뛴다).
+const ITEM_LOOKUP_COLUMN_ID = 'lookup_mm1s9nfs'
 
 // subitem(품목/할부 이자 등 결제 라인) 컬럼.
 const SUBITEM_REVENUE_COLUMN_ID = 'numeric_mm1rvgfs' // 매출액
 const SUBITEM_DISCOUNT_COLUMN_ID = 'numeric_mm19vata' // 할인액
 const SUBITEM_TOTAL_PAID_COLUMN_ID = 'formula_mm1gsc6e' // 총 결제금액(수식)
+// subitem이 어느 항목(상품/계약금/분할납부)에 연결됐는지 보여주는 board relation
+// 컬럼 — display_value가 "계약금"/"분할납부"면 그 subitem의 금액(총결제금액
+// 컬럼에 음수로 기록됨)은 "아직 안 걷은 잔금"을 뜻한다.
+const SUBITEM_BOARD_RELATION_COLUMN_ID = 'board_relation_mm1g3mnp'
 
 // 장기 할부 이자 subitem 이름 — 고객이 할부로 결제해 카드사에 내는 이자라
 // 매장 매출이 아니다. helper.ts의 sumRows가 이 이름과 일치하는 행을 매출
@@ -22,6 +30,19 @@ const INSTALLMENT_INTEREST_NAMES = new Set([
   '24개월 장기 할부 이자',
   '36개월 장기 할부 이자',
 ])
+
+// subitem의 board relation(SUBITEM_BOARD_RELATION_COLUMN_ID) display_value가
+// 이 중 하나면, 그 subitem의 금액은 "총 계약금액 중 아직 안 걷고 나중에
+// 분할로 받을 잔금"이다 — 계약 체결일에 상품가 전체를 매출로 잡기 위해
+// helper.ts의 sumRows가 이 행을 매출 집계에서 빼고 deferredBalance로 따로
+// (음수 값 그대로) 더한다.
+const DEFERRED_BALANCE_RELATION_VALUES = new Set(['계약금', '분할납부'])
+
+// item의 lookup(ITEM_LOOKUP_COLUMN_ID) display_value가 정확히 이 값이면, 그
+// item은 새 계약이 아니라 기존 계약의 분할납부 회차를 수금한 기록이다 —
+// 계약 체결일에 이미 총 계약금액으로 인식했으므로(위 DEFERRED_BALANCE_RELATION
+// _VALUES) 이 item은 통째로 건너뛴다(중복 집계 방지).
+const INSTALLMENT_PAYMENT_ITEM_LOOKUP_VALUE = '분할납부'
 
 // items_page 한 번에 몇 건씩 받을지 — Monday API 문서상 최대 500.
 const PAGE_SIZE = 500
@@ -86,17 +107,23 @@ async function fetchMonday<T>(
 const ITEM_FIELDS = `
   id
   name
-  column_values(ids: ["${ITEM_DATE_COLUMN_ID}"]) {
+  column_values(ids: ["${ITEM_DATE_COLUMN_ID}", "${ITEM_LOOKUP_COLUMN_ID}"]) {
     id
     text
+    ... on MirrorValue {
+      display_value
+    }
   }
   subitems {
     id
     name
-    column_values(ids: ["${SUBITEM_REVENUE_COLUMN_ID}", "${SUBITEM_DISCOUNT_COLUMN_ID}", "${SUBITEM_TOTAL_PAID_COLUMN_ID}"]) {
+    column_values(ids: ["${SUBITEM_REVENUE_COLUMN_ID}", "${SUBITEM_DISCOUNT_COLUMN_ID}", "${SUBITEM_TOTAL_PAID_COLUMN_ID}", "${SUBITEM_BOARD_RELATION_COLUMN_ID}"]) {
       id
       text
       ... on FormulaValue {
+        display_value
+      }
+      ... on BoardRelationValue {
         display_value
       }
     }
@@ -174,7 +201,9 @@ function columnDisplayValue(
 
 /** items(+subitems) 트리를 Firestore/집계가 바로 쓸 수 있는 평탄 행으로
  * 편다 — subitem 하나가 행 하나. 접수일이 없는 item(입력 누락 등)은
- * 집계 대상이 아니라서 건너뛴다. */
+ * 집계 대상이 아니라서 건너뛴다. item 자체가 기존 계약의 분할납부 회차
+ * 수금 건(lookup === "분할납부")이면, 계약 체결일에 이미 총 계약금액으로
+ * 인식했으므로 이 item은 통째로 건너뛴다(중복 집계 방지 — 조건 2). */
 function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
   const rows: OfflineSaleRow[] = []
 
@@ -182,7 +211,17 @@ function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
     const date = columnText(item.column_values, ITEM_DATE_COLUMN_ID)
     if (!date) continue
 
+    const itemLookup = columnDisplayValue(
+      item.column_values,
+      ITEM_LOOKUP_COLUMN_ID,
+    )
+    if (itemLookup === INSTALLMENT_PAYMENT_ITEM_LOOKUP_VALUE) continue
+
     for (const subitem of item.subitems) {
+      const boardRelation = columnDisplayValue(
+        subitem.column_values,
+        SUBITEM_BOARD_RELATION_COLUMN_ID,
+      )
       rows.push({
         mondayItemId: item.id,
         mondaySubitemId: subitem.id,
@@ -204,6 +243,7 @@ function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
             ),
           ) || 0,
         isInstallmentInterest: INSTALLMENT_INTEREST_NAMES.has(subitem.name),
+        isDeferredBalance: DEFERRED_BALANCE_RELATION_VALUES.has(boardRelation),
       })
     }
   }

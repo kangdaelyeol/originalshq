@@ -11,18 +11,24 @@ import type {
 
 const DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일']
 
-// 할부 이자 라인은 매출이 아니라 매출 집계(revenue/discount/totalPaid/
-// lineCount)에서 빼고 installmentInterest로만 따로 더한다 — cafe24/helper.ts가
-// 취소/미결제 건을 revenueRows로 걸러내는 것과 같은 패턴.
+// 할부 이자 라인과 "계약금/분할납부" 잔금 마커 라인은 매출이 아니라 매출
+// 집계(revenue/discount/totalPaid/lineCount)에서 빼고 각각 installmentInterest/
+// deferredBalance로만 따로 더한다 — cafe24/helper.ts가 취소/미결제 건을
+// revenueRows로 걸러내는 것과 같은 패턴. 잔금 마커를 매출에서 빼야 계약
+// 체결일 매출이 "그날 실제로 걷은 계약금"이 아니라 "총 계약금액"이 된다.
 const sumRows = (rows: OfflineSaleRow[]): OfflineSaleMetricsSummary => {
-  const revenueRows = rows.filter((r) => !r.isInstallmentInterest)
+  const revenueRows = rows.filter(
+    (r) => !r.isInstallmentInterest && !r.isDeferredBalance,
+  )
   const interestRows = rows.filter((r) => r.isInstallmentInterest)
+  const deferredRows = rows.filter((r) => r.isDeferredBalance)
   return {
     totalPaid: revenueRows.reduce((s, r) => s + r.totalPaid, 0),
     revenue: revenueRows.reduce((s, r) => s + r.revenue, 0),
     discount: revenueRows.reduce((s, r) => s + r.discount, 0),
     lineCount: revenueRows.length,
     installmentInterest: interestRows.reduce((s, r) => s + r.totalPaid, 0),
+    deferredBalance: deferredRows.reduce((s, r) => s + r.totalPaid, 0),
   }
 }
 

@@ -25,6 +25,13 @@ export interface OfflineSaleRow {
    * revenue/discount/totalPaid/lineCount 집계에서 빼고 installmentInterest로만
    * 더한다. */
   isInstallmentInterest: boolean
+  /** subitem의 board relation(board_relation_mm1g3mnp) display_value가
+   * "계약금"/"분할납부"(client.ts의 DEFERRED_BALANCE_RELATION_VALUES)인지 —
+   * 이 경우 totalPaid는 "총 계약금액 중 아직 안 걷고 나중에 분할로 받을 잔금"을
+   * 음수로 기록한 값이다. 계약 체결일에 상품가 전체를 매출로 인식하기 위해,
+   * true면 helper.ts의 sumRows가 이 행을 매출 집계(revenue/discount/totalPaid/
+   * lineCount)에서 빼고 deferredBalance로만 더한다. */
+  isDeferredBalance: boolean
 }
 
 export interface OfflineSaleMetricsSummary {
@@ -37,6 +44,11 @@ export interface OfflineSaleMetricsSummary {
   /** 장기 할부 이자(12/24/36개월) 합계 — 매출(totalPaid 등)과 분리해서 따로
    * 집계한다. 고객이 할부로 결제해 카드사에 내는 이자는 매장 매출이 아니다. */
   installmentInterest: number
+  /** "계약금"/"분할납부" board relation 행(isDeferredBalance) 합계 — 총
+   * 계약금액 중 아직 안 걷고 나중에 분할로 받을 잔금이다. 음수 값 그대로
+   * 더한 값(보통 0 이하)이라 매출(totalPaid 등)과 분리해서 참고용으로만
+   * 노출한다. */
+  deferredBalance: number
 }
 
 export interface OfflineSaleDateSummary extends OfflineSaleMetricsSummary {

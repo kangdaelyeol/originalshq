@@ -13,7 +13,8 @@ import { CallableError } from './csv-client'
 
 export interface OfflineRevenueMetrics {
   /** 총 결제금액 — 매출 집계의 기준값(revenue - discount). 장기 할부 이자
-   * (12/24/36개월)는 여기 포함되지 않는다 — installmentInterest로 따로 집계. */
+   * (12/24/36개월)와 "계약금/분할납부" 잔금(아직 안 걷은 금액)은 여기 포함되지
+   * 않는다 — 각각 installmentInterest/deferredBalance로 따로 집계. */
   totalPaid: number
   /** 매출액(할인 반영 전). */
   revenue: number
@@ -25,6 +26,10 @@ export interface OfflineRevenueMetrics {
   /** 장기 할부 이자(12/24/36개월) 합계 — 고객이 할부로 결제해 카드사에 내는
    * 이자라 매장 매출(totalPaid 등)과 분리해서 따로 집계한다. */
   installmentInterest: number
+  /** "계약금"/"분할납부" 잔금(총 계약금액 중 아직 안 걷고 나중에 분할로 받을
+   * 금액) 합계 — 계약 체결일에 상품가 전체를 매출로 인식하기 위해 매출과
+   * 분리했다. 음수 값 그대로 더한 값(보통 0 이하)이라 참고용으로만 쓴다. */
+  deferredBalance: number
 }
 
 export interface OfflineRevenueDateSummary extends OfflineRevenueMetrics {
