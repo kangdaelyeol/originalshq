@@ -73,6 +73,7 @@ function buildFallbackRefunds(
         orderId: row.orderId,
         refundDate: row.cancelDate,
         amount: row.cancelRefundAmount,
+        pointsRefunded: row.cancelPointsRefund,
       })
     } else {
       staleRefundCodes.push(`ORDER-${row.orderId}`)

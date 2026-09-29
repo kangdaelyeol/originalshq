@@ -39,8 +39,11 @@ export interface Cafe24RevenueMetrics {
    * paymentAmount(순매출)에서는 빠져있다. */
   shippingFee: number
   /** 참고용 — grossPayment(따라서 paymentAmount)에 이미 포함된 적립금 사용액
-   * 합계. */
+   * 합계(결제일 기준 — 나중에 환불되면 pointsRefunded로 따로 잡힌다). */
   pointsSpent: number
+  /** 참고용 — refundAmount에 포함된 적립금 환불액 합계(환불완료일 기준).
+   * 순 적립금 사용액 = pointsSpent - pointsRefunded. */
+  pointsRefunded: number
   /** 참고용 — grossPayment에서 이미 제외된 쿠폰 등 주문 단위 할인 합계.
    * 지금까지 이 매장이 실제로 쓴 건 쿠폰뿐이라 "쿠폰할인"으로 부른다(7/7
    * 환불 건에서 발견 — 이걸 안 빼서 환불액이 100,000원 과다 집계됐었다). */

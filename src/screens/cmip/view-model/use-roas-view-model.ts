@@ -44,6 +44,10 @@ export interface RoasMetrics {
    * (client/cafe24-revenue-client.ts 참고). 얼마가 적립금 결제인지 참고용으로
    * 계속 따로 보여준다. */
   onlinePointsSpent: number
+  /** 온라인 매출(Cafe24)의 환불에 포함된 적립금 환불액 합계 — 순 적립금
+   * 사용액(그 기간에 쓴 적립금 - 그 기간에 환불된 적립금)을 보고 싶을 때
+   * onlinePointsSpent에서 이 값을 뺀다. */
+  onlinePointsRefunded: number
   /** 온라인 매출(Cafe24)에서 이미 제외된 쿠폰 등 주문 단위 할인 합계
    * (onlineShippingFee와 같은 이유로 참고용). */
   onlineCouponDiscount: number
@@ -74,6 +78,7 @@ const toMetrics = (
   onlinePointsSpent = 0,
   onlineCouponDiscount = 0,
   onlineMarketDiscount = 0,
+  onlinePointsRefunded = 0,
 ): RoasMetrics => ({
   spend,
   offlineRevenue,
@@ -84,6 +89,7 @@ const toMetrics = (
   deferredBalance,
   onlineShippingFee,
   onlinePointsSpent,
+  onlinePointsRefunded,
   onlineCouponDiscount,
   onlineMarketDiscount,
 })
@@ -105,6 +111,7 @@ export function computeRoasTotal(
     onlineRevenue?.total.pointsSpent ?? 0,
     onlineRevenue?.total.couponDiscount ?? 0,
     onlineRevenue?.total.marketDiscount ?? 0,
+    onlineRevenue?.total.pointsRefunded ?? 0,
   )
 }
 
@@ -127,6 +134,7 @@ export function computeRoasAverage(
         total.onlinePointsSpent / rowCount,
         total.onlineCouponDiscount / rowCount,
         total.onlineMarketDiscount / rowCount,
+        total.onlinePointsRefunded / rowCount,
       )
     : toMetrics(0, 0, 0)
 }
@@ -180,6 +188,9 @@ export function computeRoasRows(
     const marketDiscountByPeriod = new Map(
       (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.marketDiscount]),
     )
+    const pointsRefundedByPeriod = new Map(
+      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.pointsRefunded]),
+    )
     return spendByMonth.map(
       (m): RoasRow => ({
         key: m.period,
@@ -194,6 +205,7 @@ export function computeRoasRows(
           pointsByPeriod.get(m.period) ?? 0,
           couponByPeriod.get(m.period) ?? 0,
           marketDiscountByPeriod.get(m.period) ?? 0,
+          pointsRefundedByPeriod.get(m.period) ?? 0,
         ),
       }),
     )
@@ -239,6 +251,12 @@ export function computeRoasRows(
         d.marketDiscount,
       ]),
     )
+    const pointsRefundedByDay = new Map(
+      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
+        d.dayOfWeek,
+        d.pointsRefunded,
+      ]),
+    )
     return combinedInsight.series.combined.byDayOfWeek.map(
       (d): RoasRow => ({
         key: d.dayOfWeek,
@@ -253,6 +271,7 @@ export function computeRoasRows(
           pointsByDay.get(d.dayOfWeek) ?? 0,
           couponByDay.get(d.dayOfWeek) ?? 0,
           marketDiscountByDay.get(d.dayOfWeek) ?? 0,
+          pointsRefundedByDay.get(d.dayOfWeek) ?? 0,
         ),
       }),
     )
@@ -298,6 +317,12 @@ export function computeRoasRows(
         w.marketDiscount,
       ]),
     )
+    const pointsRefundedByPeriod = new Map(
+      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
+        w.period,
+        w.pointsRefunded,
+      ]),
+    )
     return combinedInsight.series.combined.byGroupedWeek.map(
       (w): RoasRow => ({
         key: w.period,
@@ -312,6 +337,7 @@ export function computeRoasRows(
           pointsByPeriod.get(w.period) ?? 0,
           couponByPeriod.get(w.period) ?? 0,
           marketDiscountByPeriod.get(w.period) ?? 0,
+          pointsRefundedByPeriod.get(w.period) ?? 0,
         ),
       }),
     )
@@ -339,6 +365,9 @@ export function computeRoasRows(
   const marketDiscountByDate = new Map(
     (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.marketDiscount]),
   )
+  const pointsRefundedByDate = new Map(
+    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.pointsRefunded]),
+  )
   return combinedInsight.series.combined.byDate.map(
     (d): RoasRow => ({
       key: d.date,
@@ -353,6 +382,7 @@ export function computeRoasRows(
         pointsByDate.get(d.date) ?? 0,
         couponByDate.get(d.date) ?? 0,
         marketDiscountByDate.get(d.date) ?? 0,
+        pointsRefundedByDate.get(d.date) ?? 0,
       ),
     }),
   )

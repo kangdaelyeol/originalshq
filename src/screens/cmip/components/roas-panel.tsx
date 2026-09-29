@@ -137,10 +137,10 @@ const ONLINE_FIELDS: readonly RoasField[] = [
   {
     key: 'onlinePointsSpent',
     label: '적립금',
-    getValue: (m) => m.onlinePointsSpent,
+    getValue: (m) => m.onlinePointsSpent - m.onlinePointsRefunded,
     format: won,
     formatCompact: won,
-    note: '참고용 — 매출액(순매출)에 이미 포함된 적립금 결제 금액입니다.',
+    note: '참고용 — 매출액(순매출)에 이미 포함된 적립금 결제 금액에서, 나중에 환불된 적립금(취소 등으로 되돌아간 금액)을 뺀 순 적립금 사용액입니다.',
   },
   {
     key: 'onlineCouponDiscount',

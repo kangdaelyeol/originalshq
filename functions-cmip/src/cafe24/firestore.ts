@@ -55,6 +55,7 @@ const docToRow = (d: QueryDocumentSnapshot<DocumentData>): Cafe24OrderRow => {
     marketDiscount: x.marketDiscount ?? 0,
     additionalShippingFee: x.additionalShippingFee ?? 0,
     cancelRefundAmount: x.cancelRefundAmount ?? 0,
+    cancelPointsRefund: x.cancelPointsRefund ?? 0,
   }
 }
 
@@ -114,6 +115,7 @@ export interface Cafe24RefundDoc {
   orderId: string
   refundDate: ISODate
   amount: number
+  pointsRefunded: number
   syncedAt: string
 }
 
@@ -134,6 +136,7 @@ const docToRefundRow = (
     orderId: x.orderId,
     refundDate: x.refundDate,
     amount: x.amount,
+    pointsRefunded: x.pointsRefunded ?? 0,
   }
 }
 
