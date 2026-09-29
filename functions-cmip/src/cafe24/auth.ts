@@ -276,3 +276,43 @@ export async function debugFetchCafe24OrdersRaw(
     return { orders, count: orders.length }
   }
 }
+
+/**
+ * 디버그 전용 — 카페24 관리자 "일별 매출내역"의 환불합계가 주문(order)의
+ * cancel_date가 아니라 실제 환불 처리일(예: 8/31 구매건 조사에서 발견 —
+ * 반품 접수는 8/21인데 실제 카드 부분취소/환불은 8/18과 8/31 두 번에
+ * 나눠 처리됐고, 그 두 금액의 합만 각각 그날 환불합계에 잡혔다) 기준으로
+ * 잡히는 걸 확인했다. 이건 주문 하나에 환불 이벤트가 여러 번 있을 수
+ * 있다는 뜻이라 order 객체의 단일 cancel_date로는 표현이 안 되고, 별도
+ * "환불(refunds)" 리소스(공식 문서 admin/refunds)가 있어야 맞다.
+ *
+ * resource 파라미터로 admin/ 밑 다른 리소스도 테스트해볼 수 있게 했다 —
+ * 8/24 조사에서 "일별 매출내역"의 환불합계가 반품/환불 관리 화면에는 아예
+ * 안 잡히는 3,990,000원짜리 건이 있는 걸 발견했는데, 카페24는 취소(주문
+ * 단계, 배송 전)/반품(수령 후 재발송)/교환/환불을 서로 다른 화면·리소스로
+ * 나눠 관리해서 — refunds(반품→환불)에 안 잡히면 admin/cancellation(순수
+ * 주문취소) 같은 다른 리소스에 있을 가능성이 있어 확인하는 용도. 사용 예:
+ * ?resource=cancellation&start_date=...&end_date=... (기본은 refunds). */
+export async function debugFetchCafe24RefundsRaw(
+  mallId: string,
+  clientId: string,
+  clientSecret: string,
+  query: Record<string, string>,
+): Promise<{ status: number; body: unknown }> {
+  // apiVersion(선택) — /admin/returns, /admin/orders/{id}/refunds 같은
+  // 신규(?) 엔드포인트가 404("No API found.")를 내는 게 리소스가 아예
+  // 없어서가 아니라 우리 앱이 예전 API 버전에 고정돼 있어서일 수 있어
+  // 테스트해보는 용도(X-Cafe24-Api-Version 헤더로 버전을 지정할 수 있음).
+  const { resource = 'refunds', apiVersion, ...rest } = query
+  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    'Content-Type': 'application/json',
+  }
+  if (apiVersion) headers['X-Cafe24-Api-Version'] = apiVersion
+  const params = new URLSearchParams({ shop_no: '1', ...rest })
+  const url = `${apiBase(mallId)}/admin/${resource}?${params.toString()}`
+  const res = await fetch(url, { headers })
+  const body = await res.json()
+  return { status: res.status, body }
+}

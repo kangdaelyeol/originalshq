@@ -55,6 +55,7 @@ import {
   buildCafe24AuthUrl,
   checkCafe24AuthStatus,
   debugFetchCafe24OrdersRaw,
+  debugFetchCafe24RefundsRaw,
   exchangeAndSaveCafe24Tokens,
   getCafe24Revenue as fetchCafe24Revenue,
   syncCafe24Orders as syncCafe24OrdersFromApi,
@@ -1072,6 +1073,45 @@ export const debugCafe24OrdersRaw = onRequest(
           startDate,
           endDate,
           dateType,
+        )
+        response.status(200).send(raw)
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+/**
+ * 디버그 전용 — 카페24 Admin API의 별도 "환불(refunds)" 리소스
+ * (GET /admin/refunds)를 그대로 호출해본다. 공식 문서가 JS 렌더링 SPA라
+ * 정확한 쿼리 파라미터를 못 읽어서, 쿼리스트링을 그대로 다 넘겨 실제
+ * 응답으로 파라미터/필드 이름을 확인하는 용도(shop_no는 자동으로 붙는다).
+ * 8/31 매출 조사에서 발견한 건(반품 접수일과 실제 카드 부분취소/환불일이
+ * 달랐던 주문)처럼, 주문의 cancel_date만으로는 admin "환불합계"를 못 맞추는
+ * 케이스가 있어서 이 리소스가 필요한지 확인하려는 것 — debugCafe24OrdersRaw
+ * 주석 참고. 사용 예: ?start_date=2026-08-01&end_date=2026-08-31 또는
+ * ?order_id=20260812-0000013 등, 실제로 뭐가 먹히는지 이것저것 넣어보면서
+ * 확인한다.
+ */
+export const debugCafe24RefundsRaw = onRequest(
+  { secrets: [cafe24ClientId, cafe24SecretKey] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const query: Record<string, string> = {}
+      for (const [key, value] of Object.entries(request.query)) {
+        if (typeof value === 'string') query[key] = value
+      }
+      try {
+        const raw = await debugFetchCafe24RefundsRaw(
+          cafe24MainId,
+          cafe24ClientId.value(),
+          cafe24SecretKey.value(),
+          query,
         )
         response.status(200).send(raw)
       } catch (err) {
