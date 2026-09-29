@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type {
   Cafe24RevenueSummary,
   CombinedInsight,
@@ -39,7 +40,20 @@ interface RoasField {
 // 광고 채널의 MetricsSummary에 없는 값이라(offlineRevenue, roas) 그 목록에
 // 끼워 넣지 않고 이 탭 전용으로 따로 둔다.
 const ROAS_FIELDS: readonly RoasField[] = [
+  { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
+  {
+    key: 'totalRevenue',
+    label: '총 매출',
+    format: won,
+    formatCompact: won,
+  },
   { key: 'spend', label: '광고비', format: won, formatCompact: won },
+  {
+    key: 'onlineRevenue',
+    label: '온라인 매출',
+    format: won,
+    formatCompact: won,
+  },
   {
     key: 'offlineRevenue',
     label: '오프라인 매출',
@@ -53,19 +67,6 @@ const ROAS_FIELDS: readonly RoasField[] = [
     formatCompact: won,
     note: '고객이 장기 할부(12/24/36개월)로 결제하면서 카드사에 낸 이자입니다. 매장 매출이 아니라 오프라인 매출·ROAS 계산에서 이미 제외되어 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
   },
-  {
-    key: 'onlineRevenue',
-    label: '온라인 매출',
-    format: won,
-    formatCompact: won,
-  },
-  {
-    key: 'totalRevenue',
-    label: '총 매출',
-    format: won,
-    formatCompact: won,
-  },
-  { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
 ]
 
 // "ROAS 요약"에만 추가로 붙는 카드 — ROAS_FIELDS와 달리 "기간별 추이" 표
@@ -361,9 +362,30 @@ export function RoasPanel({
     onlineRevenue,
   )
 
+  // 지표 표시/숨김 — channel-insight.tsx의 FullListTable "컬럼 표시" 토글과
+  // 같은 패턴. 기본은 전부 표시. ROAS_FIELDS 지표를 숨기면 요약 카드와
+  // 기간별 추이 표 양쪽에서 같이 빠지고, 미수금(SUMMARY_ONLY_FIELDS)은 원래도
+  // 요약 카드에만 있어 표엔 영향이 없다.
+  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<keyof RoasMetrics>>(
+    () => new Set([...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => f.key)),
+  )
+  const toggleMetric = (key: keyof RoasMetrics) => {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   if (!combinedInsight || !offlineRevenue || !onlineRevenue) {
     return <p className="channel-insight__result-empty">데이터 없음</p>
   }
+
+  const visibleSummaryFields = [...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].filter(
+    (f) => visibleKeys.has(f.key),
+  )
+  const visibleTableFields = ROAS_FIELDS.filter((f) => visibleKeys.has(f.key))
 
   return (
     <div className="channel-insight__result">
@@ -371,8 +393,30 @@ export function RoasPanel({
         <div className="channel-insight__summary-head">
           <span className="channel-insight__summary-label">ROAS 요약</span>
         </div>
+
+        <div
+          className="channel-insight__full-list-toggles"
+          role="group"
+          aria-label="지표 표시"
+        >
+          {[...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => {
+            const active = visibleKeys.has(f.key)
+            return (
+              <button
+                key={f.key}
+                type="button"
+                className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+                aria-pressed={active}
+                onClick={() => toggleMetric(f.key)}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+
         <div className="channel-insight__summary-grid">
-          {[...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => (
+          {visibleSummaryFields.map((f) => (
             <div key={f.key} className="channel-insight__kpi">
               <span className="channel-insight__kpi-label">
                 <RoasFieldLabel field={f} />
@@ -408,7 +452,7 @@ export function RoasPanel({
                 <thead>
                   <tr>
                     <th>기간</th>
-                    {ROAS_FIELDS.map((f) => (
+                    {visibleTableFields.map((f) => (
                       <th key={f.key}>
                         <RoasFieldLabel field={f} />
                       </th>
@@ -421,7 +465,7 @@ export function RoasPanel({
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
-                        {ROAS_FIELDS.map((f) => (
+                        {visibleTableFields.map((f) => (
                           <MetricValueCell
                             key={f.key}
                             value={row.metrics[f.key]}
@@ -434,13 +478,13 @@ export function RoasPanel({
                   })}
                   <tr className="channel-insight__table-row--total">
                     <td>합계</td>
-                    {ROAS_FIELDS.map((f) => (
+                    {visibleTableFields.map((f) => (
                       <td key={f.key}>{f.formatCompact(total[f.key])}</td>
                     ))}
                   </tr>
                   <tr className="channel-insight__table-row--average">
                     <td>평균</td>
-                    {ROAS_FIELDS.map((f) => (
+                    {visibleTableFields.map((f) => (
                       <td key={f.key}>{f.formatCompact(average[f.key])}</td>
                     ))}
                   </tr>
