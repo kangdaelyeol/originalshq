@@ -146,39 +146,69 @@ export const summarizeTotal = (
     sumAdditional(additionalRowsInRange(orderRows, dateStart, dateEnd)),
   )
 
+/** paymentDate/refundDate/cancelDate 세 가지 서로 다른 날짜 기준을 각각
+ * keyOf로 그룹핑한 뒤, 같은 키(날짜/요일/월)끼리 combine()으로 합쳐
+ * Cafe24MetricsSummary 맵을 낸다 — summarizeByDate/DayOfWeek/Month가 "무엇을
+ * 키로 쓰느냐"만 다를 뿐 나머지는 완전히 같은 모양이라 하나로 묶었다
+ * (summarizeByWeek는 그룹핑이 아니라 고정 구간을 순회하는 다른 모양이라
+ * 별도로 둔다). */
+function summarizeByKey(
+  orderRows: readonly Cafe24OrderRow[],
+  refundRows: readonly Cafe24RefundRow[],
+  dateStart: ISODate,
+  dateEnd: ISODate,
+  keyOf: {
+    gross: (row: Cafe24OrderRow) => string
+    refund: (row: Cafe24RefundRow) => string
+    additional: (row: Cafe24OrderRow) => string
+  },
+): Map<string, Cafe24MetricsSummary> {
+  const groupedGross = groupBy(
+    grossRowsInRange(orderRows, dateStart, dateEnd),
+    keyOf.gross,
+  )
+  const groupedRefund = groupBy(
+    refundRowsInRange(refundRows, dateStart, dateEnd),
+    keyOf.refund,
+  )
+  const groupedAdditional = groupBy(
+    additionalRowsInRange(orderRows, dateStart, dateEnd),
+    keyOf.additional,
+  )
+  const keys = new Set([
+    ...groupedGross.keys(),
+    ...groupedRefund.keys(),
+    ...groupedAdditional.keys(),
+  ])
+
+  const result = new Map<string, Cafe24MetricsSummary>()
+  for (const key of keys) {
+    result.set(
+      key,
+      combine(
+        sumGross(groupedGross.get(key) ?? []),
+        sumRefund(groupedRefund.get(key) ?? []),
+        sumAdditional(groupedAdditional.get(key) ?? []),
+      ),
+    )
+  }
+  return result
+}
+
 export const summarizeByDate = (
   orderRows: readonly Cafe24OrderRow[],
   refundRows: readonly Cafe24RefundRow[],
   dateStart: ISODate,
   dateEnd: ISODate,
 ): Cafe24DateSummary[] => {
-  const groupedGross = groupBy(
-    grossRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => r.paymentDate!,
-  )
-  const groupedRefund = groupBy(
-    refundRowsInRange(refundRows, dateStart, dateEnd),
-    (r) => r.refundDate,
-  )
-  const groupedAdditional = groupBy(
-    additionalRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => r.cancelDate!,
-  )
-  const dates = new Set([
-    ...groupedGross.keys(),
-    ...groupedRefund.keys(),
-    ...groupedAdditional.keys(),
-  ])
-  return Array.from(dates)
-    .sort()
-    .map((date) => ({
-      date,
-      ...combine(
-        sumGross(groupedGross.get(date) ?? []),
-        sumRefund(groupedRefund.get(date) ?? []),
-        sumAdditional(groupedAdditional.get(date) ?? []),
-      ),
-    }))
+  const grouped = summarizeByKey(orderRows, refundRows, dateStart, dateEnd, {
+    gross: (r) => r.paymentDate!,
+    refund: (r) => r.refundDate,
+    additional: (r) => r.cancelDate!,
+  })
+  return Array.from(grouped.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, summary]) => ({ date, ...summary }))
 }
 
 export const summarizeByDayOfWeek = (
@@ -187,32 +217,13 @@ export const summarizeByDayOfWeek = (
   dateStart: ISODate,
   dateEnd: ISODate,
 ): Cafe24DayOfWeekSummary[] => {
-  const groupedGross = groupBy(
-    grossRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => weekdayKo(r.paymentDate!),
-  )
-  const groupedRefund = groupBy(
-    refundRowsInRange(refundRows, dateStart, dateEnd),
-    (r) => weekdayKo(r.refundDate),
-  )
-  const groupedAdditional = groupBy(
-    additionalRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => weekdayKo(r.cancelDate!),
-  )
-  const days = new Set([
-    ...groupedGross.keys(),
-    ...groupedRefund.keys(),
-    ...groupedAdditional.keys(),
-  ])
-  return Array.from(days)
-    .map((dayOfWeek) => ({
-      dayOfWeek,
-      ...combine(
-        sumGross(groupedGross.get(dayOfWeek) ?? []),
-        sumRefund(groupedRefund.get(dayOfWeek) ?? []),
-        sumAdditional(groupedAdditional.get(dayOfWeek) ?? []),
-      ),
-    }))
+  const grouped = summarizeByKey(orderRows, refundRows, dateStart, dateEnd, {
+    gross: (r) => weekdayKo(r.paymentDate!),
+    refund: (r) => weekdayKo(r.refundDate),
+    additional: (r) => weekdayKo(r.cancelDate!),
+  })
+  return Array.from(grouped.entries())
+    .map(([dayOfWeek, summary]) => ({ dayOfWeek, ...summary }))
     .sort(
       (a, b) => DAY_ORDER.indexOf(a.dayOfWeek) - DAY_ORDER.indexOf(b.dayOfWeek),
     )
@@ -264,32 +275,16 @@ export const summarizeByMonth = (
   dateStart: ISODate,
   dateEnd: ISODate,
 ): Cafe24MonthSummary[] => {
-  const groupedGross = groupBy(
-    grossRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => r.paymentDate!.slice(0, 7),
-  )
-  const groupedRefund = groupBy(
-    refundRowsInRange(refundRows, dateStart, dateEnd),
-    (r) => r.refundDate.slice(0, 7),
-  )
-  const groupedAdditional = groupBy(
-    additionalRowsInRange(orderRows, dateStart, dateEnd),
-    (r) => r.cancelDate!.slice(0, 7),
-  )
-  const months = new Set([
-    ...groupedGross.keys(),
-    ...groupedRefund.keys(),
-    ...groupedAdditional.keys(),
-  ])
-  return Array.from(months)
-    .sort()
-    .map((monthKey) => ({
+  const grouped = summarizeByKey(orderRows, refundRows, dateStart, dateEnd, {
+    gross: (r) => r.paymentDate!.slice(0, 7),
+    refund: (r) => r.refundDate.slice(0, 7),
+    additional: (r) => r.cancelDate!.slice(0, 7),
+  })
+  return Array.from(grouped.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([monthKey, summary]) => ({
       period: monthKey.replace('-', '.'),
       ...monthBounds(monthKey, dateStart, dateEnd),
-      ...combine(
-        sumGross(groupedGross.get(monthKey) ?? []),
-        sumRefund(groupedRefund.get(monthKey) ?? []),
-        sumAdditional(groupedAdditional.get(monthKey) ?? []),
-      ),
+      ...summary,
     }))
 }

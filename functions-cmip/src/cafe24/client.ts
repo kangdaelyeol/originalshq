@@ -189,11 +189,62 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   }
 }
 
-/** [startDate, endDate] 하나(3개월 이내로 가정)에 대해 limit/offset 페이지네이션을
- * 끝까지 따라가며 주문을 전부 모은다 — 응답의 links에 있는 "next" href를
- * 그대로 다시 호출한다(오프셋을 직접 계산할 필요 없음). dateType으로
- * order_date/cancel_date를 골라 쓴다 — cancel_date 조회는 fallback 환불
- * 계산용(fetchCafe24OrderRowsByCancelDate 참고). */
+/** links.next를 끝까지 따라가며 한 페이지 응답에서 item 배열을 뽑아 전부
+ * 모은다 — 주문/환불 리소스 둘 다 이 모양(offset을 직접 계산할 필요 없이
+ * 서버가 주는 다음 페이지 URL을 그대로 다시 호출)이라 공유한다. */
+async function fetchAllPages<TRaw, TData extends { links?: { rel: string; href: string }[] }>(
+  firstUrl: string,
+  headers: Record<string, string>,
+  itemsOf: (data: TData) => TRaw[],
+  errorLabel: string,
+): Promise<TRaw[]> {
+  const items: TRaw[] = []
+  let url: string | null = firstUrl
+
+  while (url) {
+    const res: Response = await fetch(url, { headers })
+    const data = (await res.json()) as TData & { error?: { message?: string } }
+    if (!res.ok) {
+      throw new Error(
+        `${errorLabel}: ${data.error?.message || res.statusText} (url=${url})`,
+      )
+    }
+    items.push(...itemsOf(data))
+    url = data.links?.find((l) => l.rel === 'next')?.href ?? null
+  }
+
+  return items
+}
+
+/** 저장된 accessTokenExpiresAt이 실제 만료 시각과 어긋나 있으면(여러
+ * 인스턴스가 동시에 토큰을 갱신하는 경쟁 등으로) Cafe24가 "access_token time
+ * expired"를 돌려줄 수 있다 — 이 경우 저장된 값을 무시하고 강제로 새 토큰을
+ * 받아 한 번만 다시 시도한다(getCafe24AccessToken의 forceRefresh 참고).
+ * 주문/환불 조회 둘 다 이 패턴을 쓴다. */
+async function withTokenRetry<T>(
+  mallId: string,
+  clientId: string,
+  clientSecret: string,
+  run: (accessToken: string) => Promise<T>,
+): Promise<T> {
+  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+  try {
+    return await run(accessToken)
+  } catch (err) {
+    if (!isCafe24InvalidTokenError(err)) throw err
+    const freshToken = await getCafe24AccessToken(
+      mallId,
+      clientId,
+      clientSecret,
+      true,
+    )
+    return await run(freshToken)
+  }
+}
+
+/** [startDate, endDate] 하나(3개월 이내로 가정)에 대해 주문을 전부 모은다.
+ * dateType으로 order_date/cancel_date를 골라 쓴다 — cancel_date 조회는
+ * fallback 환불 계산용(fetchCafe24OrderRowsByCancelDate 참고). */
 async function fetchOrdersForSingleRange(
   mallId: string,
   accessToken: string,
@@ -205,55 +256,27 @@ async function fetchOrdersForSingleRange(
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
   }
-
-  const firstParams = new URLSearchParams({
+  const params = new URLSearchParams({
     shop_no: '1',
     start_date: startDate,
     end_date: endDate,
     date_type: dateType,
     limit: String(PAGE_SIZE),
   })
-
-  const orders: Cafe24RawOrder[] = []
-  let url: string | null = `${apiBase(mallId)}/admin/orders?${firstParams.toString()}`
-
-  while (url) {
-    const res: Response = await fetch(url, { headers })
-    const data = (await res.json()) as Cafe24OrdersResponse & {
-      error?: { message?: string }
-    }
-    if (!res.ok) {
-      throw new Error(
-        `Cafe24 주문 조회 실패: ${data.error?.message || res.statusText} (url=${url})`,
-      )
-    }
-    orders.push(...data.orders)
-    url = data.links?.find((l) => l.rel === 'next')?.href ?? null
-  }
-
-  return orders
+  return fetchAllPages<Cafe24RawOrder, Cafe24OrdersResponse>(
+    `${apiBase(mallId)}/admin/orders?${params.toString()}`,
+    headers,
+    (data) => data.orders,
+    'Cafe24 주문 조회 실패',
+  )
 }
 
-async function fetchAllChunks(
-  mallId: string,
-  accessToken: string,
-  chunks: readonly { start: ISODate; end: ISODate }[],
-  dateType: 'order_date' | 'cancel_date',
-): Promise<Cafe24OrderRow[]> {
-  const rows: Cafe24OrderRow[] = []
-  for (const chunk of chunks) {
-    const raw = await fetchOrdersForSingleRange(
-      mallId,
-      accessToken,
-      chunk.start,
-      chunk.end,
-      dateType,
-    )
-    rows.push(...raw.map(toOrderRow))
-  }
-  return rows
-}
-
+/** dateStart~dateEnd(임의 길이) 전체의 주문을 order_date 또는 cancel_date
+ * 기준으로 가져온다 — Cafe24 주문 API는 한 번 조회에 최대 3개월까지만
+ * 허용해서, 그보다 긴 범위(과거 백필 등)는 chunkDateRangeForCafe24로 3개월
+ * 이하 구간으로 잘라 순서대로(동시 아님 — 초당 40건 제한이라 한 구간
+ * 페이지네이션이 이미 여러 호출이라 굳이 구간까지 동시에 쏠 필요는 없다)
+ * 호출해 합친다. */
 async function fetchOrderRowsByDateType(
   mallId: string,
   clientId: string,
@@ -263,32 +286,24 @@ async function fetchOrderRowsByDateType(
   dateType: 'order_date' | 'cancel_date',
 ): Promise<Cafe24OrderRow[]> {
   const chunks = chunkDateRangeForCafe24(dateStart, dateEnd)
-  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
-
-  try {
-    return await fetchAllChunks(mallId, accessToken, chunks, dateType)
-  } catch (err) {
-    if (!isCafe24InvalidTokenError(err)) throw err
-    const freshToken = await getCafe24AccessToken(
-      mallId,
-      clientId,
-      clientSecret,
-      true,
-    )
-    return await fetchAllChunks(mallId, freshToken, chunks, dateType)
-  }
+  return withTokenRetry(mallId, clientId, clientSecret, async (accessToken) => {
+    const rows: Cafe24OrderRow[] = []
+    for (const chunk of chunks) {
+      const raw = await fetchOrdersForSingleRange(
+        mallId,
+        accessToken,
+        chunk.start,
+        chunk.end,
+        dateType,
+      )
+      rows.push(...raw.map(toOrderRow))
+    }
+    return rows
+  })
 }
 
-/** dateStart~dateEnd(임의 길이) 전체의 주문을 가져온다(order_date 기준) —
- * Cafe24 주문 API는 한 번 조회에 최대 3개월까지만 허용해서, 그보다 긴
- * 범위(과거 백필 등)는 chunkDateRangeForCafe24로 3개월 이하 구간으로 잘라
- * 순서대로(동시 아님 — 초당 40건 제한이라 한 구간 페이지네이션이 이미 여러
- * 호출이라 굳이 구간까지 동시에 쏠 필요는 없다) 호출해 합친다.
- *
- * 저장된 accessTokenExpiresAt이 실제 만료 시각과 어긋나 있으면(여러 인스턴스가
- * 동시에 토큰을 갱신하는 경쟁 등으로) Cafe24가 "access_token time expired"를
- * 돌려줄 수 있다 — 이 경우 저장된 값을 무시하고 강제로 새 토큰을 받아 전체
- * 구간을 한 번만 다시 시도한다(getCafe24AccessToken의 forceRefresh 참고). */
+/** dateStart~dateEnd(임의 길이) 전체의 주문을 order_date 기준으로 가져온다
+ * — 청크/재시도 동작은 fetchOrderRowsByDateType 주석 참고. */
 export async function fetchCafe24OrderRows(
   mallId: string,
   clientId: string,
@@ -370,10 +385,9 @@ function toRefundRow(raw: Cafe24RawRefund): Cafe24RefundRow {
   }
 }
 
-/** [startDate, endDate] 하나에 대해 환불 목록을 페이지네이션 끝까지 따라가며
- * 전부 모은다 — fetchOrdersForSingleRange와 같은 방식(links.next). limit을
- * 명시하지 않으면 기본값이 100보다 작아(직접 확인: 10건에서 끊김) 결과가
- * 조용히 잘리므로 반드시 명시한다. */
+/** [startDate, endDate] 하나에 대해 환불 목록을 전부 모은다. limit을 명시하지
+ * 않으면 기본값이 100보다 작아(직접 확인: 10건에서 끊김) 결과가 조용히
+ * 잘리므로 반드시 명시한다. */
 async function fetchRefundsForSingleRange(
   mallId: string,
   accessToken: string,
@@ -384,55 +398,22 @@ async function fetchRefundsForSingleRange(
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
   }
-
-  const firstParams = new URLSearchParams({
+  const params = new URLSearchParams({
     shop_no: '1',
     start_date: startDate,
     end_date: endDate,
     limit: String(PAGE_SIZE),
   })
-
-  const refunds: Cafe24RawRefund[] = []
-  let url: string | null = `${apiBase(mallId)}/admin/refunds?${firstParams.toString()}`
-
-  while (url) {
-    const res: Response = await fetch(url, { headers })
-    const data = (await res.json()) as Cafe24RefundsResponse & {
-      error?: { message?: string }
-    }
-    if (!res.ok) {
-      throw new Error(
-        `Cafe24 환불 조회 실패: ${data.error?.message || res.statusText} (url=${url})`,
-      )
-    }
-    refunds.push(...data.refunds)
-    url = data.links?.find((l) => l.rel === 'next')?.href ?? null
-  }
-
-  return refunds
+  return fetchAllPages<Cafe24RawRefund, Cafe24RefundsResponse>(
+    `${apiBase(mallId)}/admin/refunds?${params.toString()}`,
+    headers,
+    (data) => data.refunds,
+    'Cafe24 환불 조회 실패',
+  )
 }
 
-async function fetchAllRefundChunks(
-  mallId: string,
-  accessToken: string,
-  chunks: readonly { start: ISODate; end: ISODate }[],
-): Promise<Cafe24RefundRow[]> {
-  const rows: Cafe24RefundRow[] = []
-  for (const chunk of chunks) {
-    const raw = await fetchRefundsForSingleRange(
-      mallId,
-      accessToken,
-      chunk.start,
-      chunk.end,
-    )
-    rows.push(...raw.map(toRefundRow))
-  }
-  return rows
-}
-
-/** dateStart~dateEnd 전체의 환불을 가져온다 — fetchCafe24OrderRows와 같은
- * 구조(3개월 이하로 청크, 토큰 만료 시 강제 갱신 후 1회 재시도)를 그대로
- * 재사용한다. */
+/** dateStart~dateEnd 전체의 환불을 가져온다 — fetchOrderRowsByDateType과 같은
+ * 구조(3개월 이하로 청크, 토큰 만료 시 강제 갱신 후 1회 재시도)를 공유한다. */
 export async function fetchCafe24RefundRows(
   mallId: string,
   clientId: string,
@@ -441,18 +422,17 @@ export async function fetchCafe24RefundRows(
   dateEnd: ISODate,
 ): Promise<Cafe24RefundRow[]> {
   const chunks = chunkDateRangeForCafe24(dateStart, dateEnd)
-  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
-
-  try {
-    return await fetchAllRefundChunks(mallId, accessToken, chunks)
-  } catch (err) {
-    if (!isCafe24InvalidTokenError(err)) throw err
-    const freshToken = await getCafe24AccessToken(
-      mallId,
-      clientId,
-      clientSecret,
-      true,
-    )
-    return await fetchAllRefundChunks(mallId, freshToken, chunks)
-  }
+  return withTokenRetry(mallId, clientId, clientSecret, async (accessToken) => {
+    const rows: Cafe24RefundRow[] = []
+    for (const chunk of chunks) {
+      const raw = await fetchRefundsForSingleRange(
+        mallId,
+        accessToken,
+        chunk.start,
+        chunk.end,
+      )
+      rows.push(...raw.map(toRefundRow))
+    }
+    return rows
+  })
 }
