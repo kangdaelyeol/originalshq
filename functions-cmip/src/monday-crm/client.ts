@@ -13,6 +13,16 @@ const SUBITEM_REVENUE_COLUMN_ID = 'numeric_mm1rvgfs' // 매출액
 const SUBITEM_DISCOUNT_COLUMN_ID = 'numeric_mm19vata' // 할인액
 const SUBITEM_TOTAL_PAID_COLUMN_ID = 'formula_mm1gsc6e' // 총 결제금액(수식)
 
+// 장기 할부 이자 subitem 이름 — 고객이 할부로 결제해 카드사에 내는 이자라
+// 매장 매출이 아니다. helper.ts의 sumRows가 이 이름과 일치하는 행을 매출
+// 집계(revenue/discount/totalPaid/lineCount)에서 빼고 installmentInterest로
+// 따로 더한다.
+const INSTALLMENT_INTEREST_NAMES = new Set([
+  '12개월 장기 할부 이자',
+  '24개월 장기 할부 이자',
+  '36개월 장기 할부 이자',
+])
+
 // items_page 한 번에 몇 건씩 받을지 — Monday API 문서상 최대 500.
 const PAGE_SIZE = 500
 
@@ -193,6 +203,7 @@ function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
               SUBITEM_TOTAL_PAID_COLUMN_ID,
             ),
           ) || 0,
+        isInstallmentInterest: INSTALLMENT_INTEREST_NAMES.has(subitem.name),
       })
     }
   }

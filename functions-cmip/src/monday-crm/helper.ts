@@ -11,12 +11,20 @@ import type {
 
 const DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일']
 
-const sumRows = (rows: OfflineSaleRow[]): OfflineSaleMetricsSummary => ({
-  totalPaid: rows.reduce((s, r) => s + r.totalPaid, 0),
-  revenue: rows.reduce((s, r) => s + r.revenue, 0),
-  discount: rows.reduce((s, r) => s + r.discount, 0),
-  lineCount: rows.length,
-})
+// 할부 이자 라인은 매출이 아니라 매출 집계(revenue/discount/totalPaid/
+// lineCount)에서 빼고 installmentInterest로만 따로 더한다 — cafe24/helper.ts가
+// 취소/미결제 건을 revenueRows로 걸러내는 것과 같은 패턴.
+const sumRows = (rows: OfflineSaleRow[]): OfflineSaleMetricsSummary => {
+  const revenueRows = rows.filter((r) => !r.isInstallmentInterest)
+  const interestRows = rows.filter((r) => r.isInstallmentInterest)
+  return {
+    totalPaid: revenueRows.reduce((s, r) => s + r.totalPaid, 0),
+    revenue: revenueRows.reduce((s, r) => s + r.revenue, 0),
+    discount: revenueRows.reduce((s, r) => s + r.discount, 0),
+    lineCount: revenueRows.length,
+    installmentInterest: interestRows.reduce((s, r) => s + r.totalPaid, 0),
+  }
+}
 
 // 전체 합계
 export const summarizeTotal = (rows: OfflineSaleRow[]): OfflineSaleMetricsSummary =>

@@ -12,14 +12,19 @@ import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
 export interface OfflineRevenueMetrics {
-  /** 총 결제금액 — 매출 집계의 기준값(revenue - discount). */
+  /** 총 결제금액 — 매출 집계의 기준값(revenue - discount). 장기 할부 이자
+   * (12/24/36개월)는 여기 포함되지 않는다 — installmentInterest로 따로 집계. */
   totalPaid: number
   /** 매출액(할인 반영 전). */
   revenue: number
   /** 할인액. */
   discount: number
-  /** 결제 라인(품목/할부 이자 등) 건수 — 고객(주문) 단위가 아니라 subitem 단위. */
+  /** 매출로 집계된 결제 라인(품목) 건수 — 할부 이자 라인은 매출이 아니라서
+   * 뺀다. 고객(주문) 단위가 아니라 subitem 단위. */
   lineCount: number
+  /** 장기 할부 이자(12/24/36개월) 합계 — 고객이 할부로 결제해 카드사에 내는
+   * 이자라 매장 매출(totalPaid 등)과 분리해서 따로 집계한다. */
+  installmentInterest: number
 }
 
 export interface OfflineRevenueDateSummary extends OfflineRevenueMetrics {

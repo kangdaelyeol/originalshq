@@ -21,6 +21,7 @@ export interface OfflineSaleDoc {
   revenue: number
   discount: number
   totalPaid: number
+  isInstallmentInterest: boolean
   syncedAt: Timestamp | FieldValue
 }
 
@@ -43,6 +44,7 @@ const docToRow = (d: QueryDocumentSnapshot<DocumentData>): OfflineSaleRow => {
     revenue: x.revenue,
     discount: x.discount,
     totalPaid: x.totalPaid,
+    isInstallmentInterest: x.isInstallmentInterest,
   }
 }
 
