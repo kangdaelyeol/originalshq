@@ -55,6 +55,20 @@ const ROAS_FIELDS: readonly RoasField[] = [
     formatCompact: won,
   },
   {
+    key: 'onlineShippingFee',
+    label: '배송비',
+    format: won,
+    formatCompact: won,
+    note: '카페24 온라인 주문에 포함된 배송비입니다. 순매출(온라인 매출)은 "총매출 - 배송비 - 적립금"으로 계산해 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
+  },
+  {
+    key: 'onlinePointsSpent',
+    label: '적립금 결제',
+    format: won,
+    formatCompact: won,
+    note: '카페24 온라인 주문에서 적립금으로 결제된 금액입니다. 실제 매출이 아니라 할인으로 취급해 온라인 매출(순매출)에서 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
+  },
+  {
     key: 'offlineRevenue',
     label: '오프라인 매출',
     format: won,

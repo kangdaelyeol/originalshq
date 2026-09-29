@@ -35,6 +35,13 @@ export interface RoasMetrics {
    * roas-panel.tsx는 "ROAS 요약"(total)에만 표시하고 기간별 표/평균에는
    * 안 쓴다 — computeRoasRows/computeRoasAverage는 항상 0으로 둔다. */
   deferredBalance: number
+  /** 온라인 매출(Cafe24)에서 이미 제외된 배송비 합계 — 순매출은 "총매출 -
+   * 배송비 - 적립금"으로 정의돼있어(client/cafe24-revenue-client.ts 참고)
+   * 여기 안 포함된다. installmentInterest와 같은 이유로 참고용. */
+  onlineShippingFee: number
+  /** 온라인 매출(Cafe24)에서 이미 제외된 적립금 사용액 합계 — 매출이 아니라
+   * 할인으로 취급한다(onlineShippingFee 주석 참고). */
+  onlinePointsSpent: number
 }
 
 export interface RoasRow {
@@ -55,6 +62,8 @@ const toMetrics = (
   spend: number,
   installmentInterest = 0,
   deferredBalance = 0,
+  onlineShippingFee = 0,
+  onlinePointsSpent = 0,
 ): RoasMetrics => ({
   spend,
   offlineRevenue,
@@ -63,6 +72,8 @@ const toMetrics = (
   roas: calcRoas(offlineRevenue, onlineRevenue, spend),
   installmentInterest,
   deferredBalance,
+  onlineShippingFee,
+  onlinePointsSpent,
 })
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
@@ -78,6 +89,8 @@ export function computeRoasTotal(
     combinedInsight?.total.combined.spend ?? 0,
     offlineRevenue?.total.installmentInterest ?? 0,
     offlineRevenue?.total.deferredBalance ?? 0,
+    onlineRevenue?.total.shippingFee ?? 0,
+    onlineRevenue?.total.pointsSpent ?? 0,
   )
 }
 
@@ -95,6 +108,9 @@ export function computeRoasAverage(
         total.onlineRevenue / rowCount,
         total.spend / rowCount,
         total.installmentInterest / rowCount,
+        0,
+        total.onlineShippingFee / rowCount,
+        total.onlinePointsSpent / rowCount,
       )
     : toMetrics(0, 0, 0)
 }
@@ -136,6 +152,12 @@ export function computeRoasRows(
         m.installmentInterest,
       ]),
     )
+    const shippingByPeriod = new Map(
+      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.shippingFee]),
+    )
+    const pointsByPeriod = new Map(
+      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.pointsSpent]),
+    )
     return spendByMonth.map(
       (m): RoasRow => ({
         key: m.period,
@@ -145,6 +167,9 @@ export function computeRoasRows(
           onlineByPeriod.get(m.period) ?? 0,
           m.spend,
           interestByPeriod.get(m.period) ?? 0,
+          0,
+          shippingByPeriod.get(m.period) ?? 0,
+          pointsByPeriod.get(m.period) ?? 0,
         ),
       }),
     )
@@ -166,6 +191,18 @@ export function computeRoasRows(
         d.installmentInterest,
       ]),
     )
+    const shippingByDay = new Map(
+      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
+        d.dayOfWeek,
+        d.shippingFee,
+      ]),
+    )
+    const pointsByDay = new Map(
+      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
+        d.dayOfWeek,
+        d.pointsSpent,
+      ]),
+    )
     return combinedInsight.series.combined.byDayOfWeek.map(
       (d): RoasRow => ({
         key: d.dayOfWeek,
@@ -175,6 +212,9 @@ export function computeRoasRows(
           onlineByDay.get(d.dayOfWeek) ?? 0,
           d.spend,
           interestByDay.get(d.dayOfWeek) ?? 0,
+          0,
+          shippingByDay.get(d.dayOfWeek) ?? 0,
+          pointsByDay.get(d.dayOfWeek) ?? 0,
         ),
       }),
     )
@@ -196,6 +236,18 @@ export function computeRoasRows(
         w.installmentInterest,
       ]),
     )
+    const shippingByPeriod = new Map(
+      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
+        w.period,
+        w.shippingFee,
+      ]),
+    )
+    const pointsByPeriod = new Map(
+      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
+        w.period,
+        w.pointsSpent,
+      ]),
+    )
     return combinedInsight.series.combined.byGroupedWeek.map(
       (w): RoasRow => ({
         key: w.period,
@@ -205,6 +257,9 @@ export function computeRoasRows(
           onlineByPeriod.get(w.period) ?? 0,
           w.spend,
           interestByPeriod.get(w.period) ?? 0,
+          0,
+          shippingByPeriod.get(w.period) ?? 0,
+          pointsByPeriod.get(w.period) ?? 0,
         ),
       }),
     )
@@ -220,6 +275,12 @@ export function computeRoasRows(
   const interestByDate = new Map(
     (offlineRevenue?.byDate ?? []).map((d) => [d.date, d.installmentInterest]),
   )
+  const shippingByDate = new Map(
+    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.shippingFee]),
+  )
+  const pointsByDate = new Map(
+    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.pointsSpent]),
+  )
   return combinedInsight.series.combined.byDate.map(
     (d): RoasRow => ({
       key: d.date,
@@ -229,6 +290,9 @@ export function computeRoasRows(
         onlineByDate.get(d.date) ?? 0,
         d.spend,
         interestByDate.get(d.date) ?? 0,
+        0,
+        shippingByDate.get(d.date) ?? 0,
+        pointsByDate.get(d.date) ?? 0,
       ),
     }),
   )
