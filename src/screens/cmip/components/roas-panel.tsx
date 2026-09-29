@@ -448,7 +448,7 @@ export function RoasPanel({
         ) : (
           <>
             <div className="channel-insight__table-wrap">
-              <table className="channel-insight__table">
+              <table className="channel-insight__table channel-insight__table--roas">
                 <thead>
                   <tr>
                     <th>기간</th>

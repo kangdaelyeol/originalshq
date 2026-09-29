@@ -896,13 +896,16 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     // 보이므로, 아래에서 상태별(기본/hover/채널 펼침 행) 배경을 명시적으로
     // 깔아준다. 캠페인/adset 교차표(&--pivot)는 토글 칸이 없어 컬럼 의미가
     // 달라서(첫 칸부터 바로 지표값) 여기서 제외하고, 그쪽은 __pivot-sticky-col로
-    // 따로 처리한다. 전체 캠페인/adset 목록(&--full-list)도 토글 칸이 없는
-    // 구조(1번째=이름, 2번째부터 바로 지표값)라 같이 제외한다 — 제외 안 하면
-    // "2번째 칸(토글 옆)"용 left:28px 규칙이 여기선 "2번째 지표 칸(Impressions)"에
-    // 적용돼, 훨씬 더 넓은 1번째 칸(이름) 위로 그 칸이 겹쳐 보이는 버그가 났다.
+    // 따로 처리한다. 전체 캠페인/adset 목록(&--full-list)·매체별 테스트
+    // (&--period-test)·ROAS(&--roas)도 토글 칸이 없는 구조(1번째 칸부터
+    // 이름/지표/기간 라벨)라 같이 제외한다 — 제외 안 하면 "2번째 칸(토글 옆)"용
+    // left:28px 규칙이 이 표들의 1번째 칸(가변 폭 라벨) 옆 칸에 잘못 적용돼,
+    // 1번째 칸이 28px보다 넓을 때 그 위로 2번째 칸이 겹쳐 보이는 버그가 났다
+    // (ROAS 표는 "일별"은 짧지만 "주차별"/"월별"로 바꾸면 라벨이 길어지는 게
+    // 바로 이 경우였다).
     &:not(.channel-insight__table--pivot):not(.channel-insight__table--full-list):not(
         .channel-insight__table--period-test
-      ) {
+      ):not(.channel-insight__table--roas) {
       th:first-child,
       td:first-child,
       th:nth-child(2),
@@ -1064,6 +1067,32 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   // full-list처럼 1번째 칸만 sticky+배경+왼쪽 정렬로 두고 2번째 칸은 나머지
   // 값 칸들과 똑같은 평범한 오른쪽 정렬 칸으로 되돌린다.
   &__table--period-test {
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      text-align: left !important;
+    }
+
+    td:first-child {
+      background-color: $color-td-first;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      text-align: right !important;
+    }
+  }
+
+  // ROAS 탭 표 — period-test와 같은 이유(토글 칸이 없음)이자 같은 버그(1번째
+  // 칸 "기간" 라벨이 그룹핑에 따라 폭이 들쭉날쭉함 — "일별"은 "9/1"처럼
+  // 짧지만 "주차별"/"월별"로 바꾸면 "9/1~9/7"·"2026.09"로 길어진다)로, 기본
+  // 규칙의 고정폭(left: 28px) 2번째 칸 sticky를 그대로 쓰면 1번째 칸이 그보다
+  // 넓어질 때 2번째 칸이 그 위로 겹쳐 보인다. full-list/period-test와 같은
+  // 해법 — 1번째 칸만 sticky로 두고, 2번째 칸은 나머지 값 칸들과 같은 평범한
+  // (고정되지 않는) 오른쪽 정렬 칸으로 둔다.
+  &__table--roas {
     th:first-child,
     td:first-child {
       position: sticky;
