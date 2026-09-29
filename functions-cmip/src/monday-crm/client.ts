@@ -259,3 +259,36 @@ export const fetchOfflineSalesFromMonday = async (
   const items = await fetchAllItems(apiKey)
   return buildOfflineSaleRows(items)
 }
+
+/** 디버그 전용 — buildOfflineSaleRows가 "통째로 건너뛰는 item"(분할납부 회차
+ * 수금 건)과 "매출에서 빼고 deferredBalance로 따로 잡는 subitem이 있는
+ * item"(계약금/분할납부 board relation)만 걸러서 원본 그대로 돌려준다.
+ * cafe24/auth.ts의 debugFetchCafe24OrdersRaw와 같은 자리 — 정식 집계 경로
+ * (fetchOfflineSalesFromMonday)와는 별개로, 실 데이터에서 이 둘의 계산이
+ * 눈으로 봐도 맞는지 대조해보기 위한 것이다. */
+export const debugFetchOfflineSalesRaw = async (
+  apiKey: string,
+): Promise<{
+  installmentPaymentItems: MondayItem[]
+  deferredBalanceItems: MondayItem[]
+}> => {
+  const items = await fetchAllItems(apiKey)
+
+  const installmentPaymentItems = items.filter(
+    (item) =>
+      columnDisplayValue(item.column_values, ITEM_LOOKUP_COLUMN_ID) ===
+      INSTALLMENT_PAYMENT_ITEM_LOOKUP_VALUE,
+  )
+  const deferredBalanceItems = items.filter((item) =>
+    item.subitems.some((subitem) =>
+      DEFERRED_BALANCE_RELATION_VALUES.has(
+        columnDisplayValue(
+          subitem.column_values,
+          SUBITEM_BOARD_RELATION_COLUMN_ID,
+        ),
+      ),
+    ),
+  )
+
+  return { installmentPaymentItems, deferredBalanceItems }
+}

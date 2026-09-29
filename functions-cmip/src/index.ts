@@ -49,6 +49,7 @@ import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
 import {
   getOfflineRevenue as fetchOfflineRevenue,
   syncOfflineSalesFromMonday,
+  debugFetchOfflineSalesRaw,
 } from './monday-crm'
 import {
   buildCafe24AuthUrl,
@@ -829,6 +830,37 @@ export const syncOfflineSales = onRequest(
           err instanceof Error
             ? err.message
             : 'Monday 오프라인 매출 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 디버그 전용 — "분할납부" item(통째로 건너뜀)과 "계약금/분할납부" board
+ * relation이 걸린 subitem이 있는 item(그 subitem만 매출에서 빼고
+ * deferredBalance로 집계)을 원본 그대로 돌려준다. 정식 집계
+ * (syncOfflineSales/getOfflineRevenue)와 별개로, 실 데이터에서 이 계산이
+ * 맞는지 눈으로 대조해보기 위한 것 — cafe24의 debugCafe24OrdersRaw와 같은
+ * 자리.
+ */
+export const debugOfflineSalesRaw = onRequest(
+  { secrets: [mondayApiKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      try {
+        const result = await debugFetchOfflineSalesRaw(mondayApiKey.value())
+        res.status(200).send(result)
+      } catch (err) {
+        sendError(
+          res,
+          500,
+          err instanceof Error ? err.message : 'Monday 디버그 조회 실패',
         )
       }
     })

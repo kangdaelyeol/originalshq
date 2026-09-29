@@ -5,6 +5,7 @@
 // 인사이트"를 그때그때 실시간으로 불러오는 반면, 이건 Monday CRM 보드에
 // 쌓인 오프라인 매출 원장을 Firestore로 동기화해두고 그걸 읽어 집계한다.
 import { fetchOfflineSalesFromMonday } from './client'
+export { debugFetchOfflineSalesRaw } from './client'
 import { fetchOfflineSaleRows, resyncOfflineSales } from './firestore'
 import {
   summarizeByDate,
