@@ -23,6 +23,7 @@ import {
   fetchCafe24RefundRows,
 } from './client'
 import {
+  deleteCafe24Refunds,
   fetchCafe24OrderRowsFromDb,
   fetchCafe24RefundRowsFromDb,
   upsertCafe24Orders,
@@ -42,27 +43,42 @@ import type { ISODate } from '../types'
  * market_id가 NCHECKOUT(네이버페이)인 주문은 카페24 자체 PG가 아니라
  * 네이버페이 쪽에서 환불이 처리돼서 /admin/refunds에 아예 안 남는다(6~9월
  * 데이터로 검증: NCHECKOUT 취소 7건 전부 누락, 합계 26,163,000원 — 무시하기엔
- * 너무 크다). realRefundOrderIds에 없는 주문(=실제 환불 목록에 안 잡힌 주문)
- * 중 cancelRefundAmount가 있는 것만 Cafe24RefundRow로 합성한다 — refundCode를
- * `ORDER-{orderId}`로 고정해서 재동기화할 때마다 같은 문서를 덮어쓰게 한다
- * (실제 refund_code와 겹칠 일 없음, 전부 "C..." 형태). */
-function buildFallbackRefundRows(
+ * 너무 크다). refundCode를 `ORDER-{orderId}`로 고정해서 재동기화할 때마다
+ * 같은 문서를 덮어쓰게 한다(실제 refund_code와 겹칠 일 없음, 전부 "C..."
+ * 형태).
+ *
+ * cancelRefundAmount가 있는(=취소돼서 initial-actual 델타가 생긴) 주문을
+ * 전부 후보로 모은 다음, 실제로 fallback이 필요한 것(paid && 아직
+ * /admin/refunds에 안 잡힌 것)과 더 이상 필요 없어진 것(paid=F이거나 나중에
+ * 실제 환불이 잡힌 것)을 나눈다 — 후자는 예전 동기화에서 만들어진
+ * ORDER-{orderId} 문서가 남아있을 수 있어 지워야 한다(upsert만으로는 예전에
+ * 잘못/불필요하게 만들어둔 문서가 안 없어진다). paid 필터가 필요한 이유: 8월
+ * 월간 집계 검증 중 발견한 버그 — 결제 전 취소된 주문도 initial_order_amount는
+ * 값이 있고 actual은 0이라 cancelRefundAmount가 계산되는데, 실제로 받은 적
+ * 없는 돈이라 환불이 아니다(8/25에 729만원짜리 유령 환불로 나타나 발견 —
+ * 예전 order.cancel_date 기반 refundRowsInRange엔 이 필터가 있었는데
+ * /admin/refunds로 전환하며 옮기는 걸 빠뜨렸었다). */
+function buildFallbackRefunds(
   orderRows: readonly Cafe24OrderRow[],
   realRefundOrderIds: ReadonlySet<string>,
-): Cafe24RefundRow[] {
-  const fallback: Cafe24RefundRow[] = []
+): { rows: Cafe24RefundRow[]; staleRefundCodes: string[] } {
+  const rows: Cafe24RefundRow[] = []
+  const staleRefundCodes: string[] = []
   for (const row of orderRows) {
-    if (row.cancelRefundAmount <= 0) continue
-    if (row.cancelDate == null) continue
-    if (realRefundOrderIds.has(row.orderId)) continue
-    fallback.push({
-      refundCode: `ORDER-${row.orderId}`,
-      orderId: row.orderId,
-      refundDate: row.cancelDate,
-      amount: row.cancelRefundAmount,
-    })
+    if (row.cancelRefundAmount <= 0 || row.cancelDate == null) continue
+    const needsFallback = row.paid && !realRefundOrderIds.has(row.orderId)
+    if (needsFallback) {
+      rows.push({
+        refundCode: `ORDER-${row.orderId}`,
+        orderId: row.orderId,
+        refundDate: row.cancelDate,
+        amount: row.cancelRefundAmount,
+      })
+    } else {
+      staleRefundCodes.push(`ORDER-${row.orderId}`)
+    }
   }
-  return fallback
+  return { rows, staleRefundCodes }
 }
 
 /** dateStart~dateEnd 구간의 Cafe24 주문과 환불을 둘 다 가져와 Firestore
@@ -84,7 +100,11 @@ export async function syncCafe24Orders(
   clientSecret: string,
   dateStart: ISODate,
   dateEnd: ISODate,
-): Promise<{ upsertedOrders: number; upsertedRefunds: number }> {
+): Promise<{
+  upsertedOrders: number
+  upsertedRefunds: number
+  deletedStaleRefunds: number
+}> {
   const orderRowsByOrderDate = await fetchCafe24OrderRows(
     mallId,
     clientId,
@@ -113,7 +133,7 @@ export async function syncCafe24Orders(
   const orderRows = Array.from(orderRowsById.values())
 
   const realRefundOrderIds = new Set(refundRows.map((r) => r.orderId))
-  const fallbackRefundRows = buildFallbackRefundRows(
+  const { rows: fallbackRefundRows, staleRefundCodes } = buildFallbackRefunds(
     orderRows,
     realRefundOrderIds,
   )
@@ -123,7 +143,12 @@ export async function syncCafe24Orders(
     ...refundRows,
     ...fallbackRefundRows,
   ])
-  return { upsertedOrders: orders.upserted, upsertedRefunds: refunds.upserted }
+  const deletedStale = await deleteCafe24Refunds(staleRefundCodes)
+  return {
+    upsertedOrders: orders.upserted,
+    upsertedRefunds: refunds.upserted,
+    deletedStaleRefunds: deletedStale.deleted,
+  }
 }
 
 /** Meta의 getMetaInsight, Monday CRM의 getOfflineRevenue와 같은 자리 —

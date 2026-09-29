@@ -147,6 +147,28 @@ export const upsertCafe24Refunds = async (
   return { upserted: rows.length }
 }
 
+/** refundCode 목록으로 cafe24Refunds 문서를 지운다 — index.ts의
+ * buildFallbackRefundRows가 만드는 `ORDER-{orderId}` 합성 문서 전용 정리용.
+ * 실제 카페24 환불(refund_code, "C..." 형태)은 이 함수로 지울 일이 없다 —
+ * 합성 문서만 우리 로직(예: paid 필터) 변경에 따라 더 이상 조건을 만족하지
+ * 않게 될 수 있는데, upsert만으로는 예전에 잘못 만들어둔 문서가 안 지워지고
+ * 남는다(8월 월간 집계 검증 중 발견: 미결제 취소 주문의 유령 환불 문서가
+ * paid 필터 추가 후에도 재동기화만으로는 안 없어졌다). */
+export const deleteCafe24Refunds = async (
+  refundCodes: readonly string[],
+): Promise<{ deleted: number }> => {
+  if (refundCodes.length === 0) return { deleted: 0 }
+
+  const col = cafe24RefundsCol()
+  const writer = db.bulkWriter()
+  for (const code of refundCodes) {
+    writer.delete(col.doc(code))
+  }
+  await writer.close()
+
+  return { deleted: refundCodes.length }
+}
+
 /** [startISO, endISO](포함) 구간에 완료 처리된 환불 행 — refundDate 한
  * 필드에 대한 범위 쿼리. */
 export const fetchCafe24RefundRowsFromDb = async (
