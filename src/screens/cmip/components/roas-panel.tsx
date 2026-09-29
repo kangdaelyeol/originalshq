@@ -29,6 +29,10 @@ interface RoasField {
   label: string
   format: (v: number) => string
   formatCompact: (v: number) => string
+  /** 있으면 라벨 옆에 "?" 아이콘을 달아 호버 시 설명을 보여준다 —
+   * metric-fields.ts의 MetricField.note, channel-insight.tsx의
+   * SortableMetricHeader와 같은 패턴. */
+  note?: string
 }
 
 // MetricField(metric-fields.ts)와 같은 모양이지만, ROAS/오프라인 매출은
@@ -41,6 +45,13 @@ const ROAS_FIELDS: readonly RoasField[] = [
     label: '오프라인 매출',
     format: won,
     formatCompact: won,
+  },
+  {
+    key: 'installmentInterest',
+    label: '할부 이자',
+    format: won,
+    formatCompact: won,
+    note: '고객이 장기 할부(12/24/36개월)로 결제하면서 카드사에 낸 이자입니다. 매장 매출이 아니라 오프라인 매출·ROAS 계산에서 이미 제외되어 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
   },
   {
     key: 'onlineRevenue',
@@ -56,6 +67,46 @@ const ROAS_FIELDS: readonly RoasField[] = [
   },
   { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
 ]
+
+// channel-insight.tsx의 InfoIcon과 같은 모양 — roas-panel.tsx 전용으로 따로
+// 둔다(single-select-dropdown.tsx의 ChevronIcon과 같은 모듈 독립성 이유).
+function InfoIcon() {
+  return (
+    <svg
+      className="channel-insight__info-icon"
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth={1.3} />
+      <path
+        d="M8 7.2v4"
+        stroke="currentColor"
+        strokeWidth={1.3}
+        strokeLinecap="round"
+      />
+      <circle cx="8" cy="4.8" r="0.9" fill="currentColor" />
+    </svg>
+  )
+}
+
+/** 필드 라벨 — note가 있으면(현재 installmentInterest만) 옆에 "?" 아이콘을
+ * 달아 호버(또는 포커스)하면 설명을 보여준다. ROAS 요약 카드·기간별 추이 표
+ * 헤더가 공유한다. */
+function RoasFieldLabel({ field }: { field: RoasField }) {
+  if (!field.note) return <>{field.label}</>
+  return (
+    <>
+      {field.label}
+      <span className="channel-insight__info" tabIndex={0}>
+        <InfoIcon />
+        <span className="channel-insight__info-tooltip" role="tooltip">
+          {field.note}
+        </span>
+      </span>
+    </>
+  )
+}
 
 type DeltaDir = 'up' | 'down' | 'flat'
 
@@ -310,7 +361,9 @@ export function RoasPanel({
         <div className="channel-insight__summary-grid">
           {ROAS_FIELDS.map((f) => (
             <div key={f.key} className="channel-insight__kpi">
-              <span className="channel-insight__kpi-label">{f.label}</span>
+              <span className="channel-insight__kpi-label">
+                <RoasFieldLabel field={f} />
+              </span>
               <span className="channel-insight__kpi-value">
                 {f.format(total[f.key])}
               </span>
@@ -343,7 +396,9 @@ export function RoasPanel({
                   <tr>
                     <th>기간</th>
                     {ROAS_FIELDS.map((f) => (
-                      <th key={f.key}>{f.label}</th>
+                      <th key={f.key}>
+                        <RoasFieldLabel field={f} />
+                      </th>
                     ))}
                   </tr>
                 </thead>
