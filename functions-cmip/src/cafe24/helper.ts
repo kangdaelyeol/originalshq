@@ -69,6 +69,7 @@ interface GrossTotals {
   grossPayment: number
   shippingFee: number
   pointsSpent: number
+  couponDiscount: number
   orderCount: number
 }
 
@@ -85,6 +86,7 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
   grossPayment: rows.reduce((s, r) => s + r.grossPayment, 0),
   shippingFee: rows.reduce((s, r) => s + r.shippingFee, 0),
   pointsSpent: rows.reduce((s, r) => s + r.pointsSpent, 0),
+  couponDiscount: rows.reduce((s, r) => s + r.couponDiscount, 0),
   orderCount: rows.length,
 })
 
@@ -119,6 +121,7 @@ const combine = (
     refundAmount: refund.refundAmount,
     shippingFee,
     pointsSpent: gross.pointsSpent,
+    couponDiscount: gross.couponDiscount,
     additionalShippingFee: additional.additionalShippingFee,
     orderCount: gross.orderCount,
     refundCount: refund.refundCount,

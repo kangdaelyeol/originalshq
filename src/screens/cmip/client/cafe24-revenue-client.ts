@@ -37,6 +37,10 @@ export interface Cafe24RevenueMetrics {
   /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 적립금
    * 사용액 합계(매출 아님, 할인 취급). */
   pointsSpent: number
+  /** 참고용 — grossPayment에서 이미 제외된 쿠폰 등 주문 단위 할인 합계.
+   * 지금까지 이 매장이 실제로 쓴 건 쿠폰뿐이라 "쿠폰할인"으로 부른다(7/7
+   * 환불 건에서 발견 — 이걸 안 빼서 환불액이 100,000원 과다 집계됐었다). */
+  couponDiscount: number
   /** 참고용 — grossPayment에 포함된 반품 추가배송비 합계만 따로(반품 접수일
    * 기준). 반품 시 "반품배송비 구매자부담"으로 별도 결제가 일어나는 경우가
    * 있는데, 원 주문 결제에도 환불에도 안 잡히는 제3의 현금흐름이라 따로

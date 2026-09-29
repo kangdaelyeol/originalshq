@@ -69,6 +69,13 @@ const ROAS_FIELDS: readonly RoasField[] = [
     note: '카페24 온라인 주문에서 적립금으로 결제된 금액입니다. 실제 매출이 아니라 할인으로 취급해 온라인 매출(순매출)에서 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
   },
   {
+    key: 'onlineCouponDiscount',
+    label: '쿠폰할인',
+    format: won,
+    formatCompact: won,
+    note: '카페24 온라인 주문에 적용된 쿠폰 등 주문 단위 할인 금액입니다. 온라인 매출(순매출)에서 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 할인됐는지만 보여줍니다.',
+  },
+  {
     key: 'offlineRevenue',
     label: '오프라인 매출',
     format: won,

@@ -23,6 +23,7 @@ export interface Cafe24OrderDoc {
   grossPayment: number
   shippingFee: number
   pointsSpent: number
+  couponDiscount: number
   additionalShippingFee: number
   cancelRefundAmount: number
   syncedAt: string
@@ -48,6 +49,7 @@ const docToRow = (d: QueryDocumentSnapshot<DocumentData>): Cafe24OrderRow => {
     grossPayment: x.grossPayment,
     shippingFee: x.shippingFee,
     pointsSpent: x.pointsSpent,
+    couponDiscount: x.couponDiscount ?? 0,
     additionalShippingFee: x.additionalShippingFee ?? 0,
     cancelRefundAmount: x.cancelRefundAmount ?? 0,
   }

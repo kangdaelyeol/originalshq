@@ -92,6 +92,19 @@ function netAmount(a: Cafe24AmountBreakdown): number {
   return total
 }
 
+// OTHER_DISCOUNT_FIELDS 합계 — grossPayment 계산에서 이미 빠져있지만(netAmount),
+// 사용자가 ROAS 요약에서 얼마가 할인으로 빠졌는지 참고용으로 보고 싶어해서
+// pointsSpent/shippingFee와 같은 방식으로 따로 노출한다. 이 매장에서 지금까지
+// 실제로 값이 찍힌 건 coupon_discount_price뿐이라 "쿠폰할인"으로 부르지만,
+// 다른 주문 단위 할인이 생기면 자동으로 여기 합산된다.
+function couponDiscount(a: Cafe24AmountBreakdown): number {
+  let total = 0
+  for (const field of OTHER_DISCOUNT_FIELDS) {
+    total += Number(a[field]) || 0
+  }
+  return total
+}
+
 function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   const initialShipping = Number(raw.initial_order_amount.shipping_fee) || 0
   const actualShipping = Number(raw.actual_order_amount.shipping_fee) || 0
@@ -108,6 +121,7 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
     grossPayment: initialNet,
     shippingFee: initialShipping,
     pointsSpent: Number(raw.initial_order_amount.points_spent_amount) || 0,
+    couponDiscount: couponDiscount(raw.initial_order_amount),
     // 반품배송비 추가결제 감지 — actual이 initial보다 커진 경우만(작아지는
     // 건 일반 취소/환불이라 여기선 무시, refunds 리소스가 이미 담당).
     additionalShippingFee: Math.max(0, actualShipping - initialShipping),

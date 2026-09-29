@@ -42,6 +42,9 @@ export interface RoasMetrics {
   /** 온라인 매출(Cafe24)에서 이미 제외된 적립금 사용액 합계 — 매출이 아니라
    * 할인으로 취급한다(onlineShippingFee 주석 참고). */
   onlinePointsSpent: number
+  /** 온라인 매출(Cafe24)에서 이미 제외된 쿠폰 등 주문 단위 할인 합계
+   * (onlineShippingFee와 같은 이유로 참고용). */
+  onlineCouponDiscount: number
 }
 
 export interface RoasRow {
@@ -64,6 +67,7 @@ const toMetrics = (
   deferredBalance = 0,
   onlineShippingFee = 0,
   onlinePointsSpent = 0,
+  onlineCouponDiscount = 0,
 ): RoasMetrics => ({
   spend,
   offlineRevenue,
@@ -74,6 +78,7 @@ const toMetrics = (
   deferredBalance,
   onlineShippingFee,
   onlinePointsSpent,
+  onlineCouponDiscount,
 })
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
@@ -91,6 +96,7 @@ export function computeRoasTotal(
     offlineRevenue?.total.deferredBalance ?? 0,
     onlineRevenue?.total.shippingFee ?? 0,
     onlineRevenue?.total.pointsSpent ?? 0,
+    onlineRevenue?.total.couponDiscount ?? 0,
   )
 }
 
@@ -111,6 +117,7 @@ export function computeRoasAverage(
         0,
         total.onlineShippingFee / rowCount,
         total.onlinePointsSpent / rowCount,
+        total.onlineCouponDiscount / rowCount,
       )
     : toMetrics(0, 0, 0)
 }
@@ -158,6 +165,9 @@ export function computeRoasRows(
     const pointsByPeriod = new Map(
       (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.pointsSpent]),
     )
+    const couponByPeriod = new Map(
+      (onlineRevenue?.byMonth ?? []).map((m) => [m.period, m.couponDiscount]),
+    )
     return spendByMonth.map(
       (m): RoasRow => ({
         key: m.period,
@@ -170,6 +180,7 @@ export function computeRoasRows(
           0,
           shippingByPeriod.get(m.period) ?? 0,
           pointsByPeriod.get(m.period) ?? 0,
+          couponByPeriod.get(m.period) ?? 0,
         ),
       }),
     )
@@ -203,6 +214,12 @@ export function computeRoasRows(
         d.pointsSpent,
       ]),
     )
+    const couponByDay = new Map(
+      (onlineRevenue?.byDayOfWeek ?? []).map((d) => [
+        d.dayOfWeek,
+        d.couponDiscount,
+      ]),
+    )
     return combinedInsight.series.combined.byDayOfWeek.map(
       (d): RoasRow => ({
         key: d.dayOfWeek,
@@ -215,6 +232,7 @@ export function computeRoasRows(
           0,
           shippingByDay.get(d.dayOfWeek) ?? 0,
           pointsByDay.get(d.dayOfWeek) ?? 0,
+          couponByDay.get(d.dayOfWeek) ?? 0,
         ),
       }),
     )
@@ -248,6 +266,12 @@ export function computeRoasRows(
         w.pointsSpent,
       ]),
     )
+    const couponByPeriod = new Map(
+      (onlineRevenue?.byGroupedWeek ?? []).map((w) => [
+        w.period,
+        w.couponDiscount,
+      ]),
+    )
     return combinedInsight.series.combined.byGroupedWeek.map(
       (w): RoasRow => ({
         key: w.period,
@@ -260,6 +284,7 @@ export function computeRoasRows(
           0,
           shippingByPeriod.get(w.period) ?? 0,
           pointsByPeriod.get(w.period) ?? 0,
+          couponByPeriod.get(w.period) ?? 0,
         ),
       }),
     )
@@ -281,6 +306,9 @@ export function computeRoasRows(
   const pointsByDate = new Map(
     (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.pointsSpent]),
   )
+  const couponByDate = new Map(
+    (onlineRevenue?.byDate ?? []).map((d) => [d.date, d.couponDiscount]),
+  )
   return combinedInsight.series.combined.byDate.map(
     (d): RoasRow => ({
       key: d.date,
@@ -293,6 +321,7 @@ export function computeRoasRows(
         0,
         shippingByDate.get(d.date) ?? 0,
         pointsByDate.get(d.date) ?? 0,
+        couponByDate.get(d.date) ?? 0,
       ),
     }),
   )

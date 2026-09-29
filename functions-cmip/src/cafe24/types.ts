@@ -45,6 +45,12 @@ export interface Cafe24OrderRow {
    * 우리 순매출이 아니라 할인으로 취급 — 매장 자체 적립금만 해당, 결제수단
    * 자체가 다른 네이버페이 등은 여기 안 걸린다). */
   pointsSpent: number
+  /** 참고용 — grossPayment에서 이미 제외된 주문 단위 할인 합계(쿠폰·멤버십·
+   * 세트상품할인 등, client.ts의 OTHER_DISCOUNT_FIELDS). 지금까지 이 매장이
+   * 실제로 쓴 건 쿠폰뿐이라 "쿠폰할인"으로 부른다(7/7 환불 건에서 발견 —
+   * coupon_discount_price 100,000원을 처음엔 안 빼서 환불액이 과다
+   * 집계됐었다). */
+  couponDiscount: number
   /** 반품 처리 중 추가로 결제받은 배송비(actual_order_amount.shipping_fee가
    * initial보다 커진 만큼) — 대부분 0. 8/21 조사에서 발견: 반품 접수 시
    * "반품배송비 구매자부담"으로 별도 카드결제가 일어나는 경우가 있는데
@@ -101,6 +107,9 @@ export interface Cafe24MetricsSummary {
   /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 적립금
    * 사용액 합계. */
   pointsSpent: number
+  /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 쿠폰 등
+   * 주문 단위 할인 합계(Cafe24OrderRow.couponDiscount 주석 참고). */
+  couponDiscount: number
   /** 참고용 — grossPayment/shippingFee에 포함된 반품 추가배송비 합계만 따로
    * (반품 처리일 기준). */
   additionalShippingFee: number
