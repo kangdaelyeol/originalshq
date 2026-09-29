@@ -70,6 +70,7 @@ interface GrossTotals {
   shippingFee: number
   pointsSpent: number
   couponDiscount: number
+  marketDiscount: number
   orderCount: number
 }
 
@@ -87,6 +88,7 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
   shippingFee: rows.reduce((s, r) => s + r.shippingFee, 0),
   pointsSpent: rows.reduce((s, r) => s + r.pointsSpent, 0),
   couponDiscount: rows.reduce((s, r) => s + r.couponDiscount, 0),
+  marketDiscount: rows.reduce((s, r) => s + r.marketDiscount, 0),
   orderCount: rows.length,
 })
 
@@ -100,14 +102,14 @@ const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
 })
 
 /** 결제(paymentDate 기준) + 반품 추가배송비(cancelDate 기준)를 더해 총매출을
- * 내고, 여기서 배송비와 환불(refundDate 기준)을 빼서 순매출을 낸다 —
- * 적립금(pointsSpent)은 이미 grossPayment 계산 시점(client.ts의 netAmount)
- * 에서 빠져있어서 여기서 또 뺄 게 없다. 배송비는 택배사로 나가는 실비
- * 통과항목이고 적립금은 우리가 준 할인이라 성격이 달라 매출 정의(순매출 =
- * 상품 매출만)에서 둘 다 빼되 지표로는 따로 노출한다(shippingFee/pointsSpent
- * 필드 참고, 합치지 않기로 함). 이 함수가 사실상 이 파일의 핵심이고, 나머지
- * summarizeBy* 함수들은 전부 "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이
- * 함수로 합친다. */
+ * 내고, 여기서 배송비와 환불(refundDate 기준)을 빼서 순매출을 낸다 — 배송비는
+ * 택배사로 나가는 실비 통과항목이라 뺀다. 적립금(pointsSpent)은 예전엔
+ * "우리가 준 할인"으로 취급해 같이 뺐었는데, 카페24 관리자 화면(결제/환불
+ * 양쪽 다 적립금 포함)과 맞추기 위해 지금은 grossPayment/refundAmount 계산
+ * 단계(client.ts)에서부터 이미 포함시키고 있어 여기서 따로 뺄 게 없다 —
+ * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다. 이
+ * 함수가 사실상 이 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부
+ * "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
 const combine = (
   gross: GrossTotals,
   refund: RefundTotals,
@@ -122,6 +124,7 @@ const combine = (
     shippingFee,
     pointsSpent: gross.pointsSpent,
     couponDiscount: gross.couponDiscount,
+    marketDiscount: gross.marketDiscount,
     additionalShippingFee: additional.additionalShippingFee,
     orderCount: gross.orderCount,
     refundCount: refund.refundCount,

@@ -26,8 +26,12 @@ const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
 const pct2 = (v: number): string => `${num2(v)}%`
 
 interface RoasField {
-  key: keyof RoasMetrics
+  /** React key용 — RoasMetrics의 실제 필드일 수도(예: 'roas'), 여러 필드를
+   * 합친 파생값일 수도 있다(예: 'offlineTotalRevenue') — 그래서 getValue로
+   * 값을 뽑고 key는 식별자로만 쓴다. */
+  key: string
   label: string
+  getValue: (m: RoasMetrics) => number
   format: (v: number) => string
   formatCompact: (v: number) => string
   /** 있으면 라벨 옆에 "?" 아이콘을 달아 호버 시 설명을 보여준다 —
@@ -36,70 +40,122 @@ interface RoasField {
   note?: string
 }
 
-// MetricField(metric-fields.ts)와 같은 모양이지만, ROAS/오프라인 매출은
-// 광고 채널의 MetricsSummary에 없는 값이라(offlineRevenue, roas) 그 목록에
-// 끼워 넣지 않고 이 탭 전용으로 따로 둔다.
+// "ROAS 요약"과 "기간별 추이" 표가 공유하는 핵심 지표 — ROAS 계산에 직접
+// 쓰이는 것들만 남긴다(광고비 대비 매출을 보는 화면이라, 배송비/적립금/
+// 쿠폰할인/할부이자 같은 세부 항목은 아래 OFFLINE_FIELDS/ONLINE_FIELDS의
+// 전용 표로 옮겼다).
 const ROAS_FIELDS: readonly RoasField[] = [
-  { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
+  { key: 'roas', label: 'ROAS', getValue: (m) => m.roas, format: pct2, formatCompact: pct2 },
   {
     key: 'totalRevenue',
     label: '총 매출',
+    getValue: (m) => m.totalRevenue,
     format: won,
     formatCompact: won,
   },
-  { key: 'spend', label: '광고비', format: won, formatCompact: won },
+  { key: 'spend', label: '광고비', getValue: (m) => m.spend, format: won, formatCompact: won },
   {
     key: 'onlineRevenue',
     label: '온라인 매출',
+    getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-  },
-  {
-    key: 'onlineShippingFee',
-    label: '배송비',
-    format: won,
-    formatCompact: won,
-    note: '카페24 온라인 주문에 포함된 배송비입니다. 순매출(온라인 매출)은 "총매출 - 배송비 - 적립금"으로 계산해 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
-  },
-  {
-    key: 'onlinePointsSpent',
-    label: '적립금 결제',
-    format: won,
-    formatCompact: won,
-    note: '카페24 온라인 주문에서 적립금으로 결제된 금액입니다. 실제 매출이 아니라 할인으로 취급해 온라인 매출(순매출)에서 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
-  },
-  {
-    key: 'onlineCouponDiscount',
-    label: '쿠폰할인',
-    format: won,
-    formatCompact: won,
-    note: '카페24 온라인 주문에 적용된 쿠폰 등 주문 단위 할인 금액입니다. 온라인 매출(순매출)에서 이미 제외돼 있고, 이 칸은 참고용으로 얼마가 할인됐는지만 보여줍니다.',
   },
   {
     key: 'offlineRevenue',
     label: '오프라인 매출',
+    getValue: (m) => m.offlineRevenue,
+    format: won,
+    formatCompact: won,
+  },
+]
+
+// "오프라인 매출" 전용 표 — Monday CRM 매장 결제 내역의 총매출/순매출/할부이자
+// 구성을 따로 보여준다. offlineTotalRevenue는 저장된 필드가 아니라
+// offlineRevenue(할부이자 제외 순매출)+installmentInterest를 더해 되돌린
+// 파생값이다.
+const OFFLINE_FIELDS: readonly RoasField[] = [
+  {
+    key: 'offlineTotalRevenue',
+    label: '오프라인 총매출',
+    getValue: (m) => m.offlineRevenue + m.installmentInterest,
+    format: won,
+    formatCompact: won,
+    note: '오프라인 매출 + 할부이자 — 할부이자를 다시 더한 총액입니다.',
+  },
+  {
+    key: 'offlineRevenue',
+    label: '오프라인 매출',
+    getValue: (m) => m.offlineRevenue,
     format: won,
     formatCompact: won,
   },
   {
     key: 'installmentInterest',
-    label: '할부 이자',
+    label: '할부이자',
+    getValue: (m) => m.installmentInterest,
     format: won,
     formatCompact: won,
     note: '고객이 장기 할부(12/24/36개월)로 결제하면서 카드사에 낸 이자입니다. 매장 매출이 아니라 오프라인 매출·ROAS 계산에서 이미 제외되어 있고, 이 칸은 참고용으로 얼마가 빠졌는지만 보여줍니다.',
   },
 ]
 
-// "ROAS 요약"에만 추가로 붙는 카드 — ROAS_FIELDS와 달리 "기간별 추이" 표
-// 헤더에는 안 쓴다. 미수금(계약 체결 시점에 한 번만 생기는 값)은 기간별로
-// 쪼개 보여줄 성격의 지표가 아니라 조회 기간 전체 합계 하나만 의미가 있다.
-const SUMMARY_ONLY_FIELDS: readonly RoasField[] = [
+// "카페24 온라인 매출" 전용 표 — 순매출(온라인 매출)에서 빠진 배송비·쿠폰할인·
+// 마켓할인을 다시 더해 "총매출"을 되돌려 보여주고, 각 구성요소도 따로
+// 보여준다. 적립금(onlinePointsSpent)은 여기 안 더한다 — 카페24 관리자
+// 화면과 맞추기 위해 순매출(onlineRevenue) 계산 자체에 이미 포함돼 있어서
+// (client.ts의 netAmount 주석 참고) 다시 더하면 이중 계산이 된다. 그래도
+// 얼마가 적립금으로 결제됐는지는 참고용으로 계속 같이 보여준다.
+const ONLINE_FIELDS: readonly RoasField[] = [
   {
-    key: 'deferredBalance',
-    label: '미수금',
-    format: (v) => won(Math.abs(v)),
-    formatCompact: (v) => won(Math.abs(v)),
-    note: '계약 체결일에 상품가 전체를 매출로 인식하면서, 아직 걷지 못하고 이후 분할납부로 받을 예정인 잔금 총액입니다(장기 할부 계약 기준). 기간별로 쪼개면 의미가 없어 조회 기간 전체 합계만 보여줍니다.',
+    key: 'onlineTotalRevenue',
+    label: '총매출',
+    getValue: (m) =>
+      m.onlineRevenue +
+      m.onlineShippingFee +
+      m.onlineCouponDiscount +
+      m.onlineMarketDiscount,
+    format: won,
+    formatCompact: won,
+    note: '매출액 + 배송비 + 쿠폰할인 + 마켓할인 — 순매출 계산에서 뺀 항목들을 다시 더한 총액입니다(적립금은 순매출에 이미 포함돼 있어 안 더함).',
+  },
+  {
+    key: 'onlineRevenue',
+    label: '매출액',
+    getValue: (m) => m.onlineRevenue,
+    format: won,
+    formatCompact: won,
+    note: '순매출 = 총매출 - 배송비 - 쿠폰할인 - 마켓할인(적립금은 포함).',
+  },
+  {
+    key: 'onlineShippingFee',
+    label: '배송비',
+    getValue: (m) => m.onlineShippingFee,
+    format: won,
+    formatCompact: won,
+  },
+  {
+    key: 'onlinePointsSpent',
+    label: '적립금',
+    getValue: (m) => m.onlinePointsSpent,
+    format: won,
+    formatCompact: won,
+    note: '참고용 — 매출액(순매출)에 이미 포함된 적립금 결제 금액입니다.',
+  },
+  {
+    key: 'onlineCouponDiscount',
+    label: '쿠폰할인',
+    getValue: (m) => m.onlineCouponDiscount,
+    format: won,
+    formatCompact: won,
+  },
+  {
+    key: 'onlineMarketDiscount',
+    label: '마켓할인',
+    getValue: (m) => m.onlineMarketDiscount,
+    format: won,
+    formatCompact: won,
+    note: '스마트스토어 채널에서 마켓(오픈마켓 판매 수수료 성격)이 부담한 할인 금액입니다.',
   },
 ]
 
@@ -361,6 +417,81 @@ function RoasTrendChart({
   )
 }
 
+/** OFFLINE_FIELDS/ONLINE_FIELDS 전용 소표 — 항상 전체 필드를 보여주고(토글
+ * 없음), "기간별 추이" 표와 같은 구조(기간별 행 + 합계 + 평균, 앞 행 대비
+ * 증감 표시)를 그대로 재사용한다. 별도 그래프는 없다(ROAS 그래프만 이 화면의
+ * 유일한 시각화로 충분하다고 판단). */
+function RoasSubTable({
+  title,
+  fields,
+  rows,
+  total,
+  average,
+}: {
+  title: string
+  fields: readonly RoasField[]
+  rows: readonly RoasRow[]
+  total: RoasMetrics
+  average: RoasMetrics
+}) {
+  return (
+    <section className="channel-insight__section">
+      <div className="channel-insight__section-head">
+        <h3 className="channel-insight__section-title">{title}</h3>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="channel-insight__result-empty">데이터 없음</p>
+      ) : (
+        <div className="channel-insight__table-wrap">
+          <table className="channel-insight__table channel-insight__table--roas">
+            <thead>
+              <tr>
+                <th>기간</th>
+                {fields.map((f) => (
+                  <th key={f.key}>
+                    <RoasFieldLabel field={f} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => {
+                const prevRow = i > 0 ? rows[i - 1] : null
+                return (
+                  <tr key={row.key}>
+                    <td>{row.label}</td>
+                    {fields.map((f) => (
+                      <MetricValueCell
+                        key={f.key}
+                        value={f.getValue(row.metrics)}
+                        prevValue={prevRow ? f.getValue(prevRow.metrics) : null}
+                        field={f}
+                      />
+                    ))}
+                  </tr>
+                )
+              })}
+              <tr className="channel-insight__table-row--total">
+                <td>합계</td>
+                {fields.map((f) => (
+                  <td key={f.key}>{f.formatCompact(f.getValue(total))}</td>
+                ))}
+              </tr>
+              <tr className="channel-insight__table-row--average">
+                <td>평균</td>
+                {fields.map((f) => (
+                  <td key={f.key}>{f.formatCompact(f.getValue(average))}</td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 /** "ROAS" 탭 — 광고비(combinedInsight, Meta+Google+Naver 합산)와 오프라인
  * 매출(offlineRevenue, Monday CRM 매장 결제액) + 온라인 매출(onlineRevenue,
  * Cafe24 자사몰 결제액)을 같은 기간 기준으로 짝지어 광고비 대비 매출(ROAS)을
@@ -384,13 +515,13 @@ export function RoasPanel({
   )
 
   // 지표 표시/숨김 — channel-insight.tsx의 FullListTable "컬럼 표시" 토글과
-  // 같은 패턴. 기본은 전부 표시. ROAS_FIELDS 지표를 숨기면 요약 카드와
-  // 기간별 추이 표 양쪽에서 같이 빠지고, 미수금(SUMMARY_ONLY_FIELDS)은 원래도
-  // 요약 카드에만 있어 표엔 영향이 없다.
-  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<keyof RoasMetrics>>(
-    () => new Set([...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => f.key)),
+  // 같은 패턴. 기본은 전부 표시. ROAS_FIELDS(요약 카드+기간별 추이 표가 공유)
+  // 에만 적용하고, 아래 OFFLINE_FIELDS/ONLINE_FIELDS 전용 표는 이미 각자
+  // 3~5개로 정리돼 있어 토글 없이 항상 전부 보여준다.
+  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(
+    () => new Set(ROAS_FIELDS.map((f) => f.key)),
   )
-  const toggleMetric = (key: keyof RoasMetrics) => {
+  const toggleMetric = (key: string) => {
     setVisibleKeys((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
@@ -403,10 +534,7 @@ export function RoasPanel({
     return <p className="channel-insight__result-empty">데이터 없음</p>
   }
 
-  const visibleSummaryFields = [...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].filter(
-    (f) => visibleKeys.has(f.key),
-  )
-  const visibleTableFields = ROAS_FIELDS.filter((f) => visibleKeys.has(f.key))
+  const visibleFields = ROAS_FIELDS.filter((f) => visibleKeys.has(f.key))
 
   return (
     <div className="channel-insight__result">
@@ -420,7 +548,7 @@ export function RoasPanel({
           role="group"
           aria-label="지표 표시"
         >
-          {[...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => {
+          {ROAS_FIELDS.map((f) => {
             const active = visibleKeys.has(f.key)
             return (
               <button
@@ -437,13 +565,13 @@ export function RoasPanel({
         </div>
 
         <div className="channel-insight__summary-grid">
-          {visibleSummaryFields.map((f) => (
+          {visibleFields.map((f) => (
             <div key={f.key} className="channel-insight__kpi">
               <span className="channel-insight__kpi-label">
                 <RoasFieldLabel field={f} />
               </span>
               <span className="channel-insight__kpi-value">
-                {f.format(total[f.key])}
+                {f.format(f.getValue(total))}
               </span>
             </div>
           ))}
@@ -473,7 +601,7 @@ export function RoasPanel({
                 <thead>
                   <tr>
                     <th>기간</th>
-                    {visibleTableFields.map((f) => (
+                    {visibleFields.map((f) => (
                       <th key={f.key}>
                         <RoasFieldLabel field={f} />
                       </th>
@@ -486,11 +614,13 @@ export function RoasPanel({
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
-                        {visibleTableFields.map((f) => (
+                        {visibleFields.map((f) => (
                           <MetricValueCell
                             key={f.key}
-                            value={row.metrics[f.key]}
-                            prevValue={prevRow ? prevRow.metrics[f.key] : null}
+                            value={f.getValue(row.metrics)}
+                            prevValue={
+                              prevRow ? f.getValue(prevRow.metrics) : null
+                            }
                             field={f}
                           />
                         ))}
@@ -499,14 +629,14 @@ export function RoasPanel({
                   })}
                   <tr className="channel-insight__table-row--total">
                     <td>합계</td>
-                    {visibleTableFields.map((f) => (
-                      <td key={f.key}>{f.formatCompact(total[f.key])}</td>
+                    {visibleFields.map((f) => (
+                      <td key={f.key}>{f.formatCompact(f.getValue(total))}</td>
                     ))}
                   </tr>
                   <tr className="channel-insight__table-row--average">
                     <td>평균</td>
-                    {visibleTableFields.map((f) => (
-                      <td key={f.key}>{f.formatCompact(average[f.key])}</td>
+                    {visibleFields.map((f) => (
+                      <td key={f.key}>{f.formatCompact(f.getValue(average))}</td>
                     ))}
                   </tr>
                 </tbody>
@@ -517,6 +647,22 @@ export function RoasPanel({
           </>
         )}
       </section>
+
+      <RoasSubTable
+        title="오프라인 매출"
+        fields={OFFLINE_FIELDS}
+        rows={rows}
+        total={total}
+        average={average}
+      />
+
+      <RoasSubTable
+        title="카페24 온라인 매출"
+        fields={ONLINE_FIELDS}
+        rows={rows}
+        total={total}
+        average={average}
+      />
     </div>
   )
 }
