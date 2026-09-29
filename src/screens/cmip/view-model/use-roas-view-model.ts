@@ -29,6 +29,12 @@ export interface RoasMetrics {
    * 합계 — 고객이 할부로 결제해 카드사에 내는 이자라 매출이 아니다.
    * offlineRevenue/roas 계산엔 영향 없고, 참고용으로만 같이 보여준다. */
   installmentInterest: number
+  /** 미수금 — 오프라인 매출(Monday CRM)에서 이미 제외된 "계약금/분할납부"
+   * 잔금(총 계약금액 중 아직 안 걷고 나중에 분할로 받을 금액) 합계. 음수
+   * 값 그대로라 보통 0 이하다. 계약 체결 시점 한 번만 의미 있는 값이라
+   * roas-panel.tsx는 "ROAS 요약"(total)에만 표시하고 기간별 표/평균에는
+   * 안 쓴다 — computeRoasRows/computeRoasAverage는 항상 0으로 둔다. */
+  deferredBalance: number
 }
 
 export interface RoasRow {
@@ -48,6 +54,7 @@ const toMetrics = (
   onlineRevenue: number,
   spend: number,
   installmentInterest = 0,
+  deferredBalance = 0,
 ): RoasMetrics => ({
   spend,
   offlineRevenue,
@@ -55,6 +62,7 @@ const toMetrics = (
   totalRevenue: offlineRevenue + onlineRevenue,
   roas: calcRoas(offlineRevenue, onlineRevenue, spend),
   installmentInterest,
+  deferredBalance,
 })
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
@@ -69,6 +77,7 @@ export function computeRoasTotal(
     onlineRevenue?.total.paymentAmount ?? 0,
     combinedInsight?.total.combined.spend ?? 0,
     offlineRevenue?.total.installmentInterest ?? 0,
+    offlineRevenue?.total.deferredBalance ?? 0,
   )
 }
 

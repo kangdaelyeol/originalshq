@@ -68,6 +68,19 @@ const ROAS_FIELDS: readonly RoasField[] = [
   { key: 'roas', label: 'ROAS', format: pct2, formatCompact: pct2 },
 ]
 
+// "ROAS 요약"에만 추가로 붙는 카드 — ROAS_FIELDS와 달리 "기간별 추이" 표
+// 헤더에는 안 쓴다. 미수금(계약 체결 시점에 한 번만 생기는 값)은 기간별로
+// 쪼개 보여줄 성격의 지표가 아니라 조회 기간 전체 합계 하나만 의미가 있다.
+const SUMMARY_ONLY_FIELDS: readonly RoasField[] = [
+  {
+    key: 'deferredBalance',
+    label: '미수금',
+    format: (v) => won(Math.abs(v)),
+    formatCompact: (v) => won(Math.abs(v)),
+    note: '계약 체결일에 상품가 전체를 매출로 인식하면서, 아직 걷지 못하고 이후 분할납부로 받을 예정인 잔금 총액입니다(장기 할부 계약 기준). 기간별로 쪼개면 의미가 없어 조회 기간 전체 합계만 보여줍니다.',
+  },
+]
+
 // channel-insight.tsx의 InfoIcon과 같은 모양 — roas-panel.tsx 전용으로 따로
 // 둔다(single-select-dropdown.tsx의 ChevronIcon과 같은 모듈 독립성 이유).
 function InfoIcon() {
@@ -359,7 +372,7 @@ export function RoasPanel({
           <span className="channel-insight__summary-label">ROAS 요약</span>
         </div>
         <div className="channel-insight__summary-grid">
-          {ROAS_FIELDS.map((f) => (
+          {[...ROAS_FIELDS, ...SUMMARY_ONLY_FIELDS].map((f) => (
             <div key={f.key} className="channel-insight__kpi">
               <span className="channel-insight__kpi-label">
                 <RoasFieldLabel field={f} />
