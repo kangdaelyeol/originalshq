@@ -1,6 +1,10 @@
 // Cafe24 주문 목록 API 호출 — 인증(auth.ts)이 끝난 access_token으로 실제
 // 매출(주문) 원본 데이터를 가져온다.
-import { apiBase, getCafe24AccessToken } from './auth'
+import {
+  apiBase,
+  getCafe24AccessToken,
+  isCafe24InvalidTokenError,
+} from './auth'
 import { chunkDateRangeForCafe24 } from './utils'
 import type { Cafe24OrderRow } from './types'
 import type { ISODate } from '../types'
@@ -97,21 +101,11 @@ async function fetchOrdersForSingleRange(
   return orders
 }
 
-/** dateStart~dateEnd(임의 길이) 전체의 주문을 가져온다 — Cafe24 주문 API는
- * 한 번 조회에 최대 3개월까지만 허용해서, 그보다 긴 범위(과거 백필 등)는
- * chunkDateRangeForCafe24로 3개월 이하 구간으로 잘라 순서대로(동시 아님 —
- * 초당 40건 제한이라 한 구간 페이지네이션이 이미 여러 호출이라 굳이 구간까지
- * 동시에 쏠 필요는 없다) 호출해 합친다. */
-export async function fetchCafe24OrderRows(
+async function fetchAllChunks(
   mallId: string,
-  clientId: string,
-  clientSecret: string,
-  dateStart: ISODate,
-  dateEnd: ISODate,
+  accessToken: string,
+  chunks: readonly { start: ISODate; end: ISODate }[],
 ): Promise<Cafe24OrderRow[]> {
-  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
-  const chunks = chunkDateRangeForCafe24(dateStart, dateEnd)
-
   const rows: Cafe24OrderRow[] = []
   for (const chunk of chunks) {
     const raw = await fetchOrdersForSingleRange(
@@ -122,6 +116,39 @@ export async function fetchCafe24OrderRows(
     )
     rows.push(...raw.map(toOrderRow))
   }
-
   return rows
+}
+
+/** dateStart~dateEnd(임의 길이) 전체의 주문을 가져온다 — Cafe24 주문 API는
+ * 한 번 조회에 최대 3개월까지만 허용해서, 그보다 긴 범위(과거 백필 등)는
+ * chunkDateRangeForCafe24로 3개월 이하 구간으로 잘라 순서대로(동시 아님 —
+ * 초당 40건 제한이라 한 구간 페이지네이션이 이미 여러 호출이라 굳이 구간까지
+ * 동시에 쏠 필요는 없다) 호출해 합친다.
+ *
+ * 저장된 accessTokenExpiresAt이 실제 만료 시각과 어긋나 있으면(여러 인스턴스가
+ * 동시에 토큰을 갱신하는 경쟁 등으로) Cafe24가 "access_token time expired"를
+ * 돌려줄 수 있다 — 이 경우 저장된 값을 무시하고 강제로 새 토큰을 받아 전체
+ * 구간을 한 번만 다시 시도한다(getCafe24AccessToken의 forceRefresh 참고). */
+export async function fetchCafe24OrderRows(
+  mallId: string,
+  clientId: string,
+  clientSecret: string,
+  dateStart: ISODate,
+  dateEnd: ISODate,
+): Promise<Cafe24OrderRow[]> {
+  const chunks = chunkDateRangeForCafe24(dateStart, dateEnd)
+  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+
+  try {
+    return await fetchAllChunks(mallId, accessToken, chunks)
+  } catch (err) {
+    if (!isCafe24InvalidTokenError(err)) throw err
+    const freshToken = await getCafe24AccessToken(
+      mallId,
+      clientId,
+      clientSecret,
+      true,
+    )
+    return await fetchAllChunks(mallId, freshToken, chunks)
+  }
 }

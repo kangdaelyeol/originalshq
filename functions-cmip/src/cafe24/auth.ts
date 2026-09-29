@@ -141,11 +141,18 @@ export async function checkCafe24AuthStatus(): Promise<{
  * refresh_token으로 새로 받아서 저장한 뒤 돌려준다 — 이때 Cafe24가 새
  * refresh_token도 같이 내려주므로 반드시 그것도 같이 저장한다(기존 값은
  * 이 시점에 이미 무효화됨). 앞으로 만들 주문 데이터 조회 함수가 API를
- * 부르기 직전에 항상 이 함수부터 거친다. */
+ * 부르기 직전에 항상 이 함수부터 거친다.
+ *
+ * forceRefresh=true면 저장된 만료 시각을 아예 안 보고 무조건 새로 받는다 —
+ * 저장된 accessTokenExpiresAt이 실제 만료 시각과 어긋나 있어도(예: 여러
+ * 인스턴스가 동시에 갱신하면서 서로 다른 토큰 쌍을 저장한 경우) Cafe24가
+ * "access_token time expired"를 돌려줄 수 있는데, 그 경우 호출부가 이
+ * 옵션으로 한 번 더 시도한다(isCafe24InvalidTokenError 참고). */
 export async function getCafe24AccessToken(
   mallId: string,
   clientId: string,
   clientSecret: string,
+  forceRefresh = false,
 ): Promise<string> {
   const snap = await cafe24TokenDoc().get()
   const data = snap.data() as Cafe24TokenDoc | undefined
@@ -156,7 +163,7 @@ export async function getCafe24AccessToken(
 
   // 만료 1분 전부터는 미리 갱신 — 호출 도중 경계에서 만료되는 상황을 피한다.
   const expiresInMs = new Date(data.accessTokenExpiresAt).getTime() - Date.now()
-  if (expiresInMs > 60_000) {
+  if (!forceRefresh && expiresInMs > 60_000) {
     return data.accessToken
   }
 
@@ -170,6 +177,17 @@ export async function getCafe24AccessToken(
   return token.access_token
 }
 
+/** Cafe24 주문 API가 access_token 만료로 실패했을 때의 에러 메시지 패턴 —
+ * client.ts/이 파일의 debugFetchCafe24OrdersRaw가 이 에러를 잡으면 저장된
+ * 만료 시각을 무시하고(getCafe24AccessToken의 forceRefresh) 한 번만 다시
+ * 시도한다. */
+export function isCafe24InvalidTokenError(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    /invalid_token|access_token time expired/i.test(err.message)
+  )
+}
+
 /**
  * 디버그 전용 — 처음엔 공식 문서 사이트가 JS로 렌더링되는 SPA라 주문 목록
  * API의 실제 응답 필드명을 확인하려고 만들었는데, 이제는 카페24 관리자
@@ -181,15 +199,13 @@ export async function getCafe24AccessToken(
  * cafe24/client.ts의 fetchOrdersForSingleRange와 같은 방식으로 links.next를
  * 끝까지 따라가 구간 안 전체 주문을 원본 그대로 반환한다.
  */
-export async function debugFetchCafe24OrdersRaw(
+async function fetchAllOrdersRaw(
   mallId: string,
-  clientId: string,
-  clientSecret: string,
+  accessToken: string,
   startDate: string,
   endDate: string,
-  dateType = 'order_date',
-): Promise<{ orders: unknown[]; count: number }> {
-  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+  dateType: string,
+): Promise<unknown[]> {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
@@ -219,5 +235,44 @@ export async function debugFetchCafe24OrdersRaw(
     url = data.links?.find((l) => l.rel === 'next')?.href ?? null
   }
 
-  return { orders, count: orders.length }
+  return orders
+}
+
+export async function debugFetchCafe24OrdersRaw(
+  mallId: string,
+  clientId: string,
+  clientSecret: string,
+  startDate: string,
+  endDate: string,
+  dateType = 'order_date',
+): Promise<{ orders: unknown[]; count: number }> {
+  const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
+  try {
+    const orders = await fetchAllOrdersRaw(
+      mallId,
+      accessToken,
+      startDate,
+      endDate,
+      dateType,
+    )
+    return { orders, count: orders.length }
+  } catch (err) {
+    if (!isCafe24InvalidTokenError(err)) throw err
+    // 저장된 만료 시각이 실제와 어긋났을 수 있다 — 강제로 새 토큰을 받아
+    // 한 번만 다시 시도한다(getCafe24AccessToken 주석 참고).
+    const freshToken = await getCafe24AccessToken(
+      mallId,
+      clientId,
+      clientSecret,
+      true,
+    )
+    const orders = await fetchAllOrdersRaw(
+      mallId,
+      freshToken,
+      startDate,
+      endDate,
+      dateType,
+    )
+    return { orders, count: orders.length }
+  }
 }
