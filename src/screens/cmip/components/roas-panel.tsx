@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type {
   Cafe24RevenueSummary,
   CombinedInsight,
@@ -102,24 +102,16 @@ const OFFLINE_FIELDS: readonly RoasField[] = [
 ]
 
 // "카페24 온라인 매출" 전용 표 — 팀 전체가 보는 표라 결제/환불 원본부터
-// ROAS용 순매출까지 계산 과정을 전부 순서대로 보여준다:
-//  1. 매출액(ROAS용) — 광고 성과를 볼 때 쓰는 값(배송비·적립금 결제까지 제외)
-//  2~3. 총 결제액/환불액 — 그 둘의 원본 재료(Cafe24RevenueMetrics.
-//       grossPayment/refundAmount 그대로, 환불액은 카페24 관리자 화면에 실제로
-//       잡히는 환불만). 총 결제액은 상품할인 반영 전 금액이다 — 3/12 매출
-//       대조로 카페24 관리자 "총결제액" 컬럼이 상품할인 반영 전이라는 걸
-//       확인해서 맞췄다(onlineGrossPayment 주석 참고).
-//  3-1. 미기록 환불(네이버페이 등) — 환불액에는 안 들어있는 폴백 환불, 참고용
-//       노출이지만 아래 4번(카페24 매출액) 계산에는 실제로 반영된다(4월 매출
-//       대조로 발견, unrecordedRefundAmount 주석 참고)
-//  4. 카페24 매출액 — 총 결제액 - 상품할인 - 환불액 - 미기록 환불(배송비·
-//     적립금 포함) = 예전에 "매출액"으로 부르던 값. 카페24 관리자 화면은
-//     미기록 환불(네이버페이 등)을 전혀 모르기 때문에, 이 값은 화면 숫자보다
-//     그만큼 낮게 나올 수 있다 — 화면과 똑같은 숫자가 아니라 "실제로 가게에
-//     남은 돈"을 보여주는 쪽을 택했다.
-//  5. 총매출 — 카페24 매출액에 쿠폰할인·상품할인을 다시 더한 총액(배송비는
-//     카페24 매출액에 이미 포함돼 있어 안 더함)
-//  6~9. 배송비/적립금 사용/쿠폰할인/상품할인 — 각 구성요소
+// ROAS용 순매출까지 계산 과정을 전부 순서대로 보여준다. 순서는 "매출액
+// (ROAS용) → 총매출(할인 반영 전) → 상품할인 → 쿠폰할인 → 카페24 매출액
+// (할인·환불 반영 후 순매출) → 배송비 → 적립금 사용 → 총 결제액(할인 반영
+// 전 원본) → 환불액" — 사용자가 보기 편한 순서로 직접 지정했다(9/30).
+//
+// 환불액은 카페24 화면에 실제로 잡히는 환불(refundAmount)과 NCHECKOUT(네이버
+// 페이) 등 폴백 환불(unrecordedRefundAmount)을 예전엔 따로 노출했는데,
+// "통계적으로는 똑같다"는 판단으로 한 컬럼에 합쳤다 — 각각 얼마인지 감사가
+// 필요하면 Cafe24RevenueMetrics.refundAmount/unrecordedRefundAmount를 API
+// 응답에서 직접 봐야 한다(이 표에서는 합계만 보여준다).
 const ONLINE_FIELDS: readonly RoasField[] = [
   {
     key: 'onlineRevenue',
@@ -130,38 +122,6 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     note: 'ROAS 계산에 쓰는 값 — 카페24 매출액(배송비 포함)에서 배송비와 순 적립금 사용액(적립금 결제 - 환불된 적립금)을 뺐습니다. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 들어온 매출이 아니라서 ROAS 성과에서는 둘 다 제외합니다.',
   },
   {
-    key: 'onlineGrossPayment',
-    label: '총 결제액',
-    getValue: (m) => m.onlineGrossPayment,
-    format: won,
-    formatCompact: won,
-    note: '그 기간에 결제로 귀속된 금액 합계(배송비·적립금 포함, 상품할인·환불 반영 전). 카페24 관리자 "총결제액" 컬럼과 맞춘 값입니다(3/12 매출 대조로 확인).',
-  },
-  {
-    key: 'onlineRefundAmount',
-    label: '환불액',
-    getValue: (m) => m.onlineRefundAmount,
-    format: won,
-    formatCompact: won,
-    note: '그 기간에 환불 완료 처리된 금액 합계(적립금/예치금 환불분 포함). 카페24 관리자 화면에 실제로 잡히는 환불만이고, 아래 "미기록 환불(네이버페이 등)"은 안 섞여 있습니다.',
-  },
-  {
-    key: 'onlineUnrecordedRefundAmount',
-    label: '미기록 환불(네이버페이 등)',
-    getValue: (m) => m.onlineUnrecordedRefundAmount,
-    format: won,
-    formatCompact: won,
-    note: '환불액(위 항목)에는 안 들어있는 참고용 내역이지만, 아래 "카페24 매출액"에는 이미 반영돼 있습니다. 네이버페이(NCHECKOUT) 등 카페24 자체 결제망이 아닌 채널의 취소는 카페24 관리자 화면도 환불로 안 잡습니다 — 그래도 실제로는 돈이 나갔으니, 주문 금액 변화로 추정한 값을 매출액에서 빼고 여기 따로 보여드립니다. 4월 매출 대조 중 발견했습니다.',
-  },
-  {
-    key: 'onlineRevenueCafe24',
-    label: '카페24 매출액',
-    getValue: (m) => m.onlineRevenueCafe24,
-    format: won,
-    formatCompact: won,
-    note: '순매출 = 총 결제액 - 상품할인 - 환불액 - 미기록 환불(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값). 미기록 환불(네이버페이 등)까지 반영하기 때문에, 카페24 관리자 화면 숫자보다 그만큼 낮게 나올 수 있습니다 — 화면 숫자를 그대로 복제하기보다 실제 순매출에 더 가깝게 계산합니다.',
-  },
-  {
     key: 'onlineTotalRevenue',
     label: '총매출',
     getValue: (m) =>
@@ -169,6 +129,29 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     format: won,
     formatCompact: won,
     note: '카페24 매출액 + 쿠폰할인 + 상품할인 — 카페24 매출액 계산에서 뺀 할인 항목들을 다시 더한 총액입니다(배송비·적립금은 카페24 매출액에 이미 포함돼 있어 안 더함).',
+  },
+  {
+    key: 'onlineItemDiscount',
+    label: '상품할인',
+    getValue: (m) => m.onlineItemDiscount,
+    format: won,
+    formatCompact: won,
+    note: '쿠폰과 별도로 적용된 상품 할인 금액입니다(구조화된 할인 필드에는 안 잡히고 상품구매금액과 실결제금액의 차이로만 드러남). 처음엔 스마트스토어 채널에서만 발견했는데, 자체몰/모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔습니다.',
+  },
+  {
+    key: 'onlineCouponDiscount',
+    label: '쿠폰할인',
+    getValue: (m) => m.onlineCouponDiscount,
+    format: won,
+    formatCompact: won,
+  },
+  {
+    key: 'onlineRevenueCafe24',
+    label: '카페24 매출액',
+    getValue: (m) => m.onlineRevenueCafe24,
+    format: won,
+    formatCompact: won,
+    note: '순매출 = 총 결제액 - 상품할인 - 환불액(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값). 카페24 화면에 안 잡히는 폴백 환불(네이버페이 등)까지 반영하기 때문에, 카페24 관리자 화면 숫자보다 그만큼 낮게 나올 수 있습니다 — 화면 숫자를 그대로 복제하기보다 실제 순매출에 더 가깝게 계산합니다.',
   },
   {
     key: 'onlineShippingFee',
@@ -186,19 +169,20 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     note: '참고용 — 카페24 매출액에 이미 포함된 적립금 결제 금액에서, 나중에 환불된 적립금(취소 등으로 되돌아간 금액)을 뺀 순 적립금 사용액입니다.',
   },
   {
-    key: 'onlineCouponDiscount',
-    label: '쿠폰할인',
-    getValue: (m) => m.onlineCouponDiscount,
+    key: 'onlineGrossPayment',
+    label: '총 결제액',
+    getValue: (m) => m.onlineGrossPayment,
     format: won,
     formatCompact: won,
+    note: '그 기간에 결제로 귀속된 금액 합계(배송비·적립금 포함, 상품할인·환불 반영 전). 카페24 관리자 "총결제액" 컬럼과 맞춘 값입니다(3/12 매출 대조로 확인).',
   },
   {
-    key: 'onlineItemDiscount',
-    label: '상품할인',
-    getValue: (m) => m.onlineItemDiscount,
+    key: 'onlineTotalRefund',
+    label: '환불액',
+    getValue: (m) => m.onlineRefundAmount + m.onlineUnrecordedRefundAmount,
     format: won,
     formatCompact: won,
-    note: '쿠폰과 별도로 적용된 상품 할인 금액입니다(구조화된 할인 필드에는 안 잡히고 상품구매금액과 실결제금액의 차이로만 드러남). 처음엔 스마트스토어 채널에서만 발견했는데, 자체몰/모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔습니다.',
+    note: '그 기간에 환불 완료 처리된 금액 합계(적립금/예치금 환불분 포함) — 카페24 관리자 화면에 실제로 잡히는 환불과 NCHECKOUT(네이버페이) 등 화면에 안 잡히는 폴백 환불을 합친 값입니다(통계적으로 어차피 같은 "환불"이라 한 컬럼으로 합쳤습니다).',
   },
 ]
 
@@ -224,9 +208,9 @@ function InfoIcon() {
   )
 }
 
-/** 필드 라벨 — note가 있으면(현재 installmentInterest만) 옆에 "?" 아이콘을
- * 달아 호버(또는 포커스)하면 설명을 보여준다. ROAS 요약 카드·기간별 추이 표
- * 헤더가 공유한다. */
+/** 필드 라벨 — note가 있으면 옆에 "?" 아이콘을 달아 호버(또는 포커스)하면
+ * 설명을 보여준다. ROAS 요약 카드(정렬이 필요 없는 KPI 카드)에서만 쓴다 —
+ * 표 헤더는 전부 정렬 버튼이 있는 SortableRoasFieldHeader를 쓴다. */
 function RoasFieldLabel({ field }: { field: RoasField }) {
   if (!field.note) return <>{field.label}</>
   return (
@@ -238,6 +222,61 @@ function RoasFieldLabel({ field }: { field: RoasField }) {
           {field.note}
         </span>
       </span>
+    </>
+  )
+}
+
+type SortDir = 'asc' | 'desc'
+
+/** channel-insight.tsx의 SortArrows/__sort-arrow(s) 클래스를 그대로 재사용 —
+ * 이 화면도 channel-insight__* 클래스를 이미 쓰고 있어서(RoasFieldLabel의
+ * __info 등) 별도 CSS 추가 없이 그대로 붙는다. */
+function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
+  return (
+    <span className="channel-insight__sort-arrows">
+      <span
+        className={`channel-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
+      >
+        ▲
+      </span>
+      <span
+        className={`channel-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
+      >
+        ▼
+      </span>
+    </span>
+  )
+}
+
+/** "기간별 추이"/RoasSubTable(오프라인 매출/카페24 온라인 매출) 표 헤더가
+ * 공유 — 클릭하면 그 컬럼 기준으로 행을 정렬한다. "?" 정보 아이콘은 정렬
+ * 버튼 바깥의 형제 엘리먼트로 둬서, 아이콘을 호버/클릭해도 정렬이 같이 안
+ * 눌리게 한다(channel-insight.tsx의 SortableMetricHeader와 같은 이유). */
+function SortableRoasFieldHeader({
+  field,
+  active,
+  dir,
+  onSort,
+}: {
+  field: RoasField
+  active: boolean
+  dir: SortDir
+  onSort: () => void
+}) {
+  return (
+    <>
+      <button type="button" className="channel-insight__sort-head" onClick={onSort}>
+        {field.label}
+        <SortArrows active={active} dir={dir} />
+      </button>
+      {field.note && (
+        <span className="channel-insight__info" tabIndex={0}>
+          <InfoIcon />
+          <span className="channel-insight__info-tooltip" role="tooltip">
+            {field.note}
+          </span>
+        </span>
+      )}
     </>
   )
 }
@@ -460,6 +499,47 @@ function RoasTrendChart({
   )
 }
 
+/** "기간" 컬럼용 정렬 키 — RoasField.key와 겹치지 않는 별도 문자열이라 굳이
+ * 유니온으로 안 좁히고 필드 key와 같은 string 타입을 그대로 쓴다. */
+const PERIOD_SORT_KEY = 'period'
+
+/** "기간별 추이"/"오프라인 매출"/"카페24 온라인 매출" 표 세 곳이 전부 같은
+ * 정렬 동작(컬럼 헤더 클릭 → 그 지표 기준 오름/내림차순, 같은 컬럼 다시
+ * 누르면 방향만 뒤집기)을 쓰게 돼서 로직을 훅 하나로 뺐다 — 표마다 각자
+ * useState를 갖고 있어서(훅을 호출하는 컴포넌트 인스턴스별로 독립) 한쪽
+ * 표의 정렬이 다른 표에 안 번진다. 기본은 "기간" 오름차순(원래 시간 순서),
+ * 다른 컬럼을 처음 누르면 "큰 값부터"가 보통 더 유용해서 내림차순을 기본으로
+ * 한다(channel-insight.tsx의 toggleSort와 같은 규칙). 합계/평균 행은 호출부가
+ * 항상 별도로 그려서(rows에 안 섞여 들어옴) 정렬 대상에서 자동으로 빠진다. */
+function useRoasTableSort(rows: readonly RoasRow[], fields: readonly RoasField[]) {
+  const [sort, setSort] = useState<{ key: string; dir: SortDir }>({
+    key: PERIOD_SORT_KEY,
+    dir: 'asc',
+  })
+
+  const toggleSort = (key: string) => {
+    setSort((prev) =>
+      prev.key === key
+        ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { key, dir: key === PERIOD_SORT_KEY ? 'asc' : 'desc' },
+    )
+  }
+
+  const sortedRows = useMemo(() => {
+    if (sort.key === PERIOD_SORT_KEY) {
+      return sort.dir === 'asc' ? rows : [...rows].slice().reverse()
+    }
+    const field = fields.find((f) => f.key === sort.key)
+    if (!field) return rows
+    const dir = sort.dir === 'asc' ? 1 : -1
+    return [...rows].sort(
+      (a, b) => (field.getValue(a.metrics) - field.getValue(b.metrics)) * dir,
+    )
+  }, [rows, fields, sort])
+
+  return { sort, toggleSort, sortedRows }
+}
+
 /** OFFLINE_FIELDS/ONLINE_FIELDS 전용 소표 — 항상 전체 필드를 보여주고(토글
  * 없음), "기간별 추이" 표와 같은 구조(기간별 행 + 합계 + 평균, 앞 행 대비
  * 증감 표시)를 그대로 재사용한다. 별도 그래프는 없다(ROAS 그래프만 이 화면의
@@ -477,6 +557,8 @@ function RoasSubTable({
   total: RoasMetrics
   average: RoasMetrics
 }) {
+  const { sort, toggleSort, sortedRows } = useRoasTableSort(rows, fields)
+
   return (
     <section className="channel-insight__section">
       <div className="channel-insight__section-head">
@@ -490,17 +572,34 @@ function RoasSubTable({
           <table className="channel-insight__table channel-insight__table--roas">
             <thead>
               <tr>
-                <th>기간</th>
+                <th>
+                  <button
+                    type="button"
+                    className="channel-insight__sort-head"
+                    onClick={() => toggleSort(PERIOD_SORT_KEY)}
+                  >
+                    기간
+                    <SortArrows
+                      active={sort.key === PERIOD_SORT_KEY}
+                      dir={sort.dir}
+                    />
+                  </button>
+                </th>
                 {fields.map((f) => (
                   <th key={f.key}>
-                    <RoasFieldLabel field={f} />
+                    <SortableRoasFieldHeader
+                      field={f}
+                      active={sort.key === f.key}
+                      dir={sort.dir}
+                      onSort={() => toggleSort(f.key)}
+                    />
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => {
-                const prevRow = i > 0 ? rows[i - 1] : null
+              {sortedRows.map((row, i) => {
+                const prevRow = i > 0 ? sortedRows[i - 1] : null
                 return (
                   <tr key={row.key}>
                     <td>{row.label}</td>
@@ -578,6 +677,15 @@ export function RoasPanel({
   }
 
   const visibleFields = ROAS_FIELDS.filter((f) => visibleKeys.has(f.key))
+  // "기간별 추이" 표 전용 정렬 — RoasSubTable과 같은 훅을 쓰지만, 필드
+  // 목록은 ROAS_FIELDS 전체로 둔다(지금 숨겨진 컬럼 기준으로 정렬 중이었다가
+  // 그 컬럼을 다시 켜도 정렬이 안 끊기게). 정렬은 이 표에만 적용하고, 바로
+  // 아래 RoasTrendChart는 그대로 원래 rows(시간순)를 쓴다 — 그래프는 막대
+  // 위치가 곧 날짜이고 "이전 막대 대비 증감"을 보여주는 시계열 그래프라,
+  // 표를 다른 지표로 정렬해도 그래프까지 같이 뒤섞이면 그래프 자체의 의미가
+  // 없어진다.
+  const { sort: trendSort, toggleSort: toggleTrendSort, sortedRows: sortedTrendRows } =
+    useRoasTableSort(rows, ROAS_FIELDS)
 
   return (
     <div className="channel-insight__result">
@@ -643,17 +751,34 @@ export function RoasPanel({
               <table className="channel-insight__table channel-insight__table--roas">
                 <thead>
                   <tr>
-                    <th>기간</th>
+                    <th>
+                      <button
+                        type="button"
+                        className="channel-insight__sort-head"
+                        onClick={() => toggleTrendSort(PERIOD_SORT_KEY)}
+                      >
+                        기간
+                        <SortArrows
+                          active={trendSort.key === PERIOD_SORT_KEY}
+                          dir={trendSort.dir}
+                        />
+                      </button>
+                    </th>
                     {visibleFields.map((f) => (
                       <th key={f.key}>
-                        <RoasFieldLabel field={f} />
+                        <SortableRoasFieldHeader
+                          field={f}
+                          active={trendSort.key === f.key}
+                          dir={trendSort.dir}
+                          onSort={() => toggleTrendSort(f.key)}
+                        />
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row, i) => {
-                    const prevRow = i > 0 ? rows[i - 1] : null
+                  {sortedTrendRows.map((row, i) => {
+                    const prevRow = i > 0 ? sortedTrendRows[i - 1] : null
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
