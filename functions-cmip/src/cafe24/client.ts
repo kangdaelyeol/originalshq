@@ -278,7 +278,14 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
     cancelDate: cancelDate ? cancelDate.slice(0, 10) : null,
     memberId: raw.member_id,
     paid,
-    grossPayment: initialNet,
+    // 상품할인(itemDiscount)을 빼기 전 값 — 카페24 관리자 "총결제액" 컬럼과
+    // 맞춘 것이다(3/12 매출 대조로 발견: 카페24 총결제액 8,706,000 = 이
+    // 주문들의 order_price_amount 합계 그대로, 할인 850,000은 별도 컬럼이라
+    // grossPayment에서 안 뺀다 — 예전엔 initialNet(할인 반영 후)을 넣어서
+    // "총 결제액"이 실제로는 카페24의 "총매출액"(할인 반영 후) 개념과
+    // 같아지는 라벨 불일치가 있었다). 할인은 helper.ts의 paymentAmount
+    // 계산에서 별도로 뺀다.
+    grossPayment: initialNetRaw,
     shippingFee: initialShipping,
     pointsSpent: Number(raw.initial_order_amount.points_spent_amount) || 0,
     couponDiscount: couponDiscount(raw.initial_order_amount),

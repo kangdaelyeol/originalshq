@@ -116,31 +116,35 @@ const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
   additionalShippingFee: rows.reduce((s, r) => s + r.additionalShippingFee, 0),
 })
 
-/** 결제(paymentDate 기준) + 반품 추가배송비(cancelDate 기준)를 더해 총매출을
- * 내고, 여기서 환불(refundDate 기준)만 빼서 순매출을 낸다 — 배송비는 예전엔
- * "택배사로 나가는 실비 통과항목"으로 보고 뺐었는데, 9/30에 있었던 5/24 매출
- * 불일치 조사에서 카페24 공식 서비스 가이드(일별/월별매출: "결제합계 = 상품구매금액
- * + 배송비 - 할인 - 쿠폰", "순매출 = 결제합계 - 환불합계")와 debugCafe24OrdersRaw로
- * 뽑은 실제 5/24 주문 1건(상품 85,100 + 배송비 5,000 = 카페24 payment_amount
- * 90,100 = 관리자 화면 순매출 90,100)을 대조해 카페24 순매출이 배송비를
- * 포함한다는 걸 확인했다 — 그동안 배송비를 뺀 값을 "카페24 화면과 맞춘
- * 순매출"이라 주석에 적어뒀던 게 틀렸다. 적립금(pointsSpent)은 예전엔 "우리가
- * 준 할인"으로 취급해 같이 뺐었는데, 카페24 관리자 화면(결제/환불 양쪽 다
- * 적립금 포함)과 맞추기 위해 지금은 grossPayment/refundAmount 계산
- * 단계(client.ts)에서부터 이미 포함시키고 있어 여기서 따로 뺄 게 없다 —
- * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다(ROAS
- * 계산은 이 값과 별개로 온라인 매출에서 배송비를 다시 빼서 쓴다 —
- * use-roas-view-model.ts 참고). paymentAmount는 refund.refundAmount(카페24
- * /admin/refunds 기록분)뿐 아니라 refund.unrecordedRefundAmount(NCHECKOUT=
- * 네이버페이 등 폴백 환불)까지 둘 다 뺀다 — 4월 매출 대조 중 한때 폴백분을
- * 빼면 카페24 화면과 어긋난다고 보고 제외했었는데, 그 화면 자체가 애초에
- * 네이버페이 쪽에서 처리된 취소를 전혀 모르고(총 결제액에서도 안 깎임)
- * "카페24 매출액"이라는 이름과 달리 실제로 가게에 남은 돈보다 부풀려
- * 보여준다는 걸 재확인해서, 실제로 나간 돈을 다 반영하는 쪽으로 다시
- * 되돌렸다 — refundAmount/unrecordedRefundAmount는 그대로 각각 노출해서
- * "카페24 화면 기록분"과 "폴백분"을 구분할 수 있게는 유지한다. 이 함수가
- * 사실상 이 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부 "무엇으로
- * 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
+/** 결제(paymentDate 기준) + 반품 추가배송비(cancelDate 기준)를 더해 총결제액을
+ * 내고, 여기서 상품할인·환불(refundDate 기준)을 빼서 순매출을 낸다 —
+ * grossPayment는 3/12 매출 대조로 상품할인을 빼기 전 값이어야 한다는 걸
+ * 확인했다(카페24 관리자 "총결제액" 컬럼이 할인 반영 전 금액이었다 — 예전엔
+ * client.ts가 할인을 미리 뺀 값을 grossPayment에 넣어서, 우리 "총 결제액"이
+ * 실제로는 카페24의 "총매출액"(할인 반영 후) 개념과 같아지는 라벨 불일치가
+ * 있었다). 그래서 이 함수에서 gross.itemDiscount를 따로 빼야 한다.
+ *
+ * 배송비는 예전엔 "택배사로 나가는 실비 통과항목"으로 보고 뺐었는데, 9/30에
+ * 있었던 5/24 매출 불일치 조사에서 카페24 공식 서비스 가이드(일별/월별매출:
+ * "결제합계 = 상품구매금액 + 배송비 - 할인 - 쿠폰", "순매출 = 결제합계 -
+ * 환불합계")와 debugCafe24OrdersRaw로 뽑은 실제 5/24 주문 1건(상품 85,100 +
+ * 배송비 5,000 = 카페24 payment_amount 90,100 = 관리자 화면 순매출
+ * 90,100)을 대조해 카페24 순매출이 배송비를 포함한다는 걸 확인했다 — 배송비는
+ * 그대로 둔다. 적립금(pointsSpent)도 카페24 관리자 화면(결제/환불 양쪽 다
+ * 적립금 포함)과 맞추기 위해 grossPayment/refundAmount 계산 단계(client.ts)에서부터
+ * 이미 포함시키고 있어 여기서 따로 뺄 게 없다 — shippingFee/pointsSpent 둘 다
+ * 지표로는 참고용으로 계속 따로 노출한다(ROAS 계산은 이 값과 별개로 온라인
+ * 매출에서 배송비를 다시 빼서 쓴다 — use-roas-view-model.ts 참고).
+ * paymentAmount는 refund.refundAmount(카페24 /admin/refunds 기록분)뿐 아니라
+ * refund.unrecordedRefundAmount(NCHECKOUT=네이버페이 등 폴백 환불)까지 둘 다
+ * 뺀다 — 4월 매출 대조 중 한때 폴백분을 빼면 카페24 화면과 어긋난다고 보고
+ * 제외했었는데, 그 화면 자체가 애초에 네이버페이 쪽에서 처리된 취소를 전혀
+ * 모르고(총 결제액에서도 안 깎임) "카페24 매출액"이라는 이름과 달리 실제로
+ * 가게에 남은 돈보다 부풀려 보여준다는 걸 재확인해서, 실제로 나간 돈을 다
+ * 반영하는 쪽으로 다시 되돌렸다 — refundAmount/unrecordedRefundAmount는
+ * 그대로 각각 노출해서 "카페24 화면 기록분"과 "폴백분"을 구분할 수 있게는
+ * 유지한다. 이 함수가 사실상 이 파일의 핵심이고, 나머지 summarizeBy* 함수들은
+ * 전부 "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
 const combine = (
   gross: GrossTotals,
   refund: RefundTotals,
@@ -150,7 +154,10 @@ const combine = (
   const shippingFee = gross.shippingFee + additional.additionalShippingFee
   return {
     paymentAmount:
-      grossPayment - refund.refundAmount - refund.unrecordedRefundAmount,
+      grossPayment -
+      gross.itemDiscount -
+      refund.refundAmount -
+      refund.unrecordedRefundAmount,
     grossPayment,
     refundAmount: refund.refundAmount,
     shippingFee,

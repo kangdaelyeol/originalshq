@@ -42,9 +42,12 @@ export interface Cafe24OrderRow {
   paid: boolean
   /** 결제금액 — 주문 시점(initial_order_amount) 기준 상품구매금액+배송비
    * (쿠폰 등 주문 단위 할인은 뺌, 적립금은 안 뺌 — 아래 pointsSpent 주석
-   * 참고), 취소 여부와 무관하게 그대로. paymentDate에 귀속된다(그 날 실제로
-   * 결제 확인된 금액이라는 뜻이라 나중에 취소되더라도 바뀌지 않음 — 대신
-   * 취소분은 Cafe24RefundRow로 따로 반영된다). */
+   * 참고), 취소 여부와 무관하게 그대로. **상품 할인(itemDiscount)은 여기서
+   * 안 뺀다** — 3/12 매출 대조로 카페24 관리자 "총결제액" 컬럼이 상품할인
+   * 반영 전 금액이라는 걸 확인해서, 여기 맞춰 상품할인은 순매출
+   * (paymentAmount) 계산 단계(helper.ts)에서만 뺀다. paymentDate에
+   * 귀속된다(그 날 실제로 결제 확인된 금액이라는 뜻이라 나중에 취소되더라도
+   * 바뀌지 않음 — 대신 취소분은 Cafe24RefundRow로 따로 반영된다). */
   grossPayment: number
   /** 참고용 — grossPayment에 포함된 배송비(초기 금액 기준). */
   shippingFee: number
@@ -62,10 +65,12 @@ export interface Cafe24OrderRow {
    * coupon_discount_price 100,000원을 처음엔 안 빼서 환불액이 과다
    * 집계됐었다). */
   couponDiscount: number
-  /** 참고용 — grossPayment에서 이미 제외된 "상품 할인" 합계(카페24 관리자
-   * "일별 매출내역"의 "할인" 컬럼, 쿠폰과 별도). order_price_amount와
-   * payment_amount의 차이로만 드러나고 어떤 구조화된 할인 필드에도 안
-   * 잡힌다(client.ts의 itemDiscountFor 주석 참고 — 품목별
+  /** 참고용 — grossPayment에는 아직 포함돼 있고 paymentAmount에서만 빠지는
+   * "상품 할인" 합계(카페24 관리자 "일별 매출내역"의 "할인" 컬럼, 쿠폰과
+   * 별도. 3/12 매출 대조로 grossPayment=카페24 "총결제액"은 할인 반영 전이라는
+   * 걸 확인해서 여기서 뺀다 — helper.ts의 combine() 주석 참고).
+   * order_price_amount와 payment_amount의 차이로만 드러나고 어떤 구조화된
+   * 할인 필드에도 안 잡힌다(client.ts의 itemDiscountFor 주석 참고 — 품목별
    * additional_discount_price 필드로 바꿔본 적도 있는데, 6/9·6/10 주문처럼
    * 그 필드로도 안 잡히는 할인이 있어서 역산 방식으로 되돌렸다). 처음엔
    * 스마트스토어(market_id="shopn") 채널에서만 발견했는데, 자체몰/모바일/
@@ -130,27 +135,32 @@ export interface Cafe24RefundRow {
 }
 
 export interface Cafe24MetricsSummary {
-  /** 순매출(온라인 매출 대표값) = grossPayment - refundAmount -
+  /** 순매출(온라인 매출 대표값) = grossPayment - itemDiscount - refundAmount -
    * unrecordedRefundAmount(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값).
    * 카페24 공식 서비스 가이드(일별/월별매출)의 "순매출 = 결제합계 -
    * 환불합계" 정의(결제합계 자체에 배송비 포함)를 따라 배송비는 안 뺀다(5/24
    * 대조 검증). 적립금도 grossPayment/refundAmount 둘 다 이미 포함
-   * (Cafe24OrderRow.pointsSpent 주석 참고)이라 따로 뺄 게 없다. 환불은 카페24
-   * /admin/refunds 기록분(refundAmount)뿐 아니라 폴백분(unrecordedRefundAmount,
-   * NCHECKOUT=네이버페이 등 카페24가 모르는 취소)까지 둘 다 뺀다 — 한때
-   * 폴백분은 빼면 카페24 화면과 어긋난다고 보고 제외했었는데(4월 매출 대조),
-   * 그 화면 자체가 이 취소를 전혀 몰라서(총 결제액도 안 줄어듦) "카페24
-   * 매출액"이 실제로 가게에 남은 돈보다 부풀려 보였던 거라 다시 포함시켰다.
-   * 그래서 이 필드는 카페24 관리자 화면 숫자와 정확히 일치하지 않을 수
-   * 있다(폴백 환불이 있는 기간이면 그만큼 더 낮게 나오는 게 맞음) — 대신
-   * 실제 순매출에는 더 가깝다. ROAS 계산용 온라인 매출은 이 값에서 배송비·
-   * 적립금을 별도로 더 빼서 쓴다(functions-cmip 밖 use-roas-view-model.ts
-   * 참고). */
+   * (Cafe24OrderRow.pointsSpent 주석 참고)이라 따로 뺄 게 없다. itemDiscount는
+   * grossPayment에는 이미 안 들어있어서(grossPayment 주석 참고) 여기서 따로
+   * 빼야 한다. 환불은 카페24 /admin/refunds 기록분(refundAmount)뿐 아니라
+   * 폴백분(unrecordedRefundAmount, NCHECKOUT=네이버페이 등 카페24가 모르는
+   * 취소)까지 둘 다 뺀다 — 한때 폴백분은 빼면 카페24 화면과 어긋난다고 보고
+   * 제외했었는데(4월 매출 대조), 그 화면 자체가 이 취소를 전혀 몰라서(총
+   * 결제액도 안 줄어듦) "카페24 매출액"이 실제로 가게에 남은 돈보다 부풀려
+   * 보였던 거라 다시 포함시켰다. 그래서 이 필드는 카페24 관리자 화면 숫자와
+   * 정확히 일치하지 않을 수 있다(폴백 환불이 있는 기간이면 그만큼 더 낮게
+   * 나오는 게 맞음) — 대신 실제 순매출에는 더 가깝다. ROAS 계산용 온라인
+   * 매출은 이 값에서 배송비·적립금을 별도로 더 빼서 쓴다(functions-cmip 밖
+   * use-roas-view-model.ts 참고). */
   paymentAmount: number
-  /** 총매출 — 그 기간에 "결제"로 귀속된 금액 합계(배송비·적립금 포함).
-   * 결제일(paymentDate) 기준 본 결제금액 + 반품 처리일(cancelDate) 기준
-   * 추가배송비(additionalShippingFee) 합. 서로 다른 날짜 기준을 더하는
-   * 이유는 Cafe24OrderRow 주석 참고. */
+  /** 총결제액 — 그 기간에 "결제"로 귀속된 금액 합계(배송비·적립금 포함,
+   * 상품할인 반영 전). 결제일(paymentDate) 기준 본 결제금액 + 반품
+   * 처리일(cancelDate) 기준 추가배송비(additionalShippingFee) 합. 서로 다른
+   * 날짜 기준을 더하는 이유는 Cafe24OrderRow 주석 참고. 3/12 매출 대조로
+   * 확인: 카페24 관리자 "총결제액" 컬럼이 상품할인 반영 전 금액이었다(예전엔
+   * 이 필드에 상품할인을 미리 빼서 넣었었는데, 그러면 우리 "총 결제액"이
+   * 실제로는 카페24의 "총매출액"(할인 반영 후) 개념과 같아지는 라벨 불일치가
+   * 있었다 — client.ts의 toOrderRow 주석 참고). */
   grossPayment: number
   /** 그 기간에 "환불"로 귀속된 금액 합계(환불 완료일=refund_date 기준,
    * 적립금/예치금 환불분 포함) — 카페24 /admin/refunds에 실제로 기록된
@@ -173,8 +183,8 @@ export interface Cafe24MetricsSummary {
   /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 쿠폰 등
    * 주문 단위 할인 합계(Cafe24OrderRow.couponDiscount 주석 참고). */
   couponDiscount: number
-  /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 "상품 할인"
-   * 합계(Cafe24OrderRow.itemDiscount 주석 참고). */
+  /** 참고용 — grossPayment에는 포함돼 있고 paymentAmount에서만 제외된
+   * "상품 할인" 합계(Cafe24OrderRow.itemDiscount 주석 참고). */
   itemDiscount: number
   /** 참고용 — grossPayment/shippingFee에 포함된 반품 추가배송비 합계만 따로
    * (반품 처리일 기준). */

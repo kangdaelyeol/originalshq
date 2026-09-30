@@ -12,18 +12,20 @@ import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
 export interface Cafe24RevenueMetrics {
-  /** 순매출(온라인 매출 대표값) = grossPayment - refundAmount -
+  /** 순매출(온라인 매출 대표값) = grossPayment - itemDiscount - refundAmount -
    * unrecordedRefundAmount(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값).
    * 카페24 공식 서비스 가이드(일별/월별매출)의 "순매출 = 결제합계 - 환불합계"
    * (결제합계 자체가 배송비 포함) 정의를 5/24 주문 대조로 확인해서 배송비는
    * 안 뺀다. 적립금도 grossPayment/refundAmount 계산 단계에서부터 이미
-   * 포함돼 있어(6월 매출 대조로 확인) 여기서 따로 뺄 게 없다. 환불은 카페24
-   * /admin/refunds 기록분(refundAmount)뿐 아니라 NCHECKOUT(네이버페이) 등의
-   * 폴백 환불(unrecordedRefundAmount)까지 둘 다 뺀다 — 한때 폴백분은 빼면
-   * 카페24 화면과 어긋난다고 보고 제외했었는데(4월 매출 대조), 그 화면
-   * 자체가 이 취소를 전혀 몰라서(총 결제액도 안 줄어듦) "카페24 매출액"이
-   * 실제로 가게에 남은 돈보다 부풀려 보였던 거라 다시 포함시켰다 — 그래서
-   * 이 필드는 카페24 관리자 화면 숫자와 정확히 일치하지 않을 수 있다(폴백
+   * 포함돼 있어(6월 매출 대조로 확인) 여기서 따로 뺄 게 없다. itemDiscount는
+   * grossPayment에는 아직 남아있어서(grossPayment 주석 참고, 3/12 매출
+   * 대조) 여기서 따로 뺀다. 환불은 카페24 /admin/refunds 기록분
+   * (refundAmount)뿐 아니라 NCHECKOUT(네이버페이) 등의 폴백 환불
+   * (unrecordedRefundAmount)까지 둘 다 뺀다 — 한때 폴백분은 빼면 카페24
+   * 화면과 어긋난다고 보고 제외했었는데(4월 매출 대조), 그 화면 자체가 이
+   * 취소를 전혀 몰라서(총 결제액도 안 줄어듦) "카페24 매출액"이 실제로
+   * 가게에 남은 돈보다 부풀려 보였던 거라 다시 포함시켰다 — 그래서 이
+   * 필드는 카페24 관리자 화면 숫자와 정확히 일치하지 않을 수 있다(폴백
    * 환불이 있는 기간이면 그만큼 낮게 나오는 게 맞음). ROAS 계산용 온라인
    * 매출(use-roas-view-model.ts)은 이 값에서 배송비·순 적립금을 별도로 더
    * 빼서 쓴다. 결제(결제일 기준)와 환불(환불완료일 기준)을 서로 다른
@@ -33,9 +35,13 @@ export interface Cafe24RevenueMetrics {
    * 여러 번에 나눠 환불되는 경우 접수일 하나로는 표현이 안 돼서 — 실제로
    * 발견한 사례: 접수 8/21, 카드 부분취소 완료는 8/18과 8/31 두 번). */
   paymentAmount: number
-  /** 총매출 — 주문 시점(취소 여부 무관) 상품구매금액+배송비 합계(결제일
+  /** 총결제액 — 주문 시점(취소 여부 무관) 상품구매금액+배송비 합계(결제일
    * 기준) + 반품 추가배송비 합계(반품 접수일 기준). 배송비·적립금 포함,
-   * 쿠폰/상품 할인은 제외. 이 둘을 더하는 이유는 additionalShippingFee 주석
+   * 쿠폰할인은 제외하지만 **상품할인(itemDiscount)은 아직 포함돼 있다** —
+   * 3/12 매출 대조로 카페24 관리자 "총결제액" 컬럼이 상품할인 반영 전
+   * 금액이라는 걸 확인했다(예전엔 여기서도 상품할인을 뺐었는데, 그러면 이
+   * 필드가 실제로는 카페24의 "총매출액"(할인 반영 후) 개념과 같아지는 라벨
+   * 불일치가 있었다). 이 둘을 더하는 이유는 additionalShippingFee 주석
    * 참고. */
   grossPayment: number
   /** 환불금액 — 실제로 환불 완료 처리된 금액 합계(적립금/예치금 환불분
@@ -58,8 +64,9 @@ export interface Cafe24RevenueMetrics {
    * 지금까지 이 매장이 실제로 쓴 건 쿠폰뿐이라 "쿠폰할인"으로 부른다(7/7
    * 환불 건에서 발견 — 이걸 안 빼서 환불액이 100,000원 과다 집계됐었다). */
   couponDiscount: number
-  /** 참고용 — grossPayment에서 이미 제외된 "상품 할인" 합계(카페24 관리자
-   * "일별 매출내역"의 "할인" 컬럼, 쿠폰과 별도). order_price_amount와
+  /** 참고용 — grossPayment에는 아직 포함돼 있고 paymentAmount에서만 빠지는
+   * "상품 할인" 합계(카페24 관리자 "일별 매출내역"의 "할인" 컬럼, 쿠폰과
+   * 별도, grossPayment 주석 참고). order_price_amount와
    * payment_amount의 차이로만 드러나고 어떤 구조화된 할인 필드에도 안
    * 잡힌다(카페24가 품목별로 내려주는 additional_discount_price 필드로 바꿔본
    * 적도 있는데, 6/9·6/10 주문처럼 그 필드로도 안 잡히는 할인이 있어서 역산

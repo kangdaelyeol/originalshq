@@ -32,7 +32,9 @@ export interface RoasMetrics {
    * 기준을 유지해야 한다는 요구사항). totalRevenue/roas 계산에 이 값을 쓴다. */
   onlineRevenue: number
   /** 카페24 매출액 — 관리자 화면 "일별 매출내역"과 원 단위까지 맞춘 순매출
-   * (= onlineGrossPayment - onlineRefundAmount, 배송비·적립금 포함). ROAS
+   * (= onlineGrossPayment - onlineItemDiscount - onlineRefundAmount, 배송비·
+   * 적립금 포함) — onlineGrossPayment가 상품할인 반영 전 금액이라(3/12 매출
+   * 대조로 확인, onlineGrossPayment 주석 참고) 여기서 상품할인을 뺀다. ROAS
    * 계산에는 안 쓰고(대신 배송비를 뺀 onlineRevenue를 쓴다) 참고용으로만
    * 보여준다(onlineRevenue 주석 참고). */
   onlineRevenueCafe24: number
@@ -52,8 +54,11 @@ export interface RoasMetrics {
    * 안 쓴다 — computeRoasRows/computeRoasAverage는 항상 0으로 둔다. */
   deferredBalance: number
   /** 온라인 매출(Cafe24)에서 그 기간에 "결제"로 귀속된 금액 합계(총 결제액,
-   * 배송비·적립금 포함, 환불 차감 전) — Cafe24RevenueMetrics.grossPayment
-   * 그대로. */
+   * 배송비·적립금 포함, 상품할인·환불 차감 전) — Cafe24RevenueMetrics.
+   * grossPayment 그대로. 카페24 관리자 "총결제액" 컬럼과 맞춘 값이라
+   * 상품할인은 아직 안 빠져있다(3/12 매출 대조로 발견 — 예전엔 여기서도
+   * 상품할인을 뺐었는데, 그러면 이 필드가 실제로는 카페24 "총매출액"(할인
+   * 반영 후) 개념과 같아지는 라벨 불일치가 있었다). */
   onlineGrossPayment: number
   /** 온라인 매출(Cafe24)에서 그 기간에 "환불"로 귀속된 금액 합계(환불액,
    * 적립금/예치금 환불분 포함) — Cafe24RevenueMetrics.refundAmount 그대로,
@@ -101,9 +106,9 @@ const calcRoas = (
  * 들어가는 실수를 막기 위해서다. */
 interface ToMetricsInput {
   offlineRevenue: number
-  /** 카페24 화면 기준 순매출(= grossPayment - refundAmount, 배송비·적립금
-   * 포함) — 여기서 배송비와 순 적립금을 뺀 값이 RoasMetrics.onlineRevenue
-   * (ROAS용)가 된다. */
+  /** 카페24 화면 기준 순매출(= grossPayment - itemDiscount - refundAmount,
+   * 배송비·적립금 포함) — 여기서 배송비와 순 적립금을 뺀 값이
+   * RoasMetrics.onlineRevenue(ROAS용)가 된다. */
   onlineRevenueCafe24: number
   spend: number
   installmentInterest?: number
