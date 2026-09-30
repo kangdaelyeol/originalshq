@@ -24,10 +24,8 @@ interface Cafe24AmountBreakdown {
   points_spent_amount: string
   // 예치금 사용액 — 적립금과 같은 성격(카페24 공식 순매출 정의: "결제합계 =
   // 실결제금액+적립금+예치금+네이버포인트+배송비"에 예치금도 포함)이라
-  // netAmount에서 안 빼고, itemDiscountFor에서도 points_spent_amount와 같이
-  // 빼야 한다(안 빼면 예치금으로 낸 금액을 상품 할인으로 착각한다 —
-  // itemDiscountFor 주석 참고). 이 매장은 지금까지 실사용 0원이라 pointsSpent
-  // 처럼 별도 참고용 필드로 노출하지는 않는다.
+  // netAmount에서 안 뺀다. 이 매장은 지금까지 실사용 0원이라 pointsSpent처럼
+  // 별도 참고용 필드로 노출하지는 않는다.
   credits_spent_amount: string
   // 쿠폰/멤버십 등 주문 단위 할인 — 전부 "실제로 돈을 받지 못한 부분"이라
   // 순액 계산에서 빼야 한다(netAmount 주석 참고). 처음엔 이 매장이 쿠폰을 안
@@ -59,9 +57,15 @@ interface Cafe24RawOrder {
   cancel_date: string | null
   member_id: string | null
   // 판매 채널 — "self"(자체몰), "mobile"(모바일웹), "shopn"(네이버 스마트
-  // 스토어), "NCHECKOUT"(네이버페이) 등. itemDiscount 판단에만 쓴다
-  // (NCHECKOUT만 제외 — itemDiscountFor 주석 참고).
+  // 스토어), "NCHECKOUT"(네이버페이) 등. itemDiscountFor 계산에는 안
+  // 쓴다(naver_point 필드로 채널 구분 없이 처리 — itemDiscountFor 주석 참고).
   market_id: string
+  // 이 주문에서 네이버페이 포인트로 결제된 금액 — initial_order_amount/
+  // actual_order_amount 밑이 아니라 주문 최상위 필드다(카페24 API가 그렇게
+  // 내려줌). NCHECKOUT(네이버페이) 채널이 아니면 보통 null. 카페24의
+  // "적립금"(points_spent_amount)과는 별개 시스템이라 거기 안 잡힌다 —
+  // itemDiscountFor 주석 참고.
+  naver_point: string | null
   paid: 'T' | 'F'
   /** 최초 주문 시점 금액 breakdown — 취소 여부와 무관하게 주문 당시 그대로.
    * "결제"(grossPayment)는 이 값 기준, paymentDate에 귀속한다. */
@@ -73,7 +77,6 @@ interface Cafe24RawOrder {
 
 interface Cafe24OrdersResponse {
   orders: Cafe24RawOrder[]
-  links?: { rel: string; href: string }[]
 }
 
 // 주문 단위 할인 필드들 — 전부 "적립금"과 같은 성격(실제로 돈을 받지 못한
@@ -125,36 +128,51 @@ function couponDiscount(a: Cafe24AmountBreakdown): number {
 // 처음엔 스마트스토어(market_id="shopn") 채널에서만 발견해서(6/10 주문:
 // 상품구매금액 2,800,000 - 할인 850,000 = 실결제금액 1,950,000, 구조화된
 // 할인 필드는 전부 0) "마켓할인"으로 좁게 잡았었는데, 3~5월 데이터로 다시
-// 대조하다가 자체몰(self)·모바일(mobile) 채널에서도 똑같은 패턴(예: 5월 —
-// 여러 건이 정확히 주문가의 10%만큼 할인, 구조화된 필드는 역시 전부 0)이
-// 나타나는 걸 발견해서 채널 한정을 풀었다(3월·4월분은 이 계산으로 카페24
-// "할인" 컬럼과 원 단위까지 일치 검증함).
+// 대조하다가 자체몰(self)·모바일(mobile) 채널에서도 똑같은 패턴이 나와
+// 전 채널로 넓혔다.
 //
-// market_id === "NCHECKOUT"(네이버페이)만 제외한다 — 그 채널만 성격이
-// 다르다(고객이 네이버포인트로 일부 결제해서 payment_amount가 실제보다
-// 작게 나오는 것 — 할인이 아니라 결제수단 문제라 이미 payment_amount를
-// 기준으로 안 쓰기로 한 이유이기도 하다). NCHECKOUT에 이 로직을 적용하면
-// 포인트로 낸 금액을 할인으로 착각해 매출을 또 깎아버리는 예전 버그가
-// 재발한다. net에서 적립금·예치금을 따로 빼고 비교하는 이유도 같다 —
-// netAmount 자체는 적립금·예치금을 안 빼지만(위 Cafe24AmountBreakdown
-// 주석 참고), payment_amount는 원래도 적립금/예치금 결제분이 반영 안 된
-// 금액이라, 그 두 결제수단으로 낸 금액을 상품 할인으로 착각하지 않으려면
-// 이 계산에서만 별도로 빼야 한다(9/30 카페24 공식 순매출 정의 재확인 중
-// 예치금이 빠져있던 걸 발견해서 추가했다 — 이 매장은 아직 예치금 실사용이
-// 없어서 지금까지는 결과에 영향이 없었다).
+// 한동안 이 값을 카페24가 품목별로 내려주는 additional_discount_price 필드
+// (/admin/orders?embed=items)로 대체했었는데, 6월 매출 대조 중 이 필드가
+// 모든 할인을 담아주는 게 아니라는 걸 발견했다 — 6/9·6/10 주문
+// (20260609-0000018, 20260610-0000066, 둘 다 shopn/신용카드 결제, 각각
+// 678,000원·850,000원 할인, 합계 1,528,000원)은 상품구매금액과 결제금액 차이가
+// 뚜렷한데 additional_discount_price도 다른 구조화된 필드도 전부 0이었다 —
+// 역산 말고는 잡을 방법이 없는 할인도 있다는 뜻이라 역산 방식으로 되돌렸다
+// (embed=items/items 필드도 같이 제거 — fetchOrdersForSingleRange 참고).
+//
+// market_id === "NCHECKOUT"(네이버페이)만 역산에서 제외하면 안 된다 — 5/1
+// 주문(20260501-0000017)처럼 네이버포인트를 전혀 안 쓴 NCHECKOUT 주문의
+// 진짜 할인(22,800원)도 있다는 걸 발견했다(그전엔 "NCHECKOUT이면 할인 계산
+// 자체를 스킵"하는 임시방편을 썼다가 이 케이스를 통째로 놓쳤었다). 그래서
+// 채널로 거르는 대신, 카페24가 네이버포인트 결제액을 담아주는 주문 최상위
+// naver_point 필드(Cafe24RawOrder.naver_point 주석 참고 — points_spent_amount와는
+// 별개 시스템)를 net에서 따로 빼서, 진짜 네이버포인트 결제분만 할인 계산에서
+// 제외한다. net에서 적립금·예치금·네이버포인트를 따로 빼고 비교하는 이유도
+// 같다 — netAmount 자체는 셋 다 안 빼지만(위 Cafe24AmountBreakdown 주석
+// 참고), payment_amount는 원래도 이 세 결제수단분이 반영 안 된 금액이라, 그
+// 셋으로 낸 금액을 상품 할인으로 착각하지 않으려면 이 계산에서만 별도로
+// 빼야 한다.
+//
+// "icash"(아이캐시 등 제3자 선불수단) 결제 주문도 order_price_amount와
+// payment_amount 사이에 차이가 생기는 걸 6월 데이터에서 봤는데(예: 13,700원·
+// 39,000원짜리 주문), 둘 다 전액 icash 결제라 payment_amount 자체가 0으로
+// 찍혀서 위 payment<=0 가드에 걸려 할인으로 안 잡힌다 — 우연히 안전하다.
+// 만약 icash로 "일부만" 결제하는 주문이 생기면(네이버포인트 일부 결제와
+// 같은 모양) 그 잔여분을 구분할 필드를 아직 못 찾아서 상품 할인으로
+// 잘못 잡힐 수 있다 — icash 부분결제가 실제로 생기면 다시 봐야 한다.
 function itemDiscountFor(
   a: Cafe24AmountBreakdown,
-  marketId: string,
+  naverPoint: number,
   net: number,
 ): number {
-  if (marketId === 'NCHECKOUT') return 0
   const payment = Number(a.payment_amount) || 0
   if (payment <= 0) return 0
-  const netExcludingPointsAndCredits =
+  const netExcludingNonCashPayments =
     net -
     (Number(a.points_spent_amount) || 0) -
-    (Number(a.credits_spent_amount) || 0)
-  return Math.max(0, netExcludingPointsAndCredits - payment)
+    (Number(a.credits_spent_amount) || 0) -
+    naverPoint
+  return Math.max(0, netExcludingNonCashPayments - payment)
 }
 
 function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
@@ -162,14 +180,17 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   const actualShipping = Number(raw.actual_order_amount.shipping_fee) || 0
   const initialNetRaw = netAmount(raw.initial_order_amount)
   const actualNetRaw = netAmount(raw.actual_order_amount)
+  // naver_point는 initial/actual 구분 없이 주문에 하나뿐이라(위 Cafe24RawOrder
+  // 주석 참고) 두 계산에 그대로 같이 쓴다.
+  const naverPoint = Number(raw.naver_point) || 0
   const initialItemDiscount = itemDiscountFor(
     raw.initial_order_amount,
-    raw.market_id,
+    naverPoint,
     initialNetRaw,
   )
   const actualItemDiscount = itemDiscountFor(
     raw.actual_order_amount,
-    raw.market_id,
+    naverPoint,
     actualNetRaw,
   )
   const initialNet = initialNetRaw - initialItemDiscount
@@ -207,19 +228,30 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   }
 }
 
-/** links.next를 끝까지 따라가며 한 페이지 응답에서 item 배열을 뽑아 전부
- * 모은다 — 주문/환불 리소스 둘 다 이 모양(offset을 직접 계산할 필요 없이
- * 서버가 주는 다음 페이지 URL을 그대로 다시 호출)이라 공유한다. */
-async function fetchAllPages<TRaw, TData extends { links?: { rel: string; href: string }[] }>(
+/** offset을 직접 늘려가며(0, 100, 200, ...) 페이지가 PAGE_SIZE보다 작게 돌아올
+ * 때까지 반복 호출해 item 배열을 전부 모은다 — 주문/환불 리소스 둘 다 이
+ * 모양이라 공유한다. 예전엔 응답의 links.next(서버가 주는 다음 페이지 URL)를
+ * 그대로 따라갔었는데, 5/1 주문 조사 중 주문 목록에 embed=items를 붙이면
+ * 카페24가 응답에 links 필드 자체를 아예 안 내려준다는 걸 발견했다 — 그래서
+ * 100건 넘는 구간을 embed=items로 조회하면(예: 5~6월 153건) links가 없어서
+ * "다음 페이지 없음"으로 오판, 나머지 주문이 통째로 누락되는 심각한 버그로
+ * 이어졌다(단순히 itemDiscount 하나가 아니라 주문 자체가 사라짐). links
+ * 유무와 무관하게 항상 안전하도록 offset을 우리가 직접 계산하는 방식으로
+ * 바꿨다 — limit(=PAGE_SIZE)만큼 요청해서 정확히 그 개수만큼 돌아오면 다음
+ * 페이지가 있을 수 있다고 보고 offset을 더해 한 번 더 부르고, 그보다 적게
+ * 돌아오면(마지막 페이지) 멈춘다. */
+async function fetchAllPages<TRaw, TData>(
   firstUrl: string,
   headers: Record<string, string>,
   itemsOf: (data: TData) => TRaw[],
   errorLabel: string,
 ): Promise<TRaw[]> {
   const items: TRaw[] = []
-  let url: string | null = firstUrl
+  let offset = 0
 
-  while (url) {
+  while (true) {
+    const url = new URL(firstUrl)
+    url.searchParams.set('offset', String(offset))
     const res: Response = await fetch(url, { headers })
     const data = (await res.json()) as TData & { error?: { message?: string } }
     if (!res.ok) {
@@ -227,8 +259,10 @@ async function fetchAllPages<TRaw, TData extends { links?: { rel: string; href: 
         `${errorLabel}: ${data.error?.message || res.statusText} (url=${url})`,
       )
     }
-    items.push(...itemsOf(data))
-    url = data.links?.find((l) => l.rel === 'next')?.href ?? null
+    const page = itemsOf(data)
+    items.push(...page)
+    if (page.length < PAGE_SIZE) break
+    offset += PAGE_SIZE
   }
 
   return items
@@ -262,7 +296,12 @@ async function withTokenRetry<T>(
 
 /** [startDate, endDate] 하나(3개월 이내로 가정)에 대해 주문을 전부 모은다.
  * dateType으로 order_date/cancel_date를 골라 쓴다 — cancel_date 조회는
- * fallback 환불 계산용(fetchCafe24OrderRowsByCancelDate 참고). */
+ * fallback 환불 계산용(fetchCafe24OrderRowsByCancelDate 참고). embed=items는
+ * 일부러 안 붙인다 — 6월 매출 대조 중 그 파라미터를 붙이면 카페24가 응답의
+ * links(다음 페이지 안내) 필드를 아예 안 내려준다는 걸 발견했다. 100건 넘는
+ * 구간에서는 페이지가 있는지조차 알 수 없게 되어 뒤쪽 페이지가 통째로
+ * 누락되는 버그로 이어졌었다(itemDiscountFor 주석 참고 — 애초에 items 필드
+ * 자체도 모든 할인을 담아주지 않아 필요 없어졌다). */
 async function fetchOrdersForSingleRange(
   mallId: string,
   accessToken: string,
@@ -380,7 +419,6 @@ interface Cafe24RawRefund {
 
 interface Cafe24RefundsResponse {
   refunds: Cafe24RawRefund[]
-  links?: { rel: string; href: string }[]
 }
 
 // 카페24 관리자 "일별 매출내역"의 환불합계가 적립금/예치금 환불분까지

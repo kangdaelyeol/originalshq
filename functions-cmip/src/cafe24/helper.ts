@@ -94,11 +94,12 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
   orderCount: rows.length,
 })
 
-/** 카페24 /admin/refunds에 실제로 기록된 환불(isFallback=false)만
- * refundAmount/pointsRefunded/refundCount에 넣는다 — 폴백 환불(NCHECKOUT 등,
- * Cafe24RefundRow.isFallback 주석 참고)은 카페24 관리자 화면이 아예 모르는
- * 값이라 여기 섞으면 "카페24 화면과 맞춘 순매출"이 어긋난다(4월 매출 대조로
- * 발견). 폴백 환불은 따로 합산해 unrecordedRefundAmount로만 노출한다. */
+/** 카페24 /admin/refunds에 실제로 기록된 환불(isFallback=false)과 폴백 환불
+ * (NCHECKOUT 등, Cafe24RefundRow.isFallback 주석 참고)을 나눠서 합산한다 —
+ * combine()의 paymentAmount는 결국 이 둘을 합쳐서 빼지만(실제로 나간 돈은
+ * 다 반영해야 하니까), refundAmount(화면 기록분)와 unrecordedRefundAmount
+ * (폴백분)를 따로 노출해야 "카페24 화면엔 왜 이 금액이 안 보이는지" 감사할
+ * 수 있어서 나눠서 반환한다. */
 const sumRefund = (rows: readonly Cafe24RefundRow[]): RefundTotals => {
   const official = rows.filter((r) => !r.isFallback)
   return {
@@ -129,11 +130,16 @@ const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
  * 단계(client.ts)에서부터 이미 포함시키고 있어 여기서 따로 뺄 게 없다 —
  * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다(ROAS
  * 계산은 이 값과 별개로 온라인 매출에서 배송비를 다시 빼서 쓴다 —
- * use-roas-view-model.ts 참고). refund.refundAmount는 sumRefund에서 이미
- * 폴백 환불(NCHECKOUT 등)을 뺀 "카페24 /admin/refunds 기록분"만 들어있어
- * 여기서 따로 거를 게 없다 — 폴백분은 unrecordedRefundAmount로만 참고용
- * 노출한다(4월 매출 대조로 발견, sumRefund 주석 참고). 이 함수가 사실상 이
- * 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부 "무엇으로
+ * use-roas-view-model.ts 참고). paymentAmount는 refund.refundAmount(카페24
+ * /admin/refunds 기록분)뿐 아니라 refund.unrecordedRefundAmount(NCHECKOUT=
+ * 네이버페이 등 폴백 환불)까지 둘 다 뺀다 — 4월 매출 대조 중 한때 폴백분을
+ * 빼면 카페24 화면과 어긋난다고 보고 제외했었는데, 그 화면 자체가 애초에
+ * 네이버페이 쪽에서 처리된 취소를 전혀 모르고(총 결제액에서도 안 깎임)
+ * "카페24 매출액"이라는 이름과 달리 실제로 가게에 남은 돈보다 부풀려
+ * 보여준다는 걸 재확인해서, 실제로 나간 돈을 다 반영하는 쪽으로 다시
+ * 되돌렸다 — refundAmount/unrecordedRefundAmount는 그대로 각각 노출해서
+ * "카페24 화면 기록분"과 "폴백분"을 구분할 수 있게는 유지한다. 이 함수가
+ * 사실상 이 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부 "무엇으로
  * 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
 const combine = (
   gross: GrossTotals,
@@ -143,7 +149,8 @@ const combine = (
   const grossPayment = gross.grossPayment + additional.additionalShippingFee
   const shippingFee = gross.shippingFee + additional.additionalShippingFee
   return {
-    paymentAmount: grossPayment - refund.refundAmount,
+    paymentAmount:
+      grossPayment - refund.refundAmount - refund.unrecordedRefundAmount,
     grossPayment,
     refundAmount: refund.refundAmount,
     shippingFee,

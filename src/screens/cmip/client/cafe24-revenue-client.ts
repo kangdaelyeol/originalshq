@@ -12,17 +12,19 @@ import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
 export interface Cafe24RevenueMetrics {
-  /** 순매출(온라인 매출 대표값) = grossPayment - refundAmount(배송비·적립금
-   * 포함) — 카페24 공식 서비스 가이드(일별/월별매출)의 "순매출 = 결제합계 -
-   * 환불합계"(결제합계 자체가 배송비 포함) 정의와 실제 5/24 주문 대조로 확인한
-   * 값이다(functions-cmip의 helper.ts combine() 주석 참고). 예전엔 배송비를
-   * "택배사로 나가는 실비 통과항목"으로 보고 뺐었는데 그게 카페24 화면 기준과
-   * 어긋났다. 적립금은 카페24 관리자 일별 리포트가 결제/환불 양쪽 다 적립금을
-   * 포함시키는 걸 확인해서 화면 기준으로 맞췄다 — grossPayment/refundAmount
-   * 계산 단계에서부터 이미 포함돼 있어 여기서 따로 뺄 게 없다(예전엔 "적립금은
-   * 매출 아님"으로 뺐었는데, 전액 적립금으로 결제된 주문을 취소하면 그 환불분이
-   * 카페24 환불합계에 그대로 잡히는 걸 6월 매출 대조로 발견해서 전환했다).
-   * shippingFee/pointsSpent로 각각 참고용 노출은 유지한다 — ROAS 계산용 온라인
+  /** 순매출(온라인 매출 대표값) = grossPayment - refundAmount -
+   * unrecordedRefundAmount(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값).
+   * 카페24 공식 서비스 가이드(일별/월별매출)의 "순매출 = 결제합계 - 환불합계"
+   * (결제합계 자체가 배송비 포함) 정의를 5/24 주문 대조로 확인해서 배송비는
+   * 안 뺀다. 적립금도 grossPayment/refundAmount 계산 단계에서부터 이미
+   * 포함돼 있어(6월 매출 대조로 확인) 여기서 따로 뺄 게 없다. 환불은 카페24
+   * /admin/refunds 기록분(refundAmount)뿐 아니라 NCHECKOUT(네이버페이) 등의
+   * 폴백 환불(unrecordedRefundAmount)까지 둘 다 뺀다 — 한때 폴백분은 빼면
+   * 카페24 화면과 어긋난다고 보고 제외했었는데(4월 매출 대조), 그 화면
+   * 자체가 이 취소를 전혀 몰라서(총 결제액도 안 줄어듦) "카페24 매출액"이
+   * 실제로 가게에 남은 돈보다 부풀려 보였던 거라 다시 포함시켰다 — 그래서
+   * 이 필드는 카페24 관리자 화면 숫자와 정확히 일치하지 않을 수 있다(폴백
+   * 환불이 있는 기간이면 그만큼 낮게 나오는 게 맞음). ROAS 계산용 온라인
    * 매출(use-roas-view-model.ts)은 이 값에서 배송비·순 적립금을 별도로 더
    * 빼서 쓴다. 결제(결제일 기준)와 환불(환불완료일 기준)을 서로 다른
    * 날짜/리소스에서 가져와 계산한다 — 카페24 관리자 일별 리포트가 주문일이
@@ -38,9 +40,10 @@ export interface Cafe24RevenueMetrics {
   grossPayment: number
   /** 환불금액 — 실제로 환불 완료 처리된 금액 합계(적립금/예치금 환불분
    * 포함), 환불완료일 기준(결제일과 다른 달일 수 있음). 카페24 /admin/refunds에
-   * 실제로 기록된 환불만 — 폴백 환불(NCHECKOUT 등, unrecordedRefundAmount
-   * 참고)은 카페24 화면이 모르는 값이라 여기 안 섞는다(4월 매출 대조로
-   * 발견). */
+   * 실제로 기록된 환불만 — 폴백 환불(NCHECKOUT 등)은 unrecordedRefundAmount로
+   * 따로 노출하지만, paymentAmount 계산에서는 이 둘을 합쳐서 뺀다
+   * (paymentAmount 주석 참고). 이 필드 자체는 "카페24 화면에 실제로 잡히는
+   * 환불이 얼마인지"를 보여주는 용도. */
   refundAmount: number
   /** 참고용 — grossPayment에 포함된 배송비 합계(기본 배송비 + 추가배송비),
    * paymentAmount(순매출)에서는 빠져있다. */
@@ -58,21 +61,23 @@ export interface Cafe24RevenueMetrics {
   /** 참고용 — grossPayment에서 이미 제외된 "상품 할인" 합계(카페24 관리자
    * "일별 매출내역"의 "할인" 컬럼, 쿠폰과 별도). order_price_amount와
    * payment_amount의 차이로만 드러나고 어떤 구조화된 할인 필드에도 안
-   * 잡힌다. 처음엔 스마트스토어 채널에서만 발견해서 좁게 잡았는데, 자체몰/
-   * 모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔다 — NCHECKOUT(네이버
-   * 페이) 채널에도 비슷한 차이가 있지만 그건 포인트 결제 때문이라 할인이
-   * 아니라서 거기만 제외한다. */
+   * 잡힌다(카페24가 품목별로 내려주는 additional_discount_price 필드로 바꿔본
+   * 적도 있는데, 6/9·6/10 주문처럼 그 필드로도 안 잡히는 할인이 있어서 역산
+   * 방식으로 되돌렸다). 처음엔 스마트스토어 채널에서만 발견했는데, 자체몰/
+   * 모바일/NCHECKOUT(네이버페이) 채널에서도 같은 패턴이 나와 전 채널로
+   * 넓혔다 — NCHECKOUT은 네이버포인트 결제분만 따로 제외하고 계산한다. */
   itemDiscount: number
   /** 참고용 — grossPayment에 포함된 반품 추가배송비 합계만 따로(반품 접수일
    * 기준). 반품 시 "반품배송비 구매자부담"으로 별도 결제가 일어나는 경우가
    * 있는데, 원 주문 결제에도 환불에도 안 잡히는 제3의 현금흐름이라 따로
    * 추적한다(shippingFee에도 이미 합산되어 있음). */
   additionalShippingFee: number
-  /** 참고용 — refundAmount에는 안 들어있는 폴백 환불 합계. NCHECKOUT(네이버페이)
-   * 등 카페24 자체 PG가 아닌 채널의 취소는 카페24 /admin/refunds에 기록이 안
-   * 남아 카페24 관리자 화면도 이 돈이 나간 걸 모른다 — 실제로 나간 돈이라
-   * 완전히 숨기지 않고 이 필드로만 따로 보여준다. paymentAmount(카페24 화면
-   * 기준 순매출) 계산에는 안 쓴다. */
+  /** 참고용 — refundAmount(카페24 화면 기록분)에는 안 들어있는 폴백 환불
+   * 합계. NCHECKOUT(네이버페이) 등 카페24 자체 PG가 아닌 채널의 취소는 카페24
+   * /admin/refunds에 기록이 안 남아 카페24 관리자 화면도 이 돈이 나간 걸
+   * 모른다. paymentAmount 계산에는 이미 반영돼 있고(paymentAmount 주석
+   * 참고), 이 필드는 "그중 얼마가 카페24 화면엔 안 보이는 몫인지" 감사용으로
+   * 따로 노출한다. */
   unrecordedRefundAmount: number
   /** 결제 건수(결제일 기준). */
   orderCount: number
