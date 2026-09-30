@@ -13,8 +13,21 @@ import {
   type OfflineRevenueSummary,
   type Cafe24RevenueSummary,
 } from '../client'
+import { readSessionCache, writeSessionCache } from '../client/session-cache'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
+
+/** 한 번의 조회(loadRange)가 만들어내는 다섯 결과 — 세션 캐시에 이 통째로
+ * 저장해두고, 같은 기간을 다시 조회할 때 그대로 복원한다. */
+interface InsightLoadResult {
+  metaResult: MetaInsightSummary
+  googleResult: MetaInsightSummary
+  naverResult: MetaInsightSummary
+  offlineRevenueResult: OfflineRevenueSummary
+  onlineRevenueResult: Cafe24RevenueSummary
+}
+
+const cacheKeyFor = (start: ISODate, end: ISODate): string => `${start}:${end}`
 
 /** 기본 조회 기간 — 최근 7일. 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로
  * 센다(date-range-picker의 "지난 7일" 프리셋과 동일한 정의). */
@@ -63,64 +76,105 @@ export const useChannelInsightViewModel = () => {
       ? err.message
       : fallback
 
+  // 조회 결과(다섯 개) state를 한 번에 반영 — 캐시 적중/신규 fetch 두 경로가
+  // 공유한다.
+  const applyResult = useCallback(
+    (apiStart: ISODate, apiEnd: ISODate, result: InsightLoadResult) => {
+      setData(result.metaResult)
+      setGoogleData(result.googleResult)
+      setNaverData(result.naverResult)
+      setOfflineRevenueData(result.offlineRevenueResult)
+      setOnlineRevenueData(result.onlineRevenueResult)
+      setCombinedInsight(
+        combineChannelInsights(
+          result.metaResult,
+          result.googleResult,
+          result.naverResult,
+          apiStart,
+          apiEnd,
+          result.offlineRevenueResult,
+          result.onlineRevenueResult,
+        ),
+      )
+    },
+    [],
+  )
+
   // dateStart/dateEnd state를 거치지 않고 인자로 받은 범위를 바로 조회한다 —
   // "date-range-picker에서 방금 고른 값으로 즉시 조회" 같은 경우, setState 직후
   // 같은 틱에 훅의 dateStart/dateEnd를 읽으면 아직 반영 전(stale)이라 어긋난다.
-  const loadRange = useCallback(async (start: ISODate, end: ISODate) => {
-    if (!start || !end) {
-      setError('시작일과 종료일을 모두 입력해주세요.')
-      return
-    }
-    setError(null)
-    setLoading(true)
-    try {
+  //
+  // 세션 캐시: 같은 (dateStart, dateEnd)를 이미 이 세션에서 조회했으면(force가
+  // 아닌 한) Meta/Google/Naver 라이브 API를 다시 부르지 않고 그 결과를 그대로
+  // 쓴다 — 특히 네이버는 라이브 조회가 하루당 순차 호출이라 느려서(client.ts
+  // 참고) 같은 기간을 반복 조회할 때 체감 효과가 크다. force=true(새로고침
+  // 버튼)는 이 캐시를 무시하고 항상 새로 fetch한 뒤 캐시를 그 값으로 덮어써
+  // 최신화한다.
+  const loadRange = useCallback(
+    async (start: ISODate, end: ISODate, options?: { force?: boolean }) => {
+      if (!start || !end) {
+        setError('시작일과 종료일을 모두 입력해주세요.')
+        return
+      }
       const apiStart = formatForApi(start)
       const apiEnd = formatForApi(end)
-      const [metaRaw, googleRaw, naverRaw, offlineRevenueResult, onlineRevenueResult] =
-        await Promise.all([
-          getAllInsights(apiStart, apiEnd),
-          getGoogleInsights(apiStart, apiEnd),
-          getNaverInsights(apiStart, apiEnd),
-          getOfflineRevenue(apiStart, apiEnd),
-          getCafe24Revenue(apiStart, apiEnd),
-        ])
-      // Meta/Google/Naver는 offlineRevenue 개념 자체를 모르는 백엔드에서 와서
-      // 그 필드가 아예 없다 — KpiGrid 등이 MetricsSummary를 곧장(aggregateMetrics를
-      // 안 거치고) 렌더하는 자리에서 값이 undefined인 채로 쓰이지 않도록, 저장/
-      // 합치기 전에 한 번 0으로 채워 넣는다.
-      const metaResult = normalizeInsightSummary(metaRaw)
-      const googleResult = normalizeInsightSummary(googleRaw)
-      const naverResult = normalizeInsightSummary(naverRaw)
-      setData(metaResult)
-      setGoogleData(googleResult)
-      setNaverData(naverResult)
-      setOfflineRevenueData(offlineRevenueResult)
-      setOnlineRevenueData(onlineRevenueResult)
-      setCombinedInsight(
-        combineChannelInsights(
-          metaResult,
-          googleResult,
-          naverResult,
-          apiStart,
-          apiEnd,
+      const cacheKey = cacheKeyFor(apiStart, apiEnd)
+
+      if (!options?.force) {
+        const cached = readSessionCache<InsightLoadResult>(cacheKey)
+        if (cached) {
+          setError(null)
+          applyResult(apiStart, apiEnd, cached)
+          return
+        }
+      }
+
+      setError(null)
+      setLoading(true)
+      try {
+        const [metaRaw, googleRaw, naverRaw, offlineRevenueResult, onlineRevenueResult] =
+          await Promise.all([
+            getAllInsights(apiStart, apiEnd),
+            getGoogleInsights(apiStart, apiEnd),
+            getNaverInsights(apiStart, apiEnd),
+            getOfflineRevenue(apiStart, apiEnd),
+            getCafe24Revenue(apiStart, apiEnd),
+          ])
+        // Meta/Google/Naver는 offlineRevenue 개념 자체를 모르는 백엔드에서 와서
+        // 그 필드가 아예 없다 — KpiGrid 등이 MetricsSummary를 곧장(aggregateMetrics를
+        // 안 거치고) 렌더하는 자리에서 값이 undefined인 채로 쓰이지 않도록, 저장/
+        // 합치기 전에 한 번 0으로 채워 넣는다.
+        const result: InsightLoadResult = {
+          metaResult: normalizeInsightSummary(metaRaw),
+          googleResult: normalizeInsightSummary(googleRaw),
+          naverResult: normalizeInsightSummary(naverRaw),
           offlineRevenueResult,
           onlineRevenueResult,
-        ),
-      )
-    } catch (err) {
-      // Meta/Google/Naver 중 어느 쪽이 실패해도 여기로 온다 — CallableError는 항상
-      // 구체적인 메시지를 담고 있어 이 폴백은 거의 쓰이지 않지만, 특정 채널
-      // 이름으로 단정하지 않는다.
-      setError(describeError(err, '인사이트 조회 중 오류가 발생했습니다.'))
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+        }
+        applyResult(apiStart, apiEnd, result)
+        writeSessionCache(cacheKey, result)
+      } catch (err) {
+        // Meta/Google/Naver 중 어느 쪽이 실패해도 여기로 온다 — CallableError는 항상
+        // 구체적인 메시지를 담고 있어 이 폴백은 거의 쓰이지 않지만, 특정 채널
+        // 이름으로 단정하지 않는다.
+        setError(describeError(err, '인사이트 조회 중 오류가 발생했습니다.'))
+      } finally {
+        setLoading(false)
+      }
+    },
+    [applyResult],
+  )
 
   // 현재 state의 dateStart/dateEnd로 조회 — 초기 진입 시 자동 조회 등 "지금 화면에
-  // 표시된 기간을 그대로 다시 조회"할 때 쓴다.
+  // 표시된 기간을 그대로 다시 조회"할 때 쓴다(캐시 적중하면 그대로 씀).
   const load = useCallback(
     () => loadRange(dateStart, dateEnd),
+    [loadRange, dateStart, dateEnd],
+  )
+
+  // 새로고침 — 지금 보고 있는 기간을 세션 캐시 무시하고 강제로 다시 조회한다.
+  const refresh = useCallback(
+    () => loadRange(dateStart, dateEnd, { force: true }),
     [loadRange, dateStart, dateEnd],
   )
 
@@ -143,5 +197,6 @@ export const useChannelInsightViewModel = () => {
     // 액션
     load,
     loadRange,
+    refresh,
   }
 }

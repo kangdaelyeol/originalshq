@@ -1665,6 +1665,7 @@ export const ChannelInsight = () => {
     onlineRevenueData,
     load,
     loadRange,
+    refresh,
   } = useChannelInsightViewModel()
 
   // 페이지에 들어오면 기본 기간(최근 7일)으로 바로 조회 — "조회" 버튼 없이도
@@ -1762,11 +1763,21 @@ export const ChannelInsight = () => {
               setDateStart(start)
               setDateEnd(end)
               // dateStart/dateEnd state 반영을 기다리지 않고 방금 고른 범위로 바로
-              // 조회한다 — "업데이트" 버튼이 곧 조회 버튼을 겸한다.
+              // 조회한다 — "업데이트" 버튼이 곧 조회 버튼을 겸한다. 이 기간을 이미
+              // 이 세션에서 조회했으면 세션 캐시를 그대로 쓴다(loadRange 참고).
               loadRange(start, end)
             }}
             disabled={loading}
           />
+          <button
+            type="button"
+            className="channel-insight__btn channel-insight__ghost"
+            onClick={refresh}
+            disabled={loading}
+            title="세션 캐시를 무시하고 지금 기간을 다시 조회합니다."
+          >
+            새로고침
+          </button>
         </div>
       </div>
 
