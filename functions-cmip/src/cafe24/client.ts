@@ -400,6 +400,8 @@ function toRefundRow(raw: Cafe24RawRefund): Cafe24RefundRow {
       pointsRefunded +
       (Number(raw.used_credits) || 0),
     pointsRefunded,
+    // 카페24 /admin/refunds가 실제로 내려준 환불 이벤트 — 폴백(합성)이 아니다.
+    isFallback: false,
   }
 }
 

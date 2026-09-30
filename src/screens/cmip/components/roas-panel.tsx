@@ -105,7 +105,10 @@ const OFFLINE_FIELDS: readonly RoasField[] = [
 // ROAS용 순매출까지 계산 과정을 전부 순서대로 보여준다:
 //  1. 매출액(ROAS용) — 광고 성과를 볼 때 쓰는 값(배송비·적립금 결제까지 제외)
 //  2~3. 총 결제액/환불액 — 그 둘의 원본 재료(Cafe24RevenueMetrics.
-//       grossPayment/refundAmount 그대로)
+//       grossPayment/refundAmount 그대로, 환불액은 카페24 관리자 화면에 실제로
+//       잡히는 환불만)
+//  3-1. 미기록 환불(네이버페이 등) — 환불액에는 안 들어있는 폴백 환불 참고용
+//       노출(4월 매출 대조로 발견, unrecordedRefundAmount 주석 참고)
 //  4. 카페24 매출액 — 관리자 화면과 맞춘 순매출(총 결제액 - 환불액, 배송비·
 //     적립금 포함) = 예전에 "매출액"으로 부르던 값
 //  5. 총매출 — 카페24 매출액에 쿠폰할인·상품할인을 다시 더한 총액(배송비는
@@ -134,7 +137,15 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRefundAmount,
     format: won,
     formatCompact: won,
-    note: '그 기간에 환불 완료 처리된 금액 합계(적립금/예치금 환불분 포함).',
+    note: '그 기간에 환불 완료 처리된 금액 합계(적립금/예치금 환불분 포함). 카페24 관리자 화면에 실제로 잡히는 환불만이고, 아래 "미기록 환불(네이버페이 등)"은 안 섞여 있습니다.',
+  },
+  {
+    key: 'onlineUnrecordedRefundAmount',
+    label: '미기록 환불(네이버페이 등)',
+    getValue: (m) => m.onlineUnrecordedRefundAmount,
+    format: won,
+    formatCompact: won,
+    note: '카페24 매출액/환불액 계산에는 안 들어간 참고용 값입니다. 네이버페이(NCHECKOUT) 등 카페24 자체 결제망이 아닌 채널의 취소는 카페24 관리자 화면도 환불로 안 잡습니다 — 그래도 실제로는 돈이 나갔으니, 주문 금액 변화로 추정한 값을 여기 따로 보여드립니다. 4월 매출 대조 중 발견했습니다.',
   },
   {
     key: 'onlineRevenueCafe24',

@@ -111,6 +111,16 @@ export interface Cafe24RefundRow {
    * 이미 포함돼 있는 값을 참고용으로 따로 뗀 것. "순 적립금 사용액"(그 기간에
    * 쓴 적립금 - 그 기간에 환불된 적립금)을 계산하는 데 쓴다. */
   pointsRefunded: number
+  /** true면 카페24 /admin/refunds에 실제로 기록된 환불이 아니라, index.ts의
+   * buildFallbackRefunds가 주문 금액 델타(initial-actual)로 역산해 합성한
+   * 값이다(NCHECKOUT=네이버페이처럼 카페24 자체 PG가 아니라 그 채널에서
+   * 환불이 처리돼 /admin/refunds에 기록이 안 남는 경우의 폴백 — index.ts
+   * 주석 참고). 4월 매출 대조(9/30) 중 카페24 관리자 화면은 이 환불을 아예
+   * 모른다는 걸 확인해서, helper.ts의 refundAmount/paymentAmount 계산에서는
+   * isFallback 행을 제외하고 unrecordedRefundAmount로만 참고용 노출하기로
+   * 했다 — "카페24 화면과 맞춘 순매출"이라는 목적과 "실제로 나간 돈은 놓치지
+   * 않는다"는 목적이 서로 달라 분리했다. */
+  isFallback: boolean
 }
 
 export interface Cafe24MetricsSummary {
@@ -131,7 +141,10 @@ export interface Cafe24MetricsSummary {
    * 이유는 Cafe24OrderRow 주석 참고. */
   grossPayment: number
   /** 그 기간에 "환불"로 귀속된 금액 합계(환불 완료일=refund_date 기준,
-   * 적립금/예치금 환불분 포함). */
+   * 적립금/예치금 환불분 포함) — 카페24 /admin/refunds에 실제로 기록된
+   * 환불만(Cafe24RefundRow.isFallback=false) 더한다. 폴백 환불(NCHECKOUT 등)은
+   * 카페24 화면이 아예 모르는 값이라 여기서 빼고 unrecordedRefundAmount로
+   * 따로 뗀다(4월 매출 대조로 발견 — isFallback 주석 참고). */
   refundAmount: number
   /** 참고용 — grossPayment에 포함된 배송비 합계(기본 배송비 + 추가배송비),
    * paymentAmount(순매출)에서는 빠져있다. */
@@ -153,6 +166,12 @@ export interface Cafe24MetricsSummary {
   /** 참고용 — grossPayment/shippingFee에 포함된 반품 추가배송비 합계만 따로
    * (반품 처리일 기준). */
   additionalShippingFee: number
+  /** 참고용 — refundAmount에는 안 들어있는 폴백 환불(Cafe24RefundRow.isFallback
+   * 주석 참고) 합계. NCHECKOUT(네이버페이) 등 카페24 자체 PG가 아닌 채널의
+   * 취소는 /admin/refunds에 기록이 안 남아 카페24 관리자 화면도 이 돈이 나간
+   * 걸 모른다 — 실제로 나간 돈이라 완전히 숨기지 않고 이 필드로만 따로
+   * 보여준다. paymentAmount(카페24 화면 기준 순매출) 계산에는 안 쓴다. */
+  unrecordedRefundAmount: number
   /** 결제 건수(결제일 기준, 매출 집계에 포함된 것만). */
   orderCount: number
   /** 환불 건수(환불 완료일 기준, 한 주문에 여러 건일 수 있음). */

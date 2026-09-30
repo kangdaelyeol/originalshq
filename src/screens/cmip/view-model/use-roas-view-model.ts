@@ -56,8 +56,16 @@ export interface RoasMetrics {
    * 그대로. */
   onlineGrossPayment: number
   /** 온라인 매출(Cafe24)에서 그 기간에 "환불"로 귀속된 금액 합계(환불액,
-   * 적립금/예치금 환불분 포함) — Cafe24RevenueMetrics.refundAmount 그대로. */
+   * 적립금/예치금 환불분 포함) — Cafe24RevenueMetrics.refundAmount 그대로,
+   * 카페24 /admin/refunds에 실제로 기록된 환불만(폴백 제외, 아래
+   * onlineUnrecordedRefundAmount 참고). */
   onlineRefundAmount: number
+  /** 참고용 — onlineRefundAmount에는 안 들어있는 폴백 환불 합계
+   * (Cafe24RevenueMetrics.unrecordedRefundAmount 그대로). NCHECKOUT(네이버페이)
+   * 등 카페24 자체 PG가 아닌 채널의 취소는 카페24 관리자 화면도 모르는
+   * 돈이라 onlineRevenueCafe24/onlineRevenue 어느 쪽 계산에도 안 쓰고 이
+   * 필드로만 노출한다(4월 매출 대조로 발견). */
+  onlineUnrecordedRefundAmount: number
   /** 온라인 매출(Cafe24)에 포함된 배송비 합계 — 참고용. */
   onlineShippingFee: number
   /** 온라인 매출(Cafe24)에 포함된 적립금 사용액 합계(결제일 기준, 환불 전) —
@@ -102,6 +110,7 @@ interface ToMetricsInput {
   deferredBalance?: number
   onlineGrossPayment?: number
   onlineRefundAmount?: number
+  onlineUnrecordedRefundAmount?: number
   onlineShippingFee?: number
   onlinePointsSpent?: number
   onlinePointsRefunded?: number
@@ -118,6 +127,7 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     deferredBalance = 0,
     onlineGrossPayment = 0,
     onlineRefundAmount = 0,
+    onlineUnrecordedRefundAmount = 0,
     onlineShippingFee = 0,
     onlinePointsSpent = 0,
     onlinePointsRefunded = 0,
@@ -137,6 +147,7 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     deferredBalance,
     onlineGrossPayment,
     onlineRefundAmount,
+    onlineUnrecordedRefundAmount,
     onlineShippingFee,
     onlinePointsSpent,
     onlinePointsRefunded,
@@ -160,6 +171,7 @@ export function computeRoasTotal(
     deferredBalance: offlineRevenue?.total.deferredBalance ?? 0,
     onlineGrossPayment: onlineRevenue?.total.grossPayment ?? 0,
     onlineRefundAmount: onlineRevenue?.total.refundAmount ?? 0,
+    onlineUnrecordedRefundAmount: onlineRevenue?.total.unrecordedRefundAmount ?? 0,
     onlineShippingFee: onlineRevenue?.total.shippingFee ?? 0,
     onlinePointsSpent: onlineRevenue?.total.pointsSpent ?? 0,
     onlinePointsRefunded: onlineRevenue?.total.pointsRefunded ?? 0,
@@ -187,6 +199,7 @@ export function computeRoasAverage(
     installmentInterest: total.installmentInterest / rowCount,
     onlineGrossPayment: total.onlineGrossPayment / rowCount,
     onlineRefundAmount: total.onlineRefundAmount / rowCount,
+    onlineUnrecordedRefundAmount: total.onlineUnrecordedRefundAmount / rowCount,
     onlineShippingFee: total.onlineShippingFee / rowCount,
     onlinePointsSpent: total.onlinePointsSpent / rowCount,
     onlinePointsRefunded: total.onlinePointsRefunded / rowCount,
@@ -205,6 +218,7 @@ const ONLINE_METRICS_FIELDS = [
   'paymentAmount',
   'grossPayment',
   'refundAmount',
+  'unrecordedRefundAmount',
   'shippingFee',
   'pointsSpent',
   'pointsRefunded',
@@ -240,6 +254,7 @@ function toMetricsFromOnlineMaps(
     installmentInterest,
     onlineGrossPayment: online.grossPayment.get(key) ?? 0,
     onlineRefundAmount: online.refundAmount.get(key) ?? 0,
+    onlineUnrecordedRefundAmount: online.unrecordedRefundAmount.get(key) ?? 0,
     onlineShippingFee: online.shippingFee.get(key) ?? 0,
     onlinePointsSpent: online.pointsSpent.get(key) ?? 0,
     onlinePointsRefunded: online.pointsRefunded.get(key) ?? 0,

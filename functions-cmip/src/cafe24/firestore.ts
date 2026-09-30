@@ -116,6 +116,7 @@ export interface Cafe24RefundDoc {
   refundDate: ISODate
   amount: number
   pointsRefunded: number
+  isFallback: boolean
   syncedAt: string
 }
 
@@ -137,6 +138,11 @@ const docToRefundRow = (
     refundDate: x.refundDate,
     amount: x.amount,
     pointsRefunded: x.pointsRefunded ?? 0,
+    // isFallback 필드 추가 전에 upsert된 문서엔 이 필드가 없다 — refundCode가
+    // "ORDER-{orderId}" 형태인 건 전부 index.ts의 buildFallbackRefunds가 만든
+    // 합성 문서였으므로(실제 카페24 환불은 항상 "C..." 형태), 그 패턴으로
+    // 재동기화 없이도 기존 데이터를 안전하게 구분한다.
+    isFallback: x.isFallback ?? x.refundCode.startsWith('ORDER-'),
   }
 }
 

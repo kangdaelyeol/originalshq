@@ -37,7 +37,10 @@ export interface Cafe24RevenueMetrics {
    * 참고. */
   grossPayment: number
   /** 환불금액 — 실제로 환불 완료 처리된 금액 합계(적립금/예치금 환불분
-   * 포함), 환불완료일 기준(결제일과 다른 달일 수 있음). */
+   * 포함), 환불완료일 기준(결제일과 다른 달일 수 있음). 카페24 /admin/refunds에
+   * 실제로 기록된 환불만 — 폴백 환불(NCHECKOUT 등, unrecordedRefundAmount
+   * 참고)은 카페24 화면이 모르는 값이라 여기 안 섞는다(4월 매출 대조로
+   * 발견). */
   refundAmount: number
   /** 참고용 — grossPayment에 포함된 배송비 합계(기본 배송비 + 추가배송비),
    * paymentAmount(순매출)에서는 빠져있다. */
@@ -65,6 +68,12 @@ export interface Cafe24RevenueMetrics {
    * 있는데, 원 주문 결제에도 환불에도 안 잡히는 제3의 현금흐름이라 따로
    * 추적한다(shippingFee에도 이미 합산되어 있음). */
   additionalShippingFee: number
+  /** 참고용 — refundAmount에는 안 들어있는 폴백 환불 합계. NCHECKOUT(네이버페이)
+   * 등 카페24 자체 PG가 아닌 채널의 취소는 카페24 /admin/refunds에 기록이 안
+   * 남아 카페24 관리자 화면도 이 돈이 나간 걸 모른다 — 실제로 나간 돈이라
+   * 완전히 숨기지 않고 이 필드로만 따로 보여준다. paymentAmount(카페24 화면
+   * 기준 순매출) 계산에는 안 쓴다. */
+  unrecordedRefundAmount: number
   /** 결제 건수(결제일 기준). */
   orderCount: number
   /** 환불 건수(환불완료일 기준, 한 주문에 여러 건일 수 있음). */

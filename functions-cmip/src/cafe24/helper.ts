@@ -78,6 +78,7 @@ interface RefundTotals {
   refundAmount: number
   pointsRefunded: number
   refundCount: number
+  unrecordedRefundAmount: number
 }
 
 interface AdditionalTotals {
@@ -93,11 +94,22 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
   orderCount: rows.length,
 })
 
-const sumRefund = (rows: readonly Cafe24RefundRow[]): RefundTotals => ({
-  refundAmount: rows.reduce((s, r) => s + r.amount, 0),
-  pointsRefunded: rows.reduce((s, r) => s + r.pointsRefunded, 0),
-  refundCount: rows.length,
-})
+/** 카페24 /admin/refunds에 실제로 기록된 환불(isFallback=false)만
+ * refundAmount/pointsRefunded/refundCount에 넣는다 — 폴백 환불(NCHECKOUT 등,
+ * Cafe24RefundRow.isFallback 주석 참고)은 카페24 관리자 화면이 아예 모르는
+ * 값이라 여기 섞으면 "카페24 화면과 맞춘 순매출"이 어긋난다(4월 매출 대조로
+ * 발견). 폴백 환불은 따로 합산해 unrecordedRefundAmount로만 노출한다. */
+const sumRefund = (rows: readonly Cafe24RefundRow[]): RefundTotals => {
+  const official = rows.filter((r) => !r.isFallback)
+  return {
+    refundAmount: official.reduce((s, r) => s + r.amount, 0),
+    pointsRefunded: official.reduce((s, r) => s + r.pointsRefunded, 0),
+    refundCount: official.length,
+    unrecordedRefundAmount: rows
+      .filter((r) => r.isFallback)
+      .reduce((s, r) => s + r.amount, 0),
+  }
+}
 
 const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
   additionalShippingFee: rows.reduce((s, r) => s + r.additionalShippingFee, 0),
@@ -117,9 +129,12 @@ const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
  * 단계(client.ts)에서부터 이미 포함시키고 있어 여기서 따로 뺄 게 없다 —
  * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다(ROAS
  * 계산은 이 값과 별개로 온라인 매출에서 배송비를 다시 빼서 쓴다 —
- * use-roas-view-model.ts 참고). 이 함수가 사실상 이 파일의 핵심이고, 나머지
- * summarizeBy* 함수들은 전부 "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이
- * 함수로 합친다. */
+ * use-roas-view-model.ts 참고). refund.refundAmount는 sumRefund에서 이미
+ * 폴백 환불(NCHECKOUT 등)을 뺀 "카페24 /admin/refunds 기록분"만 들어있어
+ * 여기서 따로 거를 게 없다 — 폴백분은 unrecordedRefundAmount로만 참고용
+ * 노출한다(4월 매출 대조로 발견, sumRefund 주석 참고). 이 함수가 사실상 이
+ * 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부 "무엇으로
+ * 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
 const combine = (
   gross: GrossTotals,
   refund: RefundTotals,
@@ -137,6 +152,7 @@ const combine = (
     couponDiscount: gross.couponDiscount,
     itemDiscount: gross.itemDiscount,
     additionalShippingFee: additional.additionalShippingFee,
+    unrecordedRefundAmount: refund.unrecordedRefundAmount,
     orderCount: gross.orderCount,
     refundCount: refund.refundCount,
   }

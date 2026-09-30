@@ -74,6 +74,11 @@ function buildFallbackRefunds(
         refundDate: row.cancelDate,
         amount: row.cancelRefundAmount,
         pointsRefunded: row.cancelPointsRefund,
+        // 카페24 /admin/refunds에 없는 걸 주문 금액 델타로 역산해 합성한
+        // 값이다 — helper.ts가 refundAmount/paymentAmount(카페24 화면 기준
+        // 순매출) 계산에서 이 값을 빼고 unrecordedRefundAmount로만 노출한다
+        // (Cafe24RefundRow.isFallback 주석 참고).
+        isFallback: true,
       })
     } else {
       staleRefundCodes.push(`ORDER-${row.orderId}`)
