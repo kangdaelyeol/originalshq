@@ -23,13 +23,19 @@ export interface Cafe24OrderRow {
    * 귀속된다(카페24 관리자 리포트와 맞추기 위해 — 위 주석 참고). 무통장입금
    * 등은 orderDate와 며칠 차이날 수 있다. */
   paymentDate: ISODate | null
-  /** 실제로 취소/반품이 접수 처리된 날짜(cancel_date) — 없으면 null.
-   * refundAmount 계산에는 더 이상 안 쓰지만(위 주석 참고, Cafe24RefundRow가
-   * 담당), additionalShippingFee를 귀속시키는 데는 이 날짜를 쓴다 —
-   * 반품배송비 추가결제는 카페24 자체에 날짜 필드가 없고(claim_reason
-   * 자유텍스트에만 적힘, /admin/return/{claim_code}로 직접 확인함) 유일하게
-   * 확보 가능한 날짜가 이 cancel_date뿐이며, 8/21 사례로 실제 그 날짜에
-   * 귀속되는 걸 검증했다. */
+  /** 실제로 취소/반품이 접수 처리된 날짜 — 없으면 null. 카페24 원본
+   * order.cancel_date를 그대로 쓰지 않고 client.ts의 effectiveCancelDate를
+   * 거친 값이다 — 주문 전체가 취소되면 order.cancel_date에 찍히지만, 품목
+   * 일부만 취소되면(canceled: "M") 그 필드는 계속 null로 남고 대신
+   * items[].cancel_date에만 찍힌다(5/6 매출 대조로 발견 — 20260408-0000013
+   * 주문이 이 케이스라 cancelRefundAmount가 있는데도 cancelDate가 null이라
+   * buildFallbackRefunds가 통째로 건너뛰고 있었다). refundAmount 계산에는
+   * 더 이상 안 쓰지만(위 주석 참고, Cafe24RefundRow가 담당),
+   * additionalShippingFee를 귀속시키는 데는 이 날짜를 쓴다 — 반품배송비
+   * 추가결제는 카페24 자체에 날짜 필드가 없고(claim_reason 자유텍스트에만
+   * 적힘, /admin/return/{claim_code}로 직접 확인함) 유일하게 확보 가능한
+   * 날짜가 이 cancelDate뿐이며, 8/21 사례로 실제 그 날짜에 귀속되는 걸
+   * 검증했다. */
   cancelDate: ISODate | null
   memberId: string | null
   /** 결제 완료 여부(Cafe24 "T"/"F"를 boolean으로 변환). */

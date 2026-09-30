@@ -51,9 +51,13 @@ interface Cafe24RawOrder {
   // 확인) — 카페24 관리자 일별 리포트가 이 날짜 기준으로 집계하는 걸 직접
   // 검증으로 확인했다(client.ts 밖 types.ts의 Cafe24OrderRow 주석 참고).
   payment_date: string | null
-  // 취소/반품 접수 처리일 — 없으면 null. additionalShippingFee 귀속에만
+  // 취소/반품 접수 처리일 — 주문 전체가 취소된 경우에만 채워진다. 일부
+  // 품목만 취소되면(canceled: "M") 이 필드는 계속 null로 남고, 대신 그
+  // 품목의 items[].cancel_date에 실제 취소 완료일이 찍힌다(effectiveCancelDate
+  // 주석 참고 — 5/6 매출 대조로 발견: 20260408-0000013 주문이 이 필드는
+  // null인데 items 쪽엔 2026-05-06이 있었다). additionalShippingFee 귀속에만
   // 쓴다(types.ts의 Cafe24OrderRow 주석 참고, 환불 자체는 더 이상 이 필드를
-  // 안 쓴다).
+  // 안 쓴다) — 직접 안 쓰고 effectiveCancelDate를 거쳐서 쓴다.
   cancel_date: string | null
   member_id: string | null
   // 판매 채널 — "self"(자체몰), "mobile"(모바일웹), "shopn"(네이버 스마트
@@ -73,10 +77,50 @@ interface Cafe24RawOrder {
   /** 반품 처리 후 현재 금액 — additionalShippingFee(반품배송비 추가결제)
    * 감지에만 쓴다: 이 shipping_fee가 initial보다 커진 만큼이 추가결제분. */
   actual_order_amount: Cafe24AmountBreakdown
+  /** 품목 목록 — /admin/orders 호출에 embed=items를 붙여야 내려온다
+   * (fetchOrdersForSingleRange 참고). 품목별 cancel_date만 쓴다 —
+   * effectiveCancelDate 주석 참고. */
+  items: Cafe24OrderItem[]
+  /** 배송비 묶음(배송비 그룹)별 상세 — actualShipping 보정에만 쓴다
+   * (actualShipping 계산 부분 주석 참고). 배송비가 여러 묶음으로 나뉠 수
+   * 있어서 배열이다. */
+  shipping_fee_detail: Cafe24ShippingFeeDetail[]
+}
+
+/** 주문 품목 하나 — /admin/orders?embed=items로 얻는 items 배열의 원소.
+ * cancel_date 외 다른 필드는 안 쓴다. */
+interface Cafe24OrderItem {
+  cancel_date: string | null
+}
+
+/** 배송비 묶음 하나 — cancel_shipping_fee 외 다른 필드는 안 쓴다. */
+interface Cafe24ShippingFeeDetail {
+  cancel_shipping_fee: string
 }
 
 interface Cafe24OrdersResponse {
   orders: Cafe24RawOrder[]
+}
+
+/** 주문의 실질적인 취소일 — raw.cancel_date(주문 전체 취소일)가 있으면
+ * 그대로 쓰고, 없으면(부분취소=canceled:"M") items 중 cancel_date가 찍힌
+ * 품목들의 최댓값(가장 나중 취소 완료일)을 쓴다. 5/6 매출 대조로 발견:
+ * 20260408-0000013 주문은 품목 10개짜리 하나만 부분취소됐는데 주문 전체
+ * cancel_date는 계속 null이고, 그 품목의 items[].cancel_date에만
+ * 2026-05-06 취소완료일이 찍혀 있었다 — 이 케이스를 못 잡아서
+ * cancelRefundAmount(560,000원)가 있는데도 cancelDate가 null이라
+ * buildFallbackRefunds(index.ts)가 통째로 건너뛰고 있었다(카페24 화면
+ * 환불액과 235,000원 → 776,500원 차이로 드러남). 여러 품목이 서로 다른
+ * 날짜에 취소되면 가장 나중 날짜를 쓴다 — 정확한 배분보다는 최소한
+ * "완전히 놓치지 않는" 쪽을 택했다. */
+function effectiveCancelDate(raw: Cafe24RawOrder): string | null {
+  if (raw.cancel_date) return raw.cancel_date
+  const itemCancelDates = (raw.items ?? [])
+    .map((item) => item.cancel_date)
+    .filter((date): date is string => date != null)
+  if (itemCancelDates.length === 0) return null
+  itemCancelDates.sort()
+  return itemCancelDates[itemCancelDates.length - 1]
 }
 
 // 주문 단위 할인 필드들 — 전부 "적립금"과 같은 성격(실제로 돈을 받지 못한
@@ -100,9 +144,14 @@ const OTHER_DISCOUNT_FIELDS = [
 // 0으로 나오는데 order_price_amount는 정상적으로 상품가가 찍힘.
 // initial_order_amount로 계산한 값을 paymentDate에 귀속시킨다 — types.ts의
 // Cafe24OrderRow 주석 참고. 환불은 여기서 안 다루고 아래 toRefundRow가 별도
-// "환불" 리소스에서 처리한다.
-function netAmount(a: Cafe24AmountBreakdown): number {
-  let total = (Number(a.order_price_amount) || 0) + (Number(a.shipping_fee) || 0)
+// "환불" 리소스에서 처리한다. shippingFeeOverride는 actual_order_amount 쪽
+// 계산에서만 쓴다 — actual_order_amount.shipping_fee 필드가 배송비만 따로
+// 취소돼도 안 줄어드는 걸 발견해서(toOrderRow의 actualShipping 계산 참고),
+// 배송비 취소분을 미리 반영한 값을 대신 넣기 위해서다.
+function netAmount(a: Cafe24AmountBreakdown, shippingFeeOverride?: number): number {
+  const shippingFee =
+    shippingFeeOverride !== undefined ? shippingFeeOverride : Number(a.shipping_fee) || 0
+  let total = (Number(a.order_price_amount) || 0) + shippingFee
   for (const field of OTHER_DISCOUNT_FIELDS) {
     total -= Number(a[field]) || 0
   }
@@ -137,8 +186,9 @@ function couponDiscount(a: Cafe24AmountBreakdown): number {
 // (20260609-0000018, 20260610-0000066, 둘 다 shopn/신용카드 결제, 각각
 // 678,000원·850,000원 할인, 합계 1,528,000원)은 상품구매금액과 결제금액 차이가
 // 뚜렷한데 additional_discount_price도 다른 구조화된 필드도 전부 0이었다 —
-// 역산 말고는 잡을 방법이 없는 할인도 있다는 뜻이라 역산 방식으로 되돌렸다
-// (embed=items/items 필드도 같이 제거 — fetchOrdersForSingleRange 참고).
+// 역산 말고는 잡을 방법이 없는 할인도 있다는 뜻이라 역산 방식으로 되돌렸다.
+// embed=items 자체는 그대로 남겨뒀다 — items[].cancel_date를 부분취소 주문의
+// 취소일 보정(effectiveCancelDate)에 쓰기 때문이다.
 //
 // market_id === "NCHECKOUT"(네이버페이)만 역산에서 제외하면 안 된다 — 5/1
 // 주문(20260501-0000017)처럼 네이버포인트를 전혀 안 쓴 NCHECKOUT 주문의
@@ -153,20 +203,29 @@ function couponDiscount(a: Cafe24AmountBreakdown): number {
 // 셋으로 낸 금액을 상품 할인으로 착각하지 않으려면 이 계산에서만 별도로
 // 빼야 한다.
 //
-// "icash"(아이캐시 등 제3자 선불수단) 결제 주문도 order_price_amount와
-// payment_amount 사이에 차이가 생기는 걸 6월 데이터에서 봤는데(예: 13,700원·
-// 39,000원짜리 주문), 둘 다 전액 icash 결제라 payment_amount 자체가 0으로
-// 찍혀서 위 payment<=0 가드에 걸려 할인으로 안 잡힌다 — 우연히 안전하다.
-// 만약 icash로 "일부만" 결제하는 주문이 생기면(네이버포인트 일부 결제와
-// 같은 모양) 그 잔여분을 구분할 필드를 아직 못 찾아서 상품 할인으로
-// 잘못 잡힐 수 있다 — icash 부분결제가 실제로 생기면 다시 봐야 한다.
+// payment_amount<=0이면 무조건 할인 0으로 보던 가드가 있었는데, 5/6 주문
+// (20260506-0000053)으로 이게 틀렸다는 걸 발견했다 — 이 주문은 상품구매금액
+// 205,000원을 네이버포인트 184,500원 + 진짜 할인 20,500원으로 결제해서
+// payment_amount는 0인데(현금/카드로 낸 잔액이 없어서), naverPoint를 뺀
+// 나머지(20,500원)는 여전히 진짜 상품 할인이다. payment<=0 자체는 "할인 없음"
+// 신호가 아니라 "현금 잔액 없음" 신호일 뿐이라 구분을 잘못 짚었던 것 —
+// paid==='T'(실제로 결제 완료된 주문)인지로 바꿔서, 미결제 주문(파싱 실수로
+// 생기는 큰 값 방지용)만 걸러내고 나머지는 naverPoint를 뺀 값을 그대로
+// 쓰기로 했다.
+//
+// 이 변경으로 "icash"(아이캐시 등 제3자 선불수단) 전액 결제 주문(6월
+// 데이터에서 발견한 13,700원·39,000원짜리 주문 등)은 다시 상품 할인으로
+// 잡히게 된다 — icash 결제분을 구분할 구조화된 필드를 아직 못 찾아서다.
+// naver_point처럼 별도 필드가 나오면 그때 제외하면 되고, 지금은 금액이
+// 작아서 우선순위가 낮다.
 function itemDiscountFor(
   a: Cafe24AmountBreakdown,
   naverPoint: number,
   net: number,
+  paid: boolean,
 ): number {
+  if (!paid) return 0
   const payment = Number(a.payment_amount) || 0
-  if (payment <= 0) return 0
   const netExcludingNonCashPayments =
     net -
     (Number(a.points_spent_amount) || 0) -
@@ -177,32 +236,48 @@ function itemDiscountFor(
 
 function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   const initialShipping = Number(raw.initial_order_amount.shipping_fee) || 0
-  const actualShipping = Number(raw.actual_order_amount.shipping_fee) || 0
+  // actual_order_amount.shipping_fee는 배송비만 따로 취소돼도 initial 값
+  // 그대로 안 줄어든다 — 5/6 매출 대조로 발견(20260506-0000019 주문: 배송비
+  // 5,000원이 취소 처리(shipping_fee_detail[].cancel_shipping_fee=5,000)됐는데
+  // actual_order_amount.shipping_fee는 계속 5,000). 그래서 shipping_fee_detail의
+  // cancel_shipping_fee 합계를 직접 빼서 실제 남은 배송비를 구한다.
+  const canceledShippingFee = (raw.shipping_fee_detail ?? []).reduce(
+    (sum, detail) => sum + (Number(detail.cancel_shipping_fee) || 0),
+    0,
+  )
+  const actualShipping = Math.max(
+    0,
+    (Number(raw.actual_order_amount.shipping_fee) || 0) - canceledShippingFee,
+  )
   const initialNetRaw = netAmount(raw.initial_order_amount)
-  const actualNetRaw = netAmount(raw.actual_order_amount)
+  const actualNetRaw = netAmount(raw.actual_order_amount, actualShipping)
   // naver_point는 initial/actual 구분 없이 주문에 하나뿐이라(위 Cafe24RawOrder
   // 주석 참고) 두 계산에 그대로 같이 쓴다.
   const naverPoint = Number(raw.naver_point) || 0
+  const paid = raw.paid === 'T'
   const initialItemDiscount = itemDiscountFor(
     raw.initial_order_amount,
     naverPoint,
     initialNetRaw,
+    paid,
   )
   const actualItemDiscount = itemDiscountFor(
     raw.actual_order_amount,
     naverPoint,
     actualNetRaw,
+    paid,
   )
   const initialNet = initialNetRaw - initialItemDiscount
   const actualNet = actualNetRaw - actualItemDiscount
+  const cancelDate = effectiveCancelDate(raw)
   return {
     orderId: raw.order_id,
     // order_date는 "2026-09-27T01:26:10+09:00" 형태 — 날짜만 잘라 쓴다.
     orderDate: raw.order_date.slice(0, 10),
     paymentDate: raw.payment_date ? raw.payment_date.slice(0, 10) : null,
-    cancelDate: raw.cancel_date ? raw.cancel_date.slice(0, 10) : null,
+    cancelDate: cancelDate ? cancelDate.slice(0, 10) : null,
     memberId: raw.member_id,
-    paid: raw.paid === 'T',
+    paid,
     grossPayment: initialNet,
     shippingFee: initialShipping,
     pointsSpent: Number(raw.initial_order_amount.points_spent_amount) || 0,
@@ -296,12 +371,12 @@ async function withTokenRetry<T>(
 
 /** [startDate, endDate] 하나(3개월 이내로 가정)에 대해 주문을 전부 모은다.
  * dateType으로 order_date/cancel_date를 골라 쓴다 — cancel_date 조회는
- * fallback 환불 계산용(fetchCafe24OrderRowsByCancelDate 참고). embed=items는
- * 일부러 안 붙인다 — 6월 매출 대조 중 그 파라미터를 붙이면 카페24가 응답의
- * links(다음 페이지 안내) 필드를 아예 안 내려준다는 걸 발견했다. 100건 넘는
- * 구간에서는 페이지가 있는지조차 알 수 없게 되어 뒤쪽 페이지가 통째로
- * 누락되는 버그로 이어졌었다(itemDiscountFor 주석 참고 — 애초에 items 필드
- * 자체도 모든 할인을 담아주지 않아 필요 없어졌다). */
+ * fallback 환불 계산용(fetchCafe24OrderRowsByCancelDate 참고). embed=items로
+ * 품목 목록도 같이 받는다 — 부분취소 주문의 취소일 보정(effectiveCancelDate
+ * 참고)에 items[].cancel_date가 필요하다. 이 파라미터를 붙이면 카페24가
+ * 응답의 links(다음 페이지 안내) 필드를 아예 안 내려주는 걸 발견했었는데
+ * (6월 매출 대조), fetchAllPages를 offset 직접 계산 방식으로 바꿔서
+ * (fetchAllPages 주석 참고) links 유무와 무관하게 안전하다. */
 async function fetchOrdersForSingleRange(
   mallId: string,
   accessToken: string,
@@ -318,6 +393,7 @@ async function fetchOrdersForSingleRange(
     start_date: startDate,
     end_date: endDate,
     date_type: dateType,
+    embed: 'items',
     limit: String(PAGE_SIZE),
   })
   return fetchAllPages<Cafe24RawOrder, Cafe24OrdersResponse>(
