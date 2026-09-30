@@ -692,6 +692,37 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     font-weight: 600;
   }
 
+  // ROAS 탭의 각 표 섹션(ROAS 요약/기간별 추이/오프라인 매출/카페24 온라인
+  // 매출) 제목을 눌러 그 섹션 본문(요약 카드나 표)을 접고 펼 수 있는 버튼 —
+  // __sort-head와 같은 이유로 버튼 기본 스타일을 지워서 그냥 제목처럼
+  // 보이게 한다. 기본(펼침) 상태는 셰브론이 아래를 향하고, is-collapsed면
+  // 오른쪽을 가리키도록 돌린다(흔한 접기/펼치기 관례).
+  &__section-collapse-toggle {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    font-weight: inherit;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover {
+      color: rgb(212, 212, 212);
+    }
+
+    .channel-insight__chevron {
+      transition: transform 120ms ease;
+    }
+
+    &.is-collapsed .channel-insight__chevron {
+      transform: rotate(-90deg);
+    }
+  }
+
   &__section-head {
     display: flex;
     align-items: center;

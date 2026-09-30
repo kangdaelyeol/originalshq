@@ -7,6 +7,7 @@ import type {
 import { SingleSelectDropdown } from './single-select-dropdown'
 import {
   RoasGrouping,
+  RoasTable,
   useRoasViewModel,
   type RoasMetrics,
   type RoasRow,
@@ -205,6 +206,55 @@ function InfoIcon() {
       />
       <circle cx="8" cy="4.8" r="0.9" fill="currentColor" />
     </svg>
+  )
+}
+
+// single-select-dropdown.tsx의 ChevronIcon과 같은 모양 — roas-panel.tsx
+// 전용으로 따로 둔다(모듈 독립성, 위 InfoIcon과 같은 이유).
+function ChevronIcon() {
+  return (
+    <svg
+      className="channel-insight__chevron"
+      viewBox="0 0 20 20"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M5 7.5 10 12.5 15 7.5"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/** ROAS 탭의 표 섹션들(기간별 추이/오프라인 매출/카페24 온라인 매출) 제목을
+ * 감싸는 접기/펼치기 버튼 — 부모(<h3 className="channel-insight__section-title">
+ * 등)의 글자 스타일을 font: inherit로 그대로 물려받아서, 버튼 자체엔 텍스트
+ * 스타일 클래스를 따로 안 넣어도 된다(9/30 요청 — 제목을 누르면 그 섹션
+ * 본문을 접고 편다). "ROAS 요약"(<span className="channel-insight__summary-label">)
+ * 도 이 버튼을 그대로 그 안에 넣어서 같은 방식으로 쓴다. */
+function SectionCollapseToggle({
+  title,
+  open,
+  onToggle,
+}: {
+  title: string
+  open: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={`channel-insight__section-collapse-toggle${open ? '' : ' is-collapsed'}`}
+      onClick={onToggle}
+      aria-expanded={open}
+    >
+      <ChevronIcon />
+      {title}
+    </button>
   )
 }
 
@@ -540,8 +590,65 @@ function useRoasTableSort(rows: readonly RoasRow[], fields: readonly RoasField[]
   return { sort, toggleSort, sortedRows }
 }
 
-/** OFFLINE_FIELDS/ONLINE_FIELDS 전용 소표 — 항상 전체 필드를 보여주고(토글
- * 없음), "기간별 추이" 표와 같은 구조(기간별 행 + 합계 + 평균, 앞 행 대비
+/** "기간별 추이"/"오프라인 매출"/"카페24 온라인 매출" 표 셋 다 자기만의 "지표
+ * 표시" 토글이 있어야 해서(9/30 요청 전에는 ROAS_FIELDS만, 그것도 표가 아니라
+ * "ROAS 요약" 카드 쪽에 있었다) 컬럼 표시/숨김 상태 관리를 훅으로 뺐다 —
+ * useRoasTableSort와 같은 이유로 표 인스턴스별 독립 상태. 기본은 전부 표시.
+ * fields 매개변수는 채널 인사이트의 FullListTable "컬럼 표시" 토글과 같은
+ * 패턴을 그대로 쓴다(channel-insight.tsx). */
+function useFieldVisibility(fields: readonly RoasField[]) {
+  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(
+    () => new Set(fields.map((f) => f.key)),
+  )
+  const toggle = (key: string) => {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+  const visibleFields = fields.filter((f) => visibleKeys.has(f.key))
+  return { visibleKeys, toggle, visibleFields }
+}
+
+/** useFieldVisibility와 짝을 이루는 토글 버튼 로우 — "기간별 추이"/
+ * "오프라인 매출"/"카페24 온라인 매출" 세 표가 공유한다. */
+function FieldVisibilityToggles({
+  fields,
+  visibleKeys,
+  onToggle,
+}: {
+  fields: readonly RoasField[]
+  visibleKeys: ReadonlySet<string>
+  onToggle: (key: string) => void
+}) {
+  return (
+    <div
+      className="channel-insight__full-list-toggles"
+      role="group"
+      aria-label="지표 표시"
+    >
+      {fields.map((f) => {
+        const active = visibleKeys.has(f.key)
+        return (
+          <button
+            key={f.key}
+            type="button"
+            className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+            aria-pressed={active}
+            onClick={() => onToggle(f.key)}
+          >
+            {f.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/** OFFLINE_FIELDS/ONLINE_FIELDS 전용 소표 — "기간별 추이" 표와 같은 구조
+ * (지표 표시 토글 + 기간별 행 + 합계 + 평균, 앞 행 대비
  * 증감 표시)를 그대로 재사용한다. 별도 그래프는 없다(ROAS 그래프만 이 화면의
  * 유일한 시각화로 충분하다고 판단). */
 function RoasSubTable({
@@ -550,203 +657,56 @@ function RoasSubTable({
   rows,
   total,
   average,
+  grouping,
+  onGroupingChange,
 }: {
   title: string
   fields: readonly RoasField[]
   rows: readonly RoasRow[]
   total: RoasMetrics
   average: RoasMetrics
+  /** 이 표만의 보기 단위(일별/요일별/주차별/월별) — "기간별 추이" 표와
+   * 독립적으로 바뀐다(9/30 요청 전에는 표 하나(전역)만 있었다). */
+  grouping: RoasGrouping
+  onGroupingChange: (grouping: RoasGrouping) => void
 }) {
   const { sort, toggleSort, sortedRows } = useRoasTableSort(rows, fields)
+  const { visibleKeys, toggle: toggleMetric, visibleFields } =
+    useFieldVisibility(fields)
+  const [open, setOpen] = useState(true)
 
   return (
     <section className="channel-insight__section">
       <div className="channel-insight__section-head">
-        <h3 className="channel-insight__section-title">{title}</h3>
+        <h3 className="channel-insight__section-title">
+          <SectionCollapseToggle
+            title={title}
+            open={open}
+            onToggle={() => setOpen((o) => !o)}
+          />
+        </h3>
+        <div className="channel-insight__section-head-actions">
+          <span className="channel-insight__section-head-hint">보기</span>
+          <SingleSelectDropdown<RoasGrouping>
+            options={GROUPING_OPTIONS}
+            value={grouping}
+            onChange={onGroupingChange}
+            ariaLabel={`${title} 보기 단위`}
+          />
+        </div>
       </div>
 
-      {rows.length === 0 ? (
-        <p className="channel-insight__result-empty">데이터 없음</p>
-      ) : (
-        <div className="channel-insight__table-wrap">
-          <table className="channel-insight__table channel-insight__table--roas">
-            <thead>
-              <tr>
-                <th>
-                  <button
-                    type="button"
-                    className="channel-insight__sort-head"
-                    onClick={() => toggleSort(PERIOD_SORT_KEY)}
-                  >
-                    기간
-                    <SortArrows
-                      active={sort.key === PERIOD_SORT_KEY}
-                      dir={sort.dir}
-                    />
-                  </button>
-                </th>
-                {fields.map((f) => (
-                  <th key={f.key}>
-                    <SortableRoasFieldHeader
-                      field={f}
-                      active={sort.key === f.key}
-                      dir={sort.dir}
-                      onSort={() => toggleSort(f.key)}
-                    />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {sortedRows.map((row, i) => {
-                const prevRow = i > 0 ? sortedRows[i - 1] : null
-                return (
-                  <tr key={row.key}>
-                    <td>{row.label}</td>
-                    {fields.map((f) => (
-                      <MetricValueCell
-                        key={f.key}
-                        value={f.getValue(row.metrics)}
-                        prevValue={prevRow ? f.getValue(prevRow.metrics) : null}
-                        field={f}
-                      />
-                    ))}
-                  </tr>
-                )
-              })}
-              <tr className="channel-insight__table-row--total">
-                <td>합계</td>
-                {fields.map((f) => (
-                  <td key={f.key}>{f.formatCompact(f.getValue(total))}</td>
-                ))}
-              </tr>
-              <tr className="channel-insight__table-row--average">
-                <td>평균</td>
-                {fields.map((f) => (
-                  <td key={f.key}>{f.formatCompact(f.getValue(average))}</td>
-                ))}
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
-}
+      {open && (
+        <>
+          <FieldVisibilityToggles
+            fields={fields}
+            visibleKeys={visibleKeys}
+            onToggle={toggleMetric}
+          />
 
-/** "ROAS" 탭 — 광고비(combinedInsight, Meta+Google+Naver 합산)와 오프라인
- * 매출(offlineRevenue, Monday CRM 매장 결제액) + 온라인 매출(onlineRevenue,
- * Cafe24 자사몰 결제액)을 같은 기간 기준으로 짝지어 광고비 대비 매출(ROAS)을
- * 보여준다. 온라인/오프라인을 합치지 않고 별도 컬럼으로 나눠 어느 채널의
- * 매출인지 구분해서 볼 수 있게 한다. 두 매출 모두 광고 전환매출
- * (MetricsSummary.revenue)이 아니라 실제로 결제된 금액 기준이라, 전환 추적이
- * 부정확한 채널(예: 문의 목적 캠페인)에서도 실제 성과를 볼 수 있다. */
-export function RoasPanel({
-  combinedInsight,
-  offlineRevenue,
-  onlineRevenue,
-}: {
-  combinedInsight: CombinedInsight | null
-  offlineRevenue: OfflineRevenueSummary | null
-  onlineRevenue: Cafe24RevenueSummary | null
-}) {
-  const { grouping, setGrouping, total, average, rows } = useRoasViewModel(
-    combinedInsight,
-    offlineRevenue,
-    onlineRevenue,
-  )
-
-  // 지표 표시/숨김 — channel-insight.tsx의 FullListTable "컬럼 표시" 토글과
-  // 같은 패턴. 기본은 전부 표시. ROAS_FIELDS(요약 카드+기간별 추이 표가 공유)
-  // 에만 적용하고, 아래 OFFLINE_FIELDS/ONLINE_FIELDS 전용 표는 이미 각자
-  // 3~5개로 정리돼 있어 토글 없이 항상 전부 보여준다.
-  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(
-    () => new Set(ROAS_FIELDS.map((f) => f.key)),
-  )
-  const toggleMetric = (key: string) => {
-    setVisibleKeys((prev) => {
-      const next = new Set(prev)
-      if (next.has(key)) next.delete(key)
-      else next.add(key)
-      return next
-    })
-  }
-
-  if (!combinedInsight || !offlineRevenue || !onlineRevenue) {
-    return <p className="channel-insight__result-empty">데이터 없음</p>
-  }
-
-  const visibleFields = ROAS_FIELDS.filter((f) => visibleKeys.has(f.key))
-  // "기간별 추이" 표 전용 정렬 — RoasSubTable과 같은 훅을 쓰지만, 필드
-  // 목록은 ROAS_FIELDS 전체로 둔다(지금 숨겨진 컬럼 기준으로 정렬 중이었다가
-  // 그 컬럼을 다시 켜도 정렬이 안 끊기게). 정렬은 이 표에만 적용하고, 바로
-  // 아래 RoasTrendChart는 그대로 원래 rows(시간순)를 쓴다 — 그래프는 막대
-  // 위치가 곧 날짜이고 "이전 막대 대비 증감"을 보여주는 시계열 그래프라,
-  // 표를 다른 지표로 정렬해도 그래프까지 같이 뒤섞이면 그래프 자체의 의미가
-  // 없어진다.
-  const { sort: trendSort, toggleSort: toggleTrendSort, sortedRows: sortedTrendRows } =
-    useRoasTableSort(rows, ROAS_FIELDS)
-
-  return (
-    <div className="channel-insight__result">
-      <section className="channel-insight__summary">
-        <div className="channel-insight__summary-head">
-          <span className="channel-insight__summary-label">ROAS 요약</span>
-        </div>
-
-        <div
-          className="channel-insight__full-list-toggles"
-          role="group"
-          aria-label="지표 표시"
-        >
-          {ROAS_FIELDS.map((f) => {
-            const active = visibleKeys.has(f.key)
-            return (
-              <button
-                key={f.key}
-                type="button"
-                className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
-                aria-pressed={active}
-                onClick={() => toggleMetric(f.key)}
-              >
-                {f.label}
-              </button>
-            )
-          })}
-        </div>
-
-        <div className="channel-insight__summary-grid">
-          {visibleFields.map((f) => (
-            <div key={f.key} className="channel-insight__kpi">
-              <span className="channel-insight__kpi-label">
-                <RoasFieldLabel field={f} />
-              </span>
-              <span className="channel-insight__kpi-value">
-                {f.format(f.getValue(total))}
-              </span>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="channel-insight__section">
-        <div className="channel-insight__section-head">
-          <h3 className="channel-insight__section-title">기간별 추이</h3>
-          <div className="channel-insight__section-head-actions">
-            <span className="channel-insight__section-head-hint">보기</span>
-            <SingleSelectDropdown<RoasGrouping>
-              options={GROUPING_OPTIONS}
-              value={grouping}
-              onChange={setGrouping}
-              ariaLabel="보기"
-            />
-          </div>
-        </div>
-
-        {rows.length === 0 ? (
-          <p className="channel-insight__result-empty">데이터 없음</p>
-        ) : (
-          <>
+          {rows.length === 0 ? (
+            <p className="channel-insight__result-empty">데이터 없음</p>
+          ) : (
             <div className="channel-insight__table-wrap">
               <table className="channel-insight__table channel-insight__table--roas">
                 <thead>
@@ -755,12 +715,12 @@ export function RoasPanel({
                       <button
                         type="button"
                         className="channel-insight__sort-head"
-                        onClick={() => toggleTrendSort(PERIOD_SORT_KEY)}
+                        onClick={() => toggleSort(PERIOD_SORT_KEY)}
                       >
                         기간
                         <SortArrows
-                          active={trendSort.key === PERIOD_SORT_KEY}
-                          dir={trendSort.dir}
+                          active={sort.key === PERIOD_SORT_KEY}
+                          dir={sort.dir}
                         />
                       </button>
                     </th>
@@ -768,17 +728,17 @@ export function RoasPanel({
                       <th key={f.key}>
                         <SortableRoasFieldHeader
                           field={f}
-                          active={trendSort.key === f.key}
-                          dir={trendSort.dir}
-                          onSort={() => toggleTrendSort(f.key)}
+                          active={sort.key === f.key}
+                          dir={sort.dir}
+                          onSort={() => toggleSort(f.key)}
                         />
                       </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedTrendRows.map((row, i) => {
-                    const prevRow = i > 0 ? sortedTrendRows[i - 1] : null
+                  {sortedRows.map((row, i) => {
+                    const prevRow = i > 0 ? sortedRows[i - 1] : null
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
@@ -810,8 +770,228 @@ export function RoasPanel({
                 </tbody>
               </table>
             </div>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
 
-            <RoasTrendChart rows={rows} average={average} />
+/** "ROAS" 탭 — 광고비(combinedInsight, Meta+Google+Naver 합산)와 오프라인
+ * 매출(offlineRevenue, Monday CRM 매장 결제액) + 온라인 매출(onlineRevenue,
+ * Cafe24 자사몰 결제액)을 같은 기간 기준으로 짝지어 광고비 대비 매출(ROAS)을
+ * 보여준다. 온라인/오프라인을 합치지 않고 별도 컬럼으로 나눠 어느 채널의
+ * 매출인지 구분해서 볼 수 있게 한다. 두 매출 모두 광고 전환매출
+ * (MetricsSummary.revenue)이 아니라 실제로 결제된 금액 기준이라, 전환 추적이
+ * 부정확한 채널(예: 문의 목적 캠페인)에서도 실제 성과를 볼 수 있다. */
+export function RoasPanel({
+  combinedInsight,
+  offlineRevenue,
+  onlineRevenue,
+}: {
+  combinedInsight: CombinedInsight | null
+  offlineRevenue: OfflineRevenueSummary | null
+  onlineRevenue: Cafe24RevenueSummary | null
+}) {
+  const {
+    groupings,
+    globalGrouping,
+    setGroupingFor,
+    setGroupingForAll,
+    total,
+    trend,
+    offline,
+    online,
+  } = useRoasViewModel(combinedInsight, offlineRevenue, onlineRevenue)
+  const { rows, average } = trend
+
+  // 지표 표시/숨김 — "기간별 추이" 표 전용이다(9/30 요청 전에는 "ROAS 요약"
+  // 카드까지 같이 숨겼는데, 요약 카드는 항상 전체를 보여주는 쪽으로
+  // 바꿨다 — 아래 ROAS 요약 section 참고).
+  const { visibleKeys, toggle: toggleMetric, visibleFields } =
+    useFieldVisibility(ROAS_FIELDS)
+
+  // "기간별 추이" 표 전용 정렬 — RoasSubTable과 같은 훅을 쓰지만, 필드
+  // 목록은 ROAS_FIELDS 전체로 둔다(지금 숨겨진 컬럼 기준으로 정렬 중이었다가
+  // 그 컬럼을 다시 켜도 정렬이 안 끊기게). 정렬은 이 표에만 적용하고, 바로
+  // 아래 RoasTrendChart는 그대로 원래 rows(시간순)를 쓴다 — 그래프는 막대
+  // 위치가 곧 날짜이고 "이전 막대 대비 증감"을 보여주는 시계열 그래프라,
+  // 표를 다른 지표로 정렬해도 그래프까지 같이 뒤섞이면 그래프 자체의 의미가
+  // 없어진다. useFieldVisibility와 마찬가지로 이 훅도 아래 조기 return보다
+  // 먼저 호출해야 한다(리액트 훅 규칙 — 렌더마다 훅 호출 순서/개수가
+  // 같아야 하는데, return 뒤에 두면 combinedInsight가 null인 렌더에서는
+  // 이 훅 호출 자체가 건너뛰어져 버린다).
+  const { sort: trendSort, toggleSort: toggleTrendSort, sortedRows: sortedTrendRows } =
+    useRoasTableSort(rows, ROAS_FIELDS)
+
+  // "ROAS 요약"/"기간별 추이" 섹션 접기·펼치기(9/30 요청) — 오프라인 매출/
+  // 카페24 온라인 매출은 RoasSubTable이 각자 자기 인스턴스 안에서 따로
+  // 갖고 있다(이 두 상태와 독립적으로 동작).
+  const [summaryOpen, setSummaryOpen] = useState(true)
+  const [trendOpen, setTrendOpen] = useState(true)
+
+  if (!combinedInsight || !offlineRevenue || !onlineRevenue) {
+    return <p className="channel-insight__result-empty">데이터 없음</p>
+  }
+
+  return (
+    <div className="channel-insight__result">
+      {/* 예전엔 이 요약 카드도 "지표 표시" 토글로 같이 숨겨졌는데, 그 토글은
+          사실 "기간별 추이" 표의 컬럼을 고르는 용도라 요약 카드와는 목적이
+          다르다 — 요약 카드는 토글 없이 항상 ROAS_FIELDS 전체를 보여주고,
+          토글 자체는 "기간별 추이" section으로 옮겼다(9/30 요청). */}
+      <section className="channel-insight__summary">
+        <div className="channel-insight__summary-head">
+          <SectionCollapseToggle
+            title="ROAS 요약"
+            open={summaryOpen}
+            onToggle={() => setSummaryOpen((o) => !o)}
+          />
+        </div>
+
+        {summaryOpen && (
+          <div className="channel-insight__summary-grid">
+            {ROAS_FIELDS.map((f) => (
+              <div key={f.key} className="channel-insight__kpi">
+                <span className="channel-insight__kpi-label">
+                  <RoasFieldLabel field={f} />
+                </span>
+                <span className="channel-insight__kpi-value">
+                  {f.format(f.getValue(total))}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 예전엔 "기간별 추이" 표 헤더에만 보기 단위(일별/요일별/주차별/월별)
+          컨트롤이 있었는데, 실제로는 세 표(기간별 추이/오프라인 매출/카페24
+          온라인 매출) 전부에 적용되는 것처럼 보였다 — 표 하나 소속이 아니라
+          전역 컨트롤이라는 게 더 분명하도록 밖으로 뺐다(9/30 요청). 여기서
+          바꾸면 세 표 전부 한 번에 같은 보기 단위로 맞춰지고, 그 아래 각 표
+          section-head에도 자기만의 보기 단위 컨트롤이 따로 있어서 개별로도
+          바꿀 수 있다. */}
+      <section className="channel-insight__section">
+        <div className="channel-insight__section-head">
+          <h3 className="channel-insight__section-title">전체 보기 단위</h3>
+          <div className="channel-insight__section-head-actions">
+            <span className="channel-insight__section-head-hint">
+              아래 세 표 모두 적용
+            </span>
+            <SingleSelectDropdown<RoasGrouping>
+              options={GROUPING_OPTIONS}
+              value={globalGrouping}
+              onChange={setGroupingForAll}
+              ariaLabel="전체 보기 단위"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="channel-insight__section">
+        <div className="channel-insight__section-head">
+          <h3 className="channel-insight__section-title">
+            <SectionCollapseToggle
+              title="기간별 추이"
+              open={trendOpen}
+              onToggle={() => setTrendOpen((o) => !o)}
+            />
+          </h3>
+          <div className="channel-insight__section-head-actions">
+            <span className="channel-insight__section-head-hint">보기</span>
+            <SingleSelectDropdown<RoasGrouping>
+              options={GROUPING_OPTIONS}
+              value={groupings[RoasTable.TREND]}
+              onChange={(g) => setGroupingFor(RoasTable.TREND, g)}
+              ariaLabel="기간별 추이 보기 단위"
+            />
+          </div>
+        </div>
+
+        {trendOpen && (
+          <>
+            <FieldVisibilityToggles
+              fields={ROAS_FIELDS}
+              visibleKeys={visibleKeys}
+              onToggle={toggleMetric}
+            />
+
+            {rows.length === 0 ? (
+              <p className="channel-insight__result-empty">데이터 없음</p>
+            ) : (
+              <>
+                <div className="channel-insight__table-wrap">
+                  <table className="channel-insight__table channel-insight__table--roas">
+                    <thead>
+                      <tr>
+                        <th>
+                          <button
+                            type="button"
+                            className="channel-insight__sort-head"
+                            onClick={() => toggleTrendSort(PERIOD_SORT_KEY)}
+                          >
+                            기간
+                            <SortArrows
+                              active={trendSort.key === PERIOD_SORT_KEY}
+                              dir={trendSort.dir}
+                            />
+                          </button>
+                        </th>
+                        {visibleFields.map((f) => (
+                          <th key={f.key}>
+                            <SortableRoasFieldHeader
+                              field={f}
+                              active={trendSort.key === f.key}
+                              dir={trendSort.dir}
+                              onSort={() => toggleTrendSort(f.key)}
+                            />
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedTrendRows.map((row, i) => {
+                        const prevRow = i > 0 ? sortedTrendRows[i - 1] : null
+                        return (
+                          <tr key={row.key}>
+                            <td>{row.label}</td>
+                            {visibleFields.map((f) => (
+                              <MetricValueCell
+                                key={f.key}
+                                value={f.getValue(row.metrics)}
+                                prevValue={
+                                  prevRow ? f.getValue(prevRow.metrics) : null
+                                }
+                                field={f}
+                              />
+                            ))}
+                          </tr>
+                        )
+                      })}
+                      <tr className="channel-insight__table-row--total">
+                        <td>합계</td>
+                        {visibleFields.map((f) => (
+                          <td key={f.key}>
+                            {f.formatCompact(f.getValue(total))}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr className="channel-insight__table-row--average">
+                        <td>평균</td>
+                        {visibleFields.map((f) => (
+                          <td key={f.key}>
+                            {f.formatCompact(f.getValue(average))}
+                          </td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <RoasTrendChart rows={rows} average={average} />
+              </>
+            )}
           </>
         )}
       </section>
@@ -819,17 +999,21 @@ export function RoasPanel({
       <RoasSubTable
         title="오프라인 매출"
         fields={OFFLINE_FIELDS}
-        rows={rows}
+        rows={offline.rows}
         total={total}
-        average={average}
+        average={offline.average}
+        grouping={groupings[RoasTable.OFFLINE]}
+        onGroupingChange={(g) => setGroupingFor(RoasTable.OFFLINE, g)}
       />
 
       <RoasSubTable
         title="카페24 온라인 매출"
         fields={ONLINE_FIELDS}
-        rows={rows}
+        rows={online.rows}
         total={total}
-        average={average}
+        average={online.average}
+        grouping={groupings[RoasTable.ONLINE]}
+        onGroupingChange={(g) => setGroupingFor(RoasTable.ONLINE, g)}
       />
     </div>
   )

@@ -399,6 +399,20 @@ export function computeRoasRows(
   )
 }
 
+/** "기간별 추이"/"오프라인 매출"/"카페24 온라인 매출" 표 각각 자기만의
+ * 보기 단위(일별/요일별/주차별/월별)를 가질 수 있어야 해서(9/30 요청 — 예전엔
+ * "기간별 추이"의 보기 단위 하나가 사실상 전역이었다) 표 하나당 grouping을
+ * 따로 들고 있는다. */
+export const RoasTable = {
+  TREND: 'trend',
+  OFFLINE: 'offline',
+  ONLINE: 'online',
+} as const
+
+export type RoasTable = (typeof RoasTable)[keyof typeof RoasTable]
+
+const DEFAULT_ROAS_GROUPING = RoasGrouping.DATE
+
 /**
  * ROAS(광고비 대비 오프라인+온라인 매출) 탭 — 세 데이터 모두 이미
  * useChannelInsightViewModel이 같은 dateStart/dateEnd로 조회해 갖고 있어
@@ -406,22 +420,61 @@ export function computeRoasRows(
  * computeRoasRows/computeRoasAverage(위)를 grouping state와 엮어 순수 파생만
  * 한다. 이 세 함수는 엑셀 ROAS 시트(excel-writer.ts)도 그대로 가져다 쓴다 —
  * 화면과 엑셀이 서로 다른 계산 결과를 보여주지 않도록 로직을 한 곳에 둔다.
- */
+ *
+ * total(합계)은 grouping과 무관한 값이라(어느 보기 단위든 "전체 합계"는
+ * 하나) 표 하나만 계산해서 공유한다 — rows/average만 표마다 자기
+ * grouping으로 따로 계산한다. globalGrouping은 화면 상단의 "전체 보기 단위"
+ * 컨트롤이 표시할 값 전용이다(세 표의 grouping이 서로 달라지면 그 컨트롤이
+ * 뭘 보여줘야 할지 애매해지므로, 세 값에서 역산하지 않고 "마지막으로 전체
+ * 적용한 값"만 별도로 기억한다) — setGroupingForAll을 누르면 이 값과 세
+ * 표의 grouping을 한 번에 같은 값으로 맞춘다. */
 export const useRoasViewModel = (
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
 ) => {
-  const [grouping, setGrouping] = useState<RoasGrouping>(RoasGrouping.DATE)
+  const [groupings, setGroupings] = useState<Record<RoasTable, RoasGrouping>>({
+    [RoasTable.TREND]: DEFAULT_ROAS_GROUPING,
+    [RoasTable.OFFLINE]: DEFAULT_ROAS_GROUPING,
+    [RoasTable.ONLINE]: DEFAULT_ROAS_GROUPING,
+  })
+  const [globalGrouping, setGlobalGrouping] = useState<RoasGrouping>(
+    DEFAULT_ROAS_GROUPING,
+  )
+
+  const setGroupingFor = (table: RoasTable, grouping: RoasGrouping) => {
+    setGroupings((prev) => ({ ...prev, [table]: grouping }))
+  }
+
+  const setGroupingForAll = (grouping: RoasGrouping) => {
+    setGlobalGrouping(grouping)
+    setGroupings({
+      [RoasTable.TREND]: grouping,
+      [RoasTable.OFFLINE]: grouping,
+      [RoasTable.ONLINE]: grouping,
+    })
+  }
 
   const total = computeRoasTotal(combinedInsight, offlineRevenue, onlineRevenue)
-  const rows = computeRoasRows(
-    grouping,
-    combinedInsight,
-    offlineRevenue,
-    onlineRevenue,
-  )
-  const average = computeRoasAverage(total, rows.length)
 
-  return { grouping, setGrouping, total, average, rows }
+  const buildTableData = (table: RoasTable) => {
+    const rows = computeRoasRows(
+      groupings[table],
+      combinedInsight,
+      offlineRevenue,
+      onlineRevenue,
+    )
+    return { rows, average: computeRoasAverage(total, rows.length) }
+  }
+
+  return {
+    groupings,
+    globalGrouping,
+    setGroupingFor,
+    setGroupingForAll,
+    total,
+    trend: buildTableData(RoasTable.TREND),
+    offline: buildTableData(RoasTable.OFFLINE),
+    online: buildTableData(RoasTable.ONLINE),
+  }
 }
