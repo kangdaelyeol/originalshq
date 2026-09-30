@@ -20,17 +20,21 @@ export type RoasGrouping = (typeof RoasGrouping)[keyof typeof RoasGrouping]
 export interface RoasMetrics {
   spend: number
   offlineRevenue: number
-  /** ROAS 계산용 온라인 매출 — onlineRevenueCafe24(카페24 화면과 맞춘 순매출)
-   * 에서 순 적립금 사용액(onlinePointsSpent - onlinePointsRefunded)을 한 번 더
-   * 뺀다. 적립금 결제는 광고 성과로 새로 들어온 돈이 아니라 이미 쌓여있던
-   * 포인트를 쓴 것뿐이라 광고비 대비 성과(ROAS)를 볼 때는 매출에서 빼는 게
-   * 더 맞다는 판단 — "모든 사람이 봐야 하는" 카페24 온라인 매출 표를 정리하며
-   * 이 구분을 명확히 했다. totalRevenue/roas 계산에 이 값을 쓴다. */
+  /** ROAS 계산용 온라인 매출 — onlineRevenueCafe24(카페24 화면과 맞춘 순매출,
+   * 배송비 포함)에서 배송비(onlineShippingFee)와 순 적립금 사용액
+   * (onlinePointsSpent - onlinePointsRefunded)을 뺀다. 배송비는 택배사로
+   * 나가는 실비 통과항목, 적립금 결제는 광고 성과로 새로 들어온 돈이 아니라
+   * 이미 쌓여있던 포인트를 쓴 것뿐이라 광고비 대비 성과(ROAS)를 볼 때는 둘 다
+   * 매출에서 빼는 게 맞다는 판단 — cafe24MetricsSummary.paymentAmount가 카페24
+   * 화면 기준(배송비 포함)으로 바뀌면서(9/30 5/24 매출 대조 조사) ROAS용
+   * 매출까지 따라 올라가지 않도록 여기서 배송비를 다시 빼게 됐다("모든 사람이
+   * 봐야 하는" 카페24 온라인 매출 표와는 별도로, ROAS는 항상 배송비 제외
+   * 기준을 유지해야 한다는 요구사항). totalRevenue/roas 계산에 이 값을 쓴다. */
   onlineRevenue: number
   /** 카페24 매출액 — 관리자 화면 "일별 매출내역"과 원 단위까지 맞춘 순매출
-   * (= onlineGrossPayment - onlineShippingFee - onlineRefundAmount, 적립금
-   * 포함). ROAS 계산에는 안 쓰고 참고용으로만 보여준다(onlineRevenue 주석
-   * 참고). */
+   * (= onlineGrossPayment - onlineRefundAmount, 배송비·적립금 포함). ROAS
+   * 계산에는 안 쓰고(대신 배송비를 뺀 onlineRevenue를 쓴다) 참고용으로만
+   * 보여준다(onlineRevenue 주석 참고). */
   onlineRevenueCafe24: number
   /** offlineRevenue + onlineRevenue(ROAS용). */
   totalRevenue: number
@@ -65,9 +69,9 @@ export interface RoasMetrics {
   /** 온라인 매출(Cafe24)에서 이미 제외된 쿠폰 등 주문 단위 할인 합계 —
    * 참고용. */
   onlineCouponDiscount: number
-  /** 온라인 매출(Cafe24)에서 이미 제외된 스마트스토어 채널 "마켓할인" 합계 —
-   * 참고용. */
-  onlineMarketDiscount: number
+  /** 온라인 매출(Cafe24)에서 이미 제외된 "상품 할인"(쿠폰과 별도, 구조화된
+   * 필드에 안 잡히는 할인) 합계 — 참고용. */
+  onlineItemDiscount: number
 }
 
 export interface RoasRow {
@@ -84,14 +88,14 @@ const calcRoas = (
 
 /** toMetrics 입력 — offlineRevenue/onlineRevenueCafe24/spend만 필수고 나머지는
  * 전부 참고용 항목이라 기본값 0을 둔다. 필드가 계속 늘어나서(할부이자,
- * 미수금, 배송비, 적립금×2, 쿠폰할인, 마켓할인, 총결제액, 환불액...) 위치로
+ * 미수금, 배송비, 적립금×2, 쿠폰할인, 상품할인, 총결제액, 환불액...) 위치로
  * 구분하는 positional 인자 대신 객체로 받는다 — 순서를 헷갈려 엉뚱한 값이
  * 들어가는 실수를 막기 위해서다. */
 interface ToMetricsInput {
   offlineRevenue: number
-  /** 카페24 화면 기준 순매출(= grossPayment - shippingFee - refundAmount,
-   * 적립금 포함) — 여기서 순 적립금을 뺀 값이 RoasMetrics.onlineRevenue(ROAS용)
-   * 가 된다. */
+  /** 카페24 화면 기준 순매출(= grossPayment - refundAmount, 배송비·적립금
+   * 포함) — 여기서 배송비와 순 적립금을 뺀 값이 RoasMetrics.onlineRevenue
+   * (ROAS용)가 된다. */
   onlineRevenueCafe24: number
   spend: number
   installmentInterest?: number
@@ -102,7 +106,7 @@ interface ToMetricsInput {
   onlinePointsSpent?: number
   onlinePointsRefunded?: number
   onlineCouponDiscount?: number
-  onlineMarketDiscount?: number
+  onlineItemDiscount?: number
 }
 
 const toMetrics = (input: ToMetricsInput): RoasMetrics => {
@@ -118,10 +122,10 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     onlinePointsSpent = 0,
     onlinePointsRefunded = 0,
     onlineCouponDiscount = 0,
-    onlineMarketDiscount = 0,
+    onlineItemDiscount = 0,
   } = input
   const netPointsSpent = onlinePointsSpent - onlinePointsRefunded
-  const onlineRevenue = onlineRevenueCafe24 - netPointsSpent
+  const onlineRevenue = onlineRevenueCafe24 - onlineShippingFee - netPointsSpent
   return {
     spend,
     offlineRevenue,
@@ -137,7 +141,7 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     onlinePointsSpent,
     onlinePointsRefunded,
     onlineCouponDiscount,
-    onlineMarketDiscount,
+    onlineItemDiscount,
   }
 }
 
@@ -160,7 +164,7 @@ export function computeRoasTotal(
     onlinePointsSpent: onlineRevenue?.total.pointsSpent ?? 0,
     onlinePointsRefunded: onlineRevenue?.total.pointsRefunded ?? 0,
     onlineCouponDiscount: onlineRevenue?.total.couponDiscount ?? 0,
-    onlineMarketDiscount: onlineRevenue?.total.marketDiscount ?? 0,
+    onlineItemDiscount: onlineRevenue?.total.itemDiscount ?? 0,
   })
 }
 
@@ -187,7 +191,7 @@ export function computeRoasAverage(
     onlinePointsSpent: total.onlinePointsSpent / rowCount,
     onlinePointsRefunded: total.onlinePointsRefunded / rowCount,
     onlineCouponDiscount: total.onlineCouponDiscount / rowCount,
-    onlineMarketDiscount: total.onlineMarketDiscount / rowCount,
+    onlineItemDiscount: total.onlineItemDiscount / rowCount,
   })
 }
 
@@ -205,7 +209,7 @@ const ONLINE_METRICS_FIELDS = [
   'pointsSpent',
   'pointsRefunded',
   'couponDiscount',
-  'marketDiscount',
+  'itemDiscount',
 ] as const
 
 function buildOnlineMaps<T extends Cafe24RevenueMetrics>(
@@ -240,7 +244,7 @@ function toMetricsFromOnlineMaps(
     onlinePointsSpent: online.pointsSpent.get(key) ?? 0,
     onlinePointsRefunded: online.pointsRefunded.get(key) ?? 0,
     onlineCouponDiscount: online.couponDiscount.get(key) ?? 0,
-    onlineMarketDiscount: online.marketDiscount.get(key) ?? 0,
+    onlineItemDiscount: online.itemDiscount.get(key) ?? 0,
   })
 }
 

@@ -56,14 +56,16 @@ export interface Cafe24OrderRow {
    * coupon_discount_price 100,000원을 처음엔 안 빼서 환불액이 과다
    * 집계됐었다). */
   couponDiscount: number
-  /** 참고용 — grossPayment에서 이미 제외된 스마트스토어(market_id="shopn")
-   * 채널 전용 "마켓할인" 합계. order_price_amount와 payment_amount의 차이로만
-   * 드러나고 어떤 구조화된 할인 필드에도 안 잡힌다(6/10 주문에서 발견 —
-   * 상품구매금액 2,800,000, 마켓할인 850,000, 실결제금액 1,950,000인데 할인
-   * 필드는 전부 0). NCHECKOUT(네이버페이) 채널에도 똑같은 모양의 차이가
-   * 있지만 그건 포인트 결제 때문이라 할인이 아니다 — client.ts의
-   * marketDiscountFor 주석 참고, market_id==="shopn"일 때만 계산한다. */
-  marketDiscount: number
+  /** 참고용 — grossPayment에서 이미 제외된 "상품 할인" 합계(카페24 관리자
+   * "일별 매출내역"의 "할인" 컬럼, 쿠폰과 별도). order_price_amount와
+   * payment_amount의 차이로만 드러나고 어떤 구조화된 할인 필드에도 안 잡힌다
+   * (6/10 주문에서 처음 발견 — 상품구매금액 2,800,000, 할인 850,000,
+   * 실결제금액 1,950,000인데 할인 필드는 전부 0). 처음엔 스마트스토어
+   * (market_id="shopn") 채널에서만 발견해서 좁게 잡았는데, 3~5월 데이터
+   * 대조 중 자체몰/모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔다 —
+   * NCHECKOUT(네이버페이) 채널에도 비슷한 모양의 차이가 있지만 그건 포인트
+   * 결제 때문이라 할인이 아니다 — client.ts의 itemDiscountFor 주석 참고. */
+  itemDiscount: number
   /** 반품 처리 중 추가로 결제받은 배송비(actual_order_amount.shipping_fee가
    * initial보다 커진 만큼) — 대부분 0. 8/21 조사에서 발견: 반품 접수 시
    * "반품배송비 구매자부담"으로 별도 카드결제가 일어나는 경우가 있는데
@@ -112,11 +114,16 @@ export interface Cafe24RefundRow {
 }
 
 export interface Cafe24MetricsSummary {
-  /** 순매출(온라인 매출 대표값) = grossPayment - shippingFee - refundAmount.
-   * "순매출은 총매출에서 배송비 제외"로 정의 — 적립금은 카페24 관리자 화면과
-   * 맞추기 위해 더 이상 빼지 않는다(grossPayment/refundAmount 둘 다 이미
-   * 적립금을 포함, Cafe24OrderRow.pointsSpent 주석 참고). 배송비는 택배사로
-   * 나가는 실비 통과항목이라 계속 뺀다. */
+  /** 순매출(온라인 매출 대표값) = grossPayment - refundAmount(배송비·적립금
+   * 포함). 카페24 공식 서비스 가이드(일별/월별매출)가 "순매출 = 결제합계 -
+   * 환불합계"이고 결제합계 자체에 배송비가 포함된다고 명시하는 걸 확인해서
+   * (helper.ts의 combine() 주석 참고, 실제 5/24 주문으로도 대조 검증함) 배송비를
+   * 빼지 않는다 — 예전엔 "배송비는 택배사로 나가는 실비 통과항목"이라며 뺐었는데
+   * 그게 카페24 화면 기준과 어긋났다. 적립금도 grossPayment/refundAmount 둘 다
+   * 이미 포함(Cafe24OrderRow.pointsSpent 주석 참고)이라 여기서 따로 뺄 게 없다.
+   * ROAS 계산용 온라인 매출은 이 값과 다르게 배송비·적립금을 별도로 더 빼서
+   * 쓴다(functions-cmip 밖 use-roas-view-model.ts 참고) — 이 필드 자체는 항상
+   * "카페24 관리자 화면과 맞춘 순매출"을 뜻한다. */
   paymentAmount: number
   /** 총매출 — 그 기간에 "결제"로 귀속된 금액 합계(배송비·적립금 포함).
    * 결제일(paymentDate) 기준 본 결제금액 + 반품 처리일(cancelDate) 기준
@@ -140,9 +147,9 @@ export interface Cafe24MetricsSummary {
   /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 쿠폰 등
    * 주문 단위 할인 합계(Cafe24OrderRow.couponDiscount 주석 참고). */
   couponDiscount: number
-  /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 스마트스토어
-   * "마켓할인" 합계(Cafe24OrderRow.marketDiscount 주석 참고). */
-  marketDiscount: number
+  /** 참고용 — grossPayment(따라서 paymentAmount)에서 이미 제외된 "상품 할인"
+   * 합계(Cafe24OrderRow.itemDiscount 주석 참고). */
+  itemDiscount: number
   /** 참고용 — grossPayment/shippingFee에 포함된 반품 추가배송비 합계만 따로
    * (반품 처리일 기준). */
   additionalShippingFee: number

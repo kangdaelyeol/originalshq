@@ -60,7 +60,7 @@ const ROAS_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-    note: 'ROAS 계산용 온라인 매출 = 카페24 매출액(관리자 화면 순매출) - 순 적립금 사용액. 적립금 결제는 광고로 새로 유입된 매출이 아니라 이미 쌓여있던 포인트를 쓴 것뿐이라 ROAS에서는 빼서 봅니다. 카페24 화면과 똑같은 숫자는 아래 "카페24 온라인 매출" 표의 "카페24 매출액"에 있습니다.',
+    note: 'ROAS 계산용 온라인 매출 = 카페24 매출액(관리자 화면 순매출, 배송비 포함) - 배송비 - 순 적립금 사용액. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 유입된 매출이 아니라 이미 쌓여있던 포인트를 쓴 것뿐이라 ROAS에서는 둘 다 빼서 봅니다. 카페24 화면과 똑같은 숫자는 아래 "카페24 온라인 매출" 표의 "카페24 매출액"에 있습니다.',
   },
   {
     key: 'offlineRevenue',
@@ -103,13 +103,14 @@ const OFFLINE_FIELDS: readonly RoasField[] = [
 
 // "카페24 온라인 매출" 전용 표 — 팀 전체가 보는 표라 결제/환불 원본부터
 // ROAS용 순매출까지 계산 과정을 전부 순서대로 보여준다:
-//  1. 매출액(ROAS용) — 광고 성과를 볼 때 쓰는 값(적립금 결제까지 제외)
+//  1. 매출액(ROAS용) — 광고 성과를 볼 때 쓰는 값(배송비·적립금 결제까지 제외)
 //  2~3. 총 결제액/환불액 — 그 둘의 원본 재료(Cafe24RevenueMetrics.
 //       grossPayment/refundAmount 그대로)
-//  4. 카페24 매출액 — 관리자 화면과 맞춘 순매출(총 결제액 - 배송비 - 환불액,
+//  4. 카페24 매출액 — 관리자 화면과 맞춘 순매출(총 결제액 - 환불액, 배송비·
 //     적립금 포함) = 예전에 "매출액"으로 부르던 값
-//  5. 총매출 — 카페24 매출액에 배송비·쿠폰할인·마켓할인을 다시 더한 총액
-//  6~9. 배송비/적립금 사용/쿠폰할인/마켓할인 — 각 구성요소
+//  5. 총매출 — 카페24 매출액에 쿠폰할인·상품할인을 다시 더한 총액(배송비는
+//     카페24 매출액에 이미 포함돼 있어 안 더함)
+//  6~9. 배송비/적립금 사용/쿠폰할인/상품할인 — 각 구성요소
 const ONLINE_FIELDS: readonly RoasField[] = [
   {
     key: 'onlineRevenue',
@@ -117,7 +118,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-    note: 'ROAS 계산에 쓰는 값 — 카페24 매출액에서 순 적립금 사용액(적립금 결제 - 환불된 적립금)까지 뺐습니다. 적립금 결제는 광고로 새로 들어온 매출이 아니라서 ROAS 성과에서는 제외합니다.',
+    note: 'ROAS 계산에 쓰는 값 — 카페24 매출액(배송비 포함)에서 배송비와 순 적립금 사용액(적립금 결제 - 환불된 적립금)을 뺐습니다. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 들어온 매출이 아니라서 ROAS 성과에서는 둘 다 제외합니다.',
   },
   {
     key: 'onlineGrossPayment',
@@ -141,19 +142,16 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenueCafe24,
     format: won,
     formatCompact: won,
-    note: '카페24 관리자 "일별 매출내역"과 원 단위까지 맞춘 순매출 = 총 결제액 - 배송비 - 환불액(적립금 포함).',
+    note: '카페24 관리자 "일별 매출내역"과 원 단위까지 맞춘 순매출 = 총 결제액 - 환불액(배송비·적립금 포함).',
   },
   {
     key: 'onlineTotalRevenue',
     label: '총매출',
     getValue: (m) =>
-      m.onlineRevenueCafe24 +
-      m.onlineShippingFee +
-      m.onlineCouponDiscount +
-      m.onlineMarketDiscount,
+      m.onlineRevenueCafe24 + m.onlineCouponDiscount + m.onlineItemDiscount,
     format: won,
     formatCompact: won,
-    note: '카페24 매출액 + 배송비 + 쿠폰할인 + 마켓할인 — 카페24 매출액 계산에서 뺀 항목들을 다시 더한 총액입니다(적립금은 카페24 매출액에 이미 포함돼 있어 안 더함).',
+    note: '카페24 매출액 + 쿠폰할인 + 상품할인 — 카페24 매출액 계산에서 뺀 할인 항목들을 다시 더한 총액입니다(배송비·적립금은 카페24 매출액에 이미 포함돼 있어 안 더함).',
   },
   {
     key: 'onlineShippingFee',
@@ -178,12 +176,12 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     formatCompact: won,
   },
   {
-    key: 'onlineMarketDiscount',
-    label: '마켓할인',
-    getValue: (m) => m.onlineMarketDiscount,
+    key: 'onlineItemDiscount',
+    label: '상품할인',
+    getValue: (m) => m.onlineItemDiscount,
     format: won,
     formatCompact: won,
-    note: '스마트스토어 채널에서 마켓(오픈마켓 판매 수수료 성격)이 부담한 할인 금액입니다.',
+    note: '쿠폰과 별도로 적용된 상품 할인 금액입니다(구조화된 할인 필드에는 안 잡히고 상품구매금액과 실결제금액의 차이로만 드러남). 처음엔 스마트스토어 채널에서만 발견했는데, 자체몰/모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔습니다.',
   },
 ]
 

@@ -22,6 +22,13 @@ interface Cafe24AmountBreakdown {
   // 적립금 환불분(예: 6/12에 3건 합계 294,000원)만큼 어긋나는 걸 발견해서
   // 카페24 화면 기준으로 전환했다). pointsSpent로 참고용 노출은 계속한다.
   points_spent_amount: string
+  // 예치금 사용액 — 적립금과 같은 성격(카페24 공식 순매출 정의: "결제합계 =
+  // 실결제금액+적립금+예치금+네이버포인트+배송비"에 예치금도 포함)이라
+  // netAmount에서 안 빼고, itemDiscountFor에서도 points_spent_amount와 같이
+  // 빼야 한다(안 빼면 예치금으로 낸 금액을 상품 할인으로 착각한다 —
+  // itemDiscountFor 주석 참고). 이 매장은 지금까지 실사용 0원이라 pointsSpent
+  // 처럼 별도 참고용 필드로 노출하지는 않는다.
+  credits_spent_amount: string
   // 쿠폰/멤버십 등 주문 단위 할인 — 전부 "실제로 돈을 받지 못한 부분"이라
   // 순액 계산에서 빼야 한다(netAmount 주석 참고). 처음엔 이 매장이 쿠폰을 안
   // 쓰는 줄 알고 뺐었는데, 실제로 쓰고 있어서(7/7 환불 건에서 발견 —
@@ -52,7 +59,8 @@ interface Cafe24RawOrder {
   cancel_date: string | null
   member_id: string | null
   // 판매 채널 — "self"(자체몰), "mobile"(모바일웹), "shopn"(네이버 스마트
-  // 스토어), "NCHECKOUT"(네이버페이) 등. marketDiscount 판단에만 쓴다.
+  // 스토어), "NCHECKOUT"(네이버페이) 등. itemDiscount 판단에만 쓴다
+  // (NCHECKOUT만 제외 — itemDiscountFor 주석 참고).
   market_id: string
   paid: 'T' | 'F'
   /** 최초 주문 시점 금액 breakdown — 취소 여부와 무관하게 주문 당시 그대로.
@@ -83,8 +91,8 @@ const OTHER_DISCOUNT_FIELDS = [
 ] as const
 
 // "결제"(grossPayment)는 order_price_amount+shipping_fee에서 쿠폰 등 주문
-// 단위 할인만 뺀 금액이다(적립금은 안 뺀다 — 위 Cafe24AmountBreakdown.
-// points_spent_amount 주석 참고). payment_amount는 결제수단에 따라 값이
+// 단위 할인만 뺀 금액이다(적립금·예치금은 안 뺀다 — 위 Cafe24AmountBreakdown.
+// points_spent_amount/credits_spent_amount 주석 참고). payment_amount는 결제수단에 따라 값이
 // 들쭉날쭉해서 안 쓴다 — 예: 네이버페이 포인트 전액 결제 건은 payment_amount가
 // 0으로 나오는데 order_price_amount는 정상적으로 상품가가 찍힘.
 // initial_order_amount로 계산한 값을 paymentDate에 귀속시킨다 — types.ts의
@@ -111,32 +119,42 @@ function couponDiscount(a: Cafe24AmountBreakdown): number {
   return total
 }
 
-// 스마트스토어(market_id="shopn") 전용 "마켓할인" — 주문 상세의 "상품별
-// 할인금액"(마켓할인)에 해당하는데, 이 금액은 OTHER_DISCOUNT_FIELDS 등
-// 어떤 구조화된 필드에도 안 잡히고 order_price_amount와 payment_amount의
-// 차이로만 드러난다(6/10 주문에서 발견: 상품구매금액 2,800,000 - 마켓할인
-// 850,000 = 실결제금액 1,950,000, 할인 필드는 전부 0으로 찍힘).
+// "상품 할인" — 카페24 관리자 "일별 매출내역"의 "할인" 컬럼(쿠폰과는 별도)에
+// 해당하는데, 이 금액은 OTHER_DISCOUNT_FIELDS 등 어떤 구조화된 필드에도 안
+// 잡히고 (상품구매금액+배송비-적립금)과 payment_amount의 차이로만 드러난다.
+// 처음엔 스마트스토어(market_id="shopn") 채널에서만 발견해서(6/10 주문:
+// 상품구매금액 2,800,000 - 할인 850,000 = 실결제금액 1,950,000, 구조화된
+// 할인 필드는 전부 0) "마켓할인"으로 좁게 잡았었는데, 3~5월 데이터로 다시
+// 대조하다가 자체몰(self)·모바일(mobile) 채널에서도 똑같은 패턴(예: 5월 —
+// 여러 건이 정확히 주문가의 10%만큼 할인, 구조화된 필드는 역시 전부 0)이
+// 나타나는 걸 발견해서 채널 한정을 풀었다(3월·4월분은 이 계산으로 카페24
+// "할인" 컬럼과 원 단위까지 일치 검증함).
 //
-// market_id === "shopn"일 때만 적용해야 한다 — 똑같은 "netAmount와
-// payment_amount 차이"가 NCHECKOUT(네이버페이) 채널에도 많이 나타나는데,
-// 그건 성격이 완전히 다르다(고객이 네이버포인트로 일부 결제해서
-// payment_amount가 실제보다 작게 나오는 것 — 할인이 아니라 결제수단
-// 문제라 이미 payment_amount를 기준으로 안 쓰기로 한 이유이기도 하다).
-// NCHECKOUT에 이 로직을 적용하면 포인트로 낸 금액을 할인으로 착각해 매출을
-// 또 깎아버리는 예전 버그가 재발한다. net에서 적립금을 따로 빼고 비교하는
-// 이유도 같다 — netAmount 자체는 이제 적립금을 안 빼지만(위 주석 참고),
-// payment_amount는 원래도 적립금 결제분이 반영 안 된 금액이라, 적립금을
-// 마켓할인으로 착각하지 않으려면 이 계산에서만 별도로 빼야 한다.
-function marketDiscountFor(
+// market_id === "NCHECKOUT"(네이버페이)만 제외한다 — 그 채널만 성격이
+// 다르다(고객이 네이버포인트로 일부 결제해서 payment_amount가 실제보다
+// 작게 나오는 것 — 할인이 아니라 결제수단 문제라 이미 payment_amount를
+// 기준으로 안 쓰기로 한 이유이기도 하다). NCHECKOUT에 이 로직을 적용하면
+// 포인트로 낸 금액을 할인으로 착각해 매출을 또 깎아버리는 예전 버그가
+// 재발한다. net에서 적립금·예치금을 따로 빼고 비교하는 이유도 같다 —
+// netAmount 자체는 적립금·예치금을 안 빼지만(위 Cafe24AmountBreakdown
+// 주석 참고), payment_amount는 원래도 적립금/예치금 결제분이 반영 안 된
+// 금액이라, 그 두 결제수단으로 낸 금액을 상품 할인으로 착각하지 않으려면
+// 이 계산에서만 별도로 빼야 한다(9/30 카페24 공식 순매출 정의 재확인 중
+// 예치금이 빠져있던 걸 발견해서 추가했다 — 이 매장은 아직 예치금 실사용이
+// 없어서 지금까지는 결과에 영향이 없었다).
+function itemDiscountFor(
   a: Cafe24AmountBreakdown,
   marketId: string,
   net: number,
 ): number {
-  if (marketId !== 'shopn') return 0
+  if (marketId === 'NCHECKOUT') return 0
   const payment = Number(a.payment_amount) || 0
   if (payment <= 0) return 0
-  const netExcludingPoints = net - (Number(a.points_spent_amount) || 0)
-  return Math.max(0, netExcludingPoints - payment)
+  const netExcludingPointsAndCredits =
+    net -
+    (Number(a.points_spent_amount) || 0) -
+    (Number(a.credits_spent_amount) || 0)
+  return Math.max(0, netExcludingPointsAndCredits - payment)
 }
 
 function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
@@ -144,18 +162,18 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
   const actualShipping = Number(raw.actual_order_amount.shipping_fee) || 0
   const initialNetRaw = netAmount(raw.initial_order_amount)
   const actualNetRaw = netAmount(raw.actual_order_amount)
-  const initialMarketDiscount = marketDiscountFor(
+  const initialItemDiscount = itemDiscountFor(
     raw.initial_order_amount,
     raw.market_id,
     initialNetRaw,
   )
-  const actualMarketDiscount = marketDiscountFor(
+  const actualItemDiscount = itemDiscountFor(
     raw.actual_order_amount,
     raw.market_id,
     actualNetRaw,
   )
-  const initialNet = initialNetRaw - initialMarketDiscount
-  const actualNet = actualNetRaw - actualMarketDiscount
+  const initialNet = initialNetRaw - initialItemDiscount
+  const actualNet = actualNetRaw - actualItemDiscount
   return {
     orderId: raw.order_id,
     // order_date는 "2026-09-27T01:26:10+09:00" 형태 — 날짜만 잘라 쓴다.
@@ -168,7 +186,7 @@ function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
     shippingFee: initialShipping,
     pointsSpent: Number(raw.initial_order_amount.points_spent_amount) || 0,
     couponDiscount: couponDiscount(raw.initial_order_amount),
-    marketDiscount: initialMarketDiscount,
+    itemDiscount: initialItemDiscount,
     // 반품배송비 추가결제 감지 — actual이 initial보다 커진 경우만(작아지는
     // 건 일반 취소/환불이라 여기선 무시, refunds 리소스가 이미 담당).
     additionalShippingFee: Math.max(0, actualShipping - initialShipping),

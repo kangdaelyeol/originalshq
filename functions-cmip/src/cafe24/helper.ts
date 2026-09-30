@@ -70,7 +70,7 @@ interface GrossTotals {
   shippingFee: number
   pointsSpent: number
   couponDiscount: number
-  marketDiscount: number
+  itemDiscount: number
   orderCount: number
 }
 
@@ -89,7 +89,7 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
   shippingFee: rows.reduce((s, r) => s + r.shippingFee, 0),
   pointsSpent: rows.reduce((s, r) => s + r.pointsSpent, 0),
   couponDiscount: rows.reduce((s, r) => s + r.couponDiscount, 0),
-  marketDiscount: rows.reduce((s, r) => s + r.marketDiscount, 0),
+  itemDiscount: rows.reduce((s, r) => s + r.itemDiscount, 0),
   orderCount: rows.length,
 })
 
@@ -104,14 +104,22 @@ const sumAdditional = (rows: readonly Cafe24OrderRow[]): AdditionalTotals => ({
 })
 
 /** 결제(paymentDate 기준) + 반품 추가배송비(cancelDate 기준)를 더해 총매출을
- * 내고, 여기서 배송비와 환불(refundDate 기준)을 빼서 순매출을 낸다 — 배송비는
- * 택배사로 나가는 실비 통과항목이라 뺀다. 적립금(pointsSpent)은 예전엔
- * "우리가 준 할인"으로 취급해 같이 뺐었는데, 카페24 관리자 화면(결제/환불
- * 양쪽 다 적립금 포함)과 맞추기 위해 지금은 grossPayment/refundAmount 계산
+ * 내고, 여기서 환불(refundDate 기준)만 빼서 순매출을 낸다 — 배송비는 예전엔
+ * "택배사로 나가는 실비 통과항목"으로 보고 뺐었는데, 9/30에 있었던 5/24 매출
+ * 불일치 조사에서 카페24 공식 서비스 가이드(일별/월별매출: "결제합계 = 상품구매금액
+ * + 배송비 - 할인 - 쿠폰", "순매출 = 결제합계 - 환불합계")와 debugCafe24OrdersRaw로
+ * 뽑은 실제 5/24 주문 1건(상품 85,100 + 배송비 5,000 = 카페24 payment_amount
+ * 90,100 = 관리자 화면 순매출 90,100)을 대조해 카페24 순매출이 배송비를
+ * 포함한다는 걸 확인했다 — 그동안 배송비를 뺀 값을 "카페24 화면과 맞춘
+ * 순매출"이라 주석에 적어뒀던 게 틀렸다. 적립금(pointsSpent)은 예전엔 "우리가
+ * 준 할인"으로 취급해 같이 뺐었는데, 카페24 관리자 화면(결제/환불 양쪽 다
+ * 적립금 포함)과 맞추기 위해 지금은 grossPayment/refundAmount 계산
  * 단계(client.ts)에서부터 이미 포함시키고 있어 여기서 따로 뺄 게 없다 —
- * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다. 이
- * 함수가 사실상 이 파일의 핵심이고, 나머지 summarizeBy* 함수들은 전부
- * "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이 함수로 합친다. */
+ * shippingFee/pointsSpent 둘 다 지표로는 참고용으로 계속 따로 노출한다(ROAS
+ * 계산은 이 값과 별개로 온라인 매출에서 배송비를 다시 빼서 쓴다 —
+ * use-roas-view-model.ts 참고). 이 함수가 사실상 이 파일의 핵심이고, 나머지
+ * summarizeBy* 함수들은 전부 "무엇으로 그룹핑하느냐"만 다를 뿐 마지막엔 이
+ * 함수로 합친다. */
 const combine = (
   gross: GrossTotals,
   refund: RefundTotals,
@@ -120,14 +128,14 @@ const combine = (
   const grossPayment = gross.grossPayment + additional.additionalShippingFee
   const shippingFee = gross.shippingFee + additional.additionalShippingFee
   return {
-    paymentAmount: grossPayment - shippingFee - refund.refundAmount,
+    paymentAmount: grossPayment - refund.refundAmount,
     grossPayment,
     refundAmount: refund.refundAmount,
     shippingFee,
     pointsSpent: gross.pointsSpent,
     pointsRefunded: refund.pointsRefunded,
     couponDiscount: gross.couponDiscount,
-    marketDiscount: gross.marketDiscount,
+    itemDiscount: gross.itemDiscount,
     additionalShippingFee: additional.additionalShippingFee,
     orderCount: gross.orderCount,
     refundCount: refund.refundCount,

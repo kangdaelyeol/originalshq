@@ -104,8 +104,11 @@ function mergeExternalRevenueIntoByDate(
   const offlineByDateMap = new Map(
     offlineByDate.map((d) => [d.date, d.totalPaid]),
   )
+  // paymentAmount(카페24 화면 기준 순매출)는 배송비를 포함한다 — ROAS 성과를
+  // 볼 때 쓰는 이 "온라인 매출"은 use-roas-view-model.ts의 onlineRevenue와
+  // 같은 이유(택배사로 나가는 실비 통과항목)로 배송비를 뺀 값을 유지한다.
   const onlineByDateMap = new Map(
-    onlineByDate.map((d) => [d.date, d.paymentAmount]),
+    onlineByDate.map((d) => [d.date, d.paymentAmount - d.shippingFee]),
   )
   const merged = byDate.map((row) => {
     const offlineRevenue = offlineByDateMap.get(row.date) ?? 0
@@ -275,7 +278,11 @@ export function combineChannelInsights(
     { metrics: naver.total, hasFrequency: HAS_FREQUENCY.naver },
   ])
   const combinedOfflineRevenue = offlineRevenue?.total.totalPaid ?? 0
-  const combinedOnlineRevenue = onlineRevenue?.total.paymentAmount ?? 0
+  // paymentAmount는 배송비 포함(카페24 화면 기준) — 위 mergeExternalRevenueIntoByDate
+  // 주석 참고, ROAS용 온라인 매출은 배송비를 뺀 값을 유지한다.
+  const combinedOnlineRevenue =
+    (onlineRevenue?.total.paymentAmount ?? 0) -
+    (onlineRevenue?.total.shippingFee ?? 0)
   const combinedTotalRevenue = combinedOfflineRevenue + combinedOnlineRevenue
 
   return {
