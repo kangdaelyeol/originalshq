@@ -42,7 +42,13 @@ export interface NaverStatRow {
 // 펼친 것. helper.ts는 이 행 배열만 알면 된다(원본 API 응답 형태를 몰라도 됨).
 // ────────────────────────────────────────────────────────────────────────
 export interface NaverInsightRow {
+  // campaign_id/adgroup_id — Firestore(naverInsightDaily) 문서 ID로 쓰려고
+  // 추가했다(meta/types.ts의 DataSetInsight.campaign_id/adset_id와 같은
+  // 이유). helper.ts의 byCampaign 그룹핑은 여전히 이름 기준이라(과거부터
+  // 그래왔고 바꿀 이유가 없어) 이 두 필드는 안 건드린다.
+  campaign_id: string
   campaign_name: string
+  adgroup_id: string
   adgroup_name: string
   impressions: number
   clicks: number

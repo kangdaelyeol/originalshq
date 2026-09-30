@@ -79,8 +79,10 @@ export const getFetchUrl = (
   accessToken: string,
 ): string => {
   const params = new URLSearchParams({
+    // campaign_id,adset_id — metaInsightDaily(Firestore 배치 동기화) 문서
+    // ID로 쓰려고 추가했다(DataSetInsight.campaign_id/adset_id 주석 참고).
     fields:
-      'campaign_name,adset_name,impressions,inline_link_clicks,spend,reach,results,action_values,date_start,date_stop',
+      'campaign_id,campaign_name,adset_id,adset_name,impressions,inline_link_clicks,spend,reach,results,action_values,date_start,date_stop',
     time_increment: '1',
     level: 'adset',
     access_token: accessToken,

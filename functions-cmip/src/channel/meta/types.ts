@@ -9,6 +9,12 @@ export type Indicator = { indicator: string; values?: ResultsValue[] }
 export interface DataSetInsight {
   campaign_name: string
   adset_name: string
+  /** Firestore 배치 동기화(metaInsightDaily) 도입 때 추가 — campaign_name/
+   * adset_name은 나중에 바뀔 수 있어서 문서 ID로 못 쓴다(adset_id는
+   * 캠페인/adset이 삭제되지 않는 한 안 바뀐다). getFetchUrl의 fields에
+   * campaign_id,adset_id를 추가해서 받아온다. */
+  campaign_id: string
+  adset_id: string
   impressions: number
   inline_link_clicks: number
   spend: number

@@ -31,19 +31,32 @@ import type {
   OauthCallbackResult,
 } from './types'
 import { defineSecret } from 'firebase-functions/params'
-import { getMetaInsight } from './channel/meta'
+import {
+  debugFetchMetaInsightRaw,
+  getMetaInsightWithHistory,
+  syncMetaInsightRows,
+} from './channel/meta'
 import { validateGetInsightBody } from './util'
 import {
   exchangeAndSaveGoogleTokens,
-  getGoogleInsight,
   buildGoogleAdsAuthUrl,
   checkGoogleAuthStatus,
-  getGoogleAdGroupInsight,
+  getGoogleCampaignInsightWithHistory,
+  getGoogleAdGroupInsightWithHistory,
+  syncGoogleCampaignInsightRows,
+  syncGoogleAdGroupInsightRows,
+  debugFetchGoogleCampaignRaw,
+  debugFetchGoogleAdGroupRaw,
+  GOOGLE_SYNC_BRAND_ID,
+  GOOGLE_SYNC_CUSTOMER_ID,
+  GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
 } from './channel/google'
 import { GetGoogleInsightParams } from './channel/google/types'
 import {
-  getNaverInsight as fetchNaverInsight,
+  getNaverInsightWithHistory,
   debugFetchNaverRaw,
+  debugFetchNaverInsightRows,
+  syncNaverInsightRows,
 } from './channel/naver'
 import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
 import {
@@ -438,7 +451,12 @@ export const getAllInsights = onRequest(
       const { dateStart, dateEnd } = validationRes.data
 
       try {
-        const metaRes = await getMetaInsight(
+        // getMetaInsight(라이브 전체 조회) 대신 getMetaInsightWithHistory를
+        // 쓴다 — 최근 7일은 라이브 API, 8일 이상 전은 Firestore
+        // (metaInsightDaily) 배치 동기화 값을 읽어서 합친다. 반환 모양은
+        // 그대로라 프론트는 손댈 게 없다(channel/meta/index.ts의
+        // getMetaInsightWithHistory 주석 참고).
+        const metaRes = await getMetaInsightWithHistory(
           dateStart,
           dateEnd,
           metaAdsId.value(),
@@ -448,6 +466,121 @@ export const getAllInsights = onRequest(
         sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
       }
     })
+  },
+)
+
+/**
+ * 디버그 전용 — Meta Graph API 인사이트 원본 행을 눈으로 확인/대조하는 용도
+ * (cafe24의 debugCafe24OrdersRaw와 같은 목적). 메인/서브 두 광고계정을 합친
+ * count와 계정별 count를 같이 보여준다.
+ */
+export const debugMetaInsightRaw = onRequest(
+  { secrets: [metaAdsId] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = request.query as {
+        startDate?: string
+        endDate?: string
+      }
+      if (!startDate || !endDate) {
+        sendError(response, 400, 'startDate, endDate 필요')
+        return
+      }
+      try {
+        const raw = await debugFetchMetaInsightRaw(
+          startDate,
+          endDate,
+          metaAdsId.value(),
+        )
+        response.status(200).send(raw)
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// Meta 인사이트 — 동기화 + 조회. Cafe24 주문과 같은 이유로(매일 계속 쌓이고
+// 어트리뷰션이 갱신되는 데이터) 삭제 없이 upsert만 한다(meta/firestore.ts
+// 참고).
+// ────────────────────────────────
+
+// 롤링 재동기화 기본 범위 — LIVE_WINDOW_DAYS(7일)보다 여유 있게 잡아서,
+// 어트리뷰션이 웬만큼 안정된 뒤에 DB에 반영되게 한다(cafe24의
+// CAFE24_SYNC_WINDOW_DAYS와 같은 이유).
+const META_SYNC_WINDOW_DAYS = 14
+
+/**
+ * Meta 인사이트를 지정한 기간만큼 라이브로 가져와 Firestore(metaInsightDaily)에
+ * upsert한다. body에 startDate/endDate를 안 주면 기본으로 "최근 14일"을
+ * 동기화한다 — 과거 데이터를 넓게 백필하고 싶을 때만 명시적으로 범위를
+ * 넘기면 된다.
+ */
+export const syncMetaInsights = onRequest(
+  { secrets: [metaAdsId], timeoutSeconds: 300 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -META_SYNC_WINDOW_DAYS)
+
+      try {
+        const result = await syncMetaInsightRows(
+          dateStart,
+          dateEnd,
+          metaAdsId.value(),
+        )
+        response.status(200).send(result)
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Meta 인사이트 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * Meta 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * syncCafe24OrdersScheduled와 같은 패턴.
+ */
+export const syncMetaInsightsScheduled = onSchedule(
+  {
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [metaAdsId],
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const dateEnd = todayISO()
+    const dateStart = addDays(dateEnd, -META_SYNC_WINDOW_DAYS)
+    try {
+      const result = await syncMetaInsightRows(
+        dateStart,
+        dateEnd,
+        metaAdsId.value(),
+      )
+      logger.info('Meta 인사이트 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        'Meta 인사이트 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
   },
 )
 
@@ -648,7 +781,12 @@ export const getGoogleCampaignInsight = onRequest(
           return
         }
 
-        const insightData = await getGoogleInsight(
+        // getGoogleInsight(라이브 전체 조회) 대신
+        // getGoogleCampaignInsightWithHistory를 쓴다 — 최근 7일은 라이브
+        // API, 8일 이상 전은 Firestore(googleCampaignInsightDaily) 배치
+        // 동기화 값을 읽어서 합친다. 반환 모양은 그대로라 프론트/
+        // GoogleTestPanel 모두 손댈 게 없다(channel/google/index.ts 참고).
+        const insightData = await getGoogleCampaignInsightWithHistory(
           String(brandId),
           String(dateStart),
           String(dateEnd),
@@ -703,7 +841,9 @@ export const getGoogleAdsInsight = onRequest(
           return
         }
 
-        const insightData = await getGoogleAdGroupInsight(
+        // getGoogleAdGroupInsight 대신 getGoogleAdGroupInsightWithHistory —
+        // 위 getGoogleCampaignInsight 핸들러와 동일한 이유.
+        const insightData = await getGoogleAdGroupInsightWithHistory(
           String(brandId),
           String(dateStart),
           String(dateEnd),
@@ -723,6 +863,224 @@ export const getGoogleAdsInsight = onRequest(
         )
       }
     })
+  },
+)
+
+/**
+ * 디버그 전용 — Google Ads 캠페인/adGroup 원본(가공은 됐지만 배치 안 된) 행을
+ * 눈으로 확인/대조하는 용도(cafe24의 debugCafe24OrdersRaw/debugCafe24RefundsRaw
+ * 두 리소스 분리 패턴과 동일). brandId/customerId/loginCustomerId를 생략하면
+ * GOOGLE_SYNC_* 기본값(현재 연동된 유일한 계정)을 쓴다.
+ */
+export const debugGoogleCampaignInsightRaw = onRequest(
+  { secrets: [googleClientId, googleClientSecret, googleDeveloperToken] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate, brandId, customerId, loginCustomerId } =
+        request.query as {
+          startDate?: string
+          endDate?: string
+          brandId?: string
+          customerId?: string
+          loginCustomerId?: string
+        }
+      if (!startDate || !endDate) {
+        sendError(response, 400, 'startDate, endDate 필요')
+        return
+      }
+      try {
+        const raw = await debugFetchGoogleCampaignRaw(
+          startDate,
+          endDate,
+          brandId || GOOGLE_SYNC_BRAND_ID,
+          googleClientId.value(),
+          googleClientSecret.value(),
+          googleDeveloperToken.value(),
+          customerId || GOOGLE_SYNC_CUSTOMER_ID,
+          loginCustomerId || GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+        )
+        response.status(200).send(raw)
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+export const debugGoogleAdGroupInsightRaw = onRequest(
+  { secrets: [googleClientId, googleClientSecret, googleDeveloperToken] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate, brandId, customerId, loginCustomerId } =
+        request.query as {
+          startDate?: string
+          endDate?: string
+          brandId?: string
+          customerId?: string
+          loginCustomerId?: string
+        }
+      if (!startDate || !endDate) {
+        sendError(response, 400, 'startDate, endDate 필요')
+        return
+      }
+      try {
+        const raw = await debugFetchGoogleAdGroupRaw(
+          startDate,
+          endDate,
+          brandId || GOOGLE_SYNC_BRAND_ID,
+          googleClientId.value(),
+          googleClientSecret.value(),
+          googleDeveloperToken.value(),
+          customerId || GOOGLE_SYNC_CUSTOMER_ID,
+          loginCustomerId || GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+        )
+        response.status(200).send(raw)
+      } catch (err) {
+        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// Google Ads 인사이트 — 동기화 + 조회. Meta/Cafe24와 같은 이유로(매일 계속
+// 쌓이고 어트리뷰션이 갱신되는 데이터) 삭제 없이 upsert만 한다
+// (channel/google/firestore.ts 참고).
+// ────────────────────────────────
+
+// 롤링 재동기화 기본 범위 — meta의 META_SYNC_WINDOW_DAYS와 동일한 이유로
+// LIVE_WINDOW_DAYS(7일)보다 여유 있게 잡는다.
+const GOOGLE_SYNC_WINDOW_DAYS = 14
+
+/**
+ * Google Ads 인사이트(캠페인+adGroup)를 지정한 기간만큼 라이브로 가져와
+ * Firestore에 upsert한다. body를 생략하면 기본으로 "최근 14일 × 유일한
+ * 연동 계정(GOOGLE_SYNC_*)"을 동기화한다 — 과거 데이터를 넓게 백필하고
+ * 싶을 때만 명시적으로 범위를 넘기면 된다.
+ */
+export const syncGoogleInsights = onRequest(
+  {
+    secrets: [googleClientId, googleClientSecret, googleDeveloperToken],
+    timeoutSeconds: 300,
+  },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const {
+        startDate,
+        endDate,
+        brandId,
+        customerId,
+        loginCustomerId,
+      } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+        brandId?: string
+        customerId?: string
+        loginCustomerId?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -GOOGLE_SYNC_WINDOW_DAYS)
+      const syncBrandId = brandId || GOOGLE_SYNC_BRAND_ID
+      const syncCustomerId = customerId || GOOGLE_SYNC_CUSTOMER_ID
+      const syncLoginCustomerId = loginCustomerId || GOOGLE_SYNC_LOGIN_CUSTOMER_ID
+
+      try {
+        const [campaignResult, adGroupResult] = await Promise.all([
+          syncGoogleCampaignInsightRows(
+            dateStart,
+            dateEnd,
+            syncBrandId,
+            googleClientId.value(),
+            googleClientSecret.value(),
+            googleDeveloperToken.value(),
+            syncCustomerId,
+            syncLoginCustomerId,
+          ),
+          syncGoogleAdGroupInsightRows(
+            dateStart,
+            dateEnd,
+            syncBrandId,
+            googleClientId.value(),
+            googleClientSecret.value(),
+            googleDeveloperToken.value(),
+            syncCustomerId,
+            syncLoginCustomerId,
+          ),
+        ])
+        response.status(200).send({
+          campaignUpserted: campaignResult.upserted,
+          adGroupUpserted: adGroupResult.upserted,
+        })
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Google Ads 인사이트 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * Google Ads 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * syncCafe24OrdersScheduled/syncMetaInsightsScheduled와 같은 패턴.
+ */
+export const syncGoogleInsightsScheduled = onSchedule(
+  {
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [googleClientId, googleClientSecret, googleDeveloperToken],
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const dateEnd = todayISO()
+    const dateStart = addDays(dateEnd, -GOOGLE_SYNC_WINDOW_DAYS)
+    try {
+      const [campaignResult, adGroupResult] = await Promise.all([
+        syncGoogleCampaignInsightRows(
+          dateStart,
+          dateEnd,
+          GOOGLE_SYNC_BRAND_ID,
+          googleClientId.value(),
+          googleClientSecret.value(),
+          googleDeveloperToken.value(),
+          GOOGLE_SYNC_CUSTOMER_ID,
+          GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+        ),
+        syncGoogleAdGroupInsightRows(
+          dateStart,
+          dateEnd,
+          GOOGLE_SYNC_BRAND_ID,
+          googleClientId.value(),
+          googleClientSecret.value(),
+          googleDeveloperToken.value(),
+          GOOGLE_SYNC_CUSTOMER_ID,
+          GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+        ),
+      ])
+      logger.info('Google Ads 인사이트 자동 동기화 성공:', {
+        campaignUpserted: campaignResult.upserted,
+        adGroupUpserted: adGroupResult.upserted,
+      })
+    } catch (err) {
+      logger.error(
+        'Google Ads 인사이트 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
   },
 )
 
@@ -751,7 +1109,14 @@ export const getNaverInsight = onRequest(
       const { dateStart, dateEnd } = validationRes.data
 
       try {
-        const naverRes = await fetchNaverInsight(dateStart, dateEnd, {
+        // getNaverInsight(라이브 전체 조회) 대신
+        // getNaverInsightWithHistory를 쓴다 — 최근 7일은 라이브 API, 8일
+        // 이상 전은 Firestore(naverInsightDaily) 배치 동기화 값을 읽어서
+        // 합친다. 네이버는 /stats가 "하루 = 요청 한 번"이라 조회 기간이
+        // 길수록 라이브 호출이 느린데, 이 전환으로 그 비용을 크게 줄인다.
+        // 반환 모양은 그대로라 프론트는 손댈 게 없다(channel/naver/index.ts
+        // 참고).
+        const naverRes = await getNaverInsightWithHistory(dateStart, dateEnd, {
           apiKey: naverAccessLicense.value(),
           secretKey: naverSecretKey.value(),
           customerId: NAVER_CUSTOMER_ID,
@@ -802,6 +1167,120 @@ export const debugNaverRaw = onRequest(
         sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
       }
     })
+  },
+)
+
+/**
+ * 디버그 전용 — client.ts가 가공까지 마친(집계는 안 된) 인사이트 행 배열을
+ * 그대로 반환한다(meta의 debugMetaInsightRaw와 같은 목적 — DB 백필 후 같은
+ * 기간 결과를 직접 합산해 대조하는 용도). 위 debugNaverRaw는 필드명/스키마
+ * 확인용이고, 이건 합계 검증용으로 역할이 다르다.
+ */
+export const debugNaverInsightRowsRaw = onRequest(
+  { secrets: [naverAccessLicense, naverSecretKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        sendError(res, 405, 'Method Not Allowed')
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const raw = await debugFetchNaverInsightRows(dateStart, dateEnd, {
+          apiKey: naverAccessLicense.value(),
+          secretKey: naverSecretKey.value(),
+          customerId: NAVER_CUSTOMER_ID,
+        })
+        res.status(200).send(raw)
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// Naver 인사이트 — 동기화 + 조회. Meta/Google과 같은 이유로(매일 계속 쌓이고
+// 값이 갱신되는 데이터) 삭제 없이 upsert만 한다(channel/naver/firestore.ts
+// 참고).
+// ────────────────────────────────
+
+// 롤링 재동기화 기본 범위 — Meta/Google의 SYNC_WINDOW_DAYS와 동일한 이유로
+// LIVE_WINDOW_DAYS(7일)보다 여유 있게 잡는다.
+const NAVER_SYNC_WINDOW_DAYS = 14
+
+/**
+ * 네이버 인사이트를 지정한 기간만큼 라이브로 가져와
+ * Firestore(naverInsightDaily)에 upsert한다. body에 startDate/endDate를 안
+ * 주면 기본으로 "최근 14일"을 동기화한다.
+ */
+export const syncNaverInsights = onRequest(
+  { secrets: [naverAccessLicense, naverSecretKey], timeoutSeconds: 300 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -NAVER_SYNC_WINDOW_DAYS)
+
+      try {
+        const result = await syncNaverInsightRows(dateStart, dateEnd, {
+          apiKey: naverAccessLicense.value(),
+          secretKey: naverSecretKey.value(),
+          customerId: NAVER_CUSTOMER_ID,
+        })
+        response.status(200).send(result)
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Naver 인사이트 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 네이버 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * syncMetaInsightsScheduled/syncGoogleInsightsScheduled와 같은 패턴.
+ */
+export const syncNaverInsightsScheduled = onSchedule(
+  {
+    schedule: '0 0 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [naverAccessLicense, naverSecretKey],
+    timeoutSeconds: 300,
+  },
+  async () => {
+    const dateEnd = todayISO()
+    const dateStart = addDays(dateEnd, -NAVER_SYNC_WINDOW_DAYS)
+    try {
+      const result = await syncNaverInsightRows(dateStart, dateEnd, {
+        apiKey: naverAccessLicense.value(),
+        secretKey: naverSecretKey.value(),
+        customerId: NAVER_CUSTOMER_ID,
+      })
+      logger.info('Naver 인사이트 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        'Naver 인사이트 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
   },
 )
 

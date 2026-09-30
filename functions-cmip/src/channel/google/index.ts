@@ -1,8 +1,31 @@
 import { OAuth2Client } from 'google-auth-library'
 import { db } from '../../data'
-import { AdGroupMetricsRow, AdsMetricsRow } from './types'
+import { addDays, todayISO } from '../utils'
+import {
+  fetchGoogleAdGroupInsightRows,
+  fetchGoogleCampaignInsightRows,
+} from './client'
+import {
+  fetchGoogleAdGroupInsightRowsFromDb,
+  fetchGoogleCampaignInsightRowsFromDb,
+  upsertGoogleAdGroupInsightRows,
+  upsertGoogleCampaignInsightRows,
+} from './firestore'
+import { GoogleAdGroupInsightRow, GoogleCampaignInsightRow } from './types'
 
-const GOOGLE_ADS_API_VERSION = 'v25' // 2026-09 기준 최신 버전
+// 지금 실제로 연동된 Google Ads 계정은 하나뿐이라(프론트
+// google-insight-client.ts의 GOOGLE_ADS_BRAND_ID 등과 동일한 값) 동기화
+// 쪽(요청 컨텍스트가 없는 스케줄 함수)도 같은 값을 기본으로 쓴다. 계정이
+// 늘면 이 상수들과 syncGoogleInsights의 override 파라미터를 함께 확장하면
+// 된다.
+export const GOOGLE_SYNC_BRAND_ID = '10'
+export const GOOGLE_SYNC_CUSTOMER_ID = '2771515076'
+export const GOOGLE_SYNC_LOGIN_CUSTOMER_ID = '7421390798'
+
+/** 최근 N일은 어트리뷰션 지연으로 계속 소급 수정될 수 있어서 라이브 API로,
+ * 그 이전은 Firestore 배치 동기화 값을 읽는다 — meta/index.ts의 같은 상수와
+ * 동일한 이유. */
+const LIVE_WINDOW_DAYS = 7
 
 export function buildGoogleAdsAuthUrl(
   brandId: string,
@@ -61,32 +84,18 @@ export async function exchangeAndSaveGoogleTokens(
     )
 }
 
-async function getAccessToken(
-  refreshToken: string,
-  clientId: string,
-  clientSecret: string,
-): Promise<string> {
-  const params = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-    grant_type: 'refresh_token',
-  })
-
-  const res = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
-  })
-
-  const data = (await res.json()) as { access_token?: string; error?: string }
-  if (!res.ok || !data.access_token) {
-    throw new Error(`Access Token 발급 실패: ${data.error || res.statusText}`)
+async function getRefreshToken(brandId: string): Promise<string> {
+  const brandDoc = await db.collection('brands').doc(brandId).get()
+  const refreshToken = brandDoc.data()?.googleAds?.refreshToken
+  if (!refreshToken) {
+    throw new Error(`브랜드(${brandId})의 Google Ads 연동 정보가 없습니다.`)
   }
-
-  return data.access_token
+  return refreshToken
 }
 
+/** 라이브 조회 전용(캠페인 단위) — client.ts의 fetchGoogleCampaignInsightRows를
+ * 감싸서 기존 반환 모양({brandId, dateStart, dateEnd, totalCount, rows})을
+ * 그대로 유지한다. GoogleTestPanel(디버그 화면)이 이 모양에 직접 의존한다. */
 export async function getGoogleInsight(
   brandId: string,
   dateStart: string,
@@ -94,158 +103,24 @@ export async function getGoogleInsight(
   clientId: string,
   clientSecret: string,
   developerToken: string,
-  customerId: string, // 타겟 Google Ads 고객 ID
-  loginCustomerId?: string, // 상위 MCC 계정 ID
+  customerId: string,
+  loginCustomerId?: string,
 ) {
-  // 1. 해당 브랜드의 Refresh Token 조회
-  const brandDoc = await db.collection('brands').doc(brandId).get()
-  const refreshToken = brandDoc.data()?.googleAds?.refreshToken
-
-  if (!refreshToken) {
-    throw new Error(`브랜드(${brandId})의 Google Ads 연동 정보가 없습니다.`)
-  }
-
-  // 2. Access Token 갱신
-  const accessToken = await getAccessToken(refreshToken, clientId, clientSecret)
-
-  // 3. Customer ID 정제 및 URL/Header 구성
-  const cleanCustomerId = customerId.trim().replace(/-/g, '')
-  const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    'developer-token': developerToken,
-    'Content-Type': 'application/json',
-  }
-
-  if (loginCustomerId && loginCustomerId.trim()) {
-    headers['login-customer-id'] = loginCustomerId.trim().replace(/-/g, '')
-  }
-
-  // 4. GAQL 쿼리 정의
-  // 4-1. 일별 추이용 쿼리 (segments.date 포함)
-  const queryDaily = `
-    SELECT
-      segments.date,
-      campaign.id,
-      campaign.name,
-      metrics.cost_micros,
-      metrics.impressions,
-      metrics.clicks,
-      metrics.conversions,
-      metrics.conversions_value
-    FROM campaign
-    WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
-    ORDER BY segments.date DESC
-  `
-
-  // 4-2. 기간 전체 Frequency(빈도) 조회용 쿼리 (segments.date 제외)
-  const querySummary = `
-    SELECT
-      campaign.id,
-      metrics.average_impression_frequency_per_user
-    FROM campaign
-    WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
-  `
-
-  // 5. Promise.all을 활용한 병렬 API 호출
-  const [responseDaily, responseSummary] = await Promise.all([
-    fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ query: queryDaily }),
-    }),
-    fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ query: querySummary }),
-    }),
-  ])
-
-  if (!responseDaily.ok) {
-    const errorText = await responseDaily.text()
-    throw new Error(`Google Ads API 호출 실패 (Daily): ${errorText}`)
-  }
-
-  if (!responseSummary.ok) {
-    const errorText = await responseSummary.text()
-    throw new Error(
-      `Google Ads API 호출 실패 (Summary/Frequency): ${errorText}`,
-    )
-  }
-
-  // 6. Frequency(빈도) 데이터 파싱 및 Map 생성
-  const chunksSummary = (await responseSummary.json()) as Array<{
-    results?: Array<{
-      campaign?: { id?: string }
-      metrics?: { averageImpressionFrequencyPerUser?: string | number }
-    }>
-  }>
-
-  const frequencyMap = new Map<string, number>()
-  for (const chunk of chunksSummary) {
-    if (!chunk.results) continue
-    for (const r of chunk.results) {
-      const campaignId = r.campaign?.id
-      const rawFreq = Number(r.metrics?.averageImpressionFrequencyPerUser || 0)
-      if (campaignId) {
-        frequencyMap.set(campaignId, Number(rawFreq.toFixed(2)))
-      }
-    }
-  }
-
-  // 7. 일별 데이터 파싱 및 10개 핵심 지표 종합 가공
-  const chunksDaily = (await responseDaily.json()) as Array<{
-    results?: AdsMetricsRow[]
-  }>
-  const rows: unknown[] = []
-
-  for (const chunk of chunksDaily) {
-    if (!chunk.results) continue
-    for (const r of chunk.results) {
-      const campaignId = r.campaign?.id || ''
-      const costMicros = Number(r.metrics?.costMicros || 0)
-      const cost = Math.round(costMicros / 1000000) // Spend (원)
-      const impressions = Number(r.metrics?.impressions || 0) // Impressions
-      const clicks = Number(r.metrics?.clicks || 0) // Clicks
-      const conversions = Number(r.metrics?.conversions || 0) // Conversions
-      const conversionsValue = Number(r.metrics?.conversionsValue || 0) // 전환 가치(매출)
-
-      // 파생 지표 계산 (0으로 나누기 방지)
-      const ctr =
-        impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0 // CTR (%)
-      const cpc = clicks > 0 ? Math.round(cost / clicks) : 0 // CPC (원)
-      const cpa = conversions > 0 ? Math.round(cost / conversions) : 0 // CPA (원)
-      const cvr =
-        clicks > 0 ? Number(((conversions / clicks) * 100).toFixed(2)) : 0 // CVR (%)
-      const cpm = impressions > 0 ? Math.round((cost / impressions) * 1000) : 0 // CPM (원)
-
-      // Map에서 해당 캠페인의 전체 기간 Frequency 가져오기 (없으면 0)
-      const frequency = frequencyMap.get(campaignId) || 0
-
-      rows.push({
-        date: r.segments?.date || '',
-        campaignId,
-        campaignName: r.campaign?.name || '',
-        costMicros,
-        cost, // Spend (기본 화폐 단위)
-        impressions,
-        clicks,
-        conversions,
-        conversionsValue,
-        ctr,
-        cpc,
-        cpa,
-        cvr,
-        cpm,
-        frequency, // 해당 선택 기간 전체의 캠페인 평균 Frequency
-      })
-    }
-  }
-
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleCampaignInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
   return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
 }
 
+/** 라이브 조회 전용(adGroup=adset 단위) — getGoogleInsight와 동일한 구조. */
 export async function getGoogleAdGroupInsight(
   brandId: string,
   dateStart: string,
@@ -253,113 +128,218 @@ export async function getGoogleAdGroupInsight(
   clientId: string,
   clientSecret: string,
   developerToken: string,
-  customerId: string, // 타겟 Google Ads 고객 ID
-  loginCustomerId?: string, // 상위 MCC 계정 ID
+  customerId: string,
+  loginCustomerId?: string,
 ) {
-  // 1. Refresh Token 조회
-  const brandDoc = await db.collection('brands').doc(brandId).get()
-  const refreshToken = brandDoc.data()?.googleAds?.refreshToken
-
-  if (!refreshToken) {
-    throw new Error(`브랜드(${brandId})의 Google Ads 연동 정보가 없습니다.`)
-  }
-
-  // 2. Access Token 갱신
-  const accessToken = await getAccessToken(refreshToken, clientId, clientSecret)
-
-  // 3. Customer ID 정제 및 URL/Header 구성
-  const cleanCustomerId = customerId.trim().replace(/-/g, '')
-  const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${accessToken}`,
-    'developer-token': developerToken,
-    'Content-Type': 'application/json',
-  }
-
-  if (loginCustomerId && loginCustomerId.trim()) {
-    headers['login-customer-id'] = loginCustomerId.trim().replace(/-/g, '')
-  }
-
-  // 4. GAQL 쿼리 정의 (ad_group 레벨에서는 frequency 지표가 지원되지 않음)
-  const query = `
-    SELECT
-      segments.date,
-      campaign.id,
-      campaign.name,
-      ad_group.id,
-      ad_group.name,
-      metrics.cost_micros,
-      metrics.impressions,
-      metrics.clicks,
-      metrics.conversions,
-      metrics.conversions_value
-    FROM ad_group
-    WHERE segments.date BETWEEN '${dateStart}' AND '${dateEnd}'
-    ORDER BY segments.date DESC
-  `
-
-  // 5. Google Ads API 호출
-  const response = await fetch(url, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ query }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    throw new Error(`Google Ads AdGroup API 호출 실패: ${errorText}`)
-  }
-
-  // 6. 응답 데이터 파싱 및 지표 가공
-  const chunks = (await response.json()) as Array<{
-    results?: AdGroupMetricsRow[]
-  }>
-  const rows: unknown[] = []
-
-  for (const chunk of chunks) {
-    if (!chunk.results) continue
-    for (const r of chunk.results) {
-      const campaignId = r.campaign?.id || ''
-      const campaignName = r.campaign?.name || ''
-      const adGroupId = r.adGroup?.id || ''
-
-      const costMicros = Number(r.metrics?.costMicros || 0)
-      const cost = Math.round(costMicros / 1000000)
-      const impressions = Number(r.metrics?.impressions || 0)
-      const clicks = Number(r.metrics?.clicks || 0)
-      const conversions = Number(r.metrics?.conversions || 0)
-      const conversionsValue = Number(r.metrics?.conversionsValue || 0)
-
-      const ctr =
-        impressions > 0 ? Number(((clicks / impressions) * 100).toFixed(2)) : 0
-      const cpc = clicks > 0 ? Math.round(cost / clicks) : 0
-      const cpa = conversions > 0 ? Math.round(cost / conversions) : 0
-      const cvr =
-        clicks > 0 ? Number(((conversions / clicks) * 100).toFixed(2)) : 0
-      const cpm = impressions > 0 ? Math.round((cost / impressions) * 1000) : 0
-
-      rows.push({
-        date: r.segments?.date || '',
-        campaignId,
-        campaignName,
-        adGroupId,
-        adGroupName: r.adGroup?.name || '',
-        costMicros,
-        cost,
-        impressions,
-        clicks,
-        conversions,
-        conversionsValue,
-        ctr,
-        cpc,
-        cpa,
-        cvr,
-        cpm,
-        frequency: 0,
-      })
-    }
-  }
-
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleAdGroupInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
   return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
+}
+
+/** 조회 구간을 LIVE_WINDOW_DAYS 경계로 쪼개서, 최근 구간은 라이브 API로,
+ * 그보다 과거인 구간은 Firestore(googleCampaignInsightDaily)에서 읽은 뒤 두
+ * 배열을 이어붙여 그대로 반환한다 — meta/index.ts의
+ * getMetaInsightWithHistory와 같은 구조. Google은 백엔드가 집계를 안 하고
+ * 가공된 행만 돌려주므로(프론트 google-insight-client.ts가 집계) "요약 함수
+ * 재사용" 단계 자체가 필요 없어 Meta보다 더 단순하다 — 행을 이어붙이는 게
+ * 곧 최종 반환값이다. */
+export async function getGoogleCampaignInsightWithHistory(
+  brandId: string,
+  dateStart: string,
+  dateEnd: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+) {
+  const today = todayISO()
+  const liveStartBoundary = addDays(today, -(LIVE_WINDOW_DAYS - 1))
+  const historicalEnd =
+    dateEnd < liveStartBoundary ? dateEnd : addDays(liveStartBoundary, -1)
+  const liveStart =
+    dateStart > liveStartBoundary ? dateStart : liveStartBoundary
+
+  const needsHistorical = dateStart <= historicalEnd
+  const needsLive = liveStart <= dateEnd
+
+  const [historicalRows, liveRows] = await Promise.all([
+    needsHistorical
+      ? fetchGoogleCampaignInsightRowsFromDb(dateStart, historicalEnd)
+      : Promise.resolve([] as GoogleCampaignInsightRow[]),
+    needsLive
+      ? (async () => {
+          const refreshToken = await getRefreshToken(brandId)
+          return fetchGoogleCampaignInsightRows(
+            liveStart,
+            dateEnd,
+            clientId,
+            clientSecret,
+            developerToken,
+            customerId,
+            refreshToken,
+            loginCustomerId,
+          )
+        })()
+      : Promise.resolve([] as GoogleCampaignInsightRow[]),
+  ])
+
+  const rows: GoogleCampaignInsightRow[] = [...historicalRows, ...liveRows]
+  return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
+}
+
+/** getGoogleCampaignInsightWithHistory와 동일 구조의 adGroup 버전. */
+export async function getGoogleAdGroupInsightWithHistory(
+  brandId: string,
+  dateStart: string,
+  dateEnd: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+) {
+  const today = todayISO()
+  const liveStartBoundary = addDays(today, -(LIVE_WINDOW_DAYS - 1))
+  const historicalEnd =
+    dateEnd < liveStartBoundary ? dateEnd : addDays(liveStartBoundary, -1)
+  const liveStart =
+    dateStart > liveStartBoundary ? dateStart : liveStartBoundary
+
+  const needsHistorical = dateStart <= historicalEnd
+  const needsLive = liveStart <= dateEnd
+
+  const [historicalRows, liveRows] = await Promise.all([
+    needsHistorical
+      ? fetchGoogleAdGroupInsightRowsFromDb(dateStart, historicalEnd)
+      : Promise.resolve([] as GoogleAdGroupInsightRow[]),
+    needsLive
+      ? (async () => {
+          const refreshToken = await getRefreshToken(brandId)
+          return fetchGoogleAdGroupInsightRows(
+            liveStart,
+            dateEnd,
+            clientId,
+            clientSecret,
+            developerToken,
+            customerId,
+            refreshToken,
+            loginCustomerId,
+          )
+        })()
+      : Promise.resolve([] as GoogleAdGroupInsightRow[]),
+  ])
+
+  const rows: GoogleAdGroupInsightRow[] = [...historicalRows, ...liveRows]
+  return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
+}
+
+/** 수동/스케줄 동기화 공용(캠페인) — 라이브로 fetch해서
+ * Firestore(googleCampaignInsightDaily)에 upsert한다. */
+export async function syncGoogleCampaignInsightRows(
+  dateStart: string,
+  dateEnd: string,
+  brandId: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+): Promise<{ upserted: number }> {
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleCampaignInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
+  return upsertGoogleCampaignInsightRows(rows)
+}
+
+/** 수동/스케줄 동기화 공용(adGroup). */
+export async function syncGoogleAdGroupInsightRows(
+  dateStart: string,
+  dateEnd: string,
+  brandId: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+): Promise<{ upserted: number }> {
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleAdGroupInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
+  return upsertGoogleAdGroupInsightRows(rows)
+}
+
+/** 디버그 전용 — 실제 Google Ads API 원본(가공은 됐지만 배치되지 않은) 행을
+ * 눈으로 확인/대조하는 용도(cafe24의 debugFetchCafe24OrdersRaw와 같은 목적). */
+export async function debugFetchGoogleCampaignRaw(
+  dateStart: string,
+  dateEnd: string,
+  brandId: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+): Promise<{ rows: GoogleCampaignInsightRow[]; count: number }> {
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleCampaignInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
+  return { rows, count: rows.length }
+}
+
+export async function debugFetchGoogleAdGroupRaw(
+  dateStart: string,
+  dateEnd: string,
+  brandId: string,
+  clientId: string,
+  clientSecret: string,
+  developerToken: string,
+  customerId: string,
+  loginCustomerId?: string,
+): Promise<{ rows: GoogleAdGroupInsightRow[]; count: number }> {
+  const refreshToken = await getRefreshToken(brandId)
+  const rows = await fetchGoogleAdGroupInsightRows(
+    dateStart,
+    dateEnd,
+    clientId,
+    clientSecret,
+    developerToken,
+    customerId,
+    refreshToken,
+    loginCustomerId,
+  )
+  return { rows, count: rows.length }
 }
