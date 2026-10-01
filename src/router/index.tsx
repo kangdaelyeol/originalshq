@@ -22,6 +22,30 @@ export const router = createBrowserRouter([
     children: [{ path: 'parke', element: <ParkeScreen /> }],
   },
   {
+    // Lazy: the Parké product site carries ~300 kB of its own CSS, and nothing
+    // else in the app uses it.
+    path: '/parke',
+    lazy: async () => ({
+      Component: (await import('@/pages/parke-page')).ParkePage,
+    }),
+    children: [
+      {
+        index: true,
+        lazy: async () => ({
+          Component: (await import('@/screens/parke-landing')).default,
+        }),
+      },
+      {
+        path: 'reservation',
+        lazy: async () => ({
+          Component: (
+            await import('@/screens/parke-landing/reservation-cancel')
+          ).default,
+        }),
+      },
+    ],
+  },
+  {
     path: '/xtool-lead-manager',
     element: <XtoolPage />,
     children: [{ index: true, element: <XtoolLeadManager /> }],
