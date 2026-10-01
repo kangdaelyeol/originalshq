@@ -34,3 +34,6 @@
 @import './parke-premium-offer.css';
 @import './parke-scroll-stability.css';
 @import './parke-engraving.css';
+
+/* Our own changes, last so they win at equal specificity. */
+@import './overrides.css';

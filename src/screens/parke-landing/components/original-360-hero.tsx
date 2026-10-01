@@ -1,29 +1,51 @@
 import { useEffect, useRef } from 'react'
-import { ArrowDown } from 'lucide-react'
 import {
   createScrollSequence,
   DETAIL_COLUMNS,
   FRAME_COUNT,
   MOTION_COLUMNS,
 } from '../utils/scroll-sequence'
+import {
+  HERO_COPY,
+  heroCueOpacity,
+  OPENING_FADE_S,
+} from '../view-model/hero-copy'
 
 const FPS = 24
 const clamp = (x: number) => Math.max(0, Math.min(1, x))
-const ease = (x: number) => {
-  const t = clamp(x)
-  return t * t * (3 - 2 * t)
-}
 const timeAt = (p: number) => (clamp(p / 0.96) * (FRAME_COUNT - 1)) / FPS
+/** Inverse of timeAt: the scroll progress that lands on this frame. */
+const progressAt = (frame: number) => (frame / (FRAME_COUNT - 1)) * 0.96
+
+/* Opening titles.
+ *
+ * The hero fades up from black once the first frame is on the canvas, then
+ * plays chapter one by itself — the page scrolls, so the sequence, the copy
+ * crossfade and the scrollbar all stay in agreement instead of the canvas
+ * animating behind a page that has not moved. The first touch of the wheel,
+ * a key or a finger hands control straight back. */
+/** Hold before the page starts moving. Shorter than the 900ms fade on
+ * purpose: the move begins while the image is still resolving, which reads
+ * as one gesture instead of fade-then-wait-then-scroll. */
+const REVEAL_MS = 520
+/** Last frame with the opening copy still fully opaque — see OPENING_FADE_S. */
+const INTRO_END_FRAME = Math.max(1, Math.floor(OPENING_FADE_S * FPS))
+/** How long that scroll takes. Not tied to the sequence's own 24fps — played
+ * at film rate the opening sits still for too long before anything reads.
+ * Set against INTRO_END_FRAME's distance to leave at roughly 670px/s. */
+const INTRO_MS = 4100
+/** Leaves at speed and settles, rather than easing in from a standstill: an
+ * ease-in spends the first second covering ~20px, which looks like a stall. */
+const easeOut = (t: number) => 1 - (1 - t) ** 3
 
 /** Resident motion frames follow scroll immediately; full detail resolves after scrolling rests. */
 export default function Original360Hero({ still }: { still: boolean }) {
   const section = useRef<HTMLElement>(null),
     canvas = useRef<HTMLCanvasElement>(null),
     poster = useRef<HTMLImageElement>(null)
-  const copies = useRef<(HTMLDivElement | null)[]>([]),
-    hint = useRef<HTMLSpanElement>(null),
-    chapter = useRef<HTMLSpanElement>(null),
-    bar = useRef<HTMLElement>(null)
+  const copies = useRef<(HTMLDivElement | null)[]>([])
+  /** The intro plays once per visit, not again when motion is toggled. */
+  const introPlayed = useRef(false)
 
   useEffect(() => {
     const host = section.current,
@@ -35,22 +57,15 @@ export default function Original360Hero({ still }: { still: boolean }) {
     cover.style.opacity = '1'
     copies.current.forEach((copy, index) => {
       if (!copy) return
-      copy.style.opacity = index === 0 ? '1' : '0'
+      const shown = HERO_COPY[index]?.enter === null
+      copy.style.opacity = shown ? '1' : '0'
       copy.style.transform = 'none'
-      copy.setAttribute('aria-hidden', String(index !== 0))
+      copy.setAttribute('aria-hidden', String(!shown))
     })
-    if (bar.current) {
-      bar.current.style.width = '100%'
-      bar.current.style.transform = 'scaleX(0)'
-    }
-    if (chapter.current) chapter.current.innerHTML = '01<small>/ 03</small>'
-    if (hint.current)
-      hint.current.textContent = '아래로 내려 제품과 사용 장면을 살펴보세요.'
     if (still) {
       pin.dataset.renderer = 'brand-still'
-      if (hint.current)
-        hint.current.textContent =
-          '움직임 없이 보는 중 · 상단 재생 버튼으로 켤 수 있어요.'
+      // Nothing will paint, so reveal the still frame straight away.
+      host.classList.add('is-revealed')
       return
     }
     const ctx = surface.getContext('2d', { alpha: false })
@@ -69,22 +84,22 @@ export default function Original360Hero({ still }: { still: boolean }) {
     let raf = 0,
       idleTimer = 0,
       resizeTimer = 0,
+      revealTimer = 0,
+      introRaf = 0,
+      introFrom = 0,
+      introTo = 0,
+      introAt = 0,
       disposed = false,
       active = true,
       painted = false
     let start = 0,
       distance = 1,
-      viewportWidth = innerWidth,
-      lastPhase = 1
-    const opacityCache = [-1, -1, -1]
+      viewportWidth = innerWidth
+    const opacityCache = HERO_COPY.map(() => -1)
 
     const paintCopy = (frame: number) => {
       const time = frame / FPS
-      const opacity = [
-        1 - ease((time - 6.35) / 0.6),
-        ease((time - 6.95) / 0.6) * (1 - ease((time - 16.1) / 0.6)),
-        ease((time - 16.7) / 0.7),
-      ]
+      const opacity = HERO_COPY.map((cue) => heroCueOpacity(cue, time))
       copies.current.forEach((copy, index) => {
         if (!copy || Math.abs(opacityCache[index] - opacity[index]) < 0.002)
           return
@@ -95,19 +110,6 @@ export default function Original360Hero({ still }: { still: boolean }) {
         if (copy.getAttribute('aria-hidden') !== hidden)
           copy.setAttribute('aria-hidden', hidden)
       })
-      const phase = time < 7 ? 1 : time < 16.7 ? 2 : 3
-      if (chapter.current && phase !== lastPhase) {
-        chapter.current.innerHTML = `0${phase}<small>/ 03</small>`
-        lastPhase = phase
-      }
-      const label =
-        time > 22.5
-          ? '함께 쓰는 차에서, 어떤 불편이 있었을까요?'
-          : phase === 3
-            ? '대시보드 위, 늘 두던 자리로.'
-            : '아래로 내려 제품과 사용 장면을 살펴보세요.'
-      if (hint.current && hint.current.textContent !== label)
-        hint.current.textContent = label
       host.dataset.frame = String(frame)
       host.dataset.time = time.toFixed(3)
     }
@@ -160,6 +162,8 @@ export default function Original360Hero({ still }: { still: boolean }) {
           surface.style.opacity = '1'
           cover.style.opacity = '0'
           painted = true
+          host.classList.add('is-revealed')
+          startIntro()
         }
         pin.dataset.renderer = detail
           ? 'detail-canvas'
@@ -176,6 +180,46 @@ export default function Original360Hero({ still }: { still: boolean }) {
       distance = Math.max(1, bounds.height - stableHeight)
       host.dataset.scrollDistance = String(Math.round(distance))
     }
+    /* Intro playback. Appended after measure() has run, so `start` and
+     * `distance` are the same numbers sample() maps scroll onto. */
+    const endIntro = () => {
+      if (introRaf) cancelAnimationFrame(introRaf)
+      introRaf = 0
+      clearTimeout(revealTimer)
+      removeEventListener('wheel', endIntro)
+      removeEventListener('touchstart', endIntro)
+      removeEventListener('pointerdown', endIntro)
+      removeEventListener('keydown', endIntro)
+      host.dataset.intro = 'done'
+    }
+    const stepIntro = (now: number) => {
+      introRaf = 0
+      if (disposed) return
+      const progress = clamp((now - introAt) / INTRO_MS)
+      scrollTo(0, introFrom + (introTo - introFrom) * easeOut(progress))
+      if (progress < 1) introRaf = requestAnimationFrame(stepIntro)
+      else endIntro()
+    }
+    const startIntro = () => {
+      if (introPlayed.current || disposed) return
+      introPlayed.current = true
+      // Only from a cold open at the top. A restored scroll position, a hash
+      // link or a reader who already started scrolling all keep control.
+      if (scrollY > start + 2) return
+      introFrom = scrollY
+      introTo = start + progressAt(INTRO_END_FRAME) * distance
+      if (introTo <= introFrom) return
+      host.dataset.intro = 'playing'
+      addEventListener('wheel', endIntro, { passive: true })
+      addEventListener('touchstart', endIntro, { passive: true })
+      addEventListener('pointerdown', endIntro, { passive: true })
+      addEventListener('keydown', endIntro)
+      revealTimer = window.setTimeout(() => {
+        if (disposed) return
+        introAt = performance.now()
+        introRaf = requestAnimationFrame(stepIntro)
+      }, REVEAL_MS)
+    }
     const sample = () => {
       raf = 0
       if (disposed || !active || document.hidden) return
@@ -185,7 +229,6 @@ export default function Original360Hero({ still }: { still: boolean }) {
         Math.round(timeAt(progress) * FPS),
       )
       host.dataset.targetFrame = String(frame)
-      if (bar.current) bar.current.style.transform = `scaleX(${progress})`
       sequence.seek(frame)
     }
     const queue = () => {
@@ -243,6 +286,7 @@ export default function Original360Hero({ still }: { still: boolean }) {
     settle()
     return () => {
       disposed = true
+      endIntro()
       cancelAnimationFrame(raf)
       clearTimeout(idleTimer)
       clearTimeout(resizeTimer)
@@ -311,56 +355,25 @@ export default function Original360Hero({ still }: { still: boolean }) {
           <h1 className="sr-only">
             Parké 파르케 — 앱을 열지 않아도 연락 대상이 바뀌는 자동 주차번호판.
           </h1>
-          {[
-            [
-              'Parké · 파르케',
-              '앱을 열지 않아도.',
-              '연락 대상은 알아서.',
-              '등록된 운전자를 인식해 주차 연락 대상을 자동으로 바꾸는 주차번호판.',
-            ],
-            [
-              '한 대의 차를 함께 쓰는 가족에게',
-              'QR은 그대로.',
-              '운전자는 바뀌어도.',
-              '번호판을 바꿔 끼우지 않아도, 지금 차를 사용하는 사람에게.',
-            ],
-            [
-              '우리 차의 주차 연락',
-              '차를 가져간 사람에게.',
-              '연락이 닿도록.',
-              '차에서 내려도 마지막으로 인식된 연락 대상은 유지됩니다.',
-            ],
-          ].map(([label, line1, line2, description], index) => (
+          {HERO_COPY.map((cue, index) => (
             <div
               ref={(element) => {
                 copies.current[index] = element
               }}
               className="pf-original-copy"
-              key={label}
-              aria-hidden={index !== 0}
-              style={{ opacity: index === 0 ? 1 : 0 }}
+              key={cue.label}
+              aria-hidden={cue.enter !== null}
+              style={{ opacity: cue.enter === null ? 1 : 0 }}
             >
-              <p className="pf-eyebrow">{label}</p>
+              <p className="pf-eyebrow">{cue.label}</p>
               <h2>
-                {line1}
+                {cue.heading[0]}
                 <br />
-                {line2}
+                {cue.heading[1]}
               </h2>
-              <p className="pf-hero-explain">{description}</p>
+              <p className="pf-hero-explain">{cue.description}</p>
             </div>
           ))}
-          <div className="pf-original-bottom">
-            <span>
-              <ArrowDown size={18} />
-              <span ref={hint}>아래로 내려 제품과 사용 장면을 살펴보세요.</span>
-            </span>
-            <span ref={chapter} className="pf-film-chapter">
-              01<small>/ 03</small>
-            </span>
-          </div>
-          <div className="pf-progress">
-            <i ref={bar} />
-          </div>
         </div>
       </section>
     </>

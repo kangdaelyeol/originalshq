@@ -307,7 +307,8 @@ const faqs = [
 export default function ParkeLaunch() {
   const [reader, setReader] = useState<boolean | null>(null),
     [reduced, setReduced] = useState(false),
-    [reserve, setReserve] = useState(false)
+    [reserve, setReserve] = useState(false),
+    [pastHero, setPastHero] = useState(false)
   useEffect(() => {
     const q = matchMedia('(prefers-reduced-motion: reduce)')
     const sync = () => setReduced(q.matches)
@@ -315,13 +316,26 @@ export default function ParkeLaunch() {
     q.addEventListener('change', sync)
     return () => q.removeEventListener('change', sync)
   }, [])
+  useEffect(() => {
+    // The hero runs its own full-bleed intro; page chrome waits until the
+    // scroll sequence has been scrolled past. The hero is several viewports
+    // tall, so it stops intersecting exactly when it ends.
+    const hero = document.getElementById('top')
+    if (!hero) return
+    const observer = new IntersectionObserver(
+      ([entry]) => setPastHero(!entry.isIntersecting),
+      { threshold: 0 },
+    )
+    observer.observe(hero)
+    return () => observer.disconnect()
+  }, [])
   const still = reader ?? reduced
   return (
     <div className={`parke-cinema parke-launch ${still ? 'pf-still' : ''}`}>
       <a href="#map-story" className="pc-skip">
         본문으로 건너뛰기
       </a>
-      <header className="pf-header">
+      <header className={`pf-header ${pastHero ? 'is-visible' : ''}`}>
         <a href="#top" className="pf-brand">
           Parké<span>by originals</span>
         </a>
