@@ -1,0 +1,41 @@
+/*
+ * Parké landing page stylesheet bundle.
+ *
+ * Every file below is the handoff's CSS with each selector scoped under
+ * `.parke-page`, so the page styles itself without touching the rest of the
+ * app. In SCSS that scope is the file's outer `.parke-page { … }` block
+ * rather than a prefix repeated on all 3,253 selectors. The order mirrors
+ * `source/app/layout.tsx` (with `globals`'s own import chain flattened ahead
+ * of its rules), because these files override one another by source order --
+ * so `@use` order here is load-bearing, not alphabetical.
+ *
+ * `base` replaces `artifacts/legacy-film.css`: that file's only job here was
+ * to pull in Tailwind preflight + the shadcn tokens, and its remaining rules
+ * belong to an earlier page that is not part of this one.
+ */
+@use 'base';
+
+/* globals' own import chain */
+@use 'continuous-story';
+@use 'visual-story';
+@use 'contact-navigation';
+@use 'finish-polish';
+@use 'contact-situation';
+@use 'visual-comparison';
+@use 'globals';
+
+/* layout.tsx imports */
+@use 'final-edition';
+@use 'parke-cinema';
+@use 'parke-launch';
+@use 'parke-situation';
+@use 'parke-map-examples';
+@use 'parke-detail';
+@use 'parke-use-flows';
+@use 'parke-visual-story';
+@use 'parke-premium-offer';
+@use 'parke-scroll-stability';
+@use 'parke-engraving';
+
+/* Our own changes, last so they win at equal specificity. */
+@use 'overrides';

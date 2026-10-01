@@ -1,0 +1,47 @@
+/*
+ * Media query shorthands for the Parké landing page.
+ *
+ * The page carries 106 `@media` blocks and five conditions account for 85 of
+ * them, so they are worth a name: it keeps the breakpoint numbers in
+ * _variables.scss and makes a block's intent readable at the call site. The
+ * other 21 conditions are genuine one-offs (a single viewport height, an
+ * aspect ratio) and stay spelled out where they are used.
+ */
+@use 'variables' as v;
+
+/* Phones. The page's main responsive branch. */
+@mixin mobile {
+  @media (max-width: v.$bp-mobile) {
+    @content;
+  }
+}
+
+/* Narrow phones, on top of `mobile` rather than instead of it. */
+@mixin mobile-sm {
+  @media (max-width: v.$bp-mobile-sm) {
+    @content;
+  }
+}
+
+@mixin tablet {
+  @media (max-width: v.$bp-tablet) {
+    @content;
+  }
+}
+
+/* Everything wider than a phone. The `+ 1` keeps this and `mobile` from
+ * overlapping on a 700px viewport without a second number to maintain. */
+@mixin desktop {
+  @media (min-width: v.$bp-mobile + 1) {
+    @content;
+  }
+}
+
+/* The page animates a lot -- a pinned scroll sequence, a canvas render, a
+ * dozen reveal transitions -- so nearly every stylesheet has something to
+ * switch off here. */
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}

@@ -1,0 +1,864 @@
+@use 'mixins' as m;
+
+.parke-page {
+  --background:#0c0d0c;
+  --primary:#9bbfff;
+  --ring:#9bbfff;
+
+  & {
+    background: #0c0d0c;
+  }
+
+  .film-header {
+    left: 5vw;
+    right: 5vw;
+    background: none;
+
+    .brand > span {
+      letter-spacing: 0.06em;
+      color: #c1c5c8;
+    }
+  }
+
+  .film-nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .reader-toggle {
+    font-size: 13px;
+    color: #a6abae;
+    padding: 12px 0;
+  }
+
+  .film-experience {
+    height: 1200svh;
+    position: relative;
+    background: #0c0d0c;
+  }
+
+  .cinema-pin {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .cinema-visual {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .cinema-canvas,
+  .cinema-poster {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    mask-image: linear-gradient(transparent, #000 12%, #000 82%, transparent);
+  }
+
+  .cinema-canvas {
+    opacity: 0;
+  }
+
+  .film-ready .cinema-canvas {
+    opacity: 1;
+  }
+
+  .film-ready .cinema-poster {
+    opacity: 0;
+  }
+
+  .film-error .cinema-canvas {
+    opacity: 0;
+  }
+
+  .film-error .cinema-poster {
+    opacity: 1;
+  }
+
+  .cinema-shade {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(#0c0d0c 0%, #0c0d0cc9 12%, transparent 34%, transparent 64%, #0c0d0cb8 79%, #0c0d0c 98%);
+  }
+
+  .film-disclosure {
+    position: absolute;
+    top: 86px;
+    right: 5vw;
+    font-size: 12px;
+    color: #a8afb5;
+    z-index: 4;
+  }
+
+  .cinema-copy {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    text-align: center;
+  }
+
+  .cinema-heading {
+    position: absolute;
+    top: 14%;
+    left: 5%;
+    right: 5%;
+    animation: copy-arrive 0.4s ease-out;
+
+    .eyebrow {
+      font-size: 13px;
+      color: #bcc3c8;
+      letter-spacing: 0.09em;
+      margin-bottom: 18px;
+    }
+
+    h1,
+    h2 {
+      font-size: clamp(40px, 5.3vw, 80px);
+      font-weight: 580;
+      line-height: 1.14;
+      letter-spacing: -0.055em;
+      text-shadow: 0 3px 30px #00000088;
+    }
+
+    h1 span,
+    h2 span {
+      display: block;
+    }
+
+    h1 span + span,
+    h2 span + span {
+      color: #bdc1c1;
+    }
+  }
+
+  .cinema-body {
+    position: absolute;
+    bottom: 11%;
+    left: 5%;
+    right: 5%;
+    max-width: 850px;
+    margin: auto;
+    animation: copy-arrive 0.35s ease-out;
+  }
+
+  .cinema-description {
+    font-size: clamp(17px, 1.4vw, 21px);
+    line-height: 1.7;
+    letter-spacing: -0.03em;
+    color: #f0f1ef;
+    text-shadow: 0 2px 14px #000;
+
+    > span {
+      display: block;
+    }
+
+    > span + span {
+      color: #b9bec0;
+    }
+  }
+
+  .cinema-detail {
+    font-size: 13px;
+    line-height: 1.6;
+    color: #a6afb5;
+    margin-top: 12px;
+  }
+
+  .cinema-body .pain-comparison {
+    display: flex;
+    max-width: 620px;
+    margin: 16px auto 0;
+    gap: 40px;
+    border: 0;
+    background: none;
+    padding: 0;
+  }
+
+  .cinema-body .comparison-case {
+    flex: 1;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    text-align: center;
+
+    > small,
+    > span {
+      display: none;
+    }
+
+    strong {
+      font-size: 16px;
+      display: inline;
+      font-weight: 500;
+    }
+
+    p {
+      display: inline-flex;
+      margin: 0 0 0 9px;
+      font-size: 16px;
+      gap: 5px;
+      align-items: center;
+    }
+
+    &.after {
+      color: #b5ceef;
+    }
+  }
+
+  .cinema-body .family-numbers {
+    margin: 14px auto 0;
+    max-width: 630px;
+  }
+
+  .cinema-body .family-label {
+    display: none;
+  }
+
+  .cinema-body .family-person {
+    padding: 9px 12px;
+    background: #14181bd9;
+    border-color: #ffffff24;
+
+    .person-state {
+      display: none;
+    }
+  }
+
+  .cinema-body .connection-mechanism {
+    max-width: 560px;
+    margin: 14px auto 0;
+    padding: 0;
+    background: none;
+    border: 0;
+  }
+
+  .cinema-body .mechanism-step {
+    padding: 0 15px;
+    grid-template-columns: auto 1fr;
+    column-gap: 9px;
+  }
+
+  .cinema-body .mechanism-symbol {
+    width: 28px;
+    height: 28px;
+    grid-row: 1/3;
+  }
+
+  .cinema-body .mechanism-step strong {
+    font-size: 15px;
+  }
+
+  .cinema-body .mechanism-step small {
+    font-size: 13px;
+  }
+
+  .cinema-body .mechanism-step.reached .mechanism-symbol {
+    color: #adcbf2;
+    background: #4f8ddb1a;
+    border-color: #7fa8da55;
+  }
+
+  .cinema-body .driver-routing {
+    max-width: 580px;
+    margin: 14px auto 0;
+
+    .family-numbers {
+      display: none;
+    }
+  }
+
+  .cinema-body .qr-route {
+    margin: 0;
+    background: #10161ade;
+    border-color: #739dcd40;
+    padding: 12px 20px;
+  }
+
+  .cinema-body .qr-route-source,
+  .cinema-body .qr-route-target {
+    font-size: 16px;
+    color: #d8e6f4;
+  }
+
+  .cinema-body .qr-route small {
+    font-size: 13px;
+    color: #a4b8cd;
+  }
+
+  .cinema-body .setup-line {
+    margin: 14px auto 0;
+    font-size: 15px;
+  }
+
+  .cinema-ending {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    margin-top: 18px;
+    pointer-events: auto;
+  }
+
+  .cinema-bottom {
+    position: absolute;
+    left: 5vw;
+    right: 5vw;
+    bottom: 28px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .chapter-nav {
+    display: flex;
+    gap: 3px;
+
+    button {
+      height: 36px;
+      width: 27px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    button span {
+      width: 17px;
+      height: 2px;
+      background: #ffffff38;
+      transition: background 0.2s;
+    }
+
+    button[aria-current] span {
+      background: #d7e7fa;
+      height: 3px;
+    }
+
+    button:hover span {
+      background: #e4edfa;
+    }
+  }
+
+  .chapter-name {
+    font-size: 12px;
+    color: #c0c8cb;
+    letter-spacing: 0.06em;
+
+    > span {
+      margin-left: 10px;
+      color: #9aa3a9;
+    }
+  }
+
+  .film-scroll-hint,
+  .film-restart {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #a3adb4;
+  }
+
+  .cinema-load-state {
+    position: absolute;
+    top: 113px;
+    left: 5vw;
+    right: 5vw;
+    font-size: 13px;
+    color: #c0c9d0;
+    z-index: 5;
+
+    button {
+      margin-left: 12px;
+      text-decoration: underline;
+    }
+  }
+
+  .film-reader {
+    display: none;
+    max-width: 850px;
+    padding: 150px 28px 80px;
+    margin: auto;
+
+    &.is-visible {
+      display: block;
+    }
+  }
+
+  .film-experience.static-mode {
+    display: none;
+  }
+
+  .film-reader h1 {
+    font-size: clamp(36px, 5vw, 64px);
+    letter-spacing: -0.045em;
+    line-height: 1.2;
+  }
+
+  .film-reader > img {
+    width: 100%;
+    height: auto;
+    margin: 25px 0;
+  }
+
+  .film-reader section {
+    padding: 38px 0;
+    border-bottom: 1px solid #ffffff20;
+  }
+
+  .film-reader h2 {
+    font-size: clamp(25px, 3vw, 34px);
+    line-height: 1.3;
+    letter-spacing: -0.04em;
+  }
+
+  .film-reader section > p:not(.eyebrow) {
+    font-size: 18px;
+    line-height: 1.8;
+    white-space: pre-line;
+    margin-top: 16px;
+    color: #bfc5c9;
+  }
+
+  .film-reader section > .reader-detail {
+    font-size: 15px !important;
+    color: #9aabb7 !important;
+  }
+
+  .film-reader > .nav-pill {
+    margin-top: 35px;
+  }
+
+  .reader-disclosure {
+    font-size: 14px;
+    line-height: 1.8;
+    color: #afbac2;
+    margin: 12px 0 20px;
+  }
+
+  .product-sheet[data-slot=sheet-content] {
+    background: #111414;
+  }
+
+  .product-sheet .development p,
+  .product-sheet .sheet-intro {
+    color: #b3bfc5 !important;
+  }
+
+  .product-sheet .offer-price strong {
+    font-size: 27px;
+  }
+
+  .product-sheet .offer-note {
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  @keyframes copy-arrive {
+    from {
+      opacity: 0.35;
+      transform: translateY(8px);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (min-width: 1800px) {
+    .cinema-heading h1,
+    .cinema-heading h2 {
+      font-size: 88px;
+    }
+
+    .cinema-body {
+      bottom: 12%;
+    }
+  }
+
+  @include m.mobile {
+    .film-experience {
+      height: 900svh;
+    }
+
+    .film-header {
+      left: 22px;
+      right: 22px;
+      height: 64px;
+
+      .brand {
+        font-size: 24px;
+      }
+
+      .brand > span {
+        display: block;
+        font-size: 12px;
+        padding-left: 12px;
+        margin-left: 12px;
+        letter-spacing: 0;
+      }
+    }
+
+    .film-nav {
+      gap: 12px;
+    }
+
+    .reader-toggle {
+      display: none;
+    }
+
+    .film-disclosure {
+      left: 22px;
+      right: 22px;
+      top: 73px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .cinema-heading {
+      top: 16%;
+      left: 20px;
+      right: 20px;
+
+      .eyebrow {
+        font-size: 12px;
+        margin-bottom: 15px;
+      }
+
+      h1,
+      h2 {
+        font-size: clamp(32px, 8.8vw, 49px);
+        line-height: 1.18;
+      }
+    }
+
+    .cinema-visual {
+      inset: 9% -2% 13%;
+    }
+
+    .cinema-shade {
+      background: linear-gradient(#0c0d0c, transparent 26%, transparent 70%, #0c0d0c);
+    }
+
+    .cinema-body {
+      left: 22px;
+      right: 22px;
+      bottom: 12%;
+      max-width: 440px;
+    }
+
+    .cinema-description {
+      font-size: 17px;
+      line-height: 1.65;
+
+      > span {
+        display: inline;
+      }
+
+      > span + span:before {
+        content: " ";
+      }
+    }
+
+    .cinema-detail {
+      font-size: 12px;
+      line-height: 1.55;
+      margin-top: 10px;
+    }
+
+    .cinema-bottom {
+      left: 22px;
+      right: 22px;
+      bottom: 22px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .chapter-nav {
+      gap: 2px;
+
+      button {
+        width: 22px;
+        height: 32px;
+      }
+
+      button span {
+        width: 15px;
+      }
+    }
+
+    .chapter-name {
+      margin-left: auto;
+
+      > span {
+        display: none;
+      }
+    }
+
+    .film-scroll-hint,
+    .film-restart {
+      width: 100%;
+      justify-content: center;
+      font-size: 12px;
+      margin-top: -2px;
+    }
+
+    .cinema-body .pain-comparison {
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .cinema-body .comparison-case strong,
+    .cinema-body .comparison-case p {
+      display: flex;
+      justify-content: center;
+      font-size: 14px;
+      margin: 0;
+    }
+
+    .cinema-body .comparison-case p {
+      margin-top: 3px;
+    }
+
+    .cinema-body .family-people {
+      gap: 6px;
+    }
+
+    .cinema-body .family-person {
+      padding: 9px 7px;
+      gap: 6px;
+
+      strong {
+        font-size: 12px;
+      }
+
+      small {
+        font-size: 10px;
+      }
+    }
+
+    .cinema-body .person-letter {
+      width: 23px;
+      height: 23px;
+      font-size: 12px;
+    }
+
+    .cinema-body .connection-mechanism {
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .cinema-body .mechanism-step {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .cinema-body .mechanism-symbol {
+      display: none;
+    }
+
+    .cinema-body .mechanism-step strong {
+      font-size: 13px;
+    }
+
+    .cinema-body .mechanism-step small {
+      font-size: 12px;
+    }
+
+    .cinema-body .mechanism-arrow {
+      display: none;
+    }
+
+    .cinema-body .qr-route {
+      padding: 11px 10px;
+      gap: 7px;
+    }
+
+    .cinema-body .qr-route-source,
+    .cinema-body .qr-route-target {
+      font-size: 13px;
+      gap: 7px;
+    }
+
+    .cinema-body .qr-route small {
+      font-size: 11px;
+    }
+
+    .cinema-body .qr-route-source > svg {
+      width: 23px;
+    }
+
+    .cinema-body .qr-route-target > svg {
+      display: none;
+    }
+
+    .cinema-body .setup-line {
+      font-size: 12px;
+      gap: 7px;
+    }
+
+    .cinema-ending {
+      gap: 10px;
+      margin-top: 13px;
+
+      .nav-pill,
+      .launch-state {
+        font-size: 13px;
+        padding: 8px 12px;
+      }
+    }
+
+    .cinema-load-state {
+      top: 99px;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .film-reader {
+      padding-top: 115px;
+
+      h1 {
+        font-size: 36px;
+      }
+    }
+  }
+
+  @media (max-height: 680px) and (min-width: 701px) {
+    .cinema-heading {
+      top: 15%;
+
+      h1,
+      h2 {
+        font-size: 45px;
+      }
+
+      .eyebrow {
+        margin-bottom: 9px;
+      }
+    }
+
+    .cinema-body {
+      bottom: 12%;
+    }
+
+    .cinema-description {
+      font-size: 17px;
+    }
+
+    .cinema-detail {
+      margin-top: 8px;
+    }
+
+    .film-disclosure {
+      top: 67px;
+    }
+
+    .cinema-body .pain-comparison,
+    .cinema-body .family-numbers,
+    .cinema-body .connection-mechanism,
+    .cinema-body .driver-routing {
+      margin-top: 9px;
+    }
+
+    .cinema-bottom {
+      bottom: 15px;
+    }
+  }
+
+  @media (max-height: 560px) {
+    .cinema-heading {
+      top: 23%;
+      left: 5%;
+      right: auto;
+      width: 43%;
+      text-align: left;
+
+      h1,
+      h2 {
+        font-size: clamp(26px, 4vw, 43px);
+      }
+    }
+
+    .cinema-visual {
+      inset: 4% -16% 0 28%;
+    }
+
+    .cinema-body {
+      left: 5%;
+      right: auto;
+      width: 43%;
+      bottom: 14%;
+      text-align: left;
+    }
+
+    .cinema-description {
+      font-size: 15px;
+    }
+
+    .cinema-body .pain-comparison,
+    .cinema-body .family-numbers,
+    .cinema-body .connection-mechanism,
+    .cinema-body .driver-routing,
+    .cinema-body .setup-line,
+    .cinema-detail {
+      display: none;
+    }
+
+    .film-disclosure {
+      top: 70px;
+      text-align: right;
+    }
+
+    .cinema-heading .eyebrow {
+      margin-bottom: 9px;
+    }
+
+    .cinema-bottom {
+      flex-wrap: nowrap;
+      bottom: 10px;
+    }
+
+    .film-scroll-hint,
+    .film-restart {
+      width: auto;
+      margin-left: auto;
+    }
+
+    .cinema-ending {
+      justify-content: flex-start;
+    }
+  }
+
+  @include m.reduced-motion {
+    .film-experience {
+      display: none !important;
+    }
+
+    .film-reader {
+      display: block !important;
+    }
+
+    .reader-toggle {
+      display: none;
+    }
+
+    .cinema-copy * {
+      animation: none !important;
+    }
+  }
+}

@@ -1,0 +1,64 @@
+@use 'mixins' as m;
+
+.parke-page {
+  .pf-motion-stable {
+    height: calc(var(--pf-stable-height, 100svh) * 4.8);
+    overflow-anchor: none;
+
+    > .pf-pin {
+      height: var(--pf-stable-height, 100svh);
+      min-height: 0;
+      contain: layout paint;
+    }
+
+    .pf-progress > i {
+      width: 100%;
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    .pf-render-world > canvas,
+    .pf-render-world > img {
+      transition: none;
+    }
+
+    &.is-still {
+      height: var(--pf-stable-height, 100svh);
+    }
+  }
+
+  @include m.mobile {
+    .pf-motion-stable {
+      height: calc(var(--pf-stable-height, 100svh) * 4.2);
+
+      &.is-still {
+        height: var(--pf-stable-height, 100svh);
+      }
+    }
+  }
+
+  @media (max-height: 600px) {
+    .pf-motion-stable .pf-original-copy {
+      top: 18%;
+
+      h2 {
+        font-size: clamp(24px, 4.2vh, 34px);
+      }
+    }
+
+    .pf-motion-stable .pf-hero-explain {
+      font-size: 15px !important;
+      line-height: 1.5 !important;
+    }
+
+    .pf-motion-stable .pf-render-world {
+      top: 68%;
+      width: min(100vw, 900px);
+    }
+
+    .pf-motion-stable .pf-original-bottom {
+      bottom: 18px;
+    }
+  }
+}

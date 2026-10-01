@@ -1,0 +1,542 @@
+@use 'mixins' as m;
+
+.parke-page {
+  .pd-app-store-link {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    text-decoration: none;
+    background: #205ee7 !important;
+    border: 1px solid #80adff !important;
+    color: #fff !important;
+    min-height: 84px;
+    transition: background 0.2s;
+
+    &:hover {
+      background: #164bcc !important;
+    }
+
+    &:focus-visible {
+      outline: 3px solid #fff;
+      outline-offset: 5px;
+    }
+  }
+
+  .pd-store-search .pd-app-store-name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin: 0;
+    color: inherit;
+    font-size: 18px;
+  }
+
+  .pd-app-store-name strong {
+    font-weight: 650;
+  }
+
+  .pd-app-store-name small {
+    font-size: 14px;
+    color: #d4e4ff;
+  }
+
+  .pd-app-store-link > svg {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  .pf-endurance-grid .pf-spec-number {
+    display: block;
+    color: #e4f0ff;
+    font-size: clamp(45px, 6vw, 72px);
+    font-weight: 550;
+    letter-spacing: -0.055em;
+    line-height: 1.2;
+    margin: 27px 0 22px;
+  }
+
+  .pf-spec-number > span {
+    font-size: 0.48em;
+    letter-spacing: -0.035em;
+    margin-left: 7px;
+  }
+
+  .pf-endurance-grid .pf-spec-note {
+    display: block;
+    margin-top: 18px;
+    max-width: 330px;
+    color: #9cb1c7;
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .pf-gallery {
+    background: #090e15;
+  }
+
+  .pf-gallery-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+    max-width: 1180px;
+    margin: 58px auto 0;
+
+    > figure {
+      border-radius: 0;
+      overflow: hidden;
+      background: #101823;
+    }
+
+    > figure:first-child {
+      grid-column: 1/-1;
+    }
+
+    > figure img {
+      aspect-ratio: 3/2;
+      width: 100%;
+      height: auto;
+      object-fit: cover;
+      display: block;
+    }
+
+    > figure:first-child img {
+      aspect-ratio: 16/9;
+      object-position: center 55%;
+    }
+
+    > figure:nth-child(3) img {
+      transform: none;
+    }
+
+    figcaption {
+      padding: 25px 28px 29px;
+    }
+
+    figcaption small {
+      font-size: 14px;
+      color: #95acc8;
+      letter-spacing: 0.1em;
+    }
+
+    figcaption > span {
+      font-size: 22px;
+      line-height: 1.6;
+      color: #e9f0fa;
+      margin-top: 11px;
+    }
+  }
+
+  .pf-package-offer {
+    background: #f3f6fb;
+    color: #18283c;
+    padding: 110px 24px 95px;
+
+    .pf-eyebrow {
+      color: #526a89;
+    }
+
+    > h2 {
+      line-height: 1.3;
+    }
+
+    .pf-offer-intro {
+      font-size: 20px;
+      line-height: 1.85;
+      margin: 26px auto 38px;
+      color: #61738a;
+      text-align: center;
+    }
+  }
+
+  .pf-offer-visual {
+    max-width: 880px;
+    margin: 0 auto 40px;
+    background: #0b1119;
+    overflow: hidden;
+    border-radius: 8px;
+
+    > img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 3/2;
+      object-fit: cover;
+      margin: 0;
+      border-radius: 0;
+    }
+
+    figcaption {
+      padding: 18px 22px 22px;
+      text-align: center;
+      background: #101925;
+      color: #d7e4f6;
+      font-size: 17px;
+      line-height: 1.6;
+    }
+  }
+
+  .pf-package-offer .pf-price-details {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0;
+  }
+
+  .pf-package-offer .pf-included-heading {
+    font-size: 25px;
+    font-weight: 650;
+    letter-spacing: -0.035em;
+    text-align: left;
+    line-height: 1.5;
+    margin: 32px 0 20px;
+  }
+
+  .pf-price-details .pf-offer-includes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 35px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    list-style: none;
+  }
+
+  .pf-offer-includes > li {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 25px 0;
+    border-bottom: 1px solid #d6dfeb;
+    text-align: left;
+
+    > svg {
+      color: #2862c3;
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      margin-top: 3px;
+    }
+
+    > div {
+      display: block;
+    }
+  }
+
+  .pf-offer-includes strong {
+    display: block;
+    font-size: 19px;
+    line-height: 1.55;
+    font-weight: 650;
+    color: #213854;
+  }
+
+  .pf-offer-includes span {
+    display: block;
+    margin-top: 7px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: #62758f;
+  }
+
+  .pf-package-offer .pf-price-details > .pf-offer-price-block {
+    display: block;
+    padding: 39px 0 30px;
+    margin: 0;
+    border: 0;
+    text-align: left;
+  }
+
+  .pf-offer-product {
+    display: block;
+    font-size: 18px;
+    color: #435e7c;
+    margin-bottom: 24px;
+  }
+
+  .pf-offer-was {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 15px;
+    font-size: 17px;
+    color: #7d8b9b;
+    line-height: 1.6;
+
+    del {
+      font-size: 24px;
+      text-decoration-thickness: 2px;
+      text-decoration-color: #8796a9;
+    }
+  }
+
+  .pf-offer-saving {
+    display: inline-flex;
+    padding: 6px 12px;
+    border-radius: 5px;
+    background: #dfeaff;
+    color: #255bc2;
+    font-size: 16px;
+    font-weight: 650;
+  }
+
+  .pf-offer-now {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 18px;
+    margin-top: 16px;
+
+    > span {
+      font-size: 21px;
+      font-weight: 550;
+      color: #244773;
+    }
+  }
+
+  .pf-price-details .pf-offer-now > strong {
+    font-size: 76px;
+    line-height: 1.2;
+    letter-spacing: -0.06em;
+    font-weight: 650;
+    color: #193c73;
+
+    > span {
+      font-size: 27px;
+      margin-left: 7px;
+      letter-spacing: -0.03em;
+    }
+  }
+
+  .pf-offer-price-block > p {
+    font-size: 18px;
+    line-height: 1.75;
+    color: #5c718f;
+    margin: 26px 0 0;
+    text-align: right;
+  }
+
+  .pf-package-offer .pf-primary {
+    background: #245fd1;
+    color: #fff;
+    min-height: 70px;
+    border-radius: 7px;
+    font-size: 20px;
+    justify-content: center;
+    gap: 22px;
+
+    &:hover {
+      background: #174ba8;
+    }
+  }
+
+  .pf-package-offer .pf-price-note {
+    font-size: 14px;
+    color: #6b7c91;
+    line-height: 1.8;
+    margin-top: 21px;
+  }
+
+  @include m.mobile {
+    .pd-app-store-link {
+      min-height: 79px;
+      padding: 15px 18px !important;
+    }
+
+    .pd-store-search .pd-app-store-name {
+      font-size: 17px;
+    }
+
+    .pd-app-store-name small {
+      font-size: 13px;
+    }
+
+    .pf-endurance-grid .pf-spec-number {
+      font-size: 52px;
+      margin: 24px 0 19px;
+    }
+
+    .pf-gallery-grid {
+      grid-template-columns: 1fr;
+      gap: 28px;
+      margin-top: 36px;
+
+      > figure:first-child {
+        grid-column: auto;
+      }
+
+      > figure:first-child img {
+        aspect-ratio: 3/2;
+      }
+
+      figcaption {
+        padding: 21px 21px 26px;
+      }
+
+      figcaption > span {
+        font-size: 21px;
+      }
+    }
+
+    .pf-package-offer {
+      padding: 76px 20px 65px;
+
+      .pf-offer-intro {
+        font-size: 18px;
+        line-height: 1.8;
+        margin: 23px 0 30px;
+      }
+    }
+
+    .pf-offer-visual {
+      margin: 0 -20px 30px;
+      border-radius: 0;
+
+      figcaption {
+        font-size: 16px;
+        padding: 15px 16px;
+      }
+    }
+
+    .pf-package-offer .pf-included-heading {
+      font-size: 24px;
+      margin: 32px 0 9px;
+    }
+
+    .pf-price-details .pf-offer-includes {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .pf-offer-includes > li {
+      gap: 15px;
+      padding: 20px 0;
+    }
+
+    .pf-offer-includes strong {
+      font-size: 18px;
+    }
+
+    .pf-offer-includes span {
+      font-size: 16px;
+      margin-top: 4px;
+    }
+
+    .pf-package-offer .pf-price-details > .pf-offer-price-block {
+      padding: 31px 0 28px;
+    }
+
+    .pf-offer-product {
+      font-size: 17px;
+      margin-bottom: 19px;
+    }
+
+    .pf-offer-was {
+      font-size: 16px;
+      gap: 9px 12px;
+
+      del {
+        font-size: 22px;
+      }
+    }
+
+    .pf-offer-saving {
+      font-size: 14px;
+      padding: 5px 9px;
+    }
+
+    .pf-offer-now {
+      gap: 10px;
+      margin-top: 21px;
+
+      > span {
+        font-size: 18px;
+      }
+    }
+
+    .pf-price-details .pf-offer-now > strong {
+      font-size: 58px;
+
+      > span {
+        font-size: 22px;
+        margin-left: 4px;
+      }
+    }
+
+    .pf-offer-price-block > p {
+      font-size: 17px;
+      text-align: left;
+      margin-top: 22px;
+    }
+
+    .pf-package-offer .pf-primary {
+      font-size: 19px;
+      min-height: 66px;
+    }
+
+    .pf-package-offer .pf-price-note {
+      font-size: 14px;
+    }
+
+    .pv-slide-top {
+      padding-bottom: 20px;
+    }
+  }
+
+  @include m.mobile-sm {
+    .pf-package-offer {
+      padding-inline: 18px;
+    }
+
+    .pf-offer-visual {
+      margin-inline: -18px;
+    }
+
+    .pf-offer-now > span {
+      font-size: 17px;
+    }
+
+    .pf-price-details .pf-offer-now > strong {
+      font-size: 51px;
+
+      > span {
+        font-size: 20px;
+      }
+    }
+
+    .pf-offer-saving {
+      font-size: 13px;
+    }
+
+    .pf-offer-was {
+      gap: 9px;
+    }
+
+    .pf-offer-includes strong {
+      font-size: 17px;
+    }
+  }
+
+  .pf-endurance-grid > article > span {
+    font-size: 14px;
+    color: #9db6d0;
+  }
+
+  .pf-package-offer .pf-price-note {
+    color: #65778d !important;
+  }
+
+  @include m.mobile {
+    .pf-gallery-grid {
+      overflow: visible;
+      scroll-snap-type: none;
+
+      > figure {
+        min-width: 0;
+      }
+    }
+
+    .pf-endurance-grid > article > span {
+      font-size: 14px;
+    }
+  }
+}

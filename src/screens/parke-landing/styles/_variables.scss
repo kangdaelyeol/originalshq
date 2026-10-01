@@ -1,0 +1,18 @@
+/*
+ * Build-time values for the Parké landing page.
+ *
+ * The page's colours live in CSS custom properties on `.parke-page` (see
+ * base.scss), which is where anything the browser needs to read at runtime
+ * belongs. What cannot go there is a media query bound: `var()` is not
+ * allowed in a `@media` prelude, so the breakpoints have to be substituted
+ * while sass compiles. That is all this file is for.
+ */
+
+/* The handoff CSS is written mobile-last: rules state the desktop case and a
+ * `max-width` block walks them back. `$bp-mobile` is the phone cut-off the
+ * page leans on almost everywhere; `$bp-mobile-sm` catches the narrowest
+ * handsets, where the hero copy and the engraving preview need their own
+ * sizes. */
+$bp-mobile-sm: 360px;
+$bp-mobile: 700px;
+$bp-tablet: 900px;

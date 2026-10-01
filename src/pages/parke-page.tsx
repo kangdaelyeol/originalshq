@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
-import '@/screens/parke-landing/styles/index.css'
+import '@/screens/parke-landing/styles/index.scss'
 
 const GEIST_HREF =
   'https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap'
