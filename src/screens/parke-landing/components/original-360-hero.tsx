@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { ArrowDown } from 'lucide-react'
 import {
   createScrollSequence,
+  DETAIL_COLUMNS,
   FRAME_COUNT,
   MOTION_COLUMNS,
 } from '../utils/scroll-sequence'
@@ -110,16 +111,18 @@ export default function Original360Hero({ still }: { still: boolean }) {
       host.dataset.frame = String(frame)
       host.dataset.time = time.toFixed(3)
     }
-    const loadImage = async (url: string, priority: 'high' | 'low') => {
-      const image = new Image()
-      image.decoding = 'async'
-      image.fetchPriority = priority
-      image.src = url
-      // onload does not guarantee decoding is finished; finish it off the scroll path.
-      await image.decode()
-      return image
+    // ImageBitmap rather than HTMLImageElement: createImageBitmap decodes off
+    // the scroll path like img.decode() did, and the result can be closed, so
+    // an evicted sheet's buffer is freed at eviction instead of whenever GC
+    // happens to run. That is what makes a larger detail cache safe.
+    const loadImage = async (url: string, priority: RequestPriority) => {
+      // fetch does not reject on 4xx/5xx; the sequence relies on a rejection
+      // to mark the sheet failed and back off.
+      const response = await fetch(url, { priority })
+      if (!response.ok) throw new Error(`${response.status} ${url}`)
+      return createImageBitmap(await response.blob())
     }
-    const sequence = createScrollSequence<HTMLImageElement>({
+    const sequence = createScrollSequence<ImageBitmap>({
       loadMotion: (index) =>
         loadImage(
           `/media/parke-scroll-v28/${profile}/${String(index).padStart(2, '0')}.webp`,
@@ -135,9 +138,10 @@ export default function Original360Hero({ still }: { still: boolean }) {
         host.dataset.cachedSheets = String(detail)
         host.dataset.motionReady = String(motion === 6)
       },
+      release: (image) => image.close(),
       paint: ({ image, cell, frame, detail }) => {
         if (disposed) return
-        const columns = detail ? 2 : MOTION_COLUMNS,
+        const columns = detail ? DETAIL_COLUMNS : MOTION_COLUMNS,
           w = detail ? width : motionWidth,
           h = detail ? height : motionHeight
         ctx.drawImage(
@@ -189,9 +193,12 @@ export default function Original360Hero({ still }: { still: boolean }) {
     }
     const settle = () => {
       clearTimeout(idleTimer)
+      // The detail window is filled during the scroll itself; this only tops
+      // it up once the playhead rests, when the direction bias no longer
+      // applies and anything skipped while in flight can be retried.
       idleTimer = window.setTimeout(() => {
         if (active && !disposed) sequence.refine()
-      }, 140)
+      }, 80)
     }
     const scroll = () => {
       queue()
@@ -256,13 +263,13 @@ export default function Original360Hero({ still }: { still: boolean }) {
         <>
           <link
             rel="preload"
-            as="image"
+            as="fetch"
             href="/media/parke-scroll-v28/mobile/00.webp"
             media="(max-width:700px)"
           />
           <link
             rel="preload"
-            as="image"
+            as="fetch"
             href="/media/parke-scroll-v28/desktop/00.webp"
             media="(min-width:701px)"
           />
