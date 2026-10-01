@@ -7,6 +7,7 @@ export const Device = [
   'M2',
   'F2',
   'o1',
+  'WonderPress',
   '기타',
 ] as const
 
