@@ -12,6 +12,20 @@ import {
 } from '../view-model/hero-copy'
 
 const FPS = 24
+/* Ambient backdrop.
+ *
+ * The sharp canvas is capped at 1440px so the 1280px sequence is never
+ * upscaled past 1.125x, which leaves bars on anything wider — 560px a side on
+ * a 2560 monitor. Filling them with the frame itself would mean a 2x upscale,
+ * so this paints the same frame into a thumbnail that CSS stretches across
+ * the pin and blurs: at that radius the upscale is what sells it, and the
+ * frame people actually look at keeps its resolution.
+ *
+ * 64x36 rather than something larger because the blur throws away everything
+ * finer anyway, and the per-frame cost is a minification of the sheet cell
+ * down to 2,304 pixels. */
+const AMBIENT_WIDTH = 64
+const AMBIENT_HEIGHT = 36
 const clamp = (x: number) => Math.max(0, Math.min(1, x))
 const timeAt = (p: number) => (clamp(p / 0.96) * (FRAME_COUNT - 1)) / FPS
 /** Inverse of timeAt: the scroll progress that lands on this frame. */
@@ -42,6 +56,7 @@ const easeOut = (t: number) => 1 - (1 - t) ** 3
 export default function Original360Hero({ still }: { still: boolean }) {
   const section = useRef<HTMLElement>(null),
     canvas = useRef<HTMLCanvasElement>(null),
+    ambient = useRef<HTMLCanvasElement>(null),
     poster = useRef<HTMLImageElement>(null)
   const copies = useRef<(HTMLDivElement | null)[]>([])
   /** The intro plays once per visit, not again when motion is toggled. */
@@ -79,6 +94,18 @@ export default function Original360Hero({ still }: { still: boolean }) {
     surface.height = height
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
+    // The backdrop is drawn every frame regardless of viewport width: it is
+    // CSS that decides whether a screen is wide enough to show it, and
+    // gating the draw as well would mean re-deciding on every resize for a
+    // few thousand pixels of work.
+    const glow = ambient.current
+    const glowCtx = glow?.getContext('2d', { alpha: false }) ?? null
+    if (glow && glowCtx) {
+      glow.width = AMBIENT_WIDTH
+      glow.height = AMBIENT_HEIGHT
+      // Nothing survives the blur, so sampling quality is wasted here.
+      glowCtx.imageSmoothingQuality = 'low'
+    }
     pin.dataset.renderer = 'motion-preparing'
     const profile = mobile ? 'mobile' : 'desktop'
     let raf = 0,
@@ -146,16 +173,19 @@ export default function Original360Hero({ still }: { still: boolean }) {
         const columns = detail ? DETAIL_COLUMNS : MOTION_COLUMNS,
           w = detail ? width : motionWidth,
           h = detail ? height : motionHeight
-        ctx.drawImage(
+        const sx = (cell % columns) * w,
+          sy = Math.floor(cell / columns) * h
+        ctx.drawImage(image, sx, sy, w, h, 0, 0, width, height)
+        glowCtx?.drawImage(
           image,
-          (cell % columns) * w,
-          Math.floor(cell / columns) * h,
+          sx,
+          sy,
           w,
           h,
           0,
           0,
-          width,
-          height,
+          AMBIENT_WIDTH,
+          AMBIENT_HEIGHT,
         )
         paintCopy(frame)
         if (!painted) {
@@ -329,6 +359,15 @@ export default function Original360Hero({ still }: { still: boolean }) {
           className="pf-pin"
           data-renderer={still ? 'brand-still' : 'sprite-loading'}
         >
+          {!still && (
+            <canvas
+              ref={ambient}
+              className="pf-world-ambient"
+              aria-hidden="true"
+              width={AMBIENT_WIDTH}
+              height={AMBIENT_HEIGHT}
+            />
+          )}
           <div className="pf-render-world" aria-hidden="true">
             <img
               ref={poster}

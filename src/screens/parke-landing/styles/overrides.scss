@@ -53,6 +53,54 @@
     }
   }
 
+  /* --- Ambient backdrop ----------------------------------------------------
+   * `.pf-render-world` is capped at 1440px so the 1280px sequence is never
+   * upscaled past 1.125x. That leaves the rest of a wider screen on the pin's
+   * flat `#050607` -- 560px a side at 2560, 1000px at 3440, which reads as a
+   * letterboxed video rather than a full-bleed hero.
+   *
+   * The backdrop is the same frame at 64x36, stretched over the whole pin and
+   * blurred past the point where resolution means anything, so the bars carry
+   * the scene's own light instead of being empty. It sits under the sharp
+   * canvas and only shows where that canvas does not reach: the bars, and the
+   * top and bottom where its mask fades out.
+   *
+   * Below 1441px there are no bars -- `min(100vw, 1440px)` is already 100vw --
+   * so the whole thing stays off and those screens look exactly as they did.
+   */
+  .pf-world-ambient {
+    display: none;
+  }
+
+  @media (min-width: 1441px) {
+    .pf-world-ambient {
+      display: block;
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      pointer-events: none;
+      /* A blur samples transparency past the element's own edge, which would
+       * draw a dark rim around the pin. Overscanning pushes that rim outside
+       * the pin, which clips it. */
+      transform: scale(1.18);
+      filter: blur(76px) saturate(1.15) brightness(0.62);
+      opacity: 0.55;
+    }
+
+    /* The sharp canvas now meets its own glow rather than flat black, so its
+     * left and right edges need to dissolve the way the top and bottom
+     * already do. `intersect` is what keeps the two gradients from being
+     * unioned into no mask at all. */
+    .pf-video-hero .pf-render-world {
+      mask-image:
+        linear-gradient(transparent, #000 12%, #000 92%, transparent),
+        linear-gradient(to right, transparent, #000 5%, #000 95%, transparent);
+      mask-composite: intersect;
+    }
+  }
+
   @include m.reduced-motion {
     .pf-original-hero > .pf-pin,
     .pf-header {
