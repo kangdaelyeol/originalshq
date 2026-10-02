@@ -3,6 +3,7 @@ import { Device } from './entity'
 export const EditingField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
+  EMAIL: 'em',
   REMARKS: 'remarks',
   UTM_SOURCE: 'utm_source',
   UTM_MEDIUM: 'utm_medium',
@@ -29,6 +30,7 @@ export const SortField = {
   FIRST_NAME: 'fn',
   PHONE: 'ph',
   REMARKS: 'remarks',
+  EMAIL: 'em',
   CONSULTATION_AT: 'consultationAt',
   PURCHASE_AT: 'purchaseAt',
 } as const
@@ -51,6 +53,8 @@ export type CreateLeadFormValues = {
   user_agent: string
   fn: string
   ph: string
+  /** 필수가 아니다 — 비워두면 이메일 없는 리드로 등록된다. */
+  em: string
   remarks: string
   createdAt: string // <input type="datetime-local"> 바인딩용 문자열
   /** 접수 기기 — 그냥 "등록"(고객 정보만)에서도 최초 접수에 실어 보내고,
@@ -76,6 +80,7 @@ export const INITIAL_CREATE_LEAD_FORM: CreateLeadFormValues = {
   user_agent: '',
   fn: '',
   ph: '',
+  em: '',
   remarks: '',
   createdAt: '',
   device: 'F2Ultra',

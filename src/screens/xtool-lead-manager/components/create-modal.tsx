@@ -61,7 +61,7 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
 
         <p className={styles.sectionLabel}>연락처 정보</p>
 
-        <FormRow label="이름 (fn)" htmlFor="lead-fn">
+        <FormRow label="이름 (fn) — 선택" htmlFor="lead-fn">
           <input
             id="lead-fn"
             className={styles.control}
@@ -70,12 +70,22 @@ export const CreateModal = ({ state, actions }: CreateModalProps) => {
           />
         </FormRow>
 
-        <FormRow label="전화번호 (ph)" htmlFor="lead-ph">
+        <FormRow label="전화번호 (ph) — 필수" htmlFor="lead-ph">
           <input
             id="lead-ph"
             className={styles.control}
             value={form.ph}
             onChange={(e) => updateField('ph', e.target.value)}
+          />
+        </FormRow>
+
+        <FormRow label="이메일 (em) — 선택" htmlFor="lead-em">
+          <input
+            id="lead-em"
+            type="email"
+            className={styles.control}
+            value={form.em}
+            onChange={(e) => updateField('em', e.target.value)}
           />
         </FormRow>
 

@@ -27,6 +27,18 @@ export const normalizeDomesticPhone = (digitsOnlyPhone: string): string =>
     ? `0${digitsOnlyPhone.slice(2)}`
     : digitsOnlyPhone
 
+/** Meta CAPI의 em 정규화 규칙(앞뒤 공백 제거 + 전부 소문자)을 저장 시점에
+ * 미리 적용한다 — 해시 직전에만 하면 DB엔 "Foo@Bar.com "처럼 들어간 그대로
+ * 남아서, 같은 주소인데 표·검색에서 다르게 보인다. */
+export const normalizeEmail = (email: string): string =>
+  email.trim().toLowerCase()
+
+/** 오타로 들어온 값("gmail.com", "a@b")을 걸러내는 정도의 형식 검사 — 해시된
+ * 뒤에는 Meta가 틀린 주소인지 알 길이 없어 그대로 매칭 실패로 끝나므로, 받을
+ * 때 한 번 막아둔다. 반드시 normalizeEmail을 거친 문자열을 넣을 것. */
+export const isValidEmail = (normalizedEmail: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+
 /** Meta CAPI의 action_source: website 이벤트는 event_time이 전송 시점 기준
  * 7일을 넘으면 API가 거부한다 — 그 안이면 실제 웹 출처(fbc/fbp 매칭)로 인정
  * 받을 수 있는 'website'로, 넘으면 API가 받아줄 수 있는 'physical_store'로

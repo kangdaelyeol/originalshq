@@ -68,6 +68,9 @@ export type Lead = {
   user_agent: string
   fn: string
   ph: string
+  /** 고객 이메일 — 필수가 아니고, 이 필드가 생기기 전에 만들어진 리드엔 키
+   * 자체가 없어서 optional이다. 서버가 공백 제거 + 소문자로 정규화해 저장한다. */
+  em?: string
   /** 내부 참고용 메모(회사명/직책/동반 구매자 등) — 정형화하지 않고 자유 텍스트로. */
   remarks: string
   intakes: IntakeRecord[]

@@ -7,7 +7,7 @@ import {
 } from '@/screens/xtool-lead-manager/entity'
 import { SortField, type SortDirection } from '@/screens/xtool-lead-manager/types'
 
-/** 이름/비고는 입력 그대로(대소문자만 무시) 부분일치, 전화번호는 숫자만
+/** 이름/비고/이메일은 입력 그대로(대소문자만 무시) 부분일치, 전화번호는 숫자만
  * 남겨서 비교한다 — ph는 저장 시점에 이미 숫자만 남아있어서, "010-1234"처럼
  * 하이픈을 섞어 검색해도 매치되게 하려면 검색어 쪽도 숫자만 뽑아야 한다.
  * 검색어에 숫자가 하나도 없으면(순수 이름/비고 검색) 전화번호 비교는 건너뛴다
@@ -20,6 +20,8 @@ export const filterLeadsByKeywords = (rows: Lead[], keyword: string) => {
     (row) =>
       row.fn.toLowerCase().includes(trimmed) ||
       row.remarks.toLowerCase().includes(trimmed) ||
+      // 이메일 필드가 생기기 전의 리드엔 em 키가 없다.
+      (row.em ?? '').includes(trimmed) ||
       (digitsOnly !== '' && row.ph.includes(digitsOnly)),
   )
 }
@@ -44,8 +46,9 @@ export const sortLeads = (
       case SortField.PURCHASE_AT:
         res = latestPurchaseAt(a) - latestPurchaseAt(b)
         break
+      // em은 없는 리드가 있어(optional) 빈 문자열로 맞춰 비교한다.
       default:
-        res = a[sortField].localeCompare(b[sortField], 'ko')
+        res = (a[sortField] ?? '').localeCompare(b[sortField] ?? '', 'ko')
     }
     return sortDirection === 'asc' ? res : -res
   })

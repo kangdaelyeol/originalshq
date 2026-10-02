@@ -145,7 +145,7 @@ export const ConfirmModal = ({
         <div className="lead_summary">
           <div className="row">
             <span className="label">고객명</span>
-            <span className="value">{lead.fn}</span>
+            <span className="value">{lead.fn || '이름 없음'}</span>
           </div>
           <div className="row">
             <span className="label">전화번호</span>

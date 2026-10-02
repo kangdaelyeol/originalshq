@@ -821,6 +821,16 @@ export const Detail = ({
                 mono
                 onSave={onUpdateField}
               />
+              {/* 필수가 아니라 비어 있을 수 있고(예전 리드엔 키도 없다), 지우려면
+                  빈 값으로 저장하면 된다. */}
+              <EditableInfoRow
+                label="이메일"
+                field={EditingField.EMAIL}
+                leadId={lead.id}
+                rawValue={lead.em ?? ''}
+                displayValue={lead.em ?? ''}
+                onSave={onUpdateField}
+              />
               {/* 직책·회사명·동반 구매자 등 내부 참고용 메모라 기본 정보에
                   속한다 — 예전엔 따로 섹션이었다. */}
               <EditableInfoRow

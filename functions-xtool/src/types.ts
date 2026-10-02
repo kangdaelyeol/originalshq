@@ -62,6 +62,11 @@ export type Lead = {
   user_agent: string
   fn: string
   ph: string
+  /** 고객 이메일 — 필수가 아니라 없는 리드가 대부분이고, 이 필드가 생기기 전에
+   * 만들어진 문서엔 키 자체가 없다. 저장할 땐 utils.normalizeEmail을 거친
+   * 값(앞뒤 공백 제거 + 소문자)만 넣는다 — Meta CAPI의 em 해시 규칙과 같은
+   * 정규화라, 화면에 보이는 값이 곧 해시되는 값이다. */
+  em?: string
   /** 내부 참고용 메모(회사명/직책/동반 구매자 등) — 정형화하지 않고 자유 텍스트로. */
   remarks: string
   intakes: IntakeRecord[]
@@ -80,6 +85,7 @@ export type CreateLeadInput = {
   user_agent: string
   fn: string
   ph: string
+  em?: string
   remarks?: string
   /** 최초 접수 기록(intakes 배열의 첫 원소)의 시각으로 쓰인다. */
   createdAt: number

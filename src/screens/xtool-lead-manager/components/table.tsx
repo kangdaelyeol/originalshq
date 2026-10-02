@@ -100,6 +100,12 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
         <span>{row.remarks || '-'}</span>
       </td>
 
+      {/* Email cell — 필수가 아니라 비어 있는 리드가 많다. 주소가 칸보다
+          길면 말줄임되므로 title로 전체를 볼 수 있게 한다. */}
+      <td className="col-em" title={row.em || undefined}>
+        <span>{row.em || '-'}</span>
+      </td>
+
       {/* Intake status cell */}
       <td className="col-status" title={intakeTitleText}>
         {intakes.length > 0 ? (
@@ -192,6 +198,15 @@ export const Table = ({ state, actions }: TableProps) => {
                   비고
                   <SortButton
                     columnKey={SortField.REMARKS}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={toggleSort}
+                  />
+                </th>
+                <th className="col-em">
+                  이메일
+                  <SortButton
+                    columnKey={SortField.EMAIL}
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSort={toggleSort}

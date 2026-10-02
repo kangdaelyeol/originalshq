@@ -290,6 +290,9 @@ export const useMainViewModel = () => {
           ph: value.replace(/\D/g, ''),
         })
         break
+      case EditingField.EMAIL:
+        res = await leadClient.updateEm({ id: leadId, em: value })
+        break
       case EditingField.REMARKS:
         res = await leadClient.updateRemarks({ id: leadId, remarks: value })
         break

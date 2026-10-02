@@ -90,6 +90,7 @@ export const leadClient = {
   },
   updateFn: (body: Record<string, unknown>) => post('updateLeadFn', body),
   updatePh: (body: Record<string, unknown>) => post('updateLeadPhone', body),
+  updateEm: (body: Record<string, unknown>) => post('updateLeadEm', body),
   updateRemarks: (body: Record<string, unknown>) =>
     post('updateLeadRemarks', body),
   updateTrackingField: (body: Record<string, unknown>) =>

@@ -78,6 +78,10 @@ export const sendMetaEvent = async ({
         ...(customData ? { custom_data: customData } : {}),
         user_data: {
           ph: hashPhoneVariants(lead.ph),
+          // em은 "공백 제거 + 소문자" 후 SHA-256 — sha256()이 그 정규화를
+          // 이미 한다. 이메일이 없는 리드는 키 자체를 빼야 한다(빈 문자열을
+          // 해시해 보내면 모든 무이메일 고객이 같은 해시로 묶인다).
+          ...(lead.em ? { em: [sha256(lead.em)] } : {}),
           ...(lead.fn ? { fn: sha256(lead.fn) } : {}),
           external_id: lead.externalId,
           client_ip_address: lead.ip || undefined,

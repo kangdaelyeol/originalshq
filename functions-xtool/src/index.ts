@@ -12,6 +12,7 @@ import {
   generateExternalId,
   generateRecordId,
   normalizeDomesticPhone,
+  normalizeEmail,
 } from './utils'
 import {
   hasExternalId,
@@ -23,6 +24,7 @@ import {
   validateResendRecord,
   validateUpdateConsultation,
   validateUpdateIntake,
+  validateUpdateLeadEm,
   validateUpdateLeadFn,
   validateUpdateLeadRemarks,
   validateUpdateLeadTrackingField,
@@ -102,6 +104,7 @@ export const createLead = onRequest((request, response) => {
         user_agent: input.user_agent ?? '',
         fn: input.fn ?? '',
         ph: digitsOnlyPhone,
+        em: normalizeEmail(input.em ?? ''),
         remarks: input.remarks ?? '',
         // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다(수기
         // 등록 모달처럼 기기 입력이 없는 호출부도 있어 optional).
@@ -167,6 +170,7 @@ export const createLeadFromContact = onRequest((request, response) => {
         user_agent: userAgent,
         fn: input.fn ?? '',
         ph: digitsOnlyPhone,
+        em: normalizeEmail(input.em ?? ''),
         remarks: input.remarks ?? '',
         // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다.
         intakes: [
@@ -980,6 +984,46 @@ export const updateLeadFn = onRequest((request, response) => {
       response.status(200).send({ id, ...snapshot.data(), fn })
     } catch (error) {
       logger.error('updateLeadFn 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// updateLeadEm — 이메일은 externalId(전화번호 해시)와 무관해서 updateLeadPhone
+// 처럼 다시 만들 것이 없다. 이미 보낸 상담/구매 이벤트엔 반영되지 않으므로,
+// 이메일을 나중에 채운 고객은 이력의 재전송(↻)으로 다시 보내야 em이 실린다.
+// ────────────────────────────────
+export const updateLeadEm = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateUpdateLeadEm(request.body)
+
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const { id, em } = validationRes.data
+
+      const docRef = db.collection('lead').doc(id)
+      const snapshot = await docRef.get()
+
+      if (!snapshot.exists) {
+        response.status(404).send({ error: 'lead not found' })
+        return
+      }
+
+      await docRef.update({ em })
+
+      response.status(200).send({ id, ...snapshot.data(), em })
+    } catch (error) {
+      logger.error('updateLeadEm 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

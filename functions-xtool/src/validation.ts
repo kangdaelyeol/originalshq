@@ -1,5 +1,5 @@
 import { CreateLeadInput, Device, ValidationResponse } from './types'
-import { normalizeDomesticPhone } from './utils'
+import { isValidEmail, normalizeDomesticPhone, normalizeEmail } from './utils'
 
 const CREATE_LEAD_REQUIRED_FIELDS = ['ph'] as const
 
@@ -32,6 +32,15 @@ export const validateCreateLead = (
 
   if (body.device !== undefined && !Device.includes(body.device as Device)) {
     return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  }
+
+  // em은 선택값 — 안 보내거나 빈 문자열이면 "이메일 없음"이고, 값이 있을
+  // 때만 형식을 본다.
+  if (body.em !== undefined && typeof body.em !== 'string') {
+    return { ok: false, error: 'em must be a string' }
+  }
+  if (body.em && !isValidEmail(normalizeEmail(body.em))) {
+    return { ok: false, error: 'em must be a valid email' }
   }
 
   const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
@@ -341,6 +350,8 @@ export const valiedateUpdateLeadPhone = (
   return { ok: true, data: { id, ph: digitsOnlyPhone } }
 }
 
+/** 이름은 필수가 아니다(필수는 전화번호뿐) — 비고·이메일처럼 빈 문자열로
+ * 지우는 것도 허용한다. */
 export const validateUpdateLeadFn = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
@@ -352,8 +363,8 @@ export const validateUpdateLeadFn = (
   if (!id || typeof id !== 'string') {
     return { ok: false, error: 'id is required' }
   }
-  if (typeof fn !== 'string' || fn === '') {
-    return { ok: false, error: 'fn is required' }
+  if (typeof fn !== 'string') {
+    return { ok: false, error: 'fn must be a string' }
   }
 
   return { ok: true, data: { id, fn } }
@@ -378,6 +389,31 @@ export const validateUpdateLeadRemarks = (
   return { ok: true, data: { id, remarks } }
 }
 
+/** 이메일은 필수가 아니라 비고처럼 빈 문자열(지우기)도 허용한다 — 값이 있을
+ * 때만 형식을 검사하고, 저장할 값은 정규화(공백 제거 + 소문자)해서 돌려준다. */
+export const validateUpdateLeadEm = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  id: string
+  em: string
+}> => {
+  const { id, em } = body as { id?: string; em?: string }
+
+  if (!id || typeof id !== 'string') {
+    return { ok: false, error: 'id is required' }
+  }
+  if (typeof em !== 'string') {
+    return { ok: false, error: 'em must be a string' }
+  }
+
+  const normalized = normalizeEmail(em)
+  if (normalized !== '' && !isValidEmail(normalized)) {
+    return { ok: false, error: 'em must be a valid email' }
+  }
+
+  return { ok: true, data: { id, em: normalized } }
+}
+
 const EDITABLE_LEAD_TRACKING_FIELDS = [
   'utm_source',
   'utm_medium',
@@ -393,7 +429,7 @@ export type EditableLeadTrackingField =
 
 /** 유입경로/추적정보 섹션의 자유 텍스트 필드들 — 전부 같은 모양(문자열, 빈
  * 값 허용)이라 필드마다 엔드포인트를 따로 안 만들고 field로 골라 하나로
- * 묶는다. fn/ph/remarks는 각자 특별한 처리(externalId 재생성, 필수값 검증)가
+ * 묶는다. fn/ph/em/remarks는 각자 특별한 처리(externalId 재생성, 형식·필수값 검증)가
  * 있어 기존 전용 엔드포인트를 그대로 둔다. */
 export const validateUpdateLeadTrackingField = (
   body: Record<string, unknown>,
