@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import {
   Bluetooth,
   Check,
@@ -13,8 +12,8 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  type CarouselApi,
 } from './ui/carousel'
+import { useMechanismSlidesViewModel } from '../view-model'
 
 function SignalLink({ studio = false }: { studio?: boolean }) {
   const line = studio
@@ -198,35 +197,11 @@ const slides = [
 ]
 
 export function MechanismSlides({ still }: { still: boolean }) {
-  const [api, setApi] = useState<CarouselApi>(),
-    [selected, setSelected] = useState(0),
-    [visible, setVisible] = useState(false)
-  const host = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!host.current) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setVisible(entry.isIntersecting),
-      { threshold: 0.35 },
-    )
-    observer.observe(host.current)
-    return () => observer.disconnect()
-  }, [])
-  useEffect(() => {
-    if (!api) return
-    const sync = () => setSelected(api.selectedScrollSnap())
-    sync()
-    api.on('select', sync)
-    return () => {
-      api.off('select', sync)
-    }
-  }, [api])
-  useEffect(() => {
-    if (!api || still || !visible) return
-    const timer = setInterval(() => api.scrollNext(), 6500)
-    return () => clearInterval(timer)
-  }, [api, still, visible, selected])
+  const { hostRef, state, actions } = useMechanismSlidesViewModel(still)
+  const { selected } = state
+  const { setApi, goTo } = actions
   return (
-    <div ref={host} className="pv-mechanism-slides">
+    <div ref={hostRef} className="pv-mechanism-slides">
       <Carousel
         setApi={setApi}
         opts={{ loop: true, align: 'start', duration: 25 }}
@@ -314,7 +289,7 @@ export function MechanismSlides({ still }: { still: boolean }) {
             <button
               key={slide.label}
               aria-pressed={selected === index}
-              onClick={() => api?.scrollTo(index)}
+              onClick={() => goTo(index)}
             >
               <span>0{index + 1}</span>
               {slide.label}

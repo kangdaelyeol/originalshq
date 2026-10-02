@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import {
   Bell,
   Bluetooth,
@@ -12,9 +11,15 @@ import {
   Users,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import {
+  useCallerFlowViewModel,
+  useCoRideChoiceViewModel,
+} from '../view-model'
 
 export function CoRideChoice() {
-  const [selected, setSelected] = useState<string | null>(null)
+  const { state, actions } = useCoRideChoiceViewModel()
+  const { selected } = state
+  const { select, reset } = actions
   return (
     <section className="pd-coride">
       <div className="pd-copy">
@@ -35,7 +40,7 @@ export function CoRideChoice() {
       <Tabs
         defaultValue="priority"
         className="pd-choice-demo"
-        onValueChange={() => setSelected(null)}
+        onValueChange={reset}
       >
         <TabsList
           aria-label="동승 시 연락 대상 선택 방식"
@@ -86,7 +91,7 @@ export function CoRideChoice() {
                 <button
                   key={person}
                   aria-pressed={selected === person}
-                  onClick={() => setSelected(person)}
+                  onClick={() => select(person)}
                 >
                   {person}
                   {selected === person && <Check size={18} />}
@@ -117,7 +122,9 @@ export function CoRideChoice() {
 }
 
 export function CallerFlow() {
-  const [step, setStep] = useState(0)
+  const { state, actions } = useCallerFlowViewModel()
+  const { step } = state
+  const { goToStep, toggleCall } = actions
   const labels = ['차 앞에서 QR 촬영', '웹페이지 열기', '안심번호로 전화']
   return (
     <section className="pd-caller">
@@ -141,7 +148,7 @@ export function CallerFlow() {
           {labels.map((label, index) => (
             <button
               key={label}
-              onClick={() => setStep(index)}
+              onClick={() => goToStep(index)}
               aria-pressed={step === index}
             >
               <span>0{index + 1}</span>
@@ -159,7 +166,7 @@ export function CallerFlow() {
               </div>
               <h3>차 앞의 QR을 찍습니다.</h3>
               <p>연락하는 분은 파르케 앱이 없어도 됩니다.</p>
-              <button className="pd-demo-action" onClick={() => setStep(1)}>
+              <button className="pd-demo-action" onClick={() => goToStep(1)}>
                 웹페이지 열어보기
               </button>
             </div>
@@ -187,7 +194,7 @@ export function CallerFlow() {
                 </div>
                 <button
                   className="pd-demo-action"
-                  onClick={() => setStep(step === 2 ? 1 : 2)}
+                  onClick={toggleCall}
                 >
                   <PhoneCall size={20} />
                   {step === 2 ? '웹페이지로 돌아가기' : '전화 버튼 눌러보기'}

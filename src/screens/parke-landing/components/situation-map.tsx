@@ -1,6 +1,7 @@
-import { useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import { CarFront, Home, Building2, PhoneCall, MapPin } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from './ui/tabs'
+import { useSituationMapViewModel } from '../view-model'
 
 const scenarios = [
   {
@@ -177,7 +178,8 @@ function ComparisonMap({
   )
 }
 export default function SituationMap() {
-  const [scenario, setScenario] = useState('0')
+  const { state, actions } = useSituationMapViewModel()
+  const { scenario } = state
   return (
     <section
       id="map-examples"
@@ -195,7 +197,7 @@ export default function SituationMap() {
           달라지는 연락받는 사람.
         </h2>
       </header>
-      <Tabs value={scenario} onValueChange={(v) => setScenario(String(v))}>
+      <Tabs value={scenario} onValueChange={actions.selectScenario}>
         <TabsList aria-label="추가 주차 상황 선택">
           {scenarios.map((s, i) => (
             <TabsTrigger key={s.name} value={String(i)}>

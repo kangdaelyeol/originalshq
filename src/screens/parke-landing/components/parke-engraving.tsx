@@ -1,21 +1,13 @@
-import { useState, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
+import { useEngravingViewModel } from '../view-model'
 
 const phrases = ['Just do it', '오늘도 무사히', '좋은 날의 시작', 'MY OWN WAY']
 
 export default function ParkeEngraving() {
-  const [engraving, setEngraving] = useState('Just do it')
-  const preview = engraving.trim() || 'Parké'
-  // Full-width Korean characters need more room than Latin letters. Keep the
-  // preview inside the logo area even at the longest accepted input length.
-  const textUnits = Array.from(preview).reduce(
-    (sum, char) =>
-      sum +
-      (/\s/u.test(char) ? 0.36 : /[\u0020-\u024f]/u.test(char) ? 0.78 : 1.08),
-    0,
-  )
-  const lettering = {
-    '--engraving-size': `${Math.min(3.1, 26 / textUnits)}cqw`,
-  } as CSSProperties
+  const { state, actions } = useEngravingViewModel(phrases[0])
+  const { engraving, preview, letteringSize } = state
+  const { setEngraving } = actions
+  const lettering = { '--engraving-size': letteringSize } as CSSProperties
 
   return (
     <section id="engraving" className="pe-custom" aria-labelledby="pe-heading">

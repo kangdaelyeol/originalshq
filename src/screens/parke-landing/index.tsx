@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import {
   ArrowUpRight,
   Battery,
@@ -21,9 +20,12 @@ import Original360Hero from './components/original-360-hero'
 import ParkeMechanism from './components/parke-mechanism'
 import ParkeOffer from './components/parke-offer'
 import ParkeEngraving from './components/parke-engraving'
+import { usePageViewModel, useSensorPartsViewModel } from './view-model'
 
 function Craft() {
-  const [part, setPart] = useState(0)
+  const { state, actions } = useSensorPartsViewModel()
+  const { part } = state
+  const { selectPart } = actions
   const parts = [
     [
       '블루투스 인식 모듈',
@@ -124,21 +126,21 @@ function Craft() {
           <button
             className={`pf-hotspot hs-0 ${part === 0 ? 'active' : ''}`}
             aria-label="블루투스 인식 모듈 보기"
-            onClick={() => setPart(0)}
+            onClick={() => selectPart(0)}
           >
             <Plus />
           </button>
           <button
             className={`pf-hotspot hs-1 ${part === 1 ? 'active' : ''}`}
             aria-label="제어보드 보기"
-            onClick={() => setPart(1)}
+            onClick={() => selectPart(1)}
           >
             <Plus />
           </button>
           <button
             className={`pf-hotspot hs-2 ${part === 2 ? 'active' : ''}`}
             aria-label="전원부 보기"
-            onClick={() => setPart(2)}
+            onClick={() => selectPart(2)}
           >
             <Plus />
           </button>
@@ -305,31 +307,9 @@ const faqs = [
   ],
 ]
 export default function ParkeLaunch() {
-  const [reader, setReader] = useState<boolean | null>(null),
-    [reduced, setReduced] = useState(false),
-    [reserve, setReserve] = useState(false),
-    [pastHero, setPastHero] = useState(false)
-  useEffect(() => {
-    const q = matchMedia('(prefers-reduced-motion: reduce)')
-    const sync = () => setReduced(q.matches)
-    sync()
-    q.addEventListener('change', sync)
-    return () => q.removeEventListener('change', sync)
-  }, [])
-  useEffect(() => {
-    // The hero runs its own full-bleed intro; page chrome waits until the
-    // scroll sequence has been scrolled past. The hero is several viewports
-    // tall, so it stops intersecting exactly when it ends.
-    const hero = document.getElementById('top')
-    if (!hero) return
-    const observer = new IntersectionObserver(
-      ([entry]) => setPastHero(!entry.isIntersecting),
-      { threshold: 0 },
-    )
-    observer.observe(hero)
-    return () => observer.disconnect()
-  }, [])
-  const still = reader ?? reduced
+  const { state, actions } = usePageViewModel()
+  const { still, pastHero, reserveOpen } = state
+  const { toggleMotion, openReserve, setReserveOpen } = actions
   return (
     <div className={`parke-cinema parke-launch ${still ? 'pf-still' : ''}`}>
       <a href="#map-story" className="pc-skip">
@@ -345,11 +325,11 @@ export default function ParkeLaunch() {
           <button
             className="pf-motion"
             aria-label={still ? '제품 움직임 켜기' : '움직임 없이 보기'}
-            onClick={() => setReader(!still)}
+            onClick={toggleMotion}
           >
             {still ? <Play size={15} /> : <Pause size={15} />}
           </button>
-          <button className="pf-reserve-nav" onClick={() => setReserve(true)}>
+          <button className="pf-reserve-nav" onClick={openReserve}>
             지금 바로 예약하기
             <ArrowUpRight size={15} />
           </button>
@@ -362,7 +342,7 @@ export default function ParkeLaunch() {
       <Benefits />
       <Finishing />
       <Gallery />
-      <ParkeOffer onReserve={() => setReserve(true)} />
+      <ParkeOffer onReserve={openReserve} />
       <section className="pf-faq">
         <h2>궁금한 것, 짧게.</h2>
         <Accordion>
@@ -391,7 +371,7 @@ export default function ParkeLaunch() {
         </details>
         <span>originals © 2026</span>
       </footer>
-      <Reservation open={reserve} onOpenChange={setReserve} />
+      <Reservation open={reserveOpen} onOpenChange={setReserveOpen} />
     </div>
   )
 }

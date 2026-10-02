@@ -1,4 +1,3 @@
-import { useRef, useState, type FormEvent } from 'react'
 import { ArrowUpRight, CheckCircle2, X } from 'lucide-react'
 import {
   Dialog,
@@ -8,13 +7,8 @@ import {
   DialogClose,
 } from './ui/dialog'
 import { Checkbox } from './ui/checkbox'
-const freshKey = () => {
-  const b = crypto.getRandomValues(new Uint8Array(16))
-  b[6] = (b[6] & 15) | 64
-  b[8] = (b[8] & 63) | 128
-  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
-}
+import { useReservationViewModel } from '../view-model'
+
 export default function Reservation({
   open,
   onOpenChange,
@@ -22,99 +16,19 @@ export default function Reservation({
   open: boolean
   onOpenChange: (value: boolean) => void
 }) {
-  const [name, setName] = useState(''),
-    [phone, setPhone] = useState(''),
-    [engraving, setEngraving] = useState(''),
-    [consent, setConsent] = useState(false),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
-    [receipt, setReceipt] = useState<{ id: string; key: string } | null>(null),
-    [cancelled, setCancelled] = useState(false)
-  const requestKey = useRef('')
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    if (busy) return
-    setError('')
-    if (!consent) {
-      setError('예약 안내를 위한 개인정보 수집에 동의해 주세요.')
-      return
-    }
-    setBusy(true)
-    try {
-      if (!requestKey.current) requestKey.current = freshKey()
-      const r = await fetch('/api/reservations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          phone,
-          engraving,
-          consent,
-          requestKey: requestKey.current,
-        }),
-      })
-      const result = (await r
-        .json()
-        .catch(
-          () => ({}) as { id?: string; key?: string; error?: string },
-        )) as { id?: string; key?: string; error?: string }
-      if (!r.ok)
-        throw new Error(
-          result.error || '접수하지 못했습니다. 잠시 후 다시 시도해 주세요.',
-        )
-      if (!result.id || !result.key)
-        throw new Error('접수 결과를 확인하지 못했습니다. 다시 시도해 주세요.')
-      setReceipt({ id: result.id, key: result.key })
-      setCancelled(false)
-    } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : '접수하지 못했습니다. 입력 내용은 유지됩니다.',
-      )
-    } finally {
-      setBusy(false)
-    }
-  }
-  async function cancel() {
-    if (!receipt || busy) return
-    setBusy(true)
-    setError('')
-    try {
-      const r = await fetch('/api/reservations', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(receipt),
-      })
-      if (!r.ok)
-        throw new Error('취소하지 못했습니다. 잠시 후 다시 시도해 주세요.')
-      setCancelled(true)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '취소에 실패했습니다.')
-    } finally {
-      setBusy(false)
-    }
-  }
-  function saveReceipt() {
-    if (!receipt) return
-    const payload = [
-      '파르케 사전 예약 접수증',
-      `접수 번호: ${receipt.id}`,
-      `취소 키: ${receipt.key}`,
-      '예약 제품: 파르케 가족 공유형',
-      '안내 가격: 59,000원',
-      '결제: 없음',
-      '배송 일정·최종 구성·각인 비용: 별도 안내',
-      `예약 취소: ${location.origin}/parke/reservation?id=${encodeURIComponent(receipt.id)}#${encodeURIComponent(receipt.key)}`,
-    ].join('\n')
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(
-      new Blob([payload], { type: 'text/plain;charset=utf-8' }),
-    )
-    a.download = `parke-reservation-${receipt.id}.txt`
-    a.click()
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
-  }
+  const { state, actions } = useReservationViewModel()
+  const { name, phone, engraving, consent, busy, error, receipt, cancelled } =
+    state
+  const {
+    setName,
+    setPhone,
+    setEngraving,
+    setConsent,
+    submit,
+    cancel,
+    saveReceipt,
+  } = actions
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="pf-reservation-dialog">
