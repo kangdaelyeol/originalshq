@@ -301,9 +301,11 @@ export const contactLead = onRequest(
               // 고객의 웹 방문(광고 유입 세션)에 이벤트를 붙인다. 없으면(쿠키
               // 없음, 수기 등록, 예전 리드) 고객별로 고정된 externalId(전화번호
               // 해시)로 대신한다 — 같은 고객끼리는 묶이지만 유입 경로는 없다.
+              // 상세 모달에서 지우면 빈 문자열로 저장되므로 ??가 아니라 ||로
+              // 넘긴다(빈 client_id로 보내면 GA4가 이벤트를 버린다).
               clientId:
-                lead.ga4ClientId ??
-                lead.externalId ??
+                lead.ga4ClientId ||
+                lead.externalId ||
                 generateExternalId(lead.ph),
               name: ga4Event.name,
               params: { currency: 'KRW', value: ga4Event.value },
@@ -826,9 +828,7 @@ export const deletePurchase = onRequest((request, response) => {
       }
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
-      const purchases = (lead.purchases ?? []).filter(
-        (p) => p.id !== recordId,
-      )
+      const purchases = (lead.purchases ?? []).filter((p) => p.id !== recordId)
 
       await docRef.update({ purchases })
 
@@ -1325,7 +1325,9 @@ export const migrateLeadsToIntakes = onRequest((request, response) => {
         migrated += 1
       }
 
-      logger.info(`리드 접수 이력 마이그레이션 완료: ${migrated}건, 스킵 ${skipped}건`)
+      logger.info(
+        `리드 접수 이력 마이그레이션 완료: ${migrated}건, 스킵 ${skipped}건`,
+      )
       response.status(200).send({ migrated, skipped, total: snapshot.size })
     } catch (error) {
       logger.error('migrateLeadsToIntakes 처리 실패:', error)

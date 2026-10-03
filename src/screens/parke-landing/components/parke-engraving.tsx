@@ -3,7 +3,7 @@ import { useEngravingViewModel } from '../view-model'
 
 const phrases = ['Just do it', '오늘도 무사히', '좋은 날의 시작', 'MY OWN WAY']
 
-export default function ParkeEngraving() {
+export const  ParkeEngraving = () => {
   const { state, actions } = useEngravingViewModel(phrases[0])
   const { engraving, preview, letteringSize } = state
   const { setEngraving } = actions

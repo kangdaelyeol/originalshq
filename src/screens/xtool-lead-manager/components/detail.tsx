@@ -25,9 +25,9 @@ const STATE_LABEL: Record<LeadState, string> = {
 }
 
 const UTM_LABEL: Record<string, string> = {
-  utm_source: '유입 채널',
-  utm_medium: '매체',
-  utm_campaign: '캠페인',
+  utm_source: 'UTM Source',
+  utm_medium: 'UTM Medium',
+  utm_campaign: 'UTM Campaign',
 }
 
 /** 클릭하면 그 자리에서 바로 고치는 정보 행 — 표의 인라인 편집을 대신해
@@ -803,9 +803,9 @@ export const Detail = ({
 
           <div className="body">
             <section className="section">
-              <div className="section_title">기본 정보</div>
+              <div className="section_title">Basic Info</div>
               <EditableInfoRow
-                label="고객명"
+                label="Name"
                 field={EditingField.FIRST_NAME}
                 leadId={lead.id}
                 rawValue={lead.fn}
@@ -813,7 +813,7 @@ export const Detail = ({
                 onSave={onUpdateField}
               />
               <EditableInfoRow
-                label="전화번호"
+                label="Phone"
                 field={EditingField.PHONE}
                 leadId={lead.id}
                 rawValue={lead.ph}
@@ -824,7 +824,7 @@ export const Detail = ({
               {/* 필수가 아니라 비어 있을 수 있고(예전 리드엔 키도 없다), 지우려면
                   빈 값으로 저장하면 된다. */}
               <EditableInfoRow
-                label="이메일"
+                label="Email"
                 field={EditingField.EMAIL}
                 leadId={lead.id}
                 rawValue={lead.em ?? ''}
@@ -834,7 +834,7 @@ export const Detail = ({
               {/* 직책·회사명·동반 구매자 등 내부 참고용 메모라 기본 정보에
                   속한다 — 예전엔 따로 섹션이었다. */}
               <EditableInfoRow
-                label="비고"
+                label="Remarks"
                 field={EditingField.REMARKS}
                 leadId={lead.id}
                 rawValue={lead.remarks}
@@ -909,7 +909,7 @@ export const Detail = ({
             </section>
 
             <section className="section">
-              <div className="section_title">유입 경로</div>
+              <div className="section_title">Traffic Source</div>
               <EditableInfoRow
                 label={UTM_LABEL.utm_source}
                 field={EditingField.UTM_SOURCE}
@@ -937,9 +937,9 @@ export const Detail = ({
             </section>
 
             <section className="section">
-              <div className="section_title">추적 정보</div>
+              <div className="section_title">Tracking</div>
               <EditableInfoRow
-                label="IP 주소"
+                label="IP Address"
                 field={EditingField.IP}
                 leadId={lead.id}
                 rawValue={lead.ip}
@@ -962,6 +962,17 @@ export const Detail = ({
                 leadId={lead.id}
                 rawValue={lead.fbp}
                 displayValue={lead.fbp}
+                mono
+                onSave={onUpdateField}
+              />
+              {/* 문의 폼의 _ga 쿠키 값 — 상담 등록 때 GA4 이벤트를 이 고객의
+                  웹 방문에 붙이는 데 쓴다. 비어 있으면 전화번호 해시로 대신한다. */}
+              <EditableInfoRow
+                label="GA4 Client ID"
+                field={EditingField.GA4_CLIENT_ID}
+                leadId={lead.id}
+                rawValue={lead.ga4ClientId ?? ''}
+                displayValue={lead.ga4ClientId ?? ''}
                 mono
                 onSave={onUpdateField}
               />

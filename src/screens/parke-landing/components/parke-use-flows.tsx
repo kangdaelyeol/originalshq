@@ -11,12 +11,9 @@ import {
   Users,
 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import {
-  useCallerFlowViewModel,
-  useCoRideChoiceViewModel,
-} from '../view-model'
+import { useCallerFlowViewModel, useCoRideChoiceViewModel } from '../view-model'
 
-export function CoRideChoice() {
+export const CoRideChoice = () => {
   const { state, actions } = useCoRideChoiceViewModel()
   const { selected } = state
   const { select, reset } = actions
@@ -192,10 +189,7 @@ export function CallerFlow() {
                     <strong>안심번호로 연결</strong>
                   </span>
                 </div>
-                <button
-                  className="pd-demo-action"
-                  onClick={toggleCall}
-                >
+                <button className="pd-demo-action" onClick={toggleCall}>
                   <PhoneCall size={20} />
                   {step === 2 ? '웹페이지로 돌아가기' : '전화 버튼 눌러보기'}
                 </button>

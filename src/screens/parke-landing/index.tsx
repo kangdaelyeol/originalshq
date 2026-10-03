@@ -1,16 +1,18 @@
-import ContactSituation from './components/contact-situation'
-import Reservation from './components/reservation'
-import Original360Hero from './components/original-360-hero'
-import ParkeMechanism from './components/parke-mechanism'
-import ParkeOffer from './components/parke-offer'
 import { usePageViewModel } from './view-model'
-import { Header } from './components/header'
-import { Craft } from './components/craft'
-import { Benefits } from './components/benefits'
-import { Finishing } from './components/finising'
-import { Gallery } from './components/gallery'
-import { Faq } from './components/faq'
-import { Footer } from './components/footer'
+import {
+  ParkeOffer,
+  Header,
+  Craft,
+  Benefits,
+  Finishing,
+  Gallery,
+  Faq,
+  Footer,
+  ContactSituation,
+  Reservation,
+  ParkeMechanism,
+  Original360Hero,
+} from './components'
 
 export default function ParkeLaunch() {
   const { state, actions } = usePageViewModel()

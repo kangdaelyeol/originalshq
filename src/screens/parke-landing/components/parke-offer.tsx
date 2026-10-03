@@ -6,7 +6,7 @@ import {
   Smartphone,
 } from 'lucide-react'
 
-export default function ParkeOffer({ onReserve }: { onReserve: () => void }) {
+export const ParkeOffer = ({ onReserve }: { onReserve: () => void }) => {
   return (
     <section className="pf-price pf-package-offer" id="reserve">
       <p className="pf-eyebrow">Parké FAMILY PACKAGE</p>

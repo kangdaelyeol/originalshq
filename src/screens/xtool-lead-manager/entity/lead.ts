@@ -77,6 +77,9 @@ export type Lead = {
   consultations: ConsultationRecord[]
   purchases: PurchaseRecord[]
   externalId?: string
+  /** 문의 폼이 보낸 GA4 client_id(_ga 쿠키 값). 수기 등록 리드, 쿠키가 없던
+   * 문의, 이 필드가 생기기 전의 리드엔 없다. */
+  ga4ClientId?: string
 }
 
 /** 저장값이 아니라 화면 표시용 파생값 — 상담/구매 배열 길이로만 계산한다.

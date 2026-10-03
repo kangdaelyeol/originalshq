@@ -65,7 +65,10 @@ export const sendGa4Event = async ({
   if (!response.ok) {
     logger.error(`GA4(${name}) 전송 실패:`, response.status)
   } else {
-    logger.info(`GA4(${name}) 전송:`, { status: response.status, backdateDropped })
+    logger.info(`GA4(${name}) 전송:`, {
+      status: response.status,
+      backdateDropped,
+    })
   }
 
   return { ok: response.ok, status: response.status, backdateDropped }

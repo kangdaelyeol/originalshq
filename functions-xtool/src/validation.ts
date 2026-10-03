@@ -431,12 +431,13 @@ const EDITABLE_LEAD_TRACKING_FIELDS = [
   'fbc',
   'fbp',
   'user_agent',
+  'ga4ClientId',
 ] as const
 
 export type EditableLeadTrackingField =
   (typeof EDITABLE_LEAD_TRACKING_FIELDS)[number]
 
-/** 유입경로/추적정보 섹션의 자유 텍스트 필드들 — 전부 같은 모양(문자열, 빈
+/** 유입경로/추적정보 섹션의 자유 텍스트 필드들(GA4 client_id 포함) — 전부 같은 모양(문자열, 빈
  * 값 허용)이라 필드마다 엔드포인트를 따로 안 만들고 field로 골라 하나로
  * 묶는다. fn/ph/em/remarks는 각자 특별한 처리(externalId 재생성, 형식·필수값 검증)가
  * 있어 기존 전용 엔드포인트를 그대로 둔다. */

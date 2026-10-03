@@ -1,16 +1,12 @@
 import { PhoneCall, Check, RefreshCw } from 'lucide-react'
-import SituationMap from './situation-map'
+import { SituationMap } from './situation-map'
 import {
   DriverChangeScenes,
   BeautyCut,
   BoardingConnection,
 } from './parke-visual-story'
 
-export default function ContactSituation({
-  still = false,
-}: {
-  still?: boolean
-}) {
+export const ContactSituation = ({ still = false }: { still?: boolean }) => {
   return (
     <div id="map-story" className={`pd-story ${still ? 'is-still' : ''}`}>
       <section className="pd-chapter pd-problem">

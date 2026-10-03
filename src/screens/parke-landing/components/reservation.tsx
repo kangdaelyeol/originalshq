@@ -9,13 +9,13 @@ import {
 import { Checkbox } from './ui/checkbox'
 import { useReservationViewModel } from '../view-model'
 
-export default function Reservation({
+export const Reservation = ({
   open,
   onOpenChange,
 }: {
   open: boolean
   onOpenChange: (value: boolean) => void
-}) {
+}) => {
   const { state, actions } = useReservationViewModel()
   const { name, phone, engraving, consent, busy, error, receipt, cancelled } =
     state

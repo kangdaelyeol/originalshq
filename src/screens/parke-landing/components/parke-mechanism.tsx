@@ -2,7 +2,7 @@ import { PhoneCall, QrCode, ScanLine } from 'lucide-react'
 import { CallerFlow, CoRideChoice, FirstSetup } from './parke-use-flows'
 import { MechanismSlides } from './parke-visual-story'
 
-export default function ParkeMechanism({ still }: { still: boolean }) {
+export const ParkeMechanism = ({ still }: { still: boolean }) => {
   return (
     <section id="how" className={`pd-mechanism ${still ? 'is-still' : ''}`}>
       <section className="pd-one-qr">

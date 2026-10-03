@@ -25,13 +25,14 @@ const scenarios = [
       '오늘은 아내가 차를 타고 카페에 갔습니다. 남편은 집에 있고, 주차 연락이 옵니다.',
   },
 ] as const
-function ComparisonMap({
+
+const ComparisonMap = ({
   scenario,
   parke,
 }: {
   scenario: number
   parke: boolean
-}) {
+}) => {
   const s = scenarios[scenario],
     id = `streets-${scenario}-${parke ? 'parke' : 'normal'}`
   const markers = [
@@ -177,7 +178,7 @@ function ComparisonMap({
     </article>
   )
 }
-export default function SituationMap() {
+export const SituationMap = () => {
   const { state, actions } = useSituationMapViewModel()
   const { scenario } = state
   return (

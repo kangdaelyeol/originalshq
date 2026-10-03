@@ -12,6 +12,7 @@ export const EditingField = {
   FBC: 'fbc',
   FBP: 'fbp',
   USER_AGENT: 'user_agent',
+  GA4_CLIENT_ID: 'ga4ClientId',
 } as const
 
 export type EditingField = (typeof EditingField)[keyof typeof EditingField]

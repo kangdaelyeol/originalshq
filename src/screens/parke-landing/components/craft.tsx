@@ -1,7 +1,7 @@
-import { Battery, Plus, Thermometer } from "lucide-react"
-import { useSensorPartsViewModel } from "../view-model"
+import { Battery, Plus, Thermometer } from 'lucide-react'
+import { useSensorPartsViewModel } from '../view-model'
 
-export const  Craft = () => {
+export const Craft = () => {
   const { state, actions } = useSensorPartsViewModel()
   const { part } = state
   const { selectPart } = actions

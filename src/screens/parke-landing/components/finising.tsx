@@ -1,4 +1,4 @@
-import ParkeEngraving from './parke-engraving'
+import { ParkeEngraving } from './parke-engraving'
 
 export const Finishing = () => {
   return (

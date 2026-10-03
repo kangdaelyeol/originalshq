@@ -7,7 +7,7 @@ import {
 
 /** Markup only — the scroll sequence, copy timing and intro live in
  * useHeroViewModel. */
-export default function Original360Hero({ still }: { still: boolean }) {
+export const Original360Hero = ({ still }: { still: boolean }) => {
   const { sectionRef, canvasRef, ambientRef, posterRef, bindCopy } =
     useHeroViewModel(still)
 

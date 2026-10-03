@@ -15,7 +15,7 @@ import {
 } from './ui/carousel'
 import { useMechanismSlidesViewModel } from '../view-model'
 
-function SignalLink({ studio = false }: { studio?: boolean }) {
+const SignalLink = ({ studio = false }: { studio?: boolean }) => {
   const line = studio
     ? 'M 520 515 C 600 300 730 320 812 470'
     : 'M 722 415 C 660 390 580 510 460 556'
@@ -48,7 +48,7 @@ function SignalLink({ studio = false }: { studio?: boolean }) {
   )
 }
 
-export function DriverChangeScenes() {
+export const DriverChangeScenes = () => {
   return (
     <div className="pv-driver-comparison">
       <figure className="pv-driver-frame is-yesterday">
@@ -97,7 +97,7 @@ export function DriverChangeScenes() {
   )
 }
 
-export function BeautyCut() {
+export const BeautyCut = () => {
   return (
     <figure className="pv-beauty">
       <img
@@ -119,7 +119,7 @@ export function BeautyCut() {
   )
 }
 
-export function BoardingConnection() {
+export const BoardingConnection = () => {
   return (
     <figure className="pv-boarding">
       <div className="pv-boarding-scene">
@@ -196,7 +196,7 @@ const slides = [
   },
 ]
 
-export function MechanismSlides({ still }: { still: boolean }) {
+export const MechanismSlides = ({ still }: { still: boolean }) => {
   const { hostRef, state, actions } = useMechanismSlidesViewModel(still)
   const { selected } = state
   const { setApi, goTo } = actions
