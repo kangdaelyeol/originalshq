@@ -1,4 +1,4 @@
-import { PhoneCall, QrCode, ScanLine } from 'lucide-react'
+import { PhoneCall, QrCode } from 'lucide-react'
 import { CallerFlow, CoRideChoice, FirstSetup } from './parke-use-flows'
 import { MechanismSlides } from './parke-visual-story'
 
@@ -29,10 +29,10 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
             height={941}
             loading="lazy"
           />
-          <div className="pd-qr-scan">
+          {/* <div className="pd-qr-scan">
             <ScanLine />
             <i />
-          </div>
+          </div> */}
           <div className="pd-qr-fixed">
             <QrCode size={24} />
             <span>인쇄된 QR은 바뀌지 않습니다</span>
@@ -47,13 +47,13 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
               height={941}
               loading="lazy"
             />
-            <div className="pv-qr-brackets">
+            {/* <div className="pv-qr-brackets">
               <i />
               <i />
               <i />
               <i />
             </div>
-            <span className="pv-qr-beam" />
+            <span className="pv-qr-beam" /> */}
           </div>
           <div>
             <span className="pv-qr-caption">고정된 QR 확대</span>

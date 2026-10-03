@@ -15,6 +15,7 @@ import {
 } from './ui/carousel'
 import { useMechanismSlidesViewModel } from '../view-model'
 
+/*
 const SignalLink = ({ studio = false }: { studio?: boolean }) => {
   const line = studio
     ? 'M 520 515 C 600 300 730 320 812 470'
@@ -46,7 +47,7 @@ const SignalLink = ({ studio = false }: { studio?: boolean }) => {
       ))}
     </svg>
   )
-}
+} */
 
 export const DriverChangeScenes = () => {
   return (
@@ -130,7 +131,7 @@ export const BoardingConnection = () => {
           height={1254}
           loading="lazy"
         />
-        <SignalLink />
+        {/* <SignalLink /> */}
         <span className="pv-boarding-tag">
           <Bluetooth size={20} />
           등록된 남편의 휴대폰 인식
@@ -226,7 +227,7 @@ export const MechanismSlides = ({ still }: { still: boolean }) => {
                   loading="lazy"
                 />
                 {index < 2 ? (
-                  <SignalLink studio />
+                  <></> // <SignalLink studio />
                 ) : (
                   <div className="pv-call-chip">
                     <PhoneCall size={25} />
