@@ -302,10 +302,10 @@ type DeltaDir = 'up' | 'down' | 'flat'
 
 const DELTA_ARROW: Record<DeltaDir, string> = { up: '▲', down: '▼', flat: '—' }
 
-/** 두 값 사이의 증감/등락률 — prev가 없으면(첫 행 등) null. 표에 나열된 순서상
- * "바로 앞 행"과 비교하는 데 쓴다 — 일별 표에선 전일대비, 주차별 표에선
- * 전주대비가 되고, 요일별 표는 월~일 나열 순서상 바로 앞 요일과 비교한다(그
- * 표들이 이미 나열하는 순서를 그대로 따르는 것이라 테이블 종류를 가리지 않는다).
+/** 두 값 사이의 증감/등락률 — prev가 없으면(첫 행 등) null. 화면에 나열된 순서상
+ * "바로 윗 행"과 비교하는 데 쓴다 — 기본 정렬(시간순)이면 일별 표에선 전일대비,
+ * 주차별 표에선 전주대비가 되고, 요일별 표는 월~일 순서상 바로 앞 요일과
+ * 비교한다. 컬럼 정렬을 바꾸면 그 정렬 순서의 윗 행과 비교한다.
  * 메인 행뿐 아니라 채널별 펼침 행(각 채널의 이전 행 값)에도 그대로 쓴다. */
 function computeMetricDelta(
   now: number,
@@ -442,8 +442,8 @@ function MetricsTable<T extends MetricsSummary>({
   channelFilter: 'all' | ChannelKey
   onChannelFilterChange: (value: 'all' | ChannelKey) => void
 }) {
-  const { expanded, sort, originalIndexByKey, displayRows, toggleSort, toggle } =
-    useMetricsTableViewModel(rows, rowKey)
+  const { expanded, sort, displayRows, toggleSort, toggle } =
+    useMetricsTableViewModel(rows)
 
   // channelFilter가 특정 채널이면 rows 자체가 그 채널 단독 값(호출부가 넘겨줌)이라
   // 매출/ROAS 지표가 항상 0으로만 나온다 — 컬럼 토글 목록·표시 컬럼 둘 다에서
@@ -547,7 +547,7 @@ function MetricsTable<T extends MetricsSummary>({
                 <td colSpan={visibleFields.length + 2}>데이터 없음</td>
               </tr>
             ) : (
-              displayRows.map((row) => {
+              displayRows.map((row, index) => {
                 const key = rowKey(row)
                 // 채널 필터가 걸려 있으면(이미 그 채널 하나만 보는 중이라)
                 // channels가 빈 배열로 넘어온다 — 펼쳐봐야 보여줄 채널별
@@ -555,13 +555,17 @@ function MetricsTable<T extends MetricsSummary>({
                 const canExpand = channels.length > 0
                 const isOpen = canExpand && expanded.has(key)
                 const breakdown = isOpen ? getChannelBreakdown(row) : null
-                const originalIndex = originalIndexByKey.get(key) ?? 0
-                // 채널별 펼침 행도 메인 행과 같은 방식(원본 순서상 바로 앞 행)으로
-                // 대비를 보여준다 — 그 채널의 "바로 앞 행" 값이 필요하니 이전
-                // 행을 같은 방식으로 한 번 더 분해해둔다.
+                // 대비는 화면에 보이는 순서상 바로 윗 행과 비교한다 — 정렬을
+                // 바꾸면 비교 대상도 같이 바뀐다(roas-panel 표와 같은 기준).
+                // 예전엔 정렬과 무관하게 원본(시간순) 직전 행과 비교해서, 정렬한
+                // 표에서 윗 행과 맞지 않는 증감이 표시됐다.
+                const prevRow = index > 0 ? displayRows[index - 1] : null
+                // 채널별 펼침 행도 메인 행과 같은 기준(화면상 바로 윗 행)으로
+                // 대비를 보여준다 — 그 채널의 윗 행 값이 필요하니 윗 행을 같은
+                // 방식으로 한 번 더 분해해둔다.
                 const prevBreakdown =
-                  isOpen && showCompare && originalIndex > 0
-                    ? getChannelBreakdown(rows[originalIndex - 1])
+                  isOpen && showCompare && prevRow
+                    ? getChannelBreakdown(prevRow)
                     : null
                 return (
                   <Fragment key={key}>
@@ -601,11 +605,7 @@ function MetricsTable<T extends MetricsSummary>({
                         <td key={f.key}>
                           <MetricCell
                             value={row[f.key]}
-                            prevValue={
-                              originalIndex > 0
-                                ? rows[originalIndex - 1][f.key]
-                                : null
-                            }
+                            prevValue={prevRow ? prevRow[f.key] : null}
                             format={f.formatCompact}
                             showCompare={showCompare}
                           />

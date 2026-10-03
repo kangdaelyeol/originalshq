@@ -5,11 +5,10 @@ import type { MetricKey } from '../components/metric-fields'
 type SortDir = 'asc' | 'desc'
 
 /** 전체 요약 탭의 일별/요일별/주차별/지정기간 표(MetricsTable) 전용 상태 —
- * 채널별 펼침 행 열림/닫힘, 정렬, 정렬과 무관하게 항상 원본(시간순) 기준
- * 직전 값을 찾기 위한 인덱스, 정렬이 반영된 표시용 행을 다룬다. */
+ * 채널별 펼침 행 열림/닫힘, 정렬, 정렬이 반영된 표시용 행을 다룬다. "대비
+ * 표시"는 이 표시용 행(displayRows)의 바로 윗 행과 비교한다. */
 export const useMetricsTableViewModel = <T extends MetricsSummary>(
   rows: readonly T[],
-  rowKey: (row: T) => string,
 ) => {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
@@ -28,14 +27,6 @@ export const useMetricsTableViewModel = <T extends MetricsSummary>(
         : { key, dir: key === 'label' ? 'asc' : 'desc' },
     )
   }
-
-  // "대비 표시"(바로 앞 지점 대비)는 정렬로 화면상 순서가 바뀌어도 항상 원본
-  // (시간순) 기준 직전 값을 봐야 의미가 있다 — 그 행이 원본 rows에서 실제로
-  // 몇 번째였는지 미리 룩업 테이블로 만들어둔다.
-  const originalIndexByKey = useMemo(
-    () => new Map(rows.map((row, i) => [rowKey(row), i] as const)),
-    [rows, rowKey],
-  )
 
   const displayRows = useMemo(() => {
     if (sort.key === 'label') {
@@ -59,7 +50,6 @@ export const useMetricsTableViewModel = <T extends MetricsSummary>(
     // 진행 상태
     expanded,
     sort,
-    originalIndexByKey,
     displayRows,
     // 액션
     toggleSort,
