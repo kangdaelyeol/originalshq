@@ -5,7 +5,7 @@ import {
   FRAME_COUNT,
   MOTION_COLUMNS,
 } from '../utils/scroll-sequence'
-import { HERO_COPY, heroCueOpacity, OPENING_FADE_S } from './hero-copy'
+import { HERO_COPY, heroCueOpacity, OPENING_FADE_S } from '../config'
 
 const FPS = 24
 /* Ambient backdrop.

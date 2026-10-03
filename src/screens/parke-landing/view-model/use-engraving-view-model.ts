@@ -17,8 +17,7 @@ export const useEngravingViewModel = (initial: string) => {
   // preview inside the logo area even at the longest accepted input length.
   const textUnits = Array.from(preview).reduce(
     (sum, char) =>
-      sum +
-      (/\s/u.test(char) ? 0.36 : /[ -ɏ]/u.test(char) ? 0.78 : 1.08),
+      sum + (/\s/u.test(char) ? 0.36 : /[ -ɏ]/u.test(char) ? 0.78 : 1.08),
     0,
   )
 

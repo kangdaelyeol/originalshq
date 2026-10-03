@@ -62,7 +62,8 @@
     top: 36.98%;
     width: 26.3%;
     white-space: nowrap;
-    font-family: Arial, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    font-family:
+      Arial, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
     font-size: var(--engraving-size);
     font-weight: 500;
     line-height: 1.075;
@@ -108,7 +109,9 @@
       font-size: 20px;
       line-height: 1.4;
       outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      transition:
+        border-color 0.15s,
+        box-shadow 0.15s;
     }
 
     input:focus {
@@ -157,10 +160,13 @@
       font-size: 15px;
       line-height: 1.4;
       cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      transition:
+        background 0.15s,
+        border-color 0.15s,
+        color 0.15s;
     }
 
-    button[aria-pressed=true] {
+    button[aria-pressed='true'] {
       border-color: #e0f386;
       background: #e0f386;
       color: #1b2616;

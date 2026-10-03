@@ -79,7 +79,9 @@
   .wrong-contact-shade {
     position: absolute;
     inset: 0;
-    background: linear-gradient(90deg, #0a141af2 0%, #0a141abe 33%, #0a141a18 73%), linear-gradient(0deg, #0a141aeb, transparent 65%);
+    background:
+      linear-gradient(90deg, #0a141af2 0%, #0a141abe 33%, #0a141a18 73%),
+      linear-gradient(0deg, #0a141aeb, transparent 65%);
   }
 
   .wrong-contact-map {
@@ -191,10 +193,14 @@
     padding: 18px 21px 19px;
     border-radius: 5px 19px 19px 19px;
     background: linear-gradient(135deg, #273139dc, #131b21e8);
-    box-shadow: inset 0 1px 0 #ffffff12, 0 8px 24px #0000001f;
+    box-shadow:
+      inset 0 1px 0 #ffffff12,
+      0 8px 24px #0000001f;
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
-    transition: background-color 0.24s, box-shadow 0.24s;
+    transition:
+      background-color 0.24s,
+      box-shadow 0.24s;
   }
 
   .stop-speech {
@@ -225,7 +231,9 @@
     font-size: 14px;
     color: #deebf4;
     white-space: nowrap;
-    text-shadow: 0 2px 8px #000, 0 0 18px #000;
+    text-shadow:
+      0 2px 8px #000,
+      0 0 18px #000;
 
     > svg {
       width: 14px;
@@ -274,7 +282,7 @@
     isolation: isolate;
 
     &:before {
-      content: "";
+      content: '';
       position: absolute;
       left: 61.5%;
       right: 0;
@@ -365,7 +373,12 @@
 
     .wrong-contact-shade {
       height: 370px;
-      background: linear-gradient(0deg, #131c23 3%, #131c2380 25%, transparent 67%);
+      background: linear-gradient(
+        0deg,
+        #131c23 3%,
+        #131c2380 25%,
+        transparent 67%
+      );
     }
 
     .stop-dialogue {
@@ -449,17 +462,21 @@
     color: #d5ecfc;
   }
 
-  .wrong-contact-stop[data-active=true] .stop-dialogue {
+  .wrong-contact-stop[data-active='true'] .stop-dialogue {
     background-color: #465a68;
-    box-shadow: inset 0 1px 0 #d9efff3d, 0 8px 26px #00000022;
+    box-shadow:
+      inset 0 1px 0 #d9efff3d,
+      0 8px 26px #00000022;
   }
 
-  .stop-home[data-active=true] .stop-dialogue {
+  .stop-home[data-active='true'] .stop-dialogue {
     background-color: #67523d;
-    box-shadow: inset 0 1px 0 #f6d8b84d, 0 8px 26px #00000022;
+    box-shadow:
+      inset 0 1px 0 #f6d8b84d,
+      0 8px 26px #00000022;
   }
 
-  .wrong-contact-stop[data-active=true] .stop-speech {
+  .wrong-contact-stop[data-active='true'] .stop-speech {
     color: #fff;
   }
 
@@ -482,7 +499,7 @@
     color: #f0d2af;
   }
 
-  .wrong-contact-stop[data-active=true] .stop-arrival {
+  .wrong-contact-stop[data-active='true'] .stop-arrival {
     opacity: 1;
     visibility: visible;
   }
@@ -532,7 +549,8 @@
       aspect-ratio: auto;
     }
 
-    .visual-narrative .scene-section:has(> .wrong-contact-story[data-scene-mode=pin]) {
+    .visual-narrative
+      .scene-section:has(> .wrong-contact-story[data-scene-mode='pin']) {
       display: block;
       position: relative;
       height: 260svh;
@@ -540,7 +558,7 @@
       padding: 0 6vw;
     }
 
-    .wrong-contact-story[data-scene-mode=pin] {
+    .wrong-contact-story[data-scene-mode='pin'] {
       position: sticky;
       top: 88px;
     }
@@ -587,7 +605,12 @@
 
     .wrong-contact-shade {
       height: 370px;
-      background: linear-gradient(0deg, #131c23 3%, #131c2380 25%, transparent 67%);
+      background: linear-gradient(
+        0deg,
+        #131c23 3%,
+        #131c2380 25%,
+        transparent 67%
+      );
     }
 
     .wrong-contact-map {

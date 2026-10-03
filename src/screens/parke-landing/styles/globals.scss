@@ -1,9 +1,9 @@
 @use 'mixins' as m;
 
 .parke-page {
-  --background:#0c0d0c;
-  --primary:#9bbfff;
-  --ring:#9bbfff;
+  --background: #0c0d0c;
+  --primary: #9bbfff;
+  --ring: #9bbfff;
 
   & {
     background: #0c0d0c;
@@ -87,7 +87,14 @@
   .cinema-shade {
     position: absolute;
     inset: 0;
-    background: linear-gradient(#0c0d0c 0%, #0c0d0cc9 12%, transparent 34%, transparent 64%, #0c0d0cb8 79%, #0c0d0c 98%);
+    background: linear-gradient(
+      #0c0d0c 0%,
+      #0c0d0cc9 12%,
+      transparent 34%,
+      transparent 64%,
+      #0c0d0cb8 79%,
+      #0c0d0c 98%
+    );
   }
 
   .film-disclosure {
@@ -448,7 +455,7 @@
     margin: 12px 0 20px;
   }
 
-  .product-sheet[data-slot=sheet-content] {
+  .product-sheet[data-slot='sheet-content'] {
     background: #111414;
   }
 
@@ -550,7 +557,12 @@
     }
 
     .cinema-shade {
-      background: linear-gradient(#0c0d0c, transparent 26%, transparent 70%, #0c0d0c);
+      background: linear-gradient(
+        #0c0d0c,
+        transparent 26%,
+        transparent 70%,
+        #0c0d0c
+      );
     }
 
     .cinema-body {
@@ -569,7 +581,7 @@
       }
 
       > span + span:before {
-        content: " ";
+        content: ' ';
       }
     }
 

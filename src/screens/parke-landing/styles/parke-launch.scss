@@ -2,13 +2,14 @@
 
 .parke-page {
   .parke-launch {
-    --pf-bg:#0b0d0d;
-    --pf-text:#f4f5ee;
-    --pf-dim:#a8b4ad;
-    --pf-accent:#eafa81;
+    --pf-bg: #0b0d0d;
+    --pf-text: #f4f5ee;
+    --pf-dim: #a8b4ad;
+    --pf-accent: #eafa81;
     background: var(--pf-bg);
     color: var(--pf-text);
-    font-family: var(--font-geist), "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    font-family:
+      var(--font-geist), 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
 
     h1,
     h2,
@@ -171,7 +172,11 @@
     aspect-ratio: 16/9;
     width: 100%;
     overflow: hidden;
-    mask-image: radial-gradient(ellipse 72% 66% at 50% 50%, #000 43%, transparent 83%);
+    mask-image: radial-gradient(
+      ellipse 72% 66% at 50% 50%,
+      #000 43%,
+      transparent 83%
+    );
 
     > img,
     > canvas {
@@ -467,7 +472,11 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      mask-image: radial-gradient(ellipse 64% 66% at center, #000 45%, transparent 85%);
+      mask-image: radial-gradient(
+        ellipse 64% 66% at center,
+        #000 45%,
+        transparent 85%
+      );
     }
   }
 
@@ -496,7 +505,7 @@
   }
 
   .pf-sensor-tag:after {
-    content: "";
+    content: '';
     position: absolute;
     left: 50%;
     width: 1px;
@@ -506,7 +515,7 @@
   }
 
   .pf-power-tag:after {
-    content: "";
+    content: '';
     position: absolute;
     left: 50%;
     width: 1px;
@@ -530,7 +539,11 @@
     width: auto;
     max-width: none;
     transform: translate(-50%, -50%) scale(var(--phone-scale));
-    mask-image: radial-gradient(ellipse 60% 55% at 50% 48%, #000 53%, transparent 95%);
+    mask-image: radial-gradient(
+      ellipse 60% 55% at 50% 48%,
+      #000 53%,
+      transparent 95%
+    );
   }
 
   .pf-phone-shell {
@@ -546,7 +559,9 @@
     border-radius: 44px;
     overflow: hidden;
     background: #090d17;
-    box-shadow: 0 0 0 1px #66737b55, 0 28px 70px #00000099;
+    box-shadow:
+      0 0 0 1px #66737b55,
+      0 28px 70px #00000099;
     pointer-events: auto;
   }
 
@@ -567,7 +582,7 @@
     width: 100%;
     height: 100%;
     padding: 16px 22px 70px;
-    font-family: var(--font-geist), "Apple SD Gothic Neo", sans-serif;
+    font-family: var(--font-geist), 'Apple SD Gothic Neo', sans-serif;
     color: #f4f6fc;
     background: radial-gradient(ellipse at 50% 60%, #102343 0, #080d17 57%);
     overflow: hidden;
@@ -960,7 +975,7 @@
       color: #657c6f;
     }
 
-    > button[aria-pressed=true] {
+    > button[aria-pressed='true'] {
       border-color: #acbc67;
       color: #e8efc1;
       background: #263128;
@@ -1050,7 +1065,7 @@
     }
 
     &:after {
-      content: "";
+      content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(90deg, #080c10b8, transparent 70%);
@@ -1106,7 +1121,11 @@
       width: 100%;
       height: 100%;
       object-fit: contain;
-      mask-image: radial-gradient(ellipse 68% 68% at center, #000 45%, transparent 85%);
+      mask-image: radial-gradient(
+        ellipse 68% 68% at center,
+        #000 45%,
+        transparent 85%
+      );
     }
   }
 
@@ -1428,19 +1447,19 @@
       margin-bottom: 40px;
     }
 
-    [data-slot=accordion-trigger] {
+    [data-slot='accordion-trigger'] {
       padding: 24px 0;
       font-size: 16px;
       color: #c4d3c6;
     }
 
-    [data-slot=accordion-content] {
+    [data-slot='accordion-content'] {
       font-size: 15px;
       color: #879e8d;
       line-height: 1.9;
     }
 
-    [data-slot=accordion-item] {
+    [data-slot='accordion-item'] {
       border-color: #c3d5b826;
     }
   }
@@ -1499,9 +1518,9 @@
     max-height: 90svh;
     overflow-y: auto;
     z-index: 100 !important;
-    font-family: var(--font-geist), "Apple SD Gothic Neo", sans-serif;
+    font-family: var(--font-geist), 'Apple SD Gothic Neo', sans-serif;
 
-    ~ [data-slot=dialog-overlay] {
+    ~ [data-slot='dialog-overlay'] {
       z-index: 90;
     }
 
@@ -1530,7 +1549,7 @@
       color: #4e6543;
     }
 
-    input:not([type=checkbox]) {
+    input:not([type='checkbox']) {
       width: 100%;
       border: 1px solid #c3d0b7;
       background: #fff;
@@ -1564,7 +1583,7 @@
     line-height: 1.7;
     color: #678359;
 
-    [data-slot=checkbox] {
+    [data-slot='checkbox'] {
       margin-top: 3px;
       width: 19px;
       height: 19px;
@@ -1725,7 +1744,8 @@
   }
 
   @keyframes pf-dot {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0.3;
       transform: scale(0.7);
     }
@@ -2356,15 +2376,15 @@
       font-size: 10px;
     }
 
-    .pf-mechanism-pin[data-phase="4"] .pf-how-copy {
+    .pf-mechanism-pin[data-phase='4'] .pf-how-copy {
       top: 10%;
     }
 
-    .pf-mechanism-pin[data-phase="4"] .pf-how-caption {
+    .pf-mechanism-pin[data-phase='4'] .pf-how-caption {
       display: none;
     }
 
-    .pf-mechanism-pin[data-phase="4"] .pf-phone-shell {
+    .pf-mechanism-pin[data-phase='4'] .pf-phone-shell {
       top: 58%;
     }
 
@@ -2669,11 +2689,11 @@
         margin-bottom: 25px;
       }
 
-      [data-slot=accordion-trigger] {
+      [data-slot='accordion-trigger'] {
         font-size: 15px;
       }
 
-      [data-slot=accordion-content] {
+      [data-slot='accordion-content'] {
         font-size: 14px;
       }
     }
@@ -2829,7 +2849,7 @@
       padding: 9px;
     }
 
-    .pf-mechanism-pin[data-phase="4"] .pf-phone-shell {
+    .pf-mechanism-pin[data-phase='4'] .pf-phone-shell {
       top: 59%;
     }
 
@@ -2902,7 +2922,11 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    mask-image: radial-gradient(ellipse 74% 76% at center, #000 40%, transparent 85%);
+    mask-image: radial-gradient(
+      ellipse 74% 76% at center,
+      #000 40%,
+      transparent 85%
+    );
   }
 
   .pf-qr-focus {
@@ -2910,12 +2934,17 @@
   }
 
   .pf-mechanism-pin:before {
-    content: "";
+    content: '';
     position: absolute;
     inset: 0;
     z-index: 8;
     pointer-events: none;
-    background: linear-gradient(90deg, #0b0d0df0 0%, #0b0d0d88 31%, transparent 57%);
+    background: linear-gradient(
+      90deg,
+      #0b0d0df0 0%,
+      #0b0d0d88 31%,
+      transparent 57%
+    );
   }
 
   @include m.mobile {
@@ -3034,7 +3063,13 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(#050607 0%, #05060766 16%, transparent 40%, transparent 88%, #050607 100%);
+    background: linear-gradient(
+      #050607 0%,
+      #05060766 16%,
+      transparent 40%,
+      transparent 88%,
+      #050607 100%
+    );
   }
 
   .pf-original-copy {
@@ -3141,7 +3176,14 @@
     }
 
     .pf-original-shade {
-      background: linear-gradient(#050607 0%, #050607 16%, #05060799 28%, transparent 44%, transparent 88%, #050607 100%);
+      background: linear-gradient(
+        #050607 0%,
+        #050607 16%,
+        #05060799 28%,
+        transparent 44%,
+        transparent 88%,
+        #050607 100%
+      );
     }
 
     .pf-original-bottom {
@@ -3207,7 +3249,13 @@
   }
 
   .pf-source-film .pf-original-shade {
-    background: linear-gradient(#0d0e0c 0%, #0d0e0cbb 15%, transparent 40%, transparent 86%, #0d0e0c 100%);
+    background: linear-gradient(
+      #0d0e0c 0%,
+      #0d0e0cbb 15%,
+      transparent 40%,
+      transparent 86%,
+      #0d0e0c 100%
+    );
   }
 
   .pf-source-film .pf-original-copy {
@@ -3252,7 +3300,13 @@
     }
 
     .pf-source-film .pf-original-shade {
-      background: linear-gradient(#0d0e0c 0%, #0d0e0c99 25%, transparent 43%, transparent 82%, #0d0e0c 100%);
+      background: linear-gradient(
+        #0d0e0c 0%,
+        #0d0e0c99 25%,
+        transparent 43%,
+        transparent 82%,
+        #0d0e0c 100%
+      );
     }
 
     .pf-source-film .pf-original-copy {
@@ -3305,7 +3359,13 @@
   }
 
   .pf-continuous-landing .pf-original-shade {
-    background: linear-gradient(#0d0e0c 0%, #0d0e0c99 13%, transparent 37%, transparent 90%, #0d0e0c 100%);
+    background: linear-gradient(
+      #0d0e0c 0%,
+      #0d0e0c99 13%,
+      transparent 37%,
+      transparent 90%,
+      #0d0e0c 100%
+    );
   }
 
   .pf-continuous-landing.is-still {
@@ -3358,7 +3418,11 @@
     transition: none;
 
     > img {
-      mask-image: radial-gradient(ellipse 74% 76% at center, #000 40%, transparent 85%);
+      mask-image: radial-gradient(
+        ellipse 74% 76% at center,
+        #000 40%,
+        transparent 85%
+      );
     }
   }
 
@@ -3385,7 +3449,11 @@
       max-width: none;
       transform: none;
       object-fit: fill;
-      mask-image: radial-gradient(ellipse 64% 60% at 50% 46%, #000 46%, transparent 90%);
+      mask-image: radial-gradient(
+        ellipse 64% 60% at 50% 46%,
+        #000 46%,
+        transparent 90%
+      );
     }
   }
 
@@ -3397,7 +3465,9 @@
     transform: none;
     border-radius: 34px;
     border-color: rgba(39, 44, 48, var(--app));
-    box-shadow: 0 0 0 1px #66737b22, 0 24px 65px #00000066;
+    box-shadow:
+      0 0 0 1px #66737b22,
+      0 24px 65px #00000066;
   }
 
   @include m.mobile {
@@ -3422,12 +3492,12 @@
   }
 
   .pf-phone-assembly {
-    --phone-fit:1;
+    --phone-fit: 1;
   }
 
   @media (max-width: 700px) and (max-height: 740px) {
     .pf-phone-assembly {
-      --phone-fit:.82;
+      --phone-fit: 0.82;
       top: 60%;
     }
   }

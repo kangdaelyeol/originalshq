@@ -3,7 +3,8 @@
 .parke-page {
   .pd-story,
   .pd-mechanism {
-    font-family: var(--font-geist), "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    font-family:
+      var(--font-geist), 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
     letter-spacing: -0.025em;
     word-break: keep-all;
     overflow-wrap: anywhere;
@@ -495,7 +496,7 @@
     margin: 5px 0 15px;
 
     &:before {
-      content: "";
+      content: '';
       position: absolute;
       top: 0;
       bottom: 0;
@@ -580,7 +581,9 @@
       font-weight: 650;
       border-radius: 12px;
       padding: 20px 8px;
-      transition: background 0.4s, color 0.4s;
+      transition:
+        background 0.4s,
+        color 0.4s;
     }
 
     > span.active {
@@ -639,13 +642,13 @@
       color: #6f90c2;
     }
 
-    > button[aria-pressed=true] {
+    > button[aria-pressed='true'] {
       background: #214991;
       border-color: #6a9cff;
       color: white;
     }
 
-    > button[aria-pressed=true] > span {
+    > button[aria-pressed='true'] > span {
       color: #d1e0ff;
     }
   }
@@ -789,29 +792,36 @@
   }
 
   @keyframes pd-ring {
-    0%, 8%, 16%, 100% {
+    0%,
+    8%,
+    16%,
+    100% {
       transform: rotate(0);
     }
 
-    4%, 12% {
+    4%,
+    12% {
       transform: rotate(-14deg);
     }
   }
 
   @keyframes pd-recognize {
-    0%, 12% {
+    0%,
+    12% {
       opacity: 0.25;
       transform: translateY(5px);
     }
 
-    27%, 100% {
+    27%,
+    100% {
       opacity: 1;
       transform: translateY(0);
     }
   }
 
   @keyframes pd-scan {
-    0%, 100% {
+    0%,
+    100% {
       transform: translateY(0);
       opacity: 0.3;
     }
@@ -935,7 +945,7 @@
     color: #405779;
   }
 
-  .sm-section [role=tab] {
+  .sm-section [role='tab'] {
     font-size: 16px !important;
     min-height: 46px;
   }
@@ -1225,7 +1235,12 @@
 
       > img {
         object-position: 50% 38%;
-        mask-image: linear-gradient(transparent, #000 8%, #000 80%, transparent);
+        mask-image: linear-gradient(
+          transparent,
+          #000 8%,
+          #000 80%,
+          transparent
+        );
       }
     }
 
@@ -1288,12 +1303,12 @@
       font-size: 19px !important;
     }
 
-    .pf-faq [data-slot=accordion-trigger] {
+    .pf-faq [data-slot='accordion-trigger'] {
       font-size: 17px !important;
       line-height: 1.6;
     }
 
-    .pf-faq [data-slot=accordion-content] {
+    .pf-faq [data-slot='accordion-content'] {
       font-size: 16px !important;
       line-height: 1.9;
     }
@@ -1418,7 +1433,7 @@
       }
     }
 
-    .sm-section [role=tab] {
+    .sm-section [role='tab'] {
       font-size: 14px !important;
     }
   }
@@ -1585,7 +1600,8 @@
   }
 
   @keyframes pd-scan {
-    0%, 100% {
+    0%,
+    100% {
       top: 15%;
       opacity: 0.35;
     }

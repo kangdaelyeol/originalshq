@@ -1,4 +1,3 @@
-export * from './hero-copy'
 export * from './use-engraving-view-model'
 export * from './use-hero-view-model'
 export * from './use-mechanism-slides-view-model'

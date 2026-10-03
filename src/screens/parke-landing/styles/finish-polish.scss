@@ -32,7 +32,7 @@
     border-radius: 3px;
   }
 
-  .flow-reader-toggle[aria-pressed=true] {
+  .flow-reader-toggle[aria-pressed='true'] {
     color: #e4f3ff;
   }
 
@@ -52,7 +52,12 @@
     display: block;
     min-height: 0;
     padding: 170px 6vw;
-    background: linear-gradient(#0b0c0c, #edf0f0 100px, #edf0f0 calc(100% - 100px), #0b0c0c);
+    background: linear-gradient(
+      #0b0c0c,
+      #edf0f0 100px,
+      #edf0f0 calc(100% - 100px),
+      #0b0c0c
+    );
     color: #14242e;
   }
 
@@ -193,7 +198,7 @@
     margin-top: 28px;
     padding-top: 18px;
 
-    [role=tabpanel] {
+    [role='tabpanel'] {
       min-height: 90px;
     }
   }
@@ -306,7 +311,12 @@
 
     .visual-narrative .comparison-section {
       padding: 120px 24px;
-      background: linear-gradient(#0b0c0c, #edf0f0 70px, #edf0f0 calc(100% - 70px), #0b0c0c);
+      background: linear-gradient(
+        #0b0c0c,
+        #edf0f0 70px,
+        #edf0f0 calc(100% - 70px),
+        #0b0c0c
+      );
     }
 
     .comparison-title {
@@ -395,7 +405,7 @@
       }
     }
 
-    .contact-recap .contact-lab [role=tabpanel] {
+    .contact-recap .contact-lab [role='tabpanel'] {
       min-height: 0;
     }
 
@@ -425,7 +435,7 @@
     align-self: start;
   }
 
-  .continuous-experience[data-moment-active=details] .continuous-disclosure {
+  .continuous-experience[data-moment-active='details'] .continuous-disclosure {
     opacity: 0;
   }
 

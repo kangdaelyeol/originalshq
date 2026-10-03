@@ -33,7 +33,9 @@
   --radius: 0.8rem;
   --line: #ffffff20;
   --soft: #a8aaa3;
-  --font-geist: 'Geist', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  --font-geist:
+    'Geist', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo',
+    'Noto Sans KR', sans-serif;
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -169,14 +171,14 @@
   }
 
   button,
-  input[type=button],
-  input[type=reset],
-  input[type=submit] {
+  input[type='button'],
+  input[type='reset'],
+  input[type='submit'] {
     appearance: button;
   }
 
   button:not(:disabled),
-  [role=button]:not(:disabled) {
+  [role='button']:not(:disabled) {
     cursor: pointer;
   }
 
@@ -217,17 +219,17 @@
    * `components/ui` emit the same slots and state attributes. Only the layout
    * Tailwind used to supply is defined here.
    */
-  [data-slot=accordion] {
+  [data-slot='accordion'] {
     display: flex;
     width: 100%;
     flex-direction: column;
   }
 
-  [data-slot=accordion-item]:not(:last-child) {
+  [data-slot='accordion-item']:not(:last-child) {
     border-bottom: 1px solid var(--border);
   }
 
-  [data-slot=accordion-trigger] {
+  [data-slot='accordion-trigger'] {
     position: relative;
     display: flex;
     width: 100%;
@@ -238,7 +240,7 @@
     transition: all 0.2s;
   }
 
-  [data-slot=accordion-trigger-icon] {
+  [data-slot='accordion-trigger-icon'] {
     pointer-events: none;
     flex-shrink: 0;
     width: 16px;
@@ -247,18 +249,21 @@
     transition: transform 0.2s ease;
   }
 
-  [data-slot=accordion-trigger][aria-expanded=true] [data-slot=accordion-trigger-icon] {
+  [data-slot='accordion-trigger'][aria-expanded='true']
+    [data-slot='accordion-trigger-icon'] {
     transform: rotate(180deg);
   }
 
-  [data-slot=accordion-content] {
+  [data-slot='accordion-content'] {
     display: grid;
     grid-template-rows: 0fr;
     overflow: hidden;
     visibility: hidden;
-    transition: grid-template-rows 0.28s ease, visibility 0.28s;
+    transition:
+      grid-template-rows 0.28s ease,
+      visibility 0.28s;
 
-    &[data-state=open] {
+    &[data-state='open'] {
       grid-template-rows: 1fr;
       visibility: visible;
     }
@@ -268,19 +273,19 @@
     }
   }
 
-  [data-slot=tabs] {
+  [data-slot='tabs'] {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
 
-  [data-slot=tabs-list] {
+  [data-slot='tabs-list'] {
     display: flex;
     align-items: center;
     justify-content: center;
   }
 
-  [data-slot=tabs-trigger] {
+  [data-slot='tabs-trigger'] {
     position: relative;
     display: inline-flex;
     flex: 1;
@@ -291,12 +296,12 @@
     transition: all 0.2s;
   }
 
-  [data-slot=tabs-content] {
+  [data-slot='tabs-content'] {
     flex: 1;
     outline: none;
   }
 
-  [data-slot=checkbox] {
+  [data-slot='checkbox'] {
     position: relative;
     appearance: none;
     display: flex;
@@ -308,12 +313,14 @@
     border: 1px solid var(--input);
     border-radius: 4px;
     cursor: pointer;
-    transition: background-color 0.15s, border-color 0.15s;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s;
   }
 
   /* The tick, drawn rather than iconised, so the control stays a native input. */
-  [data-slot=checkbox]::after {
-    content: "";
+  [data-slot='checkbox']::after {
+    content: '';
     width: 9px;
     height: 5px;
     border-left: 2px solid currentColor;
@@ -323,11 +330,11 @@
     transition: opacity 0.12s;
   }
 
-  [data-slot=checkbox]:checked::after {
+  [data-slot='checkbox']:checked::after {
     opacity: 1;
   }
 
-  [data-slot=dialog-overlay] {
+  [data-slot='dialog-overlay'] {
     position: fixed;
     inset: 0;
     z-index: 50;
@@ -336,12 +343,12 @@
   }
 
   @supports (backdrop-filter: blur(2px)) {
-    [data-slot=dialog-overlay] {
+    [data-slot='dialog-overlay'] {
       backdrop-filter: blur(2px);
     }
   }
 
-  [data-slot=dialog-content] {
+  [data-slot='dialog-content'] {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -373,25 +380,25 @@
     }
   }
 
-  [data-slot=carousel] {
+  [data-slot='carousel'] {
     position: relative;
   }
 
-  [data-slot=carousel-viewport] {
+  [data-slot='carousel-viewport'] {
     overflow: hidden;
   }
 
-  [data-slot=carousel-content] {
+  [data-slot='carousel-content'] {
     display: flex;
   }
 
-  [data-slot=carousel-item] {
+  [data-slot='carousel-item'] {
     min-width: 0;
     flex: 0 0 100%;
   }
 
-  [data-slot=carousel-previous],
-  [data-slot=carousel-next] {
+  [data-slot='carousel-previous'],
+  [data-slot='carousel-next'] {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -399,8 +406,8 @@
     touch-action: manipulation;
   }
 
-  [data-slot=carousel-previous]:disabled,
-  [data-slot=carousel-next]:disabled {
+  [data-slot='carousel-previous']:disabled,
+  [data-slot='carousel-next']:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }

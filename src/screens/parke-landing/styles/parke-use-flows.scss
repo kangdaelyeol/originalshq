@@ -40,7 +40,7 @@
     }
   }
 
-  .pd-choice-tabs [role=tab] {
+  .pd-choice-tabs [role='tab'] {
     min-height: 52px;
     height: auto;
     white-space: normal;
@@ -202,7 +202,7 @@
       cursor: pointer;
     }
 
-    > button[aria-pressed=true] {
+    > button[aria-pressed='true'] {
       background: #205fdb;
       border-color: #205fdb;
       color: #fff;
@@ -244,7 +244,9 @@
       font-size: 19px;
       line-height: 1.5;
       cursor: pointer;
-      transition: background 0.2s, color 0.2s;
+      transition:
+        background 0.2s,
+        color 0.2s;
     }
 
     > button > span {
@@ -253,12 +255,12 @@
       font-variant-numeric: tabular-nums;
     }
 
-    > button[aria-pressed=true] {
+    > button[aria-pressed='true'] {
       background: #173862;
       color: white;
     }
 
-    > button[aria-pressed=true] > span {
+    > button[aria-pressed='true'] > span {
       color: #b4d5ff;
     }
   }
@@ -303,7 +305,7 @@
       top: 15%;
       background: #9ed4ff;
       box-shadow: 0 0 22px 3px #649dff8a;
-      animation: pd-scan 3s ease-in-out infinite;
+      animation: pd-scan 3s cubic-bezier(0.075, 0.82, 0.165, 1) infinite;
     }
   }
 
@@ -685,7 +687,7 @@
       border-radius: 15px;
     }
 
-    .pd-choice-tabs [role=tab] {
+    .pd-choice-tabs [role='tab'] {
       font-size: 15px;
       padding: 11px 6px;
       min-height: 50px;
@@ -847,7 +849,7 @@
       padding-inline: 12px;
     }
 
-    .pd-choice-tabs [role=tab] {
+    .pd-choice-tabs [role='tab'] {
       font-size: 14px;
     }
 

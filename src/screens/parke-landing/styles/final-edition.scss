@@ -2,10 +2,10 @@
 
 .parke-page {
   .final-edition {
-    --parke-ink:#141c24;
-    --parke-paper:#edf1f4;
-    --parke-blue:#a9ccee;
-    --parke-rule:#8a9ca62c;
+    --parke-ink: #141c24;
+    --parke-paper: #edf1f4;
+    --parke-blue: #a9ccee;
+    --parke-rule: #8a9ca62c;
 
     h1,
     h2,
@@ -72,7 +72,7 @@
       margin-top: 18px;
     }
 
-    [data-slot=table-container] {
+    [data-slot='table-container'] {
       margin-top: 35px;
     }
 
@@ -393,11 +393,11 @@
     max-width: 880px;
   }
 
-  .final-details [data-slot=accordion-item] {
+  .final-details [data-slot='accordion-item'] {
     border-color: #a8b8c575;
   }
 
-  .final-details [data-slot=accordion-trigger]:focus-visible {
+  .final-details [data-slot='accordion-trigger']:focus-visible {
     outline: 2px solid #416889;
     outline-offset: 5px;
   }
@@ -435,7 +435,11 @@
     width: 100%;
     height: auto;
     display: block;
-    mask-image: radial-gradient(ellipse 70% 75% at 50% 52%, #000 35%, transparent 77%);
+    mask-image: radial-gradient(
+      ellipse 70% 75% at 50% 52%,
+      #000 35%,
+      transparent 77%
+    );
   }
 
   .offer-portrait figcaption {
@@ -746,11 +750,11 @@
       }
 
       td:nth-child(2):before {
-        content: "연락 대상을 바꾸는 방법";
+        content: '연락 대상을 바꾸는 방법';
       }
 
       td:nth-child(3):before {
-        content: "사용할 때 확인할 점";
+        content: '사용할 때 확인할 점';
       }
 
       .parke-row {

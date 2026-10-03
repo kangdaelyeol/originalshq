@@ -1,9 +1,5 @@
-import {
-  AMBIENT_HEIGHT,
-  AMBIENT_WIDTH,
-  HERO_COPY,
-  useHeroViewModel,
-} from '../view-model'
+import { AMBIENT_HEIGHT, AMBIENT_WIDTH, useHeroViewModel } from '../view-model'
+import { HERO_COPY } from '../config'
 
 /** Markup only — the scroll sequence, copy timing and intro live in
  * useHeroViewModel. */

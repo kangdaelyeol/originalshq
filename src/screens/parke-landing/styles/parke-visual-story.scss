@@ -490,7 +490,7 @@
     gap: 20px;
     padding: 20px 0;
 
-    [data-slot^=carousel-] {
+    [data-slot^='carousel-'] {
       position: static;
       inset: auto;
       transform: none;
@@ -539,13 +539,13 @@
       color: #7898c3;
     }
 
-    > button[aria-pressed=true] {
+    > button[aria-pressed='true'] {
       background: #255cbb;
       border-color: #79acff;
       color: #fff;
     }
 
-    > button[aria-pressed=true] > span {
+    > button[aria-pressed='true'] > span {
       color: #d0e5ff;
     }
   }
@@ -568,7 +568,7 @@
     }
 
     &:before {
-      content: "";
+      content: '';
       position: absolute;
       inset: 10%;
       border: 1px solid #8de4ff;
@@ -582,7 +582,9 @@
       right: 4%;
       height: 5px;
       background: #f0ffff;
-      box-shadow: 0 0 9px 3px #60d1ff, 0 0 24px 8px #2488ff;
+      box-shadow:
+        0 0 9px 3px #60d1ff,
+        0 0 24px 8px #2488ff;
       animation: pv-scan 3s ease-in-out infinite;
     }
   }
@@ -622,7 +624,9 @@
     overflow: hidden;
     border: 1px solid #88ceff;
     border-radius: 7px;
-    box-shadow: 0 0 0 9px #1c406a, 0 0 40px #247bf346;
+    box-shadow:
+      0 0 0 9px #1c406a,
+      0 0 40px #247bf346;
     background: #172332;
 
     > img {
@@ -682,7 +686,9 @@
     top: 12%;
     height: 5px;
     background: #fff;
-    box-shadow: 0 0 7px 3px #96eaff, 0 0 23px 9px #168aff;
+    box-shadow:
+      0 0 7px 3px #96eaff,
+      0 0 23px 9px #168aff;
     animation: pv-scan 3s ease-in-out infinite;
   }
 
@@ -756,11 +762,14 @@
   }
 
   @keyframes pv-refresh {
-    0%, 20%, 100% {
+    0%,
+    20%,
+    100% {
       transform: rotate(0);
     }
 
-    50%, 80% {
+    50%,
+    80% {
       transform: rotate(180deg);
     }
   }
@@ -777,24 +786,28 @@
       opacity: 0.9;
     }
 
-    80%, 100% {
+    80%,
+    100% {
       transform: scale(2);
       opacity: 0;
     }
   }
 
   @keyframes pv-recipient-confirm {
-    0%, 15% {
+    0%,
+    15% {
       opacity: 0.6;
     }
 
-    35%, 100% {
+    35%,
+    100% {
       opacity: 1;
     }
   }
 
   @keyframes pv-qr-fill {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0.3;
     }
 
@@ -804,7 +817,8 @@
   }
 
   @keyframes pv-scan {
-    0%, 100% {
+    0%,
+    100% {
       top: 12%;
       opacity: 0.6;
     }
