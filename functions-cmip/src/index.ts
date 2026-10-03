@@ -498,7 +498,11 @@ export const debugMetaInsightRaw = onRequest(
         )
         response.status(200).send(raw)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -905,7 +909,11 @@ export const debugGoogleCampaignInsightRaw = onRequest(
         )
         response.status(200).send(raw)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -944,7 +952,11 @@ export const debugGoogleAdGroupInsightRaw = onRequest(
         )
         response.status(200).send(raw)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -977,24 +989,20 @@ export const syncGoogleInsights = onRequest(
         sendError(response, 405, 'Method Not Allowed')
         return
       }
-      const {
-        startDate,
-        endDate,
-        brandId,
-        customerId,
-        loginCustomerId,
-      } = (request.body ?? {}) as {
-        startDate?: string
-        endDate?: string
-        brandId?: string
-        customerId?: string
-        loginCustomerId?: string
-      }
+      const { startDate, endDate, brandId, customerId, loginCustomerId } =
+        (request.body ?? {}) as {
+          startDate?: string
+          endDate?: string
+          brandId?: string
+          customerId?: string
+          loginCustomerId?: string
+        }
       const dateEnd = endDate || todayISO()
       const dateStart = startDate || addDays(dateEnd, -GOOGLE_SYNC_WINDOW_DAYS)
       const syncBrandId = brandId || GOOGLE_SYNC_BRAND_ID
       const syncCustomerId = customerId || GOOGLE_SYNC_CUSTOMER_ID
-      const syncLoginCustomerId = loginCustomerId || GOOGLE_SYNC_LOGIN_CUSTOMER_ID
+      const syncLoginCustomerId =
+        loginCustomerId || GOOGLE_SYNC_LOGIN_CUSTOMER_ID
 
       try {
         const [campaignResult, adGroupResult] = await Promise.all([
@@ -1027,7 +1035,9 @@ export const syncGoogleInsights = onRequest(
         sendError(
           response,
           500,
-          err instanceof Error ? err.message : 'Google Ads 인사이트 동기화 실패',
+          err instanceof Error
+            ? err.message
+            : 'Google Ads 인사이트 동기화 실패',
         )
       }
     })
@@ -1434,7 +1444,11 @@ export const getCafe24AuthUrl = onRequest(
         )
         response.status(200).send({ url })
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -1454,16 +1468,24 @@ export const cafe24OauthCallback = onRequest(
         return
       }
 
-      const { code, state, error, error_description: errorDescription } =
-        request.query as {
-          code?: string
-          state?: string
-          error?: string
-          error_description?: string
-        }
+      const {
+        code,
+        state,
+        error,
+        error_description: errorDescription,
+      } = request.query as {
+        code?: string
+        state?: string
+        error?: string
+        error_description?: string
+      }
 
       if (error) {
-        sendError(response, 400, `Cafe24 OAuth Error: ${errorDescription || error}`)
+        sendError(
+          response,
+          400,
+          `Cafe24 OAuth Error: ${errorDescription || error}`,
+        )
         return
       }
       if (!code) {
@@ -1555,7 +1577,11 @@ export const debugCafe24OrdersRaw = onRequest(
         )
         response.status(200).send(raw)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },
@@ -1594,7 +1620,11 @@ export const debugCafe24RefundsRaw = onRequest(
         )
         response.status(200).send(raw)
       } catch (err) {
-        sendError(response, 500, err instanceof Error ? err.message : '서버 오류')
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '서버 오류',
+        )
       }
     })
   },

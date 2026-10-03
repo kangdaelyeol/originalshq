@@ -7,6 +7,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
+import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   generateEventId,
   generateExternalId,
@@ -40,6 +41,9 @@ setGlobalOptions({ maxInstances: 10 })
 
 const metaPixelId = defineSecret('META_PIXEL_ID')
 const metaAccessToken = defineSecret('META_ACCESS_TOKEN')
+// cmip 코드베이스와 같은 프로젝트(Secret Manager)의 시크릿을 같은 이름으로 쓴다.
+const ga4MeasurementId = defineSecret('GA4_MEASUREMENT_ID')
+const ga4ApiSecret = defineSecret('GA4_API_SECRET')
 
 // ────────────────────────────────
 // getAllLeads
@@ -183,6 +187,11 @@ export const createLeadFromContact = onRequest((request, response) => {
         consultations: [],
         purchases: [],
         externalId: generateExternalId(digitsOnlyPhone),
+        // 쿠키가 없으면(null/빈 값) 필드 자체를 뺀다 — contactLead가 없을 때
+        // externalId로 대체한다.
+        ...(input.ga4ClientId?.trim()
+          ? { ga4ClientId: input.ga4ClientId.trim() }
+          : {}),
       }
 
       const docRef = await db.collection('lead').add(leadData)
@@ -202,7 +211,7 @@ export const createLeadFromContact = onRequest((request, response) => {
 // 두지 않는다.
 // ────────────────────────────────
 export const contactLead = onRequest(
-  { secrets: [metaPixelId, metaAccessToken] },
+  { secrets: [metaPixelId, metaAccessToken, ga4MeasurementId, ga4ApiSecret] },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -278,6 +287,33 @@ export const contactLead = onRequest(
           externalId: lead.externalId ?? '',
         })
 
+        // GA4 — 기기별로 정해둔 이벤트가 있을 때만(지금은 '기타'만) 보낸다.
+        // Meta CAPI 성공과 저장까지 끝난 뒤라, 여기서 실패해도 상담 등록
+        // 자체는 되돌리지 않고 로그만 남긴다.
+        const ga4Event = GA4_CONSULTATION_EVENTS[device]
+        let ga4Result: Awaited<ReturnType<typeof sendGa4Event>> | null = null
+        if (ga4Event) {
+          try {
+            ga4Result = await sendGa4Event({
+              measurementId: ga4MeasurementId.value(),
+              apiSecret: ga4ApiSecret.value(),
+              // 문의 폼이 보낸 _ga 쿠키 값(ga4ClientId)이 있으면 그걸 써서 이
+              // 고객의 웹 방문(광고 유입 세션)에 이벤트를 붙인다. 없으면(쿠키
+              // 없음, 수기 등록, 예전 리드) 고객별로 고정된 externalId(전화번호
+              // 해시)로 대신한다 — 같은 고객끼리는 묶이지만 유입 경로는 없다.
+              clientId:
+                lead.ga4ClientId ??
+                lead.externalId ??
+                generateExternalId(lead.ph),
+              name: ga4Event.name,
+              params: { currency: 'KRW', value: ga4Event.value },
+              eventTimeMs,
+            })
+          } catch (error) {
+            logger.error('GA4 전송 중 오류:', error)
+          }
+        }
+
         logger.info('contactLead 성공:', {
           leadId: id,
           recordId: record.id,
@@ -287,6 +323,7 @@ export const contactLead = onRequest(
           eventId: capiResult.eventId,
           externalId: lead.externalId,
           testEventCode: testEventCode ?? null,
+          ga4: ga4Result,
         })
 
         response.status(200).send({

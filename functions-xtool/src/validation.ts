@@ -43,6 +43,15 @@ export const validateCreateLead = (
     return { ok: false, error: 'em must be a valid email' }
   }
 
+  // ga4ClientId는 선택값 — 브라우저에 _ga 쿠키가 없으면 null로 온다.
+  if (
+    body.ga4ClientId !== undefined &&
+    body.ga4ClientId !== null &&
+    typeof body.ga4ClientId !== 'string'
+  ) {
+    return { ok: false, error: 'ga4ClientId must be a string or null' }
+  }
+
   const digitsOnlyPhone = (body.ph as string).replace(/\D/g, '')
 
   if (!digitsOnlyPhone) {

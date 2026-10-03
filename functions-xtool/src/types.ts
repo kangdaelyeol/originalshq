@@ -73,6 +73,10 @@ export type Lead = {
   consultations: ConsultationRecord[]
   purchases: PurchaseRecord[]
   externalId?: string
+  /** 문의 폼이 보낸 GA4 client_id(_ga 쿠키 값에서 "GA1.1."을 뗀 부분). GA4
+   * 이벤트를 이 고객의 웹 방문(광고 유입 세션)과 연결하는 데 쓴다. 쿠키가
+   * 없었거나 수기 등록한 리드, 이 필드가 생기기 전의 리드엔 없다. */
+  ga4ClientId?: string
 }
 
 export type CreateLeadInput = {
@@ -91,6 +95,8 @@ export type CreateLeadInput = {
   createdAt: number
   /** 최초 접수 기록의 device로 쓰인다 — optional(안 보내는 호출부도 있음). */
   device?: Device
+  /** 문의 폼에서만 온다. 쿠키가 없으면 null로 올 수 있다. */
+  ga4ClientId?: string | null
 }
 
 export type ValidationResponse<T> =
