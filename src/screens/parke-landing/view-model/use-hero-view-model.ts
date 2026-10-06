@@ -38,12 +38,15 @@ const progressAt = (frame: number) => (frame / (FRAME_COUNT - 1)) * 0.96
  * purpose: the move begins while the image is still resolving, which reads
  * as one gesture instead of fade-then-wait-then-scroll. */
 const REVEAL_MS = 520
+
 /** Last frame with the opening copy still fully opaque — see OPENING_FADE_S. */
 const INTRO_END_FRAME = Math.max(1, Math.floor(OPENING_FADE_S * FPS))
+
 /** How long that scroll takes. Not tied to the sequence's own 24fps — played
  * at film rate the opening sits still for too long before anything reads.
  * Set against INTRO_END_FRAME's distance to leave at roughly 670px/s. */
 const INTRO_MS = 4100
+
 /** Leaves at speed and settles, rather than easing in from a standstill: an
  * ease-in spends the first second covering ~20px, which looks like a stall. */
 const easeOut = (t: number) => 1 - (1 - t) ** 3
@@ -221,6 +224,7 @@ export const useHeroViewModel = (still: boolean) => {
       distance = Math.max(1, bounds.height - stableHeight)
       host.dataset.scrollDistance = String(Math.round(distance))
     }
+
     /* Intro playback. Appended after measure() has run, so `start` and
      * `distance` are the same numbers sample() maps scroll onto. */
     const endIntro = () => {

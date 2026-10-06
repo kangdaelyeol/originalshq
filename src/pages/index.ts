@@ -1,3 +1,6 @@
 export * from './admin-page'
 export * from './base-page'
 export * from './xtool-page'
+export * from './dev-page'
+export * from './cmip-page'
+export * from './parke-page'

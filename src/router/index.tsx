@@ -1,11 +1,11 @@
-import { AdminPage, BasePage, XtoolPage } from '@/pages'
-import { CmipPage } from '@/pages/cmip-page'
+import { AdminPage, BasePage, XtoolPage, CmipPage, DevPage } from '@/pages'
+import { createBrowserRouter } from 'react-router-dom'
+import { Dev } from '@/screens/dev'
 import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
 import ParkeScreen from '@/screens/parke'
 import PrivacyScreen from '@/screens/privacy'
 import XtoolLeadManager from '@/screens/xtool-lead-manager'
-import { createBrowserRouter } from 'react-router-dom'
 
 export const router = createBrowserRouter([
   {
@@ -54,5 +54,10 @@ export const router = createBrowserRouter([
     path: '/cmip',
     element: <CmipPage />,
     children: [{ index: true, element: <CmipScreen /> }],
+  },
+  {
+    path: '/dev',
+    element: <DevPage />,
+    children: [{ index: true, element: <Dev /> }],
   },
 ])
