@@ -76,7 +76,7 @@ const ROAS_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-    note: 'ROAS 계산용 온라인 매출 = 카페24 매출액(관리자 화면 순매출, 배송비 포함) - 배송비 - 순 적립금 사용액. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 유입된 매출이 아니라 이미 쌓여있던 포인트를 쓴 것뿐이라 ROAS에서는 둘 다 빼서 봅니다. 카페24 화면과 똑같은 숫자는 아래 "카페24 온라인 매출" 표의 "카페24 매출액"에 있습니다.',
+    note: 'ROAS 계산용 온라인 매출 = 최종 카페24 매출액(스마트스토어 환불까지 뺀 순매출, 배송비 포함) - 배송비 - 순 적립금 사용액. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 유입된 매출이 아니라 이미 쌓여있던 포인트를 쓴 것뿐이라 ROAS에서는 둘 다 빼서 봅니다. 카페24 화면과 같은 기준의 숫자는 아래 "카페24 온라인 매출" 표의 "카페24 매출액"에, 스마트스토어 환불까지 뺀 숫자는 "최종 카페24 매출액"에 있습니다.',
   },
   {
     key: 'offlineRevenue',
@@ -120,8 +120,10 @@ const OFFLINE_FIELDS: readonly RoasField[] = [
 // "카페24 온라인 매출" 전용 표 — 팀 전체가 보는 표라 결제/환불 원본부터
 // ROAS용 순매출까지 계산 과정을 전부 순서대로 보여준다. 순서는 "매출액
 // (ROAS용) → 총매출(할인 반영 전) → 상품할인 → 쿠폰할인 → 카페24 매출액
-// (할인·환불 반영 후 순매출) → 배송비 → 적립금 사용 → 총 결제액(할인 반영
+// (화면 기준) → 최종 카페24 매출액(할인·환불 반영 후 순매출) → 배송비 → 적립금 사용 → 총 결제액(할인 반영
 // 전 원본) → 환불액" — 사용자가 보기 편한 순서로 직접 지정했다(9/30).
+// 10/8에 카페24 통계 대조용으로 "상품 구매금액"(총 결제액 앞)과 "스마트스토어
+// 환불"(환불액 뒤) 두 컬럼을 추가했다.
 //
 // 환불액은 카페24 화면에 실제로 잡히는 환불(refundAmount)과 NCHECKOUT(네이버
 // 페이) 등 폴백 환불(unrecordedRefundAmount)을 예전엔 따로 노출했는데,
@@ -135,7 +137,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-    note: '카페24 매출액 - (배송비 + 적립금 사용액)',
+    note: '최종 카페24 매출액 - (배송비 + 적립금 사용액)',
   },
   {
     key: 'onlineTotalRevenue',
@@ -144,7 +146,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
       m.onlineRevenueCafe24 + m.onlineCouponDiscount + m.onlineItemDiscount,
     format: won,
     formatCompact: won,
-    note: '카페24 매출액 + 쿠폰할인 + 상품할인',
+    note: '최종 카페24 매출액 + 쿠폰할인 + 상품할인',
   },
   {
     key: 'onlineItemDiscount',
@@ -161,13 +163,25 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     format: won,
     formatCompact: won,
   },
+  // 카페24 매출액 — 카페24 관리자 화면이 보여주는 기준. 그 화면은 스마트
+  // 스토어·네이버페이 환불(카페24 환불 기록에 없는 몫)을 모르기 때문에, 아래
+  // "최종 카페24 매출액"에 그 환불을 다시 더해야 화면 숫자와 같아진다(10/8
+  // 요청으로 두 컬럼으로 나눔 — 예전엔 아래 컬럼 하나가 "카페24 매출액"이었다).
+  {
+    key: 'onlineRevenueCafe24Screen',
+    label: '카페24 매출액',
+    getValue: (m) => m.onlineRevenueCafe24 + m.onlineUnrecordedRefundAmount,
+    format: won,
+    formatCompact: won,
+    note: '카페24 관리자 화면 기준 매출액. 스마트스토어·네이버페이 환불은 카페24 통계에 잡히지 않아 여기서는 빠지지 않음. 최종 카페24 매출액 + 스마트스토어 환불',
+  },
   {
     key: 'onlineRevenueCafe24',
-    label: '카페24 매출액',
+    label: '최종 카페24 매출액',
     getValue: (m) => m.onlineRevenueCafe24,
     format: won,
     formatCompact: won,
-    note: '총 결제액 - 상품할인 - 환불액(배송비·적립금 포함, 즉 실제로 나간 돈을 모두 제외)',
+    note: '총 결제액 - 상품할인 - 환불액(배송비·적립금 포함, 스마트스토어 환불까지 실제로 나간 돈을 모두 제외). 카페24 매출액 - 스마트스토어 환불',
   },
   {
     key: 'onlineShippingFee',
@@ -184,13 +198,27 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     formatCompact: won,
     note: '카페24 순 적립금 사용액',
   },
+  // 상품 구매금액 — 카페24 통계의 "상품구매금액"과 맞춘 값. 총 결제액은
+  // 상품가에 배송비를 더하고 쿠폰을 뺀 금액이라, 거꾸로 배송비를 빼고 쿠폰을
+  // 더하면 상품가 합계가 나온다(1월 대조: 51,541,550 - 60,000 + 150,000 =
+  // 51,631,550, 카페24 통계와 일치). 서버 응답에 따로 없는 값이라 여기서
+  // 계산한다.
+  {
+    key: 'onlineProductAmount',
+    label: '상품 구매금액',
+    getValue: (m) =>
+      m.onlineGrossPayment - m.onlineShippingFee + m.onlineCouponDiscount,
+    format: won,
+    formatCompact: won,
+    note: '상품 가격 합계(배송비 제외, 쿠폰·상품할인 차감 전). 총 주문 금액 - 배송비 + 쿠폰할인. 카페24 통계의 "상품구매금액"',
+  },
   {
     key: 'onlineGrossPayment',
-    label: '총 결제액',
+    label: '총 주문 금액',
     getValue: (m) => m.onlineGrossPayment,
     format: won,
     formatCompact: won,
-    note: '결제 금액으로 귀속된 금액 합계(배송비, 적립금 포함 / 상품할인, 환불 반영 전). 카페24 관리자 "총결제액"과 같음',
+    note: '귀속 주문금액 합계(배송비, 적립금 포함 / 상품할인, 환불 반영 전). 카페24 통계의 "총결제액"',
   },
   {
     key: 'onlineTotalRefund',
@@ -199,6 +227,19 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     format: won,
     formatCompact: won,
     note: '네이버페이와 같은 환불건은 카페24 통계시스템에서 집계되지 않음. 따라서 통계에서 잡히는 환불과 카페24에서 안 잡히는 환불을 합친 값',
+  },
+  // 위 환불액 중 카페24 환불 기록(/admin/refunds)에 없는 몫만 따로 — 스마트
+  // 스토어(shopn)·네이버페이(NCHECKOUT)처럼 네이버 쪽에서 환불이 처리되는
+  // 주문이 여기 해당한다. 한때 환불액 한 컬럼으로 합쳤었는데(위 주석),
+  // 카페24 통계와 대조할 때 "얼마가 카페24엔 안 보이는 환불인지"가 필요해서
+  // 다시 따로 보여준다. 환불액에 이미 포함된 값이라 더하면 안 된다.
+  {
+    key: 'onlineUnrecordedRefund',
+    label: '스마트스토어 환불',
+    getValue: (m) => m.onlineUnrecordedRefundAmount,
+    format: won,
+    formatCompact: won,
+    note: '환불액 중 카페24 통계에 잡히지 않는 몫(스마트스토어·네이버페이 등 네이버 쪽에서 처리된 환불). 환불액에 이미 포함된 금액. 환불액 - 이 값 = 카페24 통계의 환불 금액',
   },
 ]
 
