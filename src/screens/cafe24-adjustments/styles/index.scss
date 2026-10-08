@@ -31,14 +31,6 @@
       font-weight: 600;
       margin: 0 0 8px;
     }
-
-    p {
-      margin: 0;
-      max-width: 620px;
-      font-size: 14px;
-      line-height: 1.6;
-      color: v.$color-text-muted;
-    }
   }
 
   &__back {
@@ -46,9 +38,10 @@
     font-size: 13px;
     color: v.$color-accent;
     text-decoration: none;
+    opacity: 0.8;
 
     &:hover {
-      text-decoration: underline;
+      opacity: 1;
     }
   }
 

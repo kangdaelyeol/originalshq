@@ -22,7 +22,10 @@ const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
 ]
 
 const num2 = (v: number): string =>
-  v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  v.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
 const pct2 = (v: number): string => `${num2(v)}%`
 
@@ -46,7 +49,13 @@ interface RoasField {
 // 쿠폰할인/할부이자 같은 세부 항목은 아래 OFFLINE_FIELDS/ONLINE_FIELDS의
 // 전용 표로 옮겼다).
 const ROAS_FIELDS: readonly RoasField[] = [
-  { key: 'roas', label: 'ROAS', getValue: (m) => m.roas, format: pct2, formatCompact: pct2 },
+  {
+    key: 'roas',
+    label: 'ROAS',
+    getValue: (m) => m.roas,
+    format: pct2,
+    formatCompact: pct2,
+  },
   {
     key: 'totalRevenue',
     label: '총 매출',
@@ -54,7 +63,13 @@ const ROAS_FIELDS: readonly RoasField[] = [
     format: won,
     formatCompact: won,
   },
-  { key: 'spend', label: '광고비', getValue: (m) => m.spend, format: won, formatCompact: won },
+  {
+    key: 'spend',
+    label: '광고비',
+    getValue: (m) => m.spend,
+    format: won,
+    formatCompact: won,
+  },
   {
     key: 'onlineRevenue',
     label: '온라인 매출',
@@ -120,7 +135,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenue,
     format: won,
     formatCompact: won,
-    note: 'ROAS 계산에 쓰는 값 — 카페24 매출액(배송비 포함)에서 배송비와 순 적립금 사용액(적립금 결제 - 환불된 적립금)을 뺐습니다. 배송비는 택배사로 나가는 실비 통과항목, 적립금 결제는 광고로 새로 들어온 매출이 아니라서 ROAS 성과에서는 둘 다 제외합니다.',
+    note: '카페24 매출액 - (배송비 + 적립금 사용액)',
   },
   {
     key: 'onlineTotalRevenue',
@@ -129,7 +144,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
       m.onlineRevenueCafe24 + m.onlineCouponDiscount + m.onlineItemDiscount,
     format: won,
     formatCompact: won,
-    note: '카페24 매출액 + 쿠폰할인 + 상품할인 — 카페24 매출액 계산에서 뺀 할인 항목들을 다시 더한 총액입니다(배송비·적립금은 카페24 매출액에 이미 포함돼 있어 안 더함).',
+    note: '카페24 매출액 + 쿠폰할인 + 상품할인',
   },
   {
     key: 'onlineItemDiscount',
@@ -137,7 +152,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineItemDiscount,
     format: won,
     formatCompact: won,
-    note: '쿠폰과 별도로 적용된 상품 할인 금액입니다(구조화된 할인 필드에는 안 잡히고 상품구매금액과 실결제금액의 차이로만 드러남). 처음엔 스마트스토어 채널에서만 발견했는데, 자체몰/모바일 채널에서도 같은 패턴이 나와 전 채널로 넓혔습니다.',
+    note: '기타 상품 할인 금액(시즌 한정 쿠폰 등)',
   },
   {
     key: 'onlineCouponDiscount',
@@ -152,7 +167,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRevenueCafe24,
     format: won,
     formatCompact: won,
-    note: '순매출 = 총 결제액 - 상품할인 - 환불액(배송비·적립금 포함, 실제로 나간 돈은 다 뺀 값). 카페24 화면에 안 잡히는 폴백 환불(네이버페이 등)까지 반영하기 때문에, 카페24 관리자 화면 숫자보다 그만큼 낮게 나올 수 있습니다 — 화면 숫자를 그대로 복제하기보다 실제 순매출에 더 가깝게 계산합니다.',
+    note: '총 결제액 - 상품할인 - 환불액(배송비·적립금 포함, 즉 실제로 나간 돈을 모두 제외)',
   },
   {
     key: 'onlineShippingFee',
@@ -167,7 +182,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlinePointsSpent - m.onlinePointsRefunded,
     format: won,
     formatCompact: won,
-    note: '참고용 — 카페24 매출액에 이미 포함된 적립금 결제 금액에서, 나중에 환불된 적립금(취소 등으로 되돌아간 금액)을 뺀 순 적립금 사용액입니다.',
+    note: '카페24 순 적립금 사용액',
   },
   {
     key: 'onlineGrossPayment',
@@ -175,7 +190,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineGrossPayment,
     format: won,
     formatCompact: won,
-    note: '그 기간에 결제로 귀속된 금액 합계(배송비·적립금 포함, 상품할인·환불 반영 전). 카페24 관리자 "총결제액" 컬럼과 맞춘 값입니다(3/12 매출 대조로 확인).',
+    note: '결제 금액으로 귀속된 금액 합계(배송비, 적립금 포함 / 상품할인, 환불 반영 전). 카페24 관리자 "총결제액"과 같음',
   },
   {
     key: 'onlineTotalRefund',
@@ -183,7 +198,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRefundAmount + m.onlineUnrecordedRefundAmount,
     format: won,
     formatCompact: won,
-    note: '그 기간에 환불 완료 처리된 금액 합계(적립금/예치금 환불분 포함) — 카페24 관리자 화면에 실제로 잡히는 환불과 NCHECKOUT(네이버페이) 등 화면에 안 잡히는 폴백 환불을 합친 값입니다(통계적으로 어차피 같은 "환불"이라 한 컬럼으로 합쳤습니다).',
+    note: '네이버페이와 같은 환불건은 카페24 통계시스템에서 집계되지 않음. 따라서 통계에서 잡히는 환불과 카페24에서 안 잡히는 환불을 합친 값',
   },
 ]
 
@@ -315,7 +330,11 @@ function SortableRoasFieldHeader({
 }) {
   return (
     <>
-      <button type="button" className="channel-insight__sort-head" onClick={onSort}>
+      <button
+        type="button"
+        className="channel-insight__sort-head"
+        onClick={onSort}
+      >
         {field.label}
         <SortArrows active={active} dir={dir} />
       </button>
@@ -494,8 +513,7 @@ function RoasTrendChart({
                   paintOrder="stroke"
                   className={`channel-insight__roas-chart-delta is-${delta.dir}`}
                 >
-                  {DELTA_ARROW[delta.dir]}{' '}
-                  {delta.delta >= 0 ? '+' : '-'}
+                  {DELTA_ARROW[delta.dir]} {delta.delta >= 0 ? '+' : '-'}
                   {Math.abs(delta.delta).toFixed(1)}%p
                 </text>
               )}
@@ -561,7 +579,10 @@ const PERIOD_SORT_KEY = 'period'
  * 다른 컬럼을 처음 누르면 "큰 값부터"가 보통 더 유용해서 내림차순을 기본으로
  * 한다(channel-insight.tsx의 toggleSort와 같은 규칙). 합계/평균 행은 호출부가
  * 항상 별도로 그려서(rows에 안 섞여 들어옴) 정렬 대상에서 자동으로 빠진다. */
-function useRoasTableSort(rows: readonly RoasRow[], fields: readonly RoasField[]) {
+function useRoasTableSort(
+  rows: readonly RoasRow[],
+  fields: readonly RoasField[],
+) {
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({
     key: PERIOD_SORT_KEY,
     dir: 'asc',
@@ -671,8 +692,11 @@ function RoasSubTable({
   onGroupingChange: (grouping: RoasGrouping) => void
 }) {
   const { sort, toggleSort, sortedRows } = useRoasTableSort(rows, fields)
-  const { visibleKeys, toggle: toggleMetric, visibleFields } =
-    useFieldVisibility(fields)
+  const {
+    visibleKeys,
+    toggle: toggleMetric,
+    visibleFields,
+  } = useFieldVisibility(fields)
   const [open, setOpen] = useState(true)
 
   return (
@@ -764,7 +788,9 @@ function RoasSubTable({
                   <tr className="channel-insight__table-row--average">
                     <td>평균</td>
                     {visibleFields.map((f) => (
-                      <td key={f.key}>{f.formatCompact(f.getValue(average))}</td>
+                      <td key={f.key}>
+                        {f.formatCompact(f.getValue(average))}
+                      </td>
                     ))}
                   </tr>
                 </tbody>
@@ -808,8 +834,11 @@ export function RoasPanel({
   // 지표 표시/숨김 — "기간별 추이" 표 전용이다(9/30 요청 전에는 "ROAS 요약"
   // 카드까지 같이 숨겼는데, 요약 카드는 항상 전체를 보여주는 쪽으로
   // 바꿨다 — 아래 ROAS 요약 section 참고).
-  const { visibleKeys, toggle: toggleMetric, visibleFields } =
-    useFieldVisibility(ROAS_FIELDS)
+  const {
+    visibleKeys,
+    toggle: toggleMetric,
+    visibleFields,
+  } = useFieldVisibility(ROAS_FIELDS)
 
   // "기간별 추이" 표 전용 정렬 — RoasSubTable과 같은 훅을 쓰지만, 필드
   // 목록은 ROAS_FIELDS 전체로 둔다(지금 숨겨진 컬럼 기준으로 정렬 중이었다가
@@ -821,8 +850,11 @@ export function RoasPanel({
   // 먼저 호출해야 한다(리액트 훅 규칙 — 렌더마다 훅 호출 순서/개수가
   // 같아야 하는데, return 뒤에 두면 combinedInsight가 null인 렌더에서는
   // 이 훅 호출 자체가 건너뛰어져 버린다).
-  const { sort: trendSort, toggleSort: toggleTrendSort, sortedRows: sortedTrendRows } =
-    useRoasTableSort(rows, ROAS_FIELDS)
+  const {
+    sort: trendSort,
+    toggleSort: toggleTrendSort,
+    sortedRows: sortedTrendRows,
+  } = useRoasTableSort(rows, ROAS_FIELDS)
 
   // "ROAS 요약"/"기간별 추이" 섹션 접기·펼치기(9/30 요청) — 오프라인 매출/
   // 카페24 온라인 매출은 RoasSubTable이 각자 자기 인스턴스 안에서 따로

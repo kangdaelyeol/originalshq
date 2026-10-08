@@ -36,13 +36,9 @@ export default function Cafe24Adjustments() {
       <header className="cafe24-adjust__header">
         <div>
           <h1>Cafe24 환불 수동 보정</h1>
-          <p>
-            카페24 API에 기록이 남지 않는 환불 변동을 직접 등록합니다. 등록한
-            금액은 그 날짜의 환불 금액에 더해지고, 순매출에서 그만큼 빠집니다.
-          </p>
         </div>
         <Link to="/cmip" className="cafe24-adjust__back">
-          CMIP으로 돌아가기
+          CMIP
         </Link>
       </header>
 
@@ -137,7 +133,9 @@ export default function Cafe24Adjustments() {
           {adjustments.length > 0 && (
             <span>
               합계:{' '}
-              {netTotal === 0 ? '0원 (기간 합계 영향 없음)' : effectLabel(netTotal)}
+              {netTotal === 0
+                ? '0원 (기간 합계 영향 없음)'
+                : effectLabel(netTotal)}
             </span>
           )}
         </div>
