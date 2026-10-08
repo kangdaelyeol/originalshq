@@ -169,7 +169,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
   // 요청으로 두 컬럼으로 나눔 — 예전엔 아래 컬럼 하나가 "카페24 매출액"이었다).
   {
     key: 'onlineRevenueCafe24Screen',
-    label: '카페24 매출액',
+    label: '카페24 통계 매출액',
     getValue: (m) => m.onlineRevenueCafe24 + m.onlineUnrecordedRefundAmount,
     format: won,
     formatCompact: won,
@@ -177,7 +177,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
   },
   {
     key: 'onlineRevenueCafe24',
-    label: '최종 카페24 매출액',
+    label: '최종 카페24 매출액(카페24 매출액 + 누락건)',
     getValue: (m) => m.onlineRevenueCafe24,
     format: won,
     formatCompact: won,
@@ -222,7 +222,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
   },
   {
     key: 'onlineTotalRefund',
-    label: '환불액',
+    label: '총 환불액',
     getValue: (m) => m.onlineRefundAmount + m.onlineUnrecordedRefundAmount,
     format: won,
     formatCompact: won,
@@ -241,6 +241,72 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     formatCompact: won,
     note: '환불액 중 카페24 통계에 잡히지 않는 몫(스마트스토어·네이버페이 등 네이버 쪽에서 처리된 환불). 환불액에 이미 포함된 금액. 환불액 - 이 값 = 카페24 통계의 환불 금액',
   },
+]
+
+/** "카페24 온라인 매출" 표의 컬럼 하나 — 평소엔 대표 지표(representative)
+ * 하나만 보여주고, members가 있으면 헤더의 펼침 버튼으로 그 칸 안에 관련
+ * 지표를 전부 세로로 쌓아 보여준다(10/8 요청). 컬럼이 14개까지 늘어나 한눈에
+ * 안 들어와서, 성격이 같은 것끼리(매출/환불/할인) 묶었다. 정렬과 "지표
+ * 표시" 토글은 컬럼 단위(대표 지표 기준)로 동작한다. */
+interface OnlineColumn {
+  key: string
+  representative: RoasField
+  /** 펼쳤을 때 세로로 나열할 지표 — 대표 지표도 포함해서 보여줄 순서대로.
+   * 없으면 묶음이 아닌 평범한 컬럼이다. */
+  members?: readonly RoasField[]
+}
+
+const onlineField = (key: string): RoasField => {
+  const field = ONLINE_FIELDS.find((f) => f.key === key)
+  if (!field) throw new Error(`ONLINE_FIELDS에 없는 key: ${key}`)
+  return field
+}
+
+const ONLINE_COLUMNS: readonly OnlineColumn[] = [
+  {
+    key: 'revenue',
+    representative: onlineField('onlineRevenue'),
+    members: [
+      onlineField('onlineRevenue'),
+      onlineField('onlineTotalRevenue'),
+      onlineField('onlineRevenueCafe24Screen'),
+      onlineField('onlineRevenueCafe24'),
+      onlineField('onlineProductAmount'),
+      onlineField('onlineGrossPayment'),
+    ],
+  },
+  {
+    key: 'refund',
+    representative: onlineField('onlineTotalRefund'),
+    members: [
+      onlineField('onlineTotalRefund'),
+      onlineField('onlineUnrecordedRefund'),
+    ],
+  },
+  {
+    key: 'discount',
+    // 할인은 대표로 쓸 기존 컬럼이 없어서 합계를 대표 지표로 새로 둔다.
+    // 적립금 사용도 여기 넣는다(10/8 요청) — 고객이 현금 대신 쓴 금액이라
+    // 매출에서 빠지는 성격이 할인과 같다. 적립금은 환불로 되돌아간 몫을 뺀
+    // 순 사용액('적립금 사용' 컬럼과 같은 값)으로 더한다.
+    representative: {
+      key: 'onlineTotalDiscount',
+      label: '총 할인액',
+      getValue: (m) =>
+        m.onlineItemDiscount +
+        m.onlineCouponDiscount +
+        (m.onlinePointsSpent - m.onlinePointsRefunded),
+      format: won,
+      formatCompact: won,
+      note: '상품할인 + 쿠폰할인 + 적립금 사용',
+    },
+    members: [
+      onlineField('onlineItemDiscount'),
+      onlineField('onlineCouponDiscount'),
+      onlineField('onlinePointsSpent'),
+    ],
+  },
+  { key: 'shipping', representative: onlineField('onlineShippingFee') },
 ]
 
 // channel-insight.tsx의 InfoIcon과 같은 모양 — roas-panel.tsx 전용으로 따로
@@ -408,7 +474,9 @@ function computeDelta(
   return { delta, pct, dir }
 }
 
-function MetricValueCell({
+/** 값 + (있으면) 바로 앞 행 대비 증감 — <td> 없이 내용만. 평범한 칸
+ * (MetricValueCell)과 묶음 컬럼을 펼친 칸의 각 줄이 같이 쓴다. */
+function MetricValue({
   value,
   prevValue,
   field,
@@ -417,22 +485,30 @@ function MetricValueCell({
   prevValue: number | null
   field: RoasField
 }) {
-  if (prevValue == null) {
-    return <td>{field.formatCompact(value)}</td>
-  }
+  if (prevValue == null) return <>{field.formatCompact(value)}</>
   const { delta, pct, dir } = computeDelta(value, prevValue)
   return (
-    <td>
-      <span className="channel-insight__metric-cell">
-        <span className={`channel-insight__metric-delta is-${dir}`}>
-          {DELTA_ARROW[dir]} {field.formatCompact(Math.abs(delta))}
-          {pct != null &&
-            ` (${delta >= 0 ? '+' : '-'}${Math.abs(pct).toFixed(1)}%)`}
-        </span>
-        <span className="channel-insight__metric-value">
-          {field.formatCompact(value)}
-        </span>
+    <span className="channel-insight__metric-cell">
+      <span className={`channel-insight__metric-delta is-${dir}`}>
+        {DELTA_ARROW[dir]} {field.formatCompact(Math.abs(delta))}
+        {pct != null &&
+          ` (${delta >= 0 ? '+' : '-'}${Math.abs(pct).toFixed(1)}%)`}
       </span>
+      <span className="channel-insight__metric-value">
+        {field.formatCompact(value)}
+      </span>
+    </span>
+  )
+}
+
+function MetricValueCell(props: {
+  value: number
+  prevValue: number | null
+  field: RoasField
+}) {
+  return (
+    <td>
+      <MetricValue {...props} />
     </td>
   )
 }
@@ -706,6 +782,212 @@ function FieldVisibilityToggles({
         )
       })}
     </div>
+  )
+}
+
+/** "카페24 온라인 매출" 전용 표 — RoasSubTable과 같은 뼈대(보기 단위, 지표
+ * 표시 토글, 정렬, 합계/평균, 앞 행 대비 증감)에 컬럼 묶음(ONLINE_COLUMNS)을
+ * 얹었다. 묶음 컬럼은 헤더의 펼침 버튼을 누르면 그 칸이 세로로 늘어나며
+ * 묶음 안의 지표를 전부 보여준다 — 펼침 상태는 묶음별로 독립이다. */
+function OnlineRevenueTable({
+  title,
+  rows,
+  total,
+  average,
+  grouping,
+  onGroupingChange,
+}: {
+  title: string
+  rows: readonly RoasRow[]
+  total: RoasMetrics
+  average: RoasMetrics
+  grouping: RoasGrouping
+  onGroupingChange: (grouping: RoasGrouping) => void
+}) {
+  // 정렬·표시 토글은 컬럼의 대표 지표 기준 — 기존 훅을 그대로 쓴다.
+  const representatives = useMemo(
+    () => ONLINE_COLUMNS.map((c) => c.representative),
+    [],
+  )
+  const { sort, toggleSort, sortedRows } = useRoasTableSort(
+    rows,
+    representatives,
+  )
+  const { visibleKeys, toggle: toggleMetric } =
+    useFieldVisibility(representatives)
+  const visibleColumns = ONLINE_COLUMNS.filter((c) =>
+    visibleKeys.has(c.representative.key),
+  )
+  const [open, setOpen] = useState(true)
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
+  const toggleExpanded = (key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  /** 한 칸의 내용 — 접혀 있으면 대표 지표 하나, 펼쳐져 있으면 묶음의 지표를
+   * "이름  값" 줄로 세로로 쌓는다. prev가 null이면(합계/평균 행, 첫 행)
+   * 증감 없이 값만 나온다. */
+  const renderCell = (
+    column: OnlineColumn,
+    metrics: RoasMetrics,
+    prev: RoasMetrics | null,
+  ) => {
+    const isExpanded = column.members && expanded.has(column.key)
+    if (!isExpanded) {
+      const field = column.representative
+      return (
+        <td key={column.key}>
+          <MetricValue
+            value={field.getValue(metrics)}
+            prevValue={prev ? field.getValue(prev) : null}
+            field={field}
+          />
+        </td>
+      )
+    }
+    return (
+      <td key={column.key} className="channel-insight__group-cell">
+        <span className="channel-insight__group-lines">
+          {column.members!.map((field) => (
+            <span key={field.key} className="channel-insight__group-line">
+              <span
+                className="channel-insight__group-line-label"
+                title={field.note}
+              >
+                {field.label}
+              </span>
+              <MetricValue
+                value={field.getValue(metrics)}
+                prevValue={prev ? field.getValue(prev) : null}
+                field={field}
+              />
+            </span>
+          ))}
+        </span>
+      </td>
+    )
+  }
+
+  return (
+    <section className="channel-insight__section">
+      <div className="channel-insight__section-head">
+        <h3 className="channel-insight__section-title">
+          <SectionCollapseToggle
+            title={title}
+            open={open}
+            onToggle={() => setOpen((o) => !o)}
+          />
+        </h3>
+        <div className="channel-insight__section-head-actions">
+          <span className="channel-insight__section-head-hint">보기</span>
+          <SingleSelectDropdown<RoasGrouping>
+            options={GROUPING_OPTIONS}
+            value={grouping}
+            onChange={onGroupingChange}
+            ariaLabel={`${title} 보기 단위`}
+          />
+        </div>
+      </div>
+
+      {open && (
+        <>
+          <FieldVisibilityToggles
+            fields={representatives}
+            visibleKeys={visibleKeys}
+            onToggle={toggleMetric}
+          />
+
+          {rows.length === 0 ? (
+            <p className="channel-insight__result-empty">데이터 없음</p>
+          ) : (
+            <div className="channel-insight__table-wrap">
+              <table className="channel-insight__table channel-insight__table--roas">
+                <thead>
+                  <tr>
+                    <th>
+                      <button
+                        type="button"
+                        className="channel-insight__sort-head"
+                        onClick={() => toggleSort(PERIOD_SORT_KEY)}
+                      >
+                        기간
+                        <SortArrows
+                          active={sort.key === PERIOD_SORT_KEY}
+                          dir={sort.dir}
+                        />
+                      </button>
+                    </th>
+                    {visibleColumns.map((column) => {
+                      const isExpanded = expanded.has(column.key)
+                      return (
+                        <th key={column.key}>
+                          <SortableRoasFieldHeader
+                            field={column.representative}
+                            active={sort.key === column.representative.key}
+                            dir={sort.dir}
+                            onSort={() =>
+                              toggleSort(column.representative.key)
+                            }
+                          />
+                          {column.members && (
+                            <button
+                              type="button"
+                              className={`channel-insight__group-toggle${isExpanded ? ' is-open' : ''}`}
+                              aria-expanded={isExpanded}
+                              aria-label={`${column.representative.label} 세부 항목 ${isExpanded ? '접기' : '펼치기'}`}
+                              onClick={() => toggleExpanded(column.key)}
+                            >
+                              <ChevronIcon />
+                              {isExpanded
+                                ? '접기'
+                                : `+${column.members.length - (column.members.includes(column.representative) ? 1 : 0)}`}
+                            </button>
+                          )}
+                        </th>
+                      )
+                    })}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRows.map((row, i) => {
+                    const prevRow = i > 0 ? sortedRows[i - 1] : null
+                    return (
+                      <tr key={row.key}>
+                        <td>{row.label}</td>
+                        {visibleColumns.map((column) =>
+                          renderCell(
+                            column,
+                            row.metrics,
+                            prevRow ? prevRow.metrics : null,
+                          ),
+                        )}
+                      </tr>
+                    )
+                  })}
+                  <tr className="channel-insight__table-row--total">
+                    <td>합계</td>
+                    {visibleColumns.map((column) =>
+                      renderCell(column, total, null),
+                    )}
+                  </tr>
+                  <tr className="channel-insight__table-row--average">
+                    <td>평균</td>
+                    {visibleColumns.map((column) =>
+                      renderCell(column, average, null),
+                    )}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+    </section>
   )
 }
 
@@ -1079,9 +1361,8 @@ export function RoasPanel({
         onGroupingChange={(g) => setGroupingFor(RoasTable.OFFLINE, g)}
       />
 
-      <RoasSubTable
+      <OnlineRevenueTable
         title="카페24 온라인 매출"
-        fields={ONLINE_FIELDS}
         rows={online.rows}
         total={total}
         average={online.average}
