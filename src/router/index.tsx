@@ -1,6 +1,7 @@
 import { AdminPage, BasePage, XtoolPage, CmipPage, DevPage } from '@/pages'
 import { createBrowserRouter } from 'react-router-dom'
 import { Dev } from '@/screens/dev'
+import Cafe24Adjustments from '@/screens/cafe24-adjustments'
 import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
 import ParkeScreen from '@/screens/parke'
@@ -19,7 +20,10 @@ export const router = createBrowserRouter([
   {
     path: '/admin',
     element: <AdminPage />,
-    children: [{ path: 'parke', element: <ParkeScreen /> }],
+    children: [
+      { path: 'parke', element: <ParkeScreen /> },
+      { path: 'cafe24', element: <Cafe24Adjustments /> },
+    ],
   },
   {
     // Lazy: the Parké product site carries ~300 kB of its own CSS, and nothing

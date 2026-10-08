@@ -90,6 +90,10 @@ export interface Cafe24RevenueMetrics {
   orderCount: number
   /** 환불 건수(환불완료일 기준, 한 주문에 여러 건일 수 있음). */
   refundCount: number
+  /** 참고용 — refundAmount에 이미 포함된 수동 보정 합계(/admin/cafe24에서
+   * 직접 등록한 값). 양수면 환불을 늘린 것, 음수면 줄인 것. 이 필드가
+   * 생기기 전에 배포된 서버 응답엔 없어서 optional이다. */
+  manualRefundAdjustment?: number
 }
 
 export interface Cafe24RevenueDateSummary extends Cafe24RevenueMetrics {

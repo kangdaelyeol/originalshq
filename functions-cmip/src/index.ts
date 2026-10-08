@@ -72,6 +72,10 @@ import {
   exchangeAndSaveCafe24Tokens,
   getCafe24Revenue as fetchCafe24Revenue,
   syncCafe24Orders as syncCafe24OrdersFromApi,
+  createCafe24Adjustment as createCafe24AdjustmentDoc,
+  deleteCafe24Adjustment as deleteCafe24AdjustmentDoc,
+  listCafe24Adjustments as listCafe24AdjustmentDocs,
+  validateCafe24AdjustmentInput,
 } from './cafe24'
 import { addDays, todayISO } from './channel/utils'
 
@@ -1745,6 +1749,84 @@ export const getCafe24Revenue = onRequest((request, response) => {
         response,
         500,
         err instanceof Error ? err.message : 'Cafe24 매출 조회 실패',
+      )
+    }
+  })
+})
+
+// ────────────────────────────────
+// Cafe24 환불 수동 보정 — 카페24 API로는 알 수 없는 환불 변동(취소 철회 등,
+// cafe24/adjustments.ts 주석 참고)을 관리자가 날짜·금액으로 직접 등록한다.
+// 등록된 보정은 getCafe24Revenue의 refundAmount/paymentAmount에 반영된다.
+// ────────────────────────────────
+export const listCafe24Adjustments = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'GET') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    try {
+      const adjustments = await listCafe24AdjustmentDocs()
+      response.status(200).send({ adjustments })
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '보정 목록 조회 실패',
+      )
+    }
+  })
+})
+
+export const createCafe24Adjustment = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'POST') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    const validationRes = validateCafe24AdjustmentInput(request.body)
+    if (!validationRes.ok) {
+      sendError(response, 400, validationRes.error)
+      return
+    }
+    try {
+      const adjustment = await createCafe24AdjustmentDoc(validationRes.data)
+      logger.info('Cafe24 환불 보정 등록:', adjustment)
+      response.status(201).send({ adjustment })
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '보정 등록 실패',
+      )
+    }
+  })
+})
+
+export const deleteCafe24Adjustment = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'POST') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    const { id } = (request.body ?? {}) as { id?: unknown }
+    if (typeof id !== 'string' || id === '') {
+      sendError(response, 400, 'id 필요')
+      return
+    }
+    try {
+      const deleted = await deleteCafe24AdjustmentDoc(id)
+      if (!deleted) {
+        sendError(response, 404, '보정 항목을 찾을 수 없습니다')
+        return
+      }
+      logger.info('Cafe24 환불 보정 삭제:', id)
+      response.status(200).send({ id, deleted: true })
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '보정 삭제 실패',
       )
     }
   })

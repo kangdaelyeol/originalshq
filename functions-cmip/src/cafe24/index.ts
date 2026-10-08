@@ -16,7 +16,14 @@ export {
   exchangeAndSaveCafe24Tokens,
   getCafe24AccessToken,
 } from './auth'
+export {
+  createCafe24Adjustment,
+  deleteCafe24Adjustment,
+  listCafe24Adjustments,
+  validateCafe24AdjustmentInput,
+} from './adjustments'
 
+import { fetchCafe24AdjustmentRowsFromDb } from './adjustments'
 import {
   fetchCafe24OrderRows,
   fetchCafe24OrderRowsByCancelDate,
@@ -165,10 +172,14 @@ export async function getCafe24Revenue(
   dateStart: ISODate,
   dateEnd: ISODate,
 ): Promise<Cafe24RevenueSummary> {
-  const [orderRows, refundRows] = await Promise.all([
+  const [orderRows, syncedRefundRows, adjustmentRows] = await Promise.all([
     fetchCafe24OrderRowsFromDb(dateStart, dateEnd),
     fetchCafe24RefundRowsFromDb(dateStart, dateEnd),
+    fetchCafe24AdjustmentRowsFromDb(dateStart, dateEnd),
   ])
+  // 수동 보정은 환불 행과 같은 모양(날짜·금액)이라 한데 섞어서 집계한다 —
+  // helper.ts의 sumRefund가 isAdjustment로 구분한다.
+  const refundRows = [...syncedRefundRows, ...adjustmentRows]
 
   return {
     total: summarizeTotal(orderRows, refundRows, dateStart, dateEnd),

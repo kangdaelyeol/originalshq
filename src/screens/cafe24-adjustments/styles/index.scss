@@ -1,0 +1,257 @@
+@use '../../xtool-lead-manager/styles/variables.scss' as v;
+
+.cafe24-adjust {
+  min-height: 100vh;
+  padding: 40px 24px 80px;
+  background: v.$color-bg;
+  color: v.$color-text;
+  font-family: v.$font-sans;
+
+  // 카드엔 padding이 있어서, 헤더와 같은 폭으로 맞추려면 border-box여야 한다.
+  &,
+  * {
+    box-sizing: border-box;
+  }
+
+  > * {
+    max-width: 1080px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+
+    p {
+      margin: 0;
+      max-width: 620px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: v.$color-text-muted;
+    }
+  }
+
+  &__back {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: v.$color-accent;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &__card {
+    margin-bottom: 20px;
+    padding: 24px;
+    background: v.$color-surface;
+    border: 1px solid v.$color-border-soft;
+    border-radius: 10px;
+
+    h2 {
+      margin: 0 0 18px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+  }
+
+  &__form {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+
+    label,
+    fieldset {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      font-size: 13px;
+      color: v.$color-text-muted;
+
+      small {
+        color: v.$color-text-faint;
+      }
+    }
+
+    legend {
+      padding: 0;
+      margin-bottom: 6px;
+    }
+
+    input:not([type='radio']) {
+      height: 38px;
+      padding: 0 12px;
+      background: v.$color-surface-raised;
+      border: 1px solid v.$color-border;
+      border-radius: 6px;
+      color: v.$color-text;
+      font-size: 14px;
+      color-scheme: dark;
+
+      &:focus {
+        outline: none;
+        border-color: v.$color-accent;
+      }
+    }
+  }
+
+  &__radio {
+    flex-direction: row !important;
+    align-items: center;
+    gap: 8px !important;
+    color: v.$color-text !important;
+    cursor: pointer;
+  }
+
+  &__wide {
+    grid-column: 1 / -1;
+  }
+
+  &__actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+
+    button {
+      height: 38px;
+      padding: 0 22px;
+      background: v.$color-accent;
+      border: 0;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  &__preview {
+    margin: 0;
+    font-size: 13px;
+    color: v.$color-text-muted;
+  }
+
+  &__error {
+    margin: 14px 0 0;
+    font-size: 13px;
+    color: v.$color-danger;
+  }
+
+  &__list-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+
+    span {
+      font-size: 13px;
+      color: v.$color-text-muted;
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 28px 0;
+    text-align: center;
+    font-size: 14px;
+    color: v.$color-text-muted;
+  }
+
+  &__table-wrap {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+
+    th,
+    td {
+      padding: 11px 12px;
+      border-bottom: 1px solid v.$color-border-soft;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      font-size: 12px;
+      font-weight: 500;
+      color: v.$color-text-muted;
+    }
+
+    // 사유는 길 수 있어 이 칸만 줄바꿈을 허용한다.
+    td:nth-child(4) {
+      white-space: normal;
+      min-width: 240px;
+    }
+
+    .is-mono {
+      font-family: v.$font-mono;
+      font-size: 13px;
+    }
+
+    .is-muted {
+      color: v.$color-text-muted;
+    }
+
+    .is-increase {
+      color: v.$color-danger;
+    }
+
+    .is-decrease {
+      color: v.$color-new-read;
+    }
+  }
+
+  &__delete {
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid v.$color-border;
+    border-radius: 6px;
+    color: v.$color-text-muted;
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: v.$color-danger;
+      color: v.$color-danger;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  @media (max-width: 640px) {
+    &__header {
+      flex-direction: column;
+    }
+
+    &__form {
+      grid-template-columns: 1fr;
+    }
+  }
+}

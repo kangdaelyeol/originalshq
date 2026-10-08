@@ -79,6 +79,7 @@ interface RefundTotals {
   pointsRefunded: number
   refundCount: number
   unrecordedRefundAmount: number
+  manualRefundAdjustment: number
 }
 
 interface AdditionalTotals {
@@ -102,13 +103,18 @@ const sumGross = (rows: readonly Cafe24OrderRow[]): GrossTotals => ({
  * 수 있어서 나눠서 반환한다. */
 const sumRefund = (rows: readonly Cafe24RefundRow[]): RefundTotals => {
   const official = rows.filter((r) => !r.isFallback)
+  // 수동 보정(isAdjustment)은 "카페24 화면의 환불 금액"을 맞추려고 넣는
+  // 값이라 refundAmount에는 합치되(음수면 환불이 줄어든다), 실제 환불
+  // 이벤트가 아니라서 건수에는 세지 않는다.
+  const adjustments = official.filter((r) => r.isAdjustment)
   return {
     refundAmount: official.reduce((s, r) => s + r.amount, 0),
     pointsRefunded: official.reduce((s, r) => s + r.pointsRefunded, 0),
-    refundCount: official.length,
+    refundCount: official.length - adjustments.length,
     unrecordedRefundAmount: rows
       .filter((r) => r.isFallback)
       .reduce((s, r) => s + r.amount, 0),
+    manualRefundAdjustment: adjustments.reduce((s, r) => s + r.amount, 0),
   }
 }
 
@@ -167,6 +173,7 @@ const combine = (
     itemDiscount: gross.itemDiscount,
     additionalShippingFee: additional.additionalShippingFee,
     unrecordedRefundAmount: refund.unrecordedRefundAmount,
+    manualRefundAdjustment: refund.manualRefundAdjustment,
     orderCount: gross.orderCount,
     refundCount: refund.refundCount,
   }

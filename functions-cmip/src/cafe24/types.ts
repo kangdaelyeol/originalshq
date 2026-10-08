@@ -132,6 +132,12 @@ export interface Cafe24RefundRow {
    * 했다 — "카페24 화면과 맞춘 순매출"이라는 목적과 "실제로 나간 돈은 놓치지
    * 않는다"는 목적이 서로 달라 분리했다. */
   isFallback: boolean
+  /** true면 카페24에서 온 환불이 아니라 관리자가 손으로 넣은 보정
+   * (adjustments.ts, cafe24Adjustments 컬렉션)이다. amount가 음수일 수 있다
+   * (환불 취소 — 취소 철회 등). refundAmount와 paymentAmount에는 반영하지만
+   * 환불 건수(refundCount)에는 세지 않고, manualRefundAdjustment로 따로도
+   * 노출한다. */
+  isAdjustment?: boolean
 }
 
 export interface Cafe24MetricsSummary {
@@ -196,6 +202,11 @@ export interface Cafe24MetricsSummary {
    * 반영돼 있고(paymentAmount 주석 참고), 이 필드는 "그중 얼마가 카페24
    * 화면엔 안 보이는 몫인지" 감사용으로 따로 노출한다. */
   unrecordedRefundAmount: number
+  /** 참고용 — refundAmount에 이미 포함된 수동 보정 합계(관리자가 직접 등록,
+   * Cafe24RefundRow.isAdjustment 주석 참고). 양수면 환불을 늘린 것, 음수면
+   * 줄인 것. "refundAmount 중 얼마가 카페24 API가 아니라 손으로 넣은
+   * 값인지" 감사용. */
+  manualRefundAdjustment: number
   /** 결제 건수(결제일 기준, 매출 집계에 포함된 것만). */
   orderCount: number
   /** 환불 건수(환불 완료일 기준, 한 주문에 여러 건일 수 있음). */
