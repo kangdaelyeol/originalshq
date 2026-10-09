@@ -2,10 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ConfirmVariant,
   EditingField,
-  INITIAL_CREATE_LEAD_FORM,
   INITIAL_REGISTER_FORM,
   SortField,
-  type CreateLeadFormValues,
   type PageSize,
   type RegisterFormValues,
   type SortDirection,
@@ -38,11 +36,6 @@ export const useMainViewModel = () => {
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [loading, setLoading] = useState(false)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState<CreateLeadFormValues>(
-    INITIAL_CREATE_LEAD_FORM,
-  )
-  const [isSubmitting, setIsSubmitting] = useState(false)
   const [pageSize, setPageSize] = useState<PageSize>(15)
   const [page, setPage] = useState(1)
 
@@ -545,152 +538,6 @@ export const useMainViewModel = () => {
     setLoading(false)
   }
 
-  const openCreateModal = () => {
-    setCreateForm(INITIAL_CREATE_LEAD_FORM)
-    setCreateOpen(true)
-  }
-
-  const closeCreateModal = () => {
-    setCreateOpen(false)
-  }
-
-  const updateField = (field: keyof CreateLeadFormValues, value: string) => {
-    if (field === 'ph') {
-      value = value.replace(/\D/g, '')
-    }
-
-    setCreateForm((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const toggleCreateFormTest = () => {
-    setCreateForm((prev) => ({ ...prev, isTest: !prev.isTest }))
-  }
-
-  const updateCreateFormTestCode = (code: string) => {
-    setCreateForm((prev) => ({ ...prev, testEventCode: code }))
-  }
-
-  // 비워두면 다른 시각 입력들과 같은 관례로 "지금"을 쓴다 — 예전엔 0(1970년)을
-  // 그대로 보내던 버그가 있었다.
-  const buildCreateLeadBody = () => {
-    const createdAtMs = createForm.createdAt
-      ? new Date(createForm.createdAt).getTime()
-      : Date.now()
-
-    return { ...createForm, createdAt: createdAtMs }
-  }
-
-  const handleCreateLeadClick = async () => {
-    setIsSubmitting(true)
-    const res = await leadClient.create(buildCreateLeadBody())
-
-    if (!res.ok) {
-      console.error(res.error)
-      showToast('error')
-      setIsSubmitting(false)
-      return
-    }
-
-    await fetchLeads()
-    closeCreateModal()
-    setIsSubmitting(false)
-  }
-
-  // 패널에서 고객 정보를 등록함과 동시에 상담까지 한 번에 등록한다 — 방금
-  // 만든 리드의 id로 곧바로 contactLead(상담 등록 + Meta "Contact" CAPI 전송)를
-  // 이어서 호출한다. 상담 시각은 폼의 접수 일시와 같은 값을 그대로 쓴다(수기
-  // 등록은 보통 "지금 막 상담한 고객을 입력"하는 흐름이라 접수와 상담이 사실상
-  // 같은 시점). 리드 생성엔 성공했는데 상담 등록만 실패하면(네트워크 등) 리드가
-  // 이미 만들어져 있으니 'error'가 아니라 'partial'로 구분해서 알린다 — 그래야
-  // 같은 고객을 중복 등록하지 않고, 표에 뜬 그 리드의 "상담 등록" 버튼으로
-  // 재시도할 수 있다.
-  const handleCreateLeadAndConsultClick = async () => {
-    setIsSubmitting(true)
-    const body = buildCreateLeadBody()
-    const createRes = await leadClient.create(body)
-
-    if (!createRes.ok) {
-      console.error(createRes.error)
-      showToast('error')
-      setIsSubmitting(false)
-      return
-    }
-
-    const testEventCodeField =
-      createForm.isTest && createForm.testEventCode.trim()
-        ? { test_event_code: createForm.testEventCode.trim() }
-        : {}
-    const consultRes = await leadClient.registerConsultation({
-      id: createRes.data.id,
-      device: createForm.device,
-      at: body.createdAt,
-      ...testEventCodeField,
-    })
-
-    await fetchLeads()
-    closeCreateModal()
-
-    if (!consultRes.ok) {
-      console.error(consultRes.error)
-      showToast('partial')
-      setIsSubmitting(false)
-      return
-    }
-
-    showToast('registered')
-    setIsSubmitting(false)
-  }
-
-  // "구매 등록"도 같은 방식이지만, 이 흐름은 상담/접수 과정 없이 바로 구매만
-  // 확정된 경우를 위한 것이라(예: 기존 채널로 이미 구매 의사를 확인한 고객을
-  // CS가 사후에 시스템에 입력하는 경우) 상담(contactLead)은 등록하지 않고
-  // 구매(purchaseLead)만 이어서 호출한다 — 고객 정보 생성은 어차피 최초 접수
-  // 1건을 같이 만들지만(리드 생성 자체의 고정 동작), 상담 이력은 안 남긴다.
-  const handleCreateLeadAndPurchaseClick = async () => {
-    const price = Number(createForm.price)
-    if (!createForm.price || Number.isNaN(price) || price <= 0) {
-      console.error('구매 등록에는 0보다 큰 price가 필요합니다')
-      showToast('error')
-      return
-    }
-
-    setIsSubmitting(true)
-    const body = buildCreateLeadBody()
-    const createRes = await leadClient.create(body)
-
-    if (!createRes.ok) {
-      console.error(createRes.error)
-      showToast('error')
-      setIsSubmitting(false)
-      return
-    }
-
-    const testEventCodeField =
-      createForm.isTest && createForm.testEventCode.trim()
-        ? { test_event_code: createForm.testEventCode.trim() }
-        : {}
-    const purchaseRes = await leadClient.registerPurchase({
-      id: createRes.data.id,
-      device: createForm.device,
-      price,
-      at: body.createdAt,
-      ...testEventCodeField,
-    })
-
-    await fetchLeads()
-    closeCreateModal()
-
-    if (!purchaseRes.ok) {
-      console.error(purchaseRes.error)
-      showToast('partial')
-      setIsSubmitting(false)
-      return
-    }
-
-    showToast('registered')
-    setIsSubmitting(false)
-  }
-
   return {
     state: {
       // 표에는 검색어·정렬·기기 필터에 더해 페이지당 개수·현재 페이지까지
@@ -706,9 +553,6 @@ export const useMainViewModel = () => {
       sortField,
       sortDirection,
       loading,
-      createOpen,
-      isSubmitting,
-      form: createForm,
       pageSize,
       page,
       totalPages,
@@ -738,14 +582,10 @@ export const useMainViewModel = () => {
       goToNextPage,
       resendPurchaseRecord,
       toggleSort,
-      openCreateModal,
-      closeCreateModal,
-      handleCreateLeadClick,
-      handleCreateLeadAndConsultClick,
-      handleCreateLeadAndPurchaseClick,
-      updateField,
-      toggleCreateFormTest,
-      updateCreateFormTestCode,
+      // 다른 view-model(수기 등록 등)이 목록 갱신·토스트를 써야 할 때 화면
+      // (index.tsx)이 꺼내서 넘겨준다 — 훅이 훅을 직접 부르지 않게 하기 위함.
+      fetchLeads,
+      showToast,
     },
     component: {
       ToastContainer,

@@ -1,5 +1,8 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
-import type { useMainViewModel } from '@/screens/xtool-lead-manager/view-model'
+import type {
+  useCreateLeadViewModel,
+  useMainViewModel,
+} from '@/screens/xtool-lead-manager/view-model'
 import {
   ConfirmModal,
   CreateModal,
@@ -11,16 +14,18 @@ import {
 // Nav와 페이지네이션 상태를 공유해야 해서(둘 다 useMainViewModel 결과가
 // 필요) 이 훅은 더 이상 여기서 직접 호출하지 않는다 — 부모(index.tsx)가 한
 // 번만 호출해 Main·Nav 양쪽에 내려준다.
-type MainProps = ReturnType<typeof useMainViewModel>
+type MainProps = ReturnType<typeof useMainViewModel> & {
+  /** 리드 수기 등록 모달의 상태·동작 — 별도 view-model이라 따로 받는다. */
+  createLead: ReturnType<typeof useCreateLeadViewModel>
+}
 
-export const Main = ({ state, actions, component }: MainProps) => {
+export const Main = ({ state, actions, component, createLead }: MainProps) => {
   const {
     selectedRow,
     variant,
     registerForm,
     detail,
     loading,
-    createOpen,
     filteredRows,
   } = state
   const {
@@ -43,7 +48,6 @@ export const Main = ({ state, actions, component }: MainProps) => {
     registerPurchaseRow,
     deleteRow,
     updateLeadField,
-    openCreateModal,
   } = actions
   const { ToastContainer } = component
 
@@ -85,10 +89,10 @@ export const Main = ({ state, actions, component }: MainProps) => {
         />
       )}
       {loading && <Loading />}
-      {createOpen && (
-        <CreateModal state={{ ...state }} actions={{ ...actions }} />
+      {createLead.state.createOpen && (
+        <CreateModal state={createLead.state} actions={createLead.actions} />
       )}
-      <div className="create-btn" onClick={openCreateModal}>
+      <div className="create-btn" onClick={createLead.actions.openCreateModal}>
         +
       </div>
       <ToastContainer />
