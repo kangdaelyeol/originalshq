@@ -21,192 +21,12 @@
     line-height: 1.5;
   }
 
-  .pd-choice-demo {
-    max-width: 590px;
-    margin: 42px auto 0;
-    background: #142135;
-    border: 1px solid #334967;
-    border-radius: 20px;
-    overflow: hidden;
-    gap: 0;
-
-    .pd-choice-tabs {
-      width: 100%;
-      height: auto;
-      padding: 7px;
-      border-radius: 0;
-      background: #091321;
-      gap: 5px;
-    }
-  }
-
-  .pd-choice-tabs [role='tab'] {
-    min-height: 52px;
-    height: auto;
-    white-space: normal;
-    font-size: 17px;
-    line-height: 1.5;
-    padding: 12px 10px;
-    color: #b9cce6;
-    border-radius: 9px;
-
-    &[data-active] {
-      background: #3264c4;
-      color: #fff;
-      box-shadow: none;
-    }
-  }
-
-  .pd-together {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    padding: 25px 20px 0;
-    color: #c4d5ec;
-    font-size: 17px;
-    line-height: 1.6;
-
-    > svg {
-      flex-shrink: 0;
-    }
-  }
-
-  .pd-choice-panel {
-    padding: 25px;
-  }
-
-  .pd-priority-rule {
-    padding: 28px 25px;
-    border: 1px solid #688ec1;
-    border-radius: 13px;
-    background: linear-gradient(135deg, #1b3660, #12243d);
-
-    > span {
-      display: block;
-      font-size: 17px;
-      color: #c0d1ec;
-    }
-
-    > strong {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      font-size: 42px;
-      font-weight: 650;
-      margin-top: 12px;
-      color: #fff;
-    }
-
-    svg {
-      color: #8ebdff;
-    }
-  }
-
-  .pd-choice-result {
-    display: flex;
-    align-items: center;
-    gap: 13px;
-    margin-top: 25px;
-    min-height: 78px;
-    color: #a2caff;
-
-    > svg {
-      flex-shrink: 0;
-    }
-
-    span {
-      display: block;
-      font-size: 15px;
-      color: #b0c4df;
-      margin-bottom: 7px;
-    }
-
-    strong {
-      display: block;
-      font-size: 21px;
-      line-height: 1.6;
-      color: #fff;
-      font-weight: 600;
-    }
-  }
-
   .pd-ui-caption {
     display: block;
     font-size: 14px;
     line-height: 1.7;
     color: #a8bad2;
     margin: 20px 0 0;
-  }
-
-  .pd-push-example {
-    background: #f1f6ff;
-    color: #152840;
-    border-radius: 14px;
-    padding: 23px;
-    box-shadow: 0 10px 35px #00000022;
-    animation: pd-push-in 0.45s ease both;
-
-    > header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      color: #4f6178;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    > header > span:first-child {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      color: #275cc4;
-      font-size: 18px;
-      font-weight: 650;
-    }
-  }
-
-  .parke-launch .pd-push-example h3 {
-    font-size: 24px;
-    line-height: 1.45;
-    margin: 24px 0 12px;
-    letter-spacing: -0.04em;
-  }
-
-  .pd-push-example p {
-    font-size: 17px;
-    line-height: 1.8;
-    color: #455970;
-    margin: 0;
-  }
-
-  .pd-push-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 22px;
-
-    > button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex: 1;
-      min-height: 54px;
-      border: 1px solid #a2b8d5;
-      border-radius: 9px;
-      background: white;
-      color: #27456d;
-      font-size: 18px;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    > button[aria-pressed='true'] {
-      background: #205fdb;
-      border-color: #205fdb;
-      color: #fff;
-    }
   }
 
   .pd-mechanism button:focus-visible {
@@ -218,218 +38,336 @@
     padding-bottom: 95px;
   }
 
-  .pd-caller-demo {
-    max-width: 590px;
-    margin: 40px auto 0;
-  }
-
-  .pd-caller-tabs {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    border-top: 1px solid #2e415b;
-    margin: 0 0 30px;
-
-    > button {
-      display: flex;
-      align-items: center;
-      text-align: left;
-      gap: 20px;
-      border: 0;
-      border-bottom: 1px solid #2e415b;
-      min-height: 64px;
-      padding: 13px 15px;
-      background: transparent;
-      color: #adbed6;
-      font-size: 19px;
-      line-height: 1.5;
-      cursor: pointer;
-      transition:
-        background 0.2s,
-        color 0.2s;
-    }
-
-    > button > span {
-      font-size: 17px;
-      color: #86a5d0;
-      font-variant-numeric: tabular-nums;
-    }
-
-    > button[aria-pressed='true'] {
-      background: #173862;
-      color: white;
-    }
-
-    > button[aria-pressed='true'] > span {
-      color: #b4d5ff;
-    }
-  }
-
-  .pd-caller-stage {
-    max-width: 420px;
-    margin: auto;
-    background: #111e30;
-    border: 1px solid #405773;
-    border-radius: 26px;
-    overflow: hidden;
-    min-height: 498px;
-  }
-
-  .pd-camera-demo {
-    padding: 30px 24px 26px;
-    text-align: center;
-
-    > span {
-      font-size: 14px;
-      color: #a9bdd8;
-    }
-  }
-
-  .pd-camera-reticle {
-    position: relative;
-    display: grid;
-    place-items: center;
-    width: 176px;
-    height: 176px;
-    margin: 28px auto;
-    border: 2px solid #97c4ff;
-    border-radius: 15px;
-    color: #e4f0ff;
-    background: #132945;
-
-    > i {
-      position: absolute;
-      left: 8%;
-      right: 8%;
-      height: 2px;
-      top: 15%;
-      background: #9ed4ff;
-      box-shadow: 0 0 22px 3px #649dff8a;
-      animation: pd-scan 3s cubic-bezier(0.075, 0.82, 0.165, 1) infinite;
-    }
-  }
-
-  .parke-launch .pd-camera-demo h3 {
-    font-size: 25px;
-    line-height: 1.4;
-    margin: 25px 0 12px;
-  }
-
-  .pd-camera-demo > p {
-    font-size: 17px;
-    line-height: 1.8;
-    color: #baccdf;
-    margin: 0 0 25px;
-  }
-
-  .pd-demo-action {
+  /* "Both in the car" — the two cases as a pair of cards. */
+  .pd-coride-situation {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    border: 0;
-    border-radius: 10px;
-    min-height: 56px;
-    padding: 15px 18px;
-    background: #2261df;
-    color: #fff;
-    font-size: 18px;
-    font-weight: 600;
-    width: 100%;
-    line-height: 1.5;
-    cursor: pointer;
+    gap: 9px;
+    margin: 40px 0 0 !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    color: #b6cce6;
 
-    &:hover {
-      background: #164ec1;
+    > svg {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
     }
   }
 
-  .pd-web-demo {
-    background: #f7faff;
-    color: #1d2a3c;
-    min-height: 498px;
+  .pd-cases {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    max-width: 900px;
+    margin: 22px auto 0;
+    text-align: left;
   }
 
-  .pd-browser-bar {
+  // Heading, the thing being shown, the outcome — the outcome is pushed to
+  // the bottom so both cards end on the same line.
+  .pd-case {
+    display: flex;
+    flex-direction: column;
+    padding: 26px 26px 24px;
+    background: #101a2a;
+    border: 1px solid #263b58;
+    border-radius: 18px;
+
+    h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.5;
+      letter-spacing: -0.03em;
+      font-weight: 600;
+      color: #8fb9ff;
+    }
+
+    p {
+      margin: 0 !important;
+    }
+  }
+
+  .pd-case-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    padding: 22px 0;
+  }
+
+  .pd-priority {
+    > span {
+      display: block;
+      font-size: 15px;
+      line-height: 1.5;
+      color: #9eafc3;
+    }
+
+    > strong {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 44px;
+      line-height: 1.25;
+      letter-spacing: -0.045em;
+      font-weight: 700;
+      color: #f8fbff;
+
+      > svg {
+        width: 28px;
+        height: 28px;
+        color: #8eceff;
+      }
+    }
+  }
+
+  // The notification, drawn as a still.
+  .pd-push {
+    padding: 16px 18px 18px;
+    background: #f3f6fb;
+    border-radius: 14px;
+    color: #1b2a3d;
+
+    p {
+      font-size: 14px !important;
+      line-height: 1.6 !important;
+    }
+  }
+
+  .pd-push-app {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    color: #53657c;
+
+    > svg {
+      width: 15px;
+      height: 15px;
+    }
+  }
+
+  .pd-push .pd-push-title {
+    margin-top: 8px !important;
+    font-size: 17px !important;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+  }
+
+  .pd-push .pd-push-text {
+    margin-top: 4px !important;
+    color: #53657c;
+  }
+
+  .pd-push .pd-push-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px !important;
+
+    > span {
+      padding: 9px 0;
+      background: #fff;
+      border: 1px solid #cfd8e4;
+      border-radius: 9px;
+      text-align: center;
+      font-weight: 600;
+    }
+  }
+
+  .pd-case .pd-case-result {
+    padding-top: 18px;
+    border-top: 1px solid #263b58;
+    font-size: 19px !important;
+    line-height: 1.5 !important;
+    letter-spacing: -0.03em;
+    font-weight: 650;
+    color: #f8fbff;
+
+    > span {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0;
+      color: #9eafc3;
+    }
+  }
+
+  /* "How the other person calls" — three screens in a row with an arrow
+   * between each, and the step it stands for underneath. */
+  .pd-caller-steps {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 40px minmax(0, 1fr) 40px minmax(0, 1fr);
+    max-width: 940px;
+    margin: 44px auto 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+
+    h3 {
+      margin: 8px 0 8px;
+      font-size: 20px;
+      line-height: 1.4;
+      letter-spacing: -0.04em;
+      font-weight: 650;
+      color: #f8fbff;
+    }
+
+    > li > p {
+      margin: 0 !important;
+      font-size: 15px !important;
+      line-height: 1.65 !important;
+      color: #b5c7df;
+    }
+  }
+
+  // Level with the middle of the screens, not of the whole column.
+  .pd-caller-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 250px;
+    color: #4d6585;
+
+    > svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+
+  // A phone screen in outline. All three are the same height so the row
+  // reads as one strip.
+  .pd-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 250px;
+    margin-bottom: 20px;
+    padding: 20px;
+    background: #101a2a;
+    border: 1px solid #334967;
+    border-radius: 20px;
+    text-align: center;
+    overflow: hidden;
+
+    p {
+      margin: 0 !important;
+    }
+  }
+
+  .pd-screen-reticle {
+    display: grid;
+    place-items: center;
+    width: 132px;
+    height: 132px;
+    border: 1.5px solid #8fb9ff;
+    border-radius: 14px;
+    color: #dbe9ff;
+
+    > svg {
+      width: 92px;
+      height: 92px;
+    }
+  }
+
+  .pd-screen.is-web {
+    justify-content: flex-start;
+    gap: 0;
+    padding: 0 0 18px;
+    background: #f3f6fb;
+    border-color: #f3f6fb;
+    color: #1b2a3d;
+  }
+
+  .pd-screen-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    align-self: stretch;
+    padding: 9px 14px;
+    background: #e2e8f1;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    color: #53657c;
+
+    > svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  .pd-screen .pd-screen-brand {
+    margin-top: 22px !important;
+    font-size: 14px !important;
+    font-weight: 700;
+    color: #245fdf;
+  }
+
+  .pd-screen .pd-screen-title {
+    margin-top: 6px !important;
+    font-size: 19px !important;
+    line-height: 1.4 !important;
+    letter-spacing: -0.035em;
+    font-weight: 650;
+  }
+
+  .pd-screen .pd-screen-button {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 7px;
-    background: #e3eaf4;
-    padding: 18px 12px;
-    color: #4d607b;
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  .pd-web-content {
-    padding: 30px 28px 28px;
-  }
-
-  .pd-web-brand {
-    font-size: 29px;
-    letter-spacing: -0.04em;
-    font-weight: 650;
-  }
-
-  .pd-web-content > p {
-    font-size: 16px;
-    line-height: 1.6;
-    color: #63738a;
-    margin: 18px 0 8px;
-  }
-
-  .parke-launch .pd-web-content > h3 {
-    font-size: 31px;
-    line-height: 1.35;
-    margin: 0;
-    font-weight: 650;
-    letter-spacing: -0.04em;
-  }
-
-  .pd-safe-number {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 25px 0;
-    color: #3b5779;
-    font-size: 16px;
-    line-height: 1.7;
+    margin-top: auto !important;
+    padding: 10px 26px;
+    background: #1f5cdc;
+    border-radius: 10px;
+    font-size: 14px !important;
+    font-weight: 600;
+    color: #fff;
 
     > svg {
-      color: #2960be;
-      width: 28px;
-      height: 28px;
-      flex-shrink: 0;
-    }
-
-    strong {
-      font-size: 20px;
-      color: #164888;
+      width: 15px;
+      height: 15px;
     }
   }
 
-  .pd-call-result {
-    display: grid;
-    grid-template-columns: 25px 1fr;
-    gap: 9px 12px;
-    margin-top: 23px;
-    padding-top: 21px;
-    border-top: 1px solid #cedaec;
-    color: #2155a1;
-    animation: pd-push-in 0.35s ease both;
+  .pd-screen.is-call {
+    > i {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: #1f5cdc;
+      color: #fff;
 
-    strong {
-      font-size: 21px;
-      line-height: 1.55;
-      font-weight: 650;
+      > svg {
+        width: 26px;
+        height: 26px;
+      }
     }
 
-    span {
-      grid-column: 1/-1;
-      font-size: 14px;
-      line-height: 1.7;
-      color: #52647d;
+    .pd-screen-title {
+      margin-top: 2px !important;
+      color: #f8fbff;
+    }
+  }
+
+  .pd-screen-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px !important;
+    color: #9eafc3;
+
+    > svg {
+      width: 13px;
+      height: 13px;
     }
   }
 
@@ -441,7 +379,7 @@
     color: #b6cce6;
     font-size: 17px;
     line-height: 1.7;
-    margin: 25px 0 0;
+    margin: 44px 0 0 !important;
 
     > svg {
       flex-shrink: 0;
@@ -659,18 +597,6 @@
     margin: 0 auto;
   }
 
-  @keyframes pd-push-in {
-    from {
-      opacity: 0.2;
-      transform: translateY(9px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
   @include m.mobile {
     .pd-coride,
     .pd-caller {
@@ -682,90 +608,111 @@
       gap: 7px;
     }
 
-    .pd-choice-demo {
-      margin-top: 32px;
-      border-radius: 15px;
-    }
-
-    .pd-choice-tabs [role='tab'] {
-      font-size: 15px;
-      padding: 11px 6px;
-      min-height: 50px;
-    }
-
-    .pd-together {
-      font-size: 16px;
-      gap: 8px;
-      padding: 23px 16px 0;
-    }
-
-    .pd-choice-panel {
-      padding: 22px 18px;
-    }
-
-    .pd-priority-rule {
-      padding: 25px 22px;
-
-      > strong {
-        font-size: 37px;
-      }
-    }
-
-    .pd-choice-result strong {
-      font-size: 19px;
-    }
-
-    .pd-choice-result {
-      align-items: flex-start;
-      margin-top: 24px;
-      min-height: 85px;
-
-      > svg {
-        margin-top: 3px;
-      }
-    }
-
-    .pd-push-example {
-      padding: 20px 17px;
-    }
-
-    .parke-launch .pd-push-example h3 {
-      font-size: 22px;
-      margin-top: 21px;
-    }
-
-    .pd-push-example p {
-      font-size: 16px;
-    }
-
-    .pd-push-actions > button {
-      font-size: 17px;
-      min-height: 52px;
-    }
-
-    .pd-caller-tabs > button {
-      font-size: 18px;
-      min-height: 62px;
-    }
-
-    .pd-caller-stage {
-      border-radius: 22px;
-    }
-
-    .pd-camera-demo {
-      padding: 25px 20px;
-    }
-
-    .parke-launch .pd-camera-demo h3 {
-      font-size: 23px;
-    }
-
-    .pd-web-content {
-      padding: 26px 22px;
-    }
-
     .pd-caller-summary {
       font-size: 16px;
+      margin-top: 30px !important;
+    }
+
+    .pd-coride-situation {
+      margin-top: 30px !important;
+      font-size: 15px !important;
+    }
+
+    .pd-cases {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+    }
+
+    .pd-case {
+      padding: 22px 20px 20px;
+    }
+
+    .pd-priority > strong {
+      font-size: 38px;
+    }
+
+    // One step per row: the screen on the left, its text on the right, and
+    // the arrows between rows dropped — the numbers already give the order.
+    .pd-caller-steps {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 22px;
+      margin-top: 32px;
+
+      > li:not(.pd-caller-arrow) {
+        display: grid;
+        grid-template-columns: 132px minmax(0, 1fr);
+        column-gap: 18px;
+        align-content: center;
+      }
+
+      .pd-screen {
+        grid-row: 1 / span 3;
+        height: 176px;
+        margin: 0;
+        padding: 12px;
+        gap: 8px;
+        border-radius: 16px;
+      }
+
+      .pd-step-number {
+        align-self: end;
+      }
+
+      h3 {
+        margin: 6px 0;
+        font-size: 18px;
+      }
+    }
+
+    .pd-caller-arrow {
+      display: none;
+    }
+
+    .pd-screen-reticle {
+      width: 84px;
+      height: 84px;
+
+      > svg {
+        width: 58px;
+        height: 58px;
+      }
+    }
+
+    .pd-screen.is-web {
+      padding: 0 0 12px;
+    }
+
+    .pd-screen-bar {
+      padding: 6px 8px;
+      font-size: 0 !important;
+    }
+
+    .pd-screen .pd-screen-brand {
+      margin-top: 12px !important;
+      font-size: 12px !important;
+    }
+
+    .pd-screen .pd-screen-title {
+      font-size: 14px !important;
+    }
+
+    .pd-screen .pd-screen-button {
+      padding: 7px 14px;
+      font-size: 12px !important;
+    }
+
+    .pd-screen.is-call > i {
+      width: 46px;
+      height: 46px;
+
+      > svg {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    .pd-screen-note {
+      font-size: 0 !important;
     }
 
     .pd-onboarding {
@@ -839,32 +786,6 @@
       padding-inline: 18px;
     }
 
-    .pd-choice-panel {
-      padding: 20px 13px;
-    }
-
-    .pd-together {
-      font-size: 15px;
-      gap: 6px;
-      padding-inline: 12px;
-    }
-
-    .pd-choice-tabs [role='tab'] {
-      font-size: 14px;
-    }
-
-    .pd-push-example {
-      padding: 19px 14px;
-
-      > header {
-        font-size: 13px;
-      }
-    }
-
-    .parke-launch .pd-push-example h3 {
-      font-size: 21px;
-    }
-
     .pd-background-badge {
       font-size: 15px;
     }
@@ -891,14 +812,5 @@
   }
 
   @include m.reduced-motion {
-    .pd-push-example,
-    .pd-call-result,
-    .pd-camera-reticle > i {
-      animation: none;
-    }
-
-    .pd-caller-tabs > button {
-      transition: none;
-    }
   }
 }

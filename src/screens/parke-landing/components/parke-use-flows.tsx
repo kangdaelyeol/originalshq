@@ -1,22 +1,26 @@
 import {
+  ArrowRight,
+  ArrowUpRight,
   Bell,
   Bluetooth,
-  Check,
   CheckCircle2,
   Link2,
   LockKeyhole,
   PhoneCall,
   QrCode,
-  ArrowUpRight,
   Users,
 } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
-import { useCallerFlowViewModel, useCoRideChoiceViewModel } from '../view-model'
 
+/**
+ * "Both of them are in the car." Two cases, shown together: a priority user
+ * was set in advance, or it was not and the app asks.
+ *
+ * These used to be two tabs, with the second holding a mock notification you
+ * had to press to see a one-line result. Side by side the answer to the
+ * section's own heading ("to whoever you chose — or, if you did not choose,
+ * it asks") is simply visible.
+ */
 export const CoRideChoice = () => {
-  const { state, actions } = useCoRideChoiceViewModel()
-  const { selected } = state
-  const { select, reset } = actions
   return (
     <section className="pd-coride">
       <div className="pd-copy">
@@ -34,95 +38,69 @@ export const CoRideChoice = () => {
           지정하지 않았다면 앱 푸시로 선택을 요청합니다.
         </p>
       </div>
-      <Tabs
-        defaultValue="priority"
-        className="pd-choice-demo"
-        onValueChange={reset}
-      >
-        <TabsList
-          aria-label="동승 시 연락 대상 선택 방식"
-          className="pd-choice-tabs"
-        >
-          <TabsTrigger value="priority">우선 사용자 지정</TabsTrigger>
-          <TabsTrigger value="ask">지정하지 않은 경우</TabsTrigger>
-        </TabsList>
-        <div className="pd-together">
-          <Users size={22} />
-          <span>남편과 아내, 함께 탑승한 상황</span>
-        </div>
-        <TabsContent value="priority" className="pd-choice-panel">
-          <div className="pd-priority-rule">
-            <span>미리 지정한 우선 사용자</span>
-            <strong>
-              아내 <CheckCircle2 size={27} />
-            </strong>
-          </div>
-          <div className="pd-choice-result">
-            <CheckCircle2 />
-            <div>
-              <span>둘 다 인식되면</span>
-              <strong>아내가 주차 연락을 받습니다.</strong>
-            </div>
-          </div>
-          <p className="pd-ui-caption">
-            이 예시에서는 아내를 우선 사용자로 지정했습니다.
-          </p>
-        </TabsContent>
-        <TabsContent value="ask" className="pd-choice-panel">
-          <div className="pd-push-example">
-            <header>
-              <span>
-                <Bell size={19} />
-                Parké
-              </span>
-              <span>푸시 알림 예시</span>
-            </header>
-            <h3>이번에는 누가 사용하나요?</h3>
-            <p>
-              두 명의 등록 사용자가 인식됐어요.
-              <br />
-              주차 연락을 받을 사람을 선택해 주세요.
-            </p>
-            <div className="pd-push-actions">
-              {['남편', '아내'].map((person) => (
-                <button
-                  key={person}
-                  aria-pressed={selected === person}
-                  onClick={() => select(person)}
-                >
-                  {person}
-                  {selected === person && <Check size={18} />}
-                </button>
-              ))}
-            </div>
-          </div>
-          <output className="pd-choice-result">
-            <CheckCircle2 />
-            <div>
-              <span>
-                {selected
-                  ? '선택한 연락 대상'
-                  : '아래 결과를 직접 확인해 보세요'}
-              </span>
+
+      <p className="pd-coride-situation">
+        <Users aria-hidden="true" />
+        남편과 아내, 함께 탑승한 상황
+      </p>
+
+      <div className="pd-cases">
+        <article className="pd-case">
+          <h3>우선 사용자를 지정했다면</h3>
+          <div className="pd-case-body">
+            <p className="pd-priority">
+              <span>미리 지정한 우선 사용자</span>
               <strong>
-                {selected
-                  ? `${selected}에게 주차 연락이 이어집니다.`
-                  : '위 알림에서 사용자를 눌러보세요.'}
+                아내 <CheckCircle2 aria-hidden="true" />
               </strong>
+            </p>
+          </div>
+          <p className="pd-case-result">
+            <span>둘 다 인식되면</span>
+            아내가 주차 연락을 받습니다.
+          </p>
+        </article>
+
+        <article className="pd-case">
+          <h3>지정하지 않았다면</h3>
+          <div className="pd-case-body">
+            {/* A picture of the notification, not a working one. */}
+            <div className="pd-push" aria-label="푸시 알림 예시">
+              <p className="pd-push-app">
+                <Bell aria-hidden="true" />
+                Parké
+              </p>
+              <p className="pd-push-title">이번에는 누가 사용하나요?</p>
+              <p className="pd-push-text">
+                두 명의 등록 사용자가 인식됐어요.
+                <br />
+                주차 연락을 받을 사람을 선택해 주세요.
+              </p>
+              <p className="pd-push-options">
+                <span>남편</span>
+                <span>아내</span>
+              </p>
             </div>
-          </output>
-          <p className="pd-ui-caption">선택 과정을 설명하는 예시 화면입니다.</p>
-        </TabsContent>
-      </Tabs>
+          </div>
+          <p className="pd-case-result">
+            <span>앱 푸시로 물어보고</span>
+            선택한 사람이 주차 연락을 받습니다.
+          </p>
+        </article>
+      </div>
     </section>
   )
 }
 
+/**
+ * The other side of the call: someone who needs the car moved. Three screens
+ * in the order they happen — camera, web page, call.
+ *
+ * This was a three-step clickable demo on a single phone frame. Each press
+ * swapped the frame for the next screen, so the "no app, scan and call" claim
+ * took three interactions to see through; now the whole path is on the page.
+ */
 export function CallerFlow() {
-  const { state, actions } = useCallerFlowViewModel()
-  const { step } = state
-  const { goToStep, toggleCall } = actions
-  const labels = ['차 앞에서 QR 촬영', '웹페이지 열기', '안심번호로 전화']
   return (
     <section className="pd-caller">
       <div className="pd-copy">
@@ -137,84 +115,72 @@ export function CallerFlow() {
           <br />
           열린 웹페이지에서 <strong>전화 버튼을 누르면,</strong>
           <br />
-          안심번호를 통해 현재 연락 대상에게 연결됩니다.
+          현재 연락 대상에게 전화가 연결됩니다.
         </p>
       </div>
-      <div className="pd-caller-demo">
-        <div className="pd-caller-tabs" aria-label="QR 연락 과정">
-          {labels.map((label, index) => (
-            <button
-              key={label}
-              onClick={() => goToStep(index)}
-              aria-pressed={step === index}
-            >
-              <span>0{index + 1}</span>
-              {label}
-            </button>
-          ))}
-        </div>
-        <div className={`pd-caller-stage caller-step-${step}`}>
-          {step === 0 ? (
-            <div className="pd-camera-demo">
-              <span>연락 과정 예시</span>
-              <div className="pd-camera-reticle">
-                <QrCode size={116} strokeWidth={1.2} />
-                <i />
-              </div>
-              <h3>차 앞의 QR을 찍습니다.</h3>
-              <p>연락하는 분은 파르케 앱이 없어도 됩니다.</p>
-              <button className="pd-demo-action" onClick={() => goToStep(1)}>
-                웹페이지 열어보기
-              </button>
+
+      <ol className="pd-caller-steps">
+        <li>
+          <div className="pd-screen is-camera" aria-hidden="true">
+            <div className="pd-screen-reticle">
+              <QrCode strokeWidth={1.2} />
             </div>
-          ) : (
-            <div className="pd-web-demo">
-              <div className="pd-browser-bar">
-                <LockKeyhole size={16} />
-                <span>QR로 열리는 웹페이지 · 예시</span>
-              </div>
-              <div className="pd-web-content">
-                <b className="pd-web-brand">Parké</b>
-                <p>주차된 차량에 연락하기</p>
-                <h3>
-                  차량 이동이
-                  <br />
-                  필요하신가요?
-                </h3>
-                <div className="pd-safe-number">
-                  <LockKeyhole />
-                  <span>
-                    개인번호 대신
-                    <br />
-                    <strong>안심번호로 연결</strong>
-                  </span>
-                </div>
-                <button className="pd-demo-action" onClick={toggleCall}>
-                  <PhoneCall size={20} />
-                  {step === 2 ? '웹페이지로 돌아가기' : '전화 버튼 눌러보기'}
-                </button>
-                {step === 2 && (
-                  <output className="pd-call-result">
-                    <CheckCircle2 size={24} />
-                    <strong>
-                      안심번호를 거쳐
-                      <br />
-                      현재 연락 대상에게.
-                    </strong>
-                    <span>실제 전화를 걸지 않는 체험 화면입니다.</span>
-                  </output>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        <p className="pd-caller-summary">
-          <QrCode size={21} />
-          <span>
-            같은 QR. <strong>연결되는 사람만 바뀝니다.</strong>
-          </span>
-        </p>
-      </div>
+          </div>
+          <span className="pd-step-number">01</span>
+          <h3>차 앞의 QR을 찍습니다</h3>
+          <p>연락하는 분은 파르케 앱이 없어도 됩니다.</p>
+        </li>
+
+        <li className="pd-caller-arrow" aria-hidden="true">
+          <ArrowRight />
+        </li>
+
+        <li>
+          <div className="pd-screen is-web" aria-hidden="true">
+            <p className="pd-screen-bar">
+              <LockKeyhole />
+              QR로 열리는 웹페이지
+            </p>
+            <p className="pd-screen-brand">Parké</p>
+            <p className="pd-screen-title">
+              차량 이동이
+              <br />
+              필요하신가요?
+            </p>
+            <p className="pd-screen-button">
+              <PhoneCall />
+              전화하기
+            </p>
+          </div>
+          <span className="pd-step-number">02</span>
+          <h3>웹페이지가 열립니다</h3>
+          <p>전화 버튼 하나만 있는 페이지입니다.</p>
+        </li>
+
+        <li className="pd-caller-arrow" aria-hidden="true">
+          <ArrowRight />
+        </li>
+
+        <li>
+          <div className="pd-screen is-call" aria-hidden="true">
+            <i>
+              <PhoneCall />
+            </i>
+            <p className="pd-screen-title">연결 중</p>
+            <p className="pd-screen-note">오늘 차를 가져간 사람에게</p>
+          </div>
+          <span className="pd-step-number">03</span>
+          <h3>전화가 연결됩니다</h3>
+          <p>지금 차를 가져간 사람에게 연결됩니다.</p>
+        </li>
+      </ol>
+
+      <p className="pd-caller-summary">
+        <QrCode size={21} />
+        <span>
+          같은 QR. <strong>연결되는 사람만 바뀝니다.</strong>
+        </span>
+      </p>
     </section>
   )
 }

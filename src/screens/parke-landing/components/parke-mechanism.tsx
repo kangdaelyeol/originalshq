@@ -99,11 +99,11 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
             <p>
               QR로 열린 웹페이지에서 전화 버튼을 누르면,
               <br />
-              안심번호를 통해 현재 사용자에게 연결됩니다.
+              현재 사용자에게 전화가 연결됩니다.
             </p>
             <p className="pd-step-result">
               <QrCode aria-hidden="true" />
-              QR 그대로 · 안심번호로 연결
+              QR 그대로 · 오늘 사용자에게 연결
             </p>
           </li>
         </ol>
