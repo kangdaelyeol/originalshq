@@ -443,11 +443,13 @@
     margin: auto;
   }
 
+  /* The product, with nothing on top of it. The scan frame, the magnified
+   * inset and the caption bar that used to sit over and under this picture
+   * all said the same thing as the one line that remains below it. */
   .pd-qr-showcase {
     max-width: 850px;
-    position: relative;
-    margin: 20px auto 0;
-    aspect-ratio: 16/10;
+    margin: 12px auto 0;
+    aspect-ratio: 16/9;
     overflow: hidden;
 
     > img {
@@ -458,50 +460,130 @@
     }
   }
 
-  .pd-qr-scan {
-    position: absolute;
-    left: 59.4%;
-    top: 38%;
-    width: 9%;
-    height: 18%;
-    color: #8fb9ff;
-    filter: drop-shadow(0 0 10px #5b8bff);
-    pointer-events: none;
-
-    > svg {
-      width: 100%;
-      height: 100%;
-      stroke-width: 0.8;
-    }
-
-    i {
-      position: absolute;
-      left: 9%;
-      right: 9%;
-      top: 15%;
-      height: 2px;
-      background: #afd8ff;
-      box-shadow: 0 0 14px #8ab3ff;
-      animation: pd-scan 3s ease-in-out infinite;
-    }
-  }
-
   .pd-qr-fixed {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 3%;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px;
-    font-size: 17px;
+    gap: 9px;
+    margin: 0 !important;
+    padding-bottom: 84px;
+    font-size: 17px !important;
+    line-height: 1.5 !important;
     color: #bdd3ff;
+
+    > svg {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      color: #8eceff;
+    }
   }
 
   .pd-recognition {
     border-top: 1px solid #243043;
     padding-bottom: 70px;
+  }
+
+  /* "How the switch happens" — the device and phone once, then the three
+   * steps under it as columns. */
+  .pd-steps-visual {
+    max-width: 860px;
+    margin: 44px auto 0;
+
+    > img {
+      display: block;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+    }
+  }
+
+  .pd-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: 1000px;
+    margin: 34px auto 0;
+    padding: 0;
+    list-style: none;
+    text-align: left;
+
+    > li {
+      display: flex;
+      flex-direction: column;
+      padding: 4px 26px 0;
+      border-left: 1px solid #243043;
+
+      &:first-child {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      &:last-child {
+        padding-right: 0;
+      }
+    }
+
+    h3 {
+      margin: 10px 0 12px;
+      font-size: 21px;
+      line-height: 1.4;
+      letter-spacing: -0.04em;
+      font-weight: 650;
+      color: #f8fbff;
+    }
+
+    p {
+      margin: 0 !important;
+      font-size: 16px !important;
+      line-height: 1.7 !important;
+      color: #b5c7df;
+    }
+  }
+
+  .pd-step-number {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #8fb9ff;
+  }
+
+  // What the step leaves you with — pinned to the bottom of each column so
+  // the three line up even when the paragraphs above run to different
+  // lengths.
+  .pd-steps .pd-step-result {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: auto !important;
+    padding-top: 18px;
+    font-size: 15px !important;
+    font-weight: 600;
+    color: #e0f1ff;
+
+    > svg {
+      flex-shrink: 0;
+      width: 17px;
+      height: 17px;
+      color: #8eceff;
+    }
+
+    > s {
+      font-weight: 400;
+      color: #7f93ad;
+    }
+  }
+
+  .pd-steps-note {
+    max-width: 1000px;
+    margin: 34px auto 0 !important;
+    padding-top: 22px;
+    border-top: 1px solid #243043;
+    font-size: 15px !important;
+    line-height: 1.7 !important;
+    color: #9eafc3;
+    text-align: center;
   }
 
   .pd-connection {
@@ -1241,21 +1323,49 @@
       }
     }
 
-    .pd-qr-scan {
-      left: 63.2%;
-      top: 40%;
-      width: 12%;
-      height: 17%;
-    }
-
     .pd-qr-fixed {
-      bottom: 4%;
-      font-size: 15px;
+      padding-bottom: 60px;
+      font-size: 15px !important;
       gap: 8px;
     }
 
     .pd-recognition {
       padding-bottom: 40px;
+    }
+
+    .pd-steps-visual {
+      margin: 32px -20px 0;
+    }
+
+    // One step per row, separated by a rule instead of a column edge.
+    .pd-steps {
+      grid-template-columns: minmax(0, 1fr);
+      margin-top: 8px;
+
+      > li,
+      > li:first-child,
+      > li:last-child {
+        padding: 22px 0;
+        border-left: 0;
+        border-top: 1px solid #243043;
+      }
+
+      > li:first-child {
+        border-top: 0;
+      }
+
+      h3 {
+        font-size: 20px;
+      }
+    }
+
+    .pd-steps .pd-step-result {
+      padding-top: 14px;
+    }
+
+    .pd-steps-note {
+      margin-top: 4px !important;
+      text-align: left;
     }
 
     .pd-connection {
@@ -1640,13 +1750,6 @@
     height: 100svh;
   }
 
-  .pd-qr-scan {
-    left: 59.6%;
-    top: 46%;
-    width: 9.6%;
-    height: 19%;
-  }
-
   .pd-device-diagram > .pd-demo-internal {
     position: absolute;
     inset: 0;
@@ -1703,13 +1806,6 @@
   }
 
   @include m.mobile {
-    .pd-qr-scan {
-      left: 63.4%;
-      top: 46%;
-      width: 13.4%;
-      height: 20.7%;
-    }
-
     .pd-device-diagram > .pd-demo-internal {
       left: 0;
     }

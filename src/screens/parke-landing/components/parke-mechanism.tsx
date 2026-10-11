@@ -1,6 +1,5 @@
-import { PhoneCall, QrCode } from 'lucide-react'
+import { ArrowRight, Bluetooth, Check, PhoneCall, QrCode } from 'lucide-react'
 import { CallerFlow, CoRideChoice, FirstSetup } from './parke-use-flows'
-import { MechanismSlides } from './parke-visual-story'
 
 export const ParkeMechanism = ({ still }: { still: boolean }) => {
   return (
@@ -29,46 +28,11 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
             height={941}
             loading="lazy"
           />
-          {/* <div className="pd-qr-scan">
-            <ScanLine />
-            <i />
-          </div> */}
-          <div className="pd-qr-fixed">
-            <QrCode size={24} />
-            <span>인쇄된 QR은 바뀌지 않습니다</span>
-          </div>
         </div>
-        <div className="pv-qr-detail">
-          <div className="pv-qr-magnify">
-            <img
-              src="/images/brand/product-studio.webp"
-              alt="본체에 인쇄된 동일한 QR을 확대한 모습"
-              width={1672}
-              height={941}
-              loading="lazy"
-            />
-            {/* <div className="pv-qr-brackets">
-              <i />
-              <i />
-              <i />
-              <i />
-            </div>
-            <span className="pv-qr-beam" /> */}
-          </div>
-          <div>
-            <span className="pv-qr-caption">고정된 QR 확대</span>
-            <h3>
-              QR은 그대로.
-              <br />
-              연락 대상만 바뀝니다.
-            </h3>
-            <p>
-              매번 새로 인쇄하거나
-              <br />
-              바꿔 붙일 필요 없이.
-            </p>
-          </div>
-        </div>
+        <p className="pd-qr-fixed">
+          <QrCode aria-hidden="true" />
+          인쇄된 QR은 바뀌지 않습니다
+        </p>
       </section>
       <section className="pd-recognition">
         <div className="pd-copy">
@@ -86,7 +50,68 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
             <strong>앱을 직접 열지 않아도 연락 대상이 바뀝니다.</strong>
           </p>
         </div>
-        <MechanismSlides still={still} />
+        {/* One picture, then the three steps side by side. This used to be an
+            auto-advancing carousel: one step on screen at a time, two of the
+            three slides showing the same photo, and three sets of controls
+            (arrows, a counter, tabs) to move between them. Laid out together
+            the whole mechanism reads in one pass. */}
+        <figure className="pd-steps-visual">
+          <img
+            src="/images/story-v26/device-phone-studio.webp"
+            alt="파르케 본체와 등록된 휴대폰을 나란히 둔 렌더"
+            width={1536}
+            height={1024}
+            loading="lazy"
+          />
+        </figure>
+        <ol className="pd-steps">
+          <li>
+            <span className="pd-step-number">01</span>
+            <h3>기기가 휴대폰을 알아봅니다</h3>
+            <p>
+              파르케의 블루투스 인식부가
+              <br />
+              미리 등록한 휴대폰을 찾습니다.
+            </p>
+            <p className="pd-step-result">
+              <Bluetooth aria-hidden="true" />
+              등록된 남편을 찾았습니다.
+            </p>
+          </li>
+          <li>
+            <span className="pd-step-number">02</span>
+            <h3>앱을 열지 않아도, 자동 전환</h3>
+            <p>
+              인식된 사용자 정보가 반영되면,
+              <br />
+              같은 QR의 연락 대상이 바뀝니다.
+            </p>
+            <p className="pd-step-result">
+              <s>어제 · 아내</s>
+              <ArrowRight aria-hidden="true" />
+              오늘 · 남편
+              <Check aria-hidden="true" />
+            </p>
+          </li>
+          <li>
+            <span className="pd-step-number">03</span>
+            <h3>주차 연락은, 오늘 사용자에게</h3>
+            <p>
+              QR로 열린 웹페이지에서 전화 버튼을 누르면,
+              <br />
+              안심번호를 통해 현재 사용자에게 연결됩니다.
+            </p>
+            <p className="pd-step-result">
+              <QrCode aria-hidden="true" />
+              QR 그대로 · 안심번호로 연결
+            </p>
+          </li>
+        </ol>
+        <p className="pd-steps-note">
+          휴대폰은 등록할 때만 앱에서 설정해 두세요.
+          <br />
+          이후 자동 전환을 위해 매번 앱을 열 필요가 없습니다.
+        </p>
       </section>
       <CoRideChoice />
       <CallerFlow />

@@ -1,6 +1,5 @@
 export * from './use-engraving-view-model'
 export * from './use-hero-view-model'
-export * from './use-mechanism-slides-view-model'
 export * from './use-page-view-model'
 export * from './use-reservation-cancel-view-model'
 export * from './use-reservation-view-model'
