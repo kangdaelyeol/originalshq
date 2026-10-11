@@ -1040,41 +1040,9 @@
     padding-bottom: 70px !important;
   }
 
-  .sm-context,
-  .sm-card footer p {
-    font-size: 17px !important;
-    line-height: 1.8 !important;
-  }
-
-  .sm-caption {
-    font-size: 14px !important;
-    line-height: 1.7 !important;
-    color: #5e6d7e !important;
-  }
-
-  .sm-card header small,
-  .sm-map-key,
-  .sm-person > span,
-  .sm-car > span {
-    font-size: 14px !important;
-  }
-
-  .sm-person > small {
-    display: none;
-  }
-
-  .sm-card footer strong {
-    font-size: 21px !important;
-  }
-
   .sm-heading .ps-eyebrow {
     font-size: 15px !important;
     color: #405779;
-  }
-
-  .sm-section [role='tab'] {
-    font-size: 16px !important;
-    min-height: 46px;
   }
 
   @include m.mobile {
@@ -1473,37 +1441,11 @@
       padding-inline: 20px !important;
     }
 
-    .sm-person > span {
-      font-size: 14px !important;
-      white-space: nowrap;
-      padding: 6px 7px !important;
-    }
-
-    .sm-person > img {
-      width: 46px !important;
-      height: 46px !important;
-    }
-
-    .sm-map-key {
-      font-size: 13px !important;
-    }
-
-    .sm-card header small {
-      font-size: 14px !important;
-    }
-
-    .sm-card footer {
-      gap: 10px !important;
-    }
-
     .sm-heading h2 {
       font-size: 30px !important;
       line-height: 1.35 !important;
     }
 
-    .sm-card footer p {
-      font-size: 16px !important;
-    }
   }
 
   @include m.mobile-sm {
@@ -1583,10 +1525,6 @@
       > div {
         font-size: 15px;
       }
-    }
-
-    .sm-section [role='tab'] {
-      font-size: 14px !important;
     }
   }
 
