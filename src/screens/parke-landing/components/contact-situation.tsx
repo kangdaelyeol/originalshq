@@ -25,8 +25,10 @@ export const ContactSituation = ({ still = false }: { still?: boolean }) => {
           </p>
         </div>
         <DriverChangeScenes />
+        {/* The chapter's conclusion. It follows the two photos but is not a
+            caption for them, so it is set apart and set larger. */}
         <div className="pd-copy pd-after">
-          <p className="pd-body">
+          <p className="pd-takeaway">
             번호가 적힌 일반 주차번호판은
             <br />
             <strong>운전할 때마다 직접 바꿔야</strong>
@@ -49,45 +51,42 @@ export const ContactSituation = ({ still = false }: { still?: boolean }) => {
             누군가 “차 좀 빼주세요”라고 연락합니다.
           </p>
         </div>
-        <div className="pd-scene">
-          <img
-            src="/images/comparison/02-forgot-manual.webp"
-            alt="집에 있는 아내가 남편이 가져간 차의 주차 연락을 받는 상황"
-            width={1024}
-            height={1024}
-            loading="lazy"
-          />
-          <span className="pd-location">집에 있는 아내</span>
-          <div className="pd-call-bubble">
-            <PhoneCall aria-hidden="true" />
-            <div>
-              <span>주차 이동 요청</span>
-              <strong>“차 좀 빼주시겠어요?”</strong>
-            </div>
+        {/* Photo on the left, the three turns of the mix-up on the right: the
+            request comes in, the wife explains, and she has to pass it on. */}
+        <div className="pd-relay">
+          <div className="pd-scene">
+            <img
+              src="/images/comparison/02-forgot-manual.webp"
+              alt="집에 있는 아내가 남편이 가져간 차의 주차 연락을 받는 상황"
+              width={1024}
+              height={1024}
+              loading="lazy"
+            />
+          </div>
+          <div className="pd-dialogue">
+            <p className="is-caller">
+              <span>
+                <PhoneCall aria-hidden="true" />
+                주차 이동 요청
+              </span>
+              “차 좀 빼주시겠어요?”
+            </p>
+            <p className="is-wife">
+              <span>아내</span>“차는 남편이 가져갔는데…
+              <br />
+              제가 다시 연락해 볼게요.”
+            </p>
+            <p className="is-relay">
+              <span>남편에게 다시 전화</span>“회사 앞에 세운 차,
+              <br />
+              옮겨 달래.”
+            </p>
           </div>
         </div>
-        <div className="pd-dialogue">
-          <p>
-            <span>아내</span>“차는 남편이 가져갔는데…
-            <br />
-            제가 다시 연락해 볼게요.”
-          </p>
-          <p>
-            <span>남편에게 다시 전화</span>“회사 앞에 세운 차,
-            <br />
-            옮겨 달래.”
-          </p>
-        </div>
         <div className="pd-copy pd-after">
-          <h3>
-            전화 한 번이면 될 일이,
-            <br />
-            가족을 거쳐 돌아갑니다.
-          </h3>
+          <h3>전화 한 번이면 될 일이, 가족을 거쳐 돌아갑니다.</h3>
           <p className="pd-body">
-            가족이 바로 전화를 받지 못하면
-            <br />
-            차를 옮겨야 한다는 전달도 늦어집니다.
+            가족이 바로 전화를 받지 못하면 차를 옮겨야 한다는 전달도 늦어집니다.
           </p>
         </div>
       </section>

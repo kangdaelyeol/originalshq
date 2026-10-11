@@ -115,14 +115,14 @@ export const ParkeMechanism = ({ still }: { still: boolean }) => {
             height={1024}
             loading="lazy"
           />
-          <div className="pd-call-bubble is-right">
-            <PhoneCall />
-            <div>
-              <span>주차 후에도</span>
-              <strong>마지막 연락 대상 유지</strong>
-            </div>
-          </div>
         </div>
+        {/* What the photo shows, said once beside it rather than on a card
+            floating over it. */}
+        <p className="pd-parked-status">
+          <PhoneCall aria-hidden="true" />
+          <span>주차 후에도</span>
+          <strong>마지막 연락 대상 유지</strong>
+        </p>
       </section>
       <p className="pd-example-note">
         기기 찾기 이미지는 실제 앱 화면입니다. 자동 전환·푸시·QR 연락 화면과
