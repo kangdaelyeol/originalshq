@@ -1,4 +1,3 @@
-import { ArrowUpRight } from 'lucide-react'
 import LogoSymbol from '@/assets/originals_logo_symbol.svg'
 import LogoText from '@/assets/originals_logo_text.svg'
 
@@ -24,8 +23,7 @@ export const Header = (props: HeaderProps) => {
       </a>
       <nav aria-label="페이지 탐색">
         <button className="pf-reserve-nav" onClick={openReserve}>
-          지금 바로 예약하기
-          <ArrowUpRight size={15} />
+          사전 예약하기
         </button>
       </nav>
     </header>

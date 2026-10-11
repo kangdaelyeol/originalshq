@@ -1072,11 +1072,6 @@
     font-size: 18px !important;
   }
 
-  .pf-reserve-nav {
-    font-size: 14px !important;
-    min-height: 44px;
-  }
-
   .pf-motion {
     min-width: 40px;
     min-height: 40px;
@@ -1469,10 +1464,6 @@
       }
     }
 
-    .pf-reserve-nav {
-      padding: 10px 13px !important;
-    }
-
     .pf-original-bottom {
       font-size: 14px !important;
     }
@@ -1578,14 +1569,6 @@
 
       nav {
         gap: 6px;
-      }
-    }
-
-    .pf-reserve-nav {
-      padding: 10px !important;
-
-      svg {
-        display: none;
       }
     }
 
@@ -1731,21 +1714,6 @@
 
   .pd-setup-card {
     z-index: 1;
-  }
-
-  .pf-consent,
-  .pf-reservation-privacy,
-  .pf-reservation-form > label small {
-    font-size: 14px !important;
-    line-height: 1.8;
-  }
-
-  .pf-reservation-intro {
-    font-size: 16px !important;
-  }
-
-  .pf-reservation-privacy {
-    color: #526548;
   }
 
   .pf-price-note {

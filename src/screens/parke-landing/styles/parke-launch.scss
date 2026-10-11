@@ -69,7 +69,6 @@
     font-size: 30px;
     letter-spacing: -0.055em;
     text-decoration: none;
-
   }
 
   /* The maker's mark beside the product name: a hairline, the Originals
@@ -118,17 +117,39 @@
     color: #d6dcd5;
   }
 
+  /* The header's one action. Deliberately quiet — a small off-white pill —
+   * so the lime accent is saved for the offer section's own button. */
   .pf-reserve-nav {
-    border: 0;
-    border-radius: 30px;
-    background: var(--pf-accent);
-    color: #1a2418;
-    padding: 11px 18px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 10px;
-    font-size: 14px !important;
-    font-weight: 600 !important;
+    height: 38px;
+    padding: 0 18px;
+    border-radius: 5px;
+    background: #f5f5f2;
+    color: #0c0f10;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    transition:
+      background-color 0.18s,
+      scale 0.18s;
+
+    &:hover {
+      background: #fff;
+    }
+
+    &:active {
+      scale: 0.97;
+    }
+  }
+
+  @include m.mobile {
+    .pf-reserve-nav {
+      height: 36px;
+      padding: 0 15px;
+      font-size: 13px;
+    }
   }
 
   .pf-scroll {
@@ -1732,169 +1753,296 @@
     filter: brightness(0) invert(1);
   }
 
+  /* Reservation dialog.
+   *
+   * Three stacked parts: a head (title + close) and a foot (the submit
+   * button) that stay put, and a body between them that is the only thing
+   * that scrolls. The close button and the call to action are therefore
+   * always on screen, however short the window is. */
   .pf-reservation-dialog {
-    background: #f1f4eb !important;
-    color: #20321f !important;
-    max-width: min(490px, 100vw - 32px) !important;
-    padding: 32px !important;
-    border-radius: 25px !important;
+    display: flex !important;
+    flex-direction: column;
     gap: 0 !important;
-    max-height: 90svh;
-    overflow-y: auto;
+    padding: 0 !important;
+    max-width: min(460px, 100vw - 32px) !important;
+    max-height: min(760px, 92svh);
+    overflow: hidden;
+    border-radius: 24px !important;
+    background: #f6f7f2 !important;
+    color: #1d2a1c !important;
     z-index: 100 !important;
     font-family: var(--font-geist), 'Apple SD Gothic Neo', sans-serif;
 
     ~ [data-slot='dialog-overlay'] {
       z-index: 90;
     }
+  }
+
+  .pf-reservation-head {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 26px 22px 18px 28px;
+    border-bottom: 1px solid #1d2a1c14;
 
     h2 {
-      font-size: 29px;
-      font-weight: 550;
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: 600;
+      line-height: 1.3;
       letter-spacing: -0.04em;
     }
   }
 
+  .pf-reservation-eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #5d7a4c;
+  }
+
+  .pf-reservation-close {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #1d2a1c0f;
+    color: #45563f;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background: #1d2a1c1f;
+    }
+
+    > svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .pf-reservation-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 20px 28px 24px;
+  }
+
   .pf-reservation-intro {
-    font-size: 14px;
-    color: #7a8d6c;
-    line-height: 1.8;
-    margin: 13px 0 25px;
+    margin: 0 0 20px !important;
+    font-size: 14px !important;
+    line-height: 1.7 !important;
+    color: #5f6f58;
   }
 
   .pf-reservation-form {
     display: grid;
     gap: 16px;
 
+    // Wrapping flex, so an optional hint sits on the label's own line and
+    // the full-width input drops to the next.
     > label {
-      font-size: 14px;
-      display: grid;
-      gap: 7px;
-      color: #4e6543;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 7px 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: #45563f;
+
+      small {
+        font-size: 12px;
+        font-weight: 400;
+        color: #8a9882;
+      }
     }
 
     input:not([type='checkbox']) {
       width: 100%;
-      border: 1px solid #c3d0b7;
+      padding: 12px 14px;
+      border: 1px solid #d3dacb;
+      border-radius: 10px;
       background: #fff;
-      padding: 13px 14px;
-      border-radius: 9px;
-      color: #243c24;
+      color: #1d2a1c;
       font-size: 16px;
-      outline-offset: 3px;
+      outline-offset: 2px;
+      transition: border-color 0.15s;
+
+      &:focus {
+        border-color: #5d7a4c;
+      }
     }
   }
 
-  .pf-reservation-summary {
+  // What is being reserved, stated once and quietly: a plain two-column row.
+  .pf-reservation-product {
     display: flex;
+    align-items: baseline;
     justify-content: space-between;
-    padding: 17px 0;
-    border-top: 1px solid #cbd7be;
-    border-bottom: 1px solid #cbd7be;
-    margin-bottom: 4px;
-    font-size: 15px;
+    gap: 14px;
+    padding: 13px 15px;
+    border-radius: 10px;
+    background: #1d2a1c0a;
+    font-size: 14px;
+    color: #45563f;
 
-    strong {
-      font-size: 22px;
+    > span:last-child {
+      flex: none;
+      color: #6b7b63;
     }
+  }
+
+  // Consent and what it covers, kept together as one block.
+  .pf-reservation-terms {
+    display: grid;
+    gap: 10px;
+    padding-top: 16px;
+    border-top: 1px solid #1d2a1c14;
   }
 
   .pf-consent {
     display: flex;
     align-items: flex-start;
-    gap: 11px;
+    gap: 10px;
     font-size: 13px;
-    line-height: 1.7;
-    color: #678359;
+    line-height: 1.6;
+    color: #35452f;
 
     [data-slot='checkbox'] {
-      margin-top: 3px;
-      width: 19px;
-      height: 19px;
-      border-color: #9aaf87;
+      margin-top: 2px;
+      width: 18px;
+      height: 18px;
+      border-color: #a9b5a0;
       background: #fff;
     }
 
     [data-checked] {
-      background: #355d2e !important;
-      color: white;
+      border-color: #243c23;
+      background: #243c23 !important;
+      color: #fff;
     }
 
     label {
       cursor: pointer;
+      word-break: keep-all;
     }
   }
 
   .pf-reservation-privacy {
+    word-break: keep-all;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 12px;
+    padding-left: 28px;
     font-size: 12px;
-    color: #85977b;
-    line-height: 1.7;
-    margin: 0;
+    line-height: 1.6;
+    color: #7c8a74;
+
+    dt {
+      color: #96a28f;
+    }
+  }
+
+  .pf-reservation-foot {
+    flex: none;
+    display: grid;
+    gap: 10px;
+    padding: 16px 28px 22px;
+    border-top: 1px solid #1d2a1c14;
+    background: #f6f7f2;
+
+    .pf-primary {
+      gap: 10px;
+      padding: 16px 20px;
+      font-size: 16px !important;
+    }
+
+    > small {
+      font-size: 12px;
+      text-align: center;
+      color: #8a9882;
+    }
   }
 
   .pf-reservation-error {
+    margin: 0 !important;
     color: #a52f30;
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 13px !important;
+    line-height: 1.6 !important;
   }
 
   .pf-reservation-success {
-    padding-top: 15px;
+    padding: 12px 0 8px;
     text-align: center;
 
     > svg {
-      width: 45px;
-      height: 45px;
-      margin: 10px auto 20px;
+      width: 40px;
+      height: 40px;
+      margin: 0 auto 16px;
       color: #587c3f;
     }
 
     > strong {
       display: block;
-      font-size: 27px;
-      font-weight: 550;
+      font-size: 22px;
+      font-weight: 600;
       letter-spacing: -0.04em;
     }
 
     > p {
-      font-size: 14px;
-      color: #6d865f;
-      line-height: 1.8;
-      margin: 15px 0;
+      margin: 12px 0 !important;
+      font-size: 14px !important;
+      line-height: 1.7 !important;
+      color: #5f6f58;
+      white-space: pre-line;
     }
 
     > code {
       display: block;
-      font-size: 17px;
-      margin: 24px 0;
-      padding: 16px;
-      background: #e1e9d7;
+      margin: 20px 0;
+      padding: 14px;
       border-radius: 10px;
+      background: #1d2a1c0a;
+      font-size: 15px;
     }
 
-    > button {
-      border: 0;
-      background: none;
+    .pf-primary {
+      padding: 16px 20px;
+      font-size: 16px !important;
+    }
+
+    > button:not(.pf-primary) {
+      margin-top: 14px;
       text-decoration: underline;
+      text-underline-offset: 3px;
       color: #6f805f;
       font-size: 13px;
-      margin-top: 15px;
-      cursor: pointer;
     }
   }
 
-  .pf-reservation-close {
-    position: absolute;
-    right: 17px;
-    top: 16px;
-    border: 0;
-    background: transparent;
-    color: #647859;
-    cursor: pointer;
+  @include m.mobile {
+    .pf-reservation-dialog {
+      border-radius: 20px !important;
+    }
 
-    > svg {
-      width: 21px;
-      height: 21px;
+    .pf-reservation-head {
+      padding: 22px 16px 16px 22px;
+
+      h2 {
+        font-size: 22px;
+      }
+    }
+
+    .pf-reservation-body {
+      padding: 18px 22px 20px;
+    }
+
+    .pf-reservation-foot {
+      padding: 14px 22px 18px;
     }
   }
 
@@ -2099,16 +2247,6 @@
 
     .pf-header nav {
       gap: 10px;
-    }
-
-    .pf-reserve-nav {
-      font-size: 12px !important;
-      padding: 10px 13px;
-      gap: 6px;
-
-      > svg {
-        width: 13px;
-      }
     }
 
     .pf-motion {
@@ -2706,12 +2844,7 @@
       scale: calc(0.94 + clamp(0, calc(var(--progress) / 0.3), 1) * 0.06);
       // The photo's own backdrop is lighter than the stage; fading its top
       // and bottom keeps it from reading as a pasted rectangle.
-      mask-image: linear-gradient(
-        transparent,
-        #000 16%,
-        #000 84%,
-        transparent
-      );
+      mask-image: linear-gradient(transparent, #000 16%, #000 84%, transparent);
     }
 
     .pf-finish-pin::after {
@@ -2953,31 +3086,6 @@
       }
     }
 
-    .pf-reservation-dialog {
-      padding: 26px !important;
-      border-radius: 20px !important;
-
-      h2 {
-        font-size: 26px;
-      }
-    }
-
-    .pf-reservation-intro {
-      font-size: 13px;
-    }
-
-    .pf-reservation-form {
-      gap: 14px;
-    }
-
-    .pf-consent {
-      font-size: 12px;
-    }
-
-    .pf-reservation-privacy {
-      font-size: 11px;
-    }
-
     .pf-static-app {
       min-height: 810px;
 
@@ -2999,11 +3107,6 @@
   }
 
   @include m.mobile-sm {
-    .pf-reserve-nav {
-      font-size: 11px !important;
-      padding: 9px 11px;
-    }
-
     .pf-header {
       padding-inline: 17px;
 
@@ -3090,10 +3193,6 @@
 
     .pf-price-details li {
       font-size: 11px;
-    }
-
-    .pf-reservation-dialog {
-      padding: 24px !important;
     }
   }
 
@@ -3218,16 +3317,6 @@
     .pf-power-tag {
       right: 41%;
       bottom: 0;
-    }
-  }
-
-  .pf-reservation-summary {
-    gap: 14px;
-    align-items: center;
-
-    strong {
-      white-space: nowrap;
-      flex-shrink: 0;
     }
   }
 
