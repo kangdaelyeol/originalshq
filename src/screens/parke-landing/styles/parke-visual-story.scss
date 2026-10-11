@@ -50,43 +50,11 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
-      animation: pv-photo-breathe 12s ease-in-out infinite alternate;
     }
   }
 
   .is-yesterday .pv-driver-photo > img {
     filter: grayscale(1) contrast(0.9) brightness(0.92);
-  }
-
-  .is-today .pv-driver-photo > img {
-    animation-delay: -6s;
-  }
-
-  .pv-scene-label {
-    position: absolute;
-    left: 18px;
-    right: 18px;
-    bottom: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 12px;
-    background: #f8fafbf2;
-    color: #273341;
-    font-size: 17px;
-    line-height: 1.5;
-    border-radius: 5px;
-  }
-
-  .is-today .pv-scene-label {
-    background: #1f5cdc;
-    color: #fff;
-  }
-
-  .pv-scene-label > svg {
-    flex-shrink: 0;
-    animation: pv-refresh 5s ease-in-out infinite;
   }
 
   .pv-driver-frame figcaption {
@@ -104,6 +72,27 @@
       display: block;
       color: #1e2a37;
       font-weight: 650;
+    }
+  }
+
+  /* Entrance — plays once, when useRevealOnceViewModel adds `is-revealed`.
+   *
+   * Nothing here loops. The photos used to breathe in and out for as long as
+   * the section was on screen, which read as decoration; now yesterday's
+   * frame arrives, then today's, and both hold still. `backwards` keeps the
+   * second frame in its starting state through its delay, so it is not
+   * visible early. */
+  .pv-driver-comparison:not(.is-revealed) .pv-driver-frame {
+    opacity: 0;
+  }
+
+  .pv-driver-comparison.is-revealed {
+    .pv-driver-frame {
+      animation: pv-driver-rise 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+    }
+
+    .pv-driver-frame.is-today {
+      animation-delay: 0.45s;
     }
   }
 
@@ -741,13 +730,10 @@
     }
   }
 
-  @keyframes pv-photo-breathe {
+  @keyframes pv-driver-rise {
     from {
-      transform: scale(1);
-    }
-
-    to {
-      transform: scale(1.045);
+      opacity: 0;
+      transform: translateY(18px);
     }
   }
 
@@ -852,14 +838,6 @@
     .pv-driver-photo {
       margin-inline: -20px;
       aspect-ratio: 1.12;
-    }
-
-    .pv-scene-label {
-      left: 18px;
-      right: 18px;
-      bottom: 18px;
-      font-size: 16px;
-      padding: 12px;
     }
 
     .pv-driver-frame figcaption {

@@ -13,7 +13,10 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from './ui/carousel'
-import { useMechanismSlidesViewModel } from '../view-model'
+import {
+  useMechanismSlidesViewModel,
+  useRevealOnceViewModel,
+} from '../view-model'
 
 /*
 const SignalLink = ({ studio = false }: { studio?: boolean }) => {
@@ -49,9 +52,17 @@ const SignalLink = ({ studio = false }: { studio?: boolean }) => {
   )
 } */
 
+/** Yesterday's driver and today's, side by side. The two frames enter once,
+ * one after the other, when the block scrolls into view, and stay put after
+ * that. */
 export const DriverChangeScenes = () => {
+  const { targetRef, state } = useRevealOnceViewModel<HTMLDivElement>()
+
   return (
-    <div className="pv-driver-comparison">
+    <div
+      ref={targetRef}
+      className={`pv-driver-comparison ${state.revealed ? 'is-revealed' : ''}`}
+    >
       <figure className="pv-driver-frame is-yesterday">
         <div className="pv-day-heading">
           <span>어제</span>
@@ -65,7 +76,6 @@ export const DriverChangeScenes = () => {
             height={1254}
             loading="lazy"
           />
-          <span className="pv-scene-label">차에서 내린 사람 · 아내</span>
         </div>
         <figcaption>
           <span>운전은 끝났지만,</span>
@@ -85,9 +95,6 @@ export const DriverChangeScenes = () => {
             height={1254}
             loading="lazy"
           />
-          <span className="pv-scene-label">
-            <RefreshCw size={19} />내 번호로 직접 바꾸기
-          </span>
         </div>
         <figcaption>
           <span>이제 내가 연락받으려면,</span>
