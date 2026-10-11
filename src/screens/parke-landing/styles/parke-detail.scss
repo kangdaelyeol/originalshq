@@ -223,6 +223,115 @@
     }
   }
 
+  // Photo on the right instead — used to break up consecutive split blocks.
+  .pd-relay.is-reversed .pd-scene {
+    order: 2;
+  }
+
+  /* "Who gets the call now" — the cue that triggered the change, the change
+   * itself, and the one line of why it matters. It replaces the cards that
+   * used to sit on top of the photos: the same three facts, set beside the
+   * picture as type rather than as a floating panel.
+   *
+   * It enters once (useRevealOnceViewModel adds `is-revealed`): the cue, then
+   * the names, then the note. Nothing repeats — the old version pulsed the new
+   * name and span the refresh icon for as long as it was on screen. */
+  .pd-handover {
+    text-align: left;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .pd-handover-cue {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    font-weight: 600;
+    color: #245fdf;
+
+    > svg {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  .pd-handover-names {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin: 18px 0 20px !important;
+    font-size: 44px !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.045em;
+    font-weight: 700;
+
+    > span {
+      color: #a3adb9;
+      font-weight: 500;
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+    }
+
+    > svg {
+      flex-shrink: 0;
+      width: 26px;
+      height: 26px;
+      color: #a3adb9;
+    }
+
+    > strong {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: #1f5cdc;
+      font-weight: 700;
+
+      > svg {
+        width: 30px;
+        height: 30px;
+      }
+    }
+  }
+
+  .pd-handover-note {
+    padding-top: 20px;
+    border-top: 1px solid #e3e8ee;
+    font-size: 19px !important;
+    line-height: 1.7 !important;
+    color: #515b67;
+  }
+
+  .pd-handover:not(.is-revealed) > * {
+    opacity: 0;
+  }
+
+  .pd-handover.is-revealed {
+    > * {
+      animation: pd-handover-rise 0.6s cubic-bezier(0.22, 0.61, 0.36, 1)
+        backwards;
+    }
+
+    .pd-handover-names {
+      animation-delay: 0.25s;
+    }
+
+    .pd-handover-note {
+      animation-delay: 0.55s;
+    }
+  }
+
+  @keyframes pd-handover-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+  }
+
   /* Three turns, in the order they happen. The incoming request sits on the
    * left like any received message; the wife's two replies sit on the right,
    * and the second is tinted because it is a separate call — the one that
@@ -292,54 +401,6 @@
 
   .pd-next {
     padding-bottom: 32px;
-  }
-
-  .pd-receiver-loop {
-    position: absolute;
-    bottom: 23px;
-    left: 23px;
-    right: 23px;
-    padding: 20px 24px;
-    border-radius: 10px;
-    background: #fcfdff;
-    color: #182b43;
-
-    > div {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      font-size: 16px;
-      color: #235fd6;
-    }
-
-    > strong {
-      display: flex;
-      gap: 28px;
-      align-items: center;
-      margin: 12px 0;
-      font-size: 34px;
-      line-height: 1.3;
-    }
-
-    > strong > span {
-      color: #8895a6;
-      text-decoration: line-through;
-      opacity: 0.5;
-    }
-
-    b {
-      color: #185fdf;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      animation: pd-recognize 5s ease infinite;
-    }
-
-    p {
-      margin: 0;
-      font-size: 16px;
-      line-height: 1.6;
-    }
   }
 
   .pd-example-note {
@@ -871,11 +932,6 @@
     animation: none !important;
   }
 
-  .is-still .pd-receiver-loop b {
-    opacity: 1;
-    transform: none;
-  }
-
   @keyframes pd-ring {
     0%,
     8%,
@@ -887,20 +943,6 @@
     4%,
     12% {
       transform: rotate(-14deg);
-    }
-  }
-
-  @keyframes pd-recognize {
-    0%,
-    12% {
-      opacity: 0.25;
-      transform: translateY(5px);
-    }
-
-    27%,
-    100% {
-      opacity: 1;
-      transform: translateY(0);
     }
   }
 
@@ -1124,6 +1166,32 @@
       margin-top: 32px;
     }
 
+    // On a phone the photo always comes first, mirrored or not, and the
+    // handover text is centred under it like the rest of the page's copy.
+    .pd-relay.is-reversed .pd-scene {
+      order: 0;
+    }
+
+    .pd-handover {
+      text-align: center;
+    }
+
+    .pd-handover-cue,
+    .pd-handover-names {
+      justify-content: center;
+    }
+
+    .pd-handover-names {
+      gap: 14px;
+      margin: 14px 0 18px !important;
+      font-size: 36px !important;
+    }
+
+    .pd-handover-note {
+      padding-top: 18px;
+      font-size: 17px !important;
+    }
+
     // Stacked again: the photo goes back to full bleed and the exchange
     // follows underneath.
     .pd-relay {
@@ -1156,22 +1224,6 @@
 
     .pd-next {
       padding-bottom: 24px;
-    }
-
-    .pd-receiver-loop {
-      left: 17px;
-      right: 17px;
-      bottom: 17px;
-      padding: 18px 20px;
-
-      > div,
-      p {
-        font-size: 15px;
-      }
-
-      > strong {
-        font-size: 30px;
-      }
     }
 
     .pd-one-qr,

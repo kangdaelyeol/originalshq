@@ -163,25 +163,6 @@
     }
   }
 
-  .pv-boarding {
-    max-width: 660px;
-    margin: 38px auto 0;
-  }
-
-  .pv-boarding-scene {
-    position: relative;
-    overflow: hidden;
-    aspect-ratio: 1;
-    background: #17212a;
-
-    > img {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
   .pv-signal {
     position: absolute;
     inset: 0;
@@ -231,76 +212,6 @@
     transform-box: fill-box;
     transform-origin: center;
     animation: pv-signal-pulse 2.6s ease-out infinite;
-  }
-
-  .pv-boarding-tag {
-    position: absolute;
-    left: 20px;
-    top: 20px;
-    display: flex;
-    gap: 9px;
-    align-items: center;
-    max-width: calc(100% - 40px);
-    padding: 13px 17px;
-    border: 1px solid #8ec3ff70;
-    border-radius: 6px;
-    background: #102645ed;
-    color: #d6ebff;
-    font-size: 17px;
-    line-height: 1.5;
-  }
-
-  .pv-boarding figcaption {
-    background: #edf3ff;
-    padding: 24px 25px;
-    color: #17355b;
-  }
-
-  .pv-background-line {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    font-size: 17px;
-    line-height: 1.6;
-    color: #406a9d;
-  }
-
-  .pv-recipient-change {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 22px;
-    margin: 18px 0 13px;
-    font-size: 30px;
-    line-height: 1.5;
-
-    > span {
-      color: #8495ac;
-      text-decoration: line-through;
-    }
-
-    > svg {
-      color: #7d9bc3;
-      animation: pv-refresh 5s infinite;
-    }
-
-    > strong {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      color: #225ed7;
-      font-size: 36px;
-      font-weight: 650;
-      animation: pv-recipient-confirm 5s ease-in-out infinite;
-    }
-  }
-
-  .pv-boarding figcaption > p {
-    font-size: 18px;
-    line-height: 1.7;
-    text-align: center;
-    color: #385b85;
   }
 
   .pv-mechanism-slides {
@@ -874,39 +785,6 @@
       }
     }
 
-    .pv-boarding {
-      margin: 30px -20px 0;
-    }
-
-    .pv-boarding-tag {
-      font-size: 15px;
-      left: 17px;
-      top: 17px;
-      max-width: calc(100% - 34px);
-      padding: 11px 13px;
-    }
-
-    .pv-boarding figcaption {
-      padding: 22px 20px;
-    }
-
-    .pv-background-line {
-      font-size: 16px;
-    }
-
-    .pv-recipient-change {
-      font-size: 27px;
-      gap: 18px;
-
-      > strong {
-        font-size: 32px;
-      }
-    }
-
-    .pv-boarding figcaption > p {
-      font-size: 17px;
-    }
-
     .pv-mechanism-slides {
       margin-top: 34px;
     }
@@ -1022,8 +900,7 @@
   }
 
   @include m.mobile-sm {
-    .pv-driver-photo,
-    .pv-boarding {
+    .pv-driver-photo {
       margin-inline: -18px;
     }
 
@@ -1071,7 +948,6 @@
   @include m.reduced-motion {
     .pv-driver-comparison *,
     .pv-beauty *,
-    .pv-boarding *,
     .pv-mechanism-slides * {
       animation: none !important;
       transition: none !important;

@@ -1,12 +1,16 @@
-import { PhoneCall, Check, RefreshCw } from 'lucide-react'
+import { ArrowRight, Bluetooth, Check, PhoneCall } from 'lucide-react'
 import { SituationMap } from './situation-map'
-import {
-  DriverChangeScenes,
-  BeautyCut,
-  BoardingConnection,
-} from './parke-visual-story'
+import { DriverChangeScenes, BeautyCut } from './parke-visual-story'
+import { useRevealOnceViewModel } from '../view-model'
 
 export const ContactSituation = ({ still = false }: { still?: boolean }) => {
+  // The two "who gets the call now" panels each enter once, when they are
+  // scrolled to.
+  const { targetRef: husbandRef, state: husband } =
+    useRevealOnceViewModel<HTMLDivElement>(0.5)
+  const { targetRef: wifeRef, state: wife } =
+    useRevealOnceViewModel<HTMLDivElement>(0.5)
+
   return (
     <div id="map-story" className={`pd-story ${still ? 'is-still' : ''}`}>
       <section className="pd-chapter pd-problem">
@@ -122,9 +126,43 @@ export const ContactSituation = ({ still = false }: { still?: boolean }) => {
             주차 연락 대상이 남편으로 바뀝니다.
           </p>
         </div>
-        <BoardingConnection />
+        {/* Same split as the wrong-call chapter above: the photo on one side,
+            and beside it who the call now reaches — recognised, switched,
+            and why nobody had to do anything. */}
+        <div className="pd-relay">
+          <div className="pd-scene">
+            <img
+              src="/images/story-v26/boarding-connect.webp"
+              alt="운전석에 탑승한 남편의 휴대폰과 대시보드 위 파르케가 자동으로 연결되는 사용 예시"
+              width={1254}
+              height={1254}
+              loading="lazy"
+            />
+          </div>
+          <div
+            ref={husbandRef}
+            className={`pd-handover ${husband.revealed ? 'is-revealed' : ''}`}
+          >
+            <p className="pd-handover-cue">
+              <Bluetooth aria-hidden="true" />
+              등록된 남편의 휴대폰 인식
+            </p>
+            <p className="pd-handover-names">
+              <span>아내</span>
+              <ArrowRight aria-hidden="true" />
+              <strong>
+                남편 <Check aria-hidden="true" />
+              </strong>
+            </p>
+            <p className="pd-handover-note">
+              앱을 열지 않아도,
+              <br />
+              차에 타면 주차 연락 대상이 자동으로.
+            </p>
+          </div>
+        </div>
         <div className="pd-copy pd-after">
-          <p className="pd-body">
+          <p className="pd-takeaway">
             집에 있는 가족이 대신 받아
             <br />
             다시 전달할 필요 없이.
@@ -147,26 +185,38 @@ export const ContactSituation = ({ still = false }: { still?: boolean }) => {
             같은 번호판의 연락 대상이 다시 바뀝니다.
           </p>
         </div>
-        <div className="pd-scene">
-          <img
-            src="/images/comparison/04-next-parke.webp"
-            alt="다음 날 같은 차를 이용하는 아내"
-            width={1024}
-            height={1024}
-            loading="lazy"
-          />
-          <div className="pd-receiver-loop">
-            <div>
-              <RefreshCw size={20} />
-              <span>등록된 아내 인식</span>
-            </div>
-            <strong>
+        {/* Mirrored — photo on the right — so three split blocks in a row do
+            not read as the same block repeated. */}
+        <div className="pd-relay is-reversed">
+          <div className="pd-scene">
+            <img
+              src="/images/comparison/04-next-parke.webp"
+              alt="다음 날 같은 차를 이용하는 아내"
+              width={1024}
+              height={1024}
+              loading="lazy"
+            />
+          </div>
+          <div
+            ref={wifeRef}
+            className={`pd-handover ${wife.revealed ? 'is-revealed' : ''}`}
+          >
+            <p className="pd-handover-cue">
+              <Bluetooth aria-hidden="true" />
+              등록된 아내 인식
+            </p>
+            <p className="pd-handover-names">
               <span>남편</span>
-              <b>
-                아내 <Check size={22} />
-              </b>
-            </strong>
-            <p>연락 대상만 변경 · QR은 그대로</p>
+              <ArrowRight aria-hidden="true" />
+              <strong>
+                아내 <Check aria-hidden="true" />
+              </strong>
+            </p>
+            <p className="pd-handover-note">
+              연락 대상만 변경,
+              <br />
+              QR은 그대로.
+            </p>
           </div>
         </div>
       </section>

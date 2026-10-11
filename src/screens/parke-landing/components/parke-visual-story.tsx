@@ -1,7 +1,6 @@
 import {
   Bluetooth,
   Check,
-  LockKeyhole,
   PhoneCall,
   QrCode,
   RefreshCw,
@@ -122,41 +121,6 @@ export const BeautyCut = () => {
           <br />
           <strong>자동 주차번호판.</strong>
         </p>
-      </figcaption>
-    </figure>
-  )
-}
-
-export const BoardingConnection = () => {
-  return (
-    <figure className="pv-boarding">
-      <div className="pv-boarding-scene">
-        <img
-          src="/images/story-v26/boarding-connect.webp"
-          alt="운전석에 탑승한 남편의 휴대폰과 대시보드 위 파르케가 자동으로 연결되는 사용 예시"
-          width={1254}
-          height={1254}
-          loading="lazy"
-        />
-        {/* <SignalLink /> */}
-        <span className="pv-boarding-tag">
-          <Bluetooth size={20} />
-          등록된 남편의 휴대폰 인식
-        </span>
-      </div>
-      <figcaption>
-        <div className="pv-background-line">
-          <LockKeyhole size={20} />
-          <span>앱을 열지 않아도</span>
-        </div>
-        <div className="pv-recipient-change">
-          <span>아내</span>
-          <RefreshCw size={23} />
-          <strong>
-            남편 <Check size={24} />
-          </strong>
-        </div>
-        <p>차에 타면, 주차 연락 대상이 자동으로.</p>
       </figcaption>
     </figure>
   )
