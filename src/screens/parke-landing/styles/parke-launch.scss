@@ -70,12 +70,29 @@
     letter-spacing: -0.055em;
     text-decoration: none;
 
-    span {
-      font-size: 12px;
-      color: #9dab9e;
-      letter-spacing: 0;
-      font-weight: 400;
-    }
+  }
+
+  /* The maker's mark beside the product name: a hairline, the Originals
+   * symbol, then its wordmark. The wordmark file is black, so it is turned
+   * white here rather than shipping a second copy of it. */
+  .pf-brand-maker {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding-left: 19px;
+    border-left: 1px solid #ffffff26;
+  }
+
+  .pf-brand-symbol {
+    width: 20px;
+    height: 20px;
+  }
+
+  .pf-brand-wordmark {
+    height: 9px;
+    width: auto;
+    filter: brightness(0) invert(1);
+    opacity: 0.72;
   }
 
   .pf-header nav {
@@ -1625,27 +1642,15 @@
   }
 
   .pf-footer {
-    padding: 60px 6vw 35px;
+    padding: 72px 6vw 36px;
     border-top: 1px solid #ffffff0f;
     background: #0d1410;
     color: #698776;
     font-size: 13px;
 
-    > a {
-      font-size: 42px;
-      text-decoration: none;
-      letter-spacing: -0.07em;
-      color: #dae8d4;
-    }
-
-    > p {
-      font-size: 15px;
-      margin-top: 15px !important;
-    }
-
     details {
       max-width: 950px;
-      margin-top: 20px;
+      margin-top: 28px;
     }
 
     summary {
@@ -1659,13 +1664,72 @@
       color: #809485;
       margin: 10px 0;
     }
+  }
+
+  .pf-footer-brand {
+    > a {
+      font-size: 42px;
+      line-height: 1.2;
+      text-decoration: none;
+      letter-spacing: -0.07em;
+      color: #dae8d4;
+    }
+
+    > p {
+      font-size: 15px;
+      margin-top: 12px !important;
+    }
+  }
+
+  /* Who makes it: the Originals lockup (symbol, tagline over wordmark) on the
+   * left and the copyright line on the right, under a rule. */
+  .pf-footer-maker {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    margin-top: 56px;
+    padding-top: 28px;
+    border-top: 1px solid #ffffff12;
+
+    > small {
+      font-size: 12px;
+      color: #5f7868;
+    }
+  }
+
+  .pf-footer-originals {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    opacity: 0.86;
+    transition: opacity 0.2s;
+
+    &:hover {
+      opacity: 1;
+    }
 
     > span {
-      display: block;
-      font-size: 12px;
-      margin-top: 40px;
-      color: #466352;
+      display: grid;
+      gap: 5px;
     }
+  }
+
+  .pf-footer-symbol {
+    width: 38px;
+    height: 38px;
+  }
+
+  .pf-footer-caption {
+    height: 7px;
+    width: auto;
+  }
+
+  // Black in the file; white here.
+  .pf-footer-wordmark {
+    height: 14px;
+    width: auto;
+    filter: brightness(0) invert(1);
   }
 
   .pf-reservation-dialog {
@@ -2019,9 +2083,18 @@
       font-size: 27px;
     }
 
-    .pf-brand span,
+    // Only the symbol fits beside the button on a phone.
+    .pf-brand-wordmark,
     .pf-header nav > a {
       display: none;
+    }
+
+    .pf-brand {
+      gap: 13px;
+    }
+
+    .pf-brand-maker {
+      padding-left: 13px;
     }
 
     .pf-header nav {
@@ -2854,11 +2927,7 @@
     }
 
     .pf-footer {
-      padding: 48px 25px 30px;
-
-      > p {
-        font-size: 13px;
-      }
+      padding: 52px 25px 30px;
 
       details {
         font-size: 12px;
@@ -2867,8 +2936,19 @@
       details p {
         font-size: 12px;
       }
+    }
 
-      > span {
+    .pf-footer-brand > p {
+      font-size: 13px;
+    }
+
+    .pf-footer-maker {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 18px;
+      margin-top: 40px;
+
+      > small {
         font-size: 11px;
       }
     }

@@ -36,9 +36,7 @@
   /* --- Page chrome ---------------------------------------------------------
    * The header stays out of the hero's full-bleed intro and arrives once the
    * scroll sequence has been passed. visibility (not just opacity) so it is
-   * out of the tab order and the accessibility tree until it is really there;
-   * the `.pc-skip` link still covers keyboard users who want to skip ahead.
-   */
+   * out of the tab order and the accessibility tree until it is really there. */
   .pf-header {
     opacity: 0;
     visibility: hidden;

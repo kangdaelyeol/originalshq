@@ -1,4 +1,6 @@
 import { ArrowUpRight } from 'lucide-react'
+import LogoSymbol from '@/assets/originals_logo_symbol.svg'
+import LogoText from '@/assets/originals_logo_text.svg'
 
 interface HeaderProps {
   pastHero: boolean
@@ -10,7 +12,15 @@ export const Header = (props: HeaderProps) => {
   return (
     <header className={`pf-header ${pastHero ? 'is-visible' : ''}`}>
       <a href="#top" className="pf-brand">
-        Parké<span>by originals</span>
+        Parké
+        <span className="pf-brand-maker">
+          <img className="pf-brand-symbol" src={LogoSymbol} alt="" />
+          <img
+            className="pf-brand-wordmark"
+            src={LogoText}
+            alt="by Originals"
+          />
+        </span>
       </a>
       <nav aria-label="페이지 탐색">
         <button className="pf-reserve-nav" onClick={openReserve}>

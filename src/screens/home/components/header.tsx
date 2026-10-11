@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import { HashLink } from 'react-router-hash-link'
-import LogoSymbol from '@/assets/logo_symbol.svg'
-import LogoCaption from '@/assets/logo_caption.svg'
-import LogoText from '@/assets/logo_text.svg'
+import LogoSymbol from '@/assets/originals_logo_symbol.svg'
+import LogoCaption from '@/assets/originals_logo_caption.svg'
+import LogoText from '@/assets/originals_logo_text.svg'
 import { ArrowRight } from '@/illustrations'
 import { useHeader } from '@/screens/home/controller'
 import '@/screens/home/styles/header.scss'
@@ -19,7 +19,11 @@ export const Header = () => {
     useHeader()
 
   return (
-    <section className={['originals-header', 'navbar', scrolled && 'scrolled'].join(' ')}>
+    <section
+      className={['originals-header', 'navbar', scrolled && 'scrolled'].join(
+        ' ',
+      )}
+    >
       <div className="container">
         <div className="wrapper">
           <a className="logo__container" href="/#home">

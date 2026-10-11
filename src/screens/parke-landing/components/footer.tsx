@@ -1,8 +1,14 @@
+import LogoSymbol from '@/assets/originals_logo_symbol.svg'
+import LogoCaption from '@/assets/originals_logo_caption.svg'
+import LogoText from '@/assets/originals_logo_text.svg'
+
 export const Footer = () => {
   return (
     <footer className="pf-footer">
-      <a href="#top">Parké</a>
-      <p>함께 쓰는 차를 위한, 다음 세대 주차 연락판.</p>
+      <div className="pf-footer-brand">
+        <a href="#top">Parké</a>
+        <p>함께 쓰는 차를 위한, 다음 세대 주차 연락판.</p>
+      </div>
       <details>
         <summary>제품 개발·이미지 안내</summary>
         <p>
@@ -15,7 +21,16 @@ export const Footer = () => {
           안내합니다.
         </p>
       </details>
-      <span>originals © 2026</span>
+      <div className="pf-footer-maker">
+        <a href="/" className="pf-footer-originals" aria-label="Originals 홈">
+          <img className="pf-footer-symbol" src={LogoSymbol} alt="" />
+          <span>
+            <img className="pf-footer-caption" src={LogoCaption} alt="" />
+            <img className="pf-footer-wordmark" src={LogoText} alt="" />
+          </span>
+        </a>
+        <small>© 2026 Originals. All rights reserved.</small>
+      </div>
     </footer>
   )
 }

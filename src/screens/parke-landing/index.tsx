@@ -20,9 +20,6 @@ export default function ParkeLaunch() {
   const { openReserve, setReserveOpen } = actions
   return (
     <div className={`parke-cinema parke-launch ${still ? 'pf-still' : ''}`}>
-      <a href="#map-story" className="pc-skip">
-        본문으로 건너뛰기
-      </a>
       <Header pastHero={pastHero} openReserve={openReserve} />
       <Original360Hero still={still} />
       <ContactSituation still={still} />

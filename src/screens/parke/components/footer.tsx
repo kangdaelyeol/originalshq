@@ -1,5 +1,5 @@
 import '@/screens/parke/styles/footer.scss'
-import LogoSymbol from '@/assets/logo_symbol.svg'
+import LogoSymbol from '@/assets/originals_logo_symbol.svg'
 
 export const Footer = () => {
   return (
