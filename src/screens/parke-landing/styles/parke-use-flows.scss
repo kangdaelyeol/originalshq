@@ -21,14 +21,6 @@
     line-height: 1.5;
   }
 
-  .pd-ui-caption {
-    display: block;
-    font-size: 14px;
-    line-height: 1.7;
-    color: #a8bad2;
-    margin: 20px 0 0;
-  }
-
   .pd-mechanism button:focus-visible {
     outline: 3px solid #a9d4ff;
     outline-offset: 4px;
@@ -396,205 +388,139 @@
     padding-bottom: 15px;
   }
 
-  .pd-onboarding {
-    list-style: none;
-    max-width: 620px;
-    margin: 55px auto 0;
-    padding: 0;
-
-    > li {
-      padding: 36px 0 45px;
-      border-top: 1px solid #334154;
-    }
-  }
-
-  .pd-setup-heading {
-    display: flex;
-    gap: 21px;
-    align-items: flex-start;
-
-    > span {
-      font-size: 30px;
-      line-height: 1.3;
-      color: #8fbaff;
-      font-weight: 500;
-      font-variant-numeric: tabular-nums;
-    }
-  }
-
-  .parke-launch .pd-setup-heading h3 {
-    font-size: 27px;
-    line-height: 1.4;
-    margin: 0 0 12px;
-    letter-spacing: -0.035em;
-    font-weight: 650;
-  }
-
-  .pd-setup-heading p {
-    font-size: 18px;
-    line-height: 1.85;
-    margin: 0;
-    color: #bcccdf;
-  }
-
-  .pd-install-visual {
-    position: relative;
-    max-width: 480px;
-    margin: 25px auto 0;
-
-    > img {
-      display: block;
-      width: 100%;
-      height: auto;
-      mask-image: linear-gradient(transparent, #000 12%, #000 75%, transparent);
-    }
-  }
-
-  .pd-store-search {
-    position: relative;
-    display: flex;
+  /* The app's real screen on the left, the three steps on the right. */
+  .pd-setup {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
     align-items: center;
-    gap: 12px;
-    padding: 17px 20px;
-    max-width: 360px;
-    margin: -15px auto 0;
-    background: #f3f7ff;
-    color: #243c5b;
-    border-radius: 10px;
-    font-size: 21px;
-    box-shadow: 0 10px 35px #00000022;
-
-    > span:last-child {
-      margin-left: auto;
-      color: #566d8a;
-      font-size: 15px;
-    }
+    gap: 64px;
+    max-width: 780px;
+    margin: 52px auto 0;
+    text-align: left;
   }
 
-  .pd-signup-visual {
-    max-width: 410px;
-    margin: 30px auto 0;
-    padding: 28px;
-    background: #0b1524;
-    border: 1px solid #40536e;
-    border-radius: 16px;
-
-    > b {
-      font-size: 31px;
-      letter-spacing: -0.035em;
-      font-weight: 600;
-    }
-
-    > div {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding-top: 22px;
-      color: #c7ddfd;
-      font-size: 21px;
-      line-height: 1.5;
-    }
-
-    svg {
-      color: #83b8ff;
-      flex-shrink: 0;
-    }
-  }
-
-  .pd-real-app {
-    max-width: 300px;
-    margin: 33px auto 0;
+  .pd-setup-phone {
+    margin: 0;
 
     > img {
       display: block;
       width: 100%;
       height: auto;
-      border: 1px solid #3f526a;
-      border-radius: 27px;
-      box-shadow: 0 15px 65px #00000055;
+      border: 1px solid #334967;
+      border-radius: 30px;
     }
 
-    figcaption {
+    > figcaption {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 7px;
-      color: #bfd2ec;
-      font-size: 14px;
-      line-height: 1.7;
-      margin-top: 18px;
-    }
+      gap: 6px;
+      margin-top: 14px;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #9eafc3;
 
-    figcaption svg {
-      flex-shrink: 0;
+      > svg {
+        flex-shrink: 0;
+        width: 14px;
+        height: 14px;
+      }
     }
   }
 
-  .pd-invite-visual {
-    display: flex;
-    gap: 18px;
-    align-items: center;
-    background: #e9f1ff;
-    color: #173963;
-    max-width: 480px;
-    margin: 28px auto 0;
-    padding: 25px;
-    border-radius: 14px;
+  .pd-setup-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
 
-    > svg {
-      flex-shrink: 0;
-      color: #2961ba;
+    > li {
+      padding: 26px 0;
+      border-top: 1px solid #263b58;
+
+      &:first-child {
+        padding-top: 0;
+        border-top: 0;
+      }
+
+      &:last-child {
+        padding-bottom: 0;
+      }
     }
 
-    b {
-      font-size: 20px;
-      line-height: 1.5;
-      font-weight: 600;
+    h3 {
+      margin: 8px 0 8px;
+      font-size: 22px;
+      line-height: 1.4;
+      letter-spacing: -0.04em;
+      font-weight: 650;
+      color: #f8fbff;
     }
 
     p {
-      font-size: 16px;
-      line-height: 1.7;
-      margin: 9px 0 0;
-      color: #516e91;
+      margin: 0 !important;
+      font-size: 16px !important;
+      line-height: 1.7 !important;
+      color: #b5c7df;
     }
   }
 
-  .pd-ready-proof {
-    text-align: center;
-    max-width: 620px;
-    margin: 20px auto 45px;
-    padding: 40px 20px;
-    background: linear-gradient(145deg, #213e66, #13263e);
-    border-top: 1px solid #51739f;
-    border-bottom: 1px solid #51739f;
+  // The one real action in the section: a link out to the App Store.
+  .pd-store-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 22px;
+    margin-top: 16px;
+    padding: 12px 16px 12px 18px;
+    background: #1f5cdc;
+    border-radius: 12px;
+    color: #fff;
+    text-decoration: none;
+
+    > span {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    strong {
+      font-size: 16px;
+      font-weight: 650;
+      letter-spacing: -0.02em;
+    }
+
+    small {
+      font-size: 12px;
+      color: #cfe0ff;
+    }
 
     > svg {
-      margin: 0 auto;
-      color: #a8cfff;
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover {
+      background: #2a69ea;
     }
   }
 
-  .parke-launch .pd-ready-proof h3 {
-    font-size: 30px;
-    line-height: 1.5;
-    margin: 18px 0 14px;
-    letter-spacing: -0.035em;
+  // The permissions note now follows the steps directly; a rule and some
+  // room keep it from reading as a fourth step.
+  .pd-first-setup .pd-after {
+    max-width: 780px;
+    margin-top: 48px;
+    padding-top: 26px;
+    border-top: 1px solid #263b58;
   }
 
-  .pd-ready-proof p {
-    font-size: 18px;
-    line-height: 1.85;
-    color: #c6d8ef;
-    margin: 0;
-  }
-
+  // No max-width of its own: the page's paragraph reset zeroes the side
+  // margins, so a narrower box here sat against the left edge of its parent
+  // with its text centred inside it — visibly off the section's centre line.
+  // The parent (.pd-after) already sets the width.
   .pd-setup-permissions {
     font-size: 15px;
     line-height: 1.85;
     color: #adbed3;
-    max-width: 620px;
-    margin: 0 auto;
   }
 
   @include m.mobile {
@@ -611,6 +537,29 @@
     .pd-caller-summary {
       font-size: 16px;
       margin-top: 30px !important;
+    }
+
+    // Stacked: the steps first (they are the content), the app screen after.
+    .pd-setup {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 34px;
+      margin-top: 36px;
+    }
+
+    .pd-setup-phone {
+      order: 2;
+      max-width: 220px;
+      margin-inline: auto;
+    }
+
+    .pd-setup-steps {
+      > li {
+        padding: 22px 0;
+      }
+
+      h3 {
+        font-size: 20px;
+      }
     }
 
     .pd-coride-situation {
@@ -715,65 +664,6 @@
       font-size: 0 !important;
     }
 
-    .pd-onboarding {
-      margin-top: 40px;
-
-      > li {
-        padding: 30px 0 36px;
-      }
-    }
-
-    .pd-setup-heading {
-      gap: 15px;
-
-      > span {
-        font-size: 25px;
-      }
-    }
-
-    .parke-launch .pd-setup-heading h3 {
-      font-size: 23px;
-    }
-
-    .pd-setup-heading p {
-      font-size: 17px;
-    }
-
-    .pd-signup-visual {
-      padding: 25px;
-    }
-
-    .pd-real-app {
-      max-width: 285px;
-    }
-
-    .pd-invite-visual {
-      gap: 13px;
-      padding: 23px 18px;
-      align-items: flex-start;
-
-      > svg {
-        width: 24px;
-        margin-top: 3px;
-      }
-
-      b {
-        font-size: 19px;
-      }
-
-      p {
-        font-size: 16px;
-      }
-    }
-
-    .parke-launch .pd-ready-proof h3 {
-      font-size: 27px;
-    }
-
-    .pd-ready-proof p {
-      font-size: 17px;
-    }
-
     .pd-setup-permissions {
       font-size: 14px;
       text-align: left;
@@ -788,22 +678,6 @@
 
     .pd-background-badge {
       font-size: 15px;
-    }
-
-    .pd-setup-heading {
-      gap: 12px;
-    }
-
-    .parke-launch .pd-setup-heading h3 {
-      font-size: 22px;
-    }
-
-    .pd-store-search {
-      padding: 16px;
-    }
-
-    .pd-invite-visual {
-      padding: 21px 16px;
     }
 
     .pd-caller-summary {

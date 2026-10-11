@@ -4,7 +4,6 @@ import {
   Bell,
   Bluetooth,
   CheckCircle2,
-  Link2,
   LockKeyhole,
   PhoneCall,
   QrCode,
@@ -185,15 +184,24 @@ export function CallerFlow() {
   )
 }
 
+/**
+ * The one time the app is needed: install, sign up, connect the device.
+ *
+ * This ran as four tall blocks stacked down the page, each with its own
+ * picture. The steps are short, so they now sit together as one list beside
+ * the only picture that is a real one — the app's own device-search screen.
+ * The fourth block (inviting family by link) is gone: that feature does not
+ * exist.
+ */
 export function FirstSetup() {
   return (
     <section className="pd-register pd-first-setup">
       <div className="pd-copy">
         <p className="pd-kicker">준비는 처음 한 번</p>
         <h2>
-          설치하고, 연결하고.
+          설치하고, 가입하고.
           <br />
-          가족을 초대하세요.
+          기기를 연결하세요.
         </h2>
         <p className="pd-body">
           처음 기기를 등록할 때는 앱이 필요합니다.
@@ -206,123 +214,66 @@ export function FirstSetup() {
           </strong>
         </p>
       </div>
-      <ol className="pd-onboarding">
-        <li>
-          <div className="pd-setup-heading">
-            <span>01</span>
-            <div>
-              <h3>파르케 앱 설치</h3>
-              <p>
-                패키지에 동봉된 안내 경로를 따라
-                <br />
-                App Store에서 ‘Parke’를 설치하세요.
-              </p>
-            </div>
-          </div>
-          <div className="pd-install-visual">
-            <img
-              src="/images/brand/package.webp"
-              alt="파르케 제품 패키지 디자인 시안"
-              width={1672}
-              height={941}
-              loading="lazy"
-            />
+
+      <div className="pd-setup">
+        <figure className="pd-setup-phone">
+          <img
+            src="/images/parke-scan.png"
+            alt="실제 파르케 앱의 기기 검색 화면. 원형 레이더와 ‘주변의 Parké 장치를 찾고 있습니다’ 안내"
+            width={1320}
+            height={2868}
+            loading="lazy"
+          />
+          <figcaption>
+            <Bluetooth aria-hidden="true" />
+            실제 파르케 앱 · 기기 찾기 화면
+          </figcaption>
+        </figure>
+
+        <ol className="pd-setup-steps">
+          <li>
+            <span className="pd-step-number">01</span>
+            <h3>파르케 앱 설치</h3>
+            <p>
+              패키지에 동봉된 안내 경로를 따라
+              <br />
+              App Store에서 ‘Parke’를 설치하세요.
+            </p>
             <a
-              className="pd-store-search pd-app-store-link"
+              className="pd-store-link"
               href="https://apps.apple.com/kr/app/parke/id6761168230?uo=4"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="App Store에서 ORIGINALS의 Parke 앱 다운로드"
             >
-              <span className="pd-app-store-name">
+              <span>
                 <strong>Parke 다운로드</strong>
                 <small>App Store · ORIGINALS Co., Ltd</small>
               </span>
-              <ArrowUpRight size={25} />
+              <ArrowUpRight aria-hidden="true" />
             </a>
-          </div>
-        </li>
-        <li>
-          <div className="pd-setup-heading">
-            <span>02</span>
-            <div>
-              <h3>회원가입</h3>
-              <p>
-                파르케 앱에서 계정을 만드세요.
-                <br />
-                우리 차와 사용자를 연결할 준비입니다.
-              </p>
-            </div>
-          </div>
-          <div className="pd-signup-visual">
-            <b>Parké</b>
-            <div>
-              <CheckCircle2 />
-              <span>내 계정 준비 완료</span>
-            </div>
-            <span className="pd-ui-caption">가입 흐름을 설명하는 예시</span>
-          </div>
-        </li>
-        <li>
-          <div className="pd-setup-heading">
-            <span>03</span>
-            <div>
-              <h3>우리 차의 기기 연결</h3>
-              <p>
-                파르케 기기 가까이에서 연결을 시작하세요.
-                <br />
-                레이더 화면이 주변의 기기를 찾습니다.
-              </p>
-            </div>
-          </div>
-          <figure className="pd-real-app">
-            <img
-              src="/images/parke-scan.png"
-              alt="실제 파르케 앱의 기기 검색 화면. 원형 레이더와 ‘주변의 Parké 장치를 찾고 있습니다’ 안내"
-              width={1320}
-              height={2868}
-              loading="lazy"
-            />
-            <figcaption>
-              <Bluetooth size={19} />
-              실제 파르케 앱 · 기기 찾기 화면
-            </figcaption>
-          </figure>
-        </li>
-        <li>
-          <div className="pd-setup-heading">
-            <span>04</span>
-            <div>
-              <h3>가족 초대 링크 보내기</h3>
-              <p>
-                함께 운전하는 가족에게 초대 링크를 보내세요.
-                <br />
-                가족도 등록하면, 같은 기기를 함께 사용합니다.
-              </p>
-            </div>
-          </div>
-          <div className="pd-invite-visual">
-            <Link2 size={29} />
-            <div>
-              <b>우리 차의 파르케에 초대합니다.</b>
-              <p>함께 운전할 가족에게 초대 링크 발송</p>
-            </div>
-          </div>
-        </li>
-      </ol>
-      <div className="pd-ready-proof">
-        <CheckCircle2 size={30} />
-        <h3>
-          앱 등록 완료.
-          <br />
-          시제품 사용 검증 완료.
-        </h3>
-        <p>
-          등록과 연결에서 자동 전환까지,
-          <br />
-          시제품으로 사용 흐름을 확인했습니다.
-        </p>
+          </li>
+          <li>
+            <span className="pd-step-number">02</span>
+            <h3>회원가입</h3>
+            <p>
+              파르케 앱에서 계정을 만드세요.
+              <br />
+              우리 차와 사용자를 연결할 준비입니다.
+            </p>
+          </li>
+          <li>
+            <span className="pd-step-number">03</span>
+            <h3>우리 차의 기기 연결</h3>
+            <p>
+              파르케 기기 가까이에서 연결을 시작하세요.
+              <br />
+              레이더 화면이 주변의 기기를 찾습니다.
+            </p>
+          </li>
+        </ol>
       </div>
+
       <div className="pd-copy pd-after">
         <p className="pd-setup-permissions">
           자동 인식을 위해 블루투스 등 앱의 필수 권한 설정이 필요합니다.

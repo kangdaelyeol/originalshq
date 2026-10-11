@@ -1086,15 +1086,259 @@
     }
   }
 
-  .pf-finish > img {
-    width: 150%;
-    max-width: none;
-    left: -25%;
-    object-position: 70% center;
+  /* Finish → inside: one pinned stage, scrolled through in two acts.
+   *
+   * The section is 5.2 screens tall with a one-screen stage pinned inside it,
+   * so there are 4.2 screens of scrolling during which the picture holds.
+   * `--progress` runs 0 → 1 across that stretch (useScrollProgressViewModel
+   * writes it) and everything below is a function of it:
+   *
+   *   0.03 – 0.22   the finish line of copy
+   *   0.22 – 0.32   the photo cross-fades to the see-through render
+   *   0.30 – 0.46   the "inside" heading
+   *   0.46 – 0.62   part 1   } marker on the part,
+   *   0.62 – 0.78   part 2   } caption beside it
+   *   0.78 – end    part 3   }
+   *
+   * Each piece of text is a `.pf-cue` with a `--from` and a `--to`; it fades
+   * in over `--fade` after `--from` and out over `--fade` before `--to`.
+   * Retiming the sequence is a matter of changing those numbers.
+   *
+   * `overflow: clip`, not `hidden`: `hidden` would make this section the
+   * scroll container the sticky stage measures against, and nothing would
+   * pin. */
+  .pf-finish.pf-photo-panel {
+    --progress: 0;
+    height: 520svh;
+    min-height: 0;
+    overflow: clip;
+
+    &::after {
+      content: none;
+    }
+  }
+
+  .pf-finish-pin {
+    position: sticky;
+    top: 0;
+    height: 100svh;
+    min-height: 600px;
+    overflow: hidden;
+    background: #0b0d0d;
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, #080c10b8, transparent 70%);
+      pointer-events: none;
+    }
+  }
+
+  /* The picture's own box: exactly the photo's shape, scaled to cover the
+   * stage. Both photos fill it and the part markers are positioned in it by
+   * percentage, so a marker stays on its part however the stage is cropped. */
+  .pf-finish-frame {
+    --frame-w: max(100vw, calc(100svh * 1672 / 941));
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--frame-w);
+    aspect-ratio: 1672 / 941;
+    translate: -50% -50%;
+    // Eases from slightly enlarged to natural size over the first act, which
+    // is what makes the hold read as a slow push rather than a freeze.
+    scale: calc(1.07 - clamp(0, calc(var(--progress) / 0.3), 1) * 0.07);
+
+    > img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  // The see-through render, laid over the finished one and faded up.
+  .pf-finish-xray {
+    opacity: clamp(0, calc((var(--progress) - 0.22) / 0.1), 1);
+  }
+
+  .pf-cue {
+    --fade: 0.04;
+    --in: clamp(0, calc((var(--progress) - var(--from)) / var(--fade)), 1);
+    --out: clamp(0, calc((var(--to) - var(--progress)) / var(--fade)), 1);
+    opacity: min(var(--in), var(--out));
+    // Up from below on the way in, on upward on the way out — the direction
+    // the page itself is moving.
+    translate: 0 calc((1 - var(--in)) * 18px - (1 - var(--out)) * 18px);
+
+    &.is-finish {
+      --from: 0.03;
+      --to: 0.22;
+    }
+
+    &.is-inside {
+      --from: 0.3;
+      --to: 0.46;
+    }
+
+    &.is-1 {
+      --from: 0.46;
+      --to: 0.62;
+    }
+
+    &.is-2 {
+      --from: 0.62;
+      --to: 0.78;
+    }
+
+    // No fade-out: the last caption stays up until the stage scrolls away.
+    &.is-3 {
+      --from: 0.78;
+      --to: 2;
+    }
   }
 
   .pf-finish .pf-photo-copy {
     top: 13%;
+  }
+
+  .pf-part {
+    max-width: 380px;
+
+    > span {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: #c5ed66;
+    }
+
+    h3 {
+      margin: 12px 0 14px;
+      font-size: clamp(30px, 3.2vw, 46px);
+      line-height: 1.25;
+      letter-spacing: -0.05em;
+      font-weight: 650;
+    }
+  }
+
+  /* A ring on the part being described. It shares its caption's window, so
+   * the two arrive and leave together; it is not animated beyond that. */
+  .pf-part-mark {
+    --fade: 0.04;
+    --in: clamp(0, calc((var(--progress) - var(--from)) / var(--fade)), 1);
+    --out: clamp(0, calc((var(--to) - var(--progress)) / var(--fade)), 1);
+    position: absolute;
+    width: 56px;
+    height: 56px;
+    border: 1.5px solid #ffffffe6;
+    border-radius: 50%;
+    background: #ffffff14;
+    box-shadow:
+      0 0 0 10px #ffffff12,
+      0 0 28px #ffffff2e;
+    translate: -50% -50%;
+    opacity: min(var(--in), var(--out));
+    scale: calc(0.7 + min(var(--in), var(--out)) * 0.3);
+
+    // Positions are percentages of the photo itself.
+    &.is-1 {
+      --from: 0.46;
+      --to: 0.62;
+      left: 69%;
+      top: 46%;
+    }
+
+    &.is-2 {
+      --from: 0.62;
+      --to: 0.78;
+      left: 57%;
+      top: 43.5%;
+    }
+
+    &.is-3 {
+      --from: 0.78;
+      --to: 2;
+      left: 43%;
+      top: 56%;
+    }
+  }
+
+  // "Internal layout image" — only while the see-through render is up.
+  .pf-finish .pf-footnote {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 26px;
+    z-index: 3;
+    opacity: clamp(0, calc((var(--progress) - 0.22) / 0.1), 1);
+  }
+
+  /* Motion off (the OS setting, or the page's own toggle): no pin and nothing
+   * tied to scroll. The see-through render with all three parts marked, and
+   * the copy laid out underneath it as ordinary text. */
+  @mixin pf-finish-static {
+    height: auto !important;
+
+    .pf-finish-pin {
+      position: static;
+      height: auto;
+      min-height: 0;
+      padding: 0 6vw 80px;
+
+      &::after {
+        content: none;
+      }
+    }
+
+    .pf-finish-frame {
+      position: relative;
+      left: auto;
+      top: auto;
+      width: 100%;
+      max-width: 1050px;
+      margin: 0 auto;
+      translate: none;
+      scale: 1;
+    }
+
+    .pf-finish-xray,
+    .pf-part-mark,
+    .pf-footnote {
+      opacity: 1;
+    }
+
+    .pf-part-mark {
+      scale: 1;
+    }
+
+    .pf-photo-copy {
+      position: static;
+      max-width: 580px;
+      margin: 28px auto 0;
+      opacity: 1;
+      translate: none;
+    }
+
+    .pf-cue.is-finish {
+      display: none;
+    }
+
+    .pf-footnote {
+      position: static;
+      margin-top: 28px;
+    }
+  }
+
+  .pf-still .pf-finish.pf-photo-panel {
+    @include pf-finish-static;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pf-finish.pf-photo-panel {
+      @include pf-finish-static;
+    }
   }
 
   .pf-small-label {
@@ -1104,90 +1348,6 @@
     font-size: 12px;
     color: #879a8c;
     z-index: 3;
-  }
-
-  .pf-sensors {
-    padding: 120px 6vw 90px;
-    background: #121719;
-  }
-
-  .pf-sensor-visual {
-    position: relative;
-    max-width: 1050px;
-    aspect-ratio: 16/9;
-    margin: 10px auto 0;
-
-    > img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      mask-image: radial-gradient(
-        ellipse 68% 68% at center,
-        #000 45%,
-        transparent 85%
-      );
-    }
-  }
-
-  .pf-hotspot {
-    position: absolute;
-    border: 1px solid #d4edaf;
-    border-radius: 50%;
-    width: 35px;
-    height: 35px;
-    background: #d5f07bcc;
-    color: #243f29;
-    display: grid;
-    place-items: center;
-    box-shadow: 0 0 0 9px #c5ed6620;
-
-    > svg {
-      width: 19px;
-    }
-
-    &.active {
-      background: #fff;
-      box-shadow: 0 0 0 13px #c5ed6630;
-    }
-  }
-
-  .hs-0 {
-    left: 34%;
-    top: 46%;
-  }
-
-  .hs-1 {
-    left: 45%;
-    top: 50%;
-  }
-
-  .hs-2 {
-    left: 63%;
-    top: 57%;
-  }
-
-  .pf-sensor-answer {
-    display: flex;
-    max-width: 580px;
-    gap: 20px;
-    margin: 25px auto 26px;
-    min-height: 83px;
-
-    > span {
-      font-size: 29px;
-      color: #a9c281;
-      letter-spacing: -0.04em;
-    }
-
-    h3 {
-      font-size: 23px;
-      margin: 0 0 10px;
-    }
-
-    p {
-      font-size: 16px;
-      color: #8caa99;
-    }
   }
 
   .pf-footnote {
@@ -2460,10 +2620,42 @@
       background: linear-gradient(#0a0e11b3, transparent 58%, #0a0e1166);
     }
 
-    .pf-finish > img {
-      width: 190%;
-      left: -77%;
-      object-position: 60% center;
+    /* On a phone the photo is not cropped to fill the screen: it is shown
+     * whole, under the copy. The photo has empty margin either side of the
+     * product, so the frame can run 26% wider than the screen and still keep
+     * both ends of the product in view through every step. */
+    .pf-finish-frame {
+      --frame-w: 126vw;
+      // The floor keeps it clear of the copy on short screens.
+      top: max(54%, 400px);
+      // Pushes in from slightly small rather than out from enlarged, so the
+      // ends of the product never leave the screen.
+      scale: calc(0.94 + clamp(0, calc(var(--progress) / 0.3), 1) * 0.06);
+      // The photo's own backdrop is lighter than the stage; fading its top
+      // and bottom keeps it from reading as a pasted rectangle.
+      mask-image: linear-gradient(
+        transparent,
+        #000 16%,
+        #000 84%,
+        transparent
+      );
+    }
+
+    .pf-finish-pin::after {
+      background: linear-gradient(#0a0e11b3, transparent 45%);
+    }
+
+    .pf-part-mark {
+      width: 30px;
+      height: 30px;
+      border-width: 1px;
+      box-shadow:
+        0 0 0 6px #ffffff12,
+        0 0 18px #ffffff2e;
+    }
+
+    .pf-part h3 {
+      font-size: 30px;
     }
 
     .pf-finish .pf-photo-copy {
@@ -2476,43 +2668,6 @@
       bottom: 23px;
       font-size: 10px;
       line-height: 1.7;
-    }
-
-    .pf-sensors {
-      padding: 85px 22px 65px;
-    }
-
-    .pf-sensor-visual {
-      width: 145%;
-      max-width: none;
-      margin-left: -22.5%;
-      margin-top: 30px;
-    }
-
-    .pf-hotspot {
-      width: 28px;
-      height: 28px;
-
-      > svg {
-        width: 15px;
-      }
-    }
-
-    .pf-sensor-answer {
-      gap: 15px;
-      margin-top: 28px;
-
-      > span {
-        font-size: 23px;
-      }
-
-      h3 {
-        font-size: 21px;
-      }
-
-      p {
-        font-size: 14px;
-      }
     }
 
     .pf-footnote {
@@ -2955,21 +3110,6 @@
     .pf-mechanism-pin:before {
       background: linear-gradient(#0b0d0d 0%, #0b0d0de8 26%, transparent 42%);
     }
-  }
-
-  .hs-0 {
-    left: 66%;
-    top: 47%;
-  }
-
-  .hs-1 {
-    left: 55%;
-    top: 45%;
-  }
-
-  .hs-2 {
-    left: 43%;
-    top: 56%;
   }
 
   .pf-sensor-tag {

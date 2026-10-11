@@ -952,8 +952,8 @@
 
   /* "The last driver keeps getting the call" — the same split as the
    * wrong-call chapter further up: photo on the left, words on the right.
-   * The markup order is copy, photo, status (the order it reads in on a
-   * phone); the grid puts the photo in the first column across both rows. */
+   * The markup order is copy then photo (the order it reads in on a phone);
+   * the grid puts the photo in the first column. */
   .pd-parked {
     display: grid;
     grid-template-columns: minmax(0, 0.92fr) minmax(0, 1fr);
@@ -962,47 +962,18 @@
 
     .pd-scene {
       grid-column: 1;
-      grid-row: 1 / span 2;
+      grid-row: 1;
       max-width: none;
       margin: 0;
     }
 
     .pd-copy {
       grid-column: 2;
-      align-self: end;
+      grid-row: 1;
+      align-self: center;
       max-width: none;
       margin: 0;
       text-align: left;
-    }
-  }
-
-  .pd-parked-status {
-    grid-column: 2;
-    align-self: start;
-    justify-self: start;
-    display: inline-flex;
-    align-items: center;
-    gap: 9px;
-    margin: 30px 0 0;
-    padding: 11px 18px 11px 15px;
-    border: 1px solid #ffffff24;
-    border-radius: 999px;
-    font-size: 16px;
-    line-height: 1.5;
-
-    > svg {
-      flex-shrink: 0;
-      width: 18px;
-      height: 18px;
-      color: #6ea0ff;
-    }
-
-    > span {
-      color: #9eafc3;
-    }
-
-    > strong {
-      font-weight: 600;
     }
   }
 
@@ -1077,8 +1048,7 @@
   .pf-section-intro > p:last-child,
   .pf-endurance-grid article > p,
   .pf-benefits article > p:last-child,
-  .pf-photo-copy > p:not(.pf-eyebrow),
-  .pf-sensor-answer p {
+  .pf-photo-copy > p:not(.pf-eyebrow) {
     font-size: 18px !important;
     line-height: 1.8 !important;
   }
@@ -1285,9 +1255,6 @@
 
     .pd-parked {
       grid-template-columns: minmax(0, 1fr);
-      // The status line is now the last thing in the section; without this it
-      // sits flush against the note that follows.
-      padding-bottom: 28px;
 
       .pd-scene,
       .pd-copy {
@@ -1302,13 +1269,6 @@
       .pd-copy {
         text-align: center;
       }
-    }
-
-    .pd-parked-status {
-      grid-column: 1;
-      justify-self: center;
-      margin-top: 22px;
-      font-size: 15px;
     }
 
     .pd-qr-showcase {

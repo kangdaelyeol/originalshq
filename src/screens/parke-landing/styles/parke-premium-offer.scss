@@ -1,51 +1,6 @@
 @use 'mixins' as m;
 
 .parke-page {
-  .pd-app-store-link {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    text-decoration: none;
-    background: #205ee7 !important;
-    border: 1px solid #80adff !important;
-    color: #fff !important;
-    min-height: 84px;
-    transition: background 0.2s;
-
-    &:hover {
-      background: #164bcc !important;
-    }
-
-    &:focus-visible {
-      outline: 3px solid #fff;
-      outline-offset: 5px;
-    }
-  }
-
-  .pd-store-search .pd-app-store-name {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-    margin: 0;
-    color: inherit;
-    font-size: 18px;
-  }
-
-  .pd-app-store-name strong {
-    font-weight: 650;
-  }
-
-  .pd-app-store-name small {
-    font-size: 14px;
-    color: #d4e4ff;
-  }
-
-  .pd-app-store-link > svg {
-    margin-left: auto;
-    flex-shrink: 0;
-  }
-
   .pf-endurance-grid .pf-spec-number {
     display: block;
     color: #e4f0ff;
@@ -337,19 +292,6 @@
   }
 
   @include m.mobile {
-    .pd-app-store-link {
-      min-height: 79px;
-      padding: 15px 18px !important;
-    }
-
-    .pd-store-search .pd-app-store-name {
-      font-size: 17px;
-    }
-
-    .pd-app-store-name small {
-      font-size: 13px;
-    }
-
     .pf-endurance-grid .pf-spec-number {
       font-size: 52px;
       margin: 24px 0 19px;
