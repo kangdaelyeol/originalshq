@@ -185,6 +185,8 @@ export const useMondayViewModel = (active: boolean) => {
   return {
     state: {
       status,
+      /** 걸러내지 않은 전체 고객 — 퍼널 통계가 쓴다. */
+      customers,
       rows,
       totalCustomers: customers.length,
       search,

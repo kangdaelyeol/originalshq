@@ -1,0 +1,260 @@
+@use './variables.scss';
+
+// 퍼널 통계 탭. 막대는 전부 한 계열(크기)을 나타내므로 한 가지 색만 쓰고,
+// 숫자와 이름은 글자색으로 적는다(막대 색을 글자에 입히지 않는다).
+$stats-bar: variables.$color-accent;
+
+.lead_manager_nav.monday_stats_nav {
+  .inner {
+    gap: 10px;
+  }
+
+  .stats_nav_label {
+    font-size: 13px;
+    color: variables.$color-text-muted;
+  }
+
+  .page_size_select select {
+    box-sizing: border-box;
+    height: 34px;
+    padding: 0 10px;
+    background-color: variables.$color-surface-raised;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: variables.$color-accent;
+    }
+  }
+
+  .stats_reset {
+    all: unset;
+    box-sizing: border-box;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text-muted;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$color-text;
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  .stats_nav_note {
+    margin-left: auto;
+    font-size: 12.5px;
+    color: variables.$color-text-faint;
+    white-space: nowrap;
+  }
+}
+
+.xtool-main.monday_stats {
+  .wrapper {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 20px 20px 60px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .stats_row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .stats_card {
+    padding: 20px 22px;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
+    border-radius: 10px;
+
+    h2 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+  }
+
+  .stats_desc {
+    margin: 6px 0 16px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: variables.$color-text-muted;
+  }
+
+  .stats_footnote {
+    margin: 4px 2px 0;
+    font-size: 12px;
+    line-height: 1.7;
+    color: variables.$color-text-faint;
+  }
+
+  // ── 가로 막대 ─────────────────────────────────────────────────────────
+  .stats_bars {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    &.compact {
+      margin-top: 18px;
+      gap: 9px;
+    }
+  }
+
+  .stats_bar {
+    display: grid;
+    grid-template-columns: 110px minmax(0, 1fr) 150px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .stats_bar_label {
+    font-size: 13px;
+    color: variables.$color-text;
+    white-space: nowrap;
+  }
+
+  // 막대가 자라는 자리 — 옅은 바탕을 깔아 전체(100%) 대비 길이가 읽히게 한다.
+  .stats_bar_track {
+    display: block;
+    height: 18px;
+    border-radius: 0 4px 4px 0;
+    background-color: variables.$color-surface-raised;
+  }
+
+  // 기준선(왼쪽)은 각지게, 값 쪽 끝만 둥글게.
+  .stats_bar_fill {
+    display: block;
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 4px 4px 0;
+    background-color: $stats-bar;
+  }
+
+  .stats_bar_value {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: variables.$color-text;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    small {
+      margin-left: 8px;
+      font-size: 12px;
+      font-weight: 400;
+      color: variables.$color-text-muted;
+    }
+  }
+
+  // ── 숫자 타일 ─────────────────────────────────────────────────────────
+  .stats_tiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .stats_tile {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 16px;
+    border: 1px solid variables.$color-border-soft;
+    border-radius: 8px;
+  }
+
+  .stats_tile_label {
+    font-size: 12.5px;
+    color: variables.$color-text-muted;
+  }
+
+  .stats_tile_value {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.2;
+    color: variables.$color-text;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stats_tile_note {
+    font-size: 12px;
+    color: variables.$color-text-faint;
+  }
+
+  // ── 전환율 표 ─────────────────────────────────────────────────────────
+  .stats_table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+
+    th,
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid variables.$color-border-soft;
+      text-align: right;
+      white-space: nowrap;
+      color: variables.$color-text;
+    }
+    th {
+      font-size: 12px;
+      font-weight: 500;
+      color: variables.$color-text-muted;
+    }
+    th:first-child,
+    td:first-child {
+      padding-left: 0;
+      text-align: left;
+    }
+    th:last-child,
+    td:last-child {
+      padding-right: 0;
+    }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+  }
+
+  // 전환율 칸 — 얇은 막대 + 숫자. 막대는 그 표에서 가장 높은 값을 가득 찬
+  // 길이로 삼는다(줄끼리 비교용).
+  .stats_rate {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+  }
+
+  // 막대가 자라는 고정 폭 자리 — 오른쪽(숫자 쪽)에서 왼쪽으로 자란다.
+  .stats_rate_track {
+    display: flex;
+    justify-content: flex-end;
+    flex: 0 0 90px;
+  }
+
+  .stats_rate_bar {
+    display: block;
+    height: 6px;
+    min-width: 2px;
+    border-radius: 3px;
+    background-color: $stats-bar;
+    opacity: 0.85;
+  }
+
+  .stats_rate_text {
+    min-width: 46px;
+  }
+}

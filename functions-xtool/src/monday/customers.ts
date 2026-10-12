@@ -35,6 +35,19 @@ const callbackDates = (item: MondayItem): string[] =>
     .map((step) => pick(item, new RegExp(`^콜백${step}단계`)))
     .filter((date): date is string => date !== null)
 
+/** 콜백이 몇 단계까지 갔는지(0~4). CS팀이 단계를 순서대로 체크하지 않는
+ * 경우가 있다 — 2단계부터 적거나, 1단계 다음에 3단계를 적거나. 그래서 "날짜가
+ * 적힌 단계의 수"가 아니라 "날짜가 적힌 가장 높은 단계"를 도달 단계로 보고,
+ * 그 아래 단계는 거친 것으로 친다. 상담 진행 상태가 "콜백n단계"인데 날짜를
+ * 안 적은 경우도 있어 상태값도 같이 본다. */
+const callbackStage = (item: MondayItem): number => {
+  const dated = [4, 3, 2, 1].find(
+    (step) => pick(item, new RegExp(`^콜백${step}단계`)) !== null,
+  )
+  const status = pick(item, /^상담진행상태$/)?.match(/콜백\s*(\d)\s*단계/)
+  return Math.max(dated ?? 0, status ? Number(status[1]) : 0)
+}
+
 const toConsultation = (item: MondayItem): MondayConsultation => ({
   ...source(item),
   product: pick(item, /^관심기기$/),
@@ -47,6 +60,7 @@ const toConsultation = (item: MondayItem): MondayConsultation => ({
   visitConfirmed: checked(item, /^방문체험확정$/),
   quoteIssued: checked(item, /^견적서발행$/),
   callbackDates: callbackDates(item),
+  callbackStage: callbackStage(item),
   paidAt: pick(item, /^결제일$/),
   notConvertedAt: pick(item, /^미전환일$/),
   utmCampaign: pick(item, /^(광고)?utm$/i),
@@ -71,6 +85,7 @@ const toVisit = (item: MondayItem): MondayVisit => ({
   memo: pick(item, /^메모$/),
   quoteIssued: checked(item, /^견적서발행여부$/),
   callbackDates: callbackDates(item),
+  callbackStage: callbackStage(item),
   paidAt: pick(item, /^결제일$/),
   notConvertedAt: pick(item, /^미전환일$/),
 })
@@ -146,6 +161,51 @@ const buildCustomer = (
 
   const activePurchases = purchases.filter((purchase) => !purchase.cancelled)
 
+  // ── 퍼널 통계용 파생값 ──────────────────────────────────────────────
+  const day = (value: string | null): string | null =>
+    value ? value.slice(0, 10) : null
+  const earliest = (dates: (string | null)[]): string | null =>
+    dates.filter((date): date is string => date !== null).sort()[0] ?? null
+
+  // 최초 인입일 — 이 고객이 처음 기록에 나타난 날. 상담은 접수일, 방문체험은
+  // 예약을 받은 날(Monday에 기록이 만들어진 날 — 방문일은 그보다 나중이다),
+  // 샘플테스트는 요청일, 구매는 결제일.
+  const firstContactAt = earliest([
+    ...consultations.map((record) => day(record.receivedAt)),
+    ...visits.map((record) =>
+      earliest([day(record.createdAt), day(record.visitAt)]),
+    ),
+    ...sampleTests.map((record) => day(record.requestedAt)),
+    ...activePurchases.map((record) => day(record.paidAt)),
+  ])
+  const oldestFirst = [...consultations].reverse()
+  const funnel = {
+    firstContactAt,
+    firstPurchaseAt: earliest(activePurchases.map((p) => day(p.paidAt))),
+    callbackStage: Math.max(
+      0,
+      ...consultations.map((record) => record.callbackStage),
+      ...visits.map((record) => record.callbackStage),
+    ),
+    // 방문체험 보드에 기록이 있거나, 상담 보드에서 "방문체험확정"이 체크됨.
+    visitBooked:
+      visits.length > 0 || consultations.some((r) => r.visitConfirmed),
+    visitCompleted: visits.some((record) => /완료/.test(record.status ?? '')),
+    // 상담이 전부 "오기입"이고 다른 기록이 없는 고객 — 실제 인입이 아니라
+    // 통계의 모수에서 뺀다.
+    misentry:
+      consultations.length > 0 &&
+      consultations.every((record) => record.status === '오기입') &&
+      visits.length === 0 &&
+      activePurchases.length === 0 &&
+      sampleTests.length === 0,
+    // 유입 경로 — 가장 이른 상담의 UTM source, 없으면 방문체험의 유입경로.
+    source:
+      oldestFirst.find((record) => record.utmSource)?.utmSource ??
+      [...visits].reverse().find((record) => record.source)?.source ??
+      null,
+  }
+
   const body = {
     phone,
     otherPhones: [
@@ -178,6 +238,7 @@ const buildCustomer = (
       paymentCount: payments.length,
       ...money,
       issueCount: issues.length,
+      funnel,
       // "홍길동, 김철수"처럼 한 칸에 여러 명이 적힌 값은 사람별로 나눈다.
       assignees: byFrequency(
         [

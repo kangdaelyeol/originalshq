@@ -35,5 +35,6 @@ export const source = (item: MondayItem) => ({
   boardName: item.boardName,
   name: cleanName(item.name),
   url: item.url,
+  createdAt: item.createdAt,
   updatedAt: item.updatedAt,
 })

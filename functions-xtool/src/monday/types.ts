@@ -194,10 +194,28 @@ export interface MondayCustomerSummary {
   /** 장기 할부 이자 합계 — 구매 금액과 별개. */
   interestAmount: number
   issueCount: number
+  funnel: MondayCustomerFunnel
   /** 이 고객의 기록에 나온 담당자 전부 — 많이 나온 순. */
   assignees: string[]
   /** 이 고객이 등장한 보드 이름들. */
   boardNames: string[]
+}
+
+/** 퍼널 통계용 파생값 — 고객 1명이 퍼널의 어디까지 갔는지. 통계 화면은
+ * 고객 목록의 이 값들만으로 집계한다. */
+export interface MondayCustomerFunnel {
+  /** 최초 인입일(YYYY-MM-DD) — 이 고객이 처음 기록에 나타난 날. */
+  firstContactAt: string | null
+  /** 첫 구매(계약)일 — 취소 건 제외. */
+  firstPurchaseAt: string | null
+  /** 콜백 도달 단계(0~4) — 이 고객의 기록 중 가장 높은 단계. */
+  callbackStage: number
+  visitBooked: boolean
+  visitCompleted: boolean
+  /** 상담이 전부 "오기입"인 고객 — 통계의 모수에서 뺀다. */
+  misentry: boolean
+  /** 유입 경로 — 가장 이른 상담의 UTM source, 없으면 방문체험의 유입경로. */
+  source: string | null
 }
 
 /** 목록 화면에 내려주는 고객 1명 — MondayCustomer에서 기록 배열을 뺀 것. */
@@ -227,6 +245,8 @@ interface MondayRecordSource {
   /** 그 item에 적힌 이름. */
   name: string
   url: string | null
+  /** Monday에 이 기록이 만들어진 시각(ISO). */
+  createdAt: string | null
   updatedAt: string | null
 }
 
@@ -245,6 +265,8 @@ export interface MondayConsultation extends MondayRecordSource {
   quoteIssued: boolean
   /** 콜백 1~4단계 진행일 — 진행한 단계까지만, 단계 순서대로. */
   callbackDates: string[]
+  /** 콜백 도달 단계(0~4) — 날짜가 적힌 가장 높은 단계. */
+  callbackStage: number
   paidAt: string | null
   notConvertedAt: string | null
   utmCampaign: string | null
@@ -270,6 +292,8 @@ export interface MondayVisit extends MondayRecordSource {
   memo: string | null
   quoteIssued: boolean
   callbackDates: string[]
+  /** 콜백 도달 단계(0~4) — 날짜가 적힌 가장 높은 단계. */
+  callbackStage: number
   paidAt: string | null
   notConvertedAt: string | null
 }

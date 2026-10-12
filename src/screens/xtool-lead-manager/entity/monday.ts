@@ -23,8 +23,25 @@ export interface MondayCustomerSummary {
   interestAmount: number
   /** 확인이 필요한 결제 기록 수. */
   issueCount: number
+  funnel: MondayCustomerFunnel
   assignees: string[]
   boardNames: string[]
+}
+
+/** 퍼널 통계용 파생값 — 고객 1명이 퍼널의 어디까지 갔는지. */
+export interface MondayCustomerFunnel {
+  /** 최초 인입일(YYYY-MM-DD). */
+  firstContactAt: string | null
+  /** 첫 구매(계약)일 — 취소 건 제외. */
+  firstPurchaseAt: string | null
+  /** 콜백 도달 단계(0~4) — 날짜가 적힌 가장 높은 단계. */
+  callbackStage: number
+  visitBooked: boolean
+  visitCompleted: boolean
+  /** 상담이 전부 "오기입"인 고객 — 통계의 모수에서 뺀다. */
+  misentry: boolean
+  /** 유입 경로 — 가장 이른 상담의 UTM source, 없으면 방문체험의 유입경로. */
+  source: string | null
 }
 
 /** 목록에 쓰는 고객 1명 — 기록 배열 없이 요약만. */
@@ -47,6 +64,7 @@ interface MondayRecordSource {
   name: string
   /** Monday에서 이 기록을 여는 주소. */
   url: string | null
+  createdAt: string | null
   updatedAt: string | null
 }
 
@@ -61,6 +79,7 @@ export interface MondayConsultation extends MondayRecordSource {
   visitConfirmed: boolean
   quoteIssued: boolean
   callbackDates: string[]
+  callbackStage: number
   paidAt: string | null
   notConvertedAt: string | null
   utmCampaign: string | null
@@ -84,6 +103,7 @@ export interface MondayVisit extends MondayRecordSource {
   memo: string | null
   quoteIssued: boolean
   callbackDates: string[]
+  callbackStage: number
   paidAt: string | null
   notConvertedAt: string | null
 }
