@@ -29,33 +29,44 @@ export const detectPhoneColumnId = (columns: MondayColumn[]): string | null => {
   return column?.id ?? null
 }
 
+// 유효한 번호로 인정하는 형태는 둘뿐이다(숫자만 남긴 뒤 기준):
+//   · 휴대폰 — 010으로 시작하는 11자리. 8210…으로 적힌 국제 표기는 010…으로
+//     바꿨을 때 11자리면 같은 것으로 본다.
+//   · 유선 — 지역번호(02, 031~064)나 070으로 시작하고 뒤가 7~8자리.
+// 그 밖의 값(자릿수가 모자라거나 넘치는 번호, 앞자리 오타, 0이 빠진 번호,
+// 011·016 같은 옛 번호)은 고쳐 쓰지 않고 결측으로 본다.
+const VALID_MOBILE = /^010\d{8}$/
+const VALID_LANDLINE = /^0(?:2|[3-6]\d|70)\d{7,8}$/
+
 // 한 칸에 번호가 여러 개 적힌 경우("010-1111-2222 / 031-333-4444",
-// "홍길동/01011112222")에서 번호 하나하나를 집어내는 패턴. 앞쪽은 휴대폰
-// (국가번호 82나 맨 앞 0 생략 허용), 뒤쪽은 지역번호로 시작하는 유선번호.
-// 앞뒤가 숫자면 더 긴 숫자열의 일부이므로 집지 않는다.
+// "홍길동/01011112222")에서 번호 하나하나를 집어내는 패턴. 앞뒤가 숫자면 더
+// 긴 숫자열의 일부이므로 집지 않는다 — 그래서 "010-27113-2881"처럼 자릿수가
+// 넘치는 값에서 일부만 잘라 유효한 번호로 만드는 일이 없다.
 const SEP = '[\\s.-]{0,2}'
-const MOBILE_IN_TEXT = `(?:\\+?82${SEP})?0?1[016789]${SEP}\\d{3,4}${SEP}\\d{4}`
-const LANDLINE_IN_TEXT = `0\\d{1,2}${SEP}\\d{3,4}${SEP}\\d{4}`
+const MOBILE_IN_TEXT = `(?:\\+?82${SEP}|0)10${SEP}\\d{4}${SEP}\\d{4}`
+const LANDLINE_IN_TEXT = `0(?:2|[3-6]\\d|70)${SEP}\\d{3,4}${SEP}\\d{4}`
 const PHONE_IN_TEXT_PATTERN = new RegExp(
   `(?<!\\d)(?:${MOBILE_IN_TEXT}|${LANDLINE_IN_TEXT})(?!\\d)`,
   'g',
 )
 
 /** 번호 하나를 중복 판단용 키로 정규화한다 — 숫자만 남기고 국제 표기(82...)는
- * 국내 표기(0...)로 맞춘다. 번호로 볼 수 없으면 null. */
+ * 국내 표기(0...)로 맞춘다. 위의 두 형태가 아니면 null. */
 const normalizeSinglePhone = (raw: string): string | null => {
   const digits = normalizeDomesticPhone(raw.replace(/\D/g, ''))
-  if (/^0\d{8,10}$/.test(digits)) return digits
-  // 맨 앞 0이 빠진 휴대폰번호("1012345678") — 번호가 숫자로 취급되는 엑셀/폼을
-  // 거치며 흔히 생긴다. 10으로 시작하는 10자리는 010 번호 말고는 될 수 없어서
-  // 0을 되살린다. 그 밖의 형태(지역번호 0이 빠진 유선번호, 자릿수 오타)는
-  // 추측하지 않고 null로 둬서 Monday에서 고치게 한다.
-  return /^10\d{8}$/.test(digits) ? `0${digits}` : null
+  return VALID_MOBILE.test(digits) || VALID_LANDLINE.test(digits)
+    ? digits
+    : null
 }
+
+/** 유효한 휴대폰번호(010 11자리)인지 — 대표 번호를 고를 때 유선보다 먼저
+ * 쓰기 위한 구분. */
+export const isMobilePhone = (phone: string): boolean =>
+  VALID_MOBILE.test(phone)
 
 /** 휴대폰 컬럼(또는 item 이름)에 적힌 값에서 번호를 전부 뽑아 정규화한다.
  * 적힌 순서를 지키고 같은 번호는 한 번만 담는다. 번호로 볼 수 있는 게
- * 하나도 없으면 빈 배열(= Monday에서 고쳐야 할 값)이다. */
+ * 하나도 없으면 빈 배열(= 결측)이다. */
 export const extractMondayPhones = (raw: string | null): string[] => {
   if (!raw) return []
   const phones = (raw.match(PHONE_IN_TEXT_PATTERN) ?? [])
@@ -118,8 +129,7 @@ export const buildMondayItems = (
       url: item.url ?? null,
       // 휴대폰과 유선번호가 같이 적혀 있으면 적힌 순서와 상관없이 휴대폰을
       // 대표 번호로 쓴다 — 다른 보드와 겹치는 건 대개 휴대폰 쪽이다.
-      phone:
-        phones.find((phone) => phone.startsWith('01')) ?? phones[0] ?? null,
+      phone: phones.find(isMobilePhone) ?? phones[0] ?? null,
       phones,
       phoneRaw,
       columns,

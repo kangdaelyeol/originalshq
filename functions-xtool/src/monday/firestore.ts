@@ -1,8 +1,14 @@
 import { Firestore } from 'firebase-admin/firestore'
-import { MondayBoard, MondayItem } from './types'
+import {
+  MondayBoard,
+  MondayCustomer,
+  MondayCustomerRebuildResult,
+  MondayItem,
+} from './types'
 
 const BOARDS_COLLECTION = 'mondayBoards'
 const ITEMS_COLLECTION = 'mondayItems'
+const CUSTOMERS_COLLECTION = 'mondayCustomers'
 
 // Firestore batch 한 번에 담을 수 있는 쓰기는 500건 — 여유를 두고 끊는다.
 const BATCH_SIZE = 400
@@ -80,4 +86,48 @@ export async function deleteBoard(
   const deletedCount = await replaceBoardItems(db, boardId, [])
   await db.collection(BOARDS_COLLECTION).doc(boardId).delete()
   return deletedCount
+}
+
+export async function listItems(db: Firestore): Promise<MondayItem[]> {
+  const snapshot = await db.collection(ITEMS_COLLECTION).get()
+  return snapshot.docs.map((doc) => doc.data() as MondayItem)
+}
+
+/** 통합 고객 컬렉션을 주어진 목록과 똑같이 맞춘다. 내용이 그대로인 문서
+ * (hash가 같은 것)는 다시 쓰지 않는다 — 하루 두 번 도는 동기화에서 실제로
+ * 바뀌는 고객은 일부라서, 매번 전부 쓰는 것보다 쓰기가 훨씬 적다. 목록에
+ * 없는 문서(그 번호의 item이 Monday에서 다 사라진 고객)는 지운다. */
+export async function replaceCustomers(
+  db: Firestore,
+  customers: MondayCustomer[],
+): Promise<Pick<MondayCustomerRebuildResult, 'writtenCount' | 'deletedCount'>> {
+  const collection = db.collection(CUSTOMERS_COLLECTION)
+  const existing = await collection.select('hash').get()
+  const existingHashes = new Map(
+    existing.docs.map((doc) => [doc.id, doc.get('hash') as string | undefined]),
+  )
+
+  const changed = customers.filter(
+    (customer) => existingHashes.get(customer.phone) !== customer.hash,
+  )
+  const incomingPhones = new Set(customers.map((customer) => customer.phone))
+  const staleRefs = existing.docs
+    .filter((doc) => !incomingPhones.has(doc.id))
+    .map((doc) => doc.ref)
+
+  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    for (const customer of changed.slice(i, i + BATCH_SIZE)) {
+      batch.set(collection.doc(customer.phone), customer)
+    }
+    await batch.commit()
+  }
+
+  for (let i = 0; i < staleRefs.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    for (const ref of staleRefs.slice(i, i + BATCH_SIZE)) batch.delete(ref)
+    await batch.commit()
+  }
+
+  return { writtenCount: changed.length, deletedCount: staleRefs.length }
 }

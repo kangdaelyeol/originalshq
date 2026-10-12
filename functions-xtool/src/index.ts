@@ -13,6 +13,8 @@ import {
   deleteBoard,
   listBoards,
   previewBoard,
+  rebuildCustomers,
+  rebuildCustomersSafely,
   registerBoard,
   syncBoards,
 } from './monday'
@@ -1357,8 +1359,11 @@ export const migrateLeadsToIntakes = onRequest((request, response) => {
 // 적재만 하고, 보드 간 중복 고객(phone 기준) 통합은 그 위에서 따로 한다.
 // ────────────────────────────────
 
-// 보드 20개 × 수백 건을 차례로 받아 쓰는 작업이라 기본 60초로는 빠듯하다.
+// 보드 16개 · 약 1만 건을 받아 쓰는 작업 — 4개씩 같이 돌려 보통 1~2분이면
+// 끝나지만, Monday 응답이 느린 날을 대비해 넉넉히 둔다.
 const MONDAY_SYNC_TIMEOUT_SECONDS = 540
+// 여러 보드의 응답(보드당 수 MB JSON)을 동시에 들고 있어 기본 256MB로는 부족하다.
+const MONDAY_SYNC_MEMORY = '1GiB'
 
 // ────────────────────────────────
 // listMondayBoards — 등록된 보드와 각 보드의 마지막 동기화 결과
@@ -1429,7 +1434,11 @@ export const previewMondayBoard = onRequest(
 // registerMondayBoard — 보드를 동기화 대상으로 등록하고 바로 한 번 가져온다
 // ────────────────────────────────
 export const registerMondayBoard = onRequest(
-  { secrets: [mondayApiKey], timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS },
+  {
+    secrets: [mondayApiKey],
+    timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
+    memory: MONDAY_SYNC_MEMORY,
+  },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -1454,7 +1463,14 @@ export const registerMondayBoard = onRequest(
 
         // 등록 자체는 됐지만 첫 동기화가 실패한 경우(보드 id 오타, 권한 없음
         // 등) — 보드 문서의 lastSync.error에 이유가 남아 있다.
-        response.status(board.lastSync?.ok ? 200 : 502).send({ board })
+        if (!board.lastSync?.ok) {
+          response.status(502).send({ board })
+          return
+        }
+
+        // 새 보드의 item을 통합 고객에 반영한다.
+        const customers = await rebuildCustomersSafely(db)
+        response.status(200).send({ board, customers })
       } catch (error) {
         logger.error('registerMondayBoard 처리 실패:', error)
         response.status(500).send({ error: '서버 오류' })
@@ -1466,35 +1482,67 @@ export const registerMondayBoard = onRequest(
 // ────────────────────────────────
 // removeMondayBoard — 보드 등록을 해제하고 그 보드의 item을 전부 지운다
 // ────────────────────────────────
-export const removeMondayBoard = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    try {
-      if (request.method !== 'POST') {
-        response.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
+export const removeMondayBoard = onRequest(
+  { timeoutSeconds: 300, memory: MONDAY_SYNC_MEMORY },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
 
-      const validationRes = validateRemoveMondayBoard(request.body)
-      if (!validationRes.ok) {
-        response.status(400).send({ error: validationRes.error })
-        return
-      }
+        const validationRes = validateRemoveMondayBoard(request.body)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
 
-      const { boardId } = validationRes.data
-      const deletedItemCount = await deleteBoard(db, boardId)
-      response.status(200).send({ boardId, deletedItemCount })
-    } catch (error) {
-      logger.error('removeMondayBoard 처리 실패:', error)
-      response.status(500).send({ error: '서버 오류' })
-    }
-  })
-})
+        const { boardId } = validationRes.data
+        const deletedItemCount = await deleteBoard(db, boardId)
+        // 빠진 보드의 item을 통합 고객에서도 덜어낸다.
+        const customers = await rebuildCustomersSafely(db)
+        response.status(200).send({ boardId, deletedItemCount, customers })
+      } catch (error) {
+        logger.error('removeMondayBoard 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// rebuildMondayCustomers — 저장된 item에서 통합 고객(mondayCustomers)만 다시
+// 만든다. Monday를 부르지 않으므로, 통합 규칙을 고친 뒤 바로 반영할 때 쓴다.
+// ────────────────────────────────
+export const rebuildMondayCustomers = onRequest(
+  { timeoutSeconds: 300, memory: MONDAY_SYNC_MEMORY },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        response.status(200).send(await rebuildCustomers(db))
+      } catch (error) {
+        logger.error('rebuildMondayCustomers 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
 
 // ────────────────────────────────
 // syncMondayBoards — 수동 동기화. body.boardId가 있으면 그 보드만, 없으면 전부
 // ────────────────────────────────
 export const syncMondayBoards = onRequest(
-  { secrets: [mondayApiKey], timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS },
+  {
+    secrets: [mondayApiKey],
+    timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
+    memory: MONDAY_SYNC_MEMORY,
+  },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -1533,6 +1581,7 @@ export const syncMondayBoardsScheduled = onSchedule(
     timeZone: 'Asia/Seoul',
     secrets: [mondayApiKey],
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
+    memory: MONDAY_SYNC_MEMORY,
   },
   async () => {
     try {
@@ -1540,6 +1589,7 @@ export const syncMondayBoardsScheduled = onSchedule(
       logger.info(
         `Monday 자동 동기화 완료: 성공 ${summary.okCount}개, ` +
           `실패 ${summary.failedCount}개`,
+        summary.customers,
       )
     } catch (error) {
       logger.error('Monday 자동 동기화 실패:', error)
