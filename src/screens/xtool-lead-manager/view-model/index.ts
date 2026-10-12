@@ -1,3 +1,5 @@
 export * from './use-main-view-model'
 export * from './detail'
 export * from './use-create-lead-view-model'
+export * from './use-monday-view-model'
+export * from './use-page-tab-view-model'

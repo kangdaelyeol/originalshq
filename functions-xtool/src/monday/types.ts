@@ -144,6 +144,9 @@ export interface MondayCustomer {
   purchases: MondayPurchase[]
   surveys: MondaySurvey[]
   sampleTests: MondaySampleTest[]
+  /** 목록 화면용 요약 — 목록은 이 필드까지만 읽고(기록 배열은 안 읽음),
+   * 한 고객을 열 때 문서 전체를 읽는다. */
+  summary: MondayCustomerSummary
   /** 이 고객이 등장한 item 수(위 목록들의 합 + 종류를 모르는 보드의 item). */
   itemCount: number
   /** 이 고객이 등장한 보드 id들. */
@@ -154,6 +157,35 @@ export interface MondayCustomer {
   hash: string
   syncedAt: number
 }
+
+export interface MondayCustomerSummary {
+  consultationCount: number
+  visitCount: number
+  purchaseCount: number
+  surveyCount: number
+  sampleTestCount: number
+  /** 가장 최근 상담의 진행 상태와 접수일. */
+  latestConsultationStatus: string | null
+  latestConsultationAt: string | null
+  latestVisitAt: string | null
+  latestPurchaseAt: string | null
+  /** 이 고객의 기록에 나온 담당자 전부 — 많이 나온 순. */
+  assignees: string[]
+  /** 이 고객이 등장한 보드 이름들. */
+  boardNames: string[]
+}
+
+/** 목록 화면에 내려주는 고객 1명 — MondayCustomer에서 기록 배열을 뺀 것. */
+export type MondayCustomerListItem = Pick<
+  MondayCustomer,
+  'phone' | 'otherPhones' | 'names' | 'emails' | 'summary' | 'lastUpdatedAt'
+>
+
+/** 유효한 번호가 없어 통합에서 빠진 item — Monday에서 번호를 고쳐야 한다. */
+export type MondayMissingPhoneItem = Pick<
+  MondayItem,
+  'id' | 'boardId' | 'boardName' | 'name' | 'phoneRaw' | 'url' | 'updatedAt'
+>
 
 /** 모든 기록에 공통으로 붙는 출처 — 원본(mondayItems/{itemId})과 Monday 화면
  * 으로 되돌아갈 수 있게 한다. */

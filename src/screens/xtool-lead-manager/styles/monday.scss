@@ -1,0 +1,364 @@
+@use './variables.scss';
+
+// Monday 고객 탭 — 표·내비·모달의 뼈대는 리드 탭의 것(lead_manager_nav,
+// lead_table, lead_manager_detail_modal)을 그대로 쓰고, 여기에는 이 탭에만
+// 있는 것만 둔다.
+
+// 상태 뱃지 — 표와 상세 모달이 같이 쓴다.
+.monday_badge {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+
+  &.success {
+    background-color: rgba(23, 242, 184, 0.14);
+    color: variables.$color-read-complete;
+  }
+  &.progress {
+    background-color: variables.$color-accent-soft;
+    color: variables.$color-accent;
+  }
+  &.hold {
+    background-color: rgba(210, 153, 34, 0.16);
+    color: #d29922;
+  }
+  &.muted {
+    background-color: rgba(139, 148, 158, 0.14);
+    color: variables.$color-text-muted;
+  }
+}
+
+.monday_link {
+  color: variables.$color-accent;
+  font-size: 12.5px;
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+// ── 내비 ────────────────────────────────────────────────────────────────
+.lead_manager_nav.monday_nav {
+  .search-box {
+    position: relative;
+
+    // 리드 탭은 아이콘을 nav 기준으로 배치하지만, 여기는 검색창이 항상 열려
+    // 있어 그 안쪽 왼편에 둔다.
+    svg.search {
+      top: 9px;
+      left: 10px;
+    }
+
+    .search-input {
+      font-size: 14.5px;
+      border-color: variables.$color-border;
+
+      &::placeholder {
+        color: variables.$color-text-faint;
+      }
+    }
+  }
+
+  .monday_categories {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid variables.$color-border;
+    border-radius: 8px;
+    background-color: variables.$color-surface;
+  }
+
+  .monday_category {
+    all: unset;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: variables.$color-text-muted;
+    white-space: nowrap;
+    cursor: pointer;
+
+    .count {
+      font-size: 11.5px;
+      color: variables.$color-text-faint;
+      font-variant-numeric: tabular-nums;
+    }
+
+    &:hover {
+      color: variables.$color-text;
+    }
+    &.active {
+      background-color: variables.$color-surface-raised;
+      color: variables.$color-text;
+
+      .count {
+        color: variables.$color-text-muted;
+      }
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  // 정렬 select — pagination_bar의 "n개씩 보기"와 같은 모양.
+  .monday_sort select {
+    box-sizing: border-box;
+    height: 34px;
+    padding: 0 10px;
+    background-color: variables.$color-surface-raised;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:focus {
+      outline: none;
+      border-color: variables.$color-accent;
+    }
+  }
+
+  // 번호 확인 필요 — 경고지만 급한 오류는 아니라 호박색으로.
+  .monday_missing_btn {
+    all: unset;
+    box-sizing: border-box;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid rgba(210, 153, 34, 0.45);
+    border-radius: 6px;
+    background-color: rgba(210, 153, 34, 0.1);
+    color: #d29922;
+    font-size: 12.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      background-color: rgba(210, 153, 34, 0.18);
+    }
+    &:focus-visible {
+      outline: 2px solid #d29922;
+    }
+  }
+}
+
+// ── 표 ──────────────────────────────────────────────────────────────────
+.xtool-main .wrapper .table .lead_table.monday_table {
+  .col-monday-name {
+    width: 180px;
+  }
+  .col-monday-status {
+    width: 140px;
+  }
+  .col-monday-count {
+    width: 120px;
+    white-space: normal;
+  }
+  .col-monday-etc {
+    width: 90px;
+  }
+  .col-monday-assignee {
+    width: 170px;
+  }
+  .col-monday-boards {
+    width: 70px;
+  }
+  .col-monday-updated {
+    width: 120px;
+  }
+
+  td .monday_empty,
+  td.monday_no_rows {
+    color: variables.$color-text-faint;
+  }
+
+  // 대표 이름 옆의 "+n" — 다른 이름이 더 있다는 표시.
+  td .monday_more {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background-color: variables.$color-surface-raised;
+    color: variables.$color-text-muted;
+    font-size: 11px;
+  }
+}
+
+.xtool-main .monday_error {
+  margin-top: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: variables.$color-text-muted;
+  font-size: 14px;
+
+  button {
+    all: unset;
+    padding: 8px 16px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text;
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+  }
+}
+
+// ── 상세 모달 ───────────────────────────────────────────────────────────
+.lead_manager_detail_modal .detail_form.monday_detail {
+  width: 720px;
+  max-width: calc(100vw - 40px);
+
+  .monday_phone {
+    font-size: 13.5px;
+    color: variables.$color-text-muted;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .monday_section_count {
+    margin-left: 4px;
+    color: variables.$color-text-faint;
+    font-weight: 500;
+  }
+
+  .monday_detail_message {
+    padding: 14px 0 6px;
+    color: variables.$color-text-muted;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  // "라벨 값" 묶음 — 두 칸으로 흐르고, 값이 긴 항목은 줄바꿈된다.
+  .monday_fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 20px;
+    margin: 0;
+  }
+
+  .monday_field {
+    display: flex;
+    gap: 10px;
+    min-width: 0;
+    font-size: 13px;
+    line-height: 1.5;
+
+    dt {
+      flex-shrink: 0;
+      width: 84px;
+      color: variables.$color-text-muted;
+    }
+    dd {
+      margin: 0;
+      min-width: 0;
+      color: variables.$color-text;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .monday_records {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .monday_record {
+    padding: 12px 14px;
+    border: 1px solid variables.$color-border-soft;
+    border-radius: 10px;
+    background-color: variables.$color-surface-raised;
+  }
+
+  .monday_record_head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+
+    .date {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: variables.$color-text;
+      font-variant-numeric: tabular-nums;
+    }
+    .board {
+      min-width: 0;
+      font-size: 12.5px;
+      color: variables.$color-text-muted;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .monday_badge {
+      flex-shrink: 0;
+    }
+    .monday_link {
+      margin-left: auto;
+    }
+  }
+
+  // 상담내역·메모 — 사람이 쓴 긴 글이라 줄바꿈을 살린다.
+  .monday_notes {
+    margin: 10px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid variables.$color-border-soft;
+    color: variables.$color-text;
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+// ── 번호 확인 필요 목록 ─────────────────────────────────────────────────
+.lead_manager_detail_modal .detail_form.monday_missing {
+  .monday_missing_table {
+    width: 100%;
+    margin-top: 8px;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th,
+    td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid variables.$color-border-soft;
+      vertical-align: top;
+    }
+    th {
+      color: variables.$color-text-muted;
+      font-weight: 500;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    td {
+      color: variables.$color-text;
+      overflow-wrap: anywhere;
+    }
+    td.raw {
+      color: #d29922;
+      font-variant-numeric: tabular-nums;
+    }
+    // 날짜와 링크는 줄바꿈되면 읽기 어렵다.
+    td:nth-child(n + 4) {
+      white-space: nowrap;
+    }
+  }
+}

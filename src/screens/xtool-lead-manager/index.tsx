@@ -1,8 +1,15 @@
 import { FilterContextProvider } from '@/screens/xtool-lead-manager/context'
-import { Main, Nav } from '@/screens/xtool-lead-manager/components'
+import {
+  Main,
+  MondayMain,
+  MondayNav,
+  Nav,
+} from '@/screens/xtool-lead-manager/components'
 import {
   useCreateLeadViewModel,
   useMainViewModel,
+  useMondayViewModel,
+  usePageTabViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 
 // view-model 훅은 전부 여기서만 부르고, 결과를 컴포넌트로 내려보낸다 — 훅이
@@ -19,6 +26,21 @@ const XtoolLeadManagerScreen = () => {
     fetchLeads: main.actions.fetchLeads,
     showToast: main.actions.showToast,
   })
+
+  // 최상위 탭 — 리드(이 화면에서 직접 관리하는 데이터) / Monday 고객(Monday
+  // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). Monday 목록은 그 탭을
+  // 처음 열 때 받아온다.
+  const { tab } = usePageTabViewModel().state
+  const monday = useMondayViewModel(tab === 'monday')
+
+  if (tab === 'monday') {
+    return (
+      <>
+        <MondayNav state={monday.state} actions={monday.actions} />
+        <MondayMain state={monday.state} actions={monday.actions} />
+      </>
+    )
+  }
 
   return (
     <>

@@ -180,6 +180,18 @@ const buildCustomer = (
   const of = (kind: MondayBoardKind) =>
     items.filter((item) => kindOf(item.boardId) === kind)
 
+  const consultations = newestFirst(
+    of('consultation').map(toConsultation),
+    (record) => record.receivedAt,
+  )
+  const visits = newestFirst(of('visit').map(toVisit), (r) => r.visitAt)
+  const purchases = newestFirst(of('purchase').map(toPurchase), (r) => r.paidAt)
+  const surveys = newestFirst(of('survey').map(toSurvey), (r) => r.createdAt)
+  const sampleTests = newestFirst(
+    of('sampleTest').map(toSampleTest),
+    (record) => record.requestedAt,
+  )
+
   const body = {
     phone,
     otherPhones: [
@@ -191,23 +203,30 @@ const buildCustomer = (
       items.map((item) => cleanName(item.name)).filter(Boolean),
     ),
     emails: byFrequency(items.flatMap(emailsOf)),
-    consultations: newestFirst(
-      of('consultation').map(toConsultation),
-      (record) => record.receivedAt,
-    ),
-    visits: newestFirst(of('visit').map(toVisit), (record) => record.visitAt),
-    purchases: newestFirst(
-      of('purchase').map(toPurchase),
-      (record) => record.paidAt,
-    ),
-    surveys: newestFirst(
-      of('survey').map(toSurvey),
-      (record) => record.createdAt,
-    ),
-    sampleTests: newestFirst(
-      of('sampleTest').map(toSampleTest),
-      (record) => record.requestedAt,
-    ),
+    consultations,
+    visits,
+    purchases,
+    surveys,
+    sampleTests,
+    summary: {
+      consultationCount: consultations.length,
+      visitCount: visits.length,
+      purchaseCount: purchases.length,
+      surveyCount: surveys.length,
+      sampleTestCount: sampleTests.length,
+      latestConsultationStatus: consultations[0]?.status ?? null,
+      latestConsultationAt: consultations[0]?.receivedAt ?? null,
+      latestVisitAt: visits[0]?.visitAt ?? null,
+      latestPurchaseAt: purchases[0]?.paidAt ?? null,
+      // "홍길동, 김철수"처럼 한 칸에 여러 명이 적힌 값은 사람별로 나눈다.
+      assignees: byFrequency(
+        [...consultations, ...visits, ...purchases, ...surveys, ...sampleTests]
+          .flatMap((record) => (record.assignee ?? '').split(','))
+          .map((assignee) => assignee.trim())
+          .filter(Boolean),
+      ),
+      boardNames: [...new Set(items.map((item) => item.boardName))].sort(),
+    },
     itemCount: items.length,
     boardIds: [...new Set(items.map((item) => item.boardId))].sort(),
     lastUpdatedAt:

@@ -2,8 +2,10 @@ import { Firestore } from 'firebase-admin/firestore'
 import {
   MondayBoard,
   MondayCustomer,
+  MondayCustomerListItem,
   MondayCustomerRebuildResult,
   MondayItem,
+  MondayMissingPhoneItem,
 } from './types'
 
 const BOARDS_COLLECTION = 'mondayBoards'
@@ -130,4 +132,52 @@ export async function replaceCustomers(
   }
 
   return { writtenCount: changed.length, deletedCount: staleRefs.length }
+}
+
+/** 목록 화면용 — 고객 전체를 요약 필드만 읽어 돌려준다. 기록 배열(상담내역
+ * 본문 등)은 빼고 읽어서, 문서 전체를 내려보내는 것보다 응답이 훨씬 작다. */
+export async function listCustomerSummaries(
+  db: Firestore,
+): Promise<MondayCustomerListItem[]> {
+  const snapshot = await db
+    .collection(CUSTOMERS_COLLECTION)
+    .select(
+      'phone',
+      'otherPhones',
+      'names',
+      'emails',
+      'summary',
+      'lastUpdatedAt',
+    )
+    .get()
+  return snapshot.docs.map((doc) => doc.data() as MondayCustomerListItem)
+}
+
+export async function getCustomer(
+  db: Firestore,
+  phone: string,
+): Promise<MondayCustomer | null> {
+  const doc = await db.collection(CUSTOMERS_COLLECTION).doc(phone).get()
+  return doc.exists ? (doc.data() as MondayCustomer) : null
+}
+
+/** 유효한 번호가 없어 통합에서 빠진 item들 — 동기화 때 phone을 null로 저장해
+ * 둔 문서다. */
+export async function listMissingPhoneItems(
+  db: Firestore,
+): Promise<MondayMissingPhoneItem[]> {
+  const snapshot = await db
+    .collection(ITEMS_COLLECTION)
+    .where('phone', '==', null)
+    .select(
+      'id',
+      'boardId',
+      'boardName',
+      'name',
+      'phoneRaw',
+      'url',
+      'updatedAt',
+    )
+    .get()
+  return snapshot.docs.map((doc) => doc.data() as MondayMissingPhoneItem)
 }

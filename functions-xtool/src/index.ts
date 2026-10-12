@@ -11,7 +11,10 @@ import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
+  getCustomer,
   listBoards,
+  listCustomerSummaries,
+  listMissingPhoneItems,
   previewBoard,
   rebuildCustomers,
   rebuildCustomersSafely,
@@ -1570,6 +1573,80 @@ export const syncMondayBoards = onRequest(
     })
   },
 )
+
+// ────────────────────────────────
+// listMondayCustomers — 통합 고객 목록(요약만). 화면의 표가 쓴다.
+// ────────────────────────────────
+export const listMondayCustomers = onRequest(
+  { memory: '512MiB' },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'GET') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const customers = await listCustomerSummaries(db)
+        response.status(200).send({ customers, count: customers.length })
+      } catch (error) {
+        logger.error('listMondayCustomers 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// getMondayCustomer — 통합 고객 1명의 전체 기록. GET ?phone=01012345678
+// ────────────────────────────────
+export const getMondayCustomer = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const phone = String(request.query.phone ?? '').replace(/\D/g, '')
+      if (!phone) {
+        response.status(400).send({ error: 'phone is required' })
+        return
+      }
+
+      const customer = await getCustomer(db, phone)
+      if (!customer) {
+        response.status(404).send({ error: '고객을 찾을 수 없습니다' })
+        return
+      }
+      response.status(200).send({ customer })
+    } catch (error) {
+      logger.error('getMondayCustomer 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// listMondayMissingPhoneItems — 유효한 번호가 없어 통합에서 빠진 item들.
+// 화면에서 경고로 보여주고 Monday로 가서 고치게 한다.
+// ────────────────────────────────
+export const listMondayMissingPhoneItems = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const items = await listMissingPhoneItems(db)
+      response.status(200).send({ items, count: items.length })
+    } catch (error) {
+      logger.error('listMondayMissingPhoneItems 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
 
 // ────────────────────────────────
 // syncMondayBoardsScheduled — 하루 두 번(07:00, 19:00 KST) 전체 동기화.
