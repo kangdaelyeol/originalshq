@@ -490,3 +490,74 @@ export const validateDeleteLead = (
 
   return { ok: true, data: { id } }
 }
+
+// Monday 보드 id는 숫자로만 된 문자열이다 — 보드 주소
+// (.../boards/1234567890)의 마지막 숫자. 숫자 타입으로 보내도 받아준다.
+const parseMondayBoardId = (value: unknown): string | null => {
+  const boardId =
+    typeof value === 'number' ? String(value) : (value as string | undefined)
+  return typeof boardId === 'string' && /^\d+$/.test(boardId.trim())
+    ? boardId.trim()
+    : null
+}
+
+export const validateRegisterMondayBoard = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  boardId: string
+  phoneColumnId: string | null
+}> => {
+  const boardId = parseMondayBoardId(body?.boardId)
+  if (!boardId) {
+    return { ok: false, error: 'boardId is required (digits only)' }
+  }
+
+  const { phoneColumnId } = body as { phoneColumnId?: unknown }
+  if (
+    phoneColumnId !== undefined &&
+    phoneColumnId !== null &&
+    (typeof phoneColumnId !== 'string' || !phoneColumnId.trim())
+  ) {
+    return { ok: false, error: 'phoneColumnId must be a non-empty string' }
+  }
+
+  return {
+    ok: true,
+    data: {
+      boardId,
+      phoneColumnId:
+        typeof phoneColumnId === 'string' ? phoneColumnId.trim() : null,
+    },
+  }
+}
+
+export const validateRemoveMondayBoard = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  boardId: string
+}> => {
+  const boardId = parseMondayBoardId(body?.boardId)
+  if (!boardId) {
+    return { ok: false, error: 'boardId is required (digits only)' }
+  }
+
+  return { ok: true, data: { boardId } }
+}
+
+/** boardId를 생략하면 등록된 보드 전체가 대상이다. */
+export const validateSyncMondayBoards = (
+  body: Record<string, unknown>,
+): ValidationResponse<{
+  boardId?: string
+}> => {
+  if (body?.boardId === undefined || body?.boardId === null) {
+    return { ok: true, data: {} }
+  }
+
+  const boardId = parseMondayBoardId(body.boardId)
+  if (!boardId) {
+    return { ok: false, error: 'boardId must be digits only' }
+  }
+
+  return { ok: true, data: { boardId } }
+}

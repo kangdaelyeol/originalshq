@@ -2,12 +2,20 @@ import cors from 'cors'
 import * as logger from 'firebase-functions/logger'
 import { setGlobalOptions } from 'firebase-functions'
 import { onRequest } from 'firebase-functions/https'
+import { onSchedule } from 'firebase-functions/scheduler'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
 import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
+import {
+  deleteBoard,
+  listBoards,
+  previewBoard,
+  registerBoard,
+  syncBoards,
+} from './monday'
 import {
   generateEventId,
   generateExternalId,
@@ -22,7 +30,10 @@ import {
   validateDeleteLead,
   validateDeleteRecord,
   validatePurchaseLead,
+  validateRegisterMondayBoard,
+  validateRemoveMondayBoard,
   validateResendRecord,
+  validateSyncMondayBoards,
   validateUpdateConsultation,
   validateUpdateIntake,
   validateUpdateLeadEm,
@@ -44,6 +55,7 @@ const metaAccessToken = defineSecret('META_ACCESS_TOKEN')
 // cmip 코드베이스와 같은 프로젝트(Secret Manager)의 시크릿을 같은 이름으로 쓴다.
 const ga4MeasurementId = defineSecret('GA4_MEASUREMENT_ID')
 const ga4ApiSecret = defineSecret('GA4_API_SECRET')
+const mondayApiKey = defineSecret('MONDAY_API_KEY')
 
 // ────────────────────────────────
 // getAllLeads
@@ -1335,3 +1347,202 @@ export const migrateLeadsToIntakes = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// Monday CRM 동기화 — 여러 보드에 흩어진 고객 데이터를 DB로 모은다.
+//
+// 어떤 보드를 가져올지는 mondayBoards 컬렉션이 정한다(register/remove로
+// 관리). 각 보드의 item은 mondayItems에 Monday와 똑같이 맞춰 저장한다 —
+// Monday에서 지워진 item은 다음 동기화 때 여기서도 지워진다. 여기까지는
+// 적재만 하고, 보드 간 중복 고객(phone 기준) 통합은 그 위에서 따로 한다.
+// ────────────────────────────────
+
+// 보드 20개 × 수백 건을 차례로 받아 쓰는 작업이라 기본 60초로는 빠듯하다.
+const MONDAY_SYNC_TIMEOUT_SECONDS = 540
+
+// ────────────────────────────────
+// listMondayBoards — 등록된 보드와 각 보드의 마지막 동기화 결과
+// ────────────────────────────────
+export const listMondayBoards = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const boards = await listBoards(db)
+      response.status(200).send({ boards, count: boards.length })
+    } catch (error) {
+      logger.error('listMondayBoards 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// previewMondayBoard — 보드 하나를 읽어 저장될 모양만 보여준다(DB에 안 씀).
+//   GET ?boardId=5031196508&phoneColumnId=text_xxx&samples=3
+// phoneColumnId를 생략하면 자동 추정, samples는 예시 문서 수(기본 3, 최대 50).
+// ────────────────────────────────
+export const previewMondayBoard = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: 120 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'GET') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const validationRes = validateRegisterMondayBoard(request.query)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
+
+        const { boardId, phoneColumnId } = validationRes.data
+        const samples = Math.min(
+          Math.max(Number(request.query.samples ?? 3) || 0, 0),
+          50,
+        )
+        const preview = await previewBoard(
+          mondayApiKey.value(),
+          boardId,
+          phoneColumnId,
+          samples,
+        )
+        response.status(200).send(preview)
+      } catch (error) {
+        // 확인용 엔드포인트라 원인(보드 id 오타, 권한, GraphQL 오류)을 그대로
+        // 돌려준다.
+        logger.error('previewMondayBoard 처리 실패:', error)
+        response.status(502).send({
+          error: error instanceof Error ? error.message : String(error),
+        })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// registerMondayBoard — 보드를 동기화 대상으로 등록하고 바로 한 번 가져온다
+// ────────────────────────────────
+export const registerMondayBoard = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const validationRes = validateRegisterMondayBoard(request.body)
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
+
+        const { boardId, phoneColumnId } = validationRes.data
+        const board = await registerBoard(
+          db,
+          mondayApiKey.value(),
+          boardId,
+          phoneColumnId,
+        )
+
+        // 등록 자체는 됐지만 첫 동기화가 실패한 경우(보드 id 오타, 권한 없음
+        // 등) — 보드 문서의 lastSync.error에 이유가 남아 있다.
+        response.status(board.lastSync?.ok ? 200 : 502).send({ board })
+      } catch (error) {
+        logger.error('registerMondayBoard 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// removeMondayBoard — 보드 등록을 해제하고 그 보드의 item을 전부 지운다
+// ────────────────────────────────
+export const removeMondayBoard = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateRemoveMondayBoard(request.body)
+      if (!validationRes.ok) {
+        response.status(400).send({ error: validationRes.error })
+        return
+      }
+
+      const { boardId } = validationRes.data
+      const deletedItemCount = await deleteBoard(db, boardId)
+      response.status(200).send({ boardId, deletedItemCount })
+    } catch (error) {
+      logger.error('removeMondayBoard 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// syncMondayBoards — 수동 동기화. body.boardId가 있으면 그 보드만, 없으면 전부
+// ────────────────────────────────
+export const syncMondayBoards = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        const validationRes = validateSyncMondayBoards(request.body ?? {})
+        if (!validationRes.ok) {
+          response.status(400).send({ error: validationRes.error })
+          return
+        }
+
+        const summary = await syncBoards(
+          db,
+          mondayApiKey.value(),
+          validationRes.data.boardId,
+        )
+        response.status(200).send(summary)
+      } catch (error) {
+        logger.error('syncMondayBoards 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// syncMondayBoardsScheduled — 하루 두 번(07:00, 19:00 KST) 전체 동기화.
+// HTTP 응답이 없는 트리거라 결과는 로그와 각 보드 문서의 lastSync로 확인한다.
+// ────────────────────────────────
+export const syncMondayBoardsScheduled = onSchedule(
+  {
+    schedule: '0 7,19 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [mondayApiKey],
+    timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
+  },
+  async () => {
+    try {
+      const summary = await syncBoards(db, mondayApiKey.value())
+      logger.info(
+        `Monday 자동 동기화 완료: 성공 ${summary.okCount}개, ` +
+          `실패 ${summary.failedCount}개`,
+      )
+    } catch (error) {
+      logger.error('Monday 자동 동기화 실패:', error)
+    }
+  },
+)
