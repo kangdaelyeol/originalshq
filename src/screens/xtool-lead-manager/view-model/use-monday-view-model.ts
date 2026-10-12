@@ -4,6 +4,7 @@ import type {
   MondayCustomer,
   MondayCustomerListItem,
   MondayMissingPhoneItem,
+  MondayPaymentIssueItem,
 } from '@/screens/xtool-lead-manager/entity'
 import type { PageSize } from '@/screens/xtool-lead-manager/types'
 import {
@@ -19,15 +20,19 @@ const CATEGORIES: MondayCategory[] = [
   'consultation',
   'visit',
   'purchase',
+  'balance',
   'multiple',
 ]
 
-/** Monday 고객 탭의 상태 — 목록(검색·분류·정렬·페이지), 고객 상세, 번호
- * 확인이 필요한 기록. `active`가 처음 true가 될 때 목록을 받아온다(리드
+/** Monday 고객 탭의 상태 — 목록(검색·분류·정렬·페이지), 고객 상세, 확인이
+ * 필요한 기록(번호·결제). `active`가 처음 true가 될 때 목록을 받아온다(리드
  * 탭만 쓰는 동안에는 받지 않는다). */
 export const useMondayViewModel = (active: boolean) => {
   const [customers, setCustomers] = useState<MondayCustomerListItem[]>([])
   const [missingItems, setMissingItems] = useState<MondayMissingPhoneItem[]>([])
+  const [paymentIssues, setPaymentIssues] = useState<MondayPaymentIssueItem[]>(
+    [],
+  )
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
     'idle',
   )
@@ -45,9 +50,10 @@ export const useMondayViewModel = (active: boolean) => {
 
   const load = useCallback(async () => {
     setStatus('loading')
-    const [customersRes, missingRes] = await Promise.all([
+    const [customersRes, missingRes, issuesRes] = await Promise.all([
       mondayClient.getCustomers(),
       mondayClient.getMissingPhoneItems(),
+      mondayClient.getPaymentIssues(),
     ])
 
     if (!customersRes.ok) {
@@ -59,6 +65,7 @@ export const useMondayViewModel = (active: boolean) => {
     setCustomers(customersRes.data.customers)
     // 경고 목록은 부가 정보라, 실패해도 표는 보여준다.
     setMissingItems(missingRes.ok ? missingRes.data.items : [])
+    setPaymentIssues(issuesRes.ok ? issuesRes.data.issues : [])
     setStatus('ready')
   }, [])
 
@@ -194,6 +201,7 @@ export const useMondayViewModel = (active: boolean) => {
       detail,
       detailFailed,
       missingItems,
+      paymentIssues,
       missingOpen,
     },
     actions: {

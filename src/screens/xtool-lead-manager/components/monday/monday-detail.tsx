@@ -3,7 +3,9 @@ import type {
   MondayConsultation,
   MondayCustomer,
   MondayCustomerListItem,
+  MondayPayment,
   MondayPurchase,
+  MondayPurchaseLine,
   MondaySampleTest,
   MondaySurvey,
   MondayVisit,
@@ -11,6 +13,7 @@ import type {
 import {
   formatMondayDate,
   formatMondayPhone,
+  formatWon,
   mondayStatusTone,
 } from '@/screens/xtool-lead-manager/utils'
 import { CloseIcon } from '../detail/icons'
@@ -138,6 +141,50 @@ const VisitCard = ({ record }: { record: MondayVisit }) => (
   </RecordCard>
 )
 
+const LINE_KIND_LABEL: Record<MondayPurchaseLine['kind'], string> = {
+  product: '',
+  deferred: '계약금·분할납부',
+  interest: '할부 이자',
+}
+
+/** 품목 줄 표 — 판매가·수량·할인·최종 금액. 계약금/분할납부 줄과 할부 이자
+ * 줄은 구매 금액에 들어가지 않으므로 흐리게 하고 꼬리표를 붙인다. */
+const LineTable = ({ lines }: { lines: MondayPurchaseLine[] }) =>
+  lines.length > 0 ? (
+    <table className="monday_lines">
+      <thead>
+        <tr>
+          <th>품목</th>
+          <th>판매가</th>
+          <th>수량</th>
+          <th>할인</th>
+          <th>최종 금액</th>
+        </tr>
+      </thead>
+      <tbody>
+        {lines.map((line, index) => (
+          <tr key={index} className={line.kind}>
+            <td>
+              {line.product || line.name}
+              {line.kind !== 'product' && (
+                <span className="monday_line_tag">
+                  {LINE_KIND_LABEL[line.kind]}
+                </span>
+              )}
+              {line.memo && (
+                <span className="monday_line_memo">{line.memo}</span>
+              )}
+            </td>
+            <td>{line.price === null ? '' : formatWon(line.price)}</td>
+            <td>{line.quantity ?? ''}</td>
+            <td>{line.discount ? formatWon(line.discount) : ''}</td>
+            <td>{formatWon(line.total)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : null
+
 const PurchaseCard = ({ record }: { record: MondayPurchase }) => (
   <RecordCard
     date={record.paidAt}
@@ -146,16 +193,88 @@ const PurchaseCard = ({ record }: { record: MondayPurchase }) => (
     url={record.url}
   >
     <dl className="monday_fields">
-      <Field label="주문" value={record.orders} />
+      <Field
+        label="구매 금액"
+        value={
+          <strong className={record.cancelled ? 'monday_cancelled' : ''}>
+            {formatWon(record.amount)}
+          </strong>
+        }
+      />
+      <Field
+        label="당일 받은 금액"
+        value={
+          record.deferredAmount !== 0 &&
+          formatWon(record.amount + record.deferredAmount)
+        }
+      />
+      <Field
+        label="할부 이자"
+        value={record.interestAmount !== 0 && formatWon(record.interestAmount)}
+      />
       <Field label="담당자" value={record.assignee} />
       <Field label="구매경로" value={record.channel} />
       <Field label="결제수단" value={record.method} />
       <Field label="수령방식" value={record.pickup} />
       <Field label="사업자" value={record.businessType} />
     </dl>
+    <LineTable lines={record.lines} />
     {record.memo && <p className="monday_notes">{record.memo}</p>}
   </RecordCard>
 )
+
+const PaymentCard = ({ record }: { record: MondayPayment }) => (
+  <RecordCard
+    date={record.paidAt}
+    boardName={record.boardName}
+    status={record.status}
+    url={record.url}
+  >
+    <dl className="monday_fields">
+      <Field
+        label="납부 금액"
+        value={
+          <strong className={record.cancelled ? 'monday_cancelled' : ''}>
+            {formatWon(record.amount)}
+          </strong>
+        }
+      />
+      <Field label="담당자" value={record.assignee} />
+      <Field label="결제수단" value={record.method} />
+    </dl>
+    {record.memo && <p className="monday_notes">{record.memo}</p>}
+  </RecordCard>
+)
+
+/** 구매 섹션 맨 위의 금액 요약 — 구매는 계약 기준이라 "얼마를 계약했고,
+ * 얼마를 받았고, 얼마가 남았는지"를 한 줄로 본다. */
+const MoneySummary = ({ customer }: { customer: MondayCustomer }) => {
+  const { summary } = customer
+  if (summary.purchaseCount === 0 && summary.paymentCount === 0) return null
+
+  return (
+    <dl className="monday_money">
+      <div>
+        <dt>구매 금액</dt>
+        <dd>{formatWon(summary.purchaseAmount)}</dd>
+      </div>
+      <div>
+        <dt>받은 금액</dt>
+        <dd>{formatWon(summary.receivedAmount)}</dd>
+      </div>
+      <div className={summary.balanceAmount > 0 ? 'balance' : ''}>
+        <dt>잔금</dt>
+        <dd>{formatWon(Math.max(summary.balanceAmount, 0))}</dd>
+      </div>
+      {summary.interestAmount !== 0 && (
+        <div>
+          <dt>할부 이자</dt>
+          <dd>{formatWon(summary.interestAmount)}</dd>
+        </div>
+      )}
+    </dl>
+  )
+}
 
 const SurveyCard = ({ record }: { record: MondaySurvey }) => (
   <RecordCard
@@ -196,7 +315,7 @@ const SampleTestCard = ({ record }: { record: MondaySampleTest }) => (
 
 /**
  * Monday 고객 상세 — 한 번호로 묶인 기록 전부를 종류별(상담/방문체험/구매/
- * 만족도 조사/샘플테스트)로, 각각 최근 것부터 보여준다. 읽기 전용이다:
+ * 납부 내역/만족도 조사/샘플테스트)로, 각각 최근 것부터 보여준다. 읽기 전용이다:
  * 원본이 Monday라서 고칠 것은 각 기록의 "Monday에서 열기"로 가서 고친다.
  *
  * 머리(이름·번호)는 목록에서 이미 아는 값(summary)으로 바로 그리고, 기록은
@@ -276,9 +395,39 @@ export const MondayDetail = ({
                   <VisitCard key={record.itemId} record={record} />
                 ))}
               </Section>
+              {customer.issues.length > 0 && (
+                <ul className="monday_issues">
+                  {customer.issues.map((issue) => (
+                    <li key={`${issue.itemId}-${issue.type}`}>
+                      <span>
+                        {formatMondayDate(issue.date)} · {issue.message}
+                      </span>
+                      {issue.url && (
+                        <a
+                          className="monday_link"
+                          href={issue.url}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          Monday에서 열기
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <Section title="구매" count={customer.purchases.length}>
+                <MoneySummary customer={customer} />
                 {customer.purchases.map((record) => (
                   <PurchaseCard key={record.itemId} record={record} />
+                ))}
+              </Section>
+              <Section title="납부 내역" count={customer.payments.length}>
+                {customer.purchases.length === 0 && (
+                  <MoneySummary customer={customer} />
+                )}
+                {customer.payments.map((record) => (
+                  <PaymentCard key={record.itemId} record={record} />
                 ))}
               </Section>
               <Section title="만족도 조사" count={customer.surveys.length}>

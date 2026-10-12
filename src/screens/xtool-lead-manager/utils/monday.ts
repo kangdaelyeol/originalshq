@@ -14,11 +14,16 @@ export const formatMondayPhone = (phone: string): string => {
 export const formatMondayDate = (value: string | null): string =>
   value ? value.slice(0, 10) : '-'
 
+/** 금액 표기 — 12,345,000원. */
+export const formatWon = (amount: number): string =>
+  `${amount.toLocaleString('ko-KR')}원`
+
 export type MondayCategory =
   | 'all'
   | 'consultation'
   | 'visit'
   | 'purchase'
+  | 'balance'
   | 'multiple'
 
 export const MONDAY_CATEGORY_LABEL: Record<MondayCategory, string> = {
@@ -26,6 +31,7 @@ export const MONDAY_CATEGORY_LABEL: Record<MondayCategory, string> = {
   consultation: '상담',
   visit: '방문체험',
   purchase: '구매',
+  balance: '잔금 있음',
   multiple: '기록 2건 이상',
 }
 
@@ -51,6 +57,8 @@ export const matchesMondayCategory = (
       return customer.summary.visitCount > 0
     case 'purchase':
       return customer.summary.purchaseCount > 0
+    case 'balance':
+      return customer.summary.balanceAmount > 0
     case 'multiple':
       return recordCount(customer) > 1
     default:
@@ -84,13 +92,19 @@ export const filterMondayCustomers = (
   })
 }
 
-export type MondaySort = 'updated' | 'records' | 'purchase' | 'consultation'
+export type MondaySort =
+  | 'updated'
+  | 'records'
+  | 'purchase'
+  | 'amount'
+  | 'consultation'
 
 export const MONDAY_SORT_LABEL: Record<MondaySort, string> = {
   updated: '최근 수정순',
   records: '기록 많은 순',
   consultation: '최근 상담순',
   purchase: '최근 구매순',
+  amount: '구매 금액순',
 }
 
 const sortKey = (
@@ -102,6 +116,8 @@ const sortKey = (
       return recordCount(customer)
     case 'purchase':
       return customer.summary.latestPurchaseAt ?? ''
+    case 'amount':
+      return customer.summary.purchaseAmount
     case 'consultation':
       return customer.summary.latestConsultationAt ?? ''
     default:

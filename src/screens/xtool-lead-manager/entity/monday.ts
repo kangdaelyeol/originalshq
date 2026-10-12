@@ -11,6 +11,18 @@ export interface MondayCustomerSummary {
   latestConsultationAt: string | null
   latestVisitAt: string | null
   latestPurchaseAt: string | null
+  /** 납부 기록(계약금·분할납부) 건수 — 구매가 아니다. */
+  paymentCount: number
+  /** 구매(계약) 금액 합계 — 취소 건 제외. */
+  purchaseAmount: number
+  /** 받은 금액 — 계약 건에서 받은 돈 + 납부 기록. */
+  receivedAmount: number
+  /** 잔금 = purchaseAmount - receivedAmount. */
+  balanceAmount: number
+  /** 장기 할부 이자 합계 — 구매 금액과 별개. */
+  interestAmount: number
+  /** 확인이 필요한 결제 기록 수. */
+  issueCount: number
   assignees: string[]
   boardNames: string[]
 }
@@ -76,6 +88,21 @@ export interface MondayVisit extends MondayRecordSource {
   notConvertedAt: string | null
 }
 
+/** 결제 건의 품목 줄 하나. product는 계약 금액을 이루는 줄(상품·할인),
+ * deferred는 "계약금"/"분할납부" 줄, interest는 장기 할부 이자. */
+export interface MondayPurchaseLine {
+  name: string
+  product: string | null
+  kind: 'product' | 'deferred' | 'interest'
+  price: number | null
+  quantity: number | null
+  discount: number | null
+  total: number
+  memo: string | null
+}
+
+/** 구매 1건 = 계약 1건. 금액은 계약 기준 — 계약한 날 상품 금액 전체가 구매
+ * 금액이고, 이후 나눠 낸 돈(MondayPayment)은 구매가 아니다. */
 export interface MondayPurchase extends MondayRecordSource {
   paidAt: string | null
   orders: string | null
@@ -86,6 +113,49 @@ export interface MondayPurchase extends MondayRecordSource {
   businessType: string | null
   assignee: string | null
   memo: string | null
+  lines: MondayPurchaseLine[]
+  /** 구매(계약) 금액 — product 줄의 합. */
+  amount: number
+  interestAmount: number
+  /** deferred 줄의 합(보통 0 이하) — 이 건에서 받은 돈은 amount + 이 값. */
+  deferredAmount: number
+  /** 결제 취소 건 — 구매 건수·금액에 들어가지 않는다. */
+  cancelled: boolean
+  pending: boolean
+}
+
+/** 납부 1건 — 이미 맺은 계약의 계약금·분할납부를 낸 기록. */
+export interface MondayPayment extends MondayRecordSource {
+  paidAt: string | null
+  status: string | null
+  method: string | null
+  assignee: string | null
+  memo: string | null
+  lines: MondayPurchaseLine[]
+  amount: number
+  cancelled: boolean
+  pending: boolean
+}
+
+/** Monday에서 사람이 확인해야 하는 애매한 결제 기록. */
+export interface MondayPaymentIssue {
+  type:
+    | 'payment-without-contract'
+    | 'purchase-without-lines'
+    | 'deferred-positive'
+    | 'overpaid'
+  message: string
+  itemId: string
+  boardName: string
+  name: string
+  url: string | null
+  date: string | null
+}
+
+/** 확인 필요 목록의 한 줄 — 어느 고객의 기록인지와 함께. */
+export interface MondayPaymentIssueItem extends MondayPaymentIssue {
+  phone: string
+  customerName: string | null
 }
 
 export interface MondaySurvey extends MondayRecordSource {
@@ -114,6 +184,8 @@ export interface MondayCustomer extends MondayCustomerListItem {
   consultations: MondayConsultation[]
   visits: MondayVisit[]
   purchases: MondayPurchase[]
+  payments: MondayPayment[]
+  issues: MondayPaymentIssue[]
   surveys: MondaySurvey[]
   sampleTests: MondaySampleTest[]
   itemCount: number

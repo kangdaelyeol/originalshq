@@ -1,6 +1,9 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
-import { CloseIcon, PaginationBar } from '@/screens/xtool-lead-manager/components'
+import {
+  CloseIcon,
+  PaginationBar,
+} from '@/screens/xtool-lead-manager/components'
 import type { useMondayViewModel } from '@/screens/xtool-lead-manager/view-model'
 import {
   MONDAY_CATEGORY_LABEL,
@@ -13,7 +16,7 @@ type MondayNavProps = Pick<
   'state' | 'actions'
 >
 
-/** Monday 고객 탭의 상단 줄 — 검색, 분류, 정렬, 번호 확인 경고, 페이지. 리드
+/** Monday 고객 탭의 상단 줄 — 검색, 분류, 정렬, 확인 필요 경고, 페이지. 리드
  * 탭의 Nav와 같은 자리·같은 모양(lead_manager_nav)이다. */
 export const MondayNav = ({ state, actions }: MondayNavProps) => {
   const {
@@ -27,6 +30,7 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
     totalPages,
     totalRows,
     missingItems,
+    paymentIssues,
   } = state
   const {
     changeSearch,
@@ -39,6 +43,7 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
   } = actions
 
   const typed = search.trim() !== ''
+  const reviewCount = missingItems.length + paymentIssues.length
 
   return (
     <div className="lead_manager_nav monday_nav">
@@ -96,13 +101,13 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
           </select>
         </div>
 
-        {missingItems.length > 0 && (
+        {reviewCount > 0 && (
           <button
             type="button"
             className="monday_missing_btn"
             onClick={openMissing}
           >
-            번호 확인 필요 {missingItems.length}건
+            확인 필요 {reviewCount}건
           </button>
         )}
 

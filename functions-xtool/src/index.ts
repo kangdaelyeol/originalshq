@@ -15,6 +15,7 @@ import {
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
+  listPaymentIssues,
   previewBoard,
   rebuildCustomers,
   rebuildCustomersSafely,
@@ -1643,6 +1644,27 @@ export const listMondayMissingPhoneItems = onRequest((request, response) => {
       response.status(200).send({ items, count: items.length })
     } catch (error) {
       logger.error('listMondayMissingPhoneItems 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// listMondayPaymentIssues — 확인이 필요한 결제 기록(계약을 못 찾는 납부,
+// 금액을 알 수 없는 결제 건 등). 번호 확인 목록과 같이 화면에서 경고로 보여준다.
+// ────────────────────────────────
+export const listMondayPaymentIssues = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const issues = await listPaymentIssues(db)
+      response.status(200).send({ issues, count: issues.length })
+    } catch (error) {
+      logger.error('listMondayPaymentIssues 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

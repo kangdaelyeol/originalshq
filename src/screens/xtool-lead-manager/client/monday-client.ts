@@ -3,6 +3,7 @@ import type {
   MondayCustomer,
   MondayCustomerListItem,
   MondayMissingPhoneItem,
+  MondayPaymentIssueItem,
 } from '../entity'
 import type { ClientResponse } from './lead-client'
 
@@ -44,5 +45,11 @@ export const mondayClient = {
     get<{ items: MondayMissingPhoneItem[]; count: number }>(
       'listMondayMissingPhoneItems',
       '번호 확인이 필요한 기록을 불러오지 못했습니다',
+    ),
+  /** 확인이 필요한 결제 기록들(계약을 못 찾는 납부 등). */
+  getPaymentIssues: () =>
+    get<{ issues: MondayPaymentIssueItem[]; count: number }>(
+      'listMondayPaymentIssues',
+      '확인이 필요한 결제 기록을 불러오지 못했습니다',
     ),
 }

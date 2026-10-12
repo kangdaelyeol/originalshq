@@ -4,6 +4,9 @@ const MONDAY_API_URL = 'https://api.monday.com/v2'
 
 // items_page 한 번에 몇 건씩 받을지 — Monday API 문서상 최대 500.
 const PAGE_SIZE = 500
+// 하위 아이템까지 받을 때는 한 건이 훨씬 무거워서(품목 줄 × 컬럼) 요청 하나의
+// 복잡도 한도를 넘지 않게 줄인다.
+const PAGE_SIZE_WITH_SUBITEMS = 200
 
 export interface RawMondayColumnValue {
   id: string
@@ -14,6 +17,18 @@ export interface RawMondayColumnValue {
   display_value?: string | null
 }
 
+/** 하위 아이템의 컬럼 값 — 하위 아이템은 별도 보드에 살아서 부모 보드의
+ * 컬럼 정의로는 제목을 알 수 없다. 값마다 제목을 같이 받는다. */
+export interface RawMondaySubitemColumnValue extends RawMondayColumnValue {
+  column: { title: string } | null
+}
+
+export interface RawMondaySubitem {
+  id: string
+  name: string
+  column_values: RawMondaySubitemColumnValue[]
+}
+
 export interface RawMondayItem {
   id: string
   name: string
@@ -22,6 +37,8 @@ export interface RawMondayItem {
   updated_at: string | null
   group: { id: string; title: string } | null
   column_values: RawMondayColumnValue[]
+  /** 하위 아이템까지 받은 보드에서만 있다. */
+  subitems?: RawMondaySubitem[]
 }
 
 export interface RawMondayBoard {
@@ -69,6 +86,21 @@ async function fetchMonday<T>(
   return json.data
 }
 
+const COLUMN_VALUE_FIELDS = `
+  id
+  type
+  text
+  ... on MirrorValue {
+    display_value
+  }
+  ... on FormulaValue {
+    display_value
+  }
+  ... on BoardRelationValue {
+    display_value
+  }
+`
+
 // 컬럼을 ids로 고르지 않고 전부 받는다 — 보드마다 컬럼이 달라서, 어떤 컬럼이
 // 필요한지는 저장한 뒤에 정한다.
 const ITEM_FIELDS = `
@@ -82,23 +114,25 @@ const ITEM_FIELDS = `
     title
   }
   column_values {
+    ${COLUMN_VALUE_FIELDS}
+  }
+`
+
+const SUBITEM_FIELDS = `
+  subitems {
     id
-    type
-    text
-    ... on MirrorValue {
-      display_value
-    }
-    ... on FormulaValue {
-      display_value
-    }
-    ... on BoardRelationValue {
-      display_value
+    name
+    column_values {
+      ${COLUMN_VALUE_FIELDS}
+      column {
+        title
+      }
     }
   }
 `
 
-const BOARD_QUERY = `
-  query GetBoard($boardId: ID!, $limit: Int!) {
+const BOARD_META_QUERY = `
+  query GetBoardMeta($boardId: ID!) {
     boards(ids: [$boardId]) {
       id
       name
@@ -107,22 +141,32 @@ const BOARD_QUERY = `
         title
         type
       }
+    }
+  }
+`
+
+const itemFields = (withSubitems: boolean) =>
+  withSubitems ? `${ITEM_FIELDS}${SUBITEM_FIELDS}` : ITEM_FIELDS
+
+const firstPageQuery = (withSubitems: boolean) => `
+  query GetBoardItems($boardId: ID!, $limit: Int!) {
+    boards(ids: [$boardId]) {
       items_page(limit: $limit) {
         cursor
         items {
-          ${ITEM_FIELDS}
+          ${itemFields(withSubitems)}
         }
       }
     }
   }
 `
 
-const NEXT_PAGE_QUERY = `
+const nextPageQuery = (withSubitems: boolean) => `
   query GetBoardNextPage($cursor: String!, $limit: Int!) {
     next_items_page(cursor: $cursor, limit: $limit) {
       cursor
       items {
-        ${ITEM_FIELDS}
+        ${itemFields(withSubitems)}
       }
     }
   }
@@ -130,32 +174,43 @@ const NEXT_PAGE_QUERY = `
 
 /** 보드 하나의 이름·컬럼 정의·item 전부를 받아온다. 보드가 없거나 이 API
  * 키로 볼 수 없으면 throw — 호출부(sync.ts)가 "빈 보드"로 오해해 저장된
- * 문서를 지우는 일이 없도록, 못 읽은 것과 비어 있는 것을 여기서 구분한다. */
+ * 문서를 지우는 일이 없도록, 못 읽은 것과 비어 있는 것을 여기서 구분한다.
+ *
+ * 컬럼 정의를 먼저 받고, `wantsSubitems`가 그 컬럼을 보고 true를 돌려준
+ * 보드만 하위 아이템까지 받는다 — 하위 아이템은 응답이 무거워서, 실제로
+ * 쓰는 보드(품목별 금액이 하위 아이템에 있는 결제 보드)에서만 받는다. */
 export async function fetchBoard(
   apiKey: string,
   boardId: string,
+  wantsSubitems: (columns: MondayColumn[]) => boolean = () => false,
 ): Promise<RawMondayBoard> {
-  const first = await fetchMonday<{
-    boards: Array<{
-      id: string
-      name: string
-      columns: MondayColumn[]
-      items_page: ItemsPage
-    }> | null
-  }>(apiKey, BOARD_QUERY, { boardId, limit: PAGE_SIZE })
+  const meta = await fetchMonday<{
+    boards: Array<{ id: string; name: string; columns: MondayColumn[] }> | null
+  }>(apiKey, BOARD_META_QUERY, { boardId })
 
-  const board = first.boards?.[0]
+  const board = meta.boards?.[0]
   if (!board) {
     throw new Error(`Monday 보드를 찾을 수 없습니다(boardId: ${boardId})`)
   }
 
-  const items = [...board.items_page.items]
-  let cursor = board.items_page.cursor
+  const withSubitems = wantsSubitems(board.columns)
+  const limit = withSubitems ? PAGE_SIZE_WITH_SUBITEMS : PAGE_SIZE
+
+  const first = await fetchMonday<{
+    boards: Array<{ items_page: ItemsPage }> | null
+  }>(apiKey, firstPageQuery(withSubitems), { boardId, limit })
+  const firstPage = first.boards?.[0]?.items_page
+  if (!firstPage) {
+    throw new Error(`Monday 보드를 찾을 수 없습니다(boardId: ${boardId})`)
+  }
+
+  const items = [...firstPage.items]
+  let cursor = firstPage.cursor
   while (cursor) {
     const next = await fetchMonday<{ next_items_page: ItemsPage }>(
       apiKey,
-      NEXT_PAGE_QUERY,
-      { cursor, limit: PAGE_SIZE },
+      nextPageQuery(withSubitems),
+      { cursor, limit },
     )
     items.push(...next.next_items_page.items)
     cursor = next.next_items_page.cursor

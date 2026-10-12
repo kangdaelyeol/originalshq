@@ -16,9 +16,15 @@ import {
   MondayBoard,
   MondayBoardPreview,
   MondayBoardSyncResult,
+  MondayColumn,
   MondayCustomerRebuildResult,
   MondaySyncSummary,
 } from './types'
+
+/** 하위 아이템까지 받아야 하는 보드인지 — 결제 보드는 금액이 품목 줄(하위
+ * 아이템)에만 있다. */
+const needsSubitems = (columns: MondayColumn[]): boolean =>
+  detectBoardKind(columns) === 'purchase'
 
 /** 보드 하나를 Monday에서 읽어, 저장될 모양 그대로 돌려준다 — DB에는 아무것도
  * 쓰지 않는다. 보드를 등록하기 전에 컬럼 id가 맞는지, 값이 비어 오는 컬럼은
@@ -31,7 +37,7 @@ export async function previewBoard(
   phoneColumnId: string | null,
   sampleSize: number,
 ): Promise<MondayBoardPreview> {
-  const raw = await fetchBoard(apiKey, boardId)
+  const raw = await fetchBoard(apiKey, boardId, needsSubitems)
   const resolvedPhoneColumnId =
     phoneColumnId ?? detectPhoneColumnId(raw.columns)
   const items = buildMondayItems(raw, resolvedPhoneColumnId, Date.now())
@@ -77,7 +83,7 @@ export async function syncBoard(
   board: MondayBoard,
 ): Promise<MondayBoardSyncResult> {
   try {
-    const raw = await fetchBoard(apiKey, board.id)
+    const raw = await fetchBoard(apiKey, board.id, needsSubitems)
     const resolvedPhoneColumnId =
       board.phoneColumnId ?? detectPhoneColumnId(raw.columns)
     const syncedAt = Date.now()

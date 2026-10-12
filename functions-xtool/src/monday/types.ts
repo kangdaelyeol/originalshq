@@ -59,11 +59,20 @@ export interface MondayItem {
   phoneRaw: string | null
   /** 컬럼 id → 값. 보드마다 컬럼이 달라서 가공하지 않고 그대로 담는다. */
   columns: Record<string, MondayItemColumn>
+  /** 하위 아이템(결제 보드의 품목 줄) — 하위 아이템까지 받은 보드에서만
+   * 채워지고, 나머지는 빈 배열이다. */
+  subitems: MondaySubitem[]
   /** Monday 쪽 생성/수정 시각(ISO 문자열). */
   createdAt: string | null
   updatedAt: string | null
   /** 이 문서를 마지막으로 쓴 동기화 시각(ms). */
   syncedAt: number
+}
+
+export interface MondaySubitem {
+  id: string
+  name: string
+  columns: Record<string, MondayItemColumn>
 }
 
 export interface MondayItemColumn {
@@ -142,6 +151,10 @@ export interface MondayCustomer {
   consultations: MondayConsultation[]
   visits: MondayVisit[]
   purchases: MondayPurchase[]
+  /** 계약금·분할납부 납부 기록 — 구매가 아니다. */
+  payments: MondayPayment[]
+  /** Monday에서 확인이 필요한 애매한 결제 기록. */
+  issues: MondayPaymentIssue[]
   surveys: MondaySurvey[]
   sampleTests: MondaySampleTest[]
   /** 목록 화면용 요약 — 목록은 이 필드까지만 읽고(기록 배열은 안 읽음),
@@ -164,11 +177,23 @@ export interface MondayCustomerSummary {
   purchaseCount: number
   surveyCount: number
   sampleTestCount: number
+  /** 취소되지 않은 구매(계약) 건수 — purchaseCount가 이 뜻이다. */
   /** 가장 최근 상담의 진행 상태와 접수일. */
   latestConsultationStatus: string | null
   latestConsultationAt: string | null
   latestVisitAt: string | null
   latestPurchaseAt: string | null
+  /** 납부 기록(계약금·분할납부) 건수. */
+  paymentCount: number
+  /** 구매(계약) 금액 합계 — 취소 건 제외, 입금대기 건 포함. */
+  purchaseAmount: number
+  /** 받은 금액 — 계약 건에서 받은 돈 + 납부 기록. 취소 건 제외. */
+  receivedAmount: number
+  /** 잔금 = purchaseAmount - receivedAmount. */
+  balanceAmount: number
+  /** 장기 할부 이자 합계 — 구매 금액과 별개. */
+  interestAmount: number
+  issueCount: number
   /** 이 고객의 기록에 나온 담당자 전부 — 많이 나온 순. */
   assignees: string[]
   /** 이 고객이 등장한 보드 이름들. */
@@ -180,6 +205,12 @@ export type MondayCustomerListItem = Pick<
   MondayCustomer,
   'phone' | 'otherPhones' | 'names' | 'emails' | 'summary' | 'lastUpdatedAt'
 >
+
+/** 확인이 필요한 결제 기록 — 어느 고객의 것인지와 함께. */
+export type MondayPaymentIssueItem = MondayPaymentIssue & {
+  phone: string
+  customerName: string | null
+}
 
 /** 유효한 번호가 없어 통합에서 빠진 item — Monday에서 번호를 고쳐야 한다. */
 export type MondayMissingPhoneItem = Pick<
@@ -243,6 +274,28 @@ export interface MondayVisit extends MondayRecordSource {
   notConvertedAt: string | null
 }
 
+/** 결제 건의 품목 줄(하위 아이템) 하나.
+ *   product  — 상품·할인 등 계약 금액을 이루는 줄
+ *   deferred — 품명이 "계약금"/"분할납부"인 줄. 계약 건 안에서는 보통 음수로,
+ *              "아직 안 받은 잔금"이나 "먼저 받은 계약금 차감"을 뜻한다
+ *   interest — 장기 할부 이자. 카드사에 내는 이자라 구매 금액이 아니다 */
+export interface MondayPurchaseLine {
+  name: string
+  /** 품명(상품 보드 연결값) — 줄 이름은 사람이 손으로 적어 믿을 수 없어서,
+   * 종류는 이 값으로 가린다. */
+  product: string | null
+  kind: 'product' | 'deferred' | 'interest'
+  price: number | null
+  quantity: number | null
+  discount: number | null
+  /** 최종 결제 금액. */
+  total: number
+  memo: string | null
+}
+
+/** 구매 1건 = 계약 1건. 상품 줄이 하나라도 있는 결제 건이며, 금액은 계약
+ * 기준이다 — 계약한 날 상품 금액 전체를 구매 금액으로 잡고, 그 뒤에 나눠
+ * 낸 돈(MondayPayment)은 구매로 세지 않는다. */
 export interface MondayPurchase extends MondayRecordSource {
   paidAt: string | null
   /** 주문 목록(하위 아이템 이름들을 이어 붙인 값). */
@@ -254,6 +307,51 @@ export interface MondayPurchase extends MondayRecordSource {
   businessType: string | null
   assignee: string | null
   memo: string | null
+  lines: MondayPurchaseLine[]
+  /** 구매(계약) 금액 — product 줄의 합. */
+  amount: number
+  /** 장기 할부 이자 — interest 줄의 합. 구매 금액과 따로 둔다. */
+  interestAmount: number
+  /** deferred 줄의 합 — 보통 0 이하. 이 건에서 실제로 받은 돈은
+   * amount + deferredAmount다. */
+  deferredAmount: number
+  /** 결제 취소 건 — 기록은 남기되 구매 건수·금액에는 넣지 않는다. */
+  cancelled: boolean
+  /** 결제상태가 입금대기인 건 — 계약은 했으므로 구매로 센다. 화면에 표시만
+   * 하고 금액 계산에는 쓰지 않는다(상태가 제때 안 바뀌는 건이 많다). */
+  pending: boolean
+}
+
+/** 납부 1건 — 상품 줄 없이 "계약금"/"분할납부" 줄만 있는 결제 건. 이미 맺은
+ * 계약의 돈을 나눠 낸 기록이라 구매가 아니다. */
+export interface MondayPayment extends MondayRecordSource {
+  paidAt: string | null
+  status: string | null
+  method: string | null
+  assignee: string | null
+  memo: string | null
+  lines: MondayPurchaseLine[]
+  /** 납부한 금액 — 줄들의 합. */
+  amount: number
+  cancelled: boolean
+  pending: boolean
+}
+
+/** 사람이 Monday에서 확인해야 하는 애매한 결제 기록. */
+export interface MondayPaymentIssue {
+  type:
+    | 'payment-without-contract' // 납부 기록은 있는데 대응하는 계약 건이 없음
+    | 'purchase-without-lines' // 결제 건에 품목 줄이 없어 금액을 알 수 없음
+    | 'deferred-positive' // 계약 건의 계약금/분할납부 줄이 양수(보통 음수)
+    | 'overpaid' // 받은 돈이 계약 금액보다 많음
+  /** 화면에 그대로 보여줄 설명. */
+  message: string
+  itemId: string
+  boardName: string
+  /** 그 기록에 적힌 이름. */
+  name: string
+  url: string | null
+  date: string | null
 }
 
 export interface MondaySurvey extends MondayRecordSource {

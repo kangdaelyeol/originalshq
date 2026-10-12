@@ -4,6 +4,7 @@ export {
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
+  listPaymentIssues,
 } from './firestore'
 export {
   previewBoard,

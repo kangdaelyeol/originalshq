@@ -6,17 +6,13 @@ import {
   MondayConsultation,
   MondayCustomer,
   MondayItem,
-  MondayPurchase,
   MondaySampleTest,
   MondaySurvey,
   MondayVisit,
 } from './types'
+import { checked, cleanName, pick, source, squash } from './fields'
 import { extractMondayPhones, isMobilePhone } from './helper'
-
-// 컬럼은 id가 아니라 제목으로 찾는다 — 같은 뜻의 컬럼이라도 보드마다 id가
-// 다르고(전화번호만 해도 넷), 띄어쓰기도 제각각("콜백 1단계 진행일" /
-// "콜백1단계일")이라서다. 제목에서 공백을 뺀 뒤 패턴과 맞춰 본다.
-const squash = (title: string): string => title.replace(/\s/g, '')
+import { buildPurchaseRecords } from './purchases'
 
 /** 보드의 컬럼 제목으로 그 보드가 어떤 기록을 담는지 추정한다. 위에서부터
  * 먼저 맞는 것으로 정한다 — 방문체험 보드에도 "상담 진행 상태"가 있어서
@@ -33,44 +29,11 @@ export const detectBoardKind = (columns: MondayColumn[]): MondayBoardKind => {
   return 'other'
 }
 
-/** item에서 제목이 패턴에 맞는 첫 컬럼의 값 — 없거나 비었으면 null. */
-const pick = (item: MondayItem, pattern: RegExp): string | null => {
-  for (const column of Object.values(item.columns)) {
-    if (pattern.test(squash(column.title)) && column.text.trim()) {
-      return column.text.trim()
-    }
-  }
-  return null
-}
-
-/** 체크박스 컬럼 — 체크돼 있으면 값이 "v"로 온다. */
-const checked = (item: MondayItem, pattern: RegExp): boolean =>
-  pick(item, pattern) !== null
-
 /** 콜백 1~4단계 진행일을 단계 순서대로 — 비어 있는 단계는 뺀다. */
 const callbackDates = (item: MondayItem): string[] =>
   [1, 2, 3, 4]
     .map((step) => pick(item, new RegExp(`^콜백${step}단계`)))
     .filter((date): date is string => date !== null)
-
-/** item 이름에서 고객 이름만 남긴다 — 만족도 조사 보드처럼 "홍길동/010-…"로
- * 이름 칸에 연락처까지 받은 경우 번호와 구분 기호를 떼어낸다. */
-const cleanName = (name: string): string =>
-  name
-    .replace(/(?:\+?82[\s.-]*)?0?\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g, ' ')
-    .replace(/[\s/,·|-]+$/g, '')
-    .replace(/^[\s/,·|-]+/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-const source = (item: MondayItem) => ({
-  itemId: item.id,
-  boardId: item.boardId,
-  boardName: item.boardName,
-  name: cleanName(item.name),
-  url: item.url,
-  updatedAt: item.updatedAt,
-})
 
 const toConsultation = (item: MondayItem): MondayConsultation => ({
   ...source(item),
@@ -110,19 +73,6 @@ const toVisit = (item: MondayItem): MondayVisit => ({
   callbackDates: callbackDates(item),
   paidAt: pick(item, /^결제일$/),
   notConvertedAt: pick(item, /^미전환일$/),
-})
-
-const toPurchase = (item: MondayItem): MondayPurchase => ({
-  ...source(item),
-  paidAt: pick(item, /^결제일자$/),
-  orders: pick(item, /^주문목록$/),
-  status: pick(item, /^결제상태$/),
-  channel: pick(item, /^구매경로$/),
-  method: pick(item, /^결제수단$/),
-  pickup: pick(item, /^수령방식$/),
-  businessType: pick(item, /^사업자$/),
-  assignee: pick(item, /^담당자$/),
-  memo: pick(item, /^비고란?$/),
 })
 
 const toSurvey = (item: MondayItem): MondaySurvey => ({
@@ -185,12 +135,16 @@ const buildCustomer = (
     (record) => record.receivedAt,
   )
   const visits = newestFirst(of('visit').map(toVisit), (r) => r.visitAt)
-  const purchases = newestFirst(of('purchase').map(toPurchase), (r) => r.paidAt)
+  const { purchases, payments, issues, money } = buildPurchaseRecords(
+    of('purchase'),
+  )
   const surveys = newestFirst(of('survey').map(toSurvey), (r) => r.createdAt)
   const sampleTests = newestFirst(
     of('sampleTest').map(toSampleTest),
     (record) => record.requestedAt,
   )
+
+  const activePurchases = purchases.filter((purchase) => !purchase.cancelled)
 
   const body = {
     phone,
@@ -206,21 +160,34 @@ const buildCustomer = (
     consultations,
     visits,
     purchases,
+    payments,
+    issues,
     surveys,
     sampleTests,
     summary: {
       consultationCount: consultations.length,
       visitCount: visits.length,
-      purchaseCount: purchases.length,
+      // 구매 건수·최근 구매일은 취소되지 않은 계약만 센다.
+      purchaseCount: activePurchases.length,
       surveyCount: surveys.length,
       sampleTestCount: sampleTests.length,
       latestConsultationStatus: consultations[0]?.status ?? null,
       latestConsultationAt: consultations[0]?.receivedAt ?? null,
       latestVisitAt: visits[0]?.visitAt ?? null,
-      latestPurchaseAt: purchases[0]?.paidAt ?? null,
+      latestPurchaseAt: activePurchases[0]?.paidAt ?? null,
+      paymentCount: payments.length,
+      ...money,
+      issueCount: issues.length,
       // "홍길동, 김철수"처럼 한 칸에 여러 명이 적힌 값은 사람별로 나눈다.
       assignees: byFrequency(
-        [...consultations, ...visits, ...purchases, ...surveys, ...sampleTests]
+        [
+          ...consultations,
+          ...visits,
+          ...purchases,
+          ...payments,
+          ...surveys,
+          ...sampleTests,
+        ]
           .flatMap((record) => (record.assignee ?? '').split(','))
           .map((assignee) => assignee.trim())
           .filter(Boolean),

@@ -3,6 +3,7 @@ import type { MondayCustomerListItem } from '@/screens/xtool-lead-manager/entity
 import {
   formatMondayDate,
   formatMondayPhone,
+  formatWon,
   mondayStatusTone,
 } from '@/screens/xtool-lead-manager/utils'
 
@@ -12,7 +13,13 @@ interface MondayRowProps {
 }
 
 /** 건수와 최근 날짜를 두 줄로 — 리드 표의 status_stack과 같은 모양. */
-const CountCell = ({ count, latest }: { count: number; latest: string | null }) =>
+const CountCell = ({
+  count,
+  latest,
+}: {
+  count: number
+  latest: string | null
+}) =>
   count > 0 ? (
     <div className="status_stack">
       <span className="count">{count}건</span>
@@ -22,7 +29,10 @@ const CountCell = ({ count, latest }: { count: number; latest: string | null }) 
     <span className="monday_empty">-</span>
   )
 
-const MondayRow = memo(function MondayRow({ customer, onOpen }: MondayRowProps) {
+const MondayRow = memo(function MondayRow({
+  customer,
+  onOpen,
+}: MondayRowProps) {
   const { summary, names } = customer
   const etcCount = summary.surveyCount + summary.sampleTestCount
 
@@ -61,11 +71,30 @@ const MondayRow = memo(function MondayRow({ customer, onOpen }: MondayRowProps) 
       <td className="col-monday-count">
         <CountCell count={summary.visitCount} latest={summary.latestVisitAt} />
       </td>
-      <td className="col-monday-count">
-        <CountCell
-          count={summary.purchaseCount}
-          latest={summary.latestPurchaseAt}
-        />
+      {/* 구매 — 건수·계약 금액, 잔금이 남았으면 그 아래에. 최근 구매일은
+          칸이 좁아 title로 본다. */}
+      <td
+        className="col-monday-purchase"
+        title={
+          summary.purchaseCount > 0
+            ? `최근 구매 ${formatMondayDate(summary.latestPurchaseAt)}`
+            : undefined
+        }
+      >
+        {summary.purchaseCount > 0 ? (
+          <div className="status_stack">
+            <span className="count">
+              {summary.purchaseCount}건 · {formatWon(summary.purchaseAmount)}
+            </span>
+            {summary.balanceAmount > 0 && (
+              <span className="monday_balance">
+                잔금 {formatWon(summary.balanceAmount)}
+              </span>
+            )}
+          </div>
+        ) : (
+          <span className="monday_empty">-</span>
+        )}
       </td>
 
       {/* 설문·샘플테스트는 드물어서 한 칸에 모은다. */}
@@ -124,7 +153,7 @@ export const MondayTable = ({
                 <th className="col-monday-status">최근 상담 상태</th>
                 <th className="col-monday-count">상담</th>
                 <th className="col-monday-count">방문체험</th>
-                <th className="col-monday-count">구매</th>
+                <th className="col-monday-purchase">구매</th>
                 <th className="col-monday-etc">설문·샘플</th>
                 <th className="col-monday-assignee">담당자</th>
                 <th className="col-monday-boards">보드</th>

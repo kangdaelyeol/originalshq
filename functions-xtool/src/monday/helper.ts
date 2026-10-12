@@ -1,6 +1,11 @@
 import { normalizeDomesticPhone } from '../utils'
-import { RawMondayBoard, RawMondayItem } from './client'
-import { MondayColumn, MondayItem, MondayItemColumn } from './types'
+import { RawMondayBoard, RawMondayItem, RawMondaySubitem } from './client'
+import {
+  MondayColumn,
+  MondayItem,
+  MondayItemColumn,
+  MondaySubitem,
+} from './types'
 
 // 제목만으로 휴대폰번호 컬럼이라고 볼 수 있는 말.
 const MOBILE_TITLE_PATTERN = /휴대폰|핸드폰|휴대전화|mobile/i
@@ -104,6 +109,18 @@ const readPhoneRaw = (
   return columns[phoneColumnId]?.text || null
 }
 
+const toSubitem = (subitem: RawMondaySubitem): MondaySubitem => {
+  const columns: Record<string, MondayItemColumn> = {}
+  for (const value of subitem.column_values) {
+    columns[value.id] = {
+      title: value.column?.title ?? value.id,
+      type: value.type,
+      text: value.display_value ?? value.text ?? '',
+    }
+  }
+  return { id: subitem.id, name: subitem.name, columns }
+}
+
 /** Monday에서 받은 보드를 mondayItems 문서들로 바꾼다. */
 export const buildMondayItems = (
   board: RawMondayBoard,
@@ -133,6 +150,7 @@ export const buildMondayItems = (
       phones,
       phoneRaw,
       columns,
+      subitems: (item.subitems ?? []).map(toSubitem),
       createdAt: item.created_at ?? null,
       updatedAt: item.updated_at ?? null,
       syncedAt,

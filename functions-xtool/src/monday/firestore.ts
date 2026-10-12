@@ -6,6 +6,8 @@ import {
   MondayCustomerRebuildResult,
   MondayItem,
   MondayMissingPhoneItem,
+  MondayPaymentIssue,
+  MondayPaymentIssueItem,
 } from './types'
 
 const BOARDS_COLLECTION = 'mondayBoards'
@@ -180,4 +182,29 @@ export async function listMissingPhoneItems(
     )
     .get()
   return snapshot.docs.map((doc) => doc.data() as MondayMissingPhoneItem)
+}
+
+/** 확인이 필요한 결제 기록 전부 — 그런 기록이 있는 고객만 읽어서(대부분의
+ * 고객은 없다) 고객 정보와 함께 한 줄씩 편다. */
+export async function listPaymentIssues(
+  db: Firestore,
+): Promise<MondayPaymentIssueItem[]> {
+  const snapshot = await db
+    .collection(CUSTOMERS_COLLECTION)
+    .where('summary.issueCount', '>', 0)
+    .select('phone', 'names', 'issues')
+    .get()
+
+  return snapshot.docs.flatMap((doc) => {
+    const { phone, names, issues } = doc.data() as {
+      phone: string
+      names: string[]
+      issues: MondayPaymentIssue[]
+    }
+    return issues.map((issue) => ({
+      ...issue,
+      phone,
+      customerName: names[0] ?? null,
+    }))
+  })
 }
