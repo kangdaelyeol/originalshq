@@ -1,4 +1,4 @@
-import type { MondayDailySale } from '../entity'
+import type { MondayDailyInflow, MondayDailySale } from '../entity'
 import type { PurchaseScope } from './monday-stats'
 
 /** 제품 하나의 판매 합계 — 조회 기간 안에서. */
@@ -62,19 +62,26 @@ export const summarizeSales = (products: SalesProduct[]): SalesSummary => ({
   top: products[0] ?? null,
 })
 
-export type SalesSortKey =
-  'name' | 'quantity' | 'offlineQuantity' | 'onlineQuantity' | 'amount'
-
-/** 표에 보여줄 순서로 정렬한다. 값이 같으면 수량이 많은 제품이 위로 온다. */
-export const sortSalesProducts = (
-  products: SalesProduct[],
-  key: SalesSortKey,
-  direction: 'asc' | 'desc',
-): SalesProduct[] => {
-  const sign = direction === 'asc' ? 1 : -1
-  return [...products].sort((a, b) => {
-    const compared =
-      key === 'name' ? a.name.localeCompare(b.name) : a[key] - b[key]
-    return compared !== 0 ? compared * sign : b.quantity - a.quantity
-  })
+/** 판매 줄을 "날짜별 · 제품별 수량"으로 바꾼다 — 인입 통계의 "날짜별 ·
+ * 보드별 건수"와 같은 모양이라, 일/주/월로 묶기·정렬·합계 계산을 인입
+ * 통계의 함수(inflowSeries, summarizeInflow, sortInflowRows)로 그대로 한다.
+ * 여기서 total은 그날 팔린 전체 수량, boards는 제품명별 수량이다. */
+export const salesAsDays = (
+  rows: MondayDailySale[],
+  scope: PurchaseScope,
+): MondayDailyInflow[] => {
+  const byDate = new Map<string, MondayDailyInflow>()
+  for (const row of rows) {
+    if (scope !== 'all' && row.origin !== scope) continue
+    const day = byDate.get(row.date) ?? {
+      date: row.date,
+      total: 0,
+      misentry: 0,
+      boards: {},
+    }
+    day.total += row.quantity
+    day.boards[row.name] = (day.boards[row.name] ?? 0) + row.quantity
+    byDate.set(row.date, day)
+  }
+  return [...byDate.values()]
 }

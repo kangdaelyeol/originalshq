@@ -109,22 +109,23 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
             dateEnd={range.end}
             onChange={changeRange}
           />
-          {section === 'inflow' ? (
-            <div className="stats_scope" role="tablist" aria-label="묶는 단위">
-              {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
-                <button
-                  key={each}
-                  type="button"
-                  role="tab"
-                  aria-selected={each === unit}
-                  className={each === unit ? 'active' : ''}
-                  onClick={() => changeUnit(each)}
-                >
-                  {INFLOW_UNIT_LABEL[each]}
-                </button>
-              ))}
-            </div>
-          ) : (
+          {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
+              선택이 더 붙는다. */}
+          <div className="stats_scope" role="tablist" aria-label="묶는 단위">
+            {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
+              <button
+                key={each}
+                type="button"
+                role="tab"
+                aria-selected={each === unit}
+                className={each === unit ? 'active' : ''}
+                onClick={() => changeUnit(each)}
+              >
+                {INFLOW_UNIT_LABEL[each]}
+              </button>
+            ))}
+          </div>
+          {section === 'sales' && (
             <div className="stats_scope" role="tablist" aria-label="판매 채널">
               {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
                 (each) => (
@@ -155,7 +156,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               </button>
             </div>
           ) : section === 'sales' ? (
-            <SalesSection sales={sales} onSort={toggleSalesSort} />
+            <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (
             <>
               <section className="stats_card">

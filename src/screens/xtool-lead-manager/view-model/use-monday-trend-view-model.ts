@@ -8,14 +8,13 @@ import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
   inflowSeries,
+  salesAsDays,
   sortInflowRows,
-  sortSalesProducts,
   summarizeInflow,
   summarizeSales,
   type InflowSortKey,
   type InflowUnit,
   type PurchaseScope,
-  type SalesSortKey,
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
 // 것이라, "오늘"·"지난 7일"의 기준이 두 화면에서 어긋나지 않게 한다.
@@ -48,9 +47,9 @@ export const useMondayTrendViewModel = (active: boolean) => {
   const [section, setSection] = useState<TrendSection>('inflow')
   // 기간은 두 소주제가 같이 쓴다 — 오가며 같은 기간을 비교하기 쉽게.
   const [range, setRange] = useState(defaultRange)
-  // 판매통계 — 채널(통합/오프라인/온라인)과 표의 정렬(처음엔 수량 많은 순).
+  // 판매통계 — 채널(통합/오프라인/온라인)과 표의 정렬(처음엔 최근 날짜가 위).
   const [salesScope, setSalesScope] = useState<PurchaseScope>('all')
-  const [salesSortKey, setSalesSortKey] = useState<SalesSortKey>('quantity')
+  const [salesSortKey, setSalesSortKey] = useState<InflowSortKey>('date')
   const [salesSortDirection, setSalesSortDirection] =
     useState<SortDirection>('desc')
   // 묶는 단위 — 일별 / 주차별 / 월별.
@@ -121,13 +120,29 @@ export const useMondayTrendViewModel = (active: boolean) => {
     () => summarizeSales(salesProducts),
     [salesProducts],
   )
+  // 표는 기간(일/주/월)이 줄, 제품이 칸이다 — 인입 통계와 같은 모양으로 바꿔
+  // 같은 함수로 묶고 정렬한다. 묶는 단위는 인입통계와 같이 쓴다.
+  const salesPoints = useMemo(
+    () =>
+      inflowSeries(
+        salesAsDays(salesRows, salesScope),
+        range.start,
+        range.end,
+        unit,
+      ),
+    [salesRows, salesScope, range, unit],
+  )
+  const salesColumns = useMemo(
+    () => summarizeInflow(salesPoints).boards,
+    [salesPoints],
+  )
   const salesTableRows = useMemo(
-    () => sortSalesProducts(salesProducts, salesSortKey, salesSortDirection),
-    [salesProducts, salesSortKey, salesSortDirection],
+    () => sortInflowRows(salesPoints, salesSortKey, salesSortDirection),
+    [salesPoints, salesSortKey, salesSortDirection],
   )
 
   const toggleSalesSort = useCallback(
-    (key: SalesSortKey) => {
+    (key: InflowSortKey) => {
       if (key === salesSortKey) {
         setSalesSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
         return
@@ -158,9 +173,11 @@ export const useMondayTrendViewModel = (active: boolean) => {
       section,
       sales: {
         scope: salesScope,
-        // 그래프용(수량 많은 순)과 표용(고른 정렬)을 따로 둔다.
-        products: salesProducts,
         summary: salesSummary,
+        /** 표의 칸 — 이 기간에 팔린 제품들(수량 많은 순)과 각 합계. */
+        columns: salesColumns,
+        /** 표의 줄 수(기간 수) — 평균을 낼 때 나누는 값. */
+        periodCount: salesPoints.length,
         tableRows: salesTableRows,
         sortKey: salesSortKey,
         sortDirection: salesSortDirection,
