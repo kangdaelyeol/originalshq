@@ -1,5 +1,7 @@
-import { pick, source } from './fields'
+import { Cafe24Order } from './cafe24'
+import { koreaDate, pick, source } from './fields'
 import {
+  MondayDailySale,
   MondayItem,
   MondayItemColumn,
   MondayPayment,
@@ -231,4 +233,75 @@ export const buildPurchaseRecords = (
       ),
     },
   }
+}
+
+// 품목 줄 가운데 제품이 아닌 것 — 할인 줄("현금 할인", "방문체험 할인" 등)은
+// 금액을 깎는 줄이지 팔린 물건이 아니다.
+const DISCOUNT_PATTERN = /할인/
+
+/** 저장된 결제 보드 item과 Cafe24 주문에서 판매 통계용 줄을 만든다(순수
+ * 함수). 제품으로 세는 것:
+ *   · 오프라인 — 취소되지 않은 결제 건의 품목 줄 중 상품 줄. 계약금·분할납부
+ *     줄, 장기 할부 이자 줄, 할인 줄은 뺀다. 제품명은 하위 아이템 이름이고,
+ *     수량이 비어 있으면 1개로 본다.
+ *   · 온라인 — 결제된 주문의 품목 중 취소·반품되지 않은 것.
+ * 결과는 날짜·채널·제품명이 같은 것끼리 합쳐져 있고, 날짜 오름차순이다. */
+export const buildDailySales = (
+  purchaseItems: MondayItem[],
+  orders: Cafe24Order[],
+): MondayDailySale[] => {
+  const byKey = new Map<string, MondayDailySale>()
+  const add = (
+    date: string | null,
+    origin: MondayDailySale['origin'],
+    rawName: string,
+    quantity: number,
+    amount: number,
+  ) => {
+    const name = rawName.replace(/\s+/g, ' ').trim()
+    if (!date || !name || quantity <= 0) return
+    const key = `${date}|${origin}|${name}`
+    const row = byKey.get(key) ?? { date, origin, name, quantity: 0, amount: 0 }
+    row.quantity += quantity
+    row.amount += amount
+    byKey.set(key, row)
+  }
+
+  for (const item of purchaseItems) {
+    const status = pick(item, /^결제상태$/)
+    if (status !== null && /취소/.test(status)) continue
+    const date = koreaDate(pick(item, /^결제일자$/))
+    for (const line of (item.subitems ?? []).map(toLine)) {
+      if (line.kind !== 'product') continue
+      if (
+        DISCOUNT_PATTERN.test(line.name) ||
+        DISCOUNT_PATTERN.test(line.product ?? '')
+      ) {
+        continue
+      }
+      add(date, 'offline', line.name, line.quantity ?? 1, line.total)
+    }
+  }
+
+  for (const order of orders) {
+    if (!order.paid) continue
+    const date = order.paymentDate ?? order.orderDate
+    for (const item of order.items) {
+      if (item.cancelled) continue
+      add(
+        date,
+        'online',
+        item.productName,
+        item.quantity,
+        item.price * item.quantity - item.discount,
+      )
+    }
+  }
+
+  return [...byKey.values()].sort(
+    (a, b) =>
+      a.date.localeCompare(b.date) ||
+      a.origin.localeCompare(b.origin) ||
+      a.name.localeCompare(b.name),
+  )
 }

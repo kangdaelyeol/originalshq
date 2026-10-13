@@ -2,27 +2,35 @@ import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/monday-trend.scss'
-import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-model'
+import {
+  TREND_SECTION_LABEL,
+  type TrendSection,
+  type useMondayTrendViewModel,
+} from '@/screens/xtool-lead-manager/view-model'
 import { Loading, SortButton } from '@/screens/xtool-lead-manager/components'
 import {
   INFLOW_UNIT_AVERAGE,
   INFLOW_UNIT_LABEL,
   INFLOW_UNIT_NOUN,
+  PURCHASE_SCOPE_LABEL,
   shortBoardName,
   type InflowSortKey,
   type InflowUnit,
+  type PurchaseScope,
 } from '@/screens/xtool-lead-manager/utils'
 // 기간 선택은 cmip의 것을 그대로 쓴다 — 프리셋(지난 7일 등)과 달력이 같은
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
+import { SalesSection } from './sales-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel>
 
 const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
 
 /**
- * 통계 탭 — 날짜별 추이를 보는 곳. 지금은 인입 건수 하나다.
+ * 통계 탭 — 소주제 둘: 인입통계(날짜별 인입 건수)와 판매통계(제품별 판매
+ * 수량, sales-section.tsx). 위쪽 줄에서 소주제와 기간을 고른다.
  *
  * 인입은 그날 상담 보드(기기별 B2B 보드, B2B 솔루션, 기타 온라인 문의, 기타
  * 오프라인)에 새로 접수된 기록의 수다. 방문체험·샘플테스트·결제는 이미
@@ -39,8 +47,18 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     tableRows,
     sortKey,
     sortDirection,
+    section,
+    sales,
   } = state
-  const { changeRange, changeUnit, toggleSort, reload } = actions
+  const {
+    changeRange,
+    changeUnit,
+    toggleSort,
+    reload,
+    changeSection,
+    changeSalesScope,
+    toggleSalesSort,
+  } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
 
   /** 합계를 표의 줄 수로 나눈 평균 — 소수 첫째 자리까지. */
@@ -65,27 +83,65 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     <>
       <div className="lead_manager_nav monday_stats_nav monday_trend_nav">
         <div className="inner">
-          <span className="stats_nav_label">기간</span>
+          {/* 소주제 — 인입통계 / 판매통계. 기간은 둘이 같이 쓴다. */}
+          <div
+            className="stats_scope trend_sections"
+            role="tablist"
+            aria-label="통계 소주제"
+          >
+            {(Object.keys(TREND_SECTION_LABEL) as TrendSection[]).map(
+              (each) => (
+                <button
+                  key={each}
+                  type="button"
+                  role="tab"
+                  aria-selected={each === section}
+                  className={each === section ? 'active' : ''}
+                  onClick={() => changeSection(each)}
+                >
+                  {TREND_SECTION_LABEL[each]}
+                </button>
+              ),
+            )}
+          </div>
           <DateRangePicker
             dateStart={range.start}
             dateEnd={range.end}
             onChange={changeRange}
           />
-          <div className="stats_scope" role="tablist" aria-label="묶는 단위">
-            {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
-              <button
-                key={each}
-                type="button"
-                role="tab"
-                aria-selected={each === unit}
-                className={each === unit ? 'active' : ''}
-                onClick={() => changeUnit(each)}
-              >
-                {INFLOW_UNIT_LABEL[each]}
-              </button>
-            ))}
-          </div>
-          <span className="stats_nav_note">매일 07시·19시 갱신</span>
+          {section === 'inflow' ? (
+            <div className="stats_scope" role="tablist" aria-label="묶는 단위">
+              {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
+                <button
+                  key={each}
+                  type="button"
+                  role="tab"
+                  aria-selected={each === unit}
+                  className={each === unit ? 'active' : ''}
+                  onClick={() => changeUnit(each)}
+                >
+                  {INFLOW_UNIT_LABEL[each]}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="stats_scope" role="tablist" aria-label="판매 채널">
+              {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
+                (each) => (
+                  <button
+                    key={each}
+                    type="button"
+                    role="tab"
+                    aria-selected={each === sales.scope}
+                    className={each === sales.scope ? 'active' : ''}
+                    onClick={() => changeSalesScope(each)}
+                  >
+                    {PURCHASE_SCOPE_LABEL[each]}
+                  </button>
+                ),
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -93,11 +149,13 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
         <div className="wrapper">
           {status === 'error' ? (
             <div className="monday_error">
-              <p>인입 통계를 불러오지 못했습니다.</p>
+              <p>통계를 불러오지 못했습니다.</p>
               <button type="button" onClick={reload}>
                 다시 시도
               </button>
             </div>
+          ) : section === 'sales' ? (
+            <SalesSection sales={sales} onSort={toggleSalesSort} />
           ) : (
             <>
               <section className="stats_card">
@@ -125,13 +183,15 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                     </strong>
                   </div>
                   <div className="stats_tile">
-                    <span className="stats_tile_label">가장 많은 {noun}</span>
+                    {/* 어느 날(주·달)인지는 이름 옆에 붙인다 — 값 아래에 따로
+                        두면 이 칸만 한 줄 길어져 네 칸의 높이가 같이 늘어난다. */}
+                    <span className="stats_tile_label">
+                      가장 많은 {noun}
+                      {summary.peak && ` - ${summary.peak.label}`}
+                    </span>
                     <strong className="stats_tile_value">
                       {summary.peak ? count(summary.peak.total) : '-'}
                     </strong>
-                    <span className="stats_tile_note">
-                      {summary.peak ? summary.peak.label : ''}
-                    </span>
                   </div>
                   <div className="stats_tile">
                     <span className="stats_tile_label">오기입</span>

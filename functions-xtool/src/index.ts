@@ -13,6 +13,7 @@ import {
   deleteBoard,
   getCustomer,
   getDailyInflow,
+  getDailySales,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -1686,6 +1687,26 @@ export const getMondayDailyInflow = onRequest((request, response) => {
       response.status(200).send(await getDailyInflow(db))
     } catch (error) {
       logger.error('getMondayDailyInflow 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// getMondayDailySales — 판매 통계용 줄 전체(날짜·채널·제품별 수량과 금액).
+// 기간·채널로 거르고 제품별로 합치는 것은 화면이 한다.
+// ────────────────────────────────
+export const getMondayDailySales = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      response.status(200).send(await getDailySales(db))
+    } catch (error) {
+      logger.error('getMondayDailySales 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

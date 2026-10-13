@@ -1,11 +1,7 @@
 import * as logger from 'firebase-functions/logger'
 import { Firestore } from 'firebase-admin/firestore'
 import { fetchBoard } from './client'
-import {
-  buildCustomers,
-  buildDailyInflow,
-  detectBoardKind,
-} from './customers'
+import { buildCustomers, buildDailyInflow, detectBoardKind } from './customers'
 import {
   getBoard,
   listBoards,
@@ -15,9 +11,11 @@ import {
   replaceCustomers,
   saveBoard,
   saveDailyInflow,
+  saveDailySales,
   updateBoard,
 } from './firestore'
 import { buildMondayItems, detectPhoneColumnId } from './helper'
+import { buildDailySales } from './purchases'
 import {
   MondayBoard,
   MondayBoardPreview,
@@ -154,6 +152,14 @@ export async function rebuildCustomers(
   const written = await replaceCustomers(db, customers)
   // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
   await saveDailyInflow(db, buildDailyInflow(items, kindByBoardId))
+  // 판매 통계(제품별 판매 수량)도 — 결제 보드의 품목 줄과 Cafe24 주문 품목.
+  await saveDailySales(
+    db,
+    buildDailySales(
+      items.filter((item) => kindByBoardId.get(item.boardId) === 'purchase'),
+      orders,
+    ),
+  )
   return { customerCount: customers.length, ...counts, ...written }
 }
 

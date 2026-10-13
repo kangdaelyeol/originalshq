@@ -6,6 +6,7 @@ import {
   MondayCustomerListItem,
   MondayCustomerRebuildResult,
   MondayDailyInflow,
+  MondayDailySale,
   MondayItem,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
@@ -240,4 +241,27 @@ export async function getDailyInflow(
   const data = doc.data() as
     { days: MondayDailyInflow[]; syncedAt: number } | undefined
   return { days: data?.days ?? [], syncedAt: data?.syncedAt ?? null }
+}
+
+const DAILY_SALES_DOC = 'dailySales'
+
+/** 판매 통계용 줄 전체를 문서 하나에 저장한다 — 날짜·채널·제품별로 한 줄이라
+ * 몇천 줄 수준이고, 문서 크기 한도(1MB)의 일부만 쓴다. */
+export async function saveDailySales(
+  db: Firestore,
+  rows: MondayDailySale[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(DAILY_SALES_DOC)
+    .set({ rows, syncedAt: Date.now() })
+}
+
+export async function getDailySales(
+  db: Firestore,
+): Promise<{ rows: MondayDailySale[]; syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(DAILY_SALES_DOC).get()
+  const data = doc.data() as
+    { rows: MondayDailySale[]; syncedAt: number } | undefined
+  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
 }

@@ -442,3 +442,20 @@ export interface MondayDailyInflow {
   /** 보드 이름별 건수 — 합이 total이다. 인입이 없던 보드는 들어 있지 않다. */
   boards: Record<string, number>
 }
+
+/** 판매 통계의 한 줄 — 어느 날, 어느 채널에서, 어떤 제품이 몇 개 팔렸는지.
+ * 같은 날·채널·제품은 한 줄로 합쳐져 있다. 취소된 결제·주문과 취소·반품된
+ * 품목은 들어 있지 않다. 고객 통합과 달리 전화번호가 없는 건도 포함한다
+ * (팔린 것은 맞으므로). */
+export interface MondayDailySale {
+  /** YYYY-MM-DD — 오프라인은 결제일자, 온라인은 결제일(없으면 주문일). */
+  date: string
+  /** offline은 Monday 오프라인 결제 보드, online은 Cafe24 온라인몰. */
+  origin: 'offline' | 'online'
+  /** 제품명 — 오프라인은 하위 아이템 이름, 온라인은 상품명. 두 채널이 같은
+   * 제품을 다른 이름으로 적기 때문에 채널 간에는 자동으로 합쳐지지 않는다. */
+  name: string
+  quantity: number
+  /** 판매 금액(할인 반영). */
+  amount: number
+}

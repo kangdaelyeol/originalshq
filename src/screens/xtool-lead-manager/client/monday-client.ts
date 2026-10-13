@@ -3,6 +3,7 @@ import type {
   MondayCustomer,
   MondayCustomerListItem,
   MondayDailyInflow,
+  MondayDailySale,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '../entity'
@@ -58,5 +59,11 @@ export const mondayClient = {
     get<{ days: MondayDailyInflow[]; syncedAt: number | null }>(
       'getMondayDailyInflow',
       '인입 통계를 불러오지 못했습니다',
+    ),
+  /** 판매 통계용 줄 전체(날짜·채널·제품별) — 통계 탭의 판매통계가 쓴다. */
+  getDailySales: () =>
+    get<{ rows: MondayDailySale[]; syncedAt: number | null }>(
+      'getMondayDailySales',
+      '판매 통계를 불러오지 못했습니다',
     ),
 }

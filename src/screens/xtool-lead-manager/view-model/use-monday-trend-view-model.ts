@@ -1,13 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
-import type { MondayDailyInflow } from '@/screens/xtool-lead-manager/entity'
+import type {
+  MondayDailyInflow,
+  MondayDailySale,
+} from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
+  aggregateSales,
   inflowSeries,
   sortInflowRows,
+  sortSalesProducts,
   summarizeInflow,
+  summarizeSales,
   type InflowSortKey,
   type InflowUnit,
+  type PurchaseScope,
+  type SalesSortKey,
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
 // 것이라, "오늘"·"지난 7일"의 기준이 두 화면에서 어긋나지 않게 한다.
@@ -20,15 +28,31 @@ const defaultRange = (): { start: string; end: string } => {
   return { start: addDays(end, -6), end }
 }
 
-/** 통계 탭의 상태 — 날짜별 인입 건수 전체(한 번 받아 둔다)와 조회 기간, 그
- * 기간의 그래프용 데이터. `active`가 처음 true가 될 때 받아온다. */
+/** 통계 탭의 소주제. */
+export type TrendSection = 'inflow' | 'sales'
+
+export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
+  inflow: '인입통계',
+  sales: '판매통계',
+}
+
+/** 통계 탭의 상태 — 소주제 둘(인입통계 / 판매통계)의 원본 데이터(한 번 받아
+ * 둔다)와 조회 기간, 그 기간의 그래프·표용 데이터. `active`가 처음 true가 될 때 받아온다. */
 export const useMondayTrendViewModel = (active: boolean) => {
   const [days, setDays] = useState<MondayDailyInflow[]>([])
   const [syncedAt, setSyncedAt] = useState<number | null>(null)
   const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
     'idle',
   )
+  const [salesRows, setSalesRows] = useState<MondayDailySale[]>([])
+  const [section, setSection] = useState<TrendSection>('inflow')
+  // 기간은 두 소주제가 같이 쓴다 — 오가며 같은 기간을 비교하기 쉽게.
   const [range, setRange] = useState(defaultRange)
+  // 판매통계 — 채널(통합/오프라인/온라인)과 표의 정렬(처음엔 수량 많은 순).
+  const [salesScope, setSalesScope] = useState<PurchaseScope>('all')
+  const [salesSortKey, setSalesSortKey] = useState<SalesSortKey>('quantity')
+  const [salesSortDirection, setSalesSortDirection] =
+    useState<SortDirection>('desc')
   // 묶는 단위 — 일별 / 주차별 / 월별.
   const [unit, setUnit] = useState<InflowUnit>('day')
   // 표의 정렬 — 처음에는 최근 날짜가 위로.
@@ -37,13 +61,20 @@ export const useMondayTrendViewModel = (active: boolean) => {
 
   const load = useCallback(async () => {
     setStatus('loading')
-    const res = await mondayClient.getDailyInflow()
-    if (!res.ok) {
-      console.error('인입 통계 실패:', res.error)
+    const [res, salesRes] = await Promise.all([
+      mondayClient.getDailyInflow(),
+      mondayClient.getDailySales(),
+    ])
+    if (!res.ok || !salesRes.ok) {
+      console.error(
+        '통계 실패:',
+        !res.ok ? res.error : !salesRes.ok ? salesRes.error : '',
+      )
       setStatus('error')
       return
     }
     setDays(res.data.days)
+    setSalesRows(salesRes.data.rows)
     setSyncedAt(res.data.syncedAt)
     setStatus('ready')
   }, [])
@@ -81,6 +112,32 @@ export const useMondayTrendViewModel = (active: boolean) => {
     [sortKey],
   )
 
+  // ── 판매통계 ────────────────────────────────────────────────────────
+  const salesProducts = useMemo(
+    () => aggregateSales(salesRows, range.start, range.end, salesScope),
+    [salesRows, range, salesScope],
+  )
+  const salesSummary = useMemo(
+    () => summarizeSales(salesProducts),
+    [salesProducts],
+  )
+  const salesTableRows = useMemo(
+    () => sortSalesProducts(salesProducts, salesSortKey, salesSortDirection),
+    [salesProducts, salesSortKey, salesSortDirection],
+  )
+
+  const toggleSalesSort = useCallback(
+    (key: SalesSortKey) => {
+      if (key === salesSortKey) {
+        setSalesSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+        return
+      }
+      setSalesSortKey(key)
+      setSalesSortDirection('desc')
+    },
+    [salesSortKey],
+  )
+
   // 전체 기간을 한 번에 받아 두었으므로 기간을 바꿔도 다시 받지 않는다.
   const changeRange = useCallback(
     (start: string, end: string) => setRange({ start, end }),
@@ -98,7 +155,25 @@ export const useMondayTrendViewModel = (active: boolean) => {
       sortKey,
       sortDirection,
       syncedAt,
+      section,
+      sales: {
+        scope: salesScope,
+        // 그래프용(수량 많은 순)과 표용(고른 정렬)을 따로 둔다.
+        products: salesProducts,
+        summary: salesSummary,
+        tableRows: salesTableRows,
+        sortKey: salesSortKey,
+        sortDirection: salesSortDirection,
+      },
     },
-    actions: { changeRange, changeUnit: setUnit, toggleSort, reload: load },
+    actions: {
+      changeRange,
+      changeUnit: setUnit,
+      toggleSort,
+      reload: load,
+      changeSection: setSection,
+      changeSalesScope: setSalesScope,
+      toggleSalesSort,
+    },
   }
 }

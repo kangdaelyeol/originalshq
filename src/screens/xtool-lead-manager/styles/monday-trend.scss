@@ -307,3 +307,66 @@ $trend-y-axis-width: 44px;
     }
   }
 }
+
+// ── 판매통계 ────────────────────────────────────────────────────────────
+.lead_manager_nav.monday_trend_nav .trend_sections {
+  // 소주제는 그 옆의 조건(기간·단위)보다 한 단계 위라 조금 띄운다.
+  margin-right: 6px;
+}
+
+.xtool-main.monday_trend {
+  // 제품별 가로 막대 — 퍼널 통계의 막대(stats_bar)와 같은 모양이되, 제품명이
+  // 길어서 이름 칸을 넓게 잡고 넘치면 말줄임한다(전체 이름은 title로).
+  .sales_bars {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sales_bar {
+    display: grid;
+    grid-template-columns: minmax(0, 320px) minmax(0, 1fr) 80px;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .sales_bar_label {
+    font-size: 13px;
+    color: variables.$color-text;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sales_bar .stats_bar_value {
+    text-align: right;
+  }
+
+  .sales_more,
+  .sales_empty {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: variables.$color-text-faint;
+  }
+
+  // 가장 많이 팔린 제품의 이름이 길면 한 줄에서 말줄임한다.
+  .sales_top_label {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  // 제품명은 왼쪽 정렬·줄바꿈 허용, 합계 줄은 한 줄뿐이라 맨 아래에 붙인다.
+  .sales_table_scroll {
+    max-height: 560px;
+
+    td:first-child {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+    tfoot tr:first-child td {
+      bottom: 0;
+    }
+  }
+}
