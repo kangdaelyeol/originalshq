@@ -5,11 +5,18 @@ import { MondayItem } from './types'
 // "콜백1단계일")이라서다. 제목에서 공백을 뺀 뒤 패턴과 맞춰 본다.
 export const squash = (title: string): string => title.replace(/\s/g, '')
 
-/** item에서 제목이 패턴에 맞는 첫 컬럼의 값 — 없거나 비었으면 null. */
+// 값이 없다는 뜻으로 적힌 글자들 — 문의 폼이 빈 값을 글자 "null"로 넘긴 것이
+// Monday에 그대로 저장돼 있다(fbc·fbp에 많다). 진짜 값이 아니므로 비어 있는
+// 것과 똑같이 다룬다.
+const EMPTY_TEXT = /^(null|undefined)$/i
+
+/** item에서 제목이 패턴에 맞는 첫 컬럼의 값 — 없거나 비었으면(또는 "null"
+ * 이라고 적혀 있으면) null. */
 export const pick = (item: MondayItem, pattern: RegExp): string | null => {
   for (const column of Object.values(item.columns)) {
-    if (pattern.test(squash(column.title)) && column.text.trim()) {
-      return column.text.trim()
+    const text = column.text.trim()
+    if (pattern.test(squash(column.title)) && text && !EMPTY_TEXT.test(text)) {
+      return text
     }
   }
   return null

@@ -254,7 +254,7 @@ export const MondayStats = ({
                   <h2>최초 인입 → 구매 소요 일수</h2>
                   <p className="stats_desc">
                     문의 기록이 있는 구매 고객 {people(stats.days.customers)}{' '}
-                    기준. 결제 기록만 있는 고객은 뺍니다.
+                    기준. 결제 기록만 있는 고객 제외.
                   </p>
                   <div className="stats_tiles">
                     <Tile label="중앙값" value={days(stats.days.median)} />

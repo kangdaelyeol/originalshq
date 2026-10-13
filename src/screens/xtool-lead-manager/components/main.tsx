@@ -1,6 +1,7 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import type {
   useCreateLeadViewModel,
+  useLeadMondayMatchViewModel,
   useMainViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import {
@@ -17,17 +18,21 @@ import {
 type MainProps = ReturnType<typeof useMainViewModel> & {
   /** 리드 수기 등록 모달의 상태·동작 — 별도 view-model이라 따로 받는다. */
   createLead: ReturnType<typeof useCreateLeadViewModel>
+  /** 열려 있는 리드와 같은 번호의 Monday 고객 — 상세 모달의 오른쪽 패널용. */
+  mondayMatch: ReturnType<typeof useLeadMondayMatchViewModel>['state']
+  onOpenInMonday: (phone: string) => void
 }
 
-export const Main = ({ state, actions, component, createLead }: MainProps) => {
-  const {
-    selectedRow,
-    variant,
-    registerForm,
-    detail,
-    loading,
-    filteredRows,
-  } = state
+export const Main = ({
+  state,
+  actions,
+  component,
+  createLead,
+  mondayMatch,
+  onOpenInMonday,
+}: MainProps) => {
+  const { selectedRow, variant, registerForm, detail, loading, filteredRows } =
+    state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -86,6 +91,8 @@ export const Main = ({ state, actions, component, createLead }: MainProps) => {
           onRegisterPurchase={() => registerPurchaseRow(detail.id)}
           onDeleteLead={() => deleteRow(detail.id)}
           onUpdateField={updateLeadField}
+          mondayMatch={mondayMatch}
+          onOpenInMonday={onOpenInMonday}
         />
       )}
       {loading && <Loading />}

@@ -8,6 +8,7 @@ import {
 } from '@/screens/xtool-lead-manager/components'
 import {
   useCreateLeadViewModel,
+  useLeadMondayMatchViewModel,
   useMainViewModel,
   useMondayStatsViewModel,
   useMondayViewModel,
@@ -32,10 +33,23 @@ const XtoolLeadManagerScreen = () => {
   // 최상위 탭 — 리드(이 화면에서 직접 관리하는 데이터) / Monday 고객(Monday
   // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). Monday 목록은 그 탭이나
   // 퍼널 통계 탭을 처음 열 때 받아온다.
-  const { tab } = usePageTabViewModel().state
+  const pageTab = usePageTabViewModel()
+  const { tab } = pageTab.state
   const monday = useMondayViewModel(tab !== 'leads')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
+
+  // 리드 상세가 열려 있으면 같은 전화번호의 Monday 고객을 찾아 둔다 — 두
+  // 탭의 데이터는 따로 살고, 이 번호 대조가 둘을 잇는 유일한 연결이다.
+  const mondayMatch = useLeadMondayMatchViewModel(main.state.detail?.ph ?? null)
+
+  /** 리드 상세의 Monday 패널에서 "전체 기록 보기" — Monday 고객 탭으로 넘어가
+   * 그 고객의 상세를 연다. */
+  const openInMonday = (phone: string) => {
+    main.actions.hideDetail()
+    pageTab.actions.selectTab('monday')
+    monday.actions.openDetail(phone)
+  }
 
   if (tab === 'stats') {
     return (
@@ -59,7 +73,12 @@ const XtoolLeadManagerScreen = () => {
   return (
     <>
       <Nav state={main.state} actions={main.actions} />
-      <Main {...main} createLead={createLead} />
+      <Main
+        {...main}
+        createLead={createLead}
+        mondayMatch={mondayMatch.state}
+        onOpenInMonday={openInMonday}
+      />
     </>
   )
 }

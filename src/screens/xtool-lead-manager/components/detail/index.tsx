@@ -2,11 +2,13 @@ import type { Lead, LeadState } from '@/screens/xtool-lead-manager/entity'
 import { EditingField } from '@/screens/xtool-lead-manager/types'
 import { formatPhoneNumber } from '@/screens/xtool-lead-manager/utils'
 import { useDetailViewModel } from '@/screens/xtool-lead-manager/view-model/detail'
+import type { useLeadMondayMatchViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { DetailSideList } from '../detail-side-list'
 import { ConsultationRow } from './consultation-row'
 import { EditableInfoRow, EditableUserAgentRow } from './editable-info-row'
 import { CloseIcon } from './icons'
 import { IntakeRow } from './intake-row'
+import { DetailMondayPanel } from './monday-panel'
 import { PurchaseRow } from './purchase-row'
 import type {
   ConsultationUpdates,
@@ -32,8 +34,9 @@ const UTM_LABEL: Record<string, string> = {
 }
 
 /**
- * 고객 상세 모달 — 왼쪽에 검색된 고객 목록, 오른쪽에 한 고객의 기본 정보·
+ * 고객 상세 모달 — 왼쪽에 검색된 고객 목록, 가운데에 한 고객의 기본 정보·
  * 접수/상담/구매 이력·유입 경로·추적 정보를 보여주고 그 자리에서 고친다.
+ * 오른쪽에는 같은 전화번호의 Monday 고객(있으면)을 띄워 값을 복사해 온다.
  *
  * 이 파일은 모달의 뼈대와 섹션 배치만 갖는다. 각 줄의 모양과 동작은 같은
  * 폴더의 컴포넌트(editable-info-row, intake-row, consultation-row,
@@ -56,6 +59,8 @@ export const Detail = ({
   onRegisterPurchase,
   onDeleteLead,
   onUpdateField,
+  mondayMatch,
+  onOpenInMonday,
 }: {
   lead: Lead
   /** 왼쪽 고객 목록에 뿌릴 검색된 전체 고객 — 지금 열려 있는 lead와는 별개다. */
@@ -75,6 +80,9 @@ export const Detail = ({
   onRegisterPurchase: () => void
   onDeleteLead: () => void
   onUpdateField: UpdateLeadField
+  /** 이 리드와 같은 번호의 Monday 고객 — 오른쪽 패널이 쓴다. */
+  mondayMatch: ReturnType<typeof useLeadMondayMatchViewModel>['state']
+  onOpenInMonday: (phone: string) => void
 }) => {
   const { state } = useDetailViewModel(lead, onConfirm)
   const {
@@ -319,6 +327,19 @@ export const Detail = ({
             </div>
           </div>
         </div>
+        <DetailMondayPanel
+          lead={lead}
+          match={mondayMatch}
+          onCopy={(field, value) => onUpdateField(lead.id, field, value)}
+          onFillEmpty={async (values) => {
+            // 한 번에 하나씩 — 각 저장이 리드 전체를 돌려주므로, 동시에 보내면
+            // 늦게 끝난 응답이 앞선 저장을 덮어쓴 것처럼 보일 수 있다.
+            for (const { field, value } of values) {
+              await onUpdateField(lead.id, field, value)
+            }
+          }}
+          onOpenInMonday={onOpenInMonday}
+        />
       </div>
     </div>
   )

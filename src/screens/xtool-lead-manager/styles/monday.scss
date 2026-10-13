@@ -523,3 +523,183 @@
     }
   }
 }
+
+// ── 리드 상세의 Monday 패널 ─────────────────────────────────────────────
+// 리드 상세(detail_form) 오른쪽에 나란히 선다. 같은 전화번호의 Monday 고객을
+// 보여주고 그 값을 리드로 복사한다.
+.lead_manager_detail_modal .detail_monday_panel {
+  box-sizing: border-box;
+  width: 340px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: variables.$color-surface;
+  border: 1px solid variables.$color-border;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  animation: modal-pop-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+
+  .detail_monday_head {
+    box-sizing: border-box;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px;
+    border-bottom: 1px solid variables.$color-border;
+
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+  }
+
+  .detail_monday_open,
+  .detail_monday_fill,
+  .detail_monday_field .copy {
+    all: unset;
+    box-sizing: border-box;
+    padding: 4px 10px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text-muted;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$color-text;
+      background-color: rgba(255, 255, 255, 0.06);
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  // 빈 칸 채우기·복사는 이 패널의 주된 동작이라 강조색으로.
+  .detail_monday_fill,
+  .detail_monday_field .copy {
+    border-color: rgba(68, 147, 248, 0.5);
+    color: variables.$color-accent;
+
+    &:hover {
+      color: variables.$color-accent;
+      background-color: variables.$color-accent-soft;
+    }
+  }
+
+  .detail_monday_scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 14px 18px 18px;
+  }
+
+  .detail_monday_message {
+    margin: 0;
+    padding: 16px 18px;
+    color: variables.$color-text-muted;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .detail_monday_scroll .detail_monday_message {
+    padding: 4px 0;
+  }
+
+  .detail_monday_summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 18px;
+
+    > div {
+      padding: 10px;
+      border: 1px solid variables.$color-border-soft;
+      border-radius: 8px;
+      min-width: 0;
+    }
+    dt {
+      font-size: 11.5px;
+      color: variables.$color-text-muted;
+    }
+    dd {
+      margin: 4px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: variables.$color-text;
+
+      small {
+        display: block;
+        margin-top: 2px;
+        font-size: 11px;
+        font-weight: 400;
+        color: variables.$color-text-faint;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+    }
+  }
+
+  .detail_monday_copy_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: variables.$color-text-muted;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+  }
+
+  .detail_monday_field {
+    padding: 10px 0;
+    border-top: 1px solid variables.$color-border-soft;
+
+    .label {
+      font-size: 12px;
+      color: variables.$color-text-muted;
+    }
+    ul {
+      margin: 6px 0 0;
+      padding: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .value {
+      min-width: 0;
+      font-size: 13px;
+      color: variables.$color-text;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .same {
+      flex-shrink: 0;
+      font-size: 11.5px;
+      color: variables.$color-text-faint;
+    }
+    .copy {
+      flex-shrink: 0;
+    }
+  }
+}
+
+// 세 칸(고객 목록 · 리드 상세 · Monday)이 다 들어가지 않는 좁은 화면에서는
+// 고객 목록을 접는다 — 상세와 Monday 패널이 이 모달의 본론이다.
+@media (max-width: 1260px) {
+  .lead_manager_detail_modal .detail_layout .detail_side_list {
+    display: none;
+  }
+}

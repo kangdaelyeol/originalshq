@@ -15,7 +15,7 @@ const get = async <T>(
     const response = await fetch(`${API_BASE}/${endpoint}`)
 
     if (!response.ok) {
-      return { ok: false, error: fallbackError }
+      return { ok: false, error: fallbackError, status: response.status }
     }
 
     return { ok: true, data: (await response.json()) as T }

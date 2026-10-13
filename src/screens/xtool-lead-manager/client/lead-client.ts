@@ -9,6 +9,9 @@ export type ClientResponse<T> =
   | {
       ok: false
       error: string
+      /** HTTP 응답은 받았지만 실패한 경우의 상태 코드 — "없음"(404)과 진짜
+       * 오류를 가려야 하는 호출부만 본다. */
+      status?: number
     }
 
 const post = async (
