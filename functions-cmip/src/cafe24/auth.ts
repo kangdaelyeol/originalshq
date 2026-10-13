@@ -205,6 +205,7 @@ async function fetchAllOrdersRaw(
   startDate: string,
   endDate: string,
   dateType: string,
+  embed?: string,
 ): Promise<unknown[]> {
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -218,6 +219,9 @@ async function fetchAllOrdersRaw(
     date_type: dateType,
     limit: '100',
   })
+  // 주문에 딸린 리소스를 같이 받는다(예: "items,buyer,receivers") — 주문자
+  // 이름·연락처, 수령자, 품목은 기본 응답에 없고 embed로 요청해야 내려온다.
+  if (embed) firstParams.set('embed', embed)
 
   const orders: unknown[] = []
   let url: string | null = `${apiBase(mallId)}/admin/orders?${firstParams.toString()}`
@@ -245,6 +249,7 @@ export async function debugFetchCafe24OrdersRaw(
   startDate: string,
   endDate: string,
   dateType = 'order_date',
+  embed?: string,
 ): Promise<{ orders: unknown[]; count: number }> {
   const accessToken = await getCafe24AccessToken(mallId, clientId, clientSecret)
   try {
@@ -254,6 +259,7 @@ export async function debugFetchCafe24OrdersRaw(
       startDate,
       endDate,
       dateType,
+      embed,
     )
     return { orders, count: orders.length }
   } catch (err) {
@@ -272,6 +278,7 @@ export async function debugFetchCafe24OrdersRaw(
       startDate,
       endDate,
       dateType,
+      embed,
     )
     return { orders, count: orders.length }
   }

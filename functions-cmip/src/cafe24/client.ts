@@ -6,7 +6,11 @@ import {
   isCafe24InvalidTokenError,
 } from './auth'
 import { chunkDateRangeForCafe24 } from './utils'
-import type { Cafe24OrderRow, Cafe24RefundRow } from './types'
+import type {
+  Cafe24OrderCustomerRow,
+  Cafe24OrderRow,
+  Cafe24RefundRow,
+} from './types'
 import type { ISODate } from '../types'
 
 // 페이지당 최대 건수(Cafe24 문서 기준 100건) — 크게 잡을수록 페이지 수가
@@ -43,7 +47,7 @@ interface Cafe24AmountBreakdown {
   [key: string]: unknown
 }
 
-interface Cafe24RawOrder {
+export interface Cafe24RawOrder {
   order_id: string
   order_date: string
   // 실제 결제가 확인된 날짜 — 결제 안 된 주문(paid='F')은 null. 무통장입금
@@ -81,6 +85,12 @@ interface Cafe24RawOrder {
    * (fetchOrdersForSingleRange 참고). 품목별 cancel_date만 쓴다 —
    * effectiveCancelDate 주석 참고. */
   items: Cafe24OrderItem[]
+  /** 취소 여부 — "T"(전체 취소) / "F" / "M"(일부 품목만 취소). */
+  canceled?: string
+  /** 주문자·수령자 — embed=buyer,receivers를 붙여야 내려온다. 고객 통합용
+   * (toOrderCustomerRow)으로만 쓴다. */
+  buyer?: Cafe24OrderBuyer | null
+  receivers?: Cafe24OrderReceiver[] | null
   /** 배송비 묶음(배송비 그룹)별 상세 — actualShipping 보정에만 쓴다
    * (actualShipping 계산 부분 주석 참고). 배송비가 여러 묶음으로 나뉠 수
    * 있어서 배열이다. */
@@ -88,9 +98,35 @@ interface Cafe24RawOrder {
 }
 
 /** 주문 품목 하나 — /admin/orders?embed=items로 얻는 items 배열의 원소.
- * cancel_date 외 다른 필드는 안 쓴다. */
+ * 매출 집계는 cancel_date만 쓰고, 나머지는 고객 통합용 품목 정보
+ * (toOrderCustomerRow)에 쓴다. */
 interface Cafe24OrderItem {
   cancel_date: string | null
+  product_name?: string | null
+  option_value?: string | null
+  quantity?: number | null
+  product_price?: string | null
+  option_price?: string | null
+  additional_discount_price?: string | null
+  coupon_discount_price?: string | null
+  /** 주문 상태 코드 — N..(정상 진행), C..(취소), R..(반품), E..(교환). */
+  order_status?: string | null
+  status_text?: string | null
+}
+
+/** 주문자 — embed=buyer. */
+interface Cafe24OrderBuyer {
+  name?: string | null
+  email?: string | null
+  phone?: string | null
+  cellphone?: string | null
+}
+
+/** 수령자 — embed=receivers. 배송지가 여러 곳이면 여러 명이다. */
+interface Cafe24OrderReceiver {
+  name?: string | null
+  phone?: string | null
+  cellphone?: string | null
 }
 
 /** 배송비 묶음 하나 — cancel_shipping_fee 외 다른 필드는 안 쓴다. */
@@ -232,6 +268,59 @@ function itemDiscountFor(
     (Number(a.credits_spent_amount) || 0) -
     naverPoint
   return Math.max(0, netExcludingNonCashPayments - payment)
+}
+
+/** 주문 조회 결과 — 같은 원본 주문에서 뽑은 두 가지. rows는 매출 집계용
+ * 금액, customers는 고객 통합용(누가 무엇을 샀는지). */
+export interface Cafe24OrdersResult {
+  rows: Cafe24OrderRow[]
+  customers: Cafe24OrderCustomerRow[]
+}
+
+const dateOnly = (value: string | null | undefined): ISODate | null =>
+  value ? value.slice(0, 10) : null
+
+const texts = (values: (string | null | undefined)[]): string[] => [
+  ...new Set(
+    values.map((value) => value?.trim() ?? '').filter((value) => value !== ''),
+  ),
+]
+
+/** 원본 주문에서 고객 통합용 정보만 뽑는다 — 주문자·수령자의 이름과 연락처,
+ * 품목. 주소는 담지 않는다. 연락처는 휴대폰을 먼저, 없으면 일반 전화를 쓴다. */
+export function toOrderCustomerRow(raw: Cafe24RawOrder): Cafe24OrderCustomerRow {
+  const receivers = raw.receivers ?? []
+  return {
+    orderId: raw.order_id,
+    orderDate: raw.order_date.slice(0, 10),
+    paymentDate: dateOnly(raw.payment_date),
+    cancelDate: dateOnly(effectiveCancelDate(raw)),
+    paid: raw.paid === 'T',
+    canceled: raw.canceled ?? 'F',
+    marketId: raw.market_id,
+    memberId: raw.member_id,
+    buyerName: raw.buyer?.name?.trim() || null,
+    buyerPhone: raw.buyer?.cellphone?.trim() || raw.buyer?.phone?.trim() || null,
+    buyerEmail: raw.buyer?.email?.trim() || null,
+    receiverNames: texts(receivers.map((receiver) => receiver.name)),
+    receiverPhones: texts(
+      receivers.map((receiver) => receiver.cellphone || receiver.phone),
+    ),
+    items: (raw.items ?? []).map((item) => ({
+      productName: item.product_name?.trim() ?? '',
+      option: item.option_value?.trim() ?? '',
+      quantity: Number(item.quantity) || 0,
+      price:
+        (Number(item.product_price) || 0) + (Number(item.option_price) || 0),
+      discount:
+        (Number(item.additional_discount_price) || 0) +
+        (Number(item.coupon_discount_price) || 0),
+      statusText: item.status_text?.trim() ?? '',
+      // 취소(C..)·반품(R..) 상태이거나 취소일이 찍힌 품목.
+      cancelled:
+        /^[CR]/.test(item.order_status ?? '') || item.cancel_date != null,
+    })),
+  }
 }
 
 function toOrderRow(raw: Cafe24RawOrder): Cafe24OrderRow {
@@ -400,7 +489,9 @@ async function fetchOrdersForSingleRange(
     start_date: startDate,
     end_date: endDate,
     date_type: dateType,
-    embed: 'items',
+    // buyer·receivers는 매출 집계에는 안 쓰고, 고객 통합용 정보
+    // (toOrderCustomerRow)를 같이 뽑기 위해 받는다.
+    embed: 'items,buyer,receivers',
     limit: String(PAGE_SIZE),
   })
   return fetchAllPages<Cafe24RawOrder, Cafe24OrdersResponse>(
@@ -424,10 +515,11 @@ async function fetchOrderRowsByDateType(
   dateStart: ISODate,
   dateEnd: ISODate,
   dateType: 'order_date' | 'cancel_date',
-): Promise<Cafe24OrderRow[]> {
+): Promise<Cafe24OrdersResult> {
   const chunks = chunkDateRangeForCafe24(dateStart, dateEnd)
   return withTokenRetry(mallId, clientId, clientSecret, async (accessToken) => {
     const rows: Cafe24OrderRow[] = []
+    const customers: Cafe24OrderCustomerRow[] = []
     for (const chunk of chunks) {
       const raw = await fetchOrdersForSingleRange(
         mallId,
@@ -437,8 +529,9 @@ async function fetchOrderRowsByDateType(
         dateType,
       )
       rows.push(...raw.map(toOrderRow))
+      customers.push(...raw.map(toOrderCustomerRow))
     }
-    return rows
+    return { rows, customers }
   })
 }
 
@@ -450,7 +543,7 @@ export async function fetchCafe24OrderRows(
   clientSecret: string,
   dateStart: ISODate,
   dateEnd: ISODate,
-): Promise<Cafe24OrderRow[]> {
+): Promise<Cafe24OrdersResult> {
   return fetchOrderRowsByDateType(
     mallId,
     clientId,
@@ -472,7 +565,7 @@ export async function fetchCafe24OrderRowsByCancelDate(
   clientSecret: string,
   dateStart: ISODate,
   dateEnd: ISODate,
-): Promise<Cafe24OrderRow[]> {
+): Promise<Cafe24OrdersResult> {
   return fetchOrderRowsByDateType(
     mallId,
     clientId,

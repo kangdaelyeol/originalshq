@@ -77,7 +77,10 @@ const MondayRow = memo(function MondayRow({
         className="col-monday-purchase"
         title={
           summary.purchaseCount > 0
-            ? `최근 구매 ${formatMondayDate(summary.latestPurchaseAt)}`
+            ? `최근 구매 ${formatMondayDate(summary.latestPurchaseAt)}` +
+              (summary.onlinePurchaseCount > 0
+                ? ` · 온라인 ${summary.onlinePurchaseCount}건 ${formatWon(summary.onlinePurchaseAmount)}`
+                : '')
             : undefined
         }
       >

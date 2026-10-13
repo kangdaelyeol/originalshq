@@ -13,6 +13,10 @@ export interface MondayCustomerSummary {
   latestPurchaseAt: string | null
   /** 납부 기록(계약금·분할납부) 건수 — 구매가 아니다. */
   paymentCount: number
+  /** 온라인(Cafe24) 구매 건수·금액 — purchaseCount·purchaseAmount에 이미
+   * 포함된 값을 따로 뗀 것. */
+  onlinePurchaseCount: number
+  onlinePurchaseAmount: number
   /** 구매(계약) 금액 합계 — 취소 건 제외. */
   purchaseAmount: number
   /** 받은 금액 — 계약 건에서 받은 돈 + 납부 기록. */
@@ -32,8 +36,11 @@ export interface MondayCustomerSummary {
 export interface MondayCustomerFunnel {
   /** 최초 인입일(YYYY-MM-DD). */
   firstContactAt: string | null
-  /** 첫 구매(계약)일 — 취소 건 제외. */
+  /** 첫 구매(계약)일 — 취소 건 제외. 오프라인·온라인 중 이른 쪽. */
   firstPurchaseAt: string | null
+  /** 오프라인(Monday 결제 보드) / 온라인(Cafe24) 각각의 첫 구매일. */
+  firstOfflinePurchaseAt: string | null
+  firstOnlinePurchaseAt: string | null
   /** 콜백 도달 단계(0~4) — 날짜가 적힌 가장 높은 단계. */
   callbackStage: number
   visitBooked: boolean
@@ -109,11 +116,12 @@ export interface MondayVisit extends MondayRecordSource {
 }
 
 /** 결제 건의 품목 줄 하나. product는 계약 금액을 이루는 줄(상품·할인),
- * deferred는 "계약금"/"분할납부" 줄, interest는 장기 할부 이자. */
+ * deferred는 "계약금"/"분할납부" 줄, interest는 장기 할부 이자, cancelled는
+ * 취소·반품된 품목(온라인 주문). product만 구매 금액에 들어간다. */
 export interface MondayPurchaseLine {
   name: string
   product: string | null
-  kind: 'product' | 'deferred' | 'interest'
+  kind: 'product' | 'deferred' | 'interest' | 'cancelled'
   price: number | null
   quantity: number | null
   discount: number | null
@@ -124,6 +132,8 @@ export interface MondayPurchaseLine {
 /** 구매 1건 = 계약 1건. 금액은 계약 기준 — 계약한 날 상품 금액 전체가 구매
  * 금액이고, 이후 나눠 낸 돈(MondayPayment)은 구매가 아니다. */
 export interface MondayPurchase extends MondayRecordSource {
+  /** offline은 Monday 오프라인 결제 보드, online은 Cafe24 온라인몰 주문. */
+  origin: 'offline' | 'online'
   paidAt: string | null
   orders: string | null
   status: string | null

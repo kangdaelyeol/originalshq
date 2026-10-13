@@ -5,7 +5,8 @@ import type {
 } from 'firebase-admin/firestore'
 import { db } from '../data'
 import type { ISODate } from '../types'
-import type { Cafe24OrderRow, Cafe24RefundRow } from './types'
+import type {
+  Cafe24OrderCustomerRow, Cafe24OrderRow, Cafe24RefundRow } from './types'
 
 /** cafe24Orders/{orderId} — 문서 id를 주문번호로 고정해서 재동기화가 항상
  * upsert(덮어쓰기)만으로 충분하다. Monday CRM(보드 전체를 통째로 지우고
@@ -194,4 +195,27 @@ export const fetchCafe24RefundRowsFromDb = async (
     .where('refundDate', '<=', endISO)
     .get()
   return snap.docs.map(docToRefundRow)
+}
+
+/** cafe24OrderCustomers/{orderId} — 주문별 고객·품목 정보. functions-xtool이
+ * 이 컬렉션을 읽어 Monday 고객과 합친다(types.ts의 Cafe24OrderCustomerRow
+ * 주석 참고). */
+export const cafe24OrderCustomersCol = (): CollectionReference<DocumentData> =>
+  db.collection('cafe24OrderCustomers')
+
+/** order_id 기준 upsert — 주문 상태(취소·반품)가 바뀌면 같은 문서를 덮어쓴다. */
+export const upsertCafe24OrderCustomers = async (
+  rows: Cafe24OrderCustomerRow[],
+): Promise<{ upserted: number }> => {
+  if (rows.length === 0) return { upserted: 0 }
+
+  const col = cafe24OrderCustomersCol()
+  const writer = db.bulkWriter()
+  const syncedAt = new Date().toISOString()
+  for (const row of rows) {
+    writer.set(col.doc(row.orderId), { ...row, syncedAt })
+  }
+  await writer.close()
+
+  return { upserted: rows.length }
 }

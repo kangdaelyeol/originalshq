@@ -10,6 +10,12 @@ import {
   MondaySurvey,
   MondayVisit,
 } from './types'
+import {
+  CAFE24_SOURCE_ID,
+  CAFE24_SOURCE_NAME,
+  Cafe24Order,
+  toOnlinePurchase,
+} from './cafe24'
 import { checked, cleanName, pick, source, squash } from './fields'
 import { extractMondayPhones, isMobilePhone } from './helper'
 import { buildPurchaseRecords } from './purchases'
@@ -140,6 +146,7 @@ const buildCustomer = (
   phone: string,
   items: MondayItem[],
   kindOf: (boardId: string) => MondayBoardKind,
+  orders: Cafe24Order[],
   syncedAt: number,
 ): MondayCustomer => {
   const of = (kind: MondayBoardKind) =>
@@ -152,6 +159,7 @@ const buildCustomer = (
   const visits = newestFirst(of('visit').map(toVisit), (r) => r.visitAt)
   const { purchases, payments, issues, money } = buildPurchaseRecords(
     of('purchase'),
+    orders.map(toOnlinePurchase),
   )
   const surveys = newestFirst(of('survey').map(toSurvey), (r) => r.createdAt)
   const sampleTests = newestFirst(
@@ -160,6 +168,7 @@ const buildCustomer = (
   )
 
   const activePurchases = purchases.filter((purchase) => !purchase.cancelled)
+  const onlineActive = activePurchases.filter((p) => p.origin === 'online')
 
   // ── 퍼널 통계용 파생값 ──────────────────────────────────────────────
   const day = (value: string | null): string | null =>
@@ -182,6 +191,13 @@ const buildCustomer = (
   const funnel = {
     firstContactAt,
     firstPurchaseAt: earliest(activePurchases.map((p) => day(p.paidAt))),
+    // 채널별 첫 구매일 — 통계를 오프라인/온라인으로 나눠 볼 때 쓴다.
+    firstOfflinePurchaseAt: earliest(
+      activePurchases
+        .filter((p) => p.origin === 'offline')
+        .map((p) => day(p.paidAt)),
+    ),
+    firstOnlinePurchaseAt: earliest(onlineActive.map((p) => day(p.paidAt))),
     callbackStage: Math.max(
       0,
       ...consultations.map((record) => record.callbackStage),
@@ -213,10 +229,20 @@ const buildCustomer = (
         items.flatMap((item) => item.phones).filter((other) => other !== phone),
       ),
     ].sort(),
+    // 온라인 주문은 주문자 정보만 쓴다 — 수령자는 선물 받는 사람처럼 다른
+    // 사람일 수 있어 이 고객의 이름·번호로 넣지 않는다.
     names: byFrequency(
-      items.map((item) => cleanName(item.name)).filter(Boolean),
+      [
+        ...items.map((item) => cleanName(item.name)),
+        ...orders.map((order) => order.buyerName?.trim() ?? ''),
+      ].filter(Boolean),
     ),
-    emails: byFrequency(items.flatMap(emailsOf)),
+    emails: byFrequency([
+      ...items.flatMap(emailsOf),
+      ...orders
+        .map((order) => normalizeEmail(order.buyerEmail ?? ''))
+        .filter(isValidEmail),
+    ]),
     consultations,
     visits,
     purchases,
@@ -236,6 +262,8 @@ const buildCustomer = (
       latestVisitAt: visits[0]?.visitAt ?? null,
       latestPurchaseAt: activePurchases[0]?.paidAt ?? null,
       paymentCount: payments.length,
+      onlinePurchaseCount: onlineActive.length,
+      onlinePurchaseAmount: onlineActive.reduce((sum, p) => sum + p.amount, 0),
       ...money,
       issueCount: issues.length,
       funnel,
@@ -253,13 +281,25 @@ const buildCustomer = (
           .map((assignee) => assignee.trim())
           .filter(Boolean),
       ),
-      boardNames: [...new Set(items.map((item) => item.boardName))].sort(),
+      boardNames: [
+        ...new Set([
+          ...items.map((item) => item.boardName),
+          ...(orders.length > 0 ? [CAFE24_SOURCE_NAME] : []),
+        ]),
+      ].sort(),
     },
-    itemCount: items.length,
-    boardIds: [...new Set(items.map((item) => item.boardId))].sort(),
+    itemCount: items.length + orders.length,
+    boardIds: [
+      ...new Set([
+        ...items.map((item) => item.boardId),
+        ...(orders.length > 0 ? [CAFE24_SOURCE_ID] : []),
+      ]),
+    ].sort(),
     lastUpdatedAt:
-      items
-        .map((item) => item.updatedAt)
+      [
+        ...items.map((item) => item.updatedAt),
+        ...orders.map((o) => o.cancelDate ?? o.paymentDate ?? o.orderDate),
+      ]
         .filter((at): at is string => at !== null)
         .sort()
         .pop() ?? null,
@@ -280,7 +320,15 @@ export const buildCustomers = (
   items: MondayItem[],
   kindByBoardId: Map<string, MondayBoardKind>,
   syncedAt: number,
-): { customers: MondayCustomer[]; excludedItemCount: number } => {
+  /** Cafe24 온라인몰 주문 — 주문자 전화번호로 같은 고객에 묶는다. Monday에
+   * 없는 번호면 그 주문만으로 고객이 하나 생긴다. */
+  orders: Cafe24Order[] = [],
+): {
+  customers: MondayCustomer[]
+  excludedItemCount: number
+  onlineOrderCount: number
+  excludedOrderCount: number
+} => {
   const kindOf = (boardId: string) => kindByBoardId.get(boardId) ?? 'other'
 
   const itemsByPhone = new Map<string, MondayItem[]>()
@@ -299,8 +347,36 @@ export const buildCustomers = (
     itemsByPhone.set(phone, [...(itemsByPhone.get(phone) ?? []), current])
   }
 
-  const customers = [...itemsByPhone.entries()].map(([phone, group]) =>
-    buildCustomer(phone, group, kindOf, syncedAt),
+  const ordersByPhone = new Map<string, Cafe24Order[]>()
+  let excludedOrderCount = 0
+  for (const order of [...orders].sort((a, b) =>
+    a.orderId.localeCompare(b.orderId),
+  )) {
+    const phones = extractMondayPhones(order.buyerPhone)
+    const phone = phones.find(isMobilePhone) ?? phones[0]
+    // 결제 전 주문(무통장 입금 대기 등)은 아직 구매가 아니다 — 입금되면 다음
+    // 동기화 때 들어오고, 안 되면 자동 취소된다.
+    if (!phone || !order.paid) {
+      excludedOrderCount += 1
+      continue
+    }
+    ordersByPhone.set(phone, [...(ordersByPhone.get(phone) ?? []), order])
+  }
+
+  const phones = [...new Set([...itemsByPhone.keys(), ...ordersByPhone.keys()])]
+  const customers = phones.map((phone) =>
+    buildCustomer(
+      phone,
+      itemsByPhone.get(phone) ?? [],
+      kindOf,
+      ordersByPhone.get(phone) ?? [],
+      syncedAt,
+    ),
   )
-  return { customers, excludedItemCount }
+  return {
+    customers,
+    excludedItemCount,
+    onlineOrderCount: orders.length - excludedOrderCount,
+    excludedOrderCount,
+  }
 }

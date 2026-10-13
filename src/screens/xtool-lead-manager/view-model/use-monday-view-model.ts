@@ -20,6 +20,7 @@ const CATEGORIES: MondayCategory[] = [
   'consultation',
   'visit',
   'purchase',
+  'online',
   'balance',
   'multiple',
 ]

@@ -1552,6 +1552,8 @@ export const getCafe24AuthStatus = onRequest((request, response) => {
  * "이 기간에 취소/환불된 주문"처럼 다르게 조회해볼 수 있다(카페24가 실제로
  * 지원하는 값인지는 호출해서 확인 — 지원 안 하면 API가 에러를 돌려준다).
  * 사용 예: ?startDate=2026-08-01&endDate=2026-08-31&dateType=cancel_date
+ * embed(선택)로 주문에 딸린 리소스를 같이 받아볼 수 있다 — 주문자·수령자·
+ * 품목은 기본 응답에 없다. 사용 예: &embed=items,buyer,receivers
  */
 export const debugCafe24OrdersRaw = onRequest(
   { secrets: [cafe24ClientId, cafe24SecretKey] },
@@ -1561,10 +1563,11 @@ export const debugCafe24OrdersRaw = onRequest(
         sendError(response, 405, 'Method Not Allowed')
         return
       }
-      const { startDate, endDate, dateType } = request.query as {
+      const { startDate, endDate, dateType, embed } = request.query as {
         startDate?: string
         endDate?: string
         dateType?: string
+        embed?: string
       }
       if (!startDate || !endDate) {
         sendError(response, 400, 'startDate, endDate 필요')
@@ -1578,6 +1581,7 @@ export const debugCafe24OrdersRaw = onRequest(
           startDate,
           endDate,
           dateType,
+          embed,
         )
         response.status(200).send(raw)
       } catch (err) {

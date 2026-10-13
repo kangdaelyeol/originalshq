@@ -23,6 +23,7 @@ export type MondayCategory =
   | 'consultation'
   | 'visit'
   | 'purchase'
+  | 'online'
   | 'balance'
   | 'multiple'
 
@@ -31,6 +32,7 @@ export const MONDAY_CATEGORY_LABEL: Record<MondayCategory, string> = {
   consultation: '상담',
   visit: '방문체험',
   purchase: '구매',
+  online: '온라인 구매',
   balance: '잔금 있음',
   multiple: '기록 2건 이상',
 }
@@ -57,6 +59,8 @@ export const matchesMondayCategory = (
       return customer.summary.visitCount > 0
     case 'purchase':
       return customer.summary.purchaseCount > 0
+    case 'online':
+      return customer.summary.onlinePurchaseCount > 0
     case 'balance':
       return customer.summary.balanceAmount > 0
     case 'multiple':

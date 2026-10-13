@@ -145,6 +145,7 @@ const LINE_KIND_LABEL: Record<MondayPurchaseLine['kind'], string> = {
   product: '',
   deferred: '계약금·분할납부',
   interest: '할부 이자',
+  cancelled: '취소·반품',
 }
 
 /** 품목 줄 표 — 판매가·수량·할인·최종 금액. 계약금/분할납부 줄과 할부 이자
@@ -208,6 +209,7 @@ const PurchaseCard = ({ record }: { record: MondayPurchase }) => (
           formatWon(record.amount + record.deferredAmount)
         }
       />
+      <Field label="구분" value={record.origin === 'online' && '온라인몰'} />
       <Field
         label="할부 이자"
         value={record.interestAmount !== 0 && formatWon(record.interestAmount)}

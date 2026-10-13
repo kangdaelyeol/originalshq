@@ -1,4 +1,5 @@
 import { Firestore } from 'firebase-admin/firestore'
+import { Cafe24Order } from './cafe24'
 import {
   MondayBoard,
   MondayCustomer,
@@ -207,4 +208,11 @@ export async function listPaymentIssues(
       customerName: names[0] ?? null,
     }))
   })
+}
+
+/** functions-cmip의 Cafe24 동기화가 저장해 둔 주문별 고객·품목 정보 전부
+ * (cafe24OrderCustomers). 그 컬렉션은 cmip이 쓰고 여기서는 읽기만 한다. */
+export async function listCafe24Orders(db: Firestore): Promise<Cafe24Order[]> {
+  const snapshot = await db.collection('cafe24OrderCustomers').get()
+  return snapshot.docs.map((doc) => doc.data() as Cafe24Order)
 }

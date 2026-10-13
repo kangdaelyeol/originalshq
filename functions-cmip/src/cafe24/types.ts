@@ -240,3 +240,44 @@ export interface Cafe24RevenueSummary {
   byGroupedWeek: Cafe24WeekSummary[]
   byMonth: Cafe24MonthSummary[]
 }
+
+/** 주문 1건의 "누가 무엇을 샀는지" — cafe24OrderCustomers/{orderId}.
+ * Cafe24OrderRow는 매출 집계용이라 금액만 담고, 이건 고객 통합용이다(같은
+ * DB를 쓰는 functions-xtool이 읽어 Monday 고객과 전화번호로 합친다 —
+ * functions-xtool/src/monday 참고). 주소는 쓸 데가 없어 저장하지 않는다. */
+export interface Cafe24OrderCustomerRow {
+  orderId: string
+  orderDate: ISODate
+  paymentDate: ISODate | null
+  cancelDate: ISODate | null
+  paid: boolean
+  /** 취소 여부 — "T"(전체 취소) / "F" / "M"(일부 품목만 취소). */
+  canceled: string
+  /** 판매 채널 — "self"(자체몰), "mobile", "shopn"(스마트스토어),
+   * "NCHECKOUT"(네이버페이) 등. */
+  marketId: string
+  memberId: string | null
+  /** 주문자 — 값은 카페24가 준 그대로(전화번호 정규화는 읽는 쪽이 한다). */
+  buyerName: string | null
+  buyerPhone: string | null
+  buyerEmail: string | null
+  /** 수령자 — 주문자와 다를 수 있다(선물, 회사로 배송 등). */
+  receiverNames: string[]
+  receiverPhones: string[]
+  items: Cafe24OrderCustomerItem[]
+}
+
+export interface Cafe24OrderCustomerItem {
+  productName: string
+  /** 옵션("색상=블랙" 등) — 없으면 빈 문자열. */
+  option: string
+  quantity: number
+  /** 개당 판매가(상품가 + 옵션가). */
+  price: number
+  /** 이 품목에 적용된 할인 합계(추가할인 + 쿠폰). */
+  discount: number
+  /** 주문 상태 문구(배송완료, 취소완료 등). */
+  statusText: string
+  /** 취소·반품된 품목인지 — 구매 금액에서 뺀다. */
+  cancelled: boolean
+}

@@ -418,7 +418,8 @@
     }
     // 구매 금액에 안 들어가는 줄.
     tr.deferred td,
-    tr.interest td {
+    tr.interest td,
+    tr.cancelled td {
       color: variables.$color-text-muted;
     }
   }

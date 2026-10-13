@@ -12,6 +12,10 @@ const ITEM_DATE_COLUMN_ID = 'date_mm1g8781'
 // 납부 회차 수금 건이라는 뜻이다(buildOfflineSaleRows가 item째로 건너뛴다).
 const ITEM_LOOKUP_COLUMN_ID = 'lookup_mm1s9nfs'
 
+// item(고객/접수) 컬럼 — 결제상태(결제완료(예약)/출고완료(차감)/입금대기/
+// 계약금/결제 취소).
+const ITEM_STATUS_COLUMN_ID = 'color_mm1gejmv'
+
 // subitem(품목/할부 이자 등 결제 라인) 컬럼.
 const SUBITEM_REVENUE_COLUMN_ID = 'numeric_mm1rvgfs' // 매출액
 const SUBITEM_DISCOUNT_COLUMN_ID = 'numeric_mm19vata' // 할인액
@@ -43,6 +47,12 @@ const DEFERRED_BALANCE_RELATION_VALUES = new Set(['계약금', '분할납부'])
 // 계약 체결일에 이미 총 계약금액으로 인식했으므로(위 DEFERRED_BALANCE_RELATION
 // _VALUES) 이 item은 통째로 건너뛴다(중복 집계 방지).
 const INSTALLMENT_PAYMENT_ITEM_LOOKUP_VALUE = '분할납부'
+
+// item의 결제상태(ITEM_STATUS_COLUMN_ID)에 이 말이 들어 있으면 취소된 결제다
+// ("결제 취소") — 품목 줄과 금액은 Monday에 그대로 남아 있지만 매출이
+// 아니므로, buildOfflineSaleRows가 item째로 건너뛴다. 상태 문구가 조금
+// 바뀌어도("취소", "결제취소") 걸리도록 정확히 일치가 아니라 포함으로 본다.
+const CANCELLED_STATUS_KEYWORD = '취소'
 
 // items_page 한 번에 몇 건씩 받을지 — Monday API 문서상 최대 500.
 const PAGE_SIZE = 500
@@ -107,7 +117,7 @@ async function fetchMonday<T>(
 const ITEM_FIELDS = `
   id
   name
-  column_values(ids: ["${ITEM_DATE_COLUMN_ID}", "${ITEM_LOOKUP_COLUMN_ID}"]) {
+  column_values(ids: ["${ITEM_DATE_COLUMN_ID}", "${ITEM_LOOKUP_COLUMN_ID}", "${ITEM_STATUS_COLUMN_ID}"]) {
     id
     text
     ... on MirrorValue {
@@ -203,7 +213,10 @@ function columnDisplayValue(
  * 편다 — subitem 하나가 행 하나. 접수일이 없는 item(입력 누락 등)은
  * 집계 대상이 아니라서 건너뛴다. item 자체가 기존 계약의 분할납부 회차
  * 수금 건(lookup === "분할납부")이면, 계약 체결일에 이미 총 계약금액으로
- * 인식했으므로 이 item은 통째로 건너뛴다(중복 집계 방지 — 조건 2). */
+ * 인식했으므로 이 item은 통째로 건너뛴다(중복 집계 방지 — 조건 2).
+ * 결제상태가 "결제 취소"인 item도 통째로 건너뛴다 — 취소된 결제는 품목 줄이
+ * 남아 있어도 매출이 아니다(조건 3). 재동기화가 컬렉션을 통째로 바꿔치므로
+ * (resyncOfflineSales), 이미 저장된 뒤에 취소된 건도 다음 동기화 때 빠진다. */
 function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
   const rows: OfflineSaleRow[] = []
 
@@ -216,6 +229,10 @@ function buildOfflineSaleRows(items: MondayItem[]): OfflineSaleRow[] {
       ITEM_LOOKUP_COLUMN_ID,
     )
     if (itemLookup === INSTALLMENT_PAYMENT_ITEM_LOOKUP_VALUE) continue
+
+    // 결제 취소 건 — 매출이 아니다(조건 3).
+    const status = columnText(item.column_values, ITEM_STATUS_COLUMN_ID)
+    if (status.includes(CANCELLED_STATUS_KEYWORD)) continue
 
     for (const subitem of item.subitems) {
       const boardRelation = columnDisplayValue(

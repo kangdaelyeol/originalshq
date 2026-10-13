@@ -33,6 +33,7 @@ import {
   deleteCafe24Refunds,
   fetchCafe24OrderRowsFromDb,
   fetchCafe24RefundRowsFromDb,
+  upsertCafe24OrderCustomers,
   upsertCafe24Orders,
   upsertCafe24Refunds,
 } from './firestore'
@@ -43,7 +44,12 @@ import {
   summarizeByWeek,
   summarizeTotal,
 } from './helper'
-import type { Cafe24OrderRow, Cafe24RefundRow, Cafe24RevenueSummary } from './types'
+import type {
+  Cafe24OrderCustomerRow,
+  Cafe24OrderRow,
+  Cafe24RefundRow,
+  Cafe24RevenueSummary,
+} from './types'
 import type { ISODate } from '../types'
 
 /** /admin/refunds에 기록이 없는 채널의 환불을 채운다 — 8/6 조사에서 발견:
@@ -117,15 +123,16 @@ export async function syncCafe24Orders(
   upsertedOrders: number
   upsertedRefunds: number
   deletedStaleRefunds: number
+  upsertedOrderCustomers: number
 }> {
-  const orderRowsByOrderDate = await fetchCafe24OrderRows(
+  const byOrderDate = await fetchCafe24OrderRows(
     mallId,
     clientId,
     clientSecret,
     dateStart,
     dateEnd,
   )
-  const orderRowsByCancelDate = await fetchCafe24OrderRowsByCancelDate(
+  const byCancelDate = await fetchCafe24OrderRowsByCancelDate(
     mallId,
     clientId,
     clientSecret,
@@ -141,9 +148,15 @@ export async function syncCafe24Orders(
   )
 
   const orderRowsById = new Map<string, Cafe24OrderRow>()
-  for (const row of orderRowsByOrderDate) orderRowsById.set(row.orderId, row)
-  for (const row of orderRowsByCancelDate) orderRowsById.set(row.orderId, row)
+  for (const row of byOrderDate.rows) orderRowsById.set(row.orderId, row)
+  for (const row of byCancelDate.rows) orderRowsById.set(row.orderId, row)
   const orderRows = Array.from(orderRowsById.values())
+
+  // 같은 주문들의 고객·품목 정보 — 금액 행과 같은 방식으로 합친다(취소일
+  // 기준으로 잡힌 쪽이 최신 상태라 나중에 덮어쓴다).
+  const customersById = new Map<string, Cafe24OrderCustomerRow>()
+  for (const row of byOrderDate.customers) customersById.set(row.orderId, row)
+  for (const row of byCancelDate.customers) customersById.set(row.orderId, row)
 
   const realRefundOrderIds = new Set(refundRows.map((r) => r.orderId))
   const { rows: fallbackRefundRows, staleRefundCodes } = buildFallbackRefunds(
@@ -157,10 +170,14 @@ export async function syncCafe24Orders(
     ...fallbackRefundRows,
   ])
   const deletedStale = await deleteCafe24Refunds(staleRefundCodes)
+  const customers = await upsertCafe24OrderCustomers(
+    Array.from(customersById.values()),
+  )
   return {
     upsertedOrders: orders.upserted,
     upsertedRefunds: refunds.upserted,
     deletedStaleRefunds: deletedStale.deleted,
+    upsertedOrderCustomers: customers.upserted,
   }
 }
 

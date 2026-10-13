@@ -5,6 +5,7 @@ import { buildCustomers, detectBoardKind } from './customers'
 import {
   getBoard,
   listBoards,
+  listCafe24Orders,
   listItems,
   replaceBoardItems,
   replaceCustomers,
@@ -120,27 +121,33 @@ export async function syncBoard(
   }
 }
 
-/** 저장된 item(mondayItems) 전체에서 통합 고객(mondayCustomers)을 다시
- * 만든다. Monday를 부르지 않고 DB만 읽고 쓴다 — 동기화가 끝날 때마다 돌리고,
+/** 저장된 item(mondayItems)과 Cafe24 주문(cmip이 저장한
+ * cafe24OrderCustomers) 전체에서 통합 고객(mondayCustomers)을 다시 만든다.
+ * Monday를 부르지 않고 DB만 읽고 쓴다 — 동기화가 끝날 때마다 돌리고,
  * 통합 규칙을 고친 뒤에는 이것만 따로 돌리면 된다. 매번 처음부터 다시
  * 만들기 때문에 Monday에서 지워졌거나 번호가 바뀐 item도 따로 챙길 필요
  * 없이 그대로 반영된다. */
 export async function rebuildCustomers(
   db: Firestore,
 ): Promise<MondayCustomerRebuildResult> {
-  const [boards, items] = await Promise.all([listBoards(db), listItems(db)])
+  const [boards, items, orders] = await Promise.all([
+    listBoards(db),
+    listItems(db),
+    listCafe24Orders(db),
+  ])
   // kind는 동기화 때 저장해 두지만, 추정 규칙이 바뀐 직후에도 바로 맞도록
   // 저장된 컬럼 정의에서 다시 추정한다.
   const kindByBoardId = new Map(
     boards.map((board) => [board.id, detectBoardKind(board.columns)]),
   )
-  const { customers, excludedItemCount } = buildCustomers(
+  const { customers, ...counts } = buildCustomers(
     items,
     kindByBoardId,
     Date.now(),
+    orders,
   )
   const written = await replaceCustomers(db, customers)
-  return { customerCount: customers.length, excludedItemCount, ...written }
+  return { customerCount: customers.length, ...counts, ...written }
 }
 
 // 한 번에 몇 개 보드를 같이 돌릴지. 보드 하나는 Monday에서 받아오는 데만

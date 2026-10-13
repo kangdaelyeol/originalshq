@@ -6,13 +6,26 @@ import type {
   useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { Loading } from '@/screens/xtool-lead-manager/components'
-import { formatWon, type RateRow } from '@/screens/xtool-lead-manager/utils'
+import {
+  formatWon,
+  PURCHASE_SCOPE_LABEL,
+  type PurchaseScope,
+  type RateRow,
+} from '@/screens/xtool-lead-manager/utils'
 
 type MondayStatsProps = ReturnType<typeof useMondayStatsViewModel> & {
   /** 고객 목록을 받아오는 중인지·실패했는지 — 목록은 Monday 고객 탭의
    * view-model이 갖고 있다. */
   status: ReturnType<typeof useMondayViewModel>['state']['status']
   onReload: () => void
+}
+
+const SCOPE_DESC: Record<PurchaseScope, string> = {
+  all: '구매는 오프라인 결제와 온라인몰 주문을 합쳐서 봅니다.',
+  offline:
+    '구매는 오프라인 결제만 봅니다. 문의 기록 없이 온라인에서만 산 고객은 모수에서 뺍니다.',
+  online:
+    '구매는 온라인몰 주문만 봅니다. 문의 기록 없이 오프라인에서만 산 고객은 모수에서 뺍니다.',
 }
 
 const percent = (rate: number): string => `${(rate * 100).toFixed(1)}%`
@@ -149,8 +162,8 @@ export const MondayStats = ({
   status,
   onReload,
 }: MondayStatsProps) => {
-  const { period, months, stats } = state
-  const { changeFrom, changeTo, resetPeriod } = actions
+  const { period, scope, months, stats } = state
+  const { changeFrom, changeTo, resetPeriod, changeScope } = actions
   const { steps, visitSplit, callback, sources, assignees } = stats
   const valid = steps[0].count
 
@@ -193,6 +206,25 @@ export const MondayStats = ({
               전체 기간
             </button>
           )}
+          {/* 구매 기준 — 아래 모든 구매 지표(전환율·건수·금액·소요 일수)가
+              이 선택을 따른다. */}
+          <span className="stats_nav_label stats_scope_label">구매 기준</span>
+          <div className="stats_scope" role="tablist" aria-label="구매 기준">
+            {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
+              (each) => (
+                <button
+                  key={each}
+                  type="button"
+                  role="tab"
+                  aria-selected={each === scope}
+                  className={each === scope ? 'active' : ''}
+                  onClick={() => changeScope(each)}
+                >
+                  {PURCHASE_SCOPE_LABEL[each]}
+                </button>
+              ),
+            )}
+          </div>
           <span className="stats_nav_note">
             고객 {people(stats.totalCustomers)} 중 오기입{' '}
             {people(stats.misentryCustomers)} 제외
@@ -215,7 +247,7 @@ export const MondayStats = ({
                 <h2>퍼널</h2>
                 <p className="stats_desc">
                   유효 고객 중 각 단계까지 간 고객. 구매는 방문체험 없이도
-                  일어나므로 앞 단계의 부분집합이 아닙니다.
+                  일어나므로 앞 단계의 부분집합이 아닙니다. {SCOPE_DESC[scope]}
                 </p>
                 <div className="stats_bars">
                   {steps.map((step) => (
@@ -228,6 +260,14 @@ export const MondayStats = ({
                     />
                   ))}
                 </div>
+                {scope === 'all' && (
+                  <p className="stats_split">
+                    구매 고객 구성 — 오프라인만{' '}
+                    {people(stats.buyerSplit.offlineOnly)} · 온라인만{' '}
+                    {people(stats.buyerSplit.onlineOnly)} · 둘 다{' '}
+                    {people(stats.buyerSplit.both)}
+                  </p>
+                )}
               </section>
 
               <div className="stats_row">
@@ -311,7 +351,8 @@ export const MondayStats = ({
               <p className="stats_footnote">
                 기간은 고객이 처음 기록에 나타난 달입니다. 최근 달의 고객은 아직
                 구매까지 갈 시간이 없었을 수 있어 전환율이 낮게 보입니다.
-                온라인몰 구매는 포함되지 않습니다(오프라인 결제 보드만 집계).
+                구매에는 오프라인 결제(Monday)와 온라인몰(Cafe24) 주문이 모두
+                포함됩니다.
               </p>
             </>
           )}

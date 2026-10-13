@@ -89,6 +89,10 @@ const newestFirst = <T extends { paidAt: string | null }>(records: T[]): T[] =>
  * 사람이 확인해야 할 애매한 기록을 뽑는다. */
 export const buildPurchaseRecords = (
   items: MondayItem[],
+  /** 같은 고객의 온라인(Cafe24) 구매 — 이미 구매 기록 모양으로 바뀐 것.
+   * 오프라인 구매와 한 목록으로 합쳐 금액에 같이 넣는다. 선결제라 받은
+   * 금액에도 전액 들어가고 잔금에는 영향이 없다. */
+  onlinePurchases: MondayPurchase[] = [],
 ): {
   purchases: MondayPurchase[]
   payments: MondayPayment[]
@@ -100,7 +104,7 @@ export const buildPurchaseRecords = (
     interestAmount: number
   }
 } => {
-  const purchases: MondayPurchase[] = []
+  const purchases: MondayPurchase[] = [...onlinePurchases]
   const payments: MondayPayment[] = []
   const issues: MondayPaymentIssue[] = []
 
@@ -145,6 +149,7 @@ export const buildPurchaseRecords = (
 
     const purchase: MondayPurchase = {
       ...common,
+      origin: 'offline',
       orders: pick(item, /^주문목록$/),
       channel: pick(item, /^구매경로$/),
       pickup: pick(item, /^수령방식$/),

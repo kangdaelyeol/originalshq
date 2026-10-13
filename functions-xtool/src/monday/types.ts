@@ -139,7 +139,8 @@ export type MondayBoardKind =
 /** 통합 고객 1명 — mondayCustomers/{phone}. 여러 보드에 흩어진 같은 번호의
  * item을 하나로 묶은 것이며, 동기화가 끝날 때마다 mondayItems 전체에서 다시
  * 만든다(직접 고치지 않는다 — 원본은 Monday다). 유효한 번호가 없는 item은
- * 여기에 들어오지 않는다. */
+ * 여기에 들어오지 않는다. Cafe24 온라인몰 주문도 주문자 번호로 같이 묶여서,
+ * Monday에는 없고 온라인에서만 산 고객도 여기 들어온다. */
 export interface MondayCustomer {
   /** 대표 번호 — 문서 id와 같다. */
   phone: string
@@ -185,6 +186,10 @@ export interface MondayCustomerSummary {
   latestPurchaseAt: string | null
   /** 납부 기록(계약금·분할납부) 건수. */
   paymentCount: number
+  /** 온라인(Cafe24) 구매 건수와 금액 — purchaseCount·purchaseAmount에 이미
+   * 포함된 값을 따로 뗀 것. */
+  onlinePurchaseCount: number
+  onlinePurchaseAmount: number
   /** 구매(계약) 금액 합계 — 취소 건 제외, 입금대기 건 포함. */
   purchaseAmount: number
   /** 받은 금액 — 계약 건에서 받은 돈 + 납부 기록. 취소 건 제외. */
@@ -206,8 +211,11 @@ export interface MondayCustomerSummary {
 export interface MondayCustomerFunnel {
   /** 최초 인입일(YYYY-MM-DD) — 이 고객이 처음 기록에 나타난 날. */
   firstContactAt: string | null
-  /** 첫 구매(계약)일 — 취소 건 제외. */
+  /** 첫 구매(계약)일 — 취소 건 제외. 오프라인·온라인 중 이른 쪽. */
   firstPurchaseAt: string | null
+  /** 오프라인(Monday 결제 보드) / 온라인(Cafe24) 각각의 첫 구매일. */
+  firstOfflinePurchaseAt: string | null
+  firstOnlinePurchaseAt: string | null
   /** 콜백 도달 단계(0~4) — 이 고객의 기록 중 가장 높은 단계. */
   callbackStage: number
   visitBooked: boolean
@@ -302,13 +310,14 @@ export interface MondayVisit extends MondayRecordSource {
  *   product  — 상품·할인 등 계약 금액을 이루는 줄
  *   deferred — 품명이 "계약금"/"분할납부"인 줄. 계약 건 안에서는 보통 음수로,
  *              "아직 안 받은 잔금"이나 "먼저 받은 계약금 차감"을 뜻한다
- *   interest — 장기 할부 이자. 카드사에 내는 이자라 구매 금액이 아니다 */
+ *   interest — 장기 할부 이자. 카드사에 내는 이자라 구매 금액이 아니다
+ *   cancelled — 취소·반품된 품목(온라인 주문). 구매 금액에 넣지 않는다 */
 export interface MondayPurchaseLine {
   name: string
   /** 품명(상품 보드 연결값) — 줄 이름은 사람이 손으로 적어 믿을 수 없어서,
    * 종류는 이 값으로 가린다. */
   product: string | null
-  kind: 'product' | 'deferred' | 'interest'
+  kind: 'product' | 'deferred' | 'interest' | 'cancelled'
   price: number | null
   quantity: number | null
   discount: number | null
@@ -321,6 +330,9 @@ export interface MondayPurchaseLine {
  * 기준이다 — 계약한 날 상품 금액 전체를 구매 금액으로 잡고, 그 뒤에 나눠
  * 낸 돈(MondayPayment)은 구매로 세지 않는다. */
 export interface MondayPurchase extends MondayRecordSource {
+  /** 어디서 온 구매인지 — offline은 Monday 오프라인 결제 보드, online은
+   * Cafe24 온라인몰 주문(cafe24.ts). */
+  origin: 'offline' | 'online'
   paidAt: string | null
   /** 주문 목록(하위 아이템 이름들을 이어 붙인 값). */
   orders: string | null
@@ -409,4 +421,7 @@ export interface MondayCustomerRebuildResult {
   deletedCount: number
   /** 유효한 번호가 없어 통합에서 빠진 item 수. */
   excludedItemCount: number
+  /** 합친 Cafe24 주문 수와, 그중 주문자 번호가 없거나 결제 전이라 뺀 수. */
+  onlineOrderCount: number
+  excludedOrderCount: number
 }

@@ -10,6 +10,17 @@ export interface StatsPeriod {
   to: string | null
 }
 
+/** 무엇을 "구매"로 볼지 — 통합(오프라인 또는 온라인), 오프라인만(Monday
+ * 결제 보드), 온라인만(Cafe24 온라인몰). 모든 구매 지표(전환율·건수·금액·
+ * 소요 일수)가 이 기준을 따른다. */
+export type PurchaseScope = 'all' | 'offline' | 'online'
+
+export const PURCHASE_SCOPE_LABEL: Record<PurchaseScope, string> = {
+  all: '통합',
+  offline: '오프라인',
+  online: '온라인',
+}
+
 export interface RateRow {
   label: string
   /** 이 줄의 고객 수(모수). */
@@ -28,6 +39,8 @@ export interface FunnelStats {
   totalCustomers: number
   /** 그중 오기입이라 모수에서 뺀 고객. */
   misentryCustomers: number
+  /** 구매 고객을 채널로 나눈 수 — 구매 기준이 통합일 때 같이 보여준다. */
+  buyerSplit: { offlineOnly: number; onlineOnly: number; both: number }
   /** 퍼널 단계 — 첫 줄(유효 고객)이 모수다. */
   steps: { label: string; count: number; rate: number }[]
   /** 방문체험을 한 고객 / 안 한 고객의 구매 전환. */
@@ -62,11 +75,46 @@ const median = (values: number[]): number | null => {
 const ratio = (part: number, whole: number): number =>
   whole === 0 ? 0 : part / whole
 
-const purchased = (customer: MondayCustomerListItem): boolean =>
-  customer.summary.purchaseCount > 0
+const offlineCount = (customer: MondayCustomerListItem): number =>
+  customer.summary.purchaseCount - (customer.summary.onlinePurchaseCount ?? 0)
+
+const onlineCount = (customer: MondayCustomerListItem): number =>
+  customer.summary.onlinePurchaseCount ?? 0
+
+/** 이 기준에서 구매한 고객인지. */
+const purchasedIn = (
+  customer: MondayCustomerListItem,
+  scope: PurchaseScope,
+): boolean => {
+  if (scope === 'offline') return offlineCount(customer) > 0
+  if (scope === 'online') return onlineCount(customer) > 0
+  return customer.summary.purchaseCount > 0
+}
+
+/** 이 기준의 구매 금액. */
+const amountIn = (
+  customer: MondayCustomerListItem,
+  scope: PurchaseScope,
+): number => {
+  const online = customer.summary.onlinePurchaseAmount ?? 0
+  if (scope === 'online') return online
+  if (scope === 'offline') return customer.summary.purchaseAmount - online
+  return customer.summary.purchaseAmount
+}
+
+/** 이 기준의 첫 구매일. */
+const firstPurchaseIn = (
+  customer: MondayCustomerListItem,
+  scope: PurchaseScope,
+): string | null => {
+  const { funnel } = customer.summary
+  if (scope === 'offline') return funnel.firstOfflinePurchaseAt ?? null
+  if (scope === 'online') return funnel.firstOnlinePurchaseAt ?? null
+  return funnel.firstPurchaseAt
+}
 
 /** 구매 전에 문의(상담·방문체험·샘플테스트) 기록이 있는 고객인지 — 결제
- * 보드에만 있는 고객은 인입과 구매가 같은 날이라 소요 일수가 의미 없다. */
+ * 기록만 있는 고객은 인입과 구매가 같은 날이라 소요 일수가 의미 없다. */
 const hasInquiry = (customer: MondayCustomerListItem): boolean =>
   customer.summary.consultationCount +
     customer.summary.visitCount +
@@ -74,8 +122,12 @@ const hasInquiry = (customer: MondayCustomerListItem): boolean =>
   0
 
 /** 인입 → 첫 구매 소요 일수. 구매하지 않았거나 날짜를 모르면 null. */
-const daysToPurchase = (customer: MondayCustomerListItem): number | null => {
-  const { firstContactAt, firstPurchaseAt } = customer.summary.funnel
+const daysToPurchase = (
+  customer: MondayCustomerListItem,
+  scope: PurchaseScope,
+): number | null => {
+  const { firstContactAt } = customer.summary.funnel
+  const firstPurchaseAt = firstPurchaseIn(customer, scope)
   if (!firstContactAt || !firstPurchaseAt) return null
   return Math.max(0, daysBetween(firstContactAt, firstPurchaseAt))
 }
@@ -83,8 +135,9 @@ const daysToPurchase = (customer: MondayCustomerListItem): number | null => {
 const toRateRow = (
   label: string,
   customers: MondayCustomerListItem[],
+  scope: PurchaseScope,
 ): RateRow => {
-  const buyers = customers.filter(purchased)
+  const buyers = customers.filter((c) => purchasedIn(c, scope))
   return {
     label,
     customers: customers.length,
@@ -94,11 +147,11 @@ const toRateRow = (
     ),
     purchaseRate: ratio(buyers.length, customers.length),
     purchases: buyers.length,
-    amount: customers.reduce((sum, c) => sum + c.summary.purchaseAmount, 0),
+    amount: customers.reduce((sum, c) => sum + amountIn(c, scope), 0),
     medianDays: median(
       buyers
         .filter(hasInquiry)
-        .map(daysToPurchase)
+        .map((c) => daysToPurchase(c, scope))
         .filter((days): days is number => days !== null),
     ),
   }
@@ -121,13 +174,14 @@ const groupBy = (
 const topRows = (
   groups: Map<string, MondayCustomerListItem[]>,
   limit: number,
+  scope: PurchaseScope,
 ): RateRow[] => {
   const sorted = [...groups.entries()].sort((a, b) => b[1].length - a[1].length)
   const rows = sorted
     .slice(0, limit)
-    .map(([label, customers]) => toRateRow(label, customers))
+    .map(([label, customers]) => toRateRow(label, customers, scope))
   const rest = sorted.slice(limit).flatMap(([, customers]) => customers)
-  return rest.length > 0 ? [...rows, toRateRow('기타', rest)] : rows
+  return rest.length > 0 ? [...rows, toRateRow('기타', rest, scope)] : rows
 }
 
 const DAY_BUCKETS: { label: string; max: number }[] = [
@@ -151,6 +205,7 @@ export const contactMonths = (customers: MondayCustomerListItem[]): string[] =>
 export const computeFunnelStats = (
   allCustomers: MondayCustomerListItem[],
   period: StatsPeriod,
+  scope: PurchaseScope = 'all',
 ): FunnelStats => {
   // 인입일을 모르는 고객(기록에 날짜가 하나도 없음)은 어느 기간에도 넣을 수
   // 없어 뺀다.
@@ -163,16 +218,23 @@ export const computeFunnelStats = (
     if (period.to && month > period.to) return false
     return true
   })
-  const valid = inPeriod.filter((c) => !c.summary.funnel.misentry)
+  // 모수 — 오기입을 빼고, 문의 기록이 있거나 이 기준에서 구매한 고객. 한쪽
+  // 채널만 볼 때 다른 채널에서 구매만 한 고객(문의 기록 없음)은 이 채널의
+  // 잠재 고객이었다고 볼 근거가 없어 모수에서 뺀다. 통합 기준에서는 모든
+  // 고객이 둘 중 하나에 해당한다.
+  const valid = inPeriod.filter(
+    (c) =>
+      !c.summary.funnel.misentry && (hasInquiry(c) || purchasedIn(c, scope)),
+  )
 
   const booked = valid.filter((c) => c.summary.funnel.visitBooked)
   const visited = valid.filter((c) => c.summary.funnel.visitCompleted)
   const notVisited = valid.filter((c) => !c.summary.funnel.visitCompleted)
-  const buyers = valid.filter(purchased)
+  const buyers = valid.filter((c) => purchasedIn(c, scope))
 
   const days = buyers
     .filter(hasInquiry)
-    .map(daysToPurchase)
+    .map((c) => daysToPurchase(c, scope))
     .filter((value): value is number => value !== null)
 
   // 콜백은 문의 기록이 있는 고객에게만 해당한다(결제 보드에만 있는 고객은
@@ -183,7 +245,17 @@ export const computeFunnelStats = (
 
   return {
     totalCustomers: inPeriod.length,
-    misentryCustomers: inPeriod.length - valid.length,
+    misentryCustomers: inPeriod.filter((c) => c.summary.funnel.misentry).length,
+    buyerSplit: {
+      offlineOnly: buyers.filter(
+        (c) => offlineCount(c) > 0 && onlineCount(c) === 0,
+      ).length,
+      onlineOnly: buyers.filter(
+        (c) => onlineCount(c) > 0 && offlineCount(c) === 0,
+      ).length,
+      both: buyers.filter((c) => offlineCount(c) > 0 && onlineCount(c) > 0)
+        .length,
+    },
     steps: [
       { label: '유효 고객', count: valid.length },
       { label: '방문체험 예약', count: booked.length },
@@ -191,8 +263,8 @@ export const computeFunnelStats = (
       { label: '구매', count: buyers.length },
     ].map((step) => ({ ...step, rate: ratio(step.count, valid.length) })),
     visitSplit: {
-      visited: toRateRow('방문체험 함', visited),
-      notVisited: toRateRow('방문체험 안 함', notVisited),
+      visited: toRateRow('방문체험 함', visited, scope),
+      notVisited: toRateRow('방문체험 안 함', notVisited, scope),
     },
     days: {
       customers: days.length,
@@ -213,6 +285,7 @@ export const computeFunnelStats = (
       ...toRateRow(
         stage === 0 ? '콜백 없음' : `${stage}단계`,
         inquirers.filter((c) => c.summary.funnel.callbackStage === stage),
+        scope,
       ),
       stage,
       // 이 단계까지(또는 그 이상) 간 고객 — 높은 단계에 도달했으면 그 아래
@@ -223,10 +296,12 @@ export const computeFunnelStats = (
     sources: topRows(
       groupBy(valid, (c) => c.summary.funnel.source ?? '(미기록)'),
       8,
+      scope,
     ),
     assignees: topRows(
       groupBy(valid, (c) => c.summary.assignees[0] ?? '(담당자 없음)'),
       12,
+      scope,
     ),
   }
 }

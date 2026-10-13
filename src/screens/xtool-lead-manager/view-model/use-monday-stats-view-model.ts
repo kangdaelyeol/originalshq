@@ -3,21 +3,25 @@ import type { MondayCustomerListItem } from '@/screens/xtool-lead-manager/entity
 import {
   computeFunnelStats,
   contactMonths,
+  type PurchaseScope,
   type StatsPeriod,
 } from '@/screens/xtool-lead-manager/utils'
 
-/** 퍼널 통계 탭의 상태 — 조회 기간(최초 인입 월 범위)과, 그 기간으로 집계한
- * 통계. 고객 목록은 Monday 고객 탭이 받아온 것을 그대로 넘겨받는다(같은
+/** 퍼널 통계 탭의 상태 — 조회 기간(최초 인입 월 범위), 구매 기준(통합/
+ * 오프라인/온라인)과, 그 조건으로 집계한 통계. 고객 목록은 Monday 고객 탭이 받아온 것을 그대로 넘겨받는다(같은
  * 데이터를 두 번 받지 않는다). */
 export const useMondayStatsViewModel = (
   customers: MondayCustomerListItem[],
 ) => {
   const [period, setPeriod] = useState<StatsPeriod>({ from: null, to: null })
 
+  // 무엇을 구매로 볼지 — 통합 / 오프라인 / 온라인.
+  const [scope, setScope] = useState<PurchaseScope>('all')
+
   const months = useMemo(() => contactMonths(customers), [customers])
   const stats = useMemo(
-    () => computeFunnelStats(customers, period),
-    [customers, period],
+    () => computeFunnelStats(customers, period, scope),
+    [customers, period, scope],
   )
 
   const changeFrom = useCallback(
@@ -42,7 +46,7 @@ export const useMondayStatsViewModel = (
   const resetPeriod = useCallback(() => setPeriod({ from: null, to: null }), [])
 
   return {
-    state: { period, months, stats },
-    actions: { changeFrom, changeTo, resetPeriod },
+    state: { period, scope, months, stats },
+    actions: { changeFrom, changeTo, resetPeriod, changeScope: setScope },
   }
 }
