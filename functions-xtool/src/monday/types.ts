@@ -425,3 +425,20 @@ export interface MondayCustomerRebuildResult {
   onlineOrderCount: number
   excludedOrderCount: number
 }
+
+/** 하루치 인입 건수 — 그날 상담 보드에 새로 접수된 기록 수. 인입으로 보는
+ * 것은 상담 보드(기기별 B2B 보드, B2B 솔루션, 기타 온라인 문의, 기타
+ * 오프라인)뿐이다 — 방문체험·샘플테스트·결제·만족도 조사는 이미 인입된
+ * 고객의 다음 단계라 세지 않는다. 고객(번호) 단위가 아니라 기록 단위라, 같은
+ * 사람이 두 번 문의하면 2건이다. 전화번호가 없어 통합 고객에서 빠진 기록도
+ * 여기에는 들어간다(들어온 문의는 맞으므로). */
+export interface MondayDailyInflow {
+  /** YYYY-MM-DD (한국 시간) — 상담 보드의 접수일. */
+  date: string
+  /** 그날의 전체 인입. */
+  total: number
+  /** 그중 상태가 "오기입"인 건 — total에 이미 포함된 값을 따로 뗀 것. */
+  misentry: number
+  /** 보드 이름별 건수 — 합이 total이다. 인입이 없던 보드는 들어 있지 않다. */
+  boards: Record<string, number>
+}

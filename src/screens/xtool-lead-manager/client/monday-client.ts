@@ -2,6 +2,7 @@ import { API_BASE } from '../constants'
 import type {
   MondayCustomer,
   MondayCustomerListItem,
+  MondayDailyInflow,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '../entity'
@@ -51,5 +52,11 @@ export const mondayClient = {
     get<{ issues: MondayPaymentIssueItem[]; count: number }>(
       'listMondayPaymentIssues',
       '확인이 필요한 결제 기록을 불러오지 못했습니다',
+    ),
+  /** 날짜별 인입 건수 전체 — 통계 탭의 그래프가 쓴다. */
+  getDailyInflow: () =>
+    get<{ days: MondayDailyInflow[]; syncedAt: number | null }>(
+      'getMondayDailyInflow',
+      '인입 통계를 불러오지 못했습니다',
     ),
 }

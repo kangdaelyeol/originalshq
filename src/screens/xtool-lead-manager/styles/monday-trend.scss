@@ -1,0 +1,226 @@
+@use './variables.scss';
+
+// 통계 탭 — 카드·타일·표는 퍼널 통계(monday-stats.scss)의 것을 그대로 쓰고,
+// 여기에는 선 그래프와 이 탭에만 있는 배치만 둔다.
+$trend-line: variables.$color-accent;
+$trend-plot-height: 260px;
+$trend-y-axis-width: 44px;
+
+// 기간 선택기(cmip 것)의 팝오버가 내비 아래 내용 위로 뜨게 한다.
+.lead_manager_nav.monday_trend_nav {
+  z-index: 3;
+
+  // cmip에서는 선택기가 화면 오른쪽에 있어 팝오버가 오른쪽 끝에 맞춰 왼쪽으로
+  // 펼쳐진다. 여기서는 왼쪽에 있으므로 그대로 두면 화면 밖으로 잘린다 —
+  // 왼쪽 끝에 맞춰 오른쪽으로 펼친다.
+  .date-range-picker__popover {
+    left: 0;
+    right: auto;
+  }
+}
+
+.xtool-main.monday_trend {
+  .trend_tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    margin-bottom: 26px;
+  }
+
+  // 표가 길어지면(몇 달 치) 카드 안에서 스크롤한다.
+  .trend_table_scroll {
+    max-height: 420px;
+    // 보드가 열 개가 넘어 좁은 화면에서는 가로로도 넘친다.
+    overflow: auto;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background-color: variables.$color-surface;
+    }
+  }
+
+  // ── 선 그래프 ─────────────────────────────────────────────────────────
+  // 배치: [y축 눈금 | 그래프] 위에, 그 아래 x축 날짜.
+  .inflow_chart {
+    display: grid;
+    grid-template-columns: $trend-y-axis-width minmax(0, 1fr);
+    grid-template-rows: $trend-plot-height auto;
+    column-gap: 8px;
+    row-gap: 8px;
+  }
+
+  .inflow_y_axis {
+    position: relative;
+
+    span {
+      position: absolute;
+      right: 0;
+      transform: translateY(50%);
+      font-size: 11.5px;
+      color: variables.$color-text-muted;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .inflow_plot {
+    position: relative;
+  }
+
+  // 눈금선 — 가늘고 옅게, 데이터보다 앞에 나서지 않게.
+  .inflow_grid {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: variables.$color-border-soft;
+  }
+
+  .inflow_svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  // 선은 2px. SVG가 가로로 늘어나도 굵기가 따라 늘지 않게 고정한다.
+  .inflow_line {
+    fill: none;
+    stroke: $trend-line;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  // 선 아래는 같은 색을 아주 옅게.
+  .inflow_area {
+    fill: $trend-line;
+    opacity: 0.1;
+  }
+
+  .inflow_columns {
+    position: absolute;
+    inset: 0;
+    display: flex;
+  }
+
+  .inflow_column {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    outline: none;
+
+    // 마우스를 올린 날의 세로선.
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 1px;
+      background-color: variables.$color-text-faint;
+      opacity: 0;
+    }
+
+    &:hover::before,
+    &:focus-visible::before {
+      opacity: 1;
+    }
+  }
+
+  // 점 — 지름 8px에 바탕색 테두리 2px(선과 겹쳐도 또렷하게).
+  .inflow_marker {
+    position: absolute;
+    left: 50%;
+    width: 8px;
+    height: 8px;
+    margin: -6px 0 0 -6px;
+    border: 2px solid variables.$color-surface;
+    border-radius: 50%;
+    background-color: $trend-line;
+    opacity: 0;
+  }
+
+  .inflow_column.has_marker .inflow_marker,
+  .inflow_column:hover .inflow_marker,
+  .inflow_column:focus-visible .inflow_marker {
+    opacity: 1;
+  }
+
+  .inflow_tooltip {
+    position: absolute;
+    left: calc(50% + 12px);
+    z-index: 2;
+    display: none;
+    min-width: 170px;
+    padding: 10px 12px;
+    transform: translateY(-50%);
+    border: 1px solid variables.$color-border;
+    border-radius: 8px;
+    background-color: variables.$color-surface-raised;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    white-space: nowrap;
+
+    &.to_left {
+      left: auto;
+      right: calc(50% + 12px);
+    }
+
+    strong {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: variables.$color-text-muted;
+    }
+
+    .total {
+      display: block;
+      margin: 2px 0 8px;
+      font-size: 15px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+
+    dl {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 3px 16px;
+      margin: 0;
+      font-size: 12px;
+    }
+    dt {
+      color: variables.$color-text-muted;
+    }
+    dd {
+      margin: 0;
+      text-align: right;
+      color: variables.$color-text;
+      font-variant-numeric: tabular-nums;
+    }
+    .sub {
+      color: variables.$color-text-faint;
+    }
+  }
+
+  .inflow_column:hover .inflow_tooltip,
+  .inflow_column:focus-visible .inflow_tooltip {
+    display: block;
+  }
+
+  // x축 — 그래프의 날짜 칸과 같은 n등분이라 글자가 점 바로 아래에 온다.
+  .inflow_x_axis {
+    grid-column: 2;
+    display: flex;
+
+    span {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      font-size: 11.5px;
+      color: variables.$color-text-muted;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}

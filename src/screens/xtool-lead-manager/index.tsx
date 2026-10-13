@@ -4,6 +4,7 @@ import {
   MondayMain,
   MondayNav,
   MondayStats,
+  MondayTrend,
   Nav,
 } from '@/screens/xtool-lead-manager/components'
 import {
@@ -11,6 +12,7 @@ import {
   useLeadMondayMatchViewModel,
   useMainViewModel,
   useMondayStatsViewModel,
+  useMondayTrendViewModel,
   useMondayViewModel,
   usePageTabViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
@@ -35,7 +37,10 @@ const XtoolLeadManagerScreen = () => {
   // 퍼널 통계 탭을 처음 열 때 받아온다.
   const pageTab = usePageTabViewModel()
   const { tab } = pageTab.state
-  const monday = useMondayViewModel(tab !== 'leads')
+  // 고객 목록은 Monday 고객 탭과 퍼널 통계 탭이 쓴다(통계 탭은 따로 받는
+  // 날짜별 집계만 쓴다).
+  const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
+  const trend = useMondayTrendViewModel(tab === 'trend')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
 
@@ -49,6 +54,10 @@ const XtoolLeadManagerScreen = () => {
     main.actions.hideDetail()
     pageTab.actions.selectTab('monday')
     monday.actions.openDetail(phone)
+  }
+
+  if (tab === 'trend') {
+    return <MondayTrend state={trend.state} actions={trend.actions} />
   }
 
   if (tab === 'stats') {

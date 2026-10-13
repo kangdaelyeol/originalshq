@@ -5,6 +5,7 @@ import {
   MondayCustomer,
   MondayCustomerListItem,
   MondayCustomerRebuildResult,
+  MondayDailyInflow,
   MondayItem,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
@@ -215,4 +216,28 @@ export async function listPaymentIssues(
 export async function listCafe24Orders(db: Firestore): Promise<Cafe24Order[]> {
   const snapshot = await db.collection('cafe24OrderCustomers').get()
   return snapshot.docs.map((doc) => doc.data() as Cafe24Order)
+}
+
+const STATS_COLLECTION = 'mondayStats'
+const DAILY_INFLOW_DOC = 'dailyInflow'
+
+/** 날짜별 인입 건수를 문서 하나에 통째로 저장한다 — 하루에 한 줄이라 몇 년
+ * 치도 문서 크기 한도(1MB)에 한참 못 미치고, 읽을 때 문서 1건만 읽으면 된다. */
+export async function saveDailyInflow(
+  db: Firestore,
+  days: MondayDailyInflow[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(DAILY_INFLOW_DOC)
+    .set({ days, syncedAt: Date.now() })
+}
+
+export async function getDailyInflow(
+  db: Firestore,
+): Promise<{ days: MondayDailyInflow[]; syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(DAILY_INFLOW_DOC).get()
+  const data = doc.data() as
+    { days: MondayDailyInflow[]; syncedAt: number } | undefined
+  return { days: data?.days ?? [], syncedAt: data?.syncedAt ?? null }
 }

@@ -5,6 +5,7 @@ import {
   MondayColumn,
   MondayConsultation,
   MondayCustomer,
+  MondayDailyInflow,
   MondayItem,
   MondaySampleTest,
   MondaySurvey,
@@ -16,7 +17,7 @@ import {
   Cafe24Order,
   toOnlinePurchase,
 } from './cafe24'
-import { checked, cleanName, pick, source, squash } from './fields'
+import { checked, cleanName, koreaDate, pick, source, squash } from './fields'
 import { extractMondayPhones, isMobilePhone } from './helper'
 import { buildPurchaseRecords } from './purchases'
 
@@ -171,8 +172,7 @@ const buildCustomer = (
   const onlineActive = activePurchases.filter((p) => p.origin === 'online')
 
   // ── 퍼널 통계용 파생값 ──────────────────────────────────────────────
-  const day = (value: string | null): string | null =>
-    value ? value.slice(0, 10) : null
+  const day = koreaDate
   const earliest = (dates: (string | null)[]): string | null =>
     dates.filter((date): date is string => date !== null).sort()[0] ?? null
 
@@ -379,4 +379,29 @@ export const buildCustomers = (
     onlineOrderCount: orders.length - excludedOrderCount,
     excludedOrderCount,
   }
+}
+
+/** 저장된 item 전체에서 날짜별 인입 건수를 센다(순수 함수). 인입은 상담
+ * 보드에 접수된 기록만이다(MondayDailyInflow 주석 참고). 날짜는 접수일이고,
+ * 접수일이 비어 있으면 Monday에 기록이 만들어진 날을 쓴다. 결과는 날짜
+ * 오름차순이고, 인입이 없던 날은 들어 있지 않다. */
+export const buildDailyInflow = (
+  items: MondayItem[],
+  kindByBoardId: Map<string, MondayBoardKind>,
+): MondayDailyInflow[] => {
+  const byDate = new Map<string, MondayDailyInflow>()
+
+  for (const item of items) {
+    if (kindByBoardId.get(item.boardId) !== 'consultation') continue
+    const date = koreaDate(pick(item, /^접수일$/)) ?? koreaDate(item.createdAt)
+    if (!date) continue
+
+    const day = byDate.get(date) ?? { date, total: 0, misentry: 0, boards: {} }
+    day.total += 1
+    day.boards[item.boardName] = (day.boards[item.boardName] ?? 0) + 1
+    if (pick(item, /^상담진행상태$/) === '오기입') day.misentry += 1
+    byDate.set(date, day)
+  }
+
+  return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
 }

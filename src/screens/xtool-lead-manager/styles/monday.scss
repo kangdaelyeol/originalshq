@@ -133,20 +133,7 @@
 
   // 정렬 select — pagination_bar의 "n개씩 보기"와 같은 모양.
   .monday_sort select {
-    box-sizing: border-box;
-    height: 34px;
-    padding: 0 10px;
-    background-color: variables.$color-surface-raised;
-    border: 1px solid variables.$color-border;
-    border-radius: 6px;
-    color: variables.$color-text;
-    font-size: 12.5px;
-    cursor: pointer;
-
-    &:focus {
-      outline: none;
-      border-color: variables.$color-accent;
-    }
+    @include variables.select-control;
   }
 
   // 번호 확인 필요 — 경고지만 급한 오류는 아니라 호박색으로.

@@ -45,3 +45,15 @@ export const source = (item: MondayItem) => ({
   createdAt: item.createdAt,
   updatedAt: item.updatedAt,
 })
+
+/** Monday가 준 시각(ISO, UTC)을 한국 날짜(YYYY-MM-DD)로 — UTC 날짜를 그대로
+ * 자르면 한국 시간 자정~오전 9시에 만들어진 기록이 전날로 잡힌다. 날짜만
+ * 있는 값("2026-09-17")이나 시각이 붙어도 표준시 표기가 없는 값("2026-09-17
+ * 14:00", 보드에 사람이 적은 한국 시간)은 앞 10자를 그대로 쓴다. */
+export const koreaDate = (value: string | null): string | null => {
+  if (!value) return null
+  if (!/[zZ]$|[+-]\d{2}:?\d{2}$/.test(value)) return value.slice(0, 10)
+  const time = Date.parse(value)
+  if (Number.isNaN(time)) return value.slice(0, 10)
+  return new Date(time + 9 * 60 * 60 * 1000).toISOString().slice(0, 10)
+}

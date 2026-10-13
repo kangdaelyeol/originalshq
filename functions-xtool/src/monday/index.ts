@@ -1,6 +1,7 @@
 export {
   deleteBoard,
   getCustomer,
+  getDailyInflow,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,

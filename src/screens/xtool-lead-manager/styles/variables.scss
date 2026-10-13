@@ -24,3 +24,36 @@ $table-header-bg-color: $color-surface-raised;
 $color-new-read: rgb(17, 217, 37);
 $color-read-complete: rgb(23, 242, 184);
 $color-purchase-complete: rgb(247, 98, 254);
+
+// 드롭다운(select) 공통 모양 — 내비 줄의 "n개씩 보기", 정렬, 기간 선택이 같이
+// 쓴다. 브라우저 기본 모양(appearance)을 끄지 않으면 Safari는 배경·높이·
+// 테두리를 대부분 무시하고, Chrome도 화살표를 오른쪽 끝에 바짝 붙여 그린다.
+// 그래서 기본 모양을 끄고 화살표를 직접 그린다.
+@mixin select-control {
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 30px 0 12px;
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: $color-surface-raised;
+  // 화살표(색은 $color-text-muted와 같은 #8b949e).
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5l5-5' stroke='%238b949e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  background-size: 14px 14px;
+  border: 1px solid $color-border;
+  border-radius: 6px;
+  color: $color-text;
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 32px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: $color-text-faint;
+  }
+  &:focus {
+    outline: none;
+    border-color: $color-accent;
+  }
+}

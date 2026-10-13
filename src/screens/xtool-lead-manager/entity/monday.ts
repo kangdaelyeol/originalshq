@@ -233,3 +233,15 @@ export interface MondayMissingPhoneItem {
   url: string | null
   updatedAt: string | null
 }
+
+/** 하루치 인입 건수 — 그날 상담 보드에 새로 접수된 기록 수(고객이 아니라
+ * 기록 단위). 방문체험·샘플테스트·결제는 인입이 아니다. */
+export interface MondayDailyInflow {
+  /** YYYY-MM-DD (한국 시간) — 접수일. */
+  date: string
+  total: number
+  /** 그중 "오기입" 건 — total에 이미 포함된 값. */
+  misentry: number
+  /** 보드 이름별 건수 — 합이 total. 인입이 없던 보드는 들어 있지 않다. */
+  boards: Record<string, number>
+}

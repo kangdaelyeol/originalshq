@@ -12,6 +12,7 @@ import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
   getCustomer,
+  getDailyInflow,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -1665,6 +1666,26 @@ export const listMondayPaymentIssues = onRequest((request, response) => {
       response.status(200).send({ issues, count: issues.length })
     } catch (error) {
       logger.error('listMondayPaymentIssues 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// getMondayDailyInflow — 날짜별 인입 건수 전체(통계 탭의 그래프). 기간으로
+// 자르는 것은 화면이 한다 — 전체를 내려줘도 하루에 한 줄이라 작다.
+// ────────────────────────────────
+export const getMondayDailyInflow = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      response.status(200).send(await getDailyInflow(db))
+    } catch (error) {
+      logger.error('getMondayDailyInflow 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })
