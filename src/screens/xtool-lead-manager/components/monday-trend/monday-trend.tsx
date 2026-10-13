@@ -3,8 +3,15 @@ import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/monday-trend.scss'
 import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-model'
-import { Loading } from '@/screens/xtool-lead-manager/components'
-import { formatDay, shortBoardName } from '@/screens/xtool-lead-manager/utils'
+import { Loading, SortButton } from '@/screens/xtool-lead-manager/components'
+import {
+  INFLOW_UNIT_AVERAGE,
+  INFLOW_UNIT_LABEL,
+  INFLOW_UNIT_NOUN,
+  shortBoardName,
+  type InflowSortKey,
+  type InflowUnit,
+} from '@/screens/xtool-lead-manager/utils'
 // 기간 선택은 cmip의 것을 그대로 쓴다 — 프리셋(지난 7일 등)과 달력이 같은
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
@@ -23,8 +30,36 @@ const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
  * 단위라서, 한 사람이 두 번 문의하면 2건으로 센다.
  */
 export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
-  const { status, range, points, summary } = state
-  const { changeRange, reload } = actions
+  const {
+    status,
+    range,
+    unit,
+    points,
+    summary,
+    tableRows,
+    sortKey,
+    sortDirection,
+  } = state
+  const { changeRange, changeUnit, toggleSort, reload } = actions
+  const noun = INFLOW_UNIT_NOUN[unit]
+
+  /** 합계를 표의 줄 수로 나눈 평균 — 소수 첫째 자리까지. */
+  const average = (total: number): string =>
+    points.length === 0
+      ? '-'
+      : (Math.round((total / points.length) * 10) / 10).toLocaleString('ko-KR')
+
+  // 표의 컬럼 — 날짜(기간), 전체 인입, 오기입, 그리고 이 기간에 인입이 있던
+  // 보드들(많은 순). 컬럼마다 머리글을 눌러 정렬한다.
+  const columns: { key: InflowSortKey; label: string }[] = [
+    { key: 'date', label: unit === 'day' ? '날짜' : '기간' },
+    { key: 'total', label: '전체 인입' },
+    { key: 'misentry', label: '오기입' },
+    ...summary.boards.map((board) => ({
+      key: `board:${board.name}` as InflowSortKey,
+      label: shortBoardName(board.name),
+    })),
+  ]
 
   return (
     <>
@@ -36,9 +71,21 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
             dateEnd={range.end}
             onChange={changeRange}
           />
-          <span className="stats_nav_note">
-            {points.length}일 · 매일 07시·19시 갱신
-          </span>
+          <div className="stats_scope" role="tablist" aria-label="묶는 단위">
+            {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
+              <button
+                key={each}
+                type="button"
+                role="tab"
+                aria-selected={each === unit}
+                className={each === unit ? 'active' : ''}
+                onClick={() => changeUnit(each)}
+              >
+                {INFLOW_UNIT_LABEL[each]}
+              </button>
+            ))}
+          </div>
+          <span className="stats_nav_note">매일 07시·19시 갱신</span>
         </div>
       </div>
 
@@ -54,11 +101,9 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
           ) : (
             <>
               <section className="stats_card">
-                <h2>일자별 인입 건수</h2>
+                <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
                 <p className="stats_desc">
-                  그날 상담 보드에 새로 접수된 기록 수(접수일 기준).
-                  방문체험·샘플테스트·결제는 포함하지 않고, 같은 고객이 여러 번
-                  문의하면 각각 셉니다.
+                  같은 고객이 여러 번 문의해도 각각 포함
                 </p>
 
                 <div className="stats_tiles trend_tiles">
@@ -67,18 +112,11 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                     <strong className="stats_tile_value">
                       {count(summary.total)}
                     </strong>
-                    <span className="stats_tile_note">
-                      {summary.boards
-                        .slice(0, 3)
-                        .map(
-                          (board) =>
-                            `${shortBoardName(board.name)} ${board.count}`,
-                        )
-                        .join(' · ')}
-                    </span>
                   </div>
                   <div className="stats_tile">
-                    <span className="stats_tile_label">평균</span>
+                    <span className="stats_tile_label">
+                      {INFLOW_UNIT_AVERAGE[unit]}
+                    </span>
                     <strong className="stats_tile_value">
                       {(Math.round(summary.average * 10) / 10).toLocaleString(
                         'ko-KR',
@@ -87,12 +125,12 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                     </strong>
                   </div>
                   <div className="stats_tile">
-                    <span className="stats_tile_label">가장 많은 날</span>
+                    <span className="stats_tile_label">가장 많은 {noun}</span>
                     <strong className="stats_tile_value">
                       {summary.peak ? count(summary.peak.total) : '-'}
                     </strong>
                     <span className="stats_tile_note">
-                      {summary.peak ? formatDay(summary.peak.date) : ''}
+                      {summary.peak ? summary.peak.label : ''}
                     </span>
                   </div>
                   <div className="stats_tile">
@@ -100,37 +138,46 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                     <strong className="stats_tile_value">
                       {count(summary.misentry)}
                     </strong>
-                    <span className="stats_tile_note">
-                      전체 인입에 포함된 건수
-                    </span>
                   </div>
                 </div>
 
-                <InflowChart points={points} />
+                <InflowChart points={points} average={summary.average} />
               </section>
 
               <section className="stats_card">
-                <h2>일자별 표</h2>
-                <p className="stats_desc">
-                  그래프와 같은 숫자를 보드별로 나눈 표입니다. 보드는 이 기간에
-                  인입이 많은 순입니다.
-                </p>
+                <h2>{INFLOW_UNIT_LABEL[unit]} 표</h2>
                 <div className="trend_table_scroll">
                   <table className="stats_table">
                     <thead>
                       <tr>
-                        <th>날짜</th>
-                        <th>전체 인입</th>
-                        <th>오기입</th>
-                        {summary.boards.map((board) => (
-                          <th key={board.name}>{shortBoardName(board.name)}</th>
+                        {columns.map((column) => (
+                          <th
+                            key={column.key}
+                            className="sortable"
+                            aria-sort={
+                              column.key !== sortKey
+                                ? 'none'
+                                : sortDirection === 'asc'
+                                  ? 'ascending'
+                                  : 'descending'
+                            }
+                            onClick={() => toggleSort(column.key)}
+                          >
+                            {column.label}
+                            <SortButton
+                              columnKey={column.key}
+                              sortField={sortKey}
+                              sortDirection={sortDirection}
+                              onSort={toggleSort}
+                            />
+                          </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {[...points].reverse().map((point) => (
+                      {tableRows.map((point) => (
                         <tr key={point.date}>
-                          <td>{formatDay(point.date)}</td>
+                          <td>{point.label}</td>
                           <td>{point.total}</td>
                           <td>{point.misentry}</td>
                           {summary.boards.map((board) => (
@@ -141,6 +188,28 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                         </tr>
                       ))}
                     </tbody>
+                    {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
+                        보이는 줄 수(일·주·월)로 나눈 값이다. */}
+                    <tfoot>
+                      <tr>
+                        <td>합계</td>
+                        <td>{summary.total.toLocaleString('ko-KR')}</td>
+                        <td>{summary.misentry.toLocaleString('ko-KR')}</td>
+                        {summary.boards.map((board) => (
+                          <td key={board.name}>
+                            {board.count.toLocaleString('ko-KR')}
+                          </td>
+                        ))}
+                      </tr>
+                      <tr>
+                        <td>평균</td>
+                        <td>{average(summary.total)}</td>
+                        <td>{average(summary.misentry)}</td>
+                        {summary.boards.map((board) => (
+                          <td key={board.name}>{average(board.count)}</td>
+                        ))}
+                      </tr>
+                    </tfoot>
                   </table>
                 </div>
               </section>

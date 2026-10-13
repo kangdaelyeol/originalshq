@@ -1,7 +1,5 @@
 import { Fragment } from 'react'
 import {
-  formatDay,
-  formatDayShort,
   niceTicks,
   shortBoardName,
   type InflowPoint,
@@ -11,10 +9,10 @@ import {
 const labelEvery = (count: number): number => Math.max(1, Math.ceil(count / 10))
 
 /**
- * 날짜별 인입 건수 선 그래프.
+ * 인입 건수 선 그래프 — 점 하나가 하루, 한 주, 또는 한 달이다.
  *
- * 선 하나(전체 인입)만 그린다 — 한 계열이라 범례가 필요 없고, 제목이 무엇을
- * 그렸는지 말해 준다. 값은 축과 툴팁으로 읽고, 표(아래 InflowTable)가 같은
+ * 선 하나(전체 인입)와 그 기간의 평균선을 그린다 — 한 계열이라 범례가 필요
+ * 없고(평균선은 선 끝에 이름을 직접 적는다), 제목이 무엇을 그렸는지 말해 준다. 값은 축과 툴팁으로 읽고, 표(아래 InflowTable)가 같은
  * 숫자를 전부 보여준다.
  *
  * 크기에 맞춰 늘어나도록 선·면만 SVG(가로세로 0~100, 비율 무시)로 그리고,
@@ -22,7 +20,14 @@ const labelEvery = (count: number): number => Math.max(1, Math.ceil(count / 10))
  * 찌그러지기 때문이다. 마우스를 올린 날의 세로선·점·툴팁은 날짜 칸의
  * :hover / :focus로만 띄워서 상태를 두지 않는다.
  */
-export const InflowChart = ({ points }: { points: InflowPoint[] }) => {
+export const InflowChart = ({
+  points,
+  average,
+}: {
+  points: InflowPoint[]
+  /** 기간 평균 — 가로 기준선으로 그린다. */
+  average: number
+}) => {
   const ticks = niceTicks(Math.max(...points.map((point) => point.total), 0))
   const top = ticks[ticks.length - 1]
   const count = points.length
@@ -63,6 +68,19 @@ export const InflowChart = ({ points }: { points: InflowPoint[] }) => {
           />
         ))}
 
+        {/* 평균선 — 각 점이 평균보다 위인지 아래인지 한눈에 보이게 하는
+            기준선. 눈금선과 헷갈리지 않게 점선으로, 이름과 값을 끝에 적는다. */}
+        {count > 1 && average > 0 && (
+          <span
+            className="inflow_average"
+            style={{ bottom: `${(average / top) * 100}%` }}
+          >
+            <em>
+              평균 {(Math.round(average * 10) / 10).toLocaleString('ko-KR')}
+            </em>
+          </span>
+        )}
+
         <svg
           className="inflow_svg"
           viewBox="0 0 100 100"
@@ -83,7 +101,7 @@ export const InflowChart = ({ points }: { points: InflowPoint[] }) => {
                 .join(' ')
                 .trim()}
               tabIndex={0}
-              aria-label={`${formatDay(point.date)} 인입 ${point.total}건`}
+              aria-label={`${point.label} 인입 ${point.total}건`}
             >
               <span
                 className="inflow_marker"
@@ -99,7 +117,7 @@ export const InflowChart = ({ points }: { points: InflowPoint[] }) => {
                   .trim()}
                 style={{ top: `${yOf(point.total)}%` }}
               >
-                <strong>{formatDay(point.date)}</strong>
+                <strong>{point.label}</strong>
                 <span className="total">
                   인입 {point.total.toLocaleString('ko-KR')}건
                 </span>
@@ -129,7 +147,7 @@ export const InflowChart = ({ points }: { points: InflowPoint[] }) => {
       <div className="inflow_x_axis" aria-hidden="true">
         {points.map((point, index) => (
           <span key={point.date}>
-            {index % every === 0 ? formatDayShort(point.date) : ''}
+            {index % every === 0 ? point.axisLabel : ''}
           </span>
         ))}
       </div>

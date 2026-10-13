@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import type { MondayDailyInflow } from '@/screens/xtool-lead-manager/entity'
+import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   inflowSeries,
+  sortInflowRows,
   summarizeInflow,
+  type InflowSortKey,
+  type InflowUnit,
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
 // 것이라, "오늘"·"지난 7일"의 기준이 두 화면에서 어긋나지 않게 한다.
@@ -25,6 +29,11 @@ export const useMondayTrendViewModel = (active: boolean) => {
     'idle',
   )
   const [range, setRange] = useState(defaultRange)
+  // 묶는 단위 — 일별 / 주차별 / 월별.
+  const [unit, setUnit] = useState<InflowUnit>('day')
+  // 표의 정렬 — 처음에는 최근 날짜가 위로.
+  const [sortKey, setSortKey] = useState<InflowSortKey>('date')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -47,10 +56,30 @@ export const useMondayTrendViewModel = (active: boolean) => {
   }, [active, status, load])
 
   const points = useMemo(
-    () => inflowSeries(days, range.start, range.end),
-    [days, range],
+    () => inflowSeries(days, range.start, range.end, unit),
+    [days, range, unit],
   )
   const summary = useMemo(() => summarizeInflow(points), [points])
+
+  // 그래프는 늘 시간순이고, 정렬은 표에만 적용한다.
+  const tableRows = useMemo(
+    () => sortInflowRows(points, sortKey, sortDirection),
+    [points, sortKey, sortDirection],
+  )
+
+  /** 같은 컬럼을 다시 누르면 방향을 뒤집고, 다른 컬럼을 누르면 그 컬럼의
+   * 내림차순(큰 값·최근 날짜가 위)부터 시작한다 — 리드 표와 같은 동작. */
+  const toggleSort = useCallback(
+    (key: InflowSortKey) => {
+      if (key === sortKey) {
+        setSortDirection((prev) => (prev === 'desc' ? 'asc' : 'desc'))
+        return
+      }
+      setSortKey(key)
+      setSortDirection('desc')
+    },
+    [sortKey],
+  )
 
   // 전체 기간을 한 번에 받아 두었으므로 기간을 바꿔도 다시 받지 않는다.
   const changeRange = useCallback(
@@ -59,7 +88,17 @@ export const useMondayTrendViewModel = (active: boolean) => {
   )
 
   return {
-    state: { status, range, points, summary, syncedAt },
-    actions: { changeRange, reload: load },
+    state: {
+      status,
+      range,
+      unit,
+      points,
+      summary,
+      tableRows,
+      sortKey,
+      sortDirection,
+      syncedAt,
+    },
+    actions: { changeRange, changeUnit: setUnit, toggleSort, reload: load },
   }
 }
