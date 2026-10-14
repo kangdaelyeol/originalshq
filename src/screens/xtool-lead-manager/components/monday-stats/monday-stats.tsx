@@ -317,9 +317,8 @@ export const MondayStats = ({
               <section className="stats_card">
                 <h2>콜백 단계별 전환</h2>
                 <p className="stats_desc">
-                  문의 기록이 있는 고객을 콜백이 마지막으로 도달한 단계로
-                  나눴습니다. 단계를 건너뛰어 적은 경우(2단계부터, 1→3단계)는
-                  날짜가 적힌 가장 높은 단계까지 간 것으로 봅니다.
+                  단계를 건너뛰어 적은 경우(2단계부터, 1→3단계)는 날짜가 적힌
+                  가장 높은 단계까지 간 것으로 봅니다.
                 </p>
                 <RateTable
                   head="최종 도달 단계"
@@ -342,9 +341,7 @@ export const MondayStats = ({
 
               <section className="stats_card">
                 <h2>담당자별 성과</h2>
-                <p className="stats_desc">
-                  고객의 기록에 가장 많이 나온 담당자 기준.
-                </p>
+
                 <RateTable head="담당자" rows={assignees} />
               </section>
 

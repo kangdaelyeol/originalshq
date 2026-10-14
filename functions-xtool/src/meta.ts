@@ -31,6 +31,85 @@ const hashPhoneVariants = (digitsOnlyPhone: string): string[] => {
   return Array.from(new Set([withCountryCode, raw]))
 }
 
+// 한국 성 가운데 두 글자인 것 — 이 목록에 없으면 첫 글자를 성으로 본다.
+// ("남궁민" → 남궁 + 민, "김민수" → 김 + 민수)
+const TWO_CHAR_SURNAMES = new Set([
+  '남궁',
+  '황보',
+  '제갈',
+  '선우',
+  '독고',
+  '사공',
+  '서문',
+  '동방',
+  '어금',
+  '망절',
+  '장곡',
+])
+
+/** 값에서 한글 이름(2~4자)만 뽑는다 — 아니면 null.
+ *   "김민수", "김 민수"(성과 이름을 띄운 것) → "김민수"
+ *   "홍길동 대리", "김민수 님"(이름 뒤에 직함·호칭) → 앞 단어만
+ *   "삼성전자서비스", "부산대학교(김재영)" → null
+ * 5자 이상은 회사·기관명일 가능성이 커서 이름으로 보지 않는다. */
+const koreanNameOf = (name: string): string | null => {
+  const words = name.split(/\s+/).filter(Boolean)
+  if (!words.every((word) => /^[가-힣]+$/.test(word))) return null
+
+  const [first, ...rest] = words
+  // 첫 단어가 성뿐이면("김 민수", "박 서 준") 나머지를 이어 붙이고, 아니면
+  // 첫 단어만 이름이고 뒤는 직함·호칭이다("홍길동 대리").
+  const isSurname = first.length === 1 || TWO_CHAR_SURNAMES.has(first)
+  const candidate = isSurname ? first + rest.join('') : first
+  return /^[가-힣]{2,4}$/.test(candidate) ? candidate : null
+}
+
+/**
+ * 리드에 저장된 이름(성+이름 한 덩어리)을 Meta CAPI의 fn(이름)·ln(성)으로
+ * 나눈다. 저장 형식은 그대로 두고 전송할 때만 나눈다.
+ *
+ * Meta는 fn·ln을 따로 받아 각각 해시해 대조하므로, 한 칸에 성+이름을 통째로
+ * 넣으면 어느 쪽과도 맞지 않는다. 그래서 확실히 사람 이름으로 보이는 것만
+ * 나누고, 그 밖의 값("부산대학교(김재영)", "주식회사 OO" 등)은 아예 보내지
+ * 않는다 — 틀린 값을 보내느니 빼는 편이 매칭에 해가 없다.
+ *
+ *   · 한글 이름 2~4자(koreanNameOf): 앞 1자(두 글자 성이면 2자)가 성.
+ *     "김민수" → ln 김, fn 민수 / "남궁 민" → ln 남궁, fn 민 /
+ *     "홍길동 대리" → ln 홍, fn 길동
+ *   · 영문 이름(글자와 띄어쓰기만): 서양식 순서로 첫 단어가 이름, 마지막
+ *     단어가 성. "John Smith" → fn john, ln smith / 한 단어면 fn만.
+ */
+export const splitNameForMeta = (
+  fullName: string | undefined,
+): { fn?: string; ln?: string } => {
+  const name = (fullName ?? '').trim()
+  if (!name) return {}
+
+  const hangul = koreanNameOf(name)
+  if (hangul) {
+    const surnameLength =
+      hangul.length >= 3 && TWO_CHAR_SURNAMES.has(hangul.slice(0, 2)) ? 2 : 1
+    return {
+      ln: hangul.slice(0, surnameLength),
+      fn: hangul.slice(surnameLength),
+    }
+  }
+
+  if (/^[A-Za-z]+(?:[ '-][A-Za-z]+)*$/.test(name)) {
+    // Meta 정규화 — 소문자, 문장부호 없이.
+    const words = name
+      .toLowerCase()
+      .replace(/['-]/g, '')
+      .split(/\s+/)
+      .filter(Boolean)
+    return words.length === 1
+      ? { fn: words[0] }
+      : { fn: words[0], ln: words[words.length - 1] }
+  }
+
+  return {}
+}
+
 type MetaEventName = 'Contact' | 'Purchase'
 
 type SendMetaEventParams = {
@@ -65,6 +144,7 @@ export const sendMetaEvent = async ({
   eventId,
 }: SendMetaEventParams): Promise<SendMetaEventResult> => {
   const eventTime = Math.floor(eventTimeMs / 1000)
+  const { fn, ln } = splitNameForMeta(lead.fn)
 
   const actionSource = getActionSource(eventTime)
 
@@ -82,7 +162,10 @@ export const sendMetaEvent = async ({
           // 이미 한다. 이메일이 없는 리드는 키 자체를 빼야 한다(빈 문자열을
           // 해시해 보내면 모든 무이메일 고객이 같은 해시로 묶인다).
           ...(lead.em ? { em: [sha256(lead.em)] } : {}),
-          ...(lead.fn ? { fn: sha256(lead.fn) } : {}),
+          // 이름은 성과 이름을 나눠 각각 해시한다(splitNameForMeta 참고) —
+          // 사람 이름으로 확실하지 않으면 둘 다 빠진다.
+          ...(fn ? { fn: sha256(fn) } : {}),
+          ...(ln ? { ln: sha256(ln) } : {}),
           external_id: lead.externalId,
           client_ip_address: lead.ip || undefined,
           client_user_agent: lead.user_agent || undefined,
