@@ -576,3 +576,10 @@ $trend-y-axis-width: 44px;
     }
   }
 }
+
+.xtool-main.monday_trend {
+  // 현재 파이프라인 — 보드 수(열 개 남짓)만큼이라 스크롤 없이 다 보인다.
+  .pipeline_table_scroll {
+    max-height: none;
+  }
+}

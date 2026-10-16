@@ -9,7 +9,9 @@ import type {
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
+  buildPipeline,
   computeKpis,
+  sortPipelineRows,
   isInactiveAssignee,
   sortKpiRows,
   sortNeglectRows,
@@ -210,6 +212,16 @@ export const useMondayTrendViewModel = (active: boolean) => {
     }
   }, [followUps, tableSorts, includeInactive])
 
+  // ── 현재 파이프라인 ─────────────────────────────────────────────────
+  // 인입통계 맨 위 — 기간과 무관한 오늘 기준 단계별 건수.
+  const pipeline = useMemo(() => {
+    const built = buildPipeline(followUps)
+    return {
+      ...built,
+      rows: sortPipelineRows(built.rows, tableSorts.pipeline),
+    }
+  }, [followUps, tableSorts])
+
   // ── 개인 KPI ────────────────────────────────────────────────────────
   const kpiRange = kpiRanges[kpiUnit]
   const kpiComputed = useMemo(
@@ -301,6 +313,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       section,
       neglect: { ...neglect, expanded },
       tableSorts,
+      pipeline,
       includeInactive,
       kpi: {
         unit: kpiUnit,

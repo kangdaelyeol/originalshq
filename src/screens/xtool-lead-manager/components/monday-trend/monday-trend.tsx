@@ -23,6 +23,7 @@ import {
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
 import { KpiControls, KpiSection } from './kpi-section'
+import { PipelineSection } from './pipeline-section'
 import { SalesSection } from './sales-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel>
@@ -54,6 +55,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     kpi,
     tableSorts,
     includeInactive,
+    pipeline,
   } = state
   const {
     changeRange,
@@ -206,6 +208,13 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (
             <>
+              <PipelineSection
+                pipeline={pipeline}
+                today={neglect.today}
+                sort={tableSorts.pipeline}
+                onSort={(key) => toggleTableSort('pipeline', key)}
+              />
+
               <section className="stats_card">
                 <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
                 <p className="stats_desc">

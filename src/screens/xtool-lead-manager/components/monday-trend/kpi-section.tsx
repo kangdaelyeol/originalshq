@@ -338,9 +338,9 @@ export const KpiSection = ({
     if (next === null) return
     event.preventDefault()
     onSelectAssignee(options[next])
-    event.currentTarget
-      .querySelectorAll<HTMLButtonElement>('button')
-      [next]?.focus()
+    const buttons =
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('button')
+    buttons[next]?.focus()
   }
 
   const only = (rows: Neglect['callback']) =>

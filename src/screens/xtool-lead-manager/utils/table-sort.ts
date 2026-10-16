@@ -1,6 +1,8 @@
 import type { SortDirection } from '../types'
 import type { KpiRow } from './monday-kpi'
 import type { NeglectRow } from './monday-neglect'
+import type { PipelineRow, PipelineStage } from './monday-pipeline'
+import { shortBoardName } from './monday-trend'
 
 /** 표 하나의 정렬 상태 — 아직 머리글을 누르지 않은 표는 정렬 상태가 없고,
  * 계산된 순서(지표가 큰 순 등) 그대로 보인다. */
@@ -54,3 +56,16 @@ export const sortKpiRows = (
       ? -1
       : cell.value
   })
+
+/** 현재 파이프라인 표 — 칸 키는 'board', 'total', 또는 단계 이름. */
+export const sortPipelineRows = (
+  rows: PipelineRow[],
+  sort: TableSort | undefined,
+): PipelineRow[] =>
+  sortRows(rows, sort, (row, key) =>
+    key === 'board'
+      ? shortBoardName(row.board)
+      : key === 'total'
+        ? row.total
+        : row.counts[key as PipelineStage],
+  )
