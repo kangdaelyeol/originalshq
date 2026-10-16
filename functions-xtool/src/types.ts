@@ -8,6 +8,8 @@ export const Device = [
   'F2',
   'o1',
   'WonderPress',
+  // 공공기관(B2G) 문의 — 특정 기기가 아니라 판매 채널이다.
+  'B2G',
   '기타',
 ] as const
 

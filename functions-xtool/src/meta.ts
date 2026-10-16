@@ -13,6 +13,7 @@ export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
   M2: 570000,
   o1: 800000,
   WonderPress: 150000,
+  B2G: 1000000,
   기타: 200000,
 }
 
