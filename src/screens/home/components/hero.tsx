@@ -1,5 +1,6 @@
 import { LogoGroup } from '@/illustrations'
 import '@/screens/home/styles/hero.scss'
+import LogoText from '@/assets/originals_logo_text.svg'
 
 export const Hero = () => {
   return (
@@ -13,7 +14,9 @@ export const Hero = () => {
           <LogoGroup size={100} />
         </div>
 
-        <h1 className="title fade-in-up">Originals</h1>
+        <h1 className="title fade-in-up">
+          <img src={LogoText} className="logo-text" alt="logotext" />
+        </h1>
 
         <p className="subtitle fade-in-up delay-1">
           AI 기반 혁신 하드웨어로 세상에 없던 미래를 만듭니다

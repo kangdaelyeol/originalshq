@@ -94,8 +94,7 @@ export const Contact = () => {
           </div>
 
           {/* 실제 지도 — 구글 지도의 퍼가기 주소는 API 키 없이 쓸 수 있다.
-              어두운 화면에 맞춰 색을 반전해 보여주고, 길찾기는 국내에서 많이
-              쓰는 네이버 지도로 연다. */}
+              길찾기는 국내에서 많이 쓰는 네이버 지도로 연다. */}
           <div className="contact-map reveal delay-1" ref={card2Ref}>
             <iframe
               className="map-frame"

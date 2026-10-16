@@ -11,20 +11,20 @@
 .section-header {
   text-align: center;
   max-width: 720px;
-  margin: 0 auto 64px;
+  margin: 100px auto 64px;
 }
 
 .section-badge {
   display: inline-block;
   padding: 6px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(178, 137, 188, 0.35);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(102, 88, 184, 0.12);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: variables.$text-secondary;
+  color: variables.$brand-lilac-light;
   margin-bottom: 20px;
 }
 
@@ -37,10 +37,9 @@
   color: variables.$text-primary;
 }
 
-/* 그라디언트였던 강조 텍스트 — 색을 빼고 흰색→회색으로, 그러데이션 질감은
-   그대로 유지해서 제목 안에서 시선이 자연스럽게 머무는 지점을 만든다. */
+/* 제목 속 강조 글자 — 브랜드 그러데이션(로고 색을 검정 위에서 읽히게 밝힌 것). */
 .gradient-text {
-  background: variables.$gradient-primary;
+  background: variables.$gradient-brand-text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

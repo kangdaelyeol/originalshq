@@ -7,10 +7,9 @@
   position: relative;
   min-height: 100vh;
   display: flex;
-  align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 70px 80px;
+  padding: 10px 80px;
   background-color: black;
 }
 
@@ -24,15 +23,6 @@
   max-width: 900px;
   margin: 0 auto;
 
-  .title {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 900;
-    line-height: 1.1;
-    margin-bottom: 24px;
-    letter-spacing: -1px;
-    color: variables.$text-primary;
-  }
-
   .badge {
     display: inline-flex;
     align-items: center;
@@ -45,11 +35,25 @@
     font-weight: 500;
     color: variables.$text-secondary;
     margin-bottom: 20px;
+    margin-top: 200px;
     backdrop-filter: blur(10px);
   }
+
+  .title {
+    margin: 12px 0 12px 0;
+    letter-spacing: -1px;
+    width: 400px;
+  }
+
+  .logo-text {
+    width: 100%;
+    filter: invert(1);
+  }
+
   .subtitle {
-    font-size: clamp(18px, 3vw, 24px);
+    font-size: 25px;
     font-weight: 500;
+    letter-spacing: -0.4px;
     color: variables.$text-secondary;
     margin-bottom: 20px;
   }
@@ -74,16 +78,16 @@
     transition: variables.$transition-smooth;
   }
 
-  // 주요 CTA — 꽉 찬 흰 배경으로 가장 눈에 띄게.
+  // 주요 CTA — 로고 그러데이션으로 가장 눈에 띄게.
   .btn-primary {
-    color: #000000;
-    background: variables.$text-primary;
-    border: 1px solid variables.$text-primary;
+    color: #ffffff;
+    background: variables.$gradient-brand-deep;
+    box-shadow: 0 6px 24px rgba(102, 88, 184, 0.35);
   }
 
   .btn-primary:hover {
-    background: variables.$text-secondary;
-    border-color: variables.$text-secondary;
+    box-shadow: 0 8px 32px rgba(102, 88, 184, 0.6);
+    transform: translateY(-2px);
   }
 
   // 보조 CTA — 테두리만 있는 고스트 스타일.
@@ -94,8 +98,8 @@
   }
 
   .btn-secondary:hover {
-    border-color: variables.$text-primary;
-    background: rgba(255, 255, 255, 0.06);
+    border-color: variables.$brand-lilac-light;
+    background: rgba(102, 88, 184, 0.12);
   }
 
   .logo-1 {

@@ -9,22 +9,6 @@
   position: relative;
 }
 
-.about::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80%;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.18),
-    transparent
-  );
-}
-
 .about-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -43,7 +27,7 @@
 
 .about-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.24);
+  border-color: rgba(178, 137, 188, 0.45);
   transform: translateY(-8px);
 }
 
@@ -54,10 +38,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: variables.$gradient-primary;
+  background: variables.$gradient-brand;
   border-radius: 20px;
   font-size: 36px;
-  color: #000000;
+  color: #ffffff;
   box-shadow: variables.$shadow-glow;
 }
 
@@ -97,7 +81,7 @@
   height: 200%;
   background: radial-gradient(
     circle,
-    rgba(255, 255, 255, 0.08) 0%,
+    rgba(102, 88, 184, 0.18) 0%,
     transparent 70%
   );
   animation: rotate 20s linear infinite;

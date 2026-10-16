@@ -6,7 +6,8 @@
    자동으로 같이 바뀐다.
    =================================== */
 /* Colors */
-$primary-color: #ffffff;
+// 아이콘·링크 강조색 — 브랜드 라일락을 검정 위에서 읽히게 밝힌 색.
+$primary-color: #d3b6dc;
 $secondary-color: #a3a3a3;
 $accent-color: #d4d4d4;
 $dark-bg: #000000;
@@ -16,9 +17,36 @@ $text-primary: #ffffff;
 $text-secondary: #b3b3b3;
 $text-muted: #7a7a7a;
 
-/* Gradients — 흰색→회색 톤으로, 강조가 필요한 곳(아이콘 배지, 로고, 큰 타이틀
-   일부)에 여전히 입체감을 주되 색상 자체는 더하지 않는다. */
-$gradient-primary: linear-gradient(135deg, #ffffff 0%, #9a9a9a 100%);
+/* 브랜드 컬러 — 오리지널스 로고 심볼의 그러데이션(라일락 #B289BC → 남색
+   #153586)에서 뽑았다. 배경은 검정 그대로 두고, 강조가 필요한 곳(버튼·아이콘
+   배지·강조 글자·호버)에만 쓴다.
+     · 채움(아이콘 배지, 버튼): 로고 그러데이션 그대로, 위에 흰 글자·아이콘
+     · 검정 위 글자·선: 로고 색은 남색 쪽이 너무 어두워 읽히지 않아서, 같은
+       색상을 밝게 올린 "-light" 색을 쓴다 */
+$brand-lilac: #b289bc;
+$brand-navy: #153586;
+// 두 색의 중간 — 단색 채움(배지, 호버 배경)용. 흰 글자 대비 4.5:1 이상.
+$brand-violet: #6658b8;
+$brand-lilac-light: #d3b6dc;
+$brand-blue-light: #8c9cf0;
+
+// 채움용 — 로고 그러데이션 그대로. 아이콘 배지처럼 글자가 없는 곳에 쓴다.
+$gradient-brand: linear-gradient(135deg, $brand-lilac 0%, $brand-navy 100%);
+// 글자가 올라가는 채움(버튼, 배지)용 — 로고의 밝은 라일락 끝에서는 흰 글자가
+// 잘 안 읽혀서(대비 2.6:1), 중간 보라에서 시작해 어디서나 4.5:1 이상이 되게 한다.
+$gradient-brand-deep: linear-gradient(
+  135deg,
+  $brand-violet 0%,
+  $brand-navy 100%
+);
+// 검정 위 글자용 — 같은 색상을 밝게.
+$gradient-brand-text: linear-gradient(
+  135deg,
+  $brand-lilac-light 0%,
+  $brand-blue-light 100%
+);
+// 옛 이름 — 강조 글자에 쓰던 그러데이션이라 글자용 브랜드 그러데이션을 가리킨다.
+$gradient-primary: $gradient-brand-text;
 $gradient-secondary: linear-gradient(135deg, #d4d4d4 0%, #8a8a8a 100%);
 $gradient-dark: linear-gradient(
   180deg,
@@ -38,4 +66,4 @@ $transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 $shadow-small: 0 2px 8px rgba(0, 0, 0, 0.3);
 $shadow-medium: 0 4px 16px rgba(0, 0, 0, 0.4);
 $shadow-large: 0 8px 32px rgba(0, 0, 0, 0.5);
-$shadow-glow: 0 0 30px rgba(255, 255, 255, 0.15);
+$shadow-glow: 0 0 30px rgba(102, 88, 184, 0.45);

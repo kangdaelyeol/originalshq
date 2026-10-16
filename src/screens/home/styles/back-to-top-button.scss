@@ -9,16 +9,16 @@
   right: 30px;
   width: 50px;
   height: 50px;
-  background: variables.$gradient-primary;
+  background: variables.$gradient-brand;
   border: none;
   border-radius: 50%;
-  color: #000000;
+  color: #ffffff;
   font-size: 20px;
   cursor: pointer;
   opacity: 0;
   visibility: hidden;
   transition: variables.$transition-smooth;
-  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 20px rgba(102, 88, 184, 0.45);
   z-index: 999;
 }
 
@@ -29,5 +29,5 @@
 
 .back-to-top:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(255, 255, 255, 0.35);
+  box-shadow: 0 8px 30px rgba(102, 88, 184, 0.65);
 }

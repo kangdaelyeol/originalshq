@@ -31,7 +31,7 @@
   left: 0;
   width: 100%;
   height: 4px;
-  background: variables.$gradient-primary;
+  background: variables.$gradient-brand;
   transform: scaleX(0);
   transform-origin: left;
   transition: variables.$transition-smooth;
@@ -42,7 +42,7 @@
 }
 
 .product-card.featured {
-  border-color: rgba(255, 255, 255, 0.22);
+  border-color: rgba(178, 137, 188, 0.4);
   background: rgba(255, 255, 255, 0.05);
 }
 
@@ -57,12 +57,12 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: #ffffff;
-  border: 1px solid #ffffff;
+  background: variables.$gradient-brand-deep;
+  border: 1px solid transparent;
   border-radius: 50px;
   font-size: 12px;
   font-weight: 600;
-  color: #000000;
+  color: #ffffff;
   margin-bottom: 24px;
 }
 
@@ -89,8 +89,9 @@
 }
 
 .product-card:hover .product-icon {
-  background: variables.$gradient-primary;
-  color: #000000;
+  background: variables.$gradient-brand;
+  border-color: transparent;
+  color: #ffffff;
   transform: scale(1.1) rotate(5deg);
 }
 
@@ -149,9 +150,9 @@
 
   &:hover,
   &:focus-visible {
-    background: #ffffff;
-    border-color: #ffffff;
-    color: #000000;
+    background: variables.$brand-violet;
+    border-color: variables.$brand-violet;
+    color: #ffffff;
 
     i {
       transform: translateX(3px);
