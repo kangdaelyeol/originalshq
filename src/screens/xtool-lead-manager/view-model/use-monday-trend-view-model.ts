@@ -41,12 +41,11 @@ const defaultRange = (): { start: string; end: string } => {
 }
 
 /** 통계 탭의 소주제. */
-export type TrendSection = 'inflow' | 'sales' | 'neglect' | 'kpi'
+export type TrendSection = 'inflow' | 'sales' | 'kpi'
 
 export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
   inflow: '인입통계',
   sales: '판매통계',
-  neglect: '방치 현황',
   kpi: '개인 KPI',
 }
 
@@ -67,6 +66,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
   })
   // 방치·개인 KPI에 삭제된 팀원·담당자 없음 줄을 보일지 — 기본은 숨김.
   const [includeInactive, setIncludeInactive] = useState(false)
+  // 개인 KPI에서 한 담당자만 요약해 볼 때 그 담당자(null이면 전체).
+  const [kpiAssignee, setKpiAssignee] = useState<string | null>(null)
   // 방치·개인 KPI 표의 정렬 — 표마다 따로(표 이름 → 정렬 상태).
   const [tableSorts, setTableSorts] = useState<Record<string, TableSort>>({})
   // 개인 KPI — 단위와, 단위마다 따로 기억하는 기간.
@@ -230,6 +231,21 @@ export const useMondayTrendViewModel = (active: boolean) => {
     [kpiComputed, tableSorts],
   )
 
+  /** 담당자 고르기에 나오는 이름 — KPI나 방치 표에 한 번이라도 나온 담당자,
+   * 가나다순. 삭제된 팀원 등을 숨기면 여기서도 빠진다. */
+  const kpiAssignees = useMemo(() => {
+    const names = new Set<string>()
+    for (const each of kpi.kpis)
+      each.rows.forEach((row) => names.add(row.assignee))
+    for (const row of [...neglect.callback, ...neglect.visit]) {
+      names.add(row.assignee)
+    }
+    return [...names].sort((a, b) => a.localeCompare(b, 'ko'))
+  }, [kpi, neglect])
+  // 고른 담당자가 목록에서 사라지면(기간·토글 변경) 전체로 돌아간다.
+  const selectedAssignee =
+    kpiAssignee && kpiAssignees.includes(kpiAssignee) ? kpiAssignee : null
+
   /** 표 하나의 정렬을 바꾼다 — 같은 칸을 다시 누르면 방향을 뒤집고, 다른
    * 칸이면 내림차순부터(인입·판매 표와 같은 동작). */
   const toggleTableSort = useCallback((table: string, key: string) => {
@@ -291,6 +307,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
         range: kpiRange,
         firstDate: kpiFirstDate,
         ...kpi,
+        assignees: kpiAssignees,
+        assignee: selectedAssignee,
       },
       sales: {
         scope: salesScope,
@@ -317,6 +335,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       changeKpiRange,
       toggleIncludeInactive: () => setIncludeInactive((prev) => !prev),
       toggleTableSort,
+      selectKpiAssignee: setKpiAssignee,
     },
   }
 }

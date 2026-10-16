@@ -23,7 +23,6 @@ import {
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
 import { KpiControls, KpiSection } from './kpi-section'
-import { NeglectSection } from './neglect-section'
 import { SalesSection } from './sales-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel>
@@ -69,6 +68,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     changeKpiRange,
     toggleTableSort,
     toggleIncludeInactive,
+    selectKpiAssignee,
   } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
 
@@ -123,8 +123,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               onRange={changeKpiRange}
             />
           )}
-          {/* 방치·개인 KPI — 지금 일하지 않는 담당자 줄은 기본으로 숨긴다. */}
-          {(section === 'neglect' || section === 'kpi') && (
+          {/* 개인 KPI(방치 포함) — 지금 일하지 않는 담당자 줄은 기본으로 숨긴다. */}
+          {section === 'kpi' && (
             <button
               type="button"
               className={['stats_toggle', includeInactive ? 'on' : '']
@@ -137,8 +137,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               삭제된 팀원·담당자 없음 포함
             </button>
           )}
-          {/* 방치 현황은 기간과 무관한 오늘 기준이라 기간·단위를 숨긴다. */}
-          {section !== 'neglect' && section !== 'kpi' && (
+          {/* 개인 KPI는 자기 기간 선택(위)을 쓰므로 공용 기간·단위를 숨긴다. */}
+          {section !== 'kpi' && (
             <DateRangePicker
               dateStart={range.start}
               dateEnd={range.end}
@@ -147,7 +147,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
           )}
           {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
               선택이 더 붙는다. */}
-          {section !== 'neglect' && section !== 'kpi' && (
+          {section !== 'kpi' && (
             <div className="stats_scope" role="tablist" aria-label="묶는 단위">
               {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
                 <button
@@ -194,13 +194,13 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               </button>
             </div>
           ) : section === 'kpi' ? (
-            <KpiSection kpi={kpi} sorts={tableSorts} onSort={toggleTableSort} />
-          ) : section === 'neglect' ? (
-            <NeglectSection
+            <KpiSection
+              kpi={kpi}
               neglect={neglect}
-              onToggle={toggleExpanded}
               sorts={tableSorts}
               onSort={toggleTableSort}
+              onSelectAssignee={selectKpiAssignee}
+              onToggleNeglect={toggleExpanded}
             />
           ) : section === 'sales' ? (
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />

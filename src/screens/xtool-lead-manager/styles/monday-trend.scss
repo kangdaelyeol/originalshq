@@ -521,3 +521,58 @@ $trend-y-axis-width: 44px;
     }
   }
 }
+
+.xtool-main.monday_trend {
+  // 담당자 고르기 — 카드 위에 한 줄로, 넘치면 다음 줄로.
+  .kpi_assignees {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+
+    button {
+      all: unset;
+      box-sizing: border-box;
+      height: 30px;
+      padding: 0 12px;
+      border: 1px solid variables.$color-border;
+      border-radius: 15px;
+      font-size: 13px;
+      color: variables.$color-text-muted;
+      white-space: nowrap;
+      cursor: pointer;
+
+      &:hover {
+        color: variables.$color-text;
+      }
+      &.active {
+        border-color: variables.$color-accent;
+        background-color: variables.$color-surface-raised;
+        color: variables.$color-text;
+      }
+      &:focus-visible {
+        outline: 2px solid variables.$color-accent;
+      }
+    }
+  }
+
+  // 한 담당자 요약 — 지표 7개 + 방치 2개라 넓은 화면에서 다섯·넷 두 줄로 접는다.
+  .kpi_person_tiles {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+
+  // 지표 카드들과 방치 현황 사이의 소제목.
+  .kpi_group_title {
+    margin: 28px 2px 12px;
+    font-size: 16px;
+    font-weight: 700;
+    color: variables.$color-text;
+
+    small {
+      margin-left: 8px;
+      font-size: 12.5px;
+      font-weight: 400;
+      color: variables.$color-text-muted;
+    }
+  }
+}
