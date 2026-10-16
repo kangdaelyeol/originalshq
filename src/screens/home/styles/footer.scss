@@ -105,3 +105,18 @@
   color: variables.$text-muted;
   margin-bottom: 8px;
 }
+
+// 휴대폰 — 로고 옆 좁은 칸에 회사 정보 세 묶음이 들어가 오른쪽으로 넘쳐
+// 잘렸다. 로고와 정보, 정보 묶음들을 모두 세로로 쌓는다. (global.module.scss의
+// 같은 규칙은 CSS 모듈 안에 있어 적용되지 않는다.)
+@media (max-width: 768px) {
+  .footer-content {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .footer-links {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}

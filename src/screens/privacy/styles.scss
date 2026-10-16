@@ -3,17 +3,6 @@
 // 개인정보 관련 페이지 — 홈페이지와 같은 검은 배경·흰 글자 톤.
 // (예전에는 정의된 적 없는 CSS 변수(--text-secondary 등)를 참조해 브라우저
 // 기본색인 흰 배경·검은 글자로 나오고 있었다.)
-.privacy-wrap {
-  box-sizing: border-box;
-}
-
-@media (max-width: 768px) {
-  .privacy-wrap {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
-
 .privacy-main {
   // 머리글(fixed, 70px) 아래에서 시작한다.
   padding-top: 70px;

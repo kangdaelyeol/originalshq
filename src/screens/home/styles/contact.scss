@@ -117,3 +117,13 @@
   font-size: 16px;
   color: variables.$text-secondary;
 }
+
+// 휴대폰 — 두 칸(정보 / 지도)의 최소 폭이 400px이라 화면보다 넓어져 오른쪽이
+// 잘렸다. 한 칸으로 쌓는다. (global.module.scss에도 같은 의도의 규칙이 있지만,
+// CSS 모듈 안에 있어 클래스 이름이 바뀌는 바람에 이 요소들에는 적용되지 않는다.)
+@media (max-width: 768px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
