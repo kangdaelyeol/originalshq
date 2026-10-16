@@ -1,8 +1,5 @@
 import { useEffect } from 'react'
-import {
-  getLeadState,
-  type Lead,
-} from '@/screens/xtool-lead-manager/entity'
+import { getLeadState, type Lead } from '@/screens/xtool-lead-manager/entity'
 
 const byLatest = <T extends { at: number }>(records: readonly T[] = []): T[] =>
   [...records].sort((a, b) => b.at - a.at)

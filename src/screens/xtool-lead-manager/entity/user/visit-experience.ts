@@ -7,11 +7,7 @@ import type { ConsultationStatus, ContactTimeline, Timestamp } from './common'
 type Funnel = '지연유입' | '영업전환'
 
 type ExperienceState =
-  | '방문 대기'
-  | '체험 일정 연기'
-  | '체험 노쇼'
-  | '체험 완료'
-  | '체험 취소'
+  '방문 대기' | '체험 일정 연기' | '체험 노쇼' | '체험 완료' | '체험 취소'
 
 type PurchaseProbability =
   | 'LOW' // 낮음

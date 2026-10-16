@@ -17,7 +17,11 @@ import {
   toDatetimeLocalValue,
   sortLeads,
 } from '@/screens/xtool-lead-manager/utils'
-import { latestIntake, type Device, type Lead } from '@/screens/xtool-lead-manager/entity'
+import {
+  latestIntake,
+  type Device,
+  type Lead,
+} from '@/screens/xtool-lead-manager/entity'
 import {
   leadClient,
   type ClientResponse,
@@ -96,9 +100,8 @@ export const useMainViewModel = () => {
   // state를 초기화" 대체 방식).
   const selectedDevicesKey = [...selectedDevices].sort().join(',')
   const paginationResetKey = `${searchValue}|${selectedDevicesKey}|${sortField}|${sortDirection}|${pageSize}`
-  const [prevPaginationResetKey, setPrevPaginationResetKey] = useState(
-    paginationResetKey,
-  )
+  const [prevPaginationResetKey, setPrevPaginationResetKey] =
+    useState(paginationResetKey)
   if (paginationResetKey !== prevPaginationResetKey) {
     setPrevPaginationResetKey(paginationResetKey)
     setPage(1)

@@ -25,8 +25,7 @@ export const FilterContextProvider = ({ children }: PropsWithChildren) => {
   const activeSearch = useCallback(() => setSearchActive(true), [])
   const resetSearchValue = useCallback(() => setSearchValue(''), [])
   const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) =>
-      setSearchValue(e.target.value),
+    (e: React.ChangeEvent<HTMLInputElement>) => setSearchValue(e.target.value),
     [],
   )
 

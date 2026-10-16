@@ -1,11 +1,26 @@
 import { Fragment } from 'react'
 import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-model'
-import type { NeglectRow } from '@/screens/xtool-lead-manager/utils'
+import type { NeglectRow, TableSort } from '@/screens/xtool-lead-manager/utils'
+import { SortableTh } from './sortable-th'
 
 type NeglectProps = {
   neglect: ReturnType<typeof useMondayTrendViewModel>['state']['neglect']
   onToggle: (key: string) => void
+  sorts: Record<string, TableSort>
+  onSort: (table: string, key: string) => void
 }
+
+/** 방치 표의 칸 — 키는 NeglectRow의 필드 이름. */
+const COLUMNS: { key: keyof NeglectRow; label: string }[] = [
+  { key: 'assignee', label: '담당자' },
+  { key: 'open', label: '진행 중' },
+  { key: 'onHold', label: '보류' },
+  { key: 'neglected', label: '방치' },
+  { key: 'rate', label: '방치율' },
+  { key: 'recent', label: '1~7일' },
+  { key: 'month', label: '8~30일' },
+  { key: 'old', label: '31일 이상' },
+]
 
 const percent = (rate: number): string => `${(rate * 100).toFixed(0)}%`
 
@@ -17,6 +32,8 @@ const NeglectTable = ({
   rows,
   expanded,
   onToggle,
+  sort,
+  onSort,
 }: {
   kind: 'callback' | 'visit'
   title: string
@@ -24,6 +41,8 @@ const NeglectTable = ({
   rows: NeglectRow[]
   expanded: ReadonlySet<string>
   onToggle: (key: string) => void
+  sort: TableSort | undefined
+  onSort: (key: string) => void
 }) => {
   const total = rows.reduce(
     (sum, row) => ({
@@ -48,14 +67,16 @@ const NeglectTable = ({
         <table className="stats_table neglect_table">
           <thead>
             <tr>
-              <th>담당자</th>
-              <th>진행 중</th>
-              <th>보류</th>
-              <th>방치</th>
-              <th>방치율</th>
-              <th>1~7일</th>
-              <th>8~30일</th>
-              <th>31일 이상</th>
+              {COLUMNS.map((column) => (
+                <SortableTh
+                  key={column.key}
+                  columnKey={column.key}
+                  sort={sort}
+                  onSort={onSort}
+                >
+                  {column.label}
+                </SortableTh>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -172,7 +193,12 @@ const NeglectTable = ({
  *   · 기한 = 상담 마감일, 없으면 마지막 연락일 + 7일
  *   · 방치 = 보류가 아닌 진행 중 기록 가운데 기한이 오늘보다 지난 것
  */
-export const NeglectSection = ({ neglect, onToggle }: NeglectProps) => (
+export const NeglectSection = ({
+  neglect,
+  onToggle,
+  sorts,
+  onSort,
+}: NeglectProps) => (
   <>
     <NeglectTable
       kind="callback"
@@ -181,6 +207,8 @@ export const NeglectSection = ({ neglect, onToggle }: NeglectProps) => (
       rows={neglect.callback}
       expanded={neglect.expanded}
       onToggle={onToggle}
+      sort={sorts['neglect:callback']}
+      onSort={(key) => onSort('neglect:callback', key)}
     />
     <NeglectTable
       kind="visit"
@@ -189,6 +217,8 @@ export const NeglectSection = ({ neglect, onToggle }: NeglectProps) => (
       rows={neglect.visit}
       expanded={neglect.expanded}
       onToggle={onToggle}
+      sort={sorts['neglect:visit']}
+      onSort={(key) => onSort('neglect:visit', key)}
     />
   </>
 )

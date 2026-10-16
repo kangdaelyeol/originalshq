@@ -110,8 +110,8 @@ export const INITIAL_REGISTER_FORM: RegisterFormValues = {
 }
 
 export interface Timestamp {
-  toDate(): Date;
-  toMillis(): number;
-  seconds: number;
-  nanoseconds: number;
+  toDate(): Date
+  toMillis(): number
+  seconds: number
+  nanoseconds: number
 }

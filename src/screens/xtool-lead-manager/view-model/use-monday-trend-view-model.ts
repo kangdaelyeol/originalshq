@@ -10,6 +10,9 @@ import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
   computeKpis,
+  isInactiveAssignee,
+  sortKpiRows,
+  sortNeglectRows,
   defaultKpiRange,
   firstKpiDate,
   inflowSeries,
@@ -22,6 +25,7 @@ import {
   type InflowSortKey,
   type InflowUnit,
   type KpiRange,
+  type TableSort,
   type KpiUnit,
   type PurchaseScope,
 } from '@/screens/xtool-lead-manager/utils'
@@ -61,15 +65,17 @@ export const useMondayTrendViewModel = (active: boolean) => {
     visits: [],
     sales: [],
   })
+  // 방치·개인 KPI에 삭제된 팀원·담당자 없음 줄을 보일지 — 기본은 숨김.
+  const [includeInactive, setIncludeInactive] = useState(false)
+  // 방치·개인 KPI 표의 정렬 — 표마다 따로(표 이름 → 정렬 상태).
+  const [tableSorts, setTableSorts] = useState<Record<string, TableSort>>({})
   // 개인 KPI — 단위와, 단위마다 따로 기억하는 기간.
   const [kpiUnit, setKpiUnit] = useState<KpiUnit>('month')
-  const [kpiRanges, setKpiRanges] = useState<Record<KpiUnit, KpiRange>>(
-    () => ({
-      day: defaultKpiRange('day'),
-      week: defaultKpiRange('week'),
-      month: defaultKpiRange('month'),
-    }),
-  )
+  const [kpiRanges, setKpiRanges] = useState<Record<KpiUnit, KpiRange>>(() => ({
+    day: defaultKpiRange('day'),
+    week: defaultKpiRange('week'),
+    month: defaultKpiRange('month'),
+  }))
   // 방치 현황에서 펼쳐 둔 담당자들 — "종류:담당자" 문자열.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [section, setSection] = useState<TrendSection>('inflow')
@@ -188,17 +194,52 @@ export const useMondayTrendViewModel = (active: boolean) => {
     const today = todayInKorea()
     return {
       today,
-      callback: neglectByAssignee(followUps, 'callback', today),
-      visit: neglectByAssignee(followUps, 'visit', today),
+      callback: sortNeglectRows(
+        neglectByAssignee(followUps, 'callback', today).filter(
+          (row) => includeInactive || !isInactiveAssignee(row.assignee),
+        ),
+        tableSorts['neglect:callback'],
+      ),
+      visit: sortNeglectRows(
+        neglectByAssignee(followUps, 'visit', today).filter(
+          (row) => includeInactive || !isInactiveAssignee(row.assignee),
+        ),
+        tableSorts['neglect:visit'],
+      ),
     }
-  }, [followUps])
+  }, [followUps, tableSorts, includeInactive])
 
   // ── 개인 KPI ────────────────────────────────────────────────────────
   const kpiRange = kpiRanges[kpiUnit]
-  const kpi = useMemo(
-    () => computeKpis(kpiFacts, kpiUnit, kpiRange),
-    [kpiFacts, kpiUnit, kpiRange],
+  const kpiComputed = useMemo(
+    () => computeKpis(kpiFacts, kpiUnit, kpiRange, includeInactive),
+    [kpiFacts, kpiUnit, kpiRange, includeInactive],
   )
+  const kpi = useMemo(
+    () => ({
+      ...kpiComputed,
+      kpis: kpiComputed.kpis.map((each) => ({
+        ...each,
+        rows: sortKpiRows(
+          each.rows,
+          tableSorts[`kpi:${each.id}`],
+          kpiComputed.periods,
+        ),
+      })),
+    }),
+    [kpiComputed, tableSorts],
+  )
+
+  /** 표 하나의 정렬을 바꾼다 — 같은 칸을 다시 누르면 방향을 뒤집고, 다른
+   * 칸이면 내림차순부터(인입·판매 표와 같은 동작). */
+  const toggleTableSort = useCallback((table: string, key: string) => {
+    setTableSorts((prev) => {
+      const current = prev[table]
+      const direction =
+        current?.key === key && current.direction === 'desc' ? 'asc' : 'desc'
+      return { ...prev, [table]: { key, direction } }
+    })
+  }, [])
   const kpiFirstDate = useMemo(() => firstKpiDate(kpiFacts), [kpiFacts])
 
   /** 지금 단위의 기간을 바꾼다 — 시작이 끝보다 늦으면 둘을 맞춘다. */
@@ -243,6 +284,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
       syncedAt,
       section,
       neglect: { ...neglect, expanded },
+      tableSorts,
+      includeInactive,
       kpi: {
         unit: kpiUnit,
         range: kpiRange,
@@ -272,6 +315,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
       toggleExpanded,
       changeKpiUnit: setKpiUnit,
       changeKpiRange,
+      toggleIncludeInactive: () => setIncludeInactive((prev) => !prev),
+      toggleTableSort,
     },
   }
 }

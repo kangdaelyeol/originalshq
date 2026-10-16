@@ -5,7 +5,10 @@ import {
   type Device,
   type Lead,
 } from '@/screens/xtool-lead-manager/entity'
-import { SortField, type SortDirection } from '@/screens/xtool-lead-manager/types'
+import {
+  SortField,
+  type SortDirection,
+} from '@/screens/xtool-lead-manager/types'
 
 /** 이름/비고/이메일은 입력 그대로(대소문자만 무시) 부분일치, 전화번호는 숫자만
  * 남겨서 비교한다 — ph는 저장 시점에 이미 숫자만 남아있어서, "010-1234"처럼

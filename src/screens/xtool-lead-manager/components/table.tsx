@@ -1,6 +1,12 @@
 import { memo, useMemo } from 'react'
-import { SortField, type SortDirection } from '@/screens/xtool-lead-manager/types'
-import { formatPhoneNumber, formatTime } from '@/screens/xtool-lead-manager/utils'
+import {
+  SortField,
+  type SortDirection,
+} from '@/screens/xtool-lead-manager/types'
+import {
+  formatPhoneNumber,
+  formatTime,
+} from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
 import type {
   ConsultationRecord,
@@ -78,10 +84,7 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
     () => consultationTitle(consultations),
     [consultations],
   )
-  const purchaseTitleText = useMemo(
-    () => purchaseTitle(purchases),
-    [purchases],
-  )
+  const purchaseTitleText = useMemo(() => purchaseTitle(purchases), [purchases])
 
   return (
     <tr className="row-clickable" onClick={() => onShowDetail(row.id)}>

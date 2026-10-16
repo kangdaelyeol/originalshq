@@ -6,8 +6,10 @@ import {
   periodOptions,
   type KpiRange,
   type KpiUnit,
+  type TableSort,
 } from '@/screens/xtool-lead-manager/utils'
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
+import { SortableTh } from './sortable-th'
 
 type Kpi = ReturnType<typeof useMondayTrendViewModel>['state']['kpi']
 
@@ -91,7 +93,15 @@ export const KpiControls = ({
  * 기간·담당자를 합친 분자·분모로 다시 나눈 값이라(비율의 평균이 아니라) 칸에
  * 마우스를 올리면 분자/분모가 보인다.
  */
-export const KpiSection = ({ kpi }: { kpi: Kpi }) => {
+export const KpiSection = ({
+  kpi,
+  sorts,
+  onSort,
+}: {
+  kpi: Kpi
+  sorts: Record<string, TableSort>
+  onSort: (table: string, key: string) => void
+}) => {
   const { unit, periods, kpis } = kpi
 
   return (
@@ -100,6 +110,8 @@ export const KpiSection = ({ kpi }: { kpi: Kpi }) => {
         const ratio = each.format === 'percent'
         const title = (cell: { num?: number; den?: number }) =>
           ratio ? `${cell.num ?? 0} / ${cell.den ?? 0}` : undefined
+        const sort = sorts[`kpi:${each.id}`]
+        const sortBy = (key: string) => onSort(`kpi:${each.id}`, key)
         return (
           <section key={each.id} className="stats_card kpi_card">
             <div className="kpi_head">
@@ -118,11 +130,31 @@ export const KpiSection = ({ kpi }: { kpi: Kpi }) => {
                 <table className="stats_table kpi_table">
                   <thead>
                     <tr>
-                      <th>담당자</th>
+                      <SortableTh
+                        columnKey="assignee"
+                        sort={sort}
+                        onSort={sortBy}
+                      >
+                        담당자
+                      </SortableTh>
                       {periods.map((key) => (
-                        <th key={key}>{periodLabel(key, unit)}</th>
+                        <SortableTh
+                          key={key}
+                          columnKey={key}
+                          sort={sort}
+                          onSort={sortBy}
+                        >
+                          {periodLabel(key, unit)}
+                        </SortableTh>
                       ))}
-                      <th className="kpi_total_col">전체</th>
+                      <SortableTh
+                        columnKey="total"
+                        sort={sort}
+                        onSort={sortBy}
+                        className="kpi_total_col"
+                      >
+                        전체
+                      </SortableTh>
                     </tr>
                   </thead>
                   <tbody>
@@ -148,7 +180,10 @@ export const KpiSection = ({ kpi }: { kpi: Kpi }) => {
                           {formatKpi(cell, each.format)}
                         </td>
                       ))}
-                      <td className="kpi_total_col" title={title(each.sum.total)}>
+                      <td
+                        className="kpi_total_col"
+                        title={title(each.sum.total)}
+                      >
                         {formatKpi(each.sum.total, each.format)}
                       </td>
                     </tr>

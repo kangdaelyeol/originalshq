@@ -53,6 +53,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     sales,
     neglect,
     kpi,
+    tableSorts,
+    includeInactive,
   } = state
   const {
     changeRange,
@@ -65,6 +67,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     toggleExpanded,
     changeKpiUnit,
     changeKpiRange,
+    toggleTableSort,
+    toggleIncludeInactive,
   } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
 
@@ -118,6 +122,20 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               onUnit={changeKpiUnit}
               onRange={changeKpiRange}
             />
+          )}
+          {/* 방치·개인 KPI — 지금 일하지 않는 담당자 줄은 기본으로 숨긴다. */}
+          {(section === 'neglect' || section === 'kpi') && (
+            <button
+              type="button"
+              className={['stats_toggle', includeInactive ? 'on' : '']
+                .join(' ')
+                .trim()}
+              aria-pressed={includeInactive}
+              onClick={toggleIncludeInactive}
+            >
+              <span className="stats_toggle_switch" aria-hidden="true" />
+              삭제된 팀원·담당자 없음 포함
+            </button>
           )}
           {/* 방치 현황은 기간과 무관한 오늘 기준이라 기간·단위를 숨긴다. */}
           {section !== 'neglect' && section !== 'kpi' && (
@@ -176,9 +194,14 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               </button>
             </div>
           ) : section === 'kpi' ? (
-            <KpiSection kpi={kpi} />
+            <KpiSection kpi={kpi} sorts={tableSorts} onSort={toggleTableSort} />
           ) : section === 'neglect' ? (
-            <NeglectSection neglect={neglect} onToggle={toggleExpanded} />
+            <NeglectSection
+              neglect={neglect}
+              onToggle={toggleExpanded}
+              sorts={tableSorts}
+              onSort={toggleTableSort}
+            />
           ) : section === 'sales' ? (
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (

@@ -1,5 +1,5 @@
 import type { MondayKpiFacts } from '../entity'
-import { todayInKorea } from './monday-neglect'
+import { isInactiveAssignee, todayInKorea } from './monday-neglect'
 
 // ── 기간 ────────────────────────────────────────────────────────────────
 // 개인 KPI는 일별·주별·월별로 나눠 보고, 단위마다 기간을 따로 고른다.
@@ -23,7 +23,8 @@ export interface KpiRange {
 const DAY_MS = 86_400_000
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-const toISO = (time: number): string => new Date(time).toISOString().slice(0, 10)
+const toISO = (time: number): string =>
+  new Date(time).toISOString().slice(0, 10)
 const shiftDays = (date: string, days: number): string =>
   toISO(Date.parse(date) + days * DAY_MS)
 
@@ -172,9 +173,7 @@ const aggregate = (
   }
 
   const finish = (cell: KpiCell): KpiCell =>
-    ratio
-      ? { ...cell, value: cell.den ? (cell.num ?? 0) / cell.den : 0 }
-      : cell
+    ratio ? { ...cell, value: cell.den ? (cell.num ?? 0) / cell.den : 0 } : cell
   const rows = [...byAssignee.entries()]
     .map(([assignee, row]) => ({
       assignee,
@@ -202,6 +201,8 @@ export const computeKpis = (
   facts: MondayKpiFacts,
   unit: KpiUnit,
   range: KpiRange,
+  /** false면 삭제된 팀원·담당자 없음 기록을 빼고 센다(합계에서도). */
+  includeInactive: boolean,
 ): { periods: string[]; kpis: KpiResult[] } => {
   const periods = periodsBetween(unit, range)
   const { consultations, visits, sales } = facts
@@ -210,7 +211,14 @@ export const computeKpis = (
     events: KpiEvent[],
   ): KpiResult => ({
     ...meta,
-    ...aggregate(events, unit, periods, meta.format === 'percent'),
+    ...aggregate(
+      includeInactive
+        ? events
+        : events.filter((event) => !isInactiveAssignee(event.assignee)),
+      unit,
+      periods,
+      meta.format === 'percent',
+    ),
   })
 
   const received = consultations.map(([assignee, receivedAt]) => ({
@@ -226,7 +234,8 @@ export const computeKpis = (
         {
           id: 'confirm-count',
           title: '방문체험 확정 건수',
-          description: '상담에서 방문체험이 확정된 건수 — 방문체험 확정일 기준.',
+          description:
+            '상담에서 방문체험이 확정된 건수 — 방문체험 확정일 기준.',
           format: 'count',
         },
         consultations
@@ -302,7 +311,11 @@ export const computeKpis = (
         [
           ...visits
             .filter(([, , completed]) => completed)
-            .map(([assignee, visitAt]) => ({ assignee, date: visitAt, den: 1 })),
+            .map(([assignee, visitAt]) => ({
+              assignee,
+              date: visitAt,
+              den: 1,
+            })),
           ...visits
             .filter(([, , completed, paidAt]) => completed && paidAt)
             .map(([assignee, , , paidAt]) => ({
@@ -353,7 +366,8 @@ export const formatKpi = (cell: KpiCell, format: KpiFormat): string => {
   if (format === 'percent') {
     return cell.den ? `${(cell.value * 100).toFixed(1)}%` : '-'
   }
-  if (format === 'won') return `${Math.round(cell.value).toLocaleString('ko-KR')}원`
+  if (format === 'won')
+    return `${Math.round(cell.value).toLocaleString('ko-KR')}원`
   return cell.value.toLocaleString('ko-KR')
 }
 

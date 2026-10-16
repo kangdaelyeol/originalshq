@@ -12,7 +12,8 @@ const SideListSortField = {
 
 // ''는 "아직 정렬 버튼을 안 눌렀다"는 뜻 — leads가 이미 메인 표의 정렬이
 // 적용된 순서라, 굳이 기본값으로 한 컬럼을 골라 다시 정렬하지 않는다.
-type SideListSortField = (typeof SideListSortField)[keyof typeof SideListSortField] | ''
+type SideListSortField =
+  (typeof SideListSortField)[keyof typeof SideListSortField] | ''
 
 const FOCUSABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 

@@ -38,6 +38,64 @@ $stats-bar: variables.$color-accent;
     }
   }
 
+  // 켜고 끄는 단추 — 작은 스위치 + 이름.
+  .stats_toggle {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 34px;
+    padding: 0 12px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    color: variables.$color-text-muted;
+    font-size: 12.5px;
+    white-space: nowrap;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$color-text;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+
+    .stats_toggle_switch {
+      position: relative;
+      width: 26px;
+      height: 14px;
+      border-radius: 7px;
+      background-color: variables.$color-surface-raised;
+      transition: background-color 0.15s;
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: variables.$color-text-muted;
+        transition: transform 0.15s;
+      }
+    }
+
+    &.on {
+      color: variables.$color-text;
+
+      .stats_toggle_switch {
+        background-color: variables.$color-accent;
+
+        &::after {
+          transform: translateX(12px);
+          background-color: #fff;
+        }
+      }
+    }
+  }
+
   .stats_scope_label {
     margin-left: 14px;
   }

@@ -63,7 +63,9 @@ export const leadClient = {
       }
     }
   },
-  create: async (body: Record<string, unknown>): Promise<ClientResponse<Lead>> => {
+  create: async (
+    body: Record<string, unknown>,
+  ): Promise<ClientResponse<Lead>> => {
     try {
       const response = await fetch(`${API_BASE}/createLead`, {
         method: 'POST',
@@ -98,10 +100,8 @@ export const leadClient = {
     post('updateLeadRemarks', body),
   updateTrackingField: (body: Record<string, unknown>) =>
     post('updateLeadTrackingField', body),
-  updateIntake: (body: Record<string, unknown>) =>
-    post('updateIntake', body),
-  deleteIntake: (body: Record<string, unknown>) =>
-    post('deleteIntake', body),
+  updateIntake: (body: Record<string, unknown>) => post('updateIntake', body),
+  deleteIntake: (body: Record<string, unknown>) => post('deleteIntake', body),
   registerConsultation: (body: Record<string, unknown>) =>
     post('contactLead', body),
   resendConsultation: (body: Record<string, unknown>) =>

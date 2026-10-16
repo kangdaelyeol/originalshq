@@ -1,4 +1,5 @@
-export type ToastType = 'registered' | 'deleted' | 'updated' | 'error' | 'partial'
+export type ToastType =
+  'registered' | 'deleted' | 'updated' | 'error' | 'partial'
 
 interface ToasterMessageProps {
   type: ToastType

@@ -18,11 +18,7 @@ export function ResendPanel({
   return (
     <div className="resend_panel" onClick={(e) => e.stopPropagation()}>
       <label className="toggle">
-        <input
-          type="checkbox"
-          checked={isTest}
-          onChange={toggleTest}
-        />
+        <input type="checkbox" checked={isTest} onChange={toggleTest} />
         <span>테스트 이벤트로 전송</span>
       </label>
       {isTest && (

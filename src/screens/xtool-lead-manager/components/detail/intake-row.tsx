@@ -1,7 +1,4 @@
-import {
-  Device,
-  type IntakeRecord,
-} from '@/screens/xtool-lead-manager/entity'
+import { Device, type IntakeRecord } from '@/screens/xtool-lead-manager/entity'
 import { formatTime } from '@/screens/xtool-lead-manager/utils'
 import { useIntakeRowViewModel } from '@/screens/xtool-lead-manager/view-model/detail'
 import { DeleteIcon, EditIcon } from './icons'

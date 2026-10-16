@@ -97,11 +97,7 @@ export const filterMondayCustomers = (
 }
 
 export type MondaySort =
-  | 'updated'
-  | 'records'
-  | 'purchase'
-  | 'amount'
-  | 'consultation'
+  'updated' | 'records' | 'purchase' | 'amount' | 'consultation'
 
 export const MONDAY_SORT_LABEL: Record<MondaySort, string> = {
   updated: '최근 수정순',

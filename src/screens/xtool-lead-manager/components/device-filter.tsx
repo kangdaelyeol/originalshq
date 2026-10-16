@@ -24,9 +24,7 @@ export const DeviceFilter = ({
   useOutsideClick(wrapRef, () => setOpen(false))
 
   const triggerLabel =
-    selectedDevices.size === 0
-      ? '전체 기기'
-      : `${selectedDevices.size}개 기기`
+    selectedDevices.size === 0 ? '전체 기기' : `${selectedDevices.size}개 기기`
 
   return (
     <div className="device_filter" ref={wrapRef}>

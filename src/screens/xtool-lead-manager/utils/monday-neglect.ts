@@ -66,6 +66,11 @@ export const neglectByAssignee = (
     .sort((a, b) => b.neglected - a.neglected || b.open - a.open)
 }
 
+/** 지금 일하는 담당자가 아닌 이름 — Monday가 탈퇴한 사람을 부르는 "삭제된
+ * 팀원"과, 담당자 칸이 빈 기록. 방치·개인 KPI 표에서 기본으로 숨긴다. */
+export const isInactiveAssignee = (assignee: string): boolean =>
+  assignee === '' || assignee === '(담당자 없음)' || assignee === '삭제된 팀원'
+
 /** 한국 시간 기준 오늘(YYYY-MM-DD). */
 export const todayInKorea = (): string =>
   new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)
