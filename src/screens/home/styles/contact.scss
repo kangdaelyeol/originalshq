@@ -89,33 +89,57 @@
   height: 100%;
   min-height: 400px;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   position: relative;
   overflow: hidden;
 }
 
-.map-placeholder {
-  text-align: center;
-  padding: 40px;
+// 지도 — 밝은 기본 지도를 반전·흑백 처리해 검은 화면에 맞춘다.
+.map-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 300px;
+  border: 0;
+  filter: invert(0.92) hue-rotate(180deg) grayscale(1) contrast(0.9);
 }
 
-.map-placeholder i {
-  font-size: 64px;
-  color: variables.$primary-color;
-  margin-bottom: 20px;
+.map-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+
+  p {
+    font-size: 15px;
+    font-weight: 600;
+    color: variables.$text-primary;
+    margin-bottom: 4px;
+  }
+
+  span {
+    font-size: 13px;
+    color: variables.$text-secondary;
+  }
 }
 
-.map-placeholder p {
-  font-size: 20px;
+.map-link {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50px;
+  font-size: 13px;
   font-weight: 600;
   color: variables.$text-primary;
-  margin-bottom: 8px;
-}
+  text-decoration: none;
+  transition: variables.$transition-smooth;
 
-.map-placeholder span {
-  font-size: 16px;
-  color: variables.$text-secondary;
+  &:hover,
+  &:focus-visible {
+    background: #ffffff;
+    color: #000000;
+  }
 }
 
 // 휴대폰 — 두 칸(정보 / 지도)의 최소 폭이 400px이라 화면보다 넓어져 오른쪽이
@@ -125,5 +149,14 @@
   .contact-grid {
     grid-template-columns: 1fr;
     gap: 32px;
+  }
+
+  .contact-map {
+    min-height: 0;
+  }
+
+  .map-caption {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

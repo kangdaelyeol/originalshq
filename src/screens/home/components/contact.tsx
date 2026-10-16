@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react'
 import { useRevealContext } from '@/context/reveal-context'
 import '@/screens/home/styles/contact.scss'
 
+/** 지도에서 찾을 주소 — 건물 이름보다 도로명 주소가 정확히 찍힌다. */
+const MAP_QUERY = '제주특별자치도 서귀포시 서호중앙로 55'
+
 export const Contact = () => {
   const card1Ref = useRef<HTMLDivElement>(null)
   const card2Ref = useRef<HTMLDivElement>(null)
@@ -90,11 +93,30 @@ export const Contact = () => {
             </div>
           </div>
 
+          {/* 실제 지도 — 구글 지도의 퍼가기 주소는 API 키 없이 쓸 수 있다.
+              어두운 화면에 맞춰 색을 반전해 보여주고, 길찾기는 국내에서 많이
+              쓰는 네이버 지도로 연다. */}
           <div className="contact-map reveal delay-1" ref={card2Ref}>
-            <div className="map-placeholder">
-              <i className="fas fa-map-marked-alt"></i>
-              <p>제주특별자치도 서귀포시</p>
-              <span>유포리아 지식산업센터</span>
+            <iframe
+              className="map-frame"
+              title="주식회사 오리지널스 위치 지도"
+              src={`https://www.google.com/maps?q=${encodeURIComponent(MAP_QUERY)}&output=embed&hl=ko`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <div className="map-caption">
+              <div>
+                <p>유포리아 지식산업센터 비동 721호</p>
+                <span>제주특별자치도 서귀포시 서호중앙로 55</span>
+              </div>
+              <a
+                className="map-link"
+                href={`https://map.naver.com/p/search/${encodeURIComponent(MAP_QUERY)}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                지도에서 열기
+              </a>
             </div>
           </div>
         </div>

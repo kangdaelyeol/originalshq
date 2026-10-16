@@ -16,7 +16,9 @@ export const Footer = () => {
             <div className="right-top">
               <Link to={'/privacy'}>개인정보처리방침</Link>
               <div className="divider" />
-              <Link to={'/privacy'}>이용약관</Link>
+              {/* 회사 공통 약관은 따로 없어서, 지금 서비스 중인 Parke의 이용약관으로
+                  바로 연결한다. 방침·약관 전체 목록은 왼쪽 링크(/privacy). */}
+              <Link to={'/privacy/parke/terms'}>이용약관</Link>
             </div>
 
             <div className="footer-links">
@@ -57,7 +59,11 @@ export const Footer = () => {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; 2024 Originals Inc. All rights reserved.</p>
+          {/* 연도를 손으로 고치지 않아도 되게 현재 연도를 쓴다. */}
+          <p>
+            &copy; {new Date().getFullYear()} Originals Inc. All rights
+            reserved.
+          </p>
           <p>
             Inspired by Adam Grant's "Originals" - Creating unprecedented
             innovations

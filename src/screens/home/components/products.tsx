@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { useRevealContext } from '@/context/reveal-context'
 import '@/screens/home/styles/products.scss'
 
@@ -33,37 +34,47 @@ export const Products = () => {
 
         <div className="products-grid">
           <div className="product-card featured reveal" ref={card1Ref}>
+            {/* 판매 전 사전 예약 단계라 "출시 완료"가 아니라 "사전 예약 중". */}
             <div className="product-badge">
               <i className="fas fa-check-circle"></i>
-              <span>출시 완료</span>
+              <span>사전 예약 중</span>
             </div>
 
             <div className="product-icon">
               <i className="fas fa-qrcode"></i>
             </div>
 
+            {/* 문구는 Parke 제품 페이지(/parke)와 같은 내용으로 맞췄다 — 운전자를
+                인식해 연락 대상을 바꾸는 것이 핵심이고, 안심번호(번호 가림)는
+                제공하지 않으므로 "개인정보 보호"는 넣지 않는다. */}
             <div className="product-content">
-              <h3 className="product-title">QR 자동전환형 차량 전화번호판</h3>
+              <h3 className="product-title">파르케 · 운전자 인식 주차번호판</h3>
               <p className="product-description">
-                기존 종이·플라스틱 전화번호판의 불편함을 QR코드 자동전환
-                방식으로 완전히 혁신했습니다. 차량 대시보드 위에 올려두는
-                스마트한 솔루션으로, 첫 번째 출시 제품입니다.
+                등록된 운전자를 블루투스로 인식해, 지금 차를 운전하는 사람에게
+                주차 연락이 가도록 연락 대상을 자동으로 바꿉니다. 대시보드에
+                올려두는 QR 하나로, 차를 함께 쓰는 가족 누구나 바로 연락받을 수
+                있습니다.
               </p>
 
               <div className="product-features">
                 <div className="feature-item">
                   <i className="fas fa-mobile-alt"></i>
-                  <span>QR 스캔으로 즉시 연락</span>
+                  <span>QR 스캔으로 바로 연락</span>
                 </div>
                 <div className="feature-item">
-                  <i className="fas fa-shield-alt"></i>
-                  <span>개인정보 보호</span>
+                  <i className="fab fa-bluetooth-b"></i>
+                  <span>운전자 자동 인식</span>
                 </div>
                 <div className="feature-item">
                   <i className="fas fa-sync-alt"></i>
-                  <span>번호 자동 전환</span>
+                  <span>연락 대상 자동 전환</span>
                 </div>
               </div>
+
+              <Link className="product-link" to="/parke">
+                파르케 자세히 보기
+                <i className="fas fa-arrow-right"></i>
+              </Link>
             </div>
           </div>
 
