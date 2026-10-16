@@ -1,43 +1,74 @@
-.privacy-container {
-  margin-top: 100px;
+@use '../home/styles/variables.scss' as variables;
+
+// 개인정보 관련 페이지 — 홈페이지와 같은 검은 배경·흰 글자 톤.
+// (예전에는 정의된 적 없는 CSS 변수(--text-secondary 등)를 참조해 브라우저
+// 기본색인 흰 배경·검은 글자로 나오고 있었다.)
+.privacy-wrap {
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .privacy-wrap {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+.privacy-main {
+  // 머리글(fixed, 70px) 아래에서 시작한다.
+  padding-top: 70px;
+  min-height: calc(100vh - 240px);
+  color: variables.$text-primary;
 }
 
 .privacy-wrapper {
   max-width: 1000px;
   width: 100%;
   margin: auto;
-  padding: 50px 30px;
+  padding: 50px 0 80px;
 }
 
 .privacy-title {
   font-weight: 600;
-  font-size: 20px;
+  font-size: 24px;
 }
 
 .privacy-items {
   display: flex;
-  margin-top: 40px;
+  margin-top: 32px;
   flex-direction: column;
   gap: 20px;
+
   .privacy-item {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(0, 0, 0, 0.21);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 20px;
-    padding: 20px;
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    max-width: 350px;
+    max-width: 380px;
+
     .item-top {
       display: flex;
-    }
-    .item-box {
-      border-radius: 20px;
-      overflow: hidden;
-      width: 80px;
-      height: 80px;
-      display: flex;
-      justify-content: center;
       align-items: center;
+    }
+
+    // 앱 아이콘 — 원본(1024px)이 상자보다 커서 일부만 보이던 것을, 상자에
+    // 꽉 맞게 줄인다.
+    .item-box {
+      flex-shrink: 0;
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+
+      img {
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
     }
   }
 }
@@ -46,44 +77,47 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-left: 20px;
+  margin-left: 18px;
+
   .desc-title {
-    margin-top: 5px;
     font-weight: 600;
     font-size: 20px;
   }
+
   .desc-subtitle {
-    color: var(--text-secondary);
+    color: variables.$text-muted;
     font-size: 13px;
-    opacity: 0.5;
   }
 }
 
 .privacy-box {
   display: flex;
   flex-direction: column;
-
-  // align-items: center;
-  gap: 15px;
   margin-top: 20px;
   font-size: 15px;
+
   .privacy-term {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    cursor: pointer;
-    color: var(--text-secondary);
-    opacity: 0.6;
-    transition: all 0.2s linear;
-    &:hover {
-      color: var(--text-white);
-      opacity: 0.9;
+    padding: 14px 0;
+    color: variables.$text-secondary;
+    text-decoration: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    transition: color 0.2s linear;
+
+    &:hover,
+    &:focus-visible {
+      color: variables.$text-primary;
     }
   }
-  .divider {
-    width: 100%;
-    height: 1px;
-    background-color: var(--text-secondary);
-    opacity: 0.2;
+}
+
+@media (max-width: 768px) {
+  .privacy-wrapper {
+    padding-top: 30px;
+  }
+  .privacy-items .privacy-item {
+    max-width: none;
   }
 }

@@ -6,6 +6,7 @@ import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
 import ParkeScreen from '@/screens/parke'
 import PrivacyScreen from '@/screens/privacy'
+import PrivacyDocScreen from '@/screens/privacy/doc'
 import XtoolLeadManager from '@/screens/xtool-lead-manager'
 
 export const router = createBrowserRouter([
@@ -15,6 +16,8 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomeScreen /> },
       { path: 'privacy', element: <PrivacyScreen /> },
+      // 문서별 고정 주소 — 예: /privacy/parke/privacy (구글 개발자 콘솔 등록용)
+      { path: 'privacy/:appName/:docType', element: <PrivacyDocScreen /> },
     ],
   },
   {

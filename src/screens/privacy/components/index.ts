@@ -1,2 +1,2 @@
 export * from './arrow'
-export * from './privacy-modal'
+export * from './privacy-layout'
