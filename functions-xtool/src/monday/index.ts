@@ -4,6 +4,7 @@ export {
   getDailyInflow,
   getDailySales,
   getFollowUps,
+  getKpiFacts,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,

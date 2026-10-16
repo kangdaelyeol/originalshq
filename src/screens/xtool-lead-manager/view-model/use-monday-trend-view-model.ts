@@ -4,10 +4,14 @@ import type {
   MondayDailyInflow,
   MondayDailySale,
   MondayFollowUp,
+  MondayKpiFacts,
 } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
+  computeKpis,
+  defaultKpiRange,
+  firstKpiDate,
   inflowSeries,
   neglectByAssignee,
   salesAsDays,
@@ -17,6 +21,8 @@ import {
   todayInKorea,
   type InflowSortKey,
   type InflowUnit,
+  type KpiRange,
+  type KpiUnit,
   type PurchaseScope,
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
@@ -31,12 +37,13 @@ const defaultRange = (): { start: string; end: string } => {
 }
 
 /** 통계 탭의 소주제. */
-export type TrendSection = 'inflow' | 'sales' | 'neglect'
+export type TrendSection = 'inflow' | 'sales' | 'neglect' | 'kpi'
 
 export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
   inflow: '인입통계',
   sales: '판매통계',
   neglect: '방치 현황',
+  kpi: '개인 KPI',
 }
 
 /** 통계 탭의 상태 — 소주제 둘(인입통계 / 판매통계)의 원본 데이터(한 번 받아
@@ -49,6 +56,20 @@ export const useMondayTrendViewModel = (active: boolean) => {
   )
   const [salesRows, setSalesRows] = useState<MondayDailySale[]>([])
   const [followUps, setFollowUps] = useState<MondayFollowUp[]>([])
+  const [kpiFacts, setKpiFacts] = useState<MondayKpiFacts>({
+    consultations: [],
+    visits: [],
+    sales: [],
+  })
+  // 개인 KPI — 단위와, 단위마다 따로 기억하는 기간.
+  const [kpiUnit, setKpiUnit] = useState<KpiUnit>('month')
+  const [kpiRanges, setKpiRanges] = useState<Record<KpiUnit, KpiRange>>(
+    () => ({
+      day: defaultKpiRange('day'),
+      week: defaultKpiRange('week'),
+      month: defaultKpiRange('month'),
+    }),
+  )
   // 방치 현황에서 펼쳐 둔 담당자들 — "종류:담당자" 문자열.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [section, setSection] = useState<TrendSection>('inflow')
@@ -67,19 +88,21 @@ export const useMondayTrendViewModel = (active: boolean) => {
 
   const load = useCallback(async () => {
     setStatus('loading')
-    const [res, salesRes, followUpsRes] = await Promise.all([
+    const [res, salesRes, followUpsRes, kpiRes] = await Promise.all([
       mondayClient.getDailyInflow(),
       mondayClient.getDailySales(),
       mondayClient.getFollowUps(),
+      mondayClient.getKpiFacts(),
     ])
-    if (!res.ok || !salesRes.ok || !followUpsRes.ok) {
-      console.error('통계 실패:', res, salesRes, followUpsRes)
+    if (!res.ok || !salesRes.ok || !followUpsRes.ok || !kpiRes.ok) {
+      console.error('통계 실패:', res, salesRes, followUpsRes, kpiRes)
       setStatus('error')
       return
     }
     setDays(res.data.days)
     setSalesRows(salesRes.data.rows)
     setFollowUps(followUpsRes.data.followUps)
+    setKpiFacts(kpiRes.data)
     setSyncedAt(res.data.syncedAt)
     setStatus('ready')
   }, [])
@@ -170,6 +193,28 @@ export const useMondayTrendViewModel = (active: boolean) => {
     }
   }, [followUps])
 
+  // ── 개인 KPI ────────────────────────────────────────────────────────
+  const kpiRange = kpiRanges[kpiUnit]
+  const kpi = useMemo(
+    () => computeKpis(kpiFacts, kpiUnit, kpiRange),
+    [kpiFacts, kpiUnit, kpiRange],
+  )
+  const kpiFirstDate = useMemo(() => firstKpiDate(kpiFacts), [kpiFacts])
+
+  /** 지금 단위의 기간을 바꾼다 — 시작이 끝보다 늦으면 둘을 맞춘다. */
+  const changeKpiRange = useCallback(
+    (next: Partial<KpiRange>) =>
+      setKpiRanges((prev) => {
+        const merged = { ...prev[kpiUnit], ...next }
+        if (merged.from > merged.to) {
+          if (next.from) merged.to = merged.from
+          else merged.from = merged.to
+        }
+        return { ...prev, [kpiUnit]: merged }
+      }),
+    [kpiUnit],
+  )
+
   const toggleExpanded = useCallback((key: string) => {
     setExpanded((prev) => {
       const next = new Set(prev)
@@ -198,6 +243,12 @@ export const useMondayTrendViewModel = (active: boolean) => {
       syncedAt,
       section,
       neglect: { ...neglect, expanded },
+      kpi: {
+        unit: kpiUnit,
+        range: kpiRange,
+        firstDate: kpiFirstDate,
+        ...kpi,
+      },
       sales: {
         scope: salesScope,
         summary: salesSummary,
@@ -219,6 +270,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
       changeSalesScope: setSalesScope,
       toggleSalesSort,
       toggleExpanded,
+      changeKpiUnit: setKpiUnit,
+      changeKpiRange,
     },
   }
 }

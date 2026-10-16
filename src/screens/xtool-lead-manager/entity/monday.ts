@@ -282,3 +282,14 @@ export interface MondayFollowUp {
   /** 다음 연락 기한 — 보류 종료일 > 상담 마감일 > 마지막 연락일 + 7일. */
   dueAt: string | null
 }
+
+/** 개인 KPI의 재료 — 서버(functions-xtool/src/monday/kpi.ts)가 기록마다 짧은
+ * 배열로 뽑아 둔 것. 날짜는 YYYY-MM-DD(한국 시간), 없으면 ''. */
+export interface MondayKpiFacts {
+  /** 상담(오기입 제외): [주 담당자, 접수일, 방문체험 확정일, 결제일] */
+  consultations: [string, string, string, string][]
+  /** 방문체험: [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
+  visits: [string, string, number, string][]
+  /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
+  sales: [string, string, number, string][]
+}

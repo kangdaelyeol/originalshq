@@ -5,6 +5,7 @@ import type {
   MondayDailyInflow,
   MondayDailySale,
   MondayFollowUp,
+  MondayKpiFacts,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '../entity'
@@ -72,5 +73,11 @@ export const mondayClient = {
     get<{ followUps: MondayFollowUp[]; syncedAt: number | null }>(
       'getMondayFollowUps',
       '방치 현황을 불러오지 못했습니다',
+    ),
+  /** 개인 KPI 재료 — 통계 탭의 개인 KPI가 쓴다. */
+  getKpiFacts: () =>
+    get<MondayKpiFacts & { syncedAt: number | null }>(
+      'getMondayKpiFacts',
+      '개인 KPI를 불러오지 못했습니다',
     ),
 }

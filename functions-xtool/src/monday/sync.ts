@@ -13,10 +13,12 @@ import {
   saveDailyInflow,
   saveDailySales,
   saveFollowUps,
+  saveKpiFacts,
   updateBoard,
 } from './firestore'
 import { buildMondayItems, detectPhoneColumnId } from './helper'
 import { buildFollowUps } from './followups'
+import { buildKpiFacts } from './kpi'
 import { buildDailySales } from './purchases'
 import {
   MondayBoard,
@@ -164,6 +166,8 @@ export async function rebuildCustomers(
   )
   // 진행 중인 상담·방문체험(방치 현황).
   await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
+  // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).
+  await saveKpiFacts(db, buildKpiFacts(items, kindByBoardId))
   return { customerCount: customers.length, ...counts, ...written }
 }
 

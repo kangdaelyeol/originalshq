@@ -22,6 +22,7 @@ import {
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
+import { KpiControls, KpiSection } from './kpi-section'
 import { NeglectSection } from './neglect-section'
 import { SalesSection } from './sales-section'
 
@@ -51,6 +52,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     section,
     sales,
     neglect,
+    kpi,
   } = state
   const {
     changeRange,
@@ -61,6 +63,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     changeSalesScope,
     toggleSalesSort,
     toggleExpanded,
+    changeKpiUnit,
+    changeKpiRange,
   } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
 
@@ -107,8 +111,16 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               ),
             )}
           </div>
+          {/* 개인 KPI는 단위마다 기간을 따로 고른다. */}
+          {section === 'kpi' && (
+            <KpiControls
+              kpi={kpi}
+              onUnit={changeKpiUnit}
+              onRange={changeKpiRange}
+            />
+          )}
           {/* 방치 현황은 기간과 무관한 오늘 기준이라 기간·단위를 숨긴다. */}
-          {section !== 'neglect' && (
+          {section !== 'neglect' && section !== 'kpi' && (
             <DateRangePicker
               dateStart={range.start}
               dateEnd={range.end}
@@ -117,7 +129,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
           )}
           {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
               선택이 더 붙는다. */}
-          {section !== 'neglect' && (
+          {section !== 'neglect' && section !== 'kpi' && (
             <div className="stats_scope" role="tablist" aria-label="묶는 단위">
               {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
                 <button
@@ -163,6 +175,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                 다시 시도
               </button>
             </div>
+          ) : section === 'kpi' ? (
+            <KpiSection kpi={kpi} />
           ) : section === 'neglect' ? (
             <NeglectSection neglect={neglect} onToggle={toggleExpanded} />
           ) : section === 'sales' ? (

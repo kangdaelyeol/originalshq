@@ -8,6 +8,7 @@ import {
   MondayDailyInflow,
   MondayDailySale,
   MondayFollowUp,
+  MondayKpiFacts,
   MondayItem,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
@@ -288,4 +289,43 @@ export async function getFollowUps(
   const data = doc.data() as
     { followUps: MondayFollowUp[]; syncedAt: number } | undefined
   return { followUps: data?.followUps ?? [], syncedAt: data?.syncedAt ?? null }
+}
+
+const KPI_FACTS_DOC = 'kpiFacts'
+
+/** 개인 KPI 재료를 문서 하나에 저장한다(짧은 배열이라 수백 KB). */
+export async function saveKpiFacts(
+  db: Firestore,
+  facts: MondayKpiFacts,
+): Promise<void> {
+  // Firestore는 배열 안의 배열을 저장하지 못한다 — 한 줄씩 JSON 문자열로 바꿔
+  // 넣고 읽을 때 되돌린다.
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(KPI_FACTS_DOC)
+    .set({
+      consultations: facts.consultations.map((row) => JSON.stringify(row)),
+      visits: facts.visits.map((row) => JSON.stringify(row)),
+      sales: facts.sales.map((row) => JSON.stringify(row)),
+      syncedAt: Date.now(),
+    })
+}
+
+export async function getKpiFacts(
+  db: Firestore,
+): Promise<MondayKpiFacts & { syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(KPI_FACTS_DOC).get()
+  const data = doc.data() as
+    | (Record<'consultations' | 'visits' | 'sales', string[]> & {
+        syncedAt: number
+      })
+    | undefined
+  const parse = <T>(rows: string[] | undefined): T[] =>
+    (rows ?? []).map((row) => JSON.parse(row) as T)
+  return {
+    consultations: parse(data?.consultations),
+    visits: parse(data?.visits),
+    sales: parse(data?.sales),
+    syncedAt: data?.syncedAt ?? null,
+  }
 }

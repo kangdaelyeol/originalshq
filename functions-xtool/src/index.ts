@@ -15,6 +15,7 @@ import {
   getDailyInflow,
   getDailySales,
   getFollowUps,
+  getKpiFacts,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -1732,6 +1733,28 @@ export const getMondayFollowUps = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// getMondayKpiFacts — 개인 KPI 재료(통계 탭). 기간·담당자별 집계는 화면이 한다.
+// ────────────────────────────────
+export const getMondayKpiFacts = onRequest(
+  { memory: '512MiB' },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'GET') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        response.status(200).send(await getKpiFacts(db))
+      } catch (error) {
+        logger.error('getMondayKpiFacts 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
 
 // ────────────────────────────────
 // syncMondayBoardsScheduled — 하루 두 번(07:00, 19:00 KST) 전체 동기화.

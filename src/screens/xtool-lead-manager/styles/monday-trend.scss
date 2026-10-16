@@ -485,3 +485,39 @@ $trend-y-axis-width: 44px;
     }
   }
 }
+
+// ── 개인 KPI ──────────────────────────────────────────────────────────
+.xtool-main.monday_trend {
+  .kpi_head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  // 조회 기간 전체·전 담당자 값 — 카드 오른쪽 위에 크게.
+  .kpi_total {
+    font-size: 22px;
+    font-weight: 700;
+    color: variables.$color-text;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .kpi_empty {
+    margin: 0;
+    font-size: 13px;
+    color: variables.$color-text-muted;
+  }
+
+  .kpi_table {
+    td,
+    th {
+      white-space: nowrap;
+    }
+    .kpi_total_col {
+      font-weight: 600;
+      box-shadow: inset 1px 0 0 variables.$color-border;
+    }
+  }
+}
