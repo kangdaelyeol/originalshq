@@ -12,9 +12,11 @@ import {
   saveBoard,
   saveDailyInflow,
   saveDailySales,
+  saveFollowUps,
   updateBoard,
 } from './firestore'
 import { buildMondayItems, detectPhoneColumnId } from './helper'
+import { buildFollowUps } from './followups'
 import { buildDailySales } from './purchases'
 import {
   MondayBoard,
@@ -160,6 +162,8 @@ export async function rebuildCustomers(
       orders,
     ),
   )
+  // 진행 중인 상담·방문체험(방치 현황).
+  await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
   return { customerCount: customers.length, ...counts, ...written }
 }
 

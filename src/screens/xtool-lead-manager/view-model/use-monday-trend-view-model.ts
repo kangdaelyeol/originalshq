@@ -3,15 +3,18 @@ import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import type {
   MondayDailyInflow,
   MondayDailySale,
+  MondayFollowUp,
 } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
   inflowSeries,
+  neglectByAssignee,
   salesAsDays,
   sortInflowRows,
   summarizeInflow,
   summarizeSales,
+  todayInKorea,
   type InflowSortKey,
   type InflowUnit,
   type PurchaseScope,
@@ -28,11 +31,12 @@ const defaultRange = (): { start: string; end: string } => {
 }
 
 /** 통계 탭의 소주제. */
-export type TrendSection = 'inflow' | 'sales'
+export type TrendSection = 'inflow' | 'sales' | 'neglect'
 
 export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
   inflow: '인입통계',
   sales: '판매통계',
+  neglect: '방치 현황',
 }
 
 /** 통계 탭의 상태 — 소주제 둘(인입통계 / 판매통계)의 원본 데이터(한 번 받아
@@ -44,6 +48,9 @@ export const useMondayTrendViewModel = (active: boolean) => {
     'idle',
   )
   const [salesRows, setSalesRows] = useState<MondayDailySale[]>([])
+  const [followUps, setFollowUps] = useState<MondayFollowUp[]>([])
+  // 방치 현황에서 펼쳐 둔 담당자들 — "종류:담당자" 문자열.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [section, setSection] = useState<TrendSection>('inflow')
   // 기간은 두 소주제가 같이 쓴다 — 오가며 같은 기간을 비교하기 쉽게.
   const [range, setRange] = useState(defaultRange)
@@ -60,20 +67,19 @@ export const useMondayTrendViewModel = (active: boolean) => {
 
   const load = useCallback(async () => {
     setStatus('loading')
-    const [res, salesRes] = await Promise.all([
+    const [res, salesRes, followUpsRes] = await Promise.all([
       mondayClient.getDailyInflow(),
       mondayClient.getDailySales(),
+      mondayClient.getFollowUps(),
     ])
-    if (!res.ok || !salesRes.ok) {
-      console.error(
-        '통계 실패:',
-        !res.ok ? res.error : !salesRes.ok ? salesRes.error : '',
-      )
+    if (!res.ok || !salesRes.ok || !followUpsRes.ok) {
+      console.error('통계 실패:', res, salesRes, followUpsRes)
       setStatus('error')
       return
     }
     setDays(res.data.days)
     setSalesRows(salesRes.data.rows)
+    setFollowUps(followUpsRes.data.followUps)
     setSyncedAt(res.data.syncedAt)
     setStatus('ready')
   }, [])
@@ -153,6 +159,26 @@ export const useMondayTrendViewModel = (active: boolean) => {
     [salesSortKey],
   )
 
+  // ── 방치 현황 ───────────────────────────────────────────────────────
+  // 기간과 무관한 "지금" 현황이다 — 오늘 기준으로 기한이 지난 것을 센다.
+  const neglect = useMemo(() => {
+    const today = todayInKorea()
+    return {
+      today,
+      callback: neglectByAssignee(followUps, 'callback', today),
+      visit: neglectByAssignee(followUps, 'visit', today),
+    }
+  }, [followUps])
+
+  const toggleExpanded = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }, [])
+
   // 전체 기간을 한 번에 받아 두었으므로 기간을 바꿔도 다시 받지 않는다.
   const changeRange = useCallback(
     (start: string, end: string) => setRange({ start, end }),
@@ -171,6 +197,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       sortDirection,
       syncedAt,
       section,
+      neglect: { ...neglect, expanded },
       sales: {
         scope: salesScope,
         summary: salesSummary,
@@ -191,6 +218,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       changeSection: setSection,
       changeSalesScope: setSalesScope,
       toggleSalesSort,
+      toggleExpanded,
     },
   }
 }

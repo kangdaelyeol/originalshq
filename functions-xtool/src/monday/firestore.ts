@@ -7,6 +7,7 @@ import {
   MondayCustomerRebuildResult,
   MondayDailyInflow,
   MondayDailySale,
+  MondayFollowUp,
   MondayItem,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
@@ -264,4 +265,27 @@ export async function getDailySales(
   const data = doc.data() as
     { rows: MondayDailySale[]; syncedAt: number } | undefined
   return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
+}
+
+const FOLLOW_UPS_DOC = 'followUps'
+
+/** 진행 중인 상담·방문체험 기록 전체를 문서 하나에 저장한다(천오백 건 남짓,
+ * 수백 KB). */
+export async function saveFollowUps(
+  db: Firestore,
+  followUps: MondayFollowUp[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(FOLLOW_UPS_DOC)
+    .set({ followUps, syncedAt: Date.now() })
+}
+
+export async function getFollowUps(
+  db: Firestore,
+): Promise<{ followUps: MondayFollowUp[]; syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(FOLLOW_UPS_DOC).get()
+  const data = doc.data() as
+    { followUps: MondayFollowUp[]; syncedAt: number } | undefined
+  return { followUps: data?.followUps ?? [], syncedAt: data?.syncedAt ?? null }
 }

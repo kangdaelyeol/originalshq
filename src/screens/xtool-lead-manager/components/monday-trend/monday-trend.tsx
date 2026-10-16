@@ -22,6 +22,7 @@ import {
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
+import { NeglectSection } from './neglect-section'
 import { SalesSection } from './sales-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel>
@@ -49,6 +50,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     sortDirection,
     section,
     sales,
+    neglect,
   } = state
   const {
     changeRange,
@@ -58,6 +60,7 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
     changeSection,
     changeSalesScope,
     toggleSalesSort,
+    toggleExpanded,
   } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
 
@@ -104,27 +107,32 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
               ),
             )}
           </div>
-          <DateRangePicker
-            dateStart={range.start}
-            dateEnd={range.end}
-            onChange={changeRange}
-          />
+          {/* 방치 현황은 기간과 무관한 오늘 기준이라 기간·단위를 숨긴다. */}
+          {section !== 'neglect' && (
+            <DateRangePicker
+              dateStart={range.start}
+              dateEnd={range.end}
+              onChange={changeRange}
+            />
+          )}
           {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
               선택이 더 붙는다. */}
-          <div className="stats_scope" role="tablist" aria-label="묶는 단위">
-            {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
-              <button
-                key={each}
-                type="button"
-                role="tab"
-                aria-selected={each === unit}
-                className={each === unit ? 'active' : ''}
-                onClick={() => changeUnit(each)}
-              >
-                {INFLOW_UNIT_LABEL[each]}
-              </button>
-            ))}
-          </div>
+          {section !== 'neglect' && (
+            <div className="stats_scope" role="tablist" aria-label="묶는 단위">
+              {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
+                <button
+                  key={each}
+                  type="button"
+                  role="tab"
+                  aria-selected={each === unit}
+                  className={each === unit ? 'active' : ''}
+                  onClick={() => changeUnit(each)}
+                >
+                  {INFLOW_UNIT_LABEL[each]}
+                </button>
+              ))}
+            </div>
+          )}
           {section === 'sales' && (
             <div className="stats_scope" role="tablist" aria-label="판매 채널">
               {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
@@ -155,6 +163,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                 다시 시도
               </button>
             </div>
+          ) : section === 'neglect' ? (
+            <NeglectSection neglect={neglect} onToggle={toggleExpanded} />
           ) : section === 'sales' ? (
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (

@@ -4,6 +4,7 @@ import type {
   MondayCustomerListItem,
   MondayDailyInflow,
   MondayDailySale,
+  MondayFollowUp,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '../entity'
@@ -65,5 +66,11 @@ export const mondayClient = {
     get<{ rows: MondayDailySale[]; syncedAt: number | null }>(
       'getMondayDailySales',
       '판매 통계를 불러오지 못했습니다',
+    ),
+  /** 진행 중인 상담·방문체험 기록 전체 — 통계 탭의 방치 현황이 쓴다. */
+  getFollowUps: () =>
+    get<{ followUps: MondayFollowUp[]; syncedAt: number | null }>(
+      'getMondayFollowUps',
+      '방치 현황을 불러오지 못했습니다',
     ),
 }

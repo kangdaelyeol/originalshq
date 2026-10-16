@@ -258,3 +258,27 @@ export interface MondayDailySale {
   quantity: number
   amount: number
 }
+
+/** 아직 끝나지 않은 상담·방문체험 기록 하나 — 통계 탭의 "방치 현황". dueAt이
+ * 오늘보다 지났으면 방치다. */
+export interface MondayFollowUp {
+  /** callback은 상담 보드, visit은 방문체험 보드의 기록. */
+  kind: 'callback' | 'visit'
+  itemId: string
+  boardName: string
+  name: string
+  url: string | null
+  /** 주 담당자 — 담당자 칸의 첫 사람. */
+  assignee: string | null
+  status: string | null
+  /** 방문체험의 체험 상태(일정 연기, 체험 취소, 방문 대기). */
+  visitStatus: string | null
+  /** Monday 보드의 그룹 이름. */
+  group: string | null
+  /** 보류 중인지(보류 상태이거나 "보류" 그룹) — 방치가 아니라 보류로 센다. */
+  onHold: boolean
+  /** 마지막 연락일. */
+  lastTouchAt: string | null
+  /** 다음 연락 기한 — 보류 종료일 > 상담 마감일 > 마지막 연락일 + 7일. */
+  dueAt: string | null
+}

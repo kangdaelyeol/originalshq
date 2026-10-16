@@ -388,3 +388,100 @@ $trend-y-axis-width: 44px;
     }
   }
 }
+
+// ── 방치 현황 ───────────────────────────────────────────────────────────
+.xtool-main.monday_trend {
+  .neglect_total {
+    margin-left: 6px;
+    color: #d29922;
+  }
+
+  .neglect_table_scroll {
+    max-height: none;
+  }
+
+  .neglect_row.clickable {
+    cursor: pointer;
+
+    &:hover td {
+      background-color: rgba(255, 255, 255, 0.04);
+    }
+  }
+
+  .neglect_caret {
+    display: inline-block;
+    width: 14px;
+    color: variables.$color-text-muted;
+  }
+
+  // 방치 건수 — 경고지만 급한 오류는 아니라 호박색. 31일 이상은 빨강.
+  td.neglect_count {
+    color: #d29922;
+    font-weight: 600;
+  }
+  td.neglect_old {
+    color: variables.$color-danger;
+    font-weight: 600;
+  }
+
+  // 펼친 담당자의 방치 기록.
+  .neglect_detail td {
+    padding: 4px 0 12px !important;
+    text-align: left !important;
+    white-space: normal;
+    background-color: rgba(255, 255, 255, 0.02);
+  }
+
+  .neglect_detail ul {
+    margin: 0;
+    padding: 0 0 0 14px;
+    list-style: none;
+  }
+
+  .neglect_detail li {
+    display: grid;
+    grid-template-columns: 150px 170px minmax(0, 1fr) 300px 80px 64px;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid variables.$color-border-soft;
+    font-size: 12.5px;
+    color: variables.$color-text;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .name {
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .board,
+    .status,
+    .dates {
+      color: variables.$color-text-muted;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .overdue {
+      color: #d29922;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+
+      &.old {
+        color: variables.$color-danger;
+      }
+    }
+    a {
+      color: variables.$color-accent;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+}

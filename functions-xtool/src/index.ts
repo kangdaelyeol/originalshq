@@ -14,6 +14,7 @@ import {
   getCustomer,
   getDailyInflow,
   getDailySales,
+  getFollowUps,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -1707,6 +1708,26 @@ export const getMondayDailySales = onRequest((request, response) => {
       response.status(200).send(await getDailySales(db))
     } catch (error) {
       logger.error('getMondayDailySales 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
+// getMondayFollowUps — 진행 중인 상담·방문체험 기록 전체(통계 탭의 방치 현황).
+// 기한이 지났는지(방치인지)는 화면이 오늘 날짜로 판단한다.
+// ────────────────────────────────
+export const getMondayFollowUps = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      response.status(200).send(await getFollowUps(db))
+    } catch (error) {
+      logger.error('getMondayFollowUps 처리 실패:', error)
       response.status(500).send({ error: '서버 오류' })
     }
   })

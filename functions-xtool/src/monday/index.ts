@@ -3,6 +3,7 @@ export {
   getCustomer,
   getDailyInflow,
   getDailySales,
+  getFollowUps,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
