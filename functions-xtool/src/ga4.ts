@@ -7,12 +7,13 @@ import { Device } from './types'
 const MAX_BACKDATE_MS = 72 * 60 * 60 * 1000
 
 /** 상담 등록 시 GA4로 보낼 이벤트 — 기기별로 둔다. 여기 없는 기기는 GA4
- * 이벤트를 보내지 않는다(지금은 '기타'만). 다른 기기를 추가하려면 항목만
- * 늘리면 된다. */
+ * 이벤트를 보내지 않는다(지금은 '기타'와 'B2G'만). 다른 기기를 추가하려면
+ * 항목만 늘리면 된다. */
 export const GA4_CONSULTATION_EVENTS: Partial<
   Record<Device, { name: string; value: number }>
 > = {
   기타: { name: 'other_online_submit', value: 150000 },
+  B2G: { name: 'b2g_submit', value: 1000000 },
 }
 
 type SendGa4EventParams = {

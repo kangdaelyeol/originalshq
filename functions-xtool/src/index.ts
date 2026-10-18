@@ -309,7 +309,7 @@ export const contactLead = onRequest(
           externalId: lead.externalId ?? '',
         })
 
-        // GA4 — 기기별로 정해둔 이벤트가 있을 때만(지금은 '기타'만) 보낸다.
+        // GA4 — 기기별로 정해둔 이벤트가 있을 때만(지금은 '기타'·'B2G') 보낸다.
         // Meta CAPI 성공과 저장까지 끝난 뒤라, 여기서 실패해도 상담 등록
         // 자체는 되돌리지 않고 로그만 남긴다.
         const ga4Event = GA4_CONSULTATION_EVENTS[device]
