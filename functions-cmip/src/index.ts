@@ -78,6 +78,7 @@ import {
   validateCafe24AdjustmentInput,
 } from './cafe24'
 import { addDays, todayISO } from './channel/utils'
+import { recordBatchRun } from './batch-log'
 
 const corsHandler = cors({ origin: true })
 
@@ -573,14 +574,20 @@ export const syncMetaInsightsScheduled = onSchedule(
     secrets: [metaAdsId],
     timeoutSeconds: 300,
   },
-  async () => {
+  async (event) => {
     const dateEnd = todayISO()
     const dateStart = addDays(dateEnd, -META_SYNC_WINDOW_DAYS)
     try {
-      const result = await syncMetaInsightRows(
-        dateStart,
-        dateEnd,
-        metaAdsId.value(),
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'meta-insights',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        () => syncMetaInsightRows(dateStart, dateEnd, metaAdsId.value()),
       )
       logger.info('Meta 인사이트 자동 동기화 성공:', result)
     } catch (err) {
@@ -1059,32 +1066,45 @@ export const syncGoogleInsightsScheduled = onSchedule(
     secrets: [googleClientId, googleClientSecret, googleDeveloperToken],
     timeoutSeconds: 300,
   },
-  async () => {
+  async (event) => {
     const dateEnd = todayISO()
     const dateStart = addDays(dateEnd, -GOOGLE_SYNC_WINDOW_DAYS)
     try {
-      const [campaignResult, adGroupResult] = await Promise.all([
-        syncGoogleCampaignInsightRows(
-          dateStart,
-          dateEnd,
-          GOOGLE_SYNC_BRAND_ID,
-          googleClientId.value(),
-          googleClientSecret.value(),
-          googleDeveloperToken.value(),
-          GOOGLE_SYNC_CUSTOMER_ID,
-          GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
-        ),
-        syncGoogleAdGroupInsightRows(
-          dateStart,
-          dateEnd,
-          GOOGLE_SYNC_BRAND_ID,
-          googleClientId.value(),
-          googleClientSecret.value(),
-          googleDeveloperToken.value(),
-          GOOGLE_SYNC_CUSTOMER_ID,
-          GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
-        ),
-      ])
+      const { campaignResult, adGroupResult } = await recordBatchRun(
+        db,
+        {
+          job: 'google-insights',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        async () => {
+          const [campaignResult, adGroupResult] = await Promise.all([
+            syncGoogleCampaignInsightRows(
+              dateStart,
+              dateEnd,
+              GOOGLE_SYNC_BRAND_ID,
+              googleClientId.value(),
+              googleClientSecret.value(),
+              googleDeveloperToken.value(),
+              GOOGLE_SYNC_CUSTOMER_ID,
+              GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+            ),
+            syncGoogleAdGroupInsightRows(
+              dateStart,
+              dateEnd,
+              GOOGLE_SYNC_BRAND_ID,
+              googleClientId.value(),
+              googleClientSecret.value(),
+              googleDeveloperToken.value(),
+              GOOGLE_SYNC_CUSTOMER_ID,
+              GOOGLE_SYNC_LOGIN_CUSTOMER_ID,
+            ),
+          ])
+          return { campaignResult, adGroupResult }
+        },
+      )
       logger.info('Google Ads 인사이트 자동 동기화 성공:', {
         campaignUpserted: campaignResult.upserted,
         adGroupUpserted: adGroupResult.upserted,
@@ -1279,15 +1299,26 @@ export const syncNaverInsightsScheduled = onSchedule(
     secrets: [naverAccessLicense, naverSecretKey],
     timeoutSeconds: 300,
   },
-  async () => {
+  async (event) => {
     const dateEnd = todayISO()
     const dateStart = addDays(dateEnd, -NAVER_SYNC_WINDOW_DAYS)
     try {
-      const result = await syncNaverInsightRows(dateStart, dateEnd, {
-        apiKey: naverAccessLicense.value(),
-        secretKey: naverSecretKey.value(),
-        customerId: NAVER_CUSTOMER_ID,
-      })
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'naver-insights',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        () =>
+          syncNaverInsightRows(dateStart, dateEnd, {
+            apiKey: naverAccessLicense.value(),
+            secretKey: naverSecretKey.value(),
+            customerId: NAVER_CUSTOMER_ID,
+          }),
+      )
       logger.info('Naver 인사이트 자동 동기화 성공:', result)
     } catch (err) {
       logger.error(
@@ -1408,9 +1439,18 @@ export const syncOfflineSalesScheduled = onSchedule(
     timeZone: 'Asia/Seoul',
     secrets: [mondayApiKey],
   },
-  async () => {
+  async (event) => {
     try {
-      const result = await syncOfflineSalesFromMonday(mondayApiKey.value())
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'offline-sales',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+        },
+        () => syncOfflineSalesFromMonday(mondayApiKey.value()),
+      )
       logger.info('오프라인 매출 자동 동기화 성공:', result)
     } catch (err) {
       logger.error(
@@ -1703,16 +1743,27 @@ export const syncCafe24OrdersScheduled = onSchedule(
     secrets: [cafe24ClientId, cafe24SecretKey],
     timeoutSeconds: 300,
   },
-  async () => {
+  async (event) => {
     const dateEnd = todayISO()
     const dateStart = addDays(dateEnd, -CAFE24_SYNC_WINDOW_DAYS)
     try {
-      const result = await syncCafe24OrdersFromApi(
-        cafe24MainId,
-        cafe24ClientId.value(),
-        cafe24SecretKey.value(),
-        dateStart,
-        dateEnd,
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'cafe24-orders',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        () =>
+          syncCafe24OrdersFromApi(
+            cafe24MainId,
+            cafe24ClientId.value(),
+            cafe24SecretKey.value(),
+            dateStart,
+            dateEnd,
+          ),
       )
       logger.info('Cafe24 주문 자동 동기화 성공:', result)
     } catch (err) {

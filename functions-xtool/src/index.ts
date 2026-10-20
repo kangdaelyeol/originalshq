@@ -8,6 +8,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
+import { listBatchRuns, recordBatchRun } from './batch-log'
 import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
@@ -1778,8 +1779,37 @@ export const getMondayRepeatRevenue = onRequest((request, response) => {
 })
 
 // ────────────────────────────────
+// getBatchRuns — 배치(예약 실행) 함수들의 실행 기록(/log 화면). xtool과 cmip
+// 두 코드베이스가 같은 batchRuns 컬렉션에 쌓으므로 여기 하나에서 같이 준다.
+// ?days=N(기본 7, 최대 90)일 안의 기록을 최근 것부터 최대 2,000건.
+// ────────────────────────────────
+export const getBatchRuns = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+      const days = Math.min(
+        Math.max(Number(request.query.days) || 7, 1),
+        90,
+      )
+      const runs = await listBatchRuns(
+        db,
+        Date.now() - days * 86_400_000,
+        2_000,
+      )
+      response.status(200).send({ runs, days, fetchedAt: Date.now() })
+    } catch (error) {
+      logger.error('getBatchRuns 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// ────────────────────────────────
 // syncMondayBoardsScheduled — 하루 여섯 번(09·11·13·15·17·22시 KST) 전체 동기화.
-// HTTP 응답이 없는 트리거라 결과는 로그와 각 보드 문서의 lastSync로 확인한다.
+// HTTP 응답이 없는 트리거라 결과는 로그와 batchRuns(/log 화면)로 확인한다.
 // ────────────────────────────────
 export const syncMondayBoardsScheduled = onSchedule(
   {
@@ -1789,9 +1819,29 @@ export const syncMondayBoardsScheduled = onSchedule(
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
     memory: MONDAY_SYNC_MEMORY,
   },
-  async () => {
+  async (event) => {
     try {
-      const summary = await syncBoards(db, mondayApiKey.value())
+      const summary = await recordBatchRun(
+        db,
+        {
+          job: 'monday-sync',
+          codebase: 'xtool',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+        },
+        () => syncBoards(db, mondayApiKey.value()),
+        // 보드 일부가 실패했거나 고객 통합 단계가 실패해도 함수는 끝까지
+        // 돈다 — 그런 실행은 "일부 실패"로 남긴다.
+        (result) => {
+          const notes = [
+            result.failedCount > 0
+              ? `보드 ${result.failedCount}개 동기화 실패`
+              : null,
+            result.customers === null ? '고객 통합 실패' : null,
+          ].filter(Boolean)
+          return { partial: notes.length > 0, note: notes.join(', ') }
+        },
+      )
       logger.info(
         `Monday 자동 동기화 완료: 성공 ${summary.okCount}개, ` +
           `실패 ${summary.failedCount}개`,

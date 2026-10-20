@@ -4,6 +4,7 @@ import { Dev } from '@/screens/dev'
 import Cafe24Adjustments from '@/screens/cafe24-adjustments'
 import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
+import BatchLogScreen from '@/screens/log'
 import ParkeScreen from '@/screens/parke'
 import PrivacyScreen from '@/screens/privacy'
 import PrivacyDocScreen from '@/screens/privacy/doc'
@@ -61,6 +62,11 @@ export const router = createBrowserRouter([
     path: '/cmip',
     element: <CmipPage />,
     children: [{ index: true, element: <CmipScreen /> }],
+  },
+  {
+    // 배치(예약 실행) 함수의 실행 기록 — functions-xtool·functions-cmip 공용.
+    path: '/log',
+    element: <BatchLogScreen />,
   },
   {
     path: '/dev',

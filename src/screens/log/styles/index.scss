@@ -1,0 +1,573 @@
+@use '../../xtool-lead-manager/styles/variables.scss' as v;
+
+// 상태 색 — 신호 역할만 한다(글자·기호를 항상 같이 쓴다). 어두운 바탕
+// (#0d1117)에서 서로 구분되는 GitHub 다크 계열 신호색.
+$status-success: #3fb950;
+$status-partial: #d29922;
+$status-failed: #f85149;
+$status-timeout: #db6d28;
+$status-running: v.$color-accent;
+
+.batch-log {
+  min-height: 100vh;
+  padding: 40px 24px 80px;
+  background: v.$color-bg;
+  color: v.$color-text;
+  font-family: v.$font-sans;
+
+  &,
+  * {
+    box-sizing: border-box;
+  }
+
+  > * {
+    max-width: 1280px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 600;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  h3 {
+    margin: 18px 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: v.$color-text-muted;
+  }
+
+  &__muted {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 400;
+    color: v.$color-text-muted;
+  }
+
+  &__mono {
+    font-family: v.$font-mono;
+    font-size: 12px;
+  }
+
+  &__warn {
+    margin: 10px 0 0;
+    font-size: 12.5px;
+    color: $status-partial;
+  }
+
+  // ── 머리 ──────────────────────────────────────────────────────────────
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  &__controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  &__segmented {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border: 1px solid v.$color-border;
+    border-radius: 8px;
+    background: v.$color-surface;
+
+    button {
+      all: unset;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 28px;
+      color: v.$color-text-muted;
+      cursor: pointer;
+
+      &:hover {
+        color: v.$color-text;
+      }
+      &.is-active {
+        background: v.$color-surface-raised;
+        color: v.$color-text;
+      }
+      &:focus-visible {
+        outline: 2px solid v.$color-accent;
+      }
+    }
+  }
+
+  &__refresh {
+    all: unset;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid v.$color-border;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 36px;
+    color: v.$color-text;
+    cursor: pointer;
+
+    &:hover {
+      background: v.$color-surface-raised;
+    }
+    &:focus-visible {
+      outline: 2px solid v.$color-accent;
+    }
+  }
+
+  &__card {
+    margin-bottom: 16px;
+    padding: 20px;
+    background: v.$color-surface;
+    border: 1px solid v.$color-border-soft;
+    border-radius: 10px;
+  }
+
+  &__error {
+    color: $status-failed;
+    font-size: 13px;
+  }
+
+  // ── 기간 요약 ─────────────────────────────────────────────────────────
+  &__totals {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+
+    > div {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      background: v.$color-surface;
+      border: 1px solid v.$color-border-soft;
+      border-radius: 10px;
+    }
+
+    span {
+      font-size: 12px;
+      color: v.$color-text-muted;
+    }
+
+    strong {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+
+      &.is-small {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      &.is-partial {
+        color: $status-partial;
+      }
+      &.is-failed,
+      &.is-missing {
+        color: $status-failed;
+      }
+    }
+  }
+
+  &__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  // ── 상태 배지 ─────────────────────────────────────────────────────────
+  &__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 24px;
+    padding: 0 9px;
+    border: 1px solid currentColor;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    color: v.$color-text-muted;
+
+    &.is-success {
+      color: $status-success;
+    }
+    &.is-partial {
+      color: $status-partial;
+    }
+    &.is-failed {
+      color: $status-failed;
+    }
+    &.is-timeout {
+      color: $status-timeout;
+    }
+    &.is-running {
+      color: $status-running;
+    }
+    &.is-missing {
+      color: $status-failed;
+      border-style: dashed;
+    }
+    &.is-no-data,
+    &.is-pending {
+      color: v.$color-text-faint;
+      border-style: dotted;
+    }
+  }
+
+  // ── 작업 카드 ─────────────────────────────────────────────────────────
+  &__jobs {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+
+    .batch-log__card {
+      margin-bottom: 0;
+    }
+  }
+
+  &__job-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+
+    h2 {
+      margin-bottom: 4px;
+    }
+  }
+
+  &__codebase {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: v.$color-surface-raised;
+    font-family: v.$font-mono;
+    font-size: 11px;
+    font-weight: 400;
+    color: v.$color-text-muted;
+    vertical-align: 2px;
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin: 0;
+
+    div {
+      min-width: 0;
+    }
+
+    dt {
+      margin-bottom: 2px;
+      font-size: 11.5px;
+      color: v.$color-text-muted;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__summary {
+    margin: 12px 0 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: v.$color-surface-raised;
+    font-size: 12.5px;
+    color: v.$color-text-muted;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    strong {
+      color: $status-partial;
+      font-weight: 600;
+    }
+  }
+
+  // 예약 시각별 칸 — 줄 = 날짜, 칸 = 시각.
+  &__grid {
+    width: 100%;
+    margin-top: 14px;
+    border-collapse: separate;
+    border-spacing: 4px;
+    table-layout: fixed;
+
+    th {
+      font-size: 11.5px;
+      font-weight: 500;
+      color: v.$color-text-muted;
+      text-align: center;
+    }
+
+    // table-layout: fixed는 첫 줄(머리글)로 열 너비를 정해서, 날짜 열 너비는
+    // 머리글 칸에도 같이 줘야 한다.
+    th:first-child {
+      width: 76px;
+    }
+
+    th[scope='row'] {
+      line-height: 24px;
+      text-align: left;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    td {
+      height: 24px;
+      padding: 0;
+      vertical-align: middle;
+    }
+  }
+
+  // block + 고정 line-height — 기호가 없는(빈) 칸도 같은 높이가 되게 한다
+  // (flex로 두면 빈 칸이 글자 기준선에 맞춰 줄 높이가 들쭉날쭉했다).
+  &__slot {
+    all: unset;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0d1117;
+
+    &.is-success {
+      background: $status-success;
+    }
+    &.is-partial {
+      background: $status-partial;
+    }
+    &.is-failed {
+      background: $status-failed;
+    }
+    &.is-timeout {
+      background: $status-timeout;
+    }
+    &.is-running {
+      background: $status-running;
+    }
+    // 실행 기록이 없는 칸은 채우지 않고 테두리만 — "누락"은 빨간 점선으로
+    // 눈에 띄게, 예정·기록 전은 옅게.
+    &.is-missing {
+      border: 1px dashed $status-failed;
+      line-height: 22px;
+      color: $status-failed;
+    }
+    &.is-pending {
+      background: v.$color-surface-raised;
+    }
+    &.is-no-data {
+      border: 1px dotted v.$color-border;
+    }
+
+    &:is(button) {
+      cursor: pointer;
+
+      &:hover {
+        filter: brightness(1.15);
+      }
+      &:focus-visible {
+        outline: 2px solid v.$color-text;
+        outline-offset: 1px;
+      }
+    }
+  }
+
+  // ── 실행 내역 표 ──────────────────────────────────────────────────────
+  &__table-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  &__filters {
+    display: flex;
+    gap: 8px;
+
+    select {
+      @include v.select-control;
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 28px 0;
+    text-align: center;
+    font-size: 13px;
+    color: v.$color-text-muted;
+  }
+
+  &__table-scroll {
+    overflow-x: auto;
+  }
+
+  &__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+      padding: 8px 10px;
+      border-bottom: 1px solid v.$color-border;
+      font-size: 12px;
+      font-weight: 500;
+      color: v.$color-text-muted;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 10px;
+      border-bottom: 1px solid v.$color-border-soft;
+      vertical-align: middle;
+      white-space: nowrap;
+    }
+
+    .is-num {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  &__row {
+    cursor: pointer;
+
+    &:hover,
+    &.is-open {
+      background: v.$color-surface-raised;
+    }
+  }
+
+  &__caret {
+    display: inline-block;
+    width: 14px;
+    color: v.$color-text-muted;
+  }
+
+  &__result {
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: v.$color-text-muted;
+
+    strong {
+      color: $status-partial;
+      font-weight: 600;
+    }
+  }
+
+  &__more {
+    all: unset;
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 0;
+    border: 1px solid v.$color-border;
+    border-radius: 8px;
+    font-size: 13px;
+    text-align: center;
+    color: v.$color-text-muted;
+    cursor: pointer;
+
+    &:hover {
+      color: v.$color-text;
+      background: v.$color-surface-raised;
+    }
+    &:focus-visible {
+      outline: 2px solid v.$color-accent;
+    }
+  }
+
+  &__detail-row > td {
+    padding: 0;
+    background: v.$color-bg;
+    white-space: normal;
+  }
+
+  &__detail {
+    padding: 16px 18px 20px;
+    border-left: 2px solid v.$color-accent;
+
+    .batch-log__facts {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  &__pre {
+    max-height: 360px;
+    margin: 0;
+    padding: 12px 14px;
+    overflow: auto;
+    border: 1px solid v.$color-border-soft;
+    border-radius: 6px;
+    background: v.$color-surface;
+    font-family: v.$font-mono;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+
+    &.is-error {
+      border-color: rgba(248, 81, 73, 0.4);
+      color: #ffa198;
+    }
+  }
+
+  // ── 좁은 화면 ─────────────────────────────────────────────────────────
+  @media (max-width: 900px) {
+    &__totals {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    &__detail .batch-log__facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    padding: 24px 16px 60px;
+
+    &__totals {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    &__jobs {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    &__facts,
+    &__detail .batch-log__facts {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    &__grid th:first-child {
+      width: 70px;
+      font-size: 11px;
+    }
+  }
+}
