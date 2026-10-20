@@ -1530,3 +1530,49 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     transform: rotate(360deg);
   }
 }
+
+// ── ROAS 탭 · 광고 기여 섹션(roas-attribution.tsx) ─────────────────────────
+.roas-attribution {
+  &__tiles {
+    margin-bottom: 12px;
+  }
+
+  &__note {
+    margin: 0 0 12px;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: $color-muted;
+  }
+
+  // 소계 줄 — 광고 확인 합계(하한)와 신규 고객 전체.
+  &__subtotal td {
+    font-weight: 600;
+    background-color: $pivot-average-bg !important;
+  }
+
+  &__cell {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // 칸 안의 두 번째 줄(매출·광고 확인 값 등) — 작고 옅게.
+  &__sub {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    font-weight: 400;
+    color: $color-muted;
+  }
+
+  // 기간(30·60·90일)을 아직 다 채우지 못한 코호트 — 값이 낮게 보일 수 있다는
+  // 표시. 글자로 적어 색만으로 구분하지 않는다.
+  &__pending {
+    padding: 1px 6px;
+    border: 1px dashed $color-muted;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 500;
+    color: $color-muted;
+  }
+}

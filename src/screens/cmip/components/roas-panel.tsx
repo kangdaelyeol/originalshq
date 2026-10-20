@@ -4,8 +4,10 @@ import type {
   CombinedInsight,
   OfflineRevenueSummary,
   RepeatRevenueByDate,
+  AttributionRow,
 } from '../client'
 import { SingleSelectDropdown } from './single-select-dropdown'
+import { RoasAttribution } from './roas-attribution'
 import {
   RoasGrouping,
   RoasTable,
@@ -1174,6 +1176,7 @@ export function RoasPanel({
   offlineRevenue,
   onlineRevenue,
   repeatRevenue,
+  attribution,
 }: {
   combinedInsight: CombinedInsight | null
   offlineRevenue: OfflineRevenueSummary | null
@@ -1181,6 +1184,9 @@ export function RoasPanel({
   /** 날짜별 재구매 금액(xtool) — 불러오지 못했으면 null이고, 신규 고객 지표가
    * '-'로 보인다. */
   repeatRevenue: RepeatRevenueByDate | null
+  /** 광고 기여 ROAS 재료(xtool) — 불러오지 못했으면 null이고 그 섹션만
+   * 안내 문구로 바뀐다. */
+  attribution: AttributionRow[] | null
 }) {
   const {
     groupings,
@@ -1264,6 +1270,13 @@ export function RoasPanel({
           </div>
         )}
       </section>
+
+      {/* 광고 기여 ROAS — 범위(하한~상한)와 고객 유입 월 코호트. */}
+      <RoasAttribution
+        combinedInsight={combinedInsight}
+        attribution={attribution}
+        upperBound={total.newCustomerRoas}
+      />
 
       {/* 예전엔 "기간별 추이" 표 헤더에만 보기 단위(일별/요일별/주차별/월별)
           컨트롤이 있었는데, 실제로는 세 표(기간별 추이/오프라인 매출/카페24

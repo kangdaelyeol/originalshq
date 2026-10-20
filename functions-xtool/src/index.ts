@@ -12,6 +12,7 @@ import { listBatchRuns, recordBatchRun } from './batch-log'
 import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
+  getAttributionRows,
   getCustomer,
   getDailyInflow,
   getDailySales,
@@ -1777,6 +1778,30 @@ export const getMondayRepeatRevenue = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// getMondayAttribution — 광고 기여 ROAS 재료(고객 1명당 한 줄). cmip ROAS 탭이
+// 광고비와 맞춰 ROAS 하한(광고로 확인된 신규 고객 매출)과 고객 유입 월
+// 코호트 ROAS를 계산한다.
+// ────────────────────────────────
+export const getMondayAttribution = onRequest(
+  { memory: '512MiB' },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'GET') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+
+        response.status(200).send(await getAttributionRows(db))
+      } catch (error) {
+        logger.error('getMondayAttribution 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
 
 // ────────────────────────────────
 // getBatchRuns — 배치(예약 실행) 함수들의 실행 기록(/log 화면). xtool과 cmip

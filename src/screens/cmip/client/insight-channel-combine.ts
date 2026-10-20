@@ -13,6 +13,7 @@ import {
   emptyMetrics,
   emptySeries,
   mergeByDateWeighted,
+  newCustomerRoasOf,
   seriesFromByDate,
   sumMetricsWeighted,
 } from './insight-aggregate'
@@ -28,6 +29,7 @@ import type {
   OfflineRevenueDateSummary,
   OfflineRevenueSummary,
 } from './offline-revenue-client'
+import type { RepeatRevenueByDate } from './repeat-revenue-client'
 import type {
   Cafe24RevenueDateSummary,
   Cafe24RevenueSummary,
@@ -96,10 +98,15 @@ function mergeExternalRevenueIntoByDate(
   byDate: readonly DateSummary[],
   offlineByDate: readonly OfflineRevenueDateSummary[],
   onlineByDate: readonly Cafe24RevenueDateSummary[],
+  repeatByDate: RepeatRevenueByDate | null,
 ): DateSummary[] {
   if (offlineByDate.length === 0 && onlineByDate.length === 0) {
     return [...byDate]
   }
+  // 그날 재구매 금액 — 재구매 데이터를 못 불러왔으면 NaN(모름)이라, 그 날이
+  // 들어간 합계의 신규 고객 ROAS도 NaN('-')이 된다.
+  const repeatOf = (date: string): number =>
+    repeatByDate === null ? Number.NaN : (repeatByDate[date] ?? 0)
 
   const offlineByDateMap = new Map(
     offlineByDate.map((d) => [d.date, d.totalPaid]),
@@ -114,6 +121,7 @@ function mergeExternalRevenueIntoByDate(
     const offlineRevenue = offlineByDateMap.get(row.date) ?? 0
     const onlineRevenue = onlineByDateMap.get(row.date) ?? 0
     const totalRevenue = offlineRevenue + onlineRevenue
+    const repeatRevenue = repeatOf(row.date)
     return {
       ...row,
       offlineRevenue,
@@ -122,6 +130,8 @@ function mergeExternalRevenueIntoByDate(
       // row.roas는 광고만 합친 시점(오프라인/온라인 매출=0 기준)에 계산된
       // 값이라 방금 얹은 실제 매출로 다시 계산해야 한다.
       roas: row.spend > 0 ? (totalRevenue / row.spend) * 100 : 0,
+      repeatRevenue,
+      newCustomerRoas: newCustomerRoasOf(totalRevenue, repeatRevenue, row.spend),
     }
   })
 
@@ -142,6 +152,9 @@ function mergeExternalRevenueIntoByDate(
       offlineRevenue,
       onlineRevenue,
       totalRevenue: offlineRevenue + onlineRevenue,
+      // 광고비가 없는 날이라 신규 고객 ROAS는 0(emptyMetrics)이지만, 재구매
+      // 금액은 기간 합계에 들어가야 해서 얹어 둔다.
+      repeatRevenue: repeatOf(date),
     })
   }
 
@@ -163,6 +176,7 @@ function combineGroupedSeries(
   dateEnd: ISODate,
   offlineRevenueByDate: readonly OfflineRevenueDateSummary[] = [],
   onlineRevenueByDate: readonly Cafe24RevenueDateSummary[] = [],
+  repeatByDate: RepeatRevenueByDate | null = {},
 ): ChannelSplitSeries {
   const metaSeries = meta ?? emptySeries()
   const googleSeries = google ?? emptySeries()
@@ -178,6 +192,7 @@ function combineGroupedSeries(
         adCombinedByDate,
         offlineRevenueByDate,
         onlineRevenueByDate,
+        repeatByDate,
       ),
       dateStart,
       dateEnd,
@@ -271,6 +286,9 @@ export function combineChannelInsights(
   dateEnd: ISODate,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
+  /** 날짜별 재구매 금액(xtool, 조회 기간으로 이미 걸러진 것) — 못 불러왔으면
+   * null이고, 그러면 신규 고객 ROAS가 NaN('-')이 된다. */
+  repeatRevenue: RepeatRevenueByDate | null,
 ): CombinedInsight {
   const adCombinedTotal = sumMetricsWeighted([
     { metrics: meta.total, hasFrequency: HAS_FREQUENCY.meta },
@@ -284,6 +302,10 @@ export function combineChannelInsights(
     (onlineRevenue?.total.paymentAmount ?? 0) -
     (onlineRevenue?.total.shippingFee ?? 0)
   const combinedTotalRevenue = combinedOfflineRevenue + combinedOnlineRevenue
+  const combinedRepeatRevenue =
+    repeatRevenue === null
+      ? Number.NaN
+      : Object.values(repeatRevenue).reduce((sum, amount) => sum + amount, 0)
 
   return {
     total: {
@@ -299,6 +321,12 @@ export function combineChannelInsights(
           adCombinedTotal.spend > 0
             ? (combinedTotalRevenue / adCombinedTotal.spend) * 100
             : 0,
+        repeatRevenue: combinedRepeatRevenue,
+        newCustomerRoas: newCustomerRoasOf(
+          combinedTotalRevenue,
+          combinedRepeatRevenue,
+          adCombinedTotal.spend,
+        ),
       },
       meta: meta.total,
       google: google.total,
@@ -312,6 +340,7 @@ export function combineChannelInsights(
       dateEnd,
       offlineRevenue?.byDate ?? [],
       onlineRevenue?.byDate ?? [],
+      repeatRevenue,
     ),
     byCampaign: combineCampaigns(
       meta.byCampaign ?? [],

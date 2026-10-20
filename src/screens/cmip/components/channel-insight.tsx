@@ -312,6 +312,8 @@ function computeMetricDelta(
   prev: number | null,
 ): { delta: number; pct: number | null; dir: DeltaDir } | null {
   if (prev == null) return null
+  // 신규 고객 ROAS처럼 값을 모르는(NaN) 칸은 증감을 낼 수 없다.
+  if (!Number.isFinite(now) || !Number.isFinite(prev)) return null
   const delta = now - prev
   const pct = prev !== 0 ? (delta / Math.abs(prev)) * 100 : null
   const dir: DeltaDir = delta === 0 ? 'flat' : delta > 0 ? 'up' : 'down'
@@ -1664,6 +1666,7 @@ export const ChannelInsight = () => {
     offlineRevenueData,
     onlineRevenueData,
     repeatRevenueData,
+    attributionData,
     load,
     loadRange,
     refresh,
@@ -2003,6 +2006,7 @@ export const ChannelInsight = () => {
                 offlineRevenue={offlineRevenueData}
                 onlineRevenue={onlineRevenueData}
                 repeatRevenue={repeatRevenueData}
+                attribution={attributionData}
               />
             </TabLoadingOverlay>
           )}

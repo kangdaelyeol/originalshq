@@ -40,6 +40,9 @@ const num2 = (v: number): string =>
   })
 const won2 = (v: number): string => `${num2(v)}원`
 const pct2 = (v: number): string => `${num2(v)}%`
+// NaN은 "모름" — 신규 고객 ROAS는 재구매 금액을 못 불러오면 NaN이다.
+const pct2OrDash = (v: number): string => (Number.isFinite(v) ? pct2(v) : '-')
+const num2OrDash = (v: number): string => (Number.isFinite(v) ? num2(v) : '-')
 
 // conversions 전용 — Google은 전환 귀속(attribution) 모델 때문에 원본 값 자체가
 // 소수(예: 데이터 기반 귀속이 전환 1건을 여러 클릭에 나눠 배분)라 반올림하지
@@ -67,6 +70,15 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     unit: '%',
     color: '#f59e0b',
     note: '(오프라인 매출 + 온라인 매출) ÷ 광고비입니다(예전 이름 "ROAS"). 재구매 매출까지 들어 있어, 광고 성과만 볼 때는 ROAS 탭의 신규 고객 ROAS를 봅니다. 오프라인은 Monday CRM 기준 매장 결제액, 온라인은 Cafe24 기준 자사몰 결제액입니다. offlineRevenue/onlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
+  },
+  {
+    key: 'newCustomerRoas',
+    label: '신규 고객 ROAS',
+    format: pct2OrDash,
+    formatCompact: num2OrDash,
+    unit: '%',
+    color: '#e879f9',
+    note: '(총 매출 − 재구매 매출) ÷ 광고비입니다. 이미 산 적 있는 고객(전화번호 기준)이 첫 구매일 이후 다시 산 금액은 광고 성과로 보지 않아 뺍니다. ROAS 탭의 신규 고객 ROAS와 같은 값이고, 광고비 대비 매출과 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어갑니다. 재구매 데이터를 불러오지 못하면 "-"로 표시됩니다.',
   },
   {
     key: 'totalRevenue',
@@ -203,6 +215,7 @@ export const ACCOUNT_ONLY_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'onlineRevenue',
   'totalRevenue',
   'roas',
+  'newCustomerRoas',
 ])
 
 export const channelSafeFields = (

@@ -8,6 +8,7 @@ import {
   MondayDailyInflow,
   MondayDailySale,
   MondayDailyRepeatRevenue,
+  MondayAttributionRow,
   MondayFollowUp,
   MondayKpiFacts,
   MondayItem,
@@ -355,4 +356,30 @@ export async function getDailyRepeatRevenue(
     | { rows: MondayDailyRepeatRevenue[]; syncedAt: number }
     | undefined
   return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
+}
+
+const ATTRIBUTION_DOC = 'attribution'
+
+/** 광고 기여 ROAS 재료 — 고객 수(수천)만큼이라 문서 하나에 넣는다. 줄 안에
+ * 배열이 있어(Firestore는 배열 안의 배열을 못 담는다) 줄마다 JSON 문자열로
+ * 저장하고 읽을 때 되돌린다. */
+export async function saveAttributionRows(
+  db: Firestore,
+  rows: MondayAttributionRow[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(ATTRIBUTION_DOC)
+    .set({ rows: rows.map((row) => JSON.stringify(row)), syncedAt: Date.now() })
+}
+
+export async function getAttributionRows(
+  db: Firestore,
+): Promise<{ rows: MondayAttributionRow[]; syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(ATTRIBUTION_DOC).get()
+  const data = doc.data() as { rows: string[]; syncedAt: number } | undefined
+  return {
+    rows: (data?.rows ?? []).map((row) => JSON.parse(row)),
+    syncedAt: data?.syncedAt ?? null,
+  }
 }

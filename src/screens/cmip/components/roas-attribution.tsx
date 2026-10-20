@@ -1,0 +1,250 @@
+import type { AttributionRow, CombinedInsight } from '../client'
+import {
+  AD_CHANNELS,
+  CHANNEL_LABEL,
+  COHORT_WINDOWS,
+  useRoasAttributionViewModel,
+  type AttributionChannelRow,
+} from '../view-model/use-roas-attribution-view-model'
+
+const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
+const pct = (v: number): string =>
+  Number.isFinite(v)
+    ? `${v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+    : '-'
+const share = (v: number): string => `${(v * 100).toFixed(1)}%`
+const monthLabel = (month: string, start: string, end: string): string => {
+  const [year, mon] = month.split('-')
+  const day = (date: string) => Number(date.slice(8, 10))
+  return `${year}.${mon} (${day(start)}~${day(end)}일)`
+}
+
+const ChannelRow = ({
+  row,
+  emphasis,
+}: {
+  row: AttributionChannelRow
+  emphasis?: boolean
+}) => (
+  <tr className={emphasis ? 'roas-attribution__subtotal' : undefined}>
+    <td>{CHANNEL_LABEL[row.channel]}</td>
+    <td>{row.spend === null ? '-' : won(row.spend)}</td>
+    <td>{row.buyers.toLocaleString()}명</td>
+    <td>{won(row.revenue)}</td>
+    <td>{share(row.share)}</td>
+    <td>{row.roas === null ? '-' : pct(row.roas)}</td>
+  </tr>
+)
+
+/**
+ * ROAS 탭의 광고 기여 섹션 — 두 가지를 보여 준다.
+ *
+ * 1. ROAS 범위: 광고로 확인된 신규 고객 매출 ÷ 광고비(하한)와 신규 고객
+ *    ROAS(상한). 진짜 광고 ROAS는 이 사이에 있고, 경로를 모르는 매출이
+ *    줄어들수록 두 값이 가까워진다.
+ * 2. 고객 유입 월 코호트 ROAS: 그 달에 처음 나타난 고객이 30·60·90일 안에 산
+ *    금액 ÷ 그 달 광고비 — 문의와 구매 사이의 시차를 걷어낸 값.
+ *
+ * 매출은 xtool 고객 통합 기준(전화번호로 묶은 Monday 결제 + Cafe24 주문의
+ * 계약 금액)이라, 위 요약의 cmip 매출과 원 단위까지 같지는 않다.
+ */
+export function RoasAttribution({
+  combinedInsight,
+  attribution,
+  upperBound,
+}: {
+  combinedInsight: CombinedInsight | null
+  attribution: AttributionRow[] | null
+  /** 상한 — 위 "ROAS 요약"의 신규 고객 ROAS를 그대로 받는다(같은 탭에서 두
+   * 값이 어긋나 보이지 않게). */
+  upperBound: number
+}) {
+  const data = useRoasAttributionViewModel(combinedInsight, attribution)
+
+  if (!data) {
+    return (
+      <section className="channel-insight__section">
+        <div className="channel-insight__section-head">
+          <h3 className="channel-insight__section-title">광고 기여 ROAS</h3>
+        </div>
+        <p className="channel-insight__result-empty">
+          고객 유입 경로 데이터를 불러오지 못했습니다.
+        </p>
+      </section>
+    )
+  }
+
+  const { range, cohorts } = data
+  const adRows = range.rows.filter((row) =>
+    (AD_CHANNELS as readonly string[]).includes(row.channel),
+  )
+  const otherRows = range.rows.filter(
+    (row) => !(AD_CHANNELS as readonly string[]).includes(row.channel),
+  )
+  const adSubtotal: AttributionChannelRow = {
+    channel: 'meta',
+    spend: range.totalSpend,
+    buyers: adRows.reduce((s, row) => s + row.buyers, 0),
+    revenue: range.adRevenue,
+    share: range.newRevenue > 0 ? range.adRevenue / range.newRevenue : 0,
+    roas: range.lowerBound,
+  }
+
+  return (
+    <>
+      <section className="channel-insight__section">
+        <div className="channel-insight__section-head">
+          <h3 className="channel-insight__section-title">
+            ROAS 범위 (광고 기여)
+          </h3>
+        </div>
+        <div className="channel-insight__summary-grid roas-attribution__tiles">
+          <div className="channel-insight__kpi">
+            <span className="channel-insight__kpi-label">
+              하한 · 광고 확인 ROAS
+            </span>
+            <span className="channel-insight__kpi-value">
+              {pct(range.lowerBound)}
+            </span>
+          </div>
+          <div className="channel-insight__kpi">
+            <span className="channel-insight__kpi-label">
+              상한 · 신규 고객 ROAS
+            </span>
+            <span className="channel-insight__kpi-value">
+              {pct(upperBound)}
+            </span>
+          </div>
+          <div className="channel-insight__kpi">
+            <span className="channel-insight__kpi-label">
+              경로 미확인 신규 매출 비중
+            </span>
+            <span className="channel-insight__kpi-value">
+              {share(range.unknownShare)}
+            </span>
+          </div>
+        </div>
+        <p className="roas-attribution__note">
+          조회 기간에 첫 구매를 한 고객을 처음 유입 경로(가장 이른 상담의 UTM
+          source, 없으면 방문체험 유입경로)로 나눴습니다. 하한은 광고 채널로
+          확인된 고객의 첫 구매만 광고 성과로 센 값이고, 상한은 재구매만 뺀 신규
+          고객 매출 전체입니다. 진짜 광고 ROAS는 이 사이에 있으며, 경로 미확인
+          비중이 줄어들수록 두 값이 가까워집니다. 매출은 고객 통합
+          기준(전화번호로 묶은 Monday 결제·Cafe24 주문의 계약 금액)이라 위 ROAS
+          요약의 매출과 원 단위까지 같지는 않습니다.
+        </p>
+        <div className="channel-insight__table-wrap">
+          <table className="channel-insight__table channel-insight__table--roas">
+            <thead>
+              <tr>
+                <th>유입 채널</th>
+                <th>광고비</th>
+                <th>첫 구매 고객</th>
+                <th>첫 구매 매출</th>
+                <th>신규 매출 비중</th>
+                <th>ROAS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {adRows.map((row) => (
+                <ChannelRow key={row.channel} row={row} />
+              ))}
+              <tr className="roas-attribution__subtotal">
+                <td>광고 확인 합계 (하한)</td>
+                <td>{won(adSubtotal.spend ?? 0)}</td>
+                <td>{adSubtotal.buyers.toLocaleString()}명</td>
+                <td>{won(adSubtotal.revenue)}</td>
+                <td>{share(adSubtotal.share)}</td>
+                <td>{pct(adSubtotal.roas ?? 0)}</td>
+              </tr>
+              {otherRows.map((row) => (
+                <ChannelRow key={row.channel} row={row} />
+              ))}
+              <tr className="roas-attribution__subtotal">
+                <td>신규 고객 전체</td>
+                <td>{won(range.totalSpend)}</td>
+                <td>
+                  {range.rows
+                    .reduce((s, row) => s + row.buyers, 0)
+                    .toLocaleString()}
+                  명
+                </td>
+                <td>{won(range.newRevenue)}</td>
+                <td>100%</td>
+                <td>-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="channel-insight__section">
+        <div className="channel-insight__section-head">
+          <h3 className="channel-insight__section-title">
+            고객 유입 월 코호트 ROAS
+          </h3>
+        </div>
+        <p className="roas-attribution__note">
+          조회 기간에 처음 나타난 고객(상담 접수·방문체험 예약·결제 중 가장 이른
+          날)을 그 달별로 묶어, 각 고객이 처음 나타난 날부터 30·60·90일 안에 산
+          금액을 그 달 광고비로 나눴습니다. 같은 고객끼리 비교하므로 문의와 구매
+          사이의 시차에 흔들리지 않습니다. 기간을 아직 다 채우지 못한 달은 "진행
+          중"으로 표시되고 값이 낮게 보입니다. 아래 작은 글씨는 광고로 확인된
+          고객만 센 값(하한)입니다.
+        </p>
+        {cohorts.length === 0 ? (
+          <p className="channel-insight__result-empty">데이터 없음</p>
+        ) : (
+          <div className="channel-insight__table-wrap">
+            <table className="channel-insight__table channel-insight__table--roas">
+              <thead>
+                <tr>
+                  <th>유입 월</th>
+                  <th>신규 고객</th>
+                  <th>광고비</th>
+                  {COHORT_WINDOWS.map((window) => (
+                    <th key={window}>{window}일 ROAS</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {cohorts.map((cohort) => (
+                  <tr key={cohort.month}>
+                    <td>
+                      {monthLabel(cohort.month, cohort.start, cohort.end)}
+                    </td>
+                    <td>
+                      {cohort.customers.toLocaleString()}명
+                      <span className="roas-attribution__sub">
+                        광고 확인 {cohort.adCustomers.toLocaleString()}명
+                      </span>
+                    </td>
+                    <td>{won(cohort.spend)}</td>
+                    {COHORT_WINDOWS.map((window) => {
+                      const cell = cohort.cells[window]
+                      return (
+                        <td key={window}>
+                          <span className="roas-attribution__cell">
+                            {!cell.complete && (
+                              <span className="roas-attribution__pending">
+                                진행 중
+                              </span>
+                            )}
+                            {pct(cell.roas)}
+                          </span>
+                          <span className="roas-attribution__sub">
+                            {won(cell.revenue)} · 광고 확인 {pct(cell.adRoas)}
+                          </span>
+                        </td>
+                      )
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  )
+}

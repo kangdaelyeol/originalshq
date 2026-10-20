@@ -1,5 +1,6 @@
 export {
   deleteBoard,
+  getAttributionRows,
   getCustomer,
   getDailyInflow,
   getDailyRepeatRevenue,

@@ -67,10 +67,14 @@ const metricHeaders = (fields: readonly MetricField[]): string[] =>
 // 반올림해 넣는다. 정수 지표(impressions/clicks 등)는 반올림해도 그대로다.
 const round2 = (v: number): number => Math.round(v * 100) / 100
 
+// 값을 모르는 칸(신규 고객 ROAS의 NaN)은 숫자 대신 '-'로 쓴다.
 const metricValues = (
   metrics: MetricsSummary,
   fields: readonly MetricField[],
-): number[] => fields.map((f) => round2(metrics[f.key]))
+): (number | string)[] =>
+  fields.map((f) =>
+    Number.isFinite(metrics[f.key]) ? round2(metrics[f.key]) : '-',
+  )
 
 // impressions/clicks는 "횟수"라 낱개 값은 항상 정수다 — 그 칸엔 소수 서식을
 // 안 준다(정수인데 "12.00"처럼 보이면 오히려 어색하다). 다만 이 두 지표도

@@ -242,7 +242,11 @@ export const useChannelInsightChartModalViewModel = (
         color: seriesColor(f.color, groupIndex.get(group.key) ?? 0, channelKey),
         type,
         unit: f.unit,
-        raw: rowKeys.map((k) => byKey.get(k)?.[f.key] ?? 0),
+        // 값을 모르는 칸(신규 고객 ROAS의 NaN)은 선이 끊기지 않게 0으로 그린다.
+        raw: rowKeys.map((k) => {
+          const value = byKey.get(k)?.[f.key] ?? 0
+          return Number.isFinite(value) ? value : 0
+        }),
         format: f.format,
         formatCompact: f.formatCompact,
       }

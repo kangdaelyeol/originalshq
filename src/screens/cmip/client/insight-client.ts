@@ -35,6 +35,13 @@ export interface MetricsSummary {
    * combined(종합) 합계에서만 의미 있는 값이고, 개별 채널·캠페인·adset은
    * 항상 0이다. 퍼센트(250 = 250%, 광고비의 2.5배). */
   roas: number
+  /** 재구매 매출 — xtool 통합 고객에서 첫 구매일이 아닌 날의 구매 금액
+   * (repeat-revenue-client.ts). totalRevenue와 같은 이유로 combined(종합)
+   * 합계에만 실제 값이 들어간다. 재구매 데이터를 못 불러왔으면 NaN(모름). */
+  repeatRevenue: number
+  /** 신규 고객 ROAS — (totalRevenue − repeatRevenue) ÷ 광고비, 퍼센트. 이미 산
+   * 적 있는 고객의 재구매를 광고 성과에서 뺀 값(ROAS 탭과 같은 정의). */
+  newCustomerRoas: number
   ctr: number
   cpc: number
   cpa: number
@@ -93,6 +100,8 @@ const withZeroExternalRevenue = <T extends MetricsSummary>(m: T): T => ({
   onlineRevenue: m.onlineRevenue ?? 0,
   totalRevenue: m.totalRevenue ?? 0,
   roas: m.roas ?? 0,
+  repeatRevenue: m.repeatRevenue ?? 0,
+  newCustomerRoas: m.newCustomerRoas ?? 0,
 })
 
 function normalizeSeries<T extends GroupedInsightSeries>(s: T): T {
