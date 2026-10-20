@@ -11,6 +11,7 @@ import {
   replaceCustomers,
   saveBoard,
   saveDailyInflow,
+  saveDailyRepeatRevenue,
   saveDailySales,
   saveFollowUps,
   saveKpiFacts,
@@ -20,6 +21,7 @@ import { buildMondayItems, detectPhoneColumnId } from './helper'
 import { buildFollowUps } from './followups'
 import { buildKpiFacts } from './kpi'
 import { buildDailySales } from './purchases'
+import { buildDailyRepeatRevenue } from './repeat-revenue'
 import {
   MondayBoard,
   MondayBoardPreview,
@@ -164,6 +166,8 @@ export async function rebuildCustomers(
       orders,
     ),
   )
+  // 날짜별 신규·재구매 금액(cmip ROAS 탭의 신규 고객 ROAS).
+  await saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers))
   // 진행 중인 상담·방문체험(방치 현황).
   await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).

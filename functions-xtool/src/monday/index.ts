@@ -2,6 +2,7 @@ export {
   deleteBoard,
   getCustomer,
   getDailyInflow,
+  getDailyRepeatRevenue,
   getDailySales,
   getFollowUps,
   getKpiFacts,

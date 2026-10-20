@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import {
   groupByMonth,
+  weekdayLabelOf,
   type Cafe24RevenueMetrics,
   type Cafe24RevenueSummary,
   type CombinedInsight,
   type OfflineRevenueSummary,
+  type RepeatRevenueByDate,
 } from '../client'
+import type { ISODate } from '../types'
 import { formatMD } from '../utils'
 
 export const RoasGrouping = {
@@ -40,7 +43,20 @@ export interface RoasMetrics {
   onlineRevenueCafe24: number
   /** offlineRevenue + onlineRevenue(ROAS용). */
   totalRevenue: number
-  /** 광고비 대비 (오프라인+온라인) 매출 — 퍼센트(예: 250은 250%, 광고비의
+  /** 재구매 매출 — xtool 통합 고객에서 첫 구매일이 아닌 날의 구매 금액
+   * (repeat-revenue-client.ts). 불러오지 못했으면 NaN이다. */
+  repeatRevenue: number
+  /** 신규 고객 매출 — totalRevenue에서 repeatRevenue를 뺀 값(0 아래로는
+   * 안 내려간다). 재구매 금액은 xtool의 구매 금액 기준이라 cmip 매출과 원
+   * 단위로 같은 기준은 아니다 — 그래서 신규 매출을 따로 받지 않고 "cmip 매출
+   * − 재구매"로 내서, 재구매가 없으면 총 매출과 똑같아지게 한다. */
+  newCustomerRevenue: number
+  /** 신규 고객 ROAS — newCustomerRevenue ÷ 광고비(퍼센트). 이미 산 적 있는
+   * 고객의 재구매는 광고 성과로 보지 않는다. 자연유입·소개 신규 고객은 아직
+   * 섞여 있어 광고 기여의 상한선으로 읽는다. */
+  newCustomerRoas: number
+  /** 광고비 대비 매출(MER) — 예전 이름은 "ROAS". 재구매 매출까지 들어 있다.
+   * 광고비 대비 (오프라인+온라인) 매출 — 퍼센트(예: 250은 250%, 광고비의
    * 2.5배). 광고비가 0이면 나눌 수 없어 0으로 둔다. */
   roas: number
   /** 오프라인 매출(Monday CRM)에서 이미 제외된 장기 할부 이자(12/24/36개월)
@@ -121,6 +137,8 @@ interface ToMetricsInput {
   onlinePointsRefunded?: number
   onlineCouponDiscount?: number
   onlineItemDiscount?: number
+  /** 재구매 매출 — 모르면(불러오지 못했으면) NaN. */
+  repeatRevenue?: number
 }
 
 const toMetrics = (input: ToMetricsInput): RoasMetrics => {
@@ -138,16 +156,24 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     onlinePointsRefunded = 0,
     onlineCouponDiscount = 0,
     onlineItemDiscount = 0,
+    repeatRevenue = Number.NaN,
   } = input
   const netPointsSpent = onlinePointsSpent - onlinePointsRefunded
   const onlineRevenue = onlineRevenueCafe24 - onlineShippingFee - netPointsSpent
+  const totalRevenue = offlineRevenue + onlineRevenue
+  // repeatRevenue가 NaN이면 Math.max도 NaN이라 신규 고객 값 둘 다 NaN(모름)이다.
+  const newCustomerRevenue = Math.max(totalRevenue - repeatRevenue, 0)
   return {
     spend,
     offlineRevenue,
     onlineRevenue,
     onlineRevenueCafe24,
-    totalRevenue: offlineRevenue + onlineRevenue,
+    totalRevenue,
     roas: calcRoas(offlineRevenue, onlineRevenue, spend),
+    repeatRevenue,
+    newCustomerRevenue,
+    newCustomerRoas:
+      spend > 0 ? (newCustomerRevenue / spend) * 100 : newCustomerRevenue * 0,
     installmentInterest,
     deferredBalance,
     onlineGrossPayment,
@@ -163,12 +189,28 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
  * 탭(useRoasViewModel)과 엑셀 ROAS 시트(excel-writer.ts)가 공유한다. */
+/** 날짜들의 재구매 금액 합 — 재구매 데이터를 못 불러왔으면 NaN. */
+const repeatFor = (
+  repeat: RepeatRevenueByDate | null,
+  dates: readonly ISODate[],
+): number =>
+  repeat === null
+    ? Number.NaN
+    : dates.reduce((sum, date) => sum + (repeat[date] ?? 0), 0)
+
+/** 조회 기간의 모든 날짜 — 광고비 시리즈(조회 범위 전체를 0으로 채운 것)
+ * 기준. 표의 한 행(주·월·요일)이 어느 날짜들인지 되짚을 때 쓴다. */
+const datesOf = (combinedInsight: CombinedInsight | null): ISODate[] =>
+  (combinedInsight?.series.combined.byDate ?? []).map((d) => d.date)
+
 export function computeRoasTotal(
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
+  repeatRevenue: RepeatRevenueByDate | null,
 ): RoasMetrics {
   return toMetrics({
+    repeatRevenue: repeatFor(repeatRevenue, datesOf(combinedInsight)),
     offlineRevenue: offlineRevenue?.total.totalPaid ?? 0,
     onlineRevenueCafe24: onlineRevenue?.total.paymentAmount ?? 0,
     spend: combinedInsight?.total.combined.spend ?? 0,
@@ -210,6 +252,7 @@ export function computeRoasAverage(
     onlinePointsRefunded: total.onlinePointsRefunded / rowCount,
     onlineCouponDiscount: total.onlineCouponDiscount / rowCount,
     onlineItemDiscount: total.onlineItemDiscount / rowCount,
+    repeatRevenue: total.repeatRevenue / rowCount,
   })
 }
 
@@ -251,8 +294,10 @@ function toMetricsFromOnlineMaps(
   installmentInterest: number,
   key: string,
   online: ReturnType<typeof buildOnlineMaps>,
+  repeatRevenue: number,
 ): RoasMetrics {
   return toMetrics({
+    repeatRevenue,
     offlineRevenue,
     onlineRevenueCafe24: online.paymentAmount.get(key) ?? 0,
     spend,
@@ -288,8 +333,16 @@ export function computeRoasRows(
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
+  repeatRevenue: RepeatRevenueByDate | null,
 ): RoasRow[] {
   if (!combinedInsight) return []
+  const allDates = datesOf(combinedInsight)
+  /** 한 행이 가리키는 날짜들(시작~끝)의 재구매 금액. */
+  const repeatBetween = (start: ISODate, end: ISODate) =>
+    repeatFor(
+      repeatRevenue,
+      allDates.filter((date) => date >= start && date <= end),
+    )
 
   if (grouping === RoasGrouping.MONTH) {
     const spendByMonth = groupByMonth(combinedInsight.series.combined.byDate)
@@ -313,6 +366,7 @@ export function computeRoasRows(
           interestByPeriod.get(m.period) ?? 0,
           m.period,
           online,
+          repeatBetween(m.startDate, m.endDate),
         ),
       }),
     )
@@ -342,6 +396,10 @@ export function computeRoasRows(
           interestByDay.get(d.dayOfWeek) ?? 0,
           d.dayOfWeek,
           online,
+          repeatFor(
+            repeatRevenue,
+            allDates.filter((date) => weekdayLabelOf(date) === d.dayOfWeek),
+          ),
         ),
       }),
     )
@@ -371,6 +429,7 @@ export function computeRoasRows(
           interestByPeriod.get(w.period) ?? 0,
           w.period,
           online,
+          repeatBetween(w.startDate, w.endDate),
         ),
       }),
     )
@@ -394,6 +453,7 @@ export function computeRoasRows(
         interestByDate.get(d.date) ?? 0,
         d.date,
         online,
+        repeatFor(repeatRevenue, [d.date]),
       ),
     }),
   )
@@ -432,6 +492,7 @@ export const useRoasViewModel = (
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
+  repeatRevenue: RepeatRevenueByDate | null,
 ) => {
   const [groupings, setGroupings] = useState<Record<RoasTable, RoasGrouping>>({
     [RoasTable.TREND]: DEFAULT_ROAS_GROUPING,
@@ -455,7 +516,12 @@ export const useRoasViewModel = (
     })
   }
 
-  const total = computeRoasTotal(combinedInsight, offlineRevenue, onlineRevenue)
+  const total = computeRoasTotal(
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
+    repeatRevenue,
+  )
 
   const buildTableData = (table: RoasTable) => {
     const rows = computeRoasRows(
@@ -463,6 +529,7 @@ export const useRoasViewModel = (
       combinedInsight,
       offlineRevenue,
       onlineRevenue,
+      repeatRevenue,
     )
     return { rows, average: computeRoasAverage(total, rows.length) }
   }

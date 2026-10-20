@@ -61,12 +61,12 @@ const num3 = (v: number): string =>
 export const METRIC_FIELDS: readonly MetricField[] = [
   {
     key: 'roas',
-    label: 'ROAS',
+    label: '광고비 대비 매출',
     format: pct2,
     formatCompact: num2,
     unit: '%',
     color: '#f59e0b',
-    note: '(오프라인 매출 + 온라인 매출) ÷ 광고비입니다. 오프라인은 Monday CRM 기준 매장 결제액, 온라인은 Cafe24 기준 자사몰 결제액입니다. offlineRevenue/onlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
+    note: '(오프라인 매출 + 온라인 매출) ÷ 광고비입니다(예전 이름 "ROAS"). 재구매 매출까지 들어 있어, 광고 성과만 볼 때는 ROAS 탭의 신규 고객 ROAS를 봅니다. 오프라인은 Monday CRM 기준 매장 결제액, 온라인은 Cafe24 기준 자사몰 결제액입니다. offlineRevenue/onlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
   },
   {
     key: 'totalRevenue',

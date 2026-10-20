@@ -16,6 +16,7 @@ import {
   type CombinedInsight,
   type MetricsSummary,
   type OfflineRevenueSummary,
+  type RepeatRevenueByDate,
 } from '../client'
 import { CHANNELS, type ChannelKey } from './channels'
 import {
@@ -850,10 +851,16 @@ const ROAS_EXPORT_FIELDS: readonly RoasExportField[] = [
   { key: 'offlineRevenue', label: '오프라인 매출' },
   { key: 'onlineRevenue', label: '온라인 매출' },
   { key: 'totalRevenue', label: '총 매출' },
-  { key: 'roas', label: 'ROAS (%)' },
+  { key: 'repeatRevenue', label: '재구매 매출' },
+  { key: 'newCustomerRevenue', label: '신규 고객 매출' },
+  { key: 'roas', label: '광고비 대비 매출 (%)' },
+  { key: 'newCustomerRoas', label: '신규 고객 ROAS (%)' },
 ]
-const roasValues = (m: RoasMetrics): number[] =>
-  ROAS_EXPORT_FIELDS.map((f) => round2(m[f.key]))
+// 신규 고객 지표는 재구매 금액을 못 불러오면 NaN(모름)이다 — 셀에는 '-'로 쓴다.
+const roasValues = (m: RoasMetrics): (number | string)[] =>
+  ROAS_EXPORT_FIELDS.map((f) =>
+    Number.isFinite(m[f.key]) ? round2(m[f.key]) : '-',
+  )
 
 /** ROAS 시트 — roas-panel.tsx(화면의 ROAS 탭)와 정확히 같은 계산
  * (computeRoasTotal/computeRoasRows/computeRoasAverage, use-roas-view-model.ts
@@ -869,6 +876,7 @@ export function writeRoasSheet(
   combinedInsight: CombinedInsight | null,
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
+  repeatRevenue: RepeatRevenueByDate | null,
 ) {
   const ws = wb.addWorksheet('ROAS')
   ws.properties.outlineProperties = {
@@ -878,7 +886,12 @@ export function writeRoasSheet(
   setColumnWidths(ws, 1 + ROAS_EXPORT_FIELDS.length)
 
   const headers = ['기간', ...ROAS_EXPORT_FIELDS.map((f) => f.label)]
-  const total = computeRoasTotal(combinedInsight, offlineRevenue, onlineRevenue)
+  const total = computeRoasTotal(
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
+    repeatRevenue,
+  )
 
   let row = 1
   row = writeTable(
@@ -904,6 +917,7 @@ export function writeRoasSheet(
       combinedInsight,
       offlineRevenue,
       onlineRevenue,
+      repeatRevenue,
     )
     const average = computeRoasAverage(total, rows.length)
     const tableRows = [

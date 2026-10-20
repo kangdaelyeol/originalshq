@@ -6,6 +6,7 @@ import type {
   CombinedInsight,
   MetricsSummary,
   OfflineRevenueSummary,
+  RepeatRevenueByDate,
 } from '../client'
 import { METRIC_FIELDS, type MetricKey } from '../components/metric-fields'
 import {
@@ -36,6 +37,7 @@ interface UseExcelExportViewModelArgs {
   combinedInsight: CombinedInsight | null
   offlineRevenue: OfflineRevenueSummary | null
   onlineRevenue: Cafe24RevenueSummary | null
+  repeatRevenue: RepeatRevenueByDate | null
   onExported: () => void
 }
 
@@ -53,6 +55,7 @@ export const useExcelExportViewModel = ({
   combinedInsight,
   offlineRevenue,
   onlineRevenue,
+  repeatRevenue,
   onExported,
 }: UseExcelExportViewModelArgs) => {
   const [sheets, setSheets] = useState<ReadonlySet<SheetKey>>(
@@ -134,7 +137,13 @@ export const useExcelExportViewModel = ({
             bucketSize,
           )
         } else {
-          writeRoasSheet(wb, combinedInsight, offlineRevenue, onlineRevenue)
+          writeRoasSheet(
+            wb,
+            combinedInsight,
+            offlineRevenue,
+            onlineRevenue,
+            repeatRevenue,
+          )
         }
       }
 

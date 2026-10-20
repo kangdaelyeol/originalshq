@@ -210,7 +210,6 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
             <>
               <PipelineSection
                 pipeline={pipeline}
-                today={neglect.today}
                 sort={tableSorts.pipeline}
                 onSort={(key) => toggleTableSort('pipeline', key)}
               />

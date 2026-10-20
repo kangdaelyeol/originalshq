@@ -495,3 +495,17 @@ export interface MondayKpiFacts {
   /** [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
   sales: [string, string, number, string][]
 }
+
+/** 하루의 구매 금액을 신규·재구매로 나눈 것 — cmip ROAS 탭의 "신규 고객
+ * ROAS"가 쓴다. 고객(전화번호)마다 첫 구매일의 구매는 신규, 그 뒤의 구매는
+ * 재구매다(첫 구매일에 여러 건이면 모두 신규). 취소된 구매는 빠진다. 금액은
+ * 통합 고객의 구매 금액(오프라인은 계약 기준, 온라인은 Cafe24 주문 금액)이라
+ * cmip의 매출 기준과 원 단위로 같지는 않다. */
+export interface MondayDailyRepeatRevenue {
+  /** YYYY-MM-DD — 결제일. */
+  date: string
+  offlineNew: number
+  offlineRepeat: number
+  onlineNew: number
+  onlineRepeat: number
+}

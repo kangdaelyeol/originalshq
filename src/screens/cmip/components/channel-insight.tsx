@@ -1663,6 +1663,7 @@ export const ChannelInsight = () => {
     combinedInsight,
     offlineRevenueData,
     onlineRevenueData,
+    repeatRevenueData,
     load,
     loadRange,
     refresh,
@@ -2001,6 +2002,7 @@ export const ChannelInsight = () => {
                 combinedInsight={combinedInsight}
                 offlineRevenue={offlineRevenueData}
                 onlineRevenue={onlineRevenueData}
+                repeatRevenue={repeatRevenueData}
               />
             </TabLoadingOverlay>
           )}
@@ -2030,6 +2032,7 @@ export const ChannelInsight = () => {
             combinedInsight={combinedInsight}
             offlineRevenue={offlineRevenueData}
             onlineRevenue={onlineRevenueData}
+            repeatRevenue={repeatRevenueData}
           />
         </Suspense>
       )}

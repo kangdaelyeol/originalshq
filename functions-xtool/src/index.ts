@@ -15,6 +15,7 @@ import {
   getDailyInflow,
   getDailySales,
   getFollowUps,
+  getDailyRepeatRevenue,
   getKpiFacts,
   listBoards,
   listCustomerSummaries,
@@ -1755,6 +1756,26 @@ export const getMondayKpiFacts = onRequest(
     })
   },
 )
+
+// ────────────────────────────────
+// getMondayRepeatRevenue — 날짜별 신규·재구매 구매 금액. cmip ROAS 탭이 매출에서
+// 재구매를 빼 "신규 고객 ROAS"를 낼 때 쓴다(기간으로 거르는 것은 화면이 한다).
+// ────────────────────────────────
+export const getMondayRepeatRevenue = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      response.status(200).send(await getDailyRepeatRevenue(db))
+    } catch (error) {
+      logger.error('getMondayRepeatRevenue 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
 
 // ────────────────────────────────
 // syncMondayBoardsScheduled — 하루 두 번(07:00, 19:00 KST) 전체 동기화.

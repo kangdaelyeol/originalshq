@@ -5,6 +5,7 @@ import {
   getNaverInsights,
   getOfflineRevenue,
   getCafe24Revenue,
+  getRepeatRevenue,
   combineChannelInsights,
   normalizeInsightSummary,
   CallableError,
@@ -12,6 +13,7 @@ import {
   type MetaInsightSummary,
   type OfflineRevenueSummary,
   type Cafe24RevenueSummary,
+  type RepeatRevenueByDate,
 } from '../client'
 import { readSessionCache, writeSessionCache } from '../client/session-cache'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
@@ -25,9 +27,15 @@ interface InsightLoadResult {
   naverResult: MetaInsightSummary
   offlineRevenueResult: OfflineRevenueSummary
   onlineRevenueResult: Cafe24RevenueSummary
+  /** 날짜별 재구매 금액(xtool) — 불러오지 못했으면 null. ROAS 탭의 신규 고객
+   * ROAS만 쓰고, 이것 때문에 다른 조회까지 실패로 만들지는 않는다. */
+  repeatRevenueResult: RepeatRevenueByDate | null
 }
 
-const cacheKeyFor = (start: ISODate, end: ISODate): string => `${start}:${end}`
+// 끝의 버전은 캐시에 담는 결과의 모양이 바뀌면 올린다 — 예전 모양(재구매
+// 금액이 없던 때)으로 저장된 캐시를 다시 쓰지 않게.
+const cacheKeyFor = (start: ISODate, end: ISODate): string =>
+  `${start}:${end}:v2`
 
 /** 기본 조회 기간 — 최근 7일. 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로
  * 센다(date-range-picker의 "지난 7일" 프리셋과 동일한 정의). */
@@ -65,6 +73,9 @@ export const useChannelInsightViewModel = () => {
   // 하나로 합치지 않는다.
   const [onlineRevenueData, setOnlineRevenueData] =
     useState<Cafe24RevenueSummary | null>(null)
+  // 날짜별 재구매 금액(xtool, ROAS 탭의 신규 고객 ROAS 전용).
+  const [repeatRevenueData, setRepeatRevenueData] =
+    useState<RepeatRevenueByDate | null>(null)
   // total은 물론 캠페인/adset 단위까지 "종합(meta+google+naver)/meta/google/naver"
   // 4분할로 미리 묶어둔다 — 당근 등 채널이 더 늘어나면 combineChannelInsights
   // 쪽만 확장하면 된다.
@@ -85,6 +96,7 @@ export const useChannelInsightViewModel = () => {
       setNaverData(result.naverResult)
       setOfflineRevenueData(result.offlineRevenueResult)
       setOnlineRevenueData(result.onlineRevenueResult)
+      setRepeatRevenueData(result.repeatRevenueResult)
       setCombinedInsight(
         combineChannelInsights(
           result.metaResult,
@@ -132,14 +144,25 @@ export const useChannelInsightViewModel = () => {
       setError(null)
       setLoading(true)
       try {
-        const [metaRaw, googleRaw, naverRaw, offlineRevenueResult, onlineRevenueResult] =
-          await Promise.all([
-            getAllInsights(apiStart, apiEnd),
-            getGoogleInsights(apiStart, apiEnd),
-            getNaverInsights(apiStart, apiEnd),
-            getOfflineRevenue(apiStart, apiEnd),
-            getCafe24Revenue(apiStart, apiEnd),
-          ])
+        const [
+          metaRaw,
+          googleRaw,
+          naverRaw,
+          offlineRevenueResult,
+          onlineRevenueResult,
+          repeatRevenueResult,
+        ] = await Promise.all([
+          getAllInsights(apiStart, apiEnd),
+          getGoogleInsights(apiStart, apiEnd),
+          getNaverInsights(apiStart, apiEnd),
+          getOfflineRevenue(apiStart, apiEnd),
+          getCafe24Revenue(apiStart, apiEnd),
+          // 실패해도 나머지는 그대로 보여주고, 신규 고객 ROAS만 '-'로 둔다.
+          getRepeatRevenue(apiStart, apiEnd).catch((err: unknown) => {
+            console.error('재구매 금액 조회 실패:', err)
+            return null
+          }),
+        ])
         // Meta/Google/Naver는 offlineRevenue 개념 자체를 모르는 백엔드에서 와서
         // 그 필드가 아예 없다 — KpiGrid 등이 MetricsSummary를 곧장(aggregateMetrics를
         // 안 거치고) 렌더하는 자리에서 값이 undefined인 채로 쓰이지 않도록, 저장/
@@ -150,6 +173,7 @@ export const useChannelInsightViewModel = () => {
           naverResult: normalizeInsightSummary(naverRaw),
           offlineRevenueResult,
           onlineRevenueResult,
+          repeatRevenueResult,
         }
         applyResult(apiStart, apiEnd, result)
         writeSessionCache(cacheKey, result)
@@ -193,6 +217,7 @@ export const useChannelInsightViewModel = () => {
     naverData,
     offlineRevenueData,
     onlineRevenueData,
+    repeatRevenueData,
     combinedInsight,
     // 액션
     load,

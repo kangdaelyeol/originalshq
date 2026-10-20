@@ -7,6 +7,7 @@ import {
   MondayCustomerRebuildResult,
   MondayDailyInflow,
   MondayDailySale,
+  MondayDailyRepeatRevenue,
   MondayFollowUp,
   MondayKpiFacts,
   MondayItem,
@@ -328,4 +329,30 @@ export async function getKpiFacts(
     sales: parse(data?.sales),
     syncedAt: data?.syncedAt ?? null,
   }
+}
+
+const DAILY_REPEAT_REVENUE_DOC = 'dailyRepeatRevenue'
+
+/** 날짜별 신규·재구매 금액 — 하루 한 줄이라 몇 년 치도 문서 하나에 들어간다. */
+export async function saveDailyRepeatRevenue(
+  db: Firestore,
+  rows: MondayDailyRepeatRevenue[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(DAILY_REPEAT_REVENUE_DOC)
+    .set({ rows, syncedAt: Date.now() })
+}
+
+export async function getDailyRepeatRevenue(
+  db: Firestore,
+): Promise<{ rows: MondayDailyRepeatRevenue[]; syncedAt: number | null }> {
+  const doc = await db
+    .collection(STATS_COLLECTION)
+    .doc(DAILY_REPEAT_REVENUE_DOC)
+    .get()
+  const data = doc.data() as
+    | { rows: MondayDailyRepeatRevenue[]; syncedAt: number }
+    | undefined
+  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
 }

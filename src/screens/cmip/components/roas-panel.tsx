@@ -3,6 +3,7 @@ import type {
   Cafe24RevenueSummary,
   CombinedInsight,
   OfflineRevenueSummary,
+  RepeatRevenueByDate,
 } from '../client'
 import { SingleSelectDropdown } from './single-select-dropdown'
 import {
@@ -26,8 +27,10 @@ const num2 = (v: number): string =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
-const pct2 = (v: number): string => `${num2(v)}%`
+// NaN은 "모름"(재구매 금액을 불러오지 못한 신규 고객 지표) — '-'로 보인다.
+const won = (v: number): string =>
+  Number.isFinite(v) ? `${Math.round(v).toLocaleString()}원` : '-'
+const pct2 = (v: number): string => (Number.isFinite(v) ? `${num2(v)}%` : '-')
 
 interface RoasField {
   /** React key용 — RoasMetrics의 실제 필드일 수도(예: 'roas'), 여러 필드를
@@ -50,11 +53,20 @@ interface RoasField {
 // 전용 표로 옮겼다).
 const ROAS_FIELDS: readonly RoasField[] = [
   {
+    key: 'newCustomerRoas',
+    label: '신규 고객 ROAS',
+    getValue: (m) => m.newCustomerRoas,
+    format: pct2,
+    formatCompact: pct2,
+    note: '신규 고객 매출 ÷ 광고비. 이미 산 적 있는 고객의 재구매는 광고 성과로 보지 않아 뺍니다. 자연유입·소개·매장 방문 신규 고객은 아직 섞여 있어, 광고가 기여한 최대치로 읽어야 합니다.',
+  },
+  {
     key: 'roas',
-    label: 'ROAS',
+    label: '광고비 대비 매출',
     getValue: (m) => m.roas,
     format: pct2,
     formatCompact: pct2,
+    note: '총 매출 ÷ 광고비(예전 이름 "ROAS"). 재구매 매출까지 모두 넣은 회사 전체 효율이라, 광고 성과만 볼 때는 신규 고객 ROAS를 봅니다.',
   },
   {
     key: 'totalRevenue',
@@ -62,6 +74,22 @@ const ROAS_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.totalRevenue,
     format: won,
     formatCompact: won,
+  },
+  {
+    key: 'newCustomerRevenue',
+    label: '신규 고객 매출',
+    getValue: (m) => m.newCustomerRevenue,
+    format: won,
+    formatCompact: won,
+    note: '총 매출 - 재구매 매출.',
+  },
+  {
+    key: 'repeatRevenue',
+    label: '재구매 매출',
+    getValue: (m) => m.repeatRevenue,
+    format: won,
+    formatCompact: won,
+    note: '전화번호로 묶은 고객(Monday 오프라인 결제 + 카페24 주문)이 첫 구매일 이후에 다시 산 금액입니다. 첫 구매일에 여러 건을 샀으면 모두 신규로 봅니다. 데이터가 2026년 1월부터라 그 전에 산 고객의 올해 첫 구매는 신규로 잡힙니다. 금액은 고객 통합 기준이라 위 매출과 원 단위까지 같은 기준은 아닙니다.',
   },
   {
     key: 'spend',
@@ -553,12 +581,20 @@ function RoasTrendChart({
   average: RoasMetrics
 }) {
   const { ref, vbWidth, vbHeight } = useRoasTrendChartViewModel()
+  // 그래프는 신규 고객 ROAS를 그린다 — 재구매 금액을 못 불러왔으면 광고비 대비
+  // 매출로 대신한다(평균 옆에 어느 지표인지 적는다).
+  const metric = Number.isFinite(average.newCustomerRoas)
+    ? 'newCustomerRoas'
+    : 'roas'
+  const metricLabel =
+    metric === 'newCustomerRoas' ? '신규 고객 ROAS' : '광고비 대비 매출'
   const n = rows.length
   const plotW = vbWidth - CHART_MARGIN.left - CHART_MARGIN.right
   const plotH = vbHeight - CHART_MARGIN.top - CHART_MARGIN.bottom
   const plotBottom = CHART_MARGIN.top + plotH
   const maxValue = roundUpToHundred(
-    Math.max(100, average.roas, ...rows.map((r) => r.metrics.roas)) * 1.25,
+    Math.max(100, average[metric], ...rows.map((r) => r.metrics[metric])) *
+      1.25,
   )
   const bandW = plotW / n
   const barW = Math.min(bandW * 0.56, 34)
@@ -566,7 +602,7 @@ function RoasTrendChart({
   const xOf = (i: number) => CHART_MARGIN.left + bandW * i + (bandW - barW) / 2
   const labelStride = Math.max(1, Math.ceil(n / 8))
   const ticks = [0, maxValue / 2, maxValue]
-  const avgY = yOf(average.roas)
+  const avgY = yOf(average[metric])
 
   return (
     <div className="channel-insight__roas-chart" ref={ref}>
@@ -575,7 +611,7 @@ function RoasTrendChart({
         viewBox={`0 0 ${vbWidth} ${vbHeight}`}
         preserveAspectRatio="none"
         role="img"
-        aria-label="기간별 ROAS 추이 그래프"
+        aria-label={`기간별 ${metricLabel} 추이 그래프`}
       >
         {ticks.map((t) => (
           <g key={t}>
@@ -599,11 +635,11 @@ function RoasTrendChart({
         ))}
 
         {rows.map((row, i) => {
-          const barY = yOf(row.metrics.roas)
+          const barY = yOf(row.metrics[metric])
           const h = Math.max(0, plotBottom - barY)
           const prevRow = i > 0 ? rows[i - 1] : null
           const delta = prevRow
-            ? computeDelta(row.metrics.roas, prevRow.metrics.roas)
+            ? computeDelta(row.metrics[metric], prevRow.metrics[metric])
             : null
           const cx = xOf(i) + barW / 2
           return (
@@ -615,10 +651,10 @@ function RoasTrendChart({
                 height={h}
                 rx={2}
                 className={`channel-insight__roas-chart-bar${
-                  row.metrics.roas < 100 ? ' is-negative' : ''
+                  row.metrics[metric] < 100 ? ' is-negative' : ''
                 }`}
               >
-                <title>{`${row.label}: ${row.metrics.roas.toFixed(1)}%`}</title>
+                <title>{`${row.label}: ${row.metrics[metric].toFixed(1)}%`}</title>
               </rect>
               {delta && (
                 <text
@@ -643,7 +679,7 @@ function RoasTrendChart({
                 paintOrder="stroke"
                 className="channel-insight__roas-chart-value"
               >
-                {row.metrics.roas.toFixed(1)}%
+                {row.metrics[metric].toFixed(1)}%
               </text>
               {(i % labelStride === 0 || i === n - 1) && (
                 <text
@@ -677,7 +713,7 @@ function RoasTrendChart({
           paintOrder="stroke"
           className="channel-insight__roas-chart-avg-label"
         >
-          평균 {average.roas.toFixed(1)}%
+          {metricLabel} 평균 {average[metric].toFixed(1)}%
         </text>
       </svg>
     </div>
@@ -1137,10 +1173,14 @@ export function RoasPanel({
   combinedInsight,
   offlineRevenue,
   onlineRevenue,
+  repeatRevenue,
 }: {
   combinedInsight: CombinedInsight | null
   offlineRevenue: OfflineRevenueSummary | null
   onlineRevenue: Cafe24RevenueSummary | null
+  /** 날짜별 재구매 금액(xtool) — 불러오지 못했으면 null이고, 신규 고객 지표가
+   * '-'로 보인다. */
+  repeatRevenue: RepeatRevenueByDate | null
 }) {
   const {
     groupings,
@@ -1151,7 +1191,12 @@ export function RoasPanel({
     trend,
     offline,
     online,
-  } = useRoasViewModel(combinedInsight, offlineRevenue, onlineRevenue)
+  } = useRoasViewModel(
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
+    repeatRevenue,
+  )
   const { rows, average } = trend
 
   // 지표 표시/숨김 — "기간별 추이" 표 전용이다(9/30 요청 전에는 "ROAS 요약"
