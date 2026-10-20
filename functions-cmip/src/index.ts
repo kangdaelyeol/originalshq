@@ -563,12 +563,12 @@ export const syncMetaInsights = onRequest(
 )
 
 /**
- * Meta 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * Meta 인사이트를 매일 09·11·13·15·17·22시(KST) 최근 14일 롤링 재동기화한다 —
  * syncCafe24OrdersScheduled와 같은 패턴.
  */
 export const syncMetaInsightsScheduled = onSchedule(
   {
-    schedule: '0 0 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [metaAdsId],
     timeoutSeconds: 300,
@@ -1049,12 +1049,12 @@ export const syncGoogleInsights = onRequest(
 )
 
 /**
- * Google Ads 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * Google Ads 인사이트를 매일 09·11·13·15·17·22시(KST) 최근 14일 롤링 재동기화한다 —
  * syncCafe24OrdersScheduled/syncMetaInsightsScheduled와 같은 패턴.
  */
 export const syncGoogleInsightsScheduled = onSchedule(
   {
-    schedule: '0 0 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [googleClientId, googleClientSecret, googleDeveloperToken],
     timeoutSeconds: 300,
@@ -1269,12 +1269,12 @@ export const syncNaverInsights = onRequest(
 )
 
 /**
- * 네이버 인사이트를 매일 자정(KST) 최근 14일 롤링 재동기화한다 —
+ * 네이버 인사이트를 매일 09·11·13·15·17·22시(KST) 최근 14일 롤링 재동기화한다 —
  * syncMetaInsightsScheduled/syncGoogleInsightsScheduled와 같은 패턴.
  */
 export const syncNaverInsightsScheduled = onSchedule(
   {
-    schedule: '0 0 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [naverAccessLicense, naverSecretKey],
     timeoutSeconds: 300,
@@ -1394,8 +1394,8 @@ export const getOfflineRevenue = onRequest((req, res) => {
 })
 
 /**
- * Monday CRM 오프라인 매출을 영업시간 중 3시간 간격(10/13/16/19시, KST)으로
- * 자동 재동기화한다 — 이 저장소의 첫 onSchedule 함수. 24시간 내내가 아니라
+ * Monday CRM 오프라인 매출을 영업시간 중 2시간 간격(09/11/13/15/17시)과
+ * 마감 후 22시(KST)에 자동 재동기화한다 — 이 저장소의 첫 onSchedule 함수. 24시간 내내가 아니라
  * 영업시간대만 도는 이유: CRM이 영업시간에만 쓰이니 그 시간에만 최신이면
  * 충분하고, Monday API 호출 횟수도 그만큼 줄어든다. 요일 구분 없이 매일
  * 돈다 — 매장이 주말에도 열려 있으면 그날도 최신화돼야 하니 평일로 좁히지
@@ -1404,7 +1404,7 @@ export const getOfflineRevenue = onRequest((req, res) => {
  */
 export const syncOfflineSalesScheduled = onSchedule(
   {
-    schedule: '0 10,13,16,19 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [mondayApiKey],
   },
@@ -1692,14 +1692,13 @@ export const syncCafe24Orders = onRequest(
 )
 
 /**
- * Cafe24 주문을 매일 자정(KST) 최근 30일 롤링 재동기화한다 — 온라인 스토어
- * 주문은 영업시간 개념이 없어(24시간 발생) Monday처럼 영업시간대만 도는
- * 대신, 하루 한 번이면 취소/환불 등 상태 변경을 반영하기에 충분하다고 보고
- * 하루 주기로 잡았다. 더 자주 반영해야 하면 이 schedule만 바꾸면 된다.
+ * Cafe24 주문을 매일 09·11·13·15·17·22시(KST) 최근 30일 롤링 재동기화한다 —
+ * 예전엔 하루 한 번(자정)이었는데, 다른 동기화들과 같은 시각으로 맞춰 낮
+ * 동안 들어온 주문과 취소/환불이 그날 안에 반영되게 했다.
  */
 export const syncCafe24OrdersScheduled = onSchedule(
   {
-    schedule: '0 0 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [cafe24ClientId, cafe24SecretKey],
     timeoutSeconds: 300,

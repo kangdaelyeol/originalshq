@@ -19,7 +19,7 @@ import { readSessionCache, writeSessionCache } from '../client/session-cache'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
 
-/** 한 번의 조회(loadRange)가 만들어내는 다섯 결과 — 세션 캐시에 이 통째로
+/** 한 번의 조회(loadRange)가 만들어내는 여섯 결과 — 세션 캐시에 이 통째로
  * 저장해두고, 같은 기간을 다시 조회할 때 그대로 복원한다. */
 interface InsightLoadResult {
   metaResult: MetaInsightSummary
@@ -87,7 +87,7 @@ export const useChannelInsightViewModel = () => {
       ? err.message
       : fallback
 
-  // 조회 결과(다섯 개) state를 한 번에 반영 — 캐시 적중/신규 fetch 두 경로가
+  // 조회 결과(여섯 개) state를 한 번에 반영 — 캐시 적중/신규 fetch 두 경로가
   // 공유한다.
   const applyResult = useCallback(
     (apiStart: ISODate, apiEnd: ISODate, result: InsightLoadResult) => {

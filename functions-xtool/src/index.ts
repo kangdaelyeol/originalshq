@@ -1778,12 +1778,12 @@ export const getMondayRepeatRevenue = onRequest((request, response) => {
 })
 
 // ────────────────────────────────
-// syncMondayBoardsScheduled — 하루 두 번(07:00, 19:00 KST) 전체 동기화.
+// syncMondayBoardsScheduled — 하루 여섯 번(09·11·13·15·17·22시 KST) 전체 동기화.
 // HTTP 응답이 없는 트리거라 결과는 로그와 각 보드 문서의 lastSync로 확인한다.
 // ────────────────────────────────
 export const syncMondayBoardsScheduled = onSchedule(
   {
-    schedule: '0 7,19 * * *',
+    schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [mondayApiKey],
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,

@@ -104,7 +104,7 @@ export async function listItems(db: Firestore): Promise<MondayItem[]> {
 }
 
 /** 통합 고객 컬렉션을 주어진 목록과 똑같이 맞춘다. 내용이 그대로인 문서
- * (hash가 같은 것)는 다시 쓰지 않는다 — 하루 두 번 도는 동기화에서 실제로
+ * (hash가 같은 것)는 다시 쓰지 않는다 — 하루 여섯 번 도는 동기화에서 실제로
  * 바뀌는 고객은 일부라서, 매번 전부 쓰는 것보다 쓰기가 훨씬 적다. 목록에
  * 없는 문서(그 번호의 item이 Monday에서 다 사라진 고객)는 지운다. */
 export async function replaceCustomers(

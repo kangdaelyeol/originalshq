@@ -73,7 +73,7 @@ export const MondayReviewPanel = ({
         <div className="body">
           <p className="monday_detail_message">
             자동으로 정리하지 못한 기록입니다. Monday에서 고치면 다음
-            동기화(매일 07시·19시) 때 반영됩니다.
+            동기화(매일 09·11·13·15·17·22시) 때 반영됩니다.
           </p>
 
           {sortedIssues.length > 0 && (
