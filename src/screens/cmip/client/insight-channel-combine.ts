@@ -12,6 +12,7 @@
 import {
   emptyMetrics,
   emptySeries,
+  lowerBoundRoasOf,
   mergeByDateWeighted,
   newCustomerRoasOf,
   seriesFromByDate,
@@ -99,10 +100,14 @@ function mergeExternalRevenueIntoByDate(
   offlineByDate: readonly OfflineRevenueDateSummary[],
   onlineByDate: readonly Cafe24RevenueDateSummary[],
   repeatByDate: RepeatRevenueByDate | null,
+  adRevenueByDate: Record<string, number> | null,
 ): DateSummary[] {
   if (offlineByDate.length === 0 && onlineByDate.length === 0) {
     return [...byDate]
   }
+  // 그날 UTM 광고 매출 — 유입 데이터를 못 불러왔으면 NaN(하한 ROAS '-').
+  const adRevenueOf = (date: string): number =>
+    adRevenueByDate === null ? Number.NaN : (adRevenueByDate[date] ?? 0)
   // 그날 재구매 금액 — 재구매 데이터를 못 불러왔으면 NaN(모름)이라, 그 날이
   // 들어간 합계의 신규 고객 ROAS도 NaN('-')이 된다.
   const repeatOf = (date: string): number =>
@@ -132,6 +137,8 @@ function mergeExternalRevenueIntoByDate(
       roas: row.spend > 0 ? (totalRevenue / row.spend) * 100 : 0,
       repeatRevenue,
       newCustomerRoas: newCustomerRoasOf(totalRevenue, repeatRevenue, row.spend),
+      adRevenue: adRevenueOf(row.date),
+      lowerBoundRoas: lowerBoundRoasOf(adRevenueOf(row.date), row.spend),
     }
   })
 
@@ -155,6 +162,7 @@ function mergeExternalRevenueIntoByDate(
       // 광고비가 없는 날이라 신규 고객 ROAS는 0(emptyMetrics)이지만, 재구매
       // 금액은 기간 합계에 들어가야 해서 얹어 둔다.
       repeatRevenue: repeatOf(date),
+      adRevenue: adRevenueOf(date),
     })
   }
 
@@ -177,6 +185,7 @@ function combineGroupedSeries(
   offlineRevenueByDate: readonly OfflineRevenueDateSummary[] = [],
   onlineRevenueByDate: readonly Cafe24RevenueDateSummary[] = [],
   repeatByDate: RepeatRevenueByDate | null = {},
+  adRevenueByDate: Record<string, number> | null = {},
 ): ChannelSplitSeries {
   const metaSeries = meta ?? emptySeries()
   const googleSeries = google ?? emptySeries()
@@ -193,6 +202,7 @@ function combineGroupedSeries(
         offlineRevenueByDate,
         onlineRevenueByDate,
         repeatByDate,
+        adRevenueByDate,
       ),
       dateStart,
       dateEnd,
@@ -289,6 +299,9 @@ export function combineChannelInsights(
   /** 날짜별 재구매 금액(xtool, 조회 기간으로 이미 걸러진 것) — 못 불러왔으면
    * null이고, 그러면 신규 고객 ROAS가 NaN('-')이 된다. */
   repeatRevenue: RepeatRevenueByDate | null,
+  /** 날짜별 UTM 광고 매출(조회 기간으로 이미 걸러진 것) — 못 불러왔으면
+   * null이고, 그러면 하한 ROAS가 NaN('-')이 된다. */
+  adRevenue: Record<string, number> | null,
 ): CombinedInsight {
   const adCombinedTotal = sumMetricsWeighted([
     { metrics: meta.total, hasFrequency: HAS_FREQUENCY.meta },
@@ -306,6 +319,10 @@ export function combineChannelInsights(
     repeatRevenue === null
       ? Number.NaN
       : Object.values(repeatRevenue).reduce((sum, amount) => sum + amount, 0)
+  const combinedAdRevenue =
+    adRevenue === null
+      ? Number.NaN
+      : Object.values(adRevenue).reduce((sum, amount) => sum + amount, 0)
 
   return {
     total: {
@@ -327,6 +344,11 @@ export function combineChannelInsights(
           combinedRepeatRevenue,
           adCombinedTotal.spend,
         ),
+        adRevenue: combinedAdRevenue,
+        lowerBoundRoas: lowerBoundRoasOf(
+          combinedAdRevenue,
+          adCombinedTotal.spend,
+        ),
       },
       meta: meta.total,
       google: google.total,
@@ -341,6 +363,7 @@ export function combineChannelInsights(
       offlineRevenue?.byDate ?? [],
       onlineRevenue?.byDate ?? [],
       repeatRevenue,
+      adRevenue,
     ),
     byCampaign: combineCampaigns(
       meta.byCampaign ?? [],

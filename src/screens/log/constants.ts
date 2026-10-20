@@ -31,7 +31,7 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     description: 'Monday 오프라인 결제 보드의 매출 줄을 다시 읽어 저장합니다.',
     codebase: 'cmip',
     functionName: 'syncOfflineSalesScheduled',
-    timeoutSeconds: 60,
+    timeoutSeconds: 300,
   },
   {
     id: 'cafe24-orders',

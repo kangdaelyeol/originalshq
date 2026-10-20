@@ -1336,8 +1336,16 @@ export const syncNaverInsightsScheduled = onSchedule(
  * 로직을 그대로 재사용해 자동 호출하고, 이 엔드포인트는 그 사이 급하게
  * 최신화가 필요할 때 수동으로 바로 트리거하는 용도로 남겨둔다.
  */
+// 오프라인 매출 동기화 제한 시간 — 결제 보드 전체(800여 item, 1,900여 줄)를
+// 읽고 쓰는 데 50초 남짓 걸려 기본값(60초)에 거의 닿았다(10/21 수동 실행이
+// 시간 초과로 끊김). 보드가 커져도 넉넉하게 5분.
+const OFFLINE_SALES_SYNC_TIMEOUT_SECONDS = 300
+
 export const syncOfflineSales = onRequest(
-  { secrets: [mondayApiKey] },
+  {
+    secrets: [mondayApiKey],
+    timeoutSeconds: OFFLINE_SALES_SYNC_TIMEOUT_SECONDS,
+  },
   (req, res) => {
     corsHandler(req, res, async () => {
       if (req.method !== 'POST') {
@@ -1438,6 +1446,7 @@ export const syncOfflineSalesScheduled = onSchedule(
     schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
     secrets: [mondayApiKey],
+    timeoutSeconds: OFFLINE_SALES_SYNC_TIMEOUT_SECONDS,
   },
   async (event) => {
     try {

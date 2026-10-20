@@ -7,6 +7,7 @@ import {
   getCafe24Revenue,
   getRepeatRevenue,
   getAttribution,
+  utmAdRevenueByDate,
   combineChannelInsights,
   normalizeInsightSummary,
   CallableError,
@@ -117,6 +118,9 @@ export const useChannelInsightViewModel = () => {
           result.offlineRevenueResult,
           result.onlineRevenueResult,
           result.repeatRevenueResult,
+          result.attributionResult
+            ? utmAdRevenueByDate(result.attributionResult, apiStart, apiEnd)
+            : null,
         ),
       )
     },

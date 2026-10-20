@@ -34,6 +34,13 @@ export function newCustomerRoasOf(
     : 0
 }
 
+/** 하한 ROAS(퍼센트) — UTM 광고 매출 ÷ 광고비. 모르면(NaN) NaN, 광고비가
+ * 0이면 0. */
+export function lowerBoundRoasOf(adRevenue: number, spend: number): number {
+  if (Number.isNaN(adRevenue)) return Number.NaN
+  return spend > 0 ? (adRevenue / spend) * 100 : 0
+}
+
 export function emptyMetrics(): MetricsSummary {
   return {
     impressions: 0,
@@ -47,6 +54,8 @@ export function emptyMetrics(): MetricsSummary {
     roas: 0,
     repeatRevenue: 0,
     newCustomerRoas: 0,
+    adRevenue: 0,
+    lowerBoundRoas: 0,
     ctr: 0,
     cpc: 0,
     cpa: 0,
@@ -75,6 +84,8 @@ interface RawCounts {
   /** 재구매 매출 — 그냥 합산(NaN이 섞이면 합도 NaN = 모름). 광고 채널 원본
    * 집계처럼 재구매를 모르는 곳은 안 넘겨도 된다(0). */
   repeatRevenue?: number
+  /** UTM 광고 매출 — repeatRevenue와 같은 방식으로 합산. */
+  adRevenue?: number
   /** frequency는 단순 합산 대상이 아니라 impressions 가중 평균으로 근사한다. */
   weightedFrequency: number
 }
@@ -90,6 +101,7 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
     offlineRevenue,
     onlineRevenue,
     repeatRevenue = 0,
+    adRevenue = 0,
     weightedFrequency,
   } = counts
   return {
@@ -111,6 +123,8 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
       repeatRevenue,
       spend,
     ),
+    adRevenue,
+    lowerBoundRoas: lowerBoundRoasOf(adRevenue, spend),
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,
@@ -133,6 +147,7 @@ export function aggregateMetrics(
     offlineRevenue: rows.reduce((s, r) => s + (r.offlineRevenue ?? 0), 0),
     onlineRevenue: rows.reduce((s, r) => s + (r.onlineRevenue ?? 0), 0),
     repeatRevenue: rows.reduce((s, r) => s + (r.repeatRevenue ?? 0), 0),
+    adRevenue: rows.reduce((s, r) => s + (r.adRevenue ?? 0), 0),
     weightedFrequency: rows.reduce(
       (s, r) => s + r.frequency * r.impressions,
       0,
@@ -177,6 +192,10 @@ export function sumMetricsWeighted(
     (s, e) => s + (e.metrics.repeatRevenue ?? 0),
     0,
   )
+  const adRevenue = entries.reduce(
+    (s, e) => s + (e.metrics.adRevenue ?? 0),
+    0,
+  )
   const weightedFrequency = entries.reduce(
     (s, e) =>
       s + (e.hasFrequency ? e.metrics.frequency * e.metrics.impressions : 0),
@@ -203,6 +222,8 @@ export function sumMetricsWeighted(
       repeatRevenue,
       spend,
     ),
+    adRevenue,
+    lowerBoundRoas: lowerBoundRoasOf(adRevenue, spend),
     ctr: impressions > 0 ? (clicks / impressions) * 100 : 0,
     cpc: clicks > 0 ? spend / clicks : 0,
     cpa: conversions > 0 ? spend / conversions : 0,

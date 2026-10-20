@@ -69,7 +69,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2,
     unit: '%',
     color: '#f59e0b',
-    note: '(오프라인 매출 + 온라인 매출) ÷ 광고비입니다(예전 이름 "ROAS"). 재구매 매출까지 들어 있어, 광고 성과만 볼 때는 ROAS 탭의 신규 고객 ROAS를 봅니다. 오프라인은 Monday CRM 기준 매장 결제액, 온라인은 Cafe24 기준 자사몰 결제액입니다. offlineRevenue/onlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
+    note: '(오프라인 매출 + 온라인 매출) ÷ 광고비',
   },
   {
     key: 'newCustomerRoas',
@@ -78,7 +78,16 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2OrDash,
     unit: '%',
     color: '#e879f9',
-    note: '(총 매출 − 재구매 매출) ÷ 광고비입니다. 이미 산 적 있는 고객(전화번호 기준)이 첫 구매일 이후 다시 산 금액은 광고 성과로 보지 않아 뺍니다. ROAS 탭의 신규 고객 ROAS와 같은 값이고, 광고비 대비 매출과 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어갑니다. 재구매 데이터를 불러오지 못하면 "-"로 표시됩니다.',
+    note: '(총 매출 − 재구매 매출) ÷ 광고비',
+  },
+  {
+    key: 'lowerBoundRoas',
+    label: '하한 ROAS',
+    format: pct2OrDash,
+    formatCompact: num2OrDash,
+    unit: '%',
+    color: '#fb7185',
+    note: 'UTM 광고 매출 ÷ 광고비',
   },
   {
     key: 'totalRevenue',
@@ -87,7 +96,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num,
     unit: '원',
     color: '#f97316',
-    note: '오프라인 매출 + 온라인 매출 합계입니다. 두 값과 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 항상 0으로 표시됩니다.',
+    note: '오프라인 매출 + 온라인 매출 합계',
   },
   {
     key: 'spend',
@@ -104,7 +113,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num,
     unit: '원',
     color: '#a3e635',
-    note: '자사몰에서 실제 결제된 금액(Cafe24 주문 기준, 부분취소·환불 반영)입니다. offlineRevenue와 같은 이유로 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Cafe24 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시됩니다.',
+    note: '자사몰에서 실제 결제된 금액(Cafe24 주문 기준, 부분취소·환불 반영). 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Cafe24 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시.',
   },
   {
     key: 'offlineRevenue',
@@ -113,7 +122,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num,
     unit: '원',
     color: '#2dd4bf',
-    note: '매장에서 실제 결제된 금액(Monday CRM 기준)입니다. 계정 전체(종합) 합계에만 실제 값이 들어가고, Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Monday 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시됩니다.',
+    note: '매장에서 실제 결제된 금액(Monday CRM 기준). Meta/Google/Naver 개별 채널이나 캠페인·adset 단위에는 Monday 매출을 특정 캠페인에 귀속시킬 방법이 없어 항상 0으로 표시.',
   },
   // revenue는 실제 매출과 전환 목표(캠페인 최적화 기준)에 따른 기댓값이 섞여
   // 들어와서 실제 매출액 계산에는 의미가 없다는 판단으로 잠깐 숨긴다 — 데이터
@@ -201,7 +210,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2,
     unit: '회',
     color: '#b98d5e',
-    note: '네이버는 frequency 지표를 제공하지 않아 항상 0으로 표시됩니다. Google은 캠페인 단위 데이터에서만 실제 값을 제공하고, adset(광고그룹) 단위에서는 제공하지 않아 0으로 표시됩니다.',
+    note: '네이버는 frequency 지표를 제공하지 않아 항상 0으로 표시. Google은 캠페인 단위 데이터에서만 실제 값을 제공하고, adset(광고그룹) 단위에서는 제공하지 않아 0으로 표시.',
   },
 ]
 
@@ -216,6 +225,7 @@ export const ACCOUNT_ONLY_METRIC_KEYS: ReadonlySet<MetricKey> = new Set([
   'totalRevenue',
   'roas',
   'newCustomerRoas',
+  'lowerBoundRoas',
 ])
 
 export const channelSafeFields = (

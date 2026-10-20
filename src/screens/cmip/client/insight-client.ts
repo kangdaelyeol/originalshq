@@ -42,6 +42,14 @@ export interface MetricsSummary {
   /** 신규 고객 ROAS — (totalRevenue − repeatRevenue) ÷ 광고비, 퍼센트. 이미 산
    * 적 있는 고객의 재구매를 광고 성과에서 뺀 값(ROAS 탭과 같은 정의). */
   newCustomerRoas: number
+  /** UTM 광고 매출 — UTM이 광고 채널인 고객의 첫 구매 금액(attribution-
+   * client.ts의 utmAdRevenueByDate). combined(종합) 합계에만 실제 값이
+   * 들어간다. 유입 데이터를 못 불러왔으면 NaN(모름). */
+  adRevenue: number
+  /** 하한 ROAS — adRevenue ÷ 광고비, 퍼센트. UTM으로 광고에서 왔다고 확인된
+   * 고객의 첫 구매만 광고 성과로 센 값이라 진짜 광고 ROAS보다 작거나 같다
+   * (ROAS 탭의 "하한 · UTM 광고 ROAS"와 같은 정의). */
+  lowerBoundRoas: number
   ctr: number
   cpc: number
   cpa: number
@@ -102,6 +110,8 @@ const withZeroExternalRevenue = <T extends MetricsSummary>(m: T): T => ({
   roas: m.roas ?? 0,
   repeatRevenue: m.repeatRevenue ?? 0,
   newCustomerRoas: m.newCustomerRoas ?? 0,
+  adRevenue: m.adRevenue ?? 0,
+  lowerBoundRoas: m.lowerBoundRoas ?? 0,
 })
 
 function normalizeSeries<T extends GroupedInsightSeries>(s: T): T {

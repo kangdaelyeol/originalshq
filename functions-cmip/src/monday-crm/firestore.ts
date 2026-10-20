@@ -50,26 +50,31 @@ const docToRow = (d: QueryDocumentSnapshot<DocumentData>): OfflineSaleRow => {
   }
 }
 
-/** Monday에서 새로 받아온 rows로 offlineSales 컬렉션을 통째로 바꿔친다 —
- * 기존 문서를 전부 지우고 다시 채우는 전체 재동기화 방식이다(부분 delta
- * 동기화 아님). Monday 쪽에서 지워진 항목도 이래야 같이 지워진다. 같은
- * subitem은 문서 id가 같아 delete→set이 같은 경로에 순서대로 걸리지만,
- * bulkWriter가 그 순서를 보장하지 않을 가능성까지 고려해 create가 아니라
- * set을 쓴다(이미 지워졌든 아니든 최종 상태만 맞으면 된다). */
+/** Monday에서 새로 받아온 rows로 offlineSales 컬렉션을 똑같이 맞춘다 — 새
+ * rows는 전부 쓰고(set), 새 rows에 없는 기존 문서(Monday에서 지워진 항목)만
+ * 지운다.
+ *
+ * 예전에는 기존 문서를 전부 지우고 다시 채웠는데, 같은 문서 id에 delete와
+ * set을 한 bulkWriter에 함께 넣으면 실행 순서가 보장되지 않는다 — set이
+ * 먼저 끝나고 delete가 나중에 실행된 문서는 통째로 사라졌다(10/21 발견: 매
+ * 동기화마다 다른 결제 줄이 무작위로 빠져 8월 −4,310만·10월 −1억 9,440만이
+ * 비었다). 이제 지우는 문서와 쓰는 문서가 겹치지 않아 순서와 무관하다. */
 export const resyncOfflineSales = async (
   rows: OfflineSaleRow[],
 ): Promise<{ inserted: number; deleted: number }> => {
   const col = offlineSalesCol()
   const existingRefs = await col.listDocuments()
+  const nextIds = new Set(rows.map((row) => row.mondaySubitemId))
+  const staleRefs = existingRefs.filter((ref) => !nextIds.has(ref.id))
 
   const writer = db.bulkWriter()
-  for (const ref of existingRefs) writer.delete(ref)
   for (const row of rows) {
     writer.set(col.doc(row.mondaySubitemId), rowToDoc(row))
   }
+  for (const ref of staleRefs) writer.delete(ref)
   await writer.close()
 
-  return { inserted: rows.length, deleted: existingRefs.length }
+  return { inserted: rows.length, deleted: staleRefs.length }
 }
 
 /** [startISO, endISO](포함) 구간의 오프라인 매출 행. 한 번에 읽어와 메모리

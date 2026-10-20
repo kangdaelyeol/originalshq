@@ -46,3 +46,27 @@ export async function getAttribution(): Promise<AttributionRow[]> {
 
   return (body as { rows: AttributionRow[] }).rows
 }
+
+const AD_CHANNEL_SET: ReadonlySet<AttributionChannel> = new Set([
+  'meta',
+  'google',
+  'naver',
+])
+
+/** 날짜별 "UTM 광고 고객의 첫 구매 매출" — UTM이 광고 채널(Meta·Google·
+ * Naver)인 고객의 첫 구매(가장 이른 결제일, 그날 금액 합)를 그 결제일에
+ * 놓는다. 하한 ROAS(전체 요약·ROAS 탭)의 분자다. [start, end] 밖은 뺀다. */
+export function utmAdRevenueByDate(
+  rows: readonly AttributionRow[],
+  start: ISODate,
+  end: ISODate,
+): Record<ISODate, number> {
+  const byDate: Record<ISODate, number> = {}
+  for (const [, channel, , purchases] of rows) {
+    const first = purchases[0]
+    if (!first || !AD_CHANNEL_SET.has(channel)) continue
+    if (first[0] < start || first[0] > end) continue
+    byDate[first[0]] = (byDate[first[0]] ?? 0) + first[1]
+  }
+  return byDate
+}
