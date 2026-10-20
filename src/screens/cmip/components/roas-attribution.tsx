@@ -125,14 +125,14 @@ export function RoasAttribution({
           </div>
         </div>
         <p className="roas-attribution__note">
-          조회 기간에 첫 구매를 한 고객을 가장 이른 상담의 UTM source로
-          나눴습니다(방문체험 보드의 유입경로 — 영업전환·자연유입 — 는 방문을
-          어떻게 잡았는지를 적은 값이라 쓰지 않습니다). 하한은 UTM이 광고
-          채널(Meta·Google·Naver)인 고객의 첫 구매만 광고 성과로 센 값이고,
-          상한은 재구매만 뺀 신규 고객 매출 전체입니다. 진짜 광고 ROAS는 이
-          사이에 있으며, UTM 없는 매출 비중이 줄어들수록 두 값이 가까워집니다.
-          매출은 고객 통합 기준(전화번호로 묶은 Monday 결제·Cafe24 주문의 계약
-          금액)이라 위 ROAS 요약의 매출과 원 단위까지 같지는 않습니다.
+          조회 기간에 첫 구매를 한 고객을 가장 이른 상담의 UTM source로 나누어
+          추적
+          <br />
+          TODO: 방문체험 보드-유입기준이 광고성과 측정 기준이 될 수 있는지
+          확인스크
+          <br /> * 하한값 = UTM이 광고 채널(Meta·Google·Naver)인 고객의 첫
+          구매만 광고 성과로 계산한 값
+          <br />* 상한값 = 재구매만 뺀 신규 고객 매출 전체
         </p>
         <div className="channel-insight__table-wrap">
           <table className="channel-insight__table channel-insight__table--roas">
@@ -186,13 +186,7 @@ export function RoasAttribution({
           </h3>
         </div>
         <p className="roas-attribution__note">
-          조회 기간에 처음 나타난 고객(상담 접수·방문체험 예약·결제 중 가장 이른
-          날)을 그 달별로 묶어, 각 고객이 처음 나타난 날부터 30·60·90일 안에 산
-          금액을 그 달 광고비로 나눴습니다. 같은 고객끼리 비교하므로 문의와 구매
-          사이의 시차에 흔들리지 않습니다. 일부 고객만 기간을 채운 칸은 "진행
-          중"(값이 아직 오름), 그 달 첫 고객도 기간을 못 채운 칸은 "-"(집계
-          전)로 표시합니다. 아래 작은 글씨는 UTM이 광고 채널인 고객만 센
-          값(하한)입니다.
+          아래 작은 글씨는 UTM이 광고 채널인 고객만 센 값(하한).
         </p>
         {cohorts.length === 0 ? (
           <p className="channel-insight__result-empty">데이터 없음</p>
