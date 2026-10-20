@@ -511,7 +511,7 @@ export interface MondayDailyRepeatRevenue {
 }
 
 /** 광고 기여 ROAS 재료 1줄(고객 1명) — monday/attribution.ts가 만든다.
- * [처음 나타난 날, 광고 채널, 원래 유입 경로, 구매([결제일, 금액] — 날짜별로
+ * [처음 나타난 날, 광고 채널, 가장 이른 상담의 UTM source, 구매([결제일, 금액] — 날짜별로
  * 합침, 취소 제외, 오래된 순)]. 처음 나타난 날은 상담 접수·방문체험 예약·
  * 샘플 요청·결제 중 가장 이른 날이라, 문의 없이 산 고객은 첫 결제일이다. */
 export type MondayAttributionRow = [

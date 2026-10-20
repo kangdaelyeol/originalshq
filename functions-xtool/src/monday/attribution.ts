@@ -1,15 +1,27 @@
 import { MondayAttributionRow, MondayCustomer } from './types'
 
-/** 유입 경로(UTM source 또는 방문체험 유입경로)를 광고 채널로 묶는다.
- *   · meta / google / naver — 광고 채널로 확인된 고객
- *   · other   — 경로는 적혀 있지만 광고가 아님(영업전환, 자연유입 등)
- *   · unknown — 경로가 비어 있음(문의 없이 산 고객 포함) */
+// Meta 광고셋 이름이 utm_source에 그대로 들어간 값 — 일부 광고의 URL
+// 파라미터가 utm_source={{adset.name}}처럼 잡혀 있어 생긴다(예:
+// "장바구니_3065M_INT_F1울트라", "트래픽_3040MF_non_P2", "전환_맞춤유사_프로모션").
+const META_ADSET_NAME = /^(장바구니|트래픽|전환|결제시작)_/
+
+/** UTM source를 광고 채널로 묶는다 — ROAS 하한은 이 값이 광고 채널인 고객만
+ * 센다.
+ *   · meta / google / naver — UTM이 광고 채널
+ *   · other   — UTM은 있지만 광고비를 모으지 않는 곳(chatgpt.com, 당근,
+ *               threads 등)
+ *   · unknown — UTM이 없음(문의 없이 산 고객, UTM 없이 들어온 문의 포함) */
 export const attributionChannel = (
-  source: string | null,
+  utmSource: string | null,
 ): MondayAttributionRow[1] => {
-  if (!source) return 'unknown'
-  const value = source.trim().toLowerCase()
-  if (/facebook|instagram|^fb$|^ig$|^meta$/.test(value)) return 'meta'
+  if (!utmSource) return 'unknown'
+  const value = utmSource.trim().toLowerCase()
+  if (
+    /facebook|instagram|igshopping|^fb$|^ig$|^meta$|^an$/.test(value) ||
+    META_ADSET_NAME.test(utmSource.trim())
+  ) {
+    return 'meta'
+  }
   if (/google|youtube|gdn/.test(value)) return 'google'
   if (/naver/.test(value)) return 'naver'
   return 'other'
@@ -24,8 +36,17 @@ export const buildAttributionRows = (
   customers: MondayCustomer[],
 ): MondayAttributionRow[] =>
   customers.flatMap((customer): MondayAttributionRow[] => {
-    const { firstContactAt, source, misentry } = customer.summary.funnel
+    const { firstContactAt, misentry } = customer.summary.funnel
     if (misentry || !firstContactAt) return []
+    // 유입 경로는 UTM만 본다 — 가장 이른 상담의 utm_source. 방문체험 보드의
+    // "유입경로"(영업전환·자연유입 등)는 방문체험을 어떻게 잡았는지를 적은
+    // 값이라 처음 어디서 왔는지로 쓰지 않는다.
+    const utmSource =
+      [...customer.consultations]
+        .sort((a, b) =>
+          (a.receivedAt ?? '9999').localeCompare(b.receivedAt ?? '9999'),
+        )
+        .find((record) => record.utmSource)?.utmSource ?? null
     const byDate = new Map<string, number>()
     for (const purchase of customer.purchases) {
       if (purchase.cancelled || !purchase.paidAt) continue
@@ -38,6 +59,11 @@ export const buildAttributionRows = (
       a[0].localeCompare(b[0]),
     )
     return [
-      [firstContactAt, attributionChannel(source), source ?? '', purchases],
+      [
+        firstContactAt,
+        attributionChannel(utmSource),
+        utmSource ?? '',
+        purchases,
+      ],
     ]
   })

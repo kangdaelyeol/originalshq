@@ -101,7 +101,7 @@ export function RoasAttribution({
         <div className="channel-insight__summary-grid roas-attribution__tiles">
           <div className="channel-insight__kpi">
             <span className="channel-insight__kpi-label">
-              하한 · 광고 확인 ROAS
+              하한 · UTM 광고 ROAS
             </span>
             <span className="channel-insight__kpi-value">
               {pct(range.lowerBound)}
@@ -117,7 +117,7 @@ export function RoasAttribution({
           </div>
           <div className="channel-insight__kpi">
             <span className="channel-insight__kpi-label">
-              경로 미확인 신규 매출 비중
+              UTM 없는 신규 매출 비중
             </span>
             <span className="channel-insight__kpi-value">
               {share(range.unknownShare)}
@@ -125,13 +125,14 @@ export function RoasAttribution({
           </div>
         </div>
         <p className="roas-attribution__note">
-          조회 기간에 첫 구매를 한 고객을 처음 유입 경로(가장 이른 상담의 UTM
-          source, 없으면 방문체험 유입경로)로 나눴습니다. 하한은 광고 채널로
-          확인된 고객의 첫 구매만 광고 성과로 센 값이고, 상한은 재구매만 뺀 신규
-          고객 매출 전체입니다. 진짜 광고 ROAS는 이 사이에 있으며, 경로 미확인
-          비중이 줄어들수록 두 값이 가까워집니다. 매출은 고객 통합
-          기준(전화번호로 묶은 Monday 결제·Cafe24 주문의 계약 금액)이라 위 ROAS
-          요약의 매출과 원 단위까지 같지는 않습니다.
+          조회 기간에 첫 구매를 한 고객을 가장 이른 상담의 UTM source로
+          나눴습니다(방문체험 보드의 유입경로 — 영업전환·자연유입 — 는 방문을
+          어떻게 잡았는지를 적은 값이라 쓰지 않습니다). 하한은 UTM이 광고
+          채널(Meta·Google·Naver)인 고객의 첫 구매만 광고 성과로 센 값이고,
+          상한은 재구매만 뺀 신규 고객 매출 전체입니다. 진짜 광고 ROAS는 이
+          사이에 있으며, UTM 없는 매출 비중이 줄어들수록 두 값이 가까워집니다.
+          매출은 고객 통합 기준(전화번호로 묶은 Monday 결제·Cafe24 주문의 계약
+          금액)이라 위 ROAS 요약의 매출과 원 단위까지 같지는 않습니다.
         </p>
         <div className="channel-insight__table-wrap">
           <table className="channel-insight__table channel-insight__table--roas">
@@ -150,7 +151,7 @@ export function RoasAttribution({
                 <ChannelRow key={row.channel} row={row} />
               ))}
               <tr className="roas-attribution__subtotal">
-                <td>광고 확인 합계 (하한)</td>
+                <td>UTM 광고 합계 (하한)</td>
                 <td>{won(adSubtotal.spend ?? 0)}</td>
                 <td>{adSubtotal.buyers.toLocaleString()}명</td>
                 <td>{won(adSubtotal.revenue)}</td>
@@ -188,9 +189,10 @@ export function RoasAttribution({
           조회 기간에 처음 나타난 고객(상담 접수·방문체험 예약·결제 중 가장 이른
           날)을 그 달별로 묶어, 각 고객이 처음 나타난 날부터 30·60·90일 안에 산
           금액을 그 달 광고비로 나눴습니다. 같은 고객끼리 비교하므로 문의와 구매
-          사이의 시차에 흔들리지 않습니다. 기간을 아직 다 채우지 못한 달은 "진행
-          중"으로 표시되고 값이 낮게 보입니다. 아래 작은 글씨는 광고로 확인된
-          고객만 센 값(하한)입니다.
+          사이의 시차에 흔들리지 않습니다. 일부 고객만 기간을 채운 칸은 "진행
+          중"(값이 아직 오름), 그 달 첫 고객도 기간을 못 채운 칸은 "-"(집계
+          전)로 표시합니다. 아래 작은 글씨는 UTM이 광고 채널인 고객만 센
+          값(하한)입니다.
         </p>
         {cohorts.length === 0 ? (
           <p className="channel-insight__result-empty">데이터 없음</p>
@@ -216,16 +218,32 @@ export function RoasAttribution({
                     <td>
                       {cohort.customers.toLocaleString()}명
                       <span className="roas-attribution__sub">
-                        광고 확인 {cohort.adCustomers.toLocaleString()}명
+                        UTM 광고 {cohort.adCustomers.toLocaleString()}명
                       </span>
                     </td>
                     <td>{won(cohort.spend)}</td>
                     {COHORT_WINDOWS.map((window) => {
                       const cell = cohort.cells[window]
+                      // 첫 고객도 기간을 못 채운 칸은 앞 칸과 같은 값이라 비운다 —
+                      // 단 첫 칸(30일)은 비우면 그 달에 보이는 값이 없어서
+                      // "진행 중"으로 지금까지의 값을 보여 준다.
+                      if (
+                        cell.status === 'pending' &&
+                        window !== COHORT_WINDOWS[0]
+                      ) {
+                        return (
+                          <td key={window}>
+                            -
+                            <span className="roas-attribution__sub">
+                              집계 전
+                            </span>
+                          </td>
+                        )
+                      }
                       return (
                         <td key={window}>
                           <span className="roas-attribution__cell">
-                            {!cell.complete && (
+                            {cell.status !== 'complete' && (
                               <span className="roas-attribution__pending">
                                 진행 중
                               </span>
@@ -233,7 +251,7 @@ export function RoasAttribution({
                             {pct(cell.roas)}
                           </span>
                           <span className="roas-attribution__sub">
-                            {won(cell.revenue)} · 광고 확인 {pct(cell.adRoas)}
+                            {won(cell.revenue)} · UTM 광고 {pct(cell.adRoas)}
                           </span>
                         </td>
                       )

@@ -8,9 +8,10 @@ import { API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
-/** 유입 경로를 묶은 채널 — meta/google/naver는 광고로 확인된 고객, other는
- * 경로가 있지만 광고가 아닌 고객(영업전환·자연유입 등), unknown은 경로가 비어
- * 있는 고객(문의 없이 산 고객 포함). */
+/** 가장 이른 상담의 UTM source로 묶은 채널 — meta/google/naver는 UTM이 광고
+ * 채널인 고객, other는 UTM은 있지만 광고비를 모으지 않는 곳(chatgpt.com·당근
+ * 등), unknown은 UTM이 없는 고객(문의 없이 산 고객, UTM 없이 들어온 문의
+ * 포함). 방문체험 보드의 유입경로(영업전환·자연유입)는 쓰지 않는다. */
 export type AttributionChannel =
   'meta' | 'google' | 'naver' | 'other' | 'unknown'
 

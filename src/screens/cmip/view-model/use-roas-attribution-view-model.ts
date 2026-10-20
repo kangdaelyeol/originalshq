@@ -15,8 +15,8 @@ export const CHANNEL_LABEL: Record<AttributionChannel, string> = {
   meta: 'Meta',
   google: 'Google',
   naver: 'Naver',
-  other: '광고 아님 (영업전환·자연유입 등)',
-  unknown: '경로 미확인',
+  other: 'UTM 있음 · 광고 아님 (chatgpt·당근 등)',
+  unknown: 'UTM 없음',
 }
 
 /** 코호트 ROAS의 기간(일) — 처음 나타난 날부터 이만큼 안에 산 금액. */
@@ -122,9 +122,12 @@ export interface CohortCell {
   roas: number
   adRevenue: number
   adRoas: number
-  /** 이 달의 마지막 고객까지 기간(30·60·90일)이 다 지났는지 — 아니면 아직
-   * 매출이 더 들어올 수 있어 값이 낮게 보인다. */
-  complete: boolean
+  /** 기간(30·60·90일)이 얼마나 지났는지.
+   *   · complete — 이 달의 마지막 고객까지 다 지났다(값이 확정).
+   *   · partial  — 일부 고객만 지났다(값이 아직 오른다).
+   *   · pending  — 이 달의 첫 고객도 아직 안 지났다. 값이 "오늘까지 산 금액"
+   *                이라 더 짧은 기간 칸과 똑같아서 화면에는 '-'로 둔다. */
+  status: 'complete' | 'partial' | 'pending'
 }
 
 export interface CohortRow {
@@ -165,7 +168,7 @@ export function computeCohorts(
         roas: 0,
         adRevenue: 0,
         adRoas: 0,
-        complete: false,
+        status: 'pending',
       })
       cohort = {
         month,
@@ -208,8 +211,14 @@ export function computeCohorts(
         const cell = cohort.cells[window]
         cell.roas = pct(cell.revenue, cohort.spend)
         cell.adRoas = pct(cell.adRevenue, cohort.spend)
-        // 이 달의 마지막 날 들어온 고객도 기간을 다 채웠어야 완료다.
-        cell.complete = addDays(cohort.end, window - 1) < today
+        // 기간이 다 찬 고객이 있는지 — 이 달 첫 고객(start)과 마지막 고객(end)
+        // 기준. 마지막 고객까지 찼으면 확정, 첫 고객도 안 찼으면 집계 전.
+        cell.status =
+          addDays(cohort.end, window - 1) < today
+            ? 'complete'
+            : addDays(cohort.start, window - 1) < today
+              ? 'partial'
+              : 'pending'
       }
       return cohort
     })
