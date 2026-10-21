@@ -81,6 +81,10 @@ const XtoolLeadManagerScreen = () => {
         {...stats}
         status={monday.state.status}
         onReload={monday.actions.reload}
+        onOpenCustomer={(phone) => {
+          pageTab.actions.selectTab('monday')
+          monday.actions.openDetail(phone)
+        }}
       />
     )
   }

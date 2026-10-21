@@ -351,3 +351,139 @@ $stats-bar: variables.$color-accent;
     min-width: 46px;
   }
 }
+
+// ── 경로별 전환 · 자세히 보기 ─────────────────────────────────────────
+.xtool-main.monday_stats {
+  .stats_path {
+    position: relative;
+
+    &.open {
+      border-color: variables.$color-accent;
+    }
+  }
+
+  .stats_path_more {
+    all: unset;
+    align-self: flex-start;
+    margin-top: 6px;
+    font-size: 12px;
+    color: variables.$color-accent;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+    &:disabled {
+      color: variables.$color-text-faint;
+      cursor: default;
+      text-decoration: none;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  .stats_path_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .stats_path_count {
+    margin-left: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: variables.$color-text-muted;
+  }
+
+  // "자세히 보기" 모달 — 확인 모달(confirm-modal.scss)과 같은 배경·패널 톤.
+  .stats_path_modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background-color: rgba(0, 0, 0, 0.72);
+  }
+
+  .stats_path_dialog {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    width: min(1200px, 100%);
+    max-height: 85vh;
+    padding: 22px 24px 20px;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
+    border-radius: 14px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  .stats_path_close {
+    all: unset;
+    box-sizing: border-box;
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 30px;
+    color: variables.$color-text-muted;
+    cursor: pointer;
+
+    &:hover {
+      color: variables.$color-text;
+      background-color: variables.$color-surface-raised;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  // 표만 모달 안에서 스크롤된다(제목·설명은 고정).
+  .stats_path_scroll {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      background-color: variables.$color-surface;
+    }
+  }
+
+  .stats_path_table {
+    th,
+    td {
+      white-space: nowrap;
+      text-align: left;
+    }
+  }
+
+  .stats_path_name {
+    all: unset;
+    color: variables.$color-accent;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  .stats_path_boards {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}

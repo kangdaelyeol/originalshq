@@ -1,14 +1,17 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
+import { useEffect, useRef } from 'react'
 import type {
   useMondayStatsViewModel,
   useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { Loading } from '@/screens/xtool-lead-manager/components'
 import {
+  formatPhoneNumber,
   formatWon,
   PURCHASE_SCOPE_LABEL,
+  type PathRate,
   type PurchaseScope,
   type RateRow,
 } from '@/screens/xtool-lead-manager/utils'
@@ -18,6 +21,8 @@ type MondayStatsProps = ReturnType<typeof useMondayStatsViewModel> & {
    * view-model이 갖고 있다. */
   status: ReturnType<typeof useMondayViewModel>['state']['status']
   onReload: () => void
+  /** 경로 목록에서 고객을 누르면 — Monday 고객 탭에서 그 고객 상세를 연다. */
+  onOpenCustomer: (phone: string) => void
 }
 
 const SCOPE_DESC: Record<PurchaseScope, string> = {
@@ -66,12 +71,15 @@ const Tile = ({
   label,
   value,
   note,
+  title,
 }: {
   label: string
   value: string
   note?: string
+  /** 마우스를 올리면 보이는 설명(모수 등). */
+  title?: string
 }) => (
-  <div className="stats_tile">
+  <div className="stats_tile" title={title}>
     <span className="stats_tile_label">{label}</span>
     <strong className="stats_tile_value">{value}</strong>
     {note && <span className="stats_tile_note">{note}</span>}
@@ -149,6 +157,116 @@ const RateTable = ({
   )
 }
 
+/** 경로를 따라간 고객 목록(모달) — 고객 하나하나를 추적할 수 있게 핵심 날짜·
+ * 금액을 보여 주고, 이름을 누르면 Monday 고객 탭에서 그 고객 상세를 연다.
+ * Esc·바깥 클릭·닫기 버튼으로 닫는다. */
+const PathCustomersModal = ({
+  path,
+  onClose,
+  onOpenCustomer,
+}: {
+  path: PathRate
+  onClose: () => void
+  onOpenCustomer: (phone: string) => void
+}) => {
+  const closeRef = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    // 모달이 떠 있는 동안 뒤 화면은 스크롤되지 않게 하고, 키보드 포커스를
+    // 모달로 옮긴다.
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onClose])
+
+  return (
+    <div className="stats_path_modal" onClick={onClose}>
+      <div
+        className="stats_path_dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="stats-path-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="stats_path_head">
+          <h2 id="stats-path-title">
+            {path.label}{' '}
+            <span className="stats_path_count">{people(path.to)}</span>
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            className="stats_path_close"
+            onClick={onClose}
+          >
+            닫기
+          </button>
+        </div>
+        <p className="stats_desc">
+          {path.base}. 첫 구매가 최근인 순(구매 전이면 최초 인입이 최근인 순).
+          이름을 누르면 Monday 고객 탭에서 상담·방문체험·결제 기록을 모두 볼 수
+          있습니다.
+        </p>
+        <div className="stats_path_scroll">
+          <table className="stats_table stats_path_table">
+            <thead>
+              <tr>
+                <th>이름</th>
+                <th>번호</th>
+                <th>최초 인입</th>
+                <th>방문체험</th>
+                <th>첫 구매</th>
+                <th>구매 금액</th>
+                <th>인입→구매</th>
+                <th>담당자</th>
+                <th>유입 경로</th>
+                <th>기록된 보드</th>
+              </tr>
+            </thead>
+            <tbody>
+              {path.customers.map((customer) => (
+                <tr key={customer.phone}>
+                  <td>
+                    <button
+                      type="button"
+                      className="stats_path_name"
+                      onClick={() => onOpenCustomer(customer.phone)}
+                    >
+                      {customer.name}
+                    </button>
+                  </td>
+                  <td>{formatPhoneNumber(customer.phone)}</td>
+                  <td>{customer.firstContactAt ?? '-'}</td>
+                  <td>
+                    {customer.visitCompleted
+                      ? (customer.latestVisitAt ?? '완료')
+                      : '-'}
+                  </td>
+                  <td>{customer.firstPurchaseAt ?? '-'}</td>
+                  <td>{customer.amount ? formatWon(customer.amount) : '-'}</td>
+                  <td>{days(customer.days)}</td>
+                  <td>{customer.assignee ?? '-'}</td>
+                  <td>{customer.source ?? '-'}</td>
+                  <td className="stats_path_boards">
+                    {customer.boards.join(', ') || '-'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * 퍼널 통계 탭 — Monday 통합 고객을 "최초 인입 월" 기준으로 묶어 본다.
  *
@@ -161,10 +279,19 @@ export const MondayStats = ({
   actions,
   status,
   onReload,
+  onOpenCustomer,
 }: MondayStatsProps) => {
-  const { period, scope, months, stats } = state
-  const { changeFrom, changeTo, resetPeriod, changeScope } = actions
-  const { steps, visitSplit, callback, sources, assignees } = stats
+  const { period, scope, months, stats, openPathId } = state
+  const {
+    changeFrom,
+    changeTo,
+    resetPeriod,
+    changeScope,
+    togglePath,
+    closePath,
+  } = actions
+  const openPath = stats.paths.find((each) => each.id === openPathId) ?? null
+  const { steps, paths, callback, sources } = stats
   const valid = steps[0].count
 
   return (
@@ -272,21 +399,38 @@ export const MondayStats = ({
 
               <div className="stats_row">
                 <section className="stats_card">
-                  <h2>방문체험과 구매</h2>
+                  <h2>상담·방문체험 경로별 전환</h2>
                   <p className="stats_desc">
-                    방문체험을 완료한 고객과 그렇지 않은 고객의 구매 전환율.
+                    상담은 상담 보드 기록이 있는 고객, 방문체험은 체험을 완료한
+                    고객 기준. 칸에 마우스를 올리면 모수가 보입니다.
                   </p>
                   <div className="stats_tiles">
-                    <Tile
-                      label="방문체험 → 구매"
-                      value={percent(visitSplit.visited.purchaseRate)}
-                      note={`${people(visitSplit.visited.customers)} 중 ${people(visitSplit.visited.purchases)}`}
-                    />
-                    <Tile
-                      label="방문체험 없이 → 구매"
-                      value={percent(visitSplit.notVisited.purchaseRate)}
-                      note={`${people(visitSplit.notVisited.customers)} 중 ${people(visitSplit.notVisited.purchases)}`}
-                    />
+                    {paths.map((each) => (
+                      <div
+                        key={each.id}
+                        className={`stats_tile stats_path${
+                          each.id === openPathId ? ' open' : ''
+                        }`}
+                        title={each.base}
+                      >
+                        <span className="stats_tile_label">{each.label}</span>
+                        <strong className="stats_tile_value">
+                          {percent(each.rate)}
+                        </strong>
+                        <span className="stats_tile_note">
+                          {people(each.from)} 중 {people(each.to)}
+                        </span>
+                        <button
+                          type="button"
+                          className="stats_path_more"
+                          aria-expanded={each.id === openPathId}
+                          disabled={each.to === 0}
+                          onClick={() => togglePath(each.id)}
+                        >
+                          자세히 보기
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </section>
 
@@ -314,6 +458,14 @@ export const MondayStats = ({
                 </section>
               </div>
 
+              {openPath && (
+                <PathCustomersModal
+                  path={openPath}
+                  onClose={closePath}
+                  onOpenCustomer={onOpenCustomer}
+                />
+              )}
+
               <section className="stats_card">
                 <h2>콜백 단계별 전환</h2>
                 <p className="stats_desc">
@@ -337,12 +489,6 @@ export const MondayStats = ({
                   유효 고객 {people(valid)} 기준.
                 </p>
                 <RateTable head="유입 경로" rows={sources} />
-              </section>
-
-              <section className="stats_card">
-                <h2>담당자별 성과</h2>
-
-                <RateTable head="담당자" rows={assignees} />
               </section>
 
               <p className="stats_footnote">

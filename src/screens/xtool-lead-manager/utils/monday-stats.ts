@@ -43,8 +43,9 @@ export interface FunnelStats {
   buyerSplit: { offlineOnly: number; onlineOnly: number; both: number }
   /** 퍼널 단계 — 첫 줄(유효 고객)이 모수다. */
   steps: { label: string; count: number; rate: number }[]
-  /** 방문체험을 한 고객 / 안 한 고객의 구매 전환. */
-  visitSplit: { visited: RateRow; notVisited: RateRow }
+  /** 상담·방문체험 경로별 전환 — 네 경로(상담→방문체험, 상담→구매(방문체험
+   * 없이), 방문체험→구매, 상담→방문체험→구매). */
+  paths: PathRate[]
   /** 최초 인입 → 첫 구매 소요 일수(문의 기록이 있는 구매 고객만). */
   days: {
     customers: number
@@ -55,7 +56,39 @@ export interface FunnelStats {
   /** 콜백 최종 도달 단계별 — 문의 기록(상담·방문체험)이 있는 고객만. */
   callback: (RateRow & { stage: number; reached: number })[]
   sources: RateRow[]
-  assignees: RateRow[]
+}
+
+/** 경로 하나의 전환 — from명 중 to명이 그 경로를 따라갔다. */
+export interface PathRate {
+  id: string
+  label: string
+  /** 모수가 누구인지 한 줄 설명. */
+  base: string
+  from: number
+  to: number
+  rate: number
+  /** 그 경로를 따라간(to) 고객 — "자세히 보기" 목록. 첫 구매일이 최근인
+   * 순(구매 전이면 최초 인입이 최근인 순). */
+  customers: PathCustomer[]
+}
+
+/** 경로 목록의 고객 한 명 — 고객 하나하나를 따라가 볼 수 있게 핵심 날짜와
+ * 금액을 담는다. 이름을 누르면 Monday 고객 탭의 상세가 열린다. */
+export interface PathCustomer {
+  phone: string
+  name: string
+  firstContactAt: string | null
+  /** 방문체험을 완료했는지와, 가장 최근 방문체험일. */
+  visitCompleted: boolean
+  latestVisitAt: string | null
+  /** 이 구매 기준의 첫 구매일·구매 금액. */
+  firstPurchaseAt: string | null
+  amount: number
+  /** 최초 인입 → 첫 구매 일수. */
+  days: number | null
+  assignee: string | null
+  source: string | null
+  boards: string[]
 }
 
 const DAY_MS = 86_400_000
@@ -229,8 +262,56 @@ export const computeFunnelStats = (
 
   const booked = valid.filter((c) => c.summary.funnel.visitBooked)
   const visited = valid.filter((c) => c.summary.funnel.visitCompleted)
-  const notVisited = valid.filter((c) => !c.summary.funnel.visitCompleted)
   const buyers = valid.filter((c) => purchasedIn(c, scope))
+
+  // 경로별 전환 — 상담은 상담 보드 기록, 방문체험은 체험 완료 기준.
+  const consulted = valid.filter((c) => c.summary.consultationCount > 0)
+  const consultedVisited = consulted.filter(
+    (c) => c.summary.funnel.visitCompleted,
+  )
+  const consultedNotVisited = consulted.filter(
+    (c) => !c.summary.funnel.visitCompleted,
+  )
+  const bought = (list: MondayCustomerListItem[]) =>
+    list.filter((c) => purchasedIn(c, scope))
+  const toPathCustomer = (c: MondayCustomerListItem): PathCustomer => ({
+    phone: c.phone,
+    name: c.names[0] ?? '(이름 없음)',
+    firstContactAt: c.summary.funnel.firstContactAt,
+    visitCompleted: c.summary.funnel.visitCompleted,
+    latestVisitAt: c.summary.latestVisitAt,
+    firstPurchaseAt: firstPurchaseIn(c, scope),
+    amount: purchasedIn(c, scope) ? amountIn(c, scope) : 0,
+    days: daysToPurchase(c, scope),
+    assignee: c.summary.assignees[0] ?? null,
+    source: c.summary.funnel.source,
+    boards: c.summary.boardNames,
+  })
+  const path = (
+    id: string,
+    label: string,
+    base: string,
+    from: number,
+    reached: MondayCustomerListItem[],
+  ): PathRate => ({
+    id,
+    label,
+    base,
+    from,
+    to: reached.length,
+    rate: ratio(reached.length, from),
+    customers: reached
+      .map(toPathCustomer)
+      .sort((a, b) =>
+        (b.firstPurchaseAt ?? b.firstContactAt ?? '').localeCompare(
+          a.firstPurchaseAt ?? a.firstContactAt ?? '',
+        ),
+      ),
+  })
+  // 상담도 방문체험도 없이 산 고객 — 매장 바로 결제, 온라인몰 주문 등.
+  const directBuyers = buyers.filter(
+    (c) => c.summary.consultationCount === 0 && c.summary.visitCount === 0,
+  )
 
   const days = buyers
     .filter(hasInquiry)
@@ -262,10 +343,46 @@ export const computeFunnelStats = (
       { label: '방문체험 완료', count: visited.length },
       { label: '구매', count: buyers.length },
     ].map((step) => ({ ...step, rate: ratio(step.count, valid.length) })),
-    visitSplit: {
-      visited: toRateRow('방문체험 함', visited, scope),
-      notVisited: toRateRow('방문체험 안 함', notVisited, scope),
-    },
+    paths: [
+      path(
+        'consult-visit',
+        '상담 → 방문체험',
+        '상담 고객 중 방문체험을 완료한 고객',
+        consulted.length,
+        consultedVisited,
+      ),
+      path(
+        'consult-buy',
+        '상담 → 구매 (방문체험 없이)',
+        '상담했지만 방문체험은 안 한 고객 중 구매한 고객',
+        consultedNotVisited.length,
+        bought(consultedNotVisited),
+      ),
+      path(
+        'visit-buy',
+        '방문체험 → 구매',
+        '방문체험을 완료한 고객 중 구매한 고객',
+        visited.length,
+        bought(visited),
+      ),
+      path(
+        'consult-visit-buy',
+        '상담 → 방문체험 → 구매',
+        '상담 고객 중 방문체험을 거쳐 구매한 고객',
+        consulted.length,
+        bought(consultedVisited),
+      ),
+      // 이 경로는 전환율이 아니라 "구매 고객 중 비중"이다 — 상담·방문체험이
+      // 없는 유효 고객은 모두 구매 고객이라(그래야 모수에 들어온다) 전환율로
+      // 내면 늘 100%가 된다.
+      path(
+        'direct-buy',
+        '상담·방문체험 없이 → 구매',
+        '구매 고객 중 상담·방문체험 기록 없이 바로 구매한 고객의 비중',
+        buyers.length,
+        directBuyers,
+      ),
+    ],
     days: {
       customers: days.length,
       median: median(days),
@@ -296,11 +413,6 @@ export const computeFunnelStats = (
     sources: topRows(
       groupBy(valid, (c) => c.summary.funnel.source ?? '(미기록)'),
       8,
-      scope,
-    ),
-    assignees: topRows(
-      groupBy(valid, (c) => c.summary.assignees[0] ?? '(담당자 없음)'),
-      12,
       scope,
     ),
   }

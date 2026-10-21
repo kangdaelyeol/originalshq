@@ -31,6 +31,9 @@ export const useMondayStatsViewModel = (
   // 무엇을 구매로 볼지 — 통합 / 오프라인 / 온라인.
   const [scope, setScope] = useState<PurchaseScope>('all')
 
+  // "자세히 보기"로 펼친 경로(경로별 전환) — 하나만 펼친다.
+  const [openPathId, setOpenPathId] = useState<string | null>(null)
+
   // 선택지는 데이터에 있는 달들 — 거기에 지금 고른 달도 넣는다. 기본 기간의
   // 달(이번 달 등)에 아직 고객이 없어도 드롭다운에 그 달이 보이게 하기 위해서다.
   const months = useMemo(
@@ -71,8 +74,21 @@ export const useMondayStatsViewModel = (
 
   const resetPeriod = useCallback(() => setPeriod({ from: null, to: null }), [])
 
+  const togglePath = useCallback(
+    (id: string) => setOpenPathId((prev) => (prev === id ? null : id)),
+    [],
+  )
+  const closePath = useCallback(() => setOpenPathId(null), [])
+
   return {
-    state: { period, scope, months, stats },
-    actions: { changeFrom, changeTo, resetPeriod, changeScope: setScope },
+    state: { period, scope, months, stats, openPathId },
+    actions: {
+      changeFrom,
+      changeTo,
+      resetPeriod,
+      changeScope: setScope,
+      togglePath,
+      closePath,
+    },
   }
 }
