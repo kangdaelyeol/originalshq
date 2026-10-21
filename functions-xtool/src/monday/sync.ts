@@ -13,6 +13,7 @@ import {
   saveDailyInflow,
   replaceOfflineSales,
   saveAttributionRows,
+  saveGaConsultations,
   saveDailyRepeatRevenue,
   saveDailySales,
   saveFollowUps,
@@ -25,6 +26,7 @@ import { buildKpiFacts } from './kpi'
 import { buildDailySales, buildOfflineSaleLines } from './purchases'
 import { buildDailyRepeatRevenue } from './repeat-revenue'
 import { buildAttributionRows } from './attribution'
+import { buildGaConsultations } from './ga-tracking'
 import {
   MondayBoard,
   MondayBoardPreview,
@@ -175,6 +177,8 @@ export async function rebuildCustomers(
   await saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers))
   // 광고 기여 ROAS 재료(cmip ROAS 탭의 ROAS 하한·코호트 ROAS).
   await saveAttributionRows(db, buildAttributionRows(customers))
+  // GA ClientId가 적힌 상담(오기입 추적).
+  await saveGaConsultations(db, buildGaConsultations(items, kindByBoardId))
   // 진행 중인 상담·방문체험(방치 현황).
   await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).

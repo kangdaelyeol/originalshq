@@ -20,6 +20,7 @@ const VIEW_LABEL: Record<UsageApp, Record<string, string>> = {
     'trend/inflow': '통계 · 인입통계',
     'trend/sales': '통계 · 판매통계',
     'trend/kpi': '통계 · 개인 KPI',
+    tracking: '오기입 추적',
   },
   cmip: {
     total: '전체 요약',

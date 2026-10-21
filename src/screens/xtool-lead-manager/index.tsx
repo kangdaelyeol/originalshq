@@ -6,10 +6,12 @@ import {
   MondayNav,
   MondayStats,
   MondayTrend,
+  GaTracking,
   Nav,
 } from '@/screens/xtool-lead-manager/components'
 import {
   useCreateLeadViewModel,
+  useGaTrackingViewModel,
   useLeadMondayMatchViewModel,
   useMainViewModel,
   useMondayStatsViewModel,
@@ -42,6 +44,8 @@ const XtoolLeadManagerScreen = () => {
   // 날짜별 집계만 쓴다).
   const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
   const trend = useMondayTrendViewModel(tab === 'trend')
+  // 오기입 추적 — BigQuery를 부르는 조회라 그 탭을 처음 열 때만 받는다.
+  const gaTracking = useGaTrackingViewModel(tab === 'tracking')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
 
@@ -61,6 +65,10 @@ const XtoolLeadManagerScreen = () => {
     main.actions.hideDetail()
     pageTab.actions.selectTab('monday')
     monday.actions.openDetail(phone)
+  }
+
+  if (tab === 'tracking') {
+    return <GaTracking state={gaTracking.state} actions={gaTracking.actions} />
   }
 
   if (tab === 'trend') {

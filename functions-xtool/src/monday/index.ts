@@ -1,6 +1,7 @@
 export {
   deleteBoard,
   getAttributionRows,
+  getGaConsultations,
   getCustomer,
   getDailyInflow,
   getDailyRepeatRevenue,

@@ -293,3 +293,56 @@ export interface MondayKpiFacts {
   /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
   sales: [string, string, number, string][]
 }
+
+/** GA ClientId가 적힌 상담 기록 — functions-xtool/src/monday/ga-tracking.ts.
+ * "오기입 추적" 탭이 gaClientId로 GA4 이벤트를 찾는다. */
+export interface MondayGaConsultation {
+  itemId: string
+  boardId: string
+  boardName: string
+  name: string
+  url: string | null
+  createdAt: string | null
+  updatedAt: string | null
+  phoneRaw: string | null
+  status: string | null
+  misentry: boolean
+  receivedAt: string | null
+  /** GA4 user_pseudo_id 형식("숫자.숫자"). */
+  gaClientId: string
+}
+
+/** GA4 이벤트 하나 — functions-xtool/src/ga4-bigquery.ts. */
+export interface Ga4Event {
+  clientId: string
+  /** 이벤트 시각(ms). */
+  at: number
+  name: string
+  pageLocation: string | null
+  pageTitle: string | null
+  sessionId: number | null
+  source: string | null
+  medium: string | null
+  campaign: string | null
+  /** 사용자 첫 유입 — 처음 어디서 왔는지. */
+  firstSource: string | null
+  firstMedium: string | null
+  firstCampaign: string | null
+  deviceCategory: string | null
+  os: string | null
+  browser: string | null
+  country: string | null
+  city: string | null
+}
+
+export interface MondayGaTracking {
+  consultations: MondayGaConsultation[]
+  events: Ga4Event[]
+  /** 조회한 GA4 테이블 범위(YYYYMMDD). */
+  range: { fromDate: string; toDate: string }
+  bytesProcessed: number
+  /** GA4 조회 실패 이유(권한 등) — 성공이면 null. */
+  ga4Error: string | null
+  syncedAt: number | null
+  fetchedAt: number
+}

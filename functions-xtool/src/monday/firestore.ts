@@ -9,6 +9,7 @@ import {
   MondayDailySale,
   MondayDailyRepeatRevenue,
   MondayAttributionRow,
+  MondayGaConsultation,
   MondayOfflineSaleLine,
   MondayFollowUp,
   MondayKpiFacts,
@@ -414,4 +415,30 @@ export async function replaceOfflineSales(
   for (const ref of stale) writer.delete(ref)
   await writer.close()
   return { written: lines.length, deleted: stale.length }
+}
+
+const GA_CONSULTATIONS_DOC = 'gaConsultations'
+
+/** GA ClientId가 적힌 상담 기록 — 수십~수백 건이라 문서 하나에 넣는다. */
+export async function saveGaConsultations(
+  db: Firestore,
+  rows: MondayGaConsultation[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(GA_CONSULTATIONS_DOC)
+    .set({ rows, syncedAt: Date.now() })
+}
+
+export async function getGaConsultations(
+  db: Firestore,
+): Promise<{ rows: MondayGaConsultation[]; syncedAt: number | null }> {
+  const doc = await db
+    .collection(STATS_COLLECTION)
+    .doc(GA_CONSULTATIONS_DOC)
+    .get()
+  const data = doc.data() as
+    | { rows: MondayGaConsultation[]; syncedAt: number }
+    | undefined
+  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
 }

@@ -5,6 +5,7 @@ import type {
   MondayDailyInflow,
   MondayDailySale,
   MondayFollowUp,
+  MondayGaTracking,
   MondayKpiFacts,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
@@ -79,5 +80,11 @@ export const mondayClient = {
     get<MondayKpiFacts & { syncedAt: number | null }>(
       'getMondayKpiFacts',
       '개인 KPI를 불러오지 못했습니다',
+    ),
+  /** 오기입 추적 — GA ClientId가 적힌 상담과 그 GA4 이벤트. */
+  getGaTracking: () =>
+    get<MondayGaTracking>(
+      'getMondayGaTracking',
+      '오기입 추적 데이터를 불러오지 못했습니다',
     ),
 }

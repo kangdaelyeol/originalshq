@@ -545,3 +545,17 @@ export interface MondayOfflineSaleLine {
   isInstallmentInterest: boolean
   isDeferredBalance: boolean
 }
+
+/** GA ClientId가 적힌 상담 기록 1건 — monday/ga-tracking.ts가 만든다. "오기입
+ * 추적" 탭이 gaClientId로 GA4 BigQuery 이벤트를 찾는다. */
+export interface MondayGaConsultation extends MondayRecordSource {
+  /** 적힌 그대로의 전화번호 — 오기입은 형식이 틀린 경우가 많아 원문을 둔다. */
+  phoneRaw: string | null
+  status: string | null
+  /** 상담 진행 상태가 오기입인지. */
+  misentry: boolean
+  /** 접수일(YYYY-MM-DD). */
+  receivedAt: string | null
+  /** GA4 user_pseudo_id 형식("숫자.숫자")으로 맞춘 값. */
+  gaClientId: string
+}
