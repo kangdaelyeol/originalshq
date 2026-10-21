@@ -61,8 +61,6 @@ import {
 import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
 import {
   getOfflineRevenue as fetchOfflineRevenue,
-  syncOfflineSalesFromMonday,
-  debugFetchOfflineSalesRaw,
 } from './monday-crm'
 import {
   buildCafe24AuthUrl,
@@ -90,7 +88,6 @@ const googleClientSecret = defineSecret('GOOGLE_CLIENT_SECRET')
 const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
 const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
 const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
-const mondayApiKey = defineSecret('MONDAY_API_KEY')
 const cafe24ClientId = defineSecret('CAFE24_CLIENT_ID')
 const cafe24SecretKey = defineSecret('CAFE24_SECRET_KEY')
 const cafe24MainId = 'hiswill00'
@@ -1330,80 +1327,10 @@ export const syncNaverInsightsScheduled = onSchedule(
 )
 
 /**
- * Monday CRM(오프라인 매출 보드)을 지금 상태로 Firestore(offlineSales
- * 컬렉션)에 재동기화한다 — 기존 문서를 전부 지우고 새로 받아온 값으로
- * 다시 채운다. 아래 syncOfflineSalesScheduled가 영업시간 중 주기적으로 이
- * 로직을 그대로 재사용해 자동 호출하고, 이 엔드포인트는 그 사이 급하게
- * 최신화가 필요할 때 수동으로 바로 트리거하는 용도로 남겨둔다.
- */
-// 오프라인 매출 동기화 제한 시간 — 결제 보드 전체(800여 item, 1,900여 줄)를
-// 읽고 쓰는 데 50초 남짓 걸려 기본값(60초)에 거의 닿았다(10/21 수동 실행이
-// 시간 초과로 끊김). 보드가 커져도 넉넉하게 5분.
-const OFFLINE_SALES_SYNC_TIMEOUT_SECONDS = 300
-
-export const syncOfflineSales = onRequest(
-  {
-    secrets: [mondayApiKey],
-    timeoutSeconds: OFFLINE_SALES_SYNC_TIMEOUT_SECONDS,
-  },
-  (req, res) => {
-    corsHandler(req, res, async () => {
-      if (req.method !== 'POST') {
-        res.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-
-      try {
-        const result = await syncOfflineSalesFromMonday(mondayApiKey.value())
-        res.status(200).send(result)
-      } catch (err) {
-        sendError(
-          res,
-          500,
-          err instanceof Error
-            ? err.message
-            : 'Monday 오프라인 매출 동기화 실패',
-        )
-      }
-    })
-  },
-)
-
-/**
- * 디버그 전용 — "분할납부" item(통째로 건너뜀)과 "계약금/분할납부" board
- * relation이 걸린 subitem이 있는 item(그 subitem만 매출에서 빼고
- * deferredBalance로 집계)을 원본 그대로 돌려준다. 정식 집계
- * (syncOfflineSales/getOfflineRevenue)와 별개로, 실 데이터에서 이 계산이
- * 맞는지 눈으로 대조해보기 위한 것 — cafe24의 debugCafe24OrdersRaw와 같은
- * 자리.
- */
-export const debugOfflineSalesRaw = onRequest(
-  { secrets: [mondayApiKey] },
-  (req, res) => {
-    corsHandler(req, res, async () => {
-      if (req.method !== 'GET') {
-        res.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-
-      try {
-        const result = await debugFetchOfflineSalesRaw(mondayApiKey.value())
-        res.status(200).send(result)
-      } catch (err) {
-        sendError(
-          res,
-          500,
-          err instanceof Error ? err.message : 'Monday 디버그 조회 실패',
-        )
-      }
-    })
-  },
-)
-
-/**
  * 오프라인 매출 조회 — Meta/Naver 인사이트(getMetaInsight/getNaverInsight)와
- * 같은 GET + dateStart/dateEnd 쿼리 방식. Monday를 실시간으로 부르지 않고
- * syncOfflineSales로 미리 동기화해둔 Firestore에서 읽으므로 시크릿이 필요 없다.
+ * 같은 GET + dateStart/dateEnd 쿼리 방식. offlineSales 컬렉션은 functions-
+ * xtool이 Monday 결제 보드를 동기화할 때마다 채운다(결제 보드 해석은 그쪽
+ * 한 곳에서만 한다). 여기서는 읽기만 하므로 시크릿이 필요 없다.
  */
 export const getOfflineRevenue = onRequest((req, res) => {
   corsHandler(req, res, async () => {
@@ -1431,44 +1358,6 @@ export const getOfflineRevenue = onRequest((req, res) => {
     }
   })
 })
-
-/**
- * Monday CRM 오프라인 매출을 영업시간 중 2시간 간격(09/11/13/15/17시)과
- * 마감 후 22시(KST)에 자동 재동기화한다 — 이 저장소의 첫 onSchedule 함수. 24시간 내내가 아니라
- * 영업시간대만 도는 이유: CRM이 영업시간에만 쓰이니 그 시간에만 최신이면
- * 충분하고, Monday API 호출 횟수도 그만큼 줄어든다. 요일 구분 없이 매일
- * 돈다 — 매장이 주말에도 열려 있으면 그날도 최신화돼야 하니 평일로 좁히지
- * 않았다. HTTP 응답이 없는 트리거라 onRequest 버전(sendError)과 달리 성공/
- * 실패를 로그로만 남긴다 — Firebase 콘솔 로그에서 확인한다.
- */
-export const syncOfflineSalesScheduled = onSchedule(
-  {
-    schedule: '0 9,11,13,15,17,22 * * *',
-    timeZone: 'Asia/Seoul',
-    secrets: [mondayApiKey],
-    timeoutSeconds: OFFLINE_SALES_SYNC_TIMEOUT_SECONDS,
-  },
-  async (event) => {
-    try {
-      const result = await recordBatchRun(
-        db,
-        {
-          job: 'offline-sales',
-          codebase: 'cmip',
-          trigger: 'scheduled',
-          scheduledAt: event.scheduleTime,
-        },
-        () => syncOfflineSalesFromMonday(mondayApiKey.value()),
-      )
-      logger.info('오프라인 매출 자동 동기화 성공:', result)
-    } catch (err) {
-      logger.error(
-        '오프라인 매출 자동 동기화 실패:',
-        err instanceof Error ? err.message : err,
-      )
-    }
-  },
-)
 
 // ────────────────────────────────
 // Cafe24 OAuth — 온라인 스토어 매출(주문) 연동의 인증 부분. 주문 데이터 조회

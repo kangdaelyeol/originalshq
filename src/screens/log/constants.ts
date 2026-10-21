@@ -20,18 +20,10 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     id: 'monday-sync',
     label: 'Monday 보드 동기화',
     description:
-      'Monday 보드 16개를 읽어 저장하고, 통합 고객·통계(인입·판매·방치·KPI·재구매)를 다시 만듭니다.',
+      'Monday 보드 16개를 읽어 저장하고, 통합 고객·통계(인입·판매·방치·KPI·재구매)와 cmip가 읽는 오프라인 매출 원장을 다시 만듭니다.',
     codebase: 'xtool',
     functionName: 'syncMondayBoardsScheduled',
     timeoutSeconds: 540,
-  },
-  {
-    id: 'offline-sales',
-    label: '오프라인 매출',
-    description: 'Monday 오프라인 결제 보드의 매출 줄을 다시 읽어 저장합니다.',
-    codebase: 'cmip',
-    functionName: 'syncOfflineSalesScheduled',
-    timeoutSeconds: 300,
   },
   {
     id: 'cafe24-orders',

@@ -424,6 +424,9 @@ export interface MondayCustomerRebuildResult {
   /** 합친 Cafe24 주문 수와, 그중 주문자 번호가 없거나 결제 전이라 뺀 수. */
   onlineOrderCount: number
   excludedOrderCount: number
+  /** 오프라인 매출 원장(offlineSales) — 쓴 줄 수와, Monday에서 사라져 지운
+   * 줄 수. */
+  offlineSaleLines: { written: number; deleted: number }
 }
 
 /** 하루치 인입 건수 — 그날 상담 보드에 새로 접수된 기록 수. 인입으로 보는
@@ -522,3 +525,23 @@ export type MondayAttributionRow = [
   /** 그 UTM 상담의 접수일 — UTM이 없으면 ''. */
   string,
 ]
+
+/** 오프라인 매출 원장 1줄(결제 보드의 품목 줄 하나) — purchases.ts의
+ * buildOfflineSaleLines가 만들고 offlineSales 컬렉션에 저장한다. cmip가
+ * 날짜 범위로 읽어 오프라인 매출을 낸다(functions-cmip/src/monday-crm의
+ * OfflineSaleRow와 같은 모양 — 그쪽이 읽는 계약이라 필드를 바꾸면 같이
+ * 바꿔야 한다). */
+export interface MondayOfflineSaleLine {
+  mondayItemId: string
+  mondaySubitemId: string
+  /** 결제일자(YYYY-MM-DD). */
+  date: string
+  customerName: string
+  productName: string
+  revenue: number
+  discount: number
+  /** 최종 결제금액 — cmip 매출(totalPaid)의 기준값. */
+  totalPaid: number
+  isInstallmentInterest: boolean
+  isDeferredBalance: boolean
+}

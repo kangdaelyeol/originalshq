@@ -1,4 +1,4 @@
-import { Firestore } from 'firebase-admin/firestore'
+import { FieldValue, Firestore } from 'firebase-admin/firestore'
 import { Cafe24Order } from './cafe24'
 import {
   MondayBoard,
@@ -9,6 +9,7 @@ import {
   MondayDailySale,
   MondayDailyRepeatRevenue,
   MondayAttributionRow,
+  MondayOfflineSaleLine,
   MondayFollowUp,
   MondayKpiFacts,
   MondayItem,
@@ -382,4 +383,35 @@ export async function getAttributionRows(
     rows: (data?.rows ?? []).map((row) => JSON.parse(row)),
     syncedAt: data?.syncedAt ?? null,
   }
+}
+
+// 오프라인 매출 원장 — 결제 보드의 품목 줄 하나가 문서 하나(id = subitem id).
+// cmip(functions-cmip/src/monday-crm/firestore.ts)가 결제일 범위로 읽어 오프라인
+// 매출을 낸다. 컬렉션 이름과 문서 모양이 그쪽과의 계약이다.
+const OFFLINE_SALES_COLLECTION = 'offlineSales'
+
+/** offlineSales를 주어진 줄들과 똑같이 맞춘다 — 줄은 전부 쓰고, 목록에 없는
+ * 문서(Monday에서 지워졌거나 취소된 줄)만 지운다. 지우는 문서와 쓰는 문서가
+ * 겹치지 않게 해서, 한 번에 보내도 실행 순서와 상관없이 결과가 맞다(같은
+ * 문서를 지우고 다시 쓰면 순서에 따라 문서가 사라졌다 — cmip에서 10/21
+ * 발견). */
+export async function replaceOfflineSales(
+  db: Firestore,
+  lines: MondayOfflineSaleLine[],
+): Promise<{ written: number; deleted: number }> {
+  const collection = db.collection(OFFLINE_SALES_COLLECTION)
+  const existing = await collection.listDocuments()
+  const nextIds = new Set(lines.map((line) => line.mondaySubitemId))
+  const stale = existing.filter((ref) => !nextIds.has(ref.id))
+
+  const writer = db.bulkWriter()
+  for (const line of lines) {
+    writer.set(collection.doc(line.mondaySubitemId), {
+      ...line,
+      syncedAt: FieldValue.serverTimestamp(),
+    })
+  }
+  for (const ref of stale) writer.delete(ref)
+  await writer.close()
+  return { written: lines.length, deleted: stale.length }
 }

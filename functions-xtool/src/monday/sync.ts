@@ -11,6 +11,7 @@ import {
   replaceCustomers,
   saveBoard,
   saveDailyInflow,
+  replaceOfflineSales,
   saveAttributionRows,
   saveDailyRepeatRevenue,
   saveDailySales,
@@ -21,7 +22,7 @@ import {
 import { buildMondayItems, detectPhoneColumnId } from './helper'
 import { buildFollowUps } from './followups'
 import { buildKpiFacts } from './kpi'
-import { buildDailySales } from './purchases'
+import { buildDailySales, buildOfflineSaleLines } from './purchases'
 import { buildDailyRepeatRevenue } from './repeat-revenue'
 import { buildAttributionRows } from './attribution'
 import {
@@ -160,13 +161,15 @@ export async function rebuildCustomers(
   const written = await replaceCustomers(db, customers)
   // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
   await saveDailyInflow(db, buildDailyInflow(items, kindByBoardId))
+  const purchaseItems = items.filter(
+    (item) => kindByBoardId.get(item.boardId) === 'purchase',
+  )
   // 판매 통계(제품별 판매 수량)도 — 결제 보드의 품목 줄과 Cafe24 주문 품목.
-  await saveDailySales(
+  await saveDailySales(db, buildDailySales(purchaseItems, orders))
+  // 오프라인 매출 원장(cmip의 오프라인 매출·ROAS가 읽는다).
+  const offlineSaleLines = await replaceOfflineSales(
     db,
-    buildDailySales(
-      items.filter((item) => kindByBoardId.get(item.boardId) === 'purchase'),
-      orders,
-    ),
+    buildOfflineSaleLines(purchaseItems),
   )
   // 날짜별 신규·재구매 금액(cmip ROAS 탭의 신규 고객 ROAS).
   await saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers))
@@ -176,7 +179,12 @@ export async function rebuildCustomers(
   await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).
   await saveKpiFacts(db, buildKpiFacts(items, kindByBoardId))
-  return { customerCount: customers.length, ...counts, ...written }
+  return {
+    customerCount: customers.length,
+    ...counts,
+    ...written,
+    offlineSaleLines,
+  }
 }
 
 // 한 번에 몇 개 보드를 같이 돌릴지. 보드 하나는 Monday에서 받아오는 데만

@@ -3,6 +3,7 @@ import { koreaDate, pick, source } from './fields'
 import {
   MondayDailySale,
   MondayItem,
+  MondayOfflineSaleLine,
   MondayItemColumn,
   MondayPayment,
   MondayPaymentIssue,
@@ -11,9 +12,9 @@ import {
   MondaySubitem,
 } from './types'
 
-// 결제 보드의 금액 규칙 — functions-cmip/src/monday-crm(오프라인 매출 집계)과
-// 같은 기준이다. 두 코드베이스가 따로 배포돼서 코드를 공유하지 못하므로,
-// 한쪽 기준을 바꾸면 다른 쪽도 같이 바꿔야 한다.
+// 결제 보드의 금액 규칙 — 결제 보드 해석은 여기 한 곳에만 있다. cmip의
+// 오프라인 매출도 여기서 만든 원장(buildOfflineSaleLines → offlineSales
+// 컬렉션)을 읽는다(10/21까지는 cmip가 같은 보드를 따로 해석했다).
 //
 // 구매는 "계약" 기준으로 센다:
 //   · 상품 줄이 있는 결제 건 = 계약 1건. 상품 줄의 합이 구매 금액이고, 계약한
@@ -304,4 +305,58 @@ export const buildDailySales = (
       a.origin.localeCompare(b.origin) ||
       a.name.localeCompare(b.name),
   )
+}
+
+/**
+ * 오프라인 매출 원장 — 결제 보드의 품목 줄 하나가 한 줄(순수 함수). cmip의
+ * 오프라인 매출(ROAS 탭·전체 요약)이 이 줄들을 날짜로 걸러 합친다. 예전엔
+ * cmip가 같은 보드를 직접 읽어 따로 해석했는데, 해석을 여기(구매 금액 규칙과
+ * 같은 곳) 하나로 모았다.
+ *
+ * 고객 통합과 달리 전화번호가 없는 결제도 넣는다(매출은 매출이므로).
+ *   · 결제 취소 건, 결제일자가 없는 건은 뺀다.
+ *   · 분할납부 회차 수금 건(품목이 전부 "분할납부" 줄)은 뺀다 — 계약한 날
+ *     이미 계약 금액 전체를 매출로 잡았다. 계약보다 먼저 받은 "계약금"만 있는
+ *     건은 넣는다(잔금 줄로 표시돼 매출에는 안 들어가고, 계약 건의 "계약금
+ *     차감" 음수 줄과 상쇄된다). cmip가 직접 해석하던 때와 숫자를 똑같이
+ *     맞추려고 그 기준을 그대로 옮겼다.
+ *   · 계약 건 안의 줄은 다 넣고, 종류를 표시한다 — 장기 할부 이자 줄과 계약금/
+ *     분할납부(잔금) 줄은 cmip가 매출에서 빼고 따로 보여 준다.
+ */
+export const buildOfflineSaleLines = (
+  purchaseItems: MondayItem[],
+): MondayOfflineSaleLine[] => {
+  const rows: MondayOfflineSaleLine[] = []
+  for (const item of purchaseItems) {
+    const status = pick(item, /^결제상태$/)
+    if (status !== null && /취소/.test(status)) continue
+    const date = koreaDate(pick(item, /^결제일자$/))
+    if (!date) continue
+    const subitems = item.subitems ?? []
+    const lines = subitems.map(toLine)
+    if (
+      lines.length > 0 &&
+      lines.every(
+        (line) => line.kind === 'deferred' && line.product === '분할납부',
+      )
+    ) {
+      continue
+    }
+    subitems.forEach((subitem, index) => {
+      const line = lines[index]
+      rows.push({
+        mondayItemId: item.id,
+        mondaySubitemId: subitem.id,
+        date,
+        customerName: item.name,
+        productName: subitem.name,
+        revenue: subitemNumber(subitem, /^매출액$/) ?? 0,
+        discount: line.discount ?? 0,
+        totalPaid: line.total,
+        isInstallmentInterest: line.kind === 'interest',
+        isDeferredBalance: line.kind === 'deferred',
+      })
+    })
+  }
+  return rows
 }
