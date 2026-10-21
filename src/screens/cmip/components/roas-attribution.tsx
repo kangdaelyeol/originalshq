@@ -131,7 +131,8 @@ export function RoasAttribution({
           TODO: 방문체험 보드-유입기준이 광고성과 측정 기준이 될 수 있는지
           확인스크
           <br /> * 하한값 = UTM이 광고 채널(Meta·Google·Naver)인 고객의 첫
-          구매만 광고 성과로 계산한 값
+          구매만 광고 성과로 계산한 값 (UTM 상담 접수일부터 90일 안의 구매만,
+          상담 전에 이미 산 고객은 제외)
           <br />* 상한값 = 재구매만 뺀 신규 고객 매출 전체
         </p>
         <div className="channel-insight__table-wrap">
@@ -186,7 +187,7 @@ export function RoasAttribution({
           </h3>
         </div>
         <p className="roas-attribution__note">
-          아래 작은 글씨는 UTM이 광고 채널인 고객만 센 값(하한).
+          아래 작은 글씨는 UTM이 광고 채널인 고객만 센 값(하한, 같은 90일 규칙).
         </p>
         {cohorts.length === 0 ? (
           <p className="channel-insight__result-empty">데이터 없음</p>

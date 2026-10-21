@@ -15,13 +15,15 @@ import { CallableError } from './csv-client'
 export type AttributionChannel =
   'meta' | 'google' | 'naver' | 'other' | 'unknown'
 
-/** 고객 1명 — [처음 나타난 날, 채널, 원래 유입 경로, [결제일, 금액][]].
- * 구매는 날짜별로 합쳐져 있고 취소는 빠져 있다(오래된 순). */
+/** 고객 1명 — [처음 나타난 날, 채널, UTM source, [결제일, 금액][], 그 UTM
+ * 상담의 접수일]. 구매는 날짜별로 합쳐져 있고 취소는 빠져 있다(오래된 순).
+ * 접수일은 UTM이 없으면 ''(예전 형식의 데이터엔 아예 없을 수 있다). */
 export type AttributionRow = [
   ISODate,
   AttributionChannel,
   string,
   [ISODate, number][],
+  (ISODate | '')?,
 ]
 
 export async function getAttribution(): Promise<AttributionRow[]> {
@@ -53,19 +55,48 @@ const AD_CHANNEL_SET: ReadonlySet<AttributionChannel> = new Set([
   'naver',
 ])
 
-/** 날짜별 "UTM 광고 고객의 첫 구매 매출" — UTM이 광고 채널(Meta·Google·
- * Naver)인 고객의 첫 구매(가장 이른 결제일, 그날 금액 합)를 그 결제일에
- * 놓는다. 하한 ROAS(전체 요약·ROAS 탭)의 분자다. [start, end] 밖은 뺀다. */
+/** 광고 성과로 인정하는 기간(일) — UTM 상담 접수일부터. */
+export const AD_ATTRIBUTION_DAYS = 90
+
+export const isAdChannel = (channel: AttributionChannel): boolean =>
+  AD_CHANNEL_SET.has(channel)
+
+const plusDays = (date: ISODate, days: number): ISODate =>
+  new Date(Date.parse(date) + days * 86_400_000).toISOString().slice(0, 10)
+
+/** 광고 성과로 인정하는 기간 [UTM 상담 접수일, +89일] — UTM이 광고 채널이
+ * 아니면 null. */
+export function adAttributionWindow(
+  row: AttributionRow,
+): { start: ISODate; end: ISODate } | null {
+  if (!isAdChannel(row[1])) return null
+  const start = row[4] || row[0]
+  return { start, end: plusDays(start, AD_ATTRIBUTION_DAYS - 1) }
+}
+
+/** 하한 ROAS에 넣는 첫 구매 — UTM이 광고 채널인 고객의 첫 구매가 그 UTM
+ * 상담 접수일 당일이나 그 뒤, 90일 안이면 그 [결제일, 금액]. 상담 전에 이미
+ * 산 적 있는 고객(광고 전에 산 것)과 90일을 넘겨 산 고객은 null. */
+export function attributedFirstPurchase(
+  row: AttributionRow,
+): [ISODate, number] | null {
+  const window = adAttributionWindow(row)
+  const first = row[3][0]
+  if (!window || !first) return null
+  return first[0] >= window.start && first[0] <= window.end ? first : null
+}
+
+/** 날짜별 "UTM 광고 매출" — attributedFirstPurchase를 그 결제일에 놓는다.
+ * 하한 ROAS(전체 요약·ROAS 탭)의 분자다. [start, end] 밖은 뺀다. */
 export function utmAdRevenueByDate(
   rows: readonly AttributionRow[],
   start: ISODate,
   end: ISODate,
 ): Record<ISODate, number> {
   const byDate: Record<ISODate, number> = {}
-  for (const [, channel, , purchases] of rows) {
-    const first = purchases[0]
-    if (!first || !AD_CHANNEL_SET.has(channel)) continue
-    if (first[0] < start || first[0] > end) continue
+  for (const row of rows) {
+    const first = attributedFirstPurchase(row)
+    if (!first || first[0] < start || first[0] > end) continue
     byDate[first[0]] = (byDate[first[0]] ?? 0) + first[1]
   }
   return byDate

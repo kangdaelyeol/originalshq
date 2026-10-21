@@ -1,3 +1,4 @@
+import { koreaDate } from './fields'
 import { MondayAttributionRow, MondayCustomer } from './types'
 
 // Meta 광고셋 이름이 utm_source에 그대로 들어간 값 — 일부 광고의 URL
@@ -41,12 +42,18 @@ export const buildAttributionRows = (
     // 유입 경로는 UTM만 본다 — 가장 이른 상담의 utm_source. 방문체험 보드의
     // "유입경로"(영업전환·자연유입 등)는 방문체험을 어떻게 잡았는지를 적은
     // 값이라 처음 어디서 왔는지로 쓰지 않는다.
-    const utmSource =
-      [...customer.consultations]
-        .sort((a, b) =>
-          (a.receivedAt ?? '9999').localeCompare(b.receivedAt ?? '9999'),
-        )
-        .find((record) => record.utmSource)?.utmSource ?? null
+    const utmRecord = [...customer.consultations]
+      .sort((a, b) =>
+        (a.receivedAt ?? '9999').localeCompare(b.receivedAt ?? '9999'),
+      )
+      .find((record) => record.utmSource)
+    const utmSource = utmRecord?.utmSource ?? null
+    // 그 UTM 상담의 접수일 — 광고 성과로 인정하는 구매 기간의 시작이다
+    // (화면이 이 날 이후 90일 안의 첫 구매만 하한에 넣는다). 접수일이 비어
+    // 있으면 처음 나타난 날로 본다.
+    const utmAt = utmRecord
+      ? (koreaDate(utmRecord.receivedAt) ?? firstContactAt)
+      : ''
     const byDate = new Map<string, number>()
     for (const purchase of customer.purchases) {
       if (purchase.cancelled || !purchase.paidAt) continue
@@ -64,6 +71,7 @@ export const buildAttributionRows = (
         attributionChannel(utmSource),
         utmSource ?? '',
         purchases,
+        utmAt,
       ],
     ]
   })

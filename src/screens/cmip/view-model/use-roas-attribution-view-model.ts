@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
-import type {
-  AttributionChannel,
-  AttributionRow,
-  CombinedInsight,
+import {
+  adAttributionWindow,
+  attributedFirstPurchase,
+  type AttributionChannel,
+  type AttributionRow,
+  type CombinedInsight,
 } from '../client'
 import type { ISODate } from '../types'
 import { addDays, todayISO } from '../utils'
@@ -11,10 +13,16 @@ import { addDays, todayISO } from '../utils'
 export const AD_CHANNELS = ['meta', 'google', 'naver'] as const
 export type AdChannel = (typeof AD_CHANNELS)[number]
 
-export const CHANNEL_LABEL: Record<AttributionChannel, string> = {
+/** ROAS 범위 표의 줄 — 채널에 "UTM 광고지만 인정 밖"을 더한 것. UTM이
+ * 광고 채널이어도 상담 전에 이미 샀거나 90일을 넘겨 산 고객은 하한에 넣지
+ * 않고 이 줄로 따로 보여 준다. */
+export type RangeBucket = AttributionChannel | 'adOutside'
+
+export const CHANNEL_LABEL: Record<RangeBucket, string> = {
   meta: 'Meta',
   google: 'Google',
   naver: 'Naver',
+  adOutside: 'UTM 광고 · 인정 밖 (상담 전 구매·90일 초과)',
   other: 'UTM 있음 · 광고 아님 (chatgpt·당근 등)',
   unknown: 'UTM 없음',
 }
@@ -22,7 +30,7 @@ export const CHANNEL_LABEL: Record<AttributionChannel, string> = {
 /** 코호트 ROAS의 기간(일) — 처음 나타난 날부터 이만큼 안에 산 금액. */
 export const COHORT_WINDOWS = [30, 60, 90] as const
 
-const isAd = (channel: AttributionChannel): channel is AdChannel =>
+const isAd = (channel: RangeBucket): channel is AdChannel =>
   (AD_CHANNELS as readonly string[]).includes(channel)
 
 const pct = (revenue: number, spend: number): number =>
@@ -34,7 +42,7 @@ const firstPurchaseOf = (row: AttributionRow): [ISODate, number] | null =>
   row[3][0] ?? null
 
 export interface AttributionChannelRow {
-  channel: AttributionChannel
+  channel: RangeBucket
   /** 광고 채널만 — 그 채널의 조회 기간 광고비. */
   spend: number | null
   /** 조회 기간에 첫 구매를 한 고객 수와 그 첫 구매 금액. */
@@ -76,20 +84,28 @@ export function computeAttributionRange(
       .filter((d) => d.date >= start && d.date <= end)
       .reduce((sum, d) => sum + d.spend, 0)
 
-  const totals = new Map<
-    AttributionChannel,
-    { buyers: number; revenue: number }
-  >()
+  const totals = new Map<RangeBucket, { buyers: number; revenue: number }>()
   for (const row of rows) {
     const first = firstPurchaseOf(row)
     if (!first || first[0] < start || first[0] > end) continue
-    const entry = totals.get(row[1]) ?? { buyers: 0, revenue: 0 }
+    // UTM이 광고 채널이어도 인정 기간(상담 접수일부터 90일) 밖이면 따로.
+    const bucket: RangeBucket = isAd(row[1])
+      ? attributedFirstPurchase(row)
+        ? row[1]
+        : 'adOutside'
+      : row[1]
+    const entry = totals.get(bucket) ?? { buyers: 0, revenue: 0 }
     entry.buyers += 1
     entry.revenue += first[1]
-    totals.set(row[1], entry)
+    totals.set(bucket, entry)
   }
   const newRevenue = [...totals.values()].reduce((s, e) => s + e.revenue, 0)
-  const channels: AttributionChannel[] = [...AD_CHANNELS, 'other', 'unknown']
+  const channels: RangeBucket[] = [
+    ...AD_CHANNELS,
+    'adOutside',
+    'other',
+    'unknown',
+  ]
   const channelRows = channels.map((channel): AttributionChannelRow => {
     const { buyers, revenue } = totals.get(channel) ?? { buyers: 0, revenue: 0 }
     const spend = isAd(channel) ? spendOf(channel) : null
@@ -189,8 +205,14 @@ export function computeCohorts(
   // 광고비 — 조회 기간의 날짜만(달이 기간 중간에서 잘리면 그 부분만).
   for (const day of byDate) cohortOf(day.date).spend += day.spend
 
-  for (const [firstSeen, channel, , purchases] of rows) {
+  for (const row of rows) {
+    const [firstSeen, channel, , purchases] = row
     if (firstSeen < start || firstSeen > end) continue
+    // UTM 광고 몫 — 상담 뒤에 처음 산 고객(attributedFirstPurchase)의, 인정
+    // 기간(상담 접수일부터 90일) 안의 구매만.
+    const adWindow = attributedFirstPurchase(row)
+      ? adAttributionWindow(row)
+      : null
     const cohort = cohortOf(firstSeen)
     cohort.customers += 1
     if (isAd(channel)) cohort.adCustomers += 1
@@ -200,7 +222,17 @@ export function computeCohorts(
         .filter(([date]) => date >= firstSeen && date <= limit)
         .reduce((sum, [, amount]) => sum + amount, 0)
       cohort.cells[window].revenue += revenue
-      if (isAd(channel)) cohort.cells[window].adRevenue += revenue
+      if (adWindow) {
+        cohort.cells[window].adRevenue += purchases
+          .filter(
+            ([date]) =>
+              date >= firstSeen &&
+              date <= limit &&
+              date >= adWindow.start &&
+              date <= adWindow.end,
+          )
+          .reduce((sum, [, amount]) => sum + amount, 0)
+      }
     }
   }
 

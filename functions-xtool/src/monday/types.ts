@@ -519,4 +519,6 @@ export type MondayAttributionRow = [
   'meta' | 'google' | 'naver' | 'other' | 'unknown',
   string,
   [string, number][],
+  /** 그 UTM 상담의 접수일 — UTM이 없으면 ''. */
+  string,
 ]
