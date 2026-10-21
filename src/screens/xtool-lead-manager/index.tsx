@@ -1,3 +1,4 @@
+import { useUsageTracking } from '@/hooks'
 import { FilterContextProvider } from '@/screens/xtool-lead-manager/context'
 import {
   Main,
@@ -43,6 +44,12 @@ const XtoolLeadManagerScreen = () => {
   const trend = useMondayTrendViewModel(tab === 'trend')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
+
+  // 사용 분석(/log) — 지금 보고 있는 탭. 통계 탭은 소주제까지 나눠 남긴다.
+  useUsageTracking(
+    'xtool',
+    tab === 'trend' ? `trend/${trend.state.section}` : tab,
+  )
 
   // 리드 상세가 열려 있으면 같은 전화번호의 Monday 고객을 찾아 둔다 — 두
   // 탭의 데이터는 따로 살고, 이 번호 대조가 둘을 잇는 유일한 연결이다.

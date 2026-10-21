@@ -1,5 +1,6 @@
 import { Fragment, Suspense, lazy, useEffect } from 'react'
 import type { CSSProperties, ReactElement, ReactNode } from 'react'
+import { useUsageTracking } from '@/hooks'
 import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useChannelInsightViewModel } from '../view-model/use-channel-insight-view-model'
@@ -1713,6 +1714,10 @@ export const ChannelInsight = () => {
     setPivotView,
     setExcelExportOpen,
   } = useChannelInsightPageViewModel(combinedInsight, dateStart, dateEnd)
+
+  // 사용 분석(/log) — 지금 보고 있는 결과 탭(전체 요약·캠페인·광고셋·매체별
+  // 테스트·ROAS).
+  useUsageTracking('cmip', resultTab)
 
   return (
     <div className="channel-insight">

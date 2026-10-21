@@ -571,3 +571,70 @@ $status-running: v.$color-accent;
     }
   }
 }
+
+// ── /log 상단 탭(배치 로그 · 사용 분석) ─────────────────────────────────
+.batch-log {
+  &__tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid v.$color-border-soft;
+
+    button {
+      all: unset;
+      padding: 10px 14px;
+      margin-bottom: -1px;
+      border-bottom: 2px solid transparent;
+      font-size: 14px;
+      font-weight: 500;
+      color: v.$color-text-muted;
+      cursor: pointer;
+
+      &:hover {
+        color: v.$color-text;
+      }
+      &.is-active {
+        color: v.$color-text;
+        border-bottom-color: v.$color-accent;
+      }
+      &:focus-visible {
+        outline: 2px solid v.$color-accent;
+      }
+    }
+  }
+
+  &__title {
+    margin: 0 0 6px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  &__card-desc {
+    margin: 4px 0 12px;
+  }
+
+  // 날짜별 · 탭 이동 흐름을 나란히.
+  &__columns {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-bottom: 16px;
+
+    .batch-log__card {
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 900px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__flows {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    margin: 0;
+    font-size: 12.5px;
+    color: v.$color-text-muted;
+  }
+}
