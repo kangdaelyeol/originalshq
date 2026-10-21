@@ -857,8 +857,10 @@ const ROAS_EXPORT_FIELDS: readonly RoasExportField[] = [
   { key: 'totalRevenue', label: '총 매출' },
   { key: 'repeatRevenue', label: '재구매 매출' },
   { key: 'newCustomerRevenue', label: '신규 고객 매출' },
+  { key: 'adRevenue', label: 'UTM 광고 매출' },
   { key: 'roas', label: '광고비 대비 매출 (%)' },
   { key: 'newCustomerRoas', label: '신규 고객 ROAS (%)' },
+  { key: 'lowerBoundRoas', label: '하한 ROAS (%)' },
 ]
 // 신규 고객 지표는 재구매 금액을 못 불러오면 NaN(모름)이다 — 셀에는 '-'로 쓴다.
 const roasValues = (m: RoasMetrics): (number | string)[] =>
@@ -881,6 +883,7 @@ export function writeRoasSheet(
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
   repeatRevenue: RepeatRevenueByDate | null,
+  adRevenue: RepeatRevenueByDate | null,
 ) {
   const ws = wb.addWorksheet('ROAS')
   ws.properties.outlineProperties = {
@@ -895,6 +898,7 @@ export function writeRoasSheet(
     offlineRevenue,
     onlineRevenue,
     repeatRevenue,
+    adRevenue,
   )
 
   let row = 1
@@ -922,6 +926,7 @@ export function writeRoasSheet(
       offlineRevenue,
       onlineRevenue,
       repeatRevenue,
+      adRevenue,
     )
     const average = computeRoasAverage(total, rows.length)
     const tableRows = [

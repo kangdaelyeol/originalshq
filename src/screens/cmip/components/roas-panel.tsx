@@ -63,6 +63,14 @@ const ROAS_FIELDS: readonly RoasField[] = [
     note: '신규 고객 매출 ÷ 광고비. 이미 산 적 있는 고객의 재구매는 광고 성과로 보지 않아 뺍니다. 자연유입·소개·매장 방문 신규 고객은 아직 섞여 있어, 광고가 기여한 최대치로 읽어야 합니다.',
   },
   {
+    key: 'lowerBoundRoas',
+    label: '하한 ROAS',
+    getValue: (m) => m.lowerBoundRoas,
+    format: pct2,
+    formatCompact: pct2,
+    note: 'UTM 광고 매출 ÷ 광고비. UTM이 광고 채널(Meta·Google·Naver)인 상담 뒤 90일 안에 처음 산 고객의 구매만 광고 성과로 센 값이라, 진짜 광고 ROAS보다 작거나 같습니다. 매출은 고객 통합(계약 금액) 기준입니다.',
+  },
+  {
     key: 'roas',
     label: '광고비 대비 매출',
     getValue: (m) => m.roas,
@@ -1176,6 +1184,7 @@ export function RoasPanel({
   offlineRevenue,
   onlineRevenue,
   repeatRevenue,
+  adRevenue,
   attribution,
 }: {
   combinedInsight: CombinedInsight | null
@@ -1184,6 +1193,9 @@ export function RoasPanel({
   /** 날짜별 재구매 금액(xtool) — 불러오지 못했으면 null이고, 신규 고객 지표가
    * '-'로 보인다. */
   repeatRevenue: RepeatRevenueByDate | null
+  /** 날짜별 UTM 광고 매출(하한 ROAS의 분자) — 못 불러왔으면 null이고 하한
+   * ROAS가 '-'로 보인다. */
+  adRevenue: RepeatRevenueByDate | null
   /** 광고 기여 ROAS 재료(xtool) — 불러오지 못했으면 null이고 그 섹션만
    * 안내 문구로 바뀐다. */
   attribution: AttributionRow[] | null
@@ -1202,6 +1214,7 @@ export function RoasPanel({
     offlineRevenue,
     onlineRevenue,
     repeatRevenue,
+    adRevenue,
   )
   const { rows, average } = trend
 

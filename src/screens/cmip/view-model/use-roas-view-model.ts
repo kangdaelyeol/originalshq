@@ -55,6 +55,13 @@ export interface RoasMetrics {
    * 고객의 재구매는 광고 성과로 보지 않는다. 자연유입·소개 신규 고객은 아직
    * 섞여 있어 광고 기여의 상한선으로 읽는다. */
   newCustomerRoas: number
+  /** UTM 광고 매출 — 하한 ROAS의 분자(attribution-client.ts의
+   * utmAdRevenueByDate). 고객 통합(계약 금액) 기준이다. 유입 데이터를 못
+   * 불러왔으면 NaN. */
+  adRevenue: number
+  /** 하한 ROAS — adRevenue ÷ 광고비(퍼센트). UTM 광고 상담 뒤 90일 안에 처음
+   * 산 고객만 광고 성과로 센 값이라 진짜 광고 ROAS보다 작거나 같다. */
+  lowerBoundRoas: number
   /** 광고비 대비 매출(MER) — 예전 이름은 "ROAS". 재구매 매출까지 들어 있다.
    * 광고비 대비 (오프라인+온라인) 매출 — 퍼센트(예: 250은 250%, 광고비의
    * 2.5배). 광고비가 0이면 나눌 수 없어 0으로 둔다. */
@@ -139,6 +146,8 @@ interface ToMetricsInput {
   onlineItemDiscount?: number
   /** 재구매 매출 — 모르면(불러오지 못했으면) NaN. */
   repeatRevenue?: number
+  /** UTM 광고 매출 — 모르면 NaN. */
+  adRevenue?: number
 }
 
 const toMetrics = (input: ToMetricsInput): RoasMetrics => {
@@ -157,6 +166,7 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     onlineCouponDiscount = 0,
     onlineItemDiscount = 0,
     repeatRevenue = Number.NaN,
+    adRevenue = Number.NaN,
   } = input
   const netPointsSpent = onlinePointsSpent - onlinePointsRefunded
   const onlineRevenue = onlineRevenueCafe24 - onlineShippingFee - netPointsSpent
@@ -174,6 +184,10 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
     newCustomerRevenue,
     newCustomerRoas:
       spend > 0 ? (newCustomerRevenue / spend) * 100 : newCustomerRevenue * 0,
+    adRevenue,
+    // adRevenue가 NaN이면 결과도 NaN(모름) — `* 0`은 광고비가 0일 때 NaN을
+    // 그대로 넘기기 위해서다.
+    lowerBoundRoas: spend > 0 ? (adRevenue / spend) * 100 : adRevenue * 0,
     installmentInterest,
     deferredBalance,
     onlineGrossPayment,
@@ -189,7 +203,8 @@ const toMetrics = (input: ToMetricsInput): RoasMetrics => {
 
 /** "합계" — 조회 기간 전체 기준 총계(grouping과 무관하게 항상 같은 값). ROAS
  * 탭(useRoasViewModel)과 엑셀 ROAS 시트(excel-writer.ts)가 공유한다. */
-/** 날짜들의 재구매 금액 합 — 재구매 데이터를 못 불러왔으면 NaN. */
+/** 날짜들의 금액 합(재구매 매출·UTM 광고 매출 공용) — 데이터를 못
+ * 불러왔으면 NaN. */
 const repeatFor = (
   repeat: RepeatRevenueByDate | null,
   dates: readonly ISODate[],
@@ -208,9 +223,11 @@ export function computeRoasTotal(
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
   repeatRevenue: RepeatRevenueByDate | null,
+  adRevenue: RepeatRevenueByDate | null,
 ): RoasMetrics {
   return toMetrics({
     repeatRevenue: repeatFor(repeatRevenue, datesOf(combinedInsight)),
+    adRevenue: repeatFor(adRevenue, datesOf(combinedInsight)),
     offlineRevenue: offlineRevenue?.total.totalPaid ?? 0,
     onlineRevenueCafe24: onlineRevenue?.total.paymentAmount ?? 0,
     spend: combinedInsight?.total.combined.spend ?? 0,
@@ -253,6 +270,7 @@ export function computeRoasAverage(
     onlineCouponDiscount: total.onlineCouponDiscount / rowCount,
     onlineItemDiscount: total.onlineItemDiscount / rowCount,
     repeatRevenue: total.repeatRevenue / rowCount,
+    adRevenue: total.adRevenue / rowCount,
   })
 }
 
@@ -294,10 +312,10 @@ function toMetricsFromOnlineMaps(
   installmentInterest: number,
   key: string,
   online: ReturnType<typeof buildOnlineMaps>,
-  repeatRevenue: number,
+  extras: { repeatRevenue: number; adRevenue: number },
 ): RoasMetrics {
   return toMetrics({
-    repeatRevenue,
+    ...extras,
     offlineRevenue,
     onlineRevenueCafe24: online.paymentAmount.get(key) ?? 0,
     spend,
@@ -334,15 +352,17 @@ export function computeRoasRows(
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
   repeatRevenue: RepeatRevenueByDate | null,
+  adRevenue: RepeatRevenueByDate | null,
 ): RoasRow[] {
   if (!combinedInsight) return []
   const allDates = datesOf(combinedInsight)
-  /** 한 행이 가리키는 날짜들(시작~끝)의 재구매 금액. */
-  const repeatBetween = (start: ISODate, end: ISODate) =>
-    repeatFor(
-      repeatRevenue,
-      allDates.filter((date) => date >= start && date <= end),
-    )
+  /** 한 행이 가리키는 날짜들의 재구매 매출·UTM 광고 매출. */
+  const extrasFor = (dates: readonly ISODate[]) => ({
+    repeatRevenue: repeatFor(repeatRevenue, dates),
+    adRevenue: repeatFor(adRevenue, dates),
+  })
+  const extrasBetween = (start: ISODate, end: ISODate) =>
+    extrasFor(allDates.filter((date) => date >= start && date <= end))
 
   if (grouping === RoasGrouping.MONTH) {
     const spendByMonth = groupByMonth(combinedInsight.series.combined.byDate)
@@ -366,7 +386,7 @@ export function computeRoasRows(
           interestByPeriod.get(m.period) ?? 0,
           m.period,
           online,
-          repeatBetween(m.startDate, m.endDate),
+          extrasBetween(m.startDate, m.endDate),
         ),
       }),
     )
@@ -396,8 +416,7 @@ export function computeRoasRows(
           interestByDay.get(d.dayOfWeek) ?? 0,
           d.dayOfWeek,
           online,
-          repeatFor(
-            repeatRevenue,
+          extrasFor(
             allDates.filter((date) => weekdayLabelOf(date) === d.dayOfWeek),
           ),
         ),
@@ -429,7 +448,7 @@ export function computeRoasRows(
           interestByPeriod.get(w.period) ?? 0,
           w.period,
           online,
-          repeatBetween(w.startDate, w.endDate),
+          extrasBetween(w.startDate, w.endDate),
         ),
       }),
     )
@@ -453,7 +472,7 @@ export function computeRoasRows(
         interestByDate.get(d.date) ?? 0,
         d.date,
         online,
-        repeatFor(repeatRevenue, [d.date]),
+        extrasFor([d.date]),
       ),
     }),
   )
@@ -493,6 +512,7 @@ export const useRoasViewModel = (
   offlineRevenue: OfflineRevenueSummary | null,
   onlineRevenue: Cafe24RevenueSummary | null,
   repeatRevenue: RepeatRevenueByDate | null,
+  adRevenue: RepeatRevenueByDate | null,
 ) => {
   const [groupings, setGroupings] = useState<Record<RoasTable, RoasGrouping>>({
     [RoasTable.TREND]: DEFAULT_ROAS_GROUPING,
@@ -521,6 +541,7 @@ export const useRoasViewModel = (
     offlineRevenue,
     onlineRevenue,
     repeatRevenue,
+    adRevenue,
   )
 
   const buildTableData = (table: RoasTable) => {
@@ -530,6 +551,7 @@ export const useRoasViewModel = (
       offlineRevenue,
       onlineRevenue,
       repeatRevenue,
+      adRevenue,
     )
     return { rows, average: computeRoasAverage(total, rows.length) }
   }

@@ -31,6 +31,7 @@ interface ExcelExportModalProps {
   offlineRevenue: OfflineRevenueSummary | null
   onlineRevenue: Cafe24RevenueSummary | null
   repeatRevenue: RepeatRevenueByDate | null
+  adRevenue: RepeatRevenueByDate | null
 }
 
 /** "엑셀 다운로드" 버튼에서 여는 모달 — 전체요약/캠페인/애드셋 중 시트로
@@ -53,6 +54,7 @@ export function ExcelExportModal({
   offlineRevenue,
   onlineRevenue,
   repeatRevenue,
+  adRevenue,
 }: ExcelExportModalProps) {
   const {
     sheets,
@@ -74,6 +76,7 @@ export function ExcelExportModal({
     offlineRevenue,
     onlineRevenue,
     repeatRevenue,
+    adRevenue,
     onExported: onClose,
   })
 

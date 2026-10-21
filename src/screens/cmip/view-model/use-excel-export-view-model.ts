@@ -38,6 +38,7 @@ interface UseExcelExportViewModelArgs {
   offlineRevenue: OfflineRevenueSummary | null
   onlineRevenue: Cafe24RevenueSummary | null
   repeatRevenue: RepeatRevenueByDate | null
+  adRevenue: RepeatRevenueByDate | null
   onExported: () => void
 }
 
@@ -56,6 +57,7 @@ export const useExcelExportViewModel = ({
   offlineRevenue,
   onlineRevenue,
   repeatRevenue,
+  adRevenue,
   onExported,
 }: UseExcelExportViewModelArgs) => {
   const [sheets, setSheets] = useState<ReadonlySet<SheetKey>>(
@@ -143,6 +145,7 @@ export const useExcelExportViewModel = ({
             offlineRevenue,
             onlineRevenue,
             repeatRevenue,
+            adRevenue,
           )
         }
       }

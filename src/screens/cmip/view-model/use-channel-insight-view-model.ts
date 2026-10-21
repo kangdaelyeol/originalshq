@@ -86,6 +86,12 @@ export const useChannelInsightViewModel = () => {
   const [attributionData, setAttributionData] = useState<
     AttributionRow[] | null
   >(null)
+  // 날짜별 UTM 광고 매출(하한 ROAS의 분자) — 조회 기간으로 거른 것. 전체
+  // 요약(combinedInsight)과 ROAS 탭이 같은 값을 쓴다.
+  const [adRevenueData, setAdRevenueData] = useState<Record<
+    string,
+    number
+  > | null>(null)
   // total은 물론 캠페인/adset 단위까지 "종합(meta+google+naver)/meta/google/naver"
   // 4분할로 미리 묶어둔다 — 당근 등 채널이 더 늘어나면 combineChannelInsights
   // 쪽만 확장하면 된다.
@@ -108,6 +114,10 @@ export const useChannelInsightViewModel = () => {
       setOnlineRevenueData(result.onlineRevenueResult)
       setRepeatRevenueData(result.repeatRevenueResult)
       setAttributionData(result.attributionResult)
+      const adRevenue = result.attributionResult
+        ? utmAdRevenueByDate(result.attributionResult, apiStart, apiEnd)
+        : null
+      setAdRevenueData(adRevenue)
       setCombinedInsight(
         combineChannelInsights(
           result.metaResult,
@@ -118,9 +128,7 @@ export const useChannelInsightViewModel = () => {
           result.offlineRevenueResult,
           result.onlineRevenueResult,
           result.repeatRevenueResult,
-          result.attributionResult
-            ? utmAdRevenueByDate(result.attributionResult, apiStart, apiEnd)
-            : null,
+          adRevenue,
         ),
       )
     },
@@ -240,6 +248,7 @@ export const useChannelInsightViewModel = () => {
     onlineRevenueData,
     repeatRevenueData,
     attributionData,
+    adRevenueData,
     combinedInsight,
     // 액션
     load,
