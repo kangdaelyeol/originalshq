@@ -48,7 +48,8 @@ const param = (key: string, kind: 'string_value' | 'int_value') =>
 const QUERY = `
   SELECT
     user_pseudo_id AS clientId,
-    DIV(event_timestamp, 1000) AS at,
+    -- "at"은 BigQuery 예약어라 별칭으로 못 쓴다.
+    DIV(event_timestamp, 1000) AS eventAtMs,
     event_name AS name,
     ${param('page_location', 'string_value')} AS pageLocation,
     ${param('page_title', 'string_value')} AS pageTitle,
@@ -72,7 +73,7 @@ const QUERY = `
         AND CONCAT('intraday_', @toDate)
     )
     AND user_pseudo_id IN UNNEST(@clientIds)
-  ORDER BY at
+  ORDER BY eventAtMs
   LIMIT ${MAX_ROWS}
 `
 
@@ -102,7 +103,7 @@ export async function fetchGa4Events(
   const [metadata] = await job.getMetadata()
   const events = (rows as Record<string, unknown>[]).map((row) => ({
     clientId: String(row.clientId),
-    at: toNumber(row.at) ?? 0,
+    at: toNumber(row.eventAtMs) ?? 0,
     name: String(row.name ?? ''),
     pageLocation: (row.pageLocation as string | null) ?? null,
     pageTitle: (row.pageTitle as string | null) ?? null,

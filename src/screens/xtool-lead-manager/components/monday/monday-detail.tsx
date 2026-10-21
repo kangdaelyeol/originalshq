@@ -241,6 +241,12 @@ const PaymentCard = ({ record }: { record: MondayPayment }) => (
           </strong>
         }
       />
+      {record.adjustmentAmount ? (
+        <Field label="할인" value={formatWon(record.adjustmentAmount)} />
+      ) : null}
+      {record.interestAmount ? (
+        <Field label="할부 이자" value={formatWon(record.interestAmount)} />
+      ) : null}
       <Field label="담당자" value={record.assignee} />
       <Field label="결제수단" value={record.method} />
     </dl>

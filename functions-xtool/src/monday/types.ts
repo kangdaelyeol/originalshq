@@ -367,8 +367,13 @@ export interface MondayPayment extends MondayRecordSource {
   assignee: string | null
   memo: string | null
   lines: MondayPurchaseLine[]
-  /** 납부한 금액 — 줄들의 합. */
+  /** 납부한 금액 — 계약금/분할납부 줄의 합. */
   amount: number
+  /** 납부할 때 깎아 준 금액(할인 줄의 합, 보통 0 이하) — 계약 금액에서
+   * 뺀다(예: 잔금 4,600,300원을 받으며 끝전 300원 할인). */
+  adjustmentAmount: number
+  /** 잔금을 카드 장기 할부로 낼 때 붙은 이자 — 매출·납부액과 따로 둔다. */
+  interestAmount: number
   cancelled: boolean
   pending: boolean
 }
@@ -378,6 +383,8 @@ export interface MondayPaymentIssue {
   type:
     | 'payment-without-contract' // 납부 기록은 있는데 대응하는 계약 건이 없음
     | 'purchase-without-lines' // 결제 건에 품목 줄이 없어 금액을 알 수 없음
+    // 계약 건 안의 양수 계약금/분할납부 줄 — 10/22부터 내지 않는다(그 결제
+    // 때 함께 낸 잔금이라 정상). 예전 데이터·화면 호환을 위해 이름만 남긴다.
     | 'deferred-positive' // 계약 건의 계약금/분할납부 줄이 양수(보통 음수)
     | 'overpaid' // 받은 돈이 계약 금액보다 많음
   /** 화면에 그대로 보여줄 설명. */

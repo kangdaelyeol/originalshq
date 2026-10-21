@@ -163,6 +163,11 @@ export interface MondayPayment extends MondayRecordSource {
   memo: string | null
   lines: MondayPurchaseLine[]
   amount: number
+  /** 납부할 때 깎아 준 금액(보통 0 이하) — 계약 금액에서 빠진다. 예전에
+   * 저장된 고객 문서에는 없다. */
+  adjustmentAmount?: number
+  /** 잔금을 카드 장기 할부로 낼 때 붙은 이자. 예전 문서에는 없다. */
+  interestAmount?: number
   cancelled: boolean
   pending: boolean
 }

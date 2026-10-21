@@ -82,6 +82,12 @@ const sumOf = (lines: MondayPurchaseLine[], kind: MondayPurchaseLine['kind']) =>
     .filter((line) => line.kind === kind)
     .reduce((sum, line) => sum + line.total, 0)
 
+/** 할인 줄 — 품목 이름에 "할인"이 들어가고 금액이 0 이하인 상품 줄. */
+const isDiscountLine = (line: MondayPurchaseLine): boolean =>
+  line.kind === 'product' &&
+  line.total <= 0 &&
+  /할인/.test(`${line.name} ${line.product ?? ''}`)
+
 const won = (amount: number): string => `${amount.toLocaleString('ko-KR')}원`
 
 /** 최근 것이 앞에 오도록 — 날짜가 없는 기록은 맨 뒤로. */
@@ -142,11 +148,28 @@ export const buildPurchaseRecords = (
       pending: status !== null && /입금\s*대기/.test(status),
     }
 
+    // 납부 건 — 계약금/분할납부 줄이 있고, 나머지는 할부 이자나 할인 줄뿐인
+    // 결제. 새 상품을 산 게 아니라 이미 맺은 계약의 돈을 낸 기록이다. 잔금을
+    // 카드 장기 할부로 내 이자 줄이 붙거나, 끝전을 깎아 준 할인 줄이 붙어도
+    // 납부로 본다(10/22 확인 — 예전엔 이런 건이 0원·−300원짜리 구매로 잡혔다).
     const isPaymentOnly =
-      lines.length > 0 && lines.every((line) => line.kind === 'deferred')
+      lines.some((line) => line.kind === 'deferred') &&
+      lines.every(
+        (line) =>
+          line.kind === 'deferred' ||
+          line.kind === 'interest' ||
+          isDiscountLine(line),
+      )
 
     if (isPaymentOnly) {
-      payments.push({ ...common, amount: sumOf(lines, 'deferred') })
+      payments.push({
+        ...common,
+        amount: sumOf(lines, 'deferred'),
+        adjustmentAmount: lines
+          .filter(isDiscountLine)
+          .reduce((sum, line) => sum + line.total, 0),
+        interestAmount: sumOf(lines, 'interest'),
+      })
       continue
     }
 
@@ -171,27 +194,24 @@ export const buildPurchaseRecords = (
         purchase,
       )
     }
-    if (purchase.deferredAmount > 0) {
-      issue(
-        'deferred-positive',
-        `계약 건 안의 계약금/분할납부 줄이 양수(${won(purchase.deferredAmount)})` +
-          '입니다. 잔금이나 차감이면 음수여야 합니다.',
-        purchase,
-      )
-    }
   }
 
   const activePurchases = purchases.filter((purchase) => !purchase.cancelled)
   const activePayments = payments.filter((payment) => !payment.cancelled)
 
-  const purchaseAmount = activePurchases.reduce((sum, p) => sum + p.amount, 0)
+  // 납부할 때 깎아 준 금액은 계약 금액에서 뺀다.
+  const purchaseAmount =
+    activePurchases.reduce((sum, p) => sum + p.amount, 0) +
+    activePayments.reduce((sum, p) => sum + p.adjustmentAmount, 0)
   // 결제상태가 "입금대기"여도 받은 것으로 센다 — 이 상태는 돈이 들어온 뒤에도
   // 그대로 남아 있는 건이 많아서(몇 달 전 계약, 이후 분할납부까지 끝난 건도
   // 입금대기), 이걸 믿고 빼면 잔금이 실제보다 훨씬 크게 나온다. 잔금은
   // 계약금/분할납부 줄만으로 계산하고, 입금대기는 뱃지로만 보여준다.
+  // 계약 건 안의 양수 계약금/분할납부 줄은 그 결제 때 함께 낸 이전 계약의
+  // 잔금이다(예: 추가 상품을 사며 잔금도 같이 결제) — 받은 돈에 그대로 들어간다.
   const receivedAmount =
     activePurchases.reduce((sum, p) => sum + p.amount + p.deferredAmount, 0) +
-    activePayments.reduce((sum, p) => sum + p.amount, 0)
+    activePayments.reduce((sum, p) => sum + p.amount + p.adjustmentAmount, 0)
   const balanceAmount = purchaseAmount - receivedAmount
 
   // 납부는 "계약금/분할납부 줄이 있는 계약"에 대한 것이어야 한다 — 그런 계약이
@@ -228,10 +248,9 @@ export const buildPurchaseRecords = (
       purchaseAmount,
       receivedAmount,
       balanceAmount,
-      interestAmount: activePurchases.reduce(
-        (sum, p) => sum + p.interestAmount,
-        0,
-      ),
+      interestAmount:
+        activePurchases.reduce((sum, p) => sum + p.interestAmount, 0) +
+        activePayments.reduce((sum, p) => sum + p.interestAmount, 0),
     },
   }
 }
