@@ -8,6 +8,7 @@ export const DOC_TYPES: DocType[] = [
   'terms',
   'location',
   'consent',
+  'location-consent',
   'consent-third',
 ]
 
@@ -16,6 +17,7 @@ export const DOC_TITLES: Record<DocType, string> = {
   terms: '서비스 이용약관',
   location: '위치기반서비스 이용약관',
   consent: '개인정보 수집·이용 동의서',
+  'location-consent': '개인위치정보 수집·이용 동의서',
   'consent-third': '개인정보 제3자 제공 동의서',
 }
 

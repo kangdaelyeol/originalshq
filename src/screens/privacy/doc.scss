@@ -140,7 +140,8 @@
     font-size: 14px;
   }
 
-  // 표는 화면이 좁으면 가로로 스크롤한다.
+  // 표는 화면이 좁으면 가로로 스크롤한다. 단, 폰 폭(앱 WebView 포함)에서는
+  // 스크롤 대신 칸 안에서 줄을 바꿔 화면 폭에 맞춘다.
   .doc-table {
     display: block;
     width: 100%;
@@ -162,6 +163,22 @@
       color: variables.$text-primary;
       font-weight: 500;
       white-space: nowrap;
+    }
+
+    @media (max-width: 480px) {
+      display: table;
+      table-layout: fixed;
+      font-size: 13px;
+
+      th,
+      td {
+        padding: 8px 6px;
+        overflow-wrap: anywhere;
+      }
+
+      th {
+        white-space: normal;
+      }
     }
   }
 }
