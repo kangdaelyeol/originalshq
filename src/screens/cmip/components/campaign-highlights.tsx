@@ -1,39 +1,39 @@
-import type { CampaignHighlightRow, CampaignHighlights } from '../client'
+import type {
+  CampaignHighlightKey,
+  CampaignHighlightRow,
+  CampaignHighlights,
+} from '../client'
 
+const INQUIRY = '전환 목표가 문의인 Meta 광고셋 · 문의 3건 이상'
+const CLICKS = '전체 매체 · 클릭 50회 이상'
+const IMPRESSIONS = '전체 매체 · 노출 1,000회 이상'
+
+// 짝(많은/적은, 낮은/높은)끼리 나란히 — 한 줄에 네 개씩 두 줄.
 const CARDS: {
-  key: keyof CampaignHighlights
+  key: CampaignHighlightKey
   title: string
   desc: string
-  empty: string
 }[] = [
   {
-    key: 'topSpend',
-    title: '광고비 TOP 5',
-    desc: '조회 기간 광고비 · 전체 대비 비중',
-    empty: '광고비를 쓴 광고셋이 없습니다.',
+    key: 'spendHigh',
+    title: '광고비 많은 TOP 5',
+    desc: '광고비 · 전체 대비 비중',
   },
   {
-    key: 'lowestCpa',
-    title: '문의 단가 낮은 TOP 5',
-    desc: '전환 목표가 문의인 Meta 광고셋 · 문의 3건 이상',
-    empty: '문의 3건 이상인 광고셋이 없습니다.',
+    key: 'spendLow',
+    title: '광고비 적은 TOP 5',
+    desc: '광고비를 쓴 광고셋 중',
   },
-  {
-    key: 'lowestCpc',
-    title: '클릭 단가 낮은 TOP 5',
-    desc: '전체 매체 · 클릭 50회 이상',
-    empty: '클릭 50회 이상인 광고셋이 없습니다.',
-  },
-  {
-    key: 'noInquirySpend',
-    title: '문의 없이 광고비만 쓴 TOP 5',
-    desc: '전환 목표가 문의인데 문의 0건',
-    empty: '해당하는 광고셋이 없습니다.',
-  },
+  { key: 'cpaLow', title: '문의 단가 낮은 TOP 5', desc: INQUIRY },
+  { key: 'cpaHigh', title: '문의 단가 높은 TOP 5', desc: INQUIRY },
+  { key: 'cpcLow', title: '클릭 단가 낮은 TOP 5', desc: CLICKS },
+  { key: 'cpcHigh', title: '클릭 단가 높은 TOP 5', desc: CLICKS },
+  { key: 'cpmLow', title: 'CPM 낮은 TOP 5', desc: IMPRESSIONS },
+  { key: 'cpmHigh', title: 'CPM 높은 TOP 5', desc: IMPRESSIONS },
 ]
 
 /**
- * 캠페인·광고셋 탭 맨 위의 요약 카드 네 개(광고셋 단위). 광고셋을 누르면 아래
+ * 캠페인·광고셋 탭 맨 위의 요약 카드 여덟 개(광고셋 단위). 광고셋을 누르면 아래
  * 목록에서 그 캠페인을 펼치고 광고셋을 체크한 뒤 그 줄로 스크롤한다 — 비교
  * 표에도 바로 들어간다.
  */
@@ -64,7 +64,9 @@ export function CampaignHighlightCards({
             <h3 className="campaign-highlights__title">{card.title}</h3>
             <p className="campaign-highlights__desc">{card.desc}</p>
             {rows.length === 0 ? (
-              <p className="campaign-highlights__empty">{card.empty}</p>
+              <p className="campaign-highlights__empty">
+                해당하는 광고셋이 없습니다.
+              </p>
             ) : (
               <ol className="campaign-highlights__list">
                 {rows.map((row, index) => (
