@@ -13,6 +13,8 @@ export type FullListSortKey = 'name' | MetricKey
 
 export interface FullListRow {
   key: string
+  /** 교차표·그래프 선택에 쓰는 키(campaignKey/adsetKey). */
+  selectKey: string
   name: string
   metrics: MetricsSummary
   /** 결과 유형 — Meta 캠페인에만 있다(adset 목록·Google/Naver 캠페인은 항상 없음). */
@@ -20,11 +22,14 @@ export interface FullListRow {
   /** 이 캠페인/adset에 실제 데이터가 있는 채널 — ResultPanel의 applicableChannels와
    * 같은 기준(byDate가 비어있지 않은 채널만)으로 channelsOf가 계산해 채운다. */
   channels: readonly ChannelKey[]
+  /** 캠페인 줄 아래에 펼쳐지는 광고셋 줄 — 광고셋 줄에는 없다. */
+  children?: readonly FullListRow[]
 }
 
-/** 캠페인/adset 탭의 "전체 목록" 표(FullListTable) 전용 상태 — 채널 필터, 컬럼
- * 표시 여부(지표/전환 목표), 정렬을 다루고 그 결과인 filteredRows/sortedRows를
- * 돌려준다. */
+/** 캠페인·광고셋 탭의 목록 표(FullListTable) 전용 상태 — 채널 필터, 컬럼
+ * 표시 여부(지표/전환 목표), 정렬을 다루고 그 결과인 sortedRows를 돌려준다.
+ * 정렬·채널 필터는 캠페인 줄과 그 아래 광고셋 줄에 똑같이 걸린다. 캠페인
+ * 펼침은 위 요약 카드도 바꿔야 해서 페이지 view-model이 들고 있다. */
 export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   const [sort, setSort] = useState<{ key: FullListSortKey; dir: SortDir }>({
     key: 'name',
@@ -35,13 +40,15 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   // 행만 남긴다(row.channels 기준 — 이름이 같아 여러 채널이 합쳐진 행은 그
   // 채널이 channels 배열에 있기만 하면 보인다).
   const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>('all')
-  const filteredRows = useMemo(
-    () =>
-      channelFilter === 'all'
-        ? rows
-        : rows.filter((r) => r.channels.includes(channelFilter)),
-    [rows, channelFilter],
-  )
+  const filteredRows = useMemo(() => {
+    if (channelFilter === 'all') return rows
+    const keep = (r: FullListRow) => r.channels.includes(channelFilter)
+    return rows
+      .filter(keep)
+      .map((r) =>
+        r.children ? { ...r, children: r.children.filter(keep) } : r,
+      )
+  }, [rows, channelFilter])
 
   // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
   // 이름/채널 칸은 항상 보인다. 오프라인/온라인/총 매출·ROAS는 캠페인/adset
@@ -78,10 +85,14 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
 
   const sortedRows = useMemo(() => {
     const dir = sort.dir === 'asc' ? 1 : -1
-    return [...filteredRows].sort((a, b) => {
-      if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
-      return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
-    })
+    const sortRows = (list: readonly FullListRow[]) =>
+      [...list].sort((a, b) => {
+        if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
+        return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
+      })
+    return sortRows(filteredRows).map((r) =>
+      r.children ? { ...r, children: sortRows(r.children) } : r,
+    )
   }, [filteredRows, sort])
 
   return {

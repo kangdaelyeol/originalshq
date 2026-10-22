@@ -5,6 +5,8 @@ import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useChannelInsightViewModel } from '../view-model/use-channel-insight-view-model'
 import {
+  adsetKey,
+  campaignKey,
   useChannelInsightPageViewModel,
   type ResultTab,
   type PivotView,
@@ -48,6 +50,7 @@ import { ChannelInsightChartModal } from './channel-insight-chart-modal'
 import { PeriodTestPanel } from './period-test-panel'
 import { RoasPanel } from './roas-panel'
 import { AdPerformancePanel } from './ad-performance'
+import { CampaignHighlightCards } from './campaign-highlights'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
@@ -160,8 +163,7 @@ function ChannelLabel({
 
 const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
   { key: 'total', label: '전체 요약' },
-  { key: 'campaign', label: '캠페인' },
-  { key: 'adset', label: '광고셋' },
+  { key: 'campaignAdset', label: '캠페인·광고셋' },
   { key: 'periodTest', label: '매체별 테스트' },
   { key: 'roas', label: 'ROAS' },
   { key: 'adPerformance', label: '광고 성과' },
@@ -1316,6 +1318,7 @@ function PivotSummary({
   emptyLabel,
   showUnit,
   view,
+  toolbar,
 }: {
   groups: readonly PivotGroup[]
   metricKeys: readonly MetricKey[]
@@ -1324,6 +1327,9 @@ function PivotSummary({
   /** 지표 헤더에 단위(원/%/회 등)를 같이 보여줄지. */
   showUnit: boolean
   view: PivotView
+  /** 제목 옆 컨트롤(보기 단위·지표·단위 표시) — 이 표에만 걸리는 설정이라
+   * 표 머리에 같이 둔다. */
+  toolbar: ReactNode
 }) {
   // 캠페인/adset 단위는 오프라인/온라인/총 매출·ROAS를 귀속시킬 방법이 없어
   // 항상 0이라(ACCOUNT_ONLY_METRIC_KEYS) 사용자가 지표 선택에서 골랐더라도
@@ -1332,9 +1338,25 @@ function PivotSummary({
     metricKeys.includes(f.key),
   )
 
+  const head = (
+    <div className="channel-insight__section-head">
+      <h3 className="channel-insight__section-title">
+        선택한 캠페인·광고셋 비교
+      </h3>
+      <div
+        className="channel-insight__metric-row"
+        role="group"
+        aria-label="비교 표 설정"
+      >
+        {toolbar}
+      </div>
+    </div>
+  )
+
   if (groups.length === 0 || metricFields.length === 0) {
     return (
-      <section className="channel-insight__summary">
+      <section className="channel-insight__section channel-insight__pivot">
+        {head}
         <p className="channel-insight__result-empty">
           {groups.length === 0 ? emptyLabel : '표시할 지표를 선택해주세요.'}
         </p>
@@ -1394,7 +1416,8 @@ function PivotSummary({
   }
 
   return (
-    <section className="channel-insight__summary channel-insight__pivot">
+    <section className="channel-insight__section channel-insight__pivot">
+      {head}
       <div className="channel-insight__table-wrap">
         <table className="channel-insight__table channel-insight__table--pivot">
           <thead>
@@ -1489,20 +1512,119 @@ function PivotSummary({
   )
 }
 
-// ------------------------------------------------------------------ 캠페인/adset 전체 목록
+// ------------------------------------------------------------------ 캠페인·광고셋 목록
 
-/** 캠페인/adset 탭 전용 — PivotSummary(체크박스로 고른 항목만)와 달리, 선택 여부와
- * 무관하게 "전체" 캠페인(또는 전체 adset)을 조회 기간 전체 합계 기준(전체 요약
- * 탭과 같은 10개 지표 컬럼)으로 한 행씩 보여준다. 나열 순서 기준이 모호하지
- * 않도록, 컬럼 헤더를 눌러 그 지표 기준 오름차순/내림차순으로 정렬한다. */
+/** 목록 표의 한 줄 — 캠페인(level 0, 펼치기 버튼)이나 그 아래 광고셋(level 1). */
+function FullListTableRow({
+  row,
+  level,
+  checked,
+  onToggleSelect,
+  open = false,
+  onToggleOpen,
+  showResultType,
+  visibleFields,
+}: {
+  row: FullListRow
+  level: 0 | 1
+  checked: boolean
+  onToggleSelect: (selectKey: string) => void
+  open?: boolean
+  /** 있으면 캠페인 줄을 눌러 광고셋을 펼친다. */
+  onToggleOpen?: () => void
+  showResultType: boolean
+  visibleFields: readonly MetricField[]
+}) {
+  return (
+    <tr
+      data-select-key={row.selectKey}
+      className={`channel-insight__full-list-row--level${level}${
+        onToggleOpen ? ' channel-insight__table-row--clickable' : ''
+      }`}
+      onClick={onToggleOpen}
+    >
+      <td>
+        <span
+          className="channel-insight__full-list-name"
+          style={{ paddingLeft: level * 22 }}
+        >
+          <input
+            type="checkbox"
+            className="channel-insight__full-list-check"
+            checked={checked}
+            aria-label={`${row.name} 교차표에 넣기`}
+            onClick={(event) => event.stopPropagation()}
+            onChange={() => onToggleSelect(row.selectKey)}
+          />
+          {onToggleOpen ? (
+            <button
+              type="button"
+              className="channel-insight__full-list-expand"
+              aria-expanded={open}
+              aria-label={`${row.name} 광고셋 ${open ? '접기' : '펼치기'}`}
+              onClick={(event) => {
+                event.stopPropagation()
+                onToggleOpen()
+              }}
+            >
+              {open ? '▾' : '▸'}
+            </button>
+          ) : (
+            level === 0 && (
+              <span className="channel-insight__full-list-expand" aria-hidden />
+            )
+          )}
+          {row.name}
+          {showResultType && row.resultType && (
+            <span className="channel-insight__result-type-badge">
+              {row.resultType}
+            </span>
+          )}
+          {level === 0 && (row.children?.length ?? 0) > 0 && (
+            <span className="channel-insight__full-list-count">
+              광고셋 {row.children?.length}
+            </span>
+          )}
+        </span>
+      </td>
+      <td className="channel-insight__full-list-channels">
+        {row.channels.map((ch) => (
+          <ChannelLabel
+            key={ch}
+            channelKey={ch}
+            label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
+          />
+        ))}
+      </td>
+      {visibleFields.map((f) => (
+        <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
+      ))}
+    </tr>
+  )
+}
+
+/** 캠페인·광고셋 탭의 목록 — 전체 캠페인을 조회 기간 합계 기준(전체 요약 탭과
+ * 같은 지표 컬럼)으로 한 줄씩 보여 주고, 캠페인 줄을 누르면 그 광고셋이 아래로
+ * 펼쳐진다. 줄마다 체크박스로 아래 교차표·그래프에 넣을 캠페인·광고셋을
+ * 고른다. 컬럼 헤더를 눌러 그 지표 기준으로 정렬한다(광고셋도 캠페인 안에서
+ * 같은 기준으로). */
 function FullListTable({
   rows,
   headLabel,
   emptyLabel,
+  selected,
+  onToggleSelect,
+  expanded,
+  onToggleExpanded,
 }: {
   rows: readonly FullListRow[]
   headLabel: string
   emptyLabel: string
+  selected: ReadonlySet<string>
+  onToggleSelect: (selectKey: string) => void
+  /** 펼친 캠페인(row.key) — 위 요약 카드도 바꾸므로 밖에서 받는다. */
+  expanded: ReadonlySet<string>
+  onToggleExpanded: (key: string) => void
 }) {
   const {
     sort,
@@ -1631,30 +1753,40 @@ function FullListTable({
                 </td>
               </tr>
             ) : (
-              sortedRows.map((row) => (
-                <tr key={row.key}>
-                  <td>
-                    {row.name}
-                    {showResultType && row.resultType && (
-                      <span className="channel-insight__result-type-badge">
-                        {row.resultType}
-                      </span>
-                    )}
-                  </td>
-                  <td className="channel-insight__full-list-channels">
-                    {row.channels.map((ch) => (
-                      <ChannelLabel
-                        key={ch}
-                        channelKey={ch}
-                        label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
-                      />
-                    ))}
-                  </td>
-                  {visibleFields.map((f) => (
-                    <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
-                  ))}
-                </tr>
-              ))
+              sortedRows.map((row) => {
+                const open = expanded.has(row.key)
+                const children = row.children ?? []
+                return (
+                  <Fragment key={row.key}>
+                    <FullListTableRow
+                      row={row}
+                      level={0}
+                      checked={selected.has(row.selectKey)}
+                      onToggleSelect={onToggleSelect}
+                      open={open}
+                      onToggleOpen={
+                        children.length > 0
+                          ? () => onToggleExpanded(row.key)
+                          : undefined
+                      }
+                      showResultType={showResultType}
+                      visibleFields={visibleFields}
+                    />
+                    {open &&
+                      children.map((child) => (
+                        <FullListTableRow
+                          key={child.key}
+                          row={child}
+                          level={1}
+                          checked={selected.has(child.selectKey)}
+                          onToggleSelect={onToggleSelect}
+                          showResultType={showResultType}
+                          visibleFields={visibleFields}
+                        />
+                      ))}
+                  </Fragment>
+                )
+              })
             )}
           </tbody>
         </table>
@@ -1692,15 +1824,15 @@ export const ChannelInsight = () => {
   const {
     chartOpen,
     resultTab,
-    selectedCampaignNames,
-    selectedAdsetNames,
+    selectedKeys,
+    selectedGroups,
+    expandedCampaigns,
+    campaignHighlights,
     metricMode,
     selectedMetricKeys,
     showUnit,
     pivotView,
     campaigns,
-    selectedCampaign,
-    adsets,
     periodLabel,
     canonicalDates,
     metricKeyList,
@@ -1712,9 +1844,9 @@ export const ChannelInsight = () => {
     excelCampaigns,
     setChartOpen,
     setResultTab,
-    setSelectedCampaignName,
-    toggleCampaignMulti,
-    toggleAdsetMulti,
+    toggleSelected,
+    toggleExpandedCampaign,
+    focusAdset,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,
@@ -1814,98 +1946,6 @@ export const ChannelInsight = () => {
 
       {combinedInsight && (
         <>
-          {(resultTab === 'campaign' || resultTab === 'adset') && (
-            <div
-              className="channel-insight__metric-row"
-              role="group"
-              aria-label="지표 선택"
-            >
-              {/* 표의 행 축(날짜/요일/주차) — 캠페인 선택 드롭다운 왼쪽에 둔다. */}
-              <SingleSelectDropdown<PivotView>
-                options={PIVOT_VIEW_OPTIONS}
-                value={pivotView}
-                onChange={setPivotView}
-                ariaLabel="보기 단위"
-              />
-
-              {/* 캠페인 탭 — 캠페인 다중 선택. */}
-              {resultTab === 'campaign' &&
-                (campaigns.length === 0 ? (
-                  <span className="channel-insight__result-empty">
-                    캠페인 데이터 없음
-                  </span>
-                ) : (
-                  <MultiSelectDropdown
-                    options={campaigns.map((c) => ({
-                      key: c.campaignName,
-                      label: c.campaignName,
-                    }))}
-                    selected={selectedCampaignNames}
-                    onToggle={toggleCampaignMulti}
-                    emptyLabel="캠페인 선택"
-                    countSuffix="개 캠페인"
-                  />
-                ))}
-
-              {/* adset 탭 — 캠페인은 단일 선택, adset은 다중 선택. */}
-              {resultTab === 'adset' &&
-                (campaigns.length === 0 ? (
-                  <span className="channel-insight__result-empty">
-                    캠페인 데이터 없음
-                  </span>
-                ) : (
-                  <SingleSelectDropdown
-                    options={campaigns.map((c) => ({
-                      value: c.campaignName,
-                      label: c.campaignName,
-                    }))}
-                    value={selectedCampaign?.campaignName ?? ''}
-                    onChange={setSelectedCampaignName}
-                    ariaLabel="캠페인 선택"
-                  />
-                ))}
-
-              {resultTab === 'adset' &&
-                selectedCampaign &&
-                (adsets.length === 0 ? (
-                  <span className="channel-insight__result-empty">
-                    adset 데이터 없음
-                  </span>
-                ) : (
-                  <MultiSelectDropdown
-                    options={adsets.map((a) => ({
-                      key: a.adsetName,
-                      label: a.adsetName,
-                    }))}
-                    selected={selectedAdsetNames}
-                    onToggle={toggleAdsetMulti}
-                    emptyLabel="adset 선택"
-                    countSuffix="개 adset"
-                  />
-                ))}
-
-              <MultiSelectDropdown<MetricKey>
-                options={METRIC_FIELDS.map((f) => ({
-                  key: f.key,
-                  label: f.label,
-                }))}
-                selected={selectedMetricKeys}
-                onToggle={toggleMetric}
-                emptyLabel="지표 선택"
-                countSuffix="개 지표"
-              />
-              <button
-                type="button"
-                className={`channel-insight__unit-toggle${
-                  showUnit ? ' is-active' : ''
-                }`}
-                aria-pressed={showUnit}
-                onClick={() => setShowUnit((v) => !v)}
-              >
-                단위 표시
-              </button>
-            </div>
-          )}
 
           {resultTab === 'total' && (
             <ResultPanel
@@ -1917,91 +1957,83 @@ export const ChannelInsight = () => {
               dateEnd={dateEnd}
             />
           )}
-          {resultTab === 'campaign' && (
+          {resultTab === 'campaignAdset' && (
             <TabLoadingOverlay loading={loading}>
-              <PivotSummary
-                groups={campaigns
-                  .filter((c) => selectedCampaignNames.has(c.campaignName))
-                  .map((c) => ({
-                    key: c.campaignName,
-                    label: c.campaignName,
-                    byDate: c.combined.byDate,
-                  }))}
-                metricKeys={metricKeyList}
-                dates={canonicalDates}
-                emptyLabel="표시할 캠페인을 선택해주세요."
-                showUnit={showUnit}
-                view={pivotView}
+              <CampaignHighlightCards
+                highlights={campaignHighlights}
+                onFocus={focusAdset}
               />
               <section className="channel-insight__section">
                 <h3 className="channel-insight__section-title">
-                  전체 캠페인 합계 요약
+                  캠페인 · 광고셋
                 </h3>
                 <FullListTable
                   rows={campaigns.map((c) => ({
                     key: c.campaignName,
+                    selectKey: campaignKey(c.campaignName),
                     name: c.campaignName,
                     metrics: aggregateMetrics(c.combined.byDate),
                     resultType: c.resultType,
                     channels: channelsOf(c),
-                  }))}
-                  headLabel="Campaign"
-                  emptyLabel="캠페인 데이터 없음"
-                />
-              </section>
-            </TabLoadingOverlay>
-          )}
-          {resultTab === 'adset' && (
-            <TabLoadingOverlay loading={loading}>
-              <PivotSummary
-                groups={adsets
-                  .filter((a) => selectedAdsetNames.has(a.adsetName))
-                  .map((a) => ({
-                    key: a.adsetName,
-                    label: a.adsetName,
-                    byDate: a.combined.byDate,
-                  }))}
-                metricKeys={metricKeyList}
-                dates={canonicalDates}
-                emptyLabel="표시할 adset을 선택해주세요."
-                showUnit={showUnit}
-                view={pivotView}
-              />
-              <section className="channel-insight__section">
-                <h3 className="channel-insight__section-title">
-                  캠페인별 전체 광고셋
-                </h3>
-                <FullListTable
-                  rows={adsets.map((a) => ({
-                    key: a.adsetName,
-                    name: a.adsetName,
-                    metrics: aggregateMetrics(a.combined.byDate),
-                    channels: channelsOf(a),
-                  }))}
-                  headLabel="Adset"
-                  emptyLabel="adset 데이터 없음"
-                />
-              </section>
-              {/* 위 표는 현재 선택된 캠페인 하나에 딸린 adset만 보여준다 — 이 표는
-                  캠페인 구분 없이 전체 캠페인의 adset을 한데 모아 보여준다. 같은
-                  이름의 adset이 서로 다른 캠페인에 있을 수 있어(행 구분은 되지만
-                  이름만으로는 어느 캠페인 소속인지 알 수 없다) 표 자체는 동일한
-                  구성(FullListTable)을 그대로 쓴다. */}
-              <section className="channel-insight__section">
-                <h3 className="channel-insight__section-title">전체 광고셋</h3>
-                <FullListTable
-                  rows={campaigns.flatMap((c) =>
-                    c.adsets.map((a) => ({
+                    children: c.adsets.map((a) => ({
                       key: `${c.campaignName}::${a.adsetName}`,
+                      selectKey: adsetKey(c.campaignName, a.adsetName),
                       name: a.adsetName,
                       metrics: aggregateMetrics(a.combined.byDate),
                       channels: channelsOf(a),
                     })),
-                  )}
-                  headLabel="Adset"
-                  emptyLabel="adset 데이터 없음"
+                  }))}
+                  headLabel="캠페인 / 광고셋"
+                  emptyLabel="캠페인 데이터 없음"
+                  selected={selectedKeys}
+                  onToggleSelect={toggleSelected}
+                  expanded={expandedCampaigns}
+                  onToggleExpanded={toggleExpandedCampaign}
                 />
               </section>
+              <PivotSummary
+                groups={selectedGroups.map((g) => ({
+                  key: g.key,
+                  label: g.label,
+                  byDate: g.series.combined.byDate,
+                }))}
+                metricKeys={metricKeyList}
+                dates={canonicalDates}
+                emptyLabel="위 목록에서 비교할 캠페인·광고셋을 체크해주세요."
+                showUnit={showUnit}
+                view={pivotView}
+                toolbar={
+                  <>
+                    <SingleSelectDropdown<PivotView>
+                      options={PIVOT_VIEW_OPTIONS}
+                      value={pivotView}
+                      onChange={setPivotView}
+                      ariaLabel="보기 단위"
+                    />
+
+                    <MultiSelectDropdown<MetricKey>
+                      options={METRIC_FIELDS.map((f) => ({
+                        key: f.key,
+                        label: f.label,
+                      }))}
+                      selected={selectedMetricKeys}
+                      onToggle={toggleMetric}
+                      emptyLabel="지표 선택"
+                      countSuffix="개 지표"
+                    />
+                    <button
+                      type="button"
+                      className={`channel-insight__unit-toggle${
+                        showUnit ? ' is-active' : ''
+                      }`}
+                      aria-pressed={showUnit}
+                      onClick={() => setShowUnit((v) => !v)}
+                    >
+                      단위 표시
+                    </button>
+                  </>
+                }
+              />
             </TabLoadingOverlay>
           )}
           {resultTab === 'periodTest' && (

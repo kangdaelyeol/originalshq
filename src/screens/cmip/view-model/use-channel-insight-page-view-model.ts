@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  buildCampaignHighlights,
   emptyMetrics,
   emptySeries,
   type ChannelSplitSeries,
@@ -16,16 +17,18 @@ import type {
 import type { ISODate } from '../types'
 
 export type ResultTab =
-  | 'total'
-  | 'campaign'
-  | 'adset'
-  | 'periodTest'
-  | 'roas'
-  | 'adPerformance'
+  'total' | 'campaignAdset' | 'periodTest' | 'roas' | 'adPerformance'
 
-/** 캠페인/adset 탭의 "보기 단위" — 교차표(PivotSummary)의 행 축(첫 컬럼)을
+/** 캠페인·광고셋 탭의 "보기 단위" — 교차표(PivotSummary)의 행 축(첫 컬럼)을
  * 날짜/요일/주차 중 무엇으로 묶을지. */
 export type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
+
+/** 캠페인·광고셋 탭의 선택 키 — 캠페인은 "c:캠페인", 광고셋은
+ * "a:캠페인::광고셋". 이름이 같은 광고셋이 여러 캠페인에 있어서 광고셋은
+ * 캠페인까지 붙여 구분한다. */
+export const campaignKey = (campaignName: string) => `c:${campaignName}`
+export const adsetKey = (campaignName: string, adsetName: string) =>
+  `a:${campaignName}::${adsetName}`
 
 /** ChannelInsight 페이지 전용 상태 — useChannelInsightViewModel(날짜 범위/조회)과는
  * 별개로, 탭 전환·캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
@@ -39,18 +42,11 @@ export const useChannelInsightPageViewModel = (
   const [chartOpen, setChartOpen] = useState(false)
   const [resultTab, setResultTab] = useState<ResultTab>('total')
 
-  // adset 탭에서 "어느 캠페인의 adset을 볼지"는 단일 선택 — 캠페인 탭의 다중
-  // 선택과는 별개 상태다.
-  const [selectedCampaignName, setSelectedCampaignName] = useState<
-    string | null
-  >(null)
-  // 캠페인 탭: 캠페인 다중 선택. adset 탭: (선택된 캠페인 안의) adset 다중 선택.
-  const [selectedCampaignNames, setSelectedCampaignNames] = useState<
-    ReadonlySet<string>
-  >(() => new Set())
-  const [selectedAdsetNames, setSelectedAdsetNames] = useState<
-    ReadonlySet<string>
-  >(() => new Set())
+  // 캠페인·광고셋 탭: 목록 표에서 체크한 캠페인·광고셋(campaignKey/adsetKey) —
+  // 교차표와 그래프가 이 선택을 그대로 쓴다.
+  const [selectedKeys, setSelectedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
   // 캠페인/adset 교차표의 지표 선택 — 그래프 모달의 지표 선택(꺾은선/막대/끄기)과
   // 같은 상태를 공유한다. 표는 "켜져 있는지"만 보고(line/bar 구분 없이), 그래프는
   // 그 종류까지 쓴다 — 어느 쪽에서 지표를 바꾸든 서로 바로 반영된다.
@@ -64,15 +60,8 @@ export const useChannelInsightPageViewModel = (
   const [pivotView, setPivotView] = useState<PivotView>('byDate')
 
   const campaigns = combinedInsight?.byCampaign ?? []
-  // 이름이 목록에 없으면(처음 진입, 재조회로 캠페인이 바뀜 등) 첫 캠페인으로
-  // 자연스럽게 대체 — 별도 리셋 로직 없이 항상 유효한 선택을 유지한다.
-  const selectedCampaign =
-    campaigns.find((c) => c.campaignName === selectedCampaignName) ??
-    campaigns[0] ??
-    null
-  const adsets = selectedCampaign?.adsets ?? []
 
-  // 캠페인 목록 자체가 바뀌면(재조회 등) 다중 선택을 첫 캠페인 하나로 리셋한다 —
+  // 캠페인 목록 자체가 바뀌면(재조회 등) 선택을 첫 캠페인 하나로 리셋한다 —
   // 같은 목록 안에서 사용자가 전부 해제한 것(빈 선택)은 그대로 존중한다. 렌더 중
   // 비교해서 바뀐 시점에만 반영("prop 변화에 맞춰 state 조정하기" 패턴).
   const campaignListKey = campaigns.map((c) => c.campaignName).join('|')
@@ -81,40 +70,53 @@ export const useChannelInsightPageViewModel = (
   >(null)
   if (campaignListKey !== syncedCampaignListKey) {
     setSyncedCampaignListKey(campaignListKey)
-    setSelectedCampaignNames(
-      new Set(campaigns[0] ? [campaigns[0].campaignName] : []),
+    setSelectedKeys(
+      new Set(campaigns[0] ? [campaignKey(campaigns[0].campaignName)] : []),
     )
   }
 
-  // adset 탭에서 보는 캠페인이 바뀌거나 그 adset 목록이 바뀌면 adset 다중 선택을
-  // 그 캠페인의 첫 adset 하나로 리셋한다.
-  const adsetListKey = `${selectedCampaign?.campaignName ?? ''}::${adsets
-    .map((a) => a.adsetName)
-    .join('|')}`
-  const [syncedAdsetListKey, setSyncedAdsetListKey] = useState<string | null>(
-    null,
-  )
-  if (adsetListKey !== syncedAdsetListKey) {
-    setSyncedAdsetListKey(adsetListKey)
-    setSelectedAdsetNames(new Set(adsets[0] ? [adsets[0].adsetName] : []))
+  // 목록 표에서 펼친 캠페인(campaignName) — 요약 카드에서 광고셋을 누르면
+  // 그 캠페인을 펼치고 광고셋을 체크한다.
+  const [expandedCampaigns, setExpandedCampaigns] = useState<
+    ReadonlySet<string>
+  >(() => new Set())
+  const toggleExpandedCampaign = (campaignName: string) => {
+    setExpandedCampaigns((prev) => {
+      const next = new Set(prev)
+      if (next.has(campaignName)) next.delete(campaignName)
+      else next.add(campaignName)
+      return next
+    })
+  }
+  const focusAdset = (campaignName: string, adsetName: string) => {
+    setExpandedCampaigns((prev) => new Set(prev).add(campaignName))
+    setSelectedKeys((prev) =>
+      new Set(prev).add(adsetKey(campaignName, adsetName)),
+    )
+  }
+  const campaignHighlights = buildCampaignHighlights(campaigns)
+
+  const toggleSelected = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
   }
 
-  const toggleCampaignMulti = (name: string) => {
-    setSelectedCampaignNames((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
-  const toggleAdsetMulti = (name: string) => {
-    setSelectedAdsetNames((prev) => {
-      const next = new Set(prev)
-      if (next.has(name)) next.delete(name)
-      else next.add(name)
-      return next
-    })
-  }
+  // 그래프·교차표 후보 — 캠페인과 그 광고셋을 목록 순서대로. 광고셋 라벨에는
+  // 소속 캠페인을 붙인다(이름이 같은 광고셋이 있어서).
+  const selectableGroups: ChartGroup[] = campaigns.flatMap((c) => [
+    { key: campaignKey(c.campaignName), label: c.campaignName, series: c },
+    ...c.adsets.map((a) => ({
+      key: adsetKey(c.campaignName, a.adsetName),
+      label: `${a.adsetName} (${c.campaignName})`,
+      series: a,
+    })),
+  ])
+  const selectedGroups = selectableGroups.filter((g) => selectedKeys.has(g.key))
+
   // 표의 체크박스는 켬/끔만 다룬다 — 새로 켤 때는 그래프 쪽 기본값과 맞춰
   // "꺾은선"으로 시작한다.
   const toggleMetric = (key: MetricKey) => {
@@ -153,28 +155,14 @@ export const useChannelInsightPageViewModel = (
     ? []
     : resultTab === 'total'
       ? [{ key: 'total', label: '전체 요약', series: combinedInsight.series }]
-      : resultTab === 'campaign'
-        ? campaigns.map((c) => ({
-            key: c.campaignName,
-            label: c.campaignName,
-            series: c,
-          }))
-        : resultTab === 'adset'
-          ? adsets.map((a) => ({
-              key: a.adsetName,
-              label: a.adsetName,
-              series: a,
-            }))
-          : []
+      : resultTab === 'campaignAdset'
+        ? selectableGroups
+        : []
 
   // 모달을 처음 열 때 기본으로 켜둘 그룹 — 표에서 이미 체크해둔 것들과 같은
   // 화면으로 시작한다. 그 뒤로는 그래프 안에서 자유롭게 더 고를 수 있다.
   const chartDefaultActiveGroupKeys: readonly string[] =
-    resultTab === 'total'
-      ? ['total']
-      : resultTab === 'campaign'
-        ? [...selectedCampaignNames]
-        : [...selectedAdsetNames]
+    resultTab === 'total' ? ['total'] : [...selectedKeys]
 
   // ------------------------------------------------------------------ 엑셀 다운로드
   const [excelExportOpen, setExcelExportOpen] = useState(false)
@@ -210,16 +198,15 @@ export const useChannelInsightPageViewModel = (
     // 진행 상태
     chartOpen,
     resultTab,
-    selectedCampaignName,
-    selectedCampaignNames,
-    selectedAdsetNames,
+    selectedKeys,
+    selectedGroups,
+    expandedCampaigns,
+    campaignHighlights,
     metricMode,
     selectedMetricKeys,
     showUnit,
     pivotView,
     campaigns,
-    selectedCampaign,
-    adsets,
     periodLabel,
     canonicalDates,
     metricKeyList,
@@ -232,9 +219,9 @@ export const useChannelInsightPageViewModel = (
     // 액션
     setChartOpen,
     setResultTab,
-    setSelectedCampaignName,
-    toggleCampaignMulti,
-    toggleAdsetMulti,
+    toggleSelected,
+    toggleExpandedCampaign,
+    focusAdset,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,

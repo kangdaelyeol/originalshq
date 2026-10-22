@@ -24,10 +24,13 @@ const VIEW_LABEL: Record<UsageApp, Record<string, string>> = {
   },
   cmip: {
     total: '전체 요약',
+    campaignAdset: '캠페인·광고셋',
+    // 캠페인·광고셋 탭으로 합치기 전(2026-10)에 쌓인 기록.
     campaign: '캠페인',
     adset: '광고셋',
     periodTest: '매체별 테스트',
     roas: 'ROAS',
+    adPerformance: '광고 성과',
   },
 }
 

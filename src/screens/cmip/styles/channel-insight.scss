@@ -1333,6 +1333,89 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   // 전체 캠페인/adset 표의 "채널" 칸 — 그 캠페인/adset에 실제 데이터가 있는
   // 채널 로고를 나열한다(대부분 하나, 같은 이름을 여러 채널에 써서 합쳐진
   // 경우만 여러 개).
+  // 캠페인·광고셋 목록 — 체크박스 · 펼치기 · 이름을 한 칸에 나란히.
+  &__full-list-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  // 체크박스 — 브라우저 기본 모양 대신 화면 배색에 맞춰 직접 그린다. 체크
+  // 표시는 테두리 두 변을 돌려 만든 ✓.
+  &__full-list-check {
+    appearance: none;
+    position: relative;
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    border: 1px solid $color-border;
+    border-radius: 3px;
+    background: $color-canvas-subtle;
+    cursor: pointer;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease;
+
+    &::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid #fff;
+      border-width: 0 2px 2px 0;
+      transform: rotate(45deg) scale(0);
+      transition: transform 0.12s ease;
+    }
+
+    &:hover {
+      border-color: $color-muted;
+    }
+
+    &:checked {
+      border-color: $color-accent;
+      background: $color-accent;
+
+      &::after {
+        transform: rotate(45deg) scale(1);
+      }
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-accent;
+      outline-offset: 2px;
+    }
+  }
+
+  &__full-list-expand {
+    all: unset;
+    flex: none;
+    width: 14px;
+    font-size: 13px;
+    color: $color-muted;
+    text-align: center;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid $color-accent;
+    }
+  }
+
+  &__full-list-count {
+    padding: 0 5px;
+    border: 1px solid $color-border-soft;
+    border-radius: 3px;
+    font-size: 11px;
+    color: $color-muted;
+  }
+
+  // 펼친 광고셋 줄 — 캠페인 줄보다 한 단계 옅게.
+  &__full-list-row--level1 td {
+    color: $color-muted;
+  }
+
   &__full-list-channels {
     display: flex;
     align-items: center;
@@ -1424,6 +1507,13 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   // "지금 보이는 값이 최신이 아니다"를 알린다.
   &__tab-content {
     position: relative;
+    // 캠페인·광고셋·광고 성과 탭은 섹션을 __result로 감싸지 않고 여기에 바로
+    // 쌓는다 — __result와 같은 세로 간격을 여기서 준다(다른 탭은 자식이
+    // __result 하나라 영향 없다). min-width: 0은 __result 주석과 같은 이유.
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
 
     &.is-loading > *:not(.channel-insight__tab-loading-badge) {
       opacity: 0.35;
@@ -1621,5 +1711,122 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
   &__row--캠페인 td {
     font-weight: 600;
+  }
+}
+
+// ── 캠페인·광고셋 탭 맨 위 요약 카드(campaign-highlights.tsx) ──────────────
+.campaign-highlights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  &__card {
+    min-width: 0;
+    padding: 12px 16px 14px;
+    border: 1px solid $color-border;
+    border-radius: $radius-lg;
+    background: $color-surface;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $color-text;
+  }
+
+  &__desc {
+    margin: 3px 0 10px;
+    font-size: 11.5px;
+    color: $color-muted;
+  }
+
+  &__empty {
+    margin: 0;
+    padding: 10px 0;
+    font-size: 12px;
+    color: $color-muted;
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 0;
+      border-top: 1px solid $color-border-soft;
+
+      &:first-child {
+        border-top: 0;
+      }
+    }
+  }
+
+  &__rank {
+    flex: none;
+    width: 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: $color-muted;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__who {
+    all: unset;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    cursor: pointer;
+
+    &:hover .campaign-highlights__name {
+      color: $color-accent;
+    }
+
+    &:focus-visible {
+      outline: 2px solid $color-accent;
+      outline-offset: 2px;
+    }
+  }
+
+  &__name,
+  &__note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__name {
+    font-size: 12.5px;
+    color: $color-text;
+  }
+
+  &__note {
+    font-size: 11px;
+    color: $color-muted;
+  }
+
+  &__value {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $color-text;
+    font-variant-numeric: tabular-nums;
+
+    .campaign-highlights__note {
+      font-weight: 400;
+    }
   }
 }
