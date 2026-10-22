@@ -179,6 +179,9 @@ export interface MondayPaymentIssue {
     | 'purchase-without-lines'
     | 'deferred-positive'
     | 'overpaid'
+    // 같은 날 상담 신청이 2건 이상(오기입 제외) — 결제가 아니라 상담 기록
+    // 문제지만 같은 목록으로 온다.
+    | 'duplicate-consultation'
   message: string
   itemId: string
   boardName: string

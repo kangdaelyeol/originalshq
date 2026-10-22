@@ -7,6 +7,7 @@ import {
   MondayCustomer,
   MondayDailyInflow,
   MondayItem,
+  MondayPaymentIssue,
   MondaySampleTest,
   MondaySurvey,
   MondayVisit,
@@ -139,6 +140,40 @@ const byFrequency = (values: string[]): string[] => {
     .map(([value]) => value)
 }
 
+/** 같은 날 들어온 상담 신청이 2건 이상인 묶음 — 폼을 두 번 제출했거나
+ * CS가 같은 문의를 두 번 적은 경우라 사람이 Monday에서 확인해야 한다. 이미
+ * "오기입"으로 정리한 건은 세지 않는다. 묶음마다 1줄이고, 링크는 나중에
+ * 만들어진 기록(지울 가능성이 높은 쪽)으로 건다. */
+const duplicateConsultationIssues = (
+  consultations: MondayConsultation[],
+): MondayPaymentIssue[] => {
+  const byDay = new Map<string, MondayConsultation[]>()
+  for (const record of consultations) {
+    const day = koreaDate(record.receivedAt)
+    if (!day || record.status === '오기입') continue
+    byDay.set(day, [...(byDay.get(day) ?? []), record])
+  }
+  return [...byDay.entries()]
+    .filter(([, records]) => records.length >= 2)
+    .map(([day, records]) => {
+      const latest = [...records].sort((a, b) =>
+        (b.createdAt ?? '').localeCompare(a.createdAt ?? ''),
+      )[0]
+      const detail = records
+        .map((record) => `${record.boardName}(${record.status ?? '상태 없음'})`)
+        .join(', ')
+      return {
+        type: 'duplicate-consultation' as const,
+        message: `같은 날 상담 신청 ${records.length}건 — ${detail}`,
+        itemId: latest.itemId,
+        boardName: latest.boardName,
+        name: latest.name,
+        url: latest.url,
+        date: day,
+      }
+    })
+}
+
 /** 최근 것이 앞에 오도록 — 날짜가 없는 기록은 맨 뒤로. */
 const newestFirst = <T>(records: T[], dateOf: (record: T) => string | null) =>
   [...records].sort((a, b) => (dateOf(b) ?? '').localeCompare(dateOf(a) ?? ''))
@@ -158,10 +193,16 @@ const buildCustomer = (
     (record) => record.receivedAt,
   )
   const visits = newestFirst(of('visit').map(toVisit), (r) => r.visitAt)
-  const { purchases, payments, issues, money } = buildPurchaseRecords(
-    of('purchase'),
-    orders.map(toOnlinePurchase),
-  )
+  const {
+    purchases,
+    payments,
+    issues: paymentIssues,
+    money,
+  } = buildPurchaseRecords(of('purchase'), orders.map(toOnlinePurchase))
+  const issues = [
+    ...paymentIssues,
+    ...duplicateConsultationIssues(consultations),
+  ]
   const surveys = newestFirst(of('survey').map(toSurvey), (r) => r.createdAt)
   const sampleTests = newestFirst(
     of('sampleTest').map(toSampleTest),

@@ -387,6 +387,8 @@ export interface MondayPaymentIssue {
     // 때 함께 낸 잔금이라 정상). 예전 데이터·화면 호환을 위해 이름만 남긴다.
     | 'deferred-positive' // 계약 건의 계약금/분할납부 줄이 양수(보통 음수)
     | 'overpaid' // 받은 돈이 계약 금액보다 많음
+    // 결제가 아니라 상담 기록 문제지만, 같은 "확인 필요" 목록에 싣는다.
+    | 'duplicate-consultation' // 같은 날 상담 신청이 2건 이상(오기입 제외)
   /** 화면에 그대로 보여줄 설명. */
   message: string
   itemId: string
