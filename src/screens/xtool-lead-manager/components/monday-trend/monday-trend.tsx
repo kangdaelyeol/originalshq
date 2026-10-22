@@ -7,7 +7,7 @@ import {
   type TrendSection,
   type useMondayTrendViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { Loading, SortButton } from '@/screens/xtool-lead-manager/components'
+import { SortButton } from '@/screens/xtool-lead-manager/components'
 import {
   INFLOW_UNIT_AVERAGE,
   INFLOW_UNIT_LABEL,
@@ -22,6 +22,7 @@ import {
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
+import { TrendSkeleton } from './trend-skeleton'
 import { KpiControls, KpiSection } from './kpi-section'
 import { PipelineSection } from './pipeline-section'
 import { SalesSection } from './sales-section'
@@ -195,6 +196,8 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
                 다시 시도
               </button>
             </div>
+          ) : status === 'idle' || status === 'loading' ? (
+            <TrendSkeleton section={section} />
           ) : section === 'kpi' ? (
             <KpiSection
               kpi={kpi}
@@ -332,7 +335,6 @@ export const MondayTrend = ({ state, actions }: MondayTrendProps) => {
             </>
           )}
         </div>
-        {status === 'loading' && <Loading />}
       </div>
     </>
   )

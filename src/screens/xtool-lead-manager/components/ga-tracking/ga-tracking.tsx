@@ -3,7 +3,11 @@ import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/ga-tracking.scss'
 import { useEffect, useRef } from 'react'
-import { Loading } from '@/screens/xtool-lead-manager/components'
+import {
+  LoadingNotice,
+  SkeletonRows,
+  type SkeletonCell,
+} from '@/screens/xtool-lead-manager/components'
 import {
   eventSource,
   shortPath,
@@ -15,6 +19,22 @@ import type {
 } from '@/screens/xtool-lead-manager/view-model'
 
 type GaTrackingProps = ReturnType<typeof useGaTrackingViewModel>
+
+// 접수일·보드·이름·번호·상태·ClientId·이벤트·방문·첫 유입·기기·위치·마지막 활동.
+const TRACKING_SKELETON: SkeletonCell[] = [
+  { width: 80 },
+  { width: 90 },
+  { width: 50 },
+  { width: 90 },
+  { width: 50 },
+  { width: 80 },
+  { width: 24 },
+  { width: 24 },
+  { width: 90 },
+  { width: 50 },
+  { width: 60 },
+  { width: 90 },
+]
 
 const FILTERS: { id: GaTrackingFilter; label: string }[] = [
   { id: 'misentry', label: '오기입만' },
@@ -251,9 +271,11 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                 모달에 뜹니다. 이벤트는 Monday 동기화(매일 09·11·13·15·17·22시)
                 직후 자동으로 수집되고, GA4 내보내기가 일별이라 당일 이벤트는
                 다음 날 들어옵니다.
-                {collectedAt
-                  ? ` 마지막 수집 ${formatTime(collectedAt)}`
-                  : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
+                {status !== 'ready'
+                  ? ''
+                  : collectedAt
+                    ? ` 마지막 수집 ${formatTime(collectedAt)}`
+                    : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
                 {lastResult &&
                   ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
               </p>
@@ -262,14 +284,16 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                   GA4 이벤트 수집에 실패했습니다 — {collectError}
                 </p>
               )}
-              {rows.length === 0 ? (
-                <p className="ga_tracking_empty">
-                  {status === 'ready'
-                    ? '해당하는 상담이 없습니다.'
-                    : '불러오는 중…'}
-                </p>
+              {status === 'ready' && rows.length === 0 ? (
+                <p className="ga_tracking_empty">해당하는 상담이 없습니다.</p>
               ) : (
-                <div className="ga_tracking_scroll">
+                <div
+                  className="ga_tracking_scroll"
+                  aria-busy={status !== 'ready'}
+                >
+                  {status !== 'ready' && (
+                    <LoadingNotice label="오기입 추적 데이터를 불러오는 중" />
+                  )}
                   <table className="stats_table ga_tracking_table">
                     <thead>
                       <tr>
@@ -288,6 +312,9 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                       </tr>
                     </thead>
                     <tbody>
+                      {status !== 'ready' && (
+                        <SkeletonRows cells={TRACKING_SKELETON} rows={12} />
+                      )}
                       {rows.map((row) => {
                         const { consultation } = row
                         return (
@@ -342,7 +369,6 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
           )}
         </div>
         {openRow && <TrackingModal row={openRow} onClose={actions.closeRow} />}
-        {status === 'loading' && <Loading />}
       </div>
     </>
   )

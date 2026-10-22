@@ -1,0 +1,78 @@
+@use './variables.scss' as variables;
+
+// 불러오는 동안 실제 화면 자리에 놓는 회색 막대(스켈레톤). 빛이 왼쪽에서
+// 오른쪽으로 천천히 지나가 "불러오는 중"임을 알린다.
+.xtool_bone {
+  display: inline-block;
+  max-width: 100%;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: middle;
+  background: linear-gradient(
+    90deg,
+    variables.$color-border-soft 0%,
+    variables.$color-surface-raised 40%,
+    variables.$color-border-soft 80%
+  );
+  background-size: 300% 100%;
+  animation: xtool_bone_shimmer 1.4s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes xtool_bone_shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+// 표 스켈레톤 줄 — 칸 안의 막대를 두 줄로 쌓을 때.
+.xtool_skeleton_stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+// 카드 안 스켈레톤 — 제목, 설명, 내용 사이 간격.
+.xtool_skeleton_card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.xtool_skeleton_bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.xtool_skeleton_tiles {
+  display: grid;
+  grid-template-columns: repeat(var(--tiles, 4), minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xtool_skeleton_tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid variables.$color-border-soft;
+  border-radius: 8px;
+}
+
+// 화면에는 안 보이고 스크린리더만 읽는 안내.
+.xtool_sr_only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -6,6 +6,7 @@ import {
   formatWon,
   mondayStatusTone,
 } from '@/screens/xtool-lead-manager/utils'
+import { LoadingNotice, SkeletonRows, type SkeletonCell } from '../skeleton'
 
 interface MondayRowProps {
   customer: MondayCustomerListItem
@@ -137,15 +138,33 @@ const MondayRow = memo(function MondayRow({
 
 /** Monday 통합 고객 표 — 한 줄이 번호 하나(고객 1명)다. 줄을 누르면 그
  * 고객의 전체 기록(상세 모달)이 열린다. */
+// 전화번호·이름·상태·상담·방문체험·구매(두 줄)·설문·담당자·보드·최근 수정.
+const MONDAY_SKELETON: SkeletonCell[] = [
+  { width: 100 },
+  { width: 60 },
+  { width: 70 },
+  { width: 24 },
+  { width: 24 },
+  { width: 60, twoLine: true },
+  { width: 40 },
+  { width: 60 },
+  { width: 30 },
+  { width: 80 },
+]
+
 export const MondayTable = ({
   rows,
+  loading,
   onOpen,
 }: {
   rows: MondayCustomerListItem[]
+  /** 목록을 받는 중 — 몸통 자리에 스켈레톤을 그린다. */
+  loading: boolean
   onOpen: (phone: string) => void
 }) => {
   return (
-    <div className="table_container">
+    <div className="table_container" aria-busy={loading}>
+      {loading && <LoadingNotice label="Monday 고객 목록을 불러오는 중" />}
       <div className="table">
         <div className="table_scroll">
           <table className="lead_table monday_table">
@@ -164,6 +183,7 @@ export const MondayTable = ({
               </tr>
             </thead>
             <tbody>
+              {loading && <SkeletonRows cells={MONDAY_SKELETON} rows={15} />}
               {rows.map((customer) => (
                 <MondayRow
                   key={customer.phone}
@@ -171,7 +191,7 @@ export const MondayTable = ({
                   onOpen={onOpen}
                 />
               ))}
-              {rows.length === 0 && (
+              {!loading && rows.length === 0 && (
                 <tr>
                   <td className="monday_no_rows" colSpan={10}>
                     조건에 맞는 고객이 없습니다.

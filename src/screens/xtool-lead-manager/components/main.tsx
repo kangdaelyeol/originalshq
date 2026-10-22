@@ -31,8 +31,15 @@ export const Main = ({
   mondayMatch,
   onOpenInMonday,
 }: MainProps) => {
-  const { selectedRow, variant, registerForm, detail, loading, filteredRows } =
-    state
+  const {
+    selectedRow,
+    variant,
+    registerForm,
+    detail,
+    loading,
+    initialLoading,
+    filteredRows,
+  } = state
   const {
     handleCancelConfirmClick,
     handleConfirmClick,
@@ -95,7 +102,7 @@ export const Main = ({
           onOpenInMonday={onOpenInMonday}
         />
       )}
-      {loading && <Loading />}
+      {loading && !initialLoading && <Loading />}
       {createLead.state.createOpen && (
         <CreateModal state={createLead.state} actions={createLead.actions} />
       )}

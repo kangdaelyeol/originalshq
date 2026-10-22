@@ -40,6 +40,9 @@ export const useMainViewModel = () => {
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [loading, setLoading] = useState(false)
+  // 처음 목록을 받기 전인지 — 그동안은 표 자리에 스켈레톤을 그리고, 그 뒤의
+  // 저장·삭제 같은 작업 중에는 전체 화면 로딩으로 중복 클릭을 막는다.
+  const [hasLoaded, setHasLoaded] = useState(false)
   const [pageSize, setPageSize] = useState<PageSize>(15)
   const [page, setPage] = useState(1)
 
@@ -54,6 +57,7 @@ export const useMainViewModel = () => {
       console.error('fetchLeads 실패:', res.error)
       showToast('error')
       setLoading(false)
+      setHasLoaded(true)
       return
     }
 
@@ -61,6 +65,7 @@ export const useMainViewModel = () => {
 
     setRows(data.leads)
     setLoading(false)
+    setHasLoaded(true)
   }, [showToast])
 
   useEffect(() => {
@@ -556,6 +561,7 @@ export const useMainViewModel = () => {
       sortField,
       sortDirection,
       loading,
+      initialLoading: !hasLoaded,
       pageSize,
       page,
       totalPages,

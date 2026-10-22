@@ -162,7 +162,7 @@
 
         .state_badge {
           padding: 4px 10px;
-          border-radius: 999px;
+          border-radius: 3px;
           font-size: 12px;
           font-weight: 500;
 
@@ -534,7 +534,7 @@
         .device {
           flex-shrink: 0;
           padding: 2px 8px;
-          border-radius: 999px;
+          border-radius: 3px;
           background-color: variables.$color-accent-soft;
           color: variables.$color-accent;
           font-size: 12px;

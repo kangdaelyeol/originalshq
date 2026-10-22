@@ -6,7 +6,7 @@ import type {
   useMondayStatsViewModel,
   useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { Loading } from '@/screens/xtool-lead-manager/components'
+import { StatsSkeleton } from './stats-skeleton'
 import {
   formatPhoneNumber,
   formatWon,
@@ -368,6 +368,8 @@ export const MondayStats = ({
                 다시 시도
               </button>
             </div>
+          ) : status === 'idle' || status === 'loading' ? (
+            <StatsSkeleton />
           ) : (
             <>
               <section className="stats_card">
@@ -500,7 +502,6 @@ export const MondayStats = ({
             </>
           )}
         </div>
-        {status === 'loading' && <Loading />}
       </div>
     </>
   )

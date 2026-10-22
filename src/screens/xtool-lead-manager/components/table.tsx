@@ -8,6 +8,7 @@ import {
   formatTime,
 } from '@/screens/xtool-lead-manager/utils'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
+import { LoadingNotice, SkeletonRows, type SkeletonCell } from './skeleton'
 import type {
   ConsultationRecord,
   IntakeRecord,
@@ -24,6 +25,8 @@ interface TableState {
   sortField: SortField
   sortDirection: SortDirection
   rows: Lead[]
+  /** 처음 목록을 받는 중 — 몸통 자리에 스켈레톤을 그린다. */
+  initialLoading: boolean
 }
 
 interface TableProps {
@@ -35,6 +38,17 @@ interface TableProps {
 // `?? []`로 새 배열을 만들면 그 자체가 매 렌더 새 참조가 되어, 아래
 // LeadRow의 useMemo가 매번 무효화된다 — 하나로 고정해 재사용한다.
 const EMPTY_RECORDS: readonly never[] = []
+
+// 전화번호·고객명·비고·이메일, 그리고 두 줄(건수·최근 시각)인 현황 세 칸.
+const LEAD_SKELETON: SkeletonCell[] = [
+  { width: 110 },
+  { width: 70 },
+  { width: 120 },
+  { width: 150 },
+  { width: 50, twoLine: true },
+  { width: 50, twoLine: true },
+  { width: 50, twoLine: true },
+]
 
 const latestAt = (records: { at: number }[]): number =>
   records.reduce((max, r) => Math.max(max, r.at), 0)
@@ -170,10 +184,11 @@ const LeadRow = memo(function LeadRow({ row, onShowDetail }: LeadRowProps) {
  */
 export const Table = ({ state, actions }: TableProps) => {
   const { toggleSort, showDetail } = actions
-  const { sortField, sortDirection, rows } = state
+  const { sortField, sortDirection, rows, initialLoading } = state
 
   return (
-    <div className="table_container">
+    <div className="table_container" aria-busy={initialLoading}>
+      {initialLoading && <LoadingNotice label="리드 목록을 불러오는 중" />}
       <div className="table">
         <div className="table_scroll">
           <table className="lead_table">
@@ -245,9 +260,13 @@ export const Table = ({ state, actions }: TableProps) => {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <LeadRow key={row.id} row={row} onShowDetail={showDetail} />
-              ))}
+              {initialLoading ? (
+                <SkeletonRows cells={LEAD_SKELETON} rows={15} />
+              ) : (
+                rows.map((row) => (
+                  <LeadRow key={row.id} row={row} onShowDetail={showDetail} />
+                ))
+              )}
             </tbody>
           </table>
         </div>

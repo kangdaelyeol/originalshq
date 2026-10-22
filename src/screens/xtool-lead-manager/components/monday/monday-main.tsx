@@ -1,7 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday.scss'
 import type { useMondayViewModel } from '@/screens/xtool-lead-manager/view-model'
-import { Loading } from '@/screens/xtool-lead-manager/components'
 import { MondayDetail } from './monday-detail'
 import { MondayReviewPanel } from './monday-review-panel'
 import { MondayTable } from './monday-table'
@@ -37,7 +36,11 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
             </button>
           </div>
         ) : (
-          <MondayTable rows={rows} onOpen={openDetail} />
+          <MondayTable
+            rows={rows}
+            loading={status === 'idle' || status === 'loading'}
+            onOpen={openDetail}
+          />
         )}
       </div>
       {detailSummary && (
@@ -59,7 +62,6 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
           onClose={closeMissing}
         />
       )}
-      {status === 'loading' && <Loading />}
     </div>
   )
 }
