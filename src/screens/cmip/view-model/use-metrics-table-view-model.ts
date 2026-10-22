@@ -6,9 +6,12 @@ type SortDir = 'asc' | 'desc'
 
 /** 전체 요약 탭의 일별/요일별/주차별/지정기간 표(MetricsTable) 전용 상태 —
  * 채널별 펼침 행 열림/닫힘, 정렬, 정렬이 반영된 표시용 행을 다룬다. "대비
- * 표시"는 이 표시용 행(displayRows)의 바로 윗 행과 비교한다. */
+ * 표시"는 compareRowAt이 정한 행과 비교한다. */
 export const useMetricsTableViewModel = <T extends MetricsSummary>(
   rows: readonly T[],
+  /** 라벨 컬럼의 기본 방향 — 날짜·주차·기간은 최신이 위(desc), 요일은
+   * 월~일 순서(asc). */
+  labelDefaultDir: SortDir = 'desc',
 ) => {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   // 정렬 — 캠페인/adset 전체 목록 표(FullListTable)와 같은 기능을 이 표에도
@@ -17,14 +20,14 @@ export const useMetricsTableViewModel = <T extends MetricsSummary>(
   // 이미 올바른 순서로 넘겨줌) 그대로/뒤집기로만 다룬다.
   const [sort, setSort] = useState<{ key: 'label' | MetricKey; dir: SortDir }>({
     key: 'label',
-    dir: 'asc',
+    dir: labelDefaultDir,
   })
 
   const toggleSort = (key: 'label' | MetricKey) => {
     setSort((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : { key, dir: key === 'label' ? 'asc' : 'desc' },
+        : { key, dir: key === 'label' ? labelDefaultDir : 'desc' },
     )
   }
 
@@ -36,6 +39,16 @@ export const useMetricsTableViewModel = <T extends MetricsSummary>(
     const key = sort.key
     return [...rows].sort((a, b) => (a[key] - b[key]) * dir)
   }, [rows, sort])
+
+  // 증감 비교 대상 — 지표로 정렬했으면 화면상 바로 윗 줄, 기간 순서면 시간상
+  // 이전 기간(최신이 위인 기본 순서에서는 바로 아랫줄)이다. 그래야 최신이
+  // 위로 와도 "전일·전주 대비"로 읽힌다.
+  const compareRowAt = (index: number): T | null => {
+    if (sort.key === 'label' && sort.dir === 'desc') {
+      return displayRows[index + 1] ?? null
+    }
+    return index > 0 ? displayRows[index - 1] : null
+  }
 
   const toggle = (key: string) => {
     setExpanded((prev) => {
@@ -51,6 +64,7 @@ export const useMetricsTableViewModel = <T extends MetricsSummary>(
     expanded,
     sort,
     displayRows,
+    compareRowAt,
     // 액션
     toggleSort,
     toggle,

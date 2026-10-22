@@ -236,8 +236,9 @@ export function computeCohorts(
     }
   }
 
+  // 최근 달이 위 — 다른 기간 표와 같은 순서.
   return [...cohorts.values()]
-    .sort((a, b) => a.month.localeCompare(b.month))
+    .sort((a, b) => b.month.localeCompare(a.month))
     .map((cohort) => {
       for (const window of COHORT_WINDOWS) {
         const cell = cohort.cells[window]

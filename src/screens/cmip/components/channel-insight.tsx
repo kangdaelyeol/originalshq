@@ -420,6 +420,7 @@ function MetricsTable<T extends MetricsSummary>({
   onToggleMetric,
   channelFilter,
   onChannelFilterChange,
+  labelDefaultDir = 'desc',
 }: {
   rows: readonly T[]
   rowKey: (row: T) => string
@@ -446,9 +447,12 @@ function MetricsTable<T extends MetricsSummary>({
    * 같은 이유로 ResultPanel이 들고 있다). */
   channelFilter: 'all' | ChannelKey
   onChannelFilterChange: (value: 'all' | ChannelKey) => void
+  /** 첫 칸(날짜·요일·기간)의 기본 정렬 — 날짜·주차·기간은 최신이 위(desc),
+   * 요일은 월~일 순서(asc). */
+  labelDefaultDir?: 'asc' | 'desc'
 }) {
-  const { expanded, sort, displayRows, toggleSort, toggle } =
-    useMetricsTableViewModel(rows)
+  const { expanded, sort, displayRows, compareRowAt, toggleSort, toggle } =
+    useMetricsTableViewModel(rows, labelDefaultDir)
 
   // channelFilter가 특정 채널이면 rows 자체가 그 채널 단독 값(호출부가 넘겨줌)이라
   // 매출/ROAS 지표가 항상 0으로만 나온다 — 컬럼 토글 목록·표시 컬럼 둘 다에서
@@ -560,12 +564,12 @@ function MetricsTable<T extends MetricsSummary>({
                 const canExpand = channels.length > 0
                 const isOpen = canExpand && expanded.has(key)
                 const breakdown = isOpen ? getChannelBreakdown(row) : null
-                // 대비는 화면에 보이는 순서상 바로 윗 행과 비교한다 — 정렬을
-                // 바꾸면 비교 대상도 같이 바뀐다(roas-panel 표와 같은 기준).
-                // 예전엔 정렬과 무관하게 원본(시간순) 직전 행과 비교해서, 정렬한
-                // 표에서 윗 행과 맞지 않는 증감이 표시됐다.
-                const prevRow = index > 0 ? displayRows[index - 1] : null
-                // 채널별 펼침 행도 메인 행과 같은 기준(화면상 바로 윗 행)으로
+                // 대비 대상 — 지표로 정렬했으면 화면상 바로 윗 행, 기간
+                // 순서면 시간상 이전 기간(최신이 위일 때는 바로 아랫줄).
+                // 정렬을 바꾸면 비교 대상도 같이 바뀐다(roas-panel 표와 같은
+                // 기준).
+                const prevRow = compareRowAt(index)
+                // 채널별 펼침 행도 메인 행과 같은 기준으로
                 // 대비를 보여준다 — 그 채널의 윗 행 값이 필요하니 윗 행을 같은
                 // 방식으로 한 번 더 분해해둔다.
                 const prevBreakdown =
@@ -1048,6 +1052,7 @@ function ResultPanel({
           <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
         ) : (
           <MetricsTable<DayOfWeekSummary>
+            labelDefaultDir="asc"
             rows={
               channelFilter.byDayOfWeek === 'all'
                 ? series.combined.byDayOfWeek
@@ -1377,13 +1382,14 @@ function PivotSummary({
     } else {
       // groupByWeek의 주차 경계는 rows 내용과 무관하게 startDate/endDate만으로
       // 정해지므로, 구간만 뽑아 쓰고 집계값(전부 0)은 버린다.
-      pivotRows = groupByWeek([], dates[0], dates[dates.length - 1]).map(
-        (week) => ({
+      // 날짜별과 같이 최신 주가 위.
+      pivotRows = groupByWeek([], dates[0], dates[dates.length - 1])
+        .map((week) => ({
           key: week.period,
           label: week.period,
-          predicate: (d) => d >= week.startDate && d <= week.endDate,
-        }),
-      )
+          predicate: (d: string) => d >= week.startDate && d <= week.endDate,
+        }))
+        .reverse()
     }
   }
 

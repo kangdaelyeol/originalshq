@@ -738,7 +738,7 @@ const PERIOD_SORT_KEY = 'period'
  * 정렬 동작(컬럼 헤더 클릭 → 그 지표 기준 오름/내림차순, 같은 컬럼 다시
  * 누르면 방향만 뒤집기)을 쓰게 돼서 로직을 훅 하나로 뺐다 — 표마다 각자
  * useState를 갖고 있어서(훅을 호출하는 컴포넌트 인스턴스별로 독립) 한쪽
- * 표의 정렬이 다른 표에 안 번진다. 기본은 "기간" 오름차순(원래 시간 순서),
+ * 표의 정렬이 다른 표에 안 번진다. 기본은 "기간" 내림차순(최신이 위),
  * 다른 컬럼을 처음 누르면 "큰 값부터"가 보통 더 유용해서 내림차순을 기본으로
  * 한다(channel-insight.tsx의 toggleSort와 같은 규칙). 합계/평균 행은 호출부가
  * 항상 별도로 그려서(rows에 안 섞여 들어옴) 정렬 대상에서 자동으로 빠진다. */
@@ -748,14 +748,14 @@ function useRoasTableSort(
 ) {
   const [sort, setSort] = useState<{ key: string; dir: SortDir }>({
     key: PERIOD_SORT_KEY,
-    dir: 'asc',
+    dir: 'desc',
   })
 
   const toggleSort = (key: string) => {
     setSort((prev) =>
       prev.key === key
         ? { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
-        : { key, dir: key === PERIOD_SORT_KEY ? 'asc' : 'desc' },
+        : { key, dir: 'desc' },
     )
   }
 
@@ -771,7 +771,16 @@ function useRoasTableSort(
     )
   }, [rows, fields, sort])
 
-  return { sort, toggleSort, sortedRows }
+  // 증감 비교 대상 — 지표로 정렬했으면 화면상 바로 윗 줄, 기간 순서면 시간상
+  // 이전 기간(최신이 위인 기본 순서에서는 바로 아랫줄).
+  const compareRowAt = (index: number): RoasRow | null => {
+    if (sort.key === PERIOD_SORT_KEY && sort.dir === 'desc') {
+      return sortedRows[index + 1] ?? null
+    }
+    return index > 0 ? sortedRows[index - 1] : null
+  }
+
+  return { sort, toggleSort, sortedRows, compareRowAt }
 }
 
 /** "기간별 추이"/"오프라인 매출"/"카페24 온라인 매출" 표 셋 다 자기만의 "지표
@@ -855,7 +864,7 @@ function OnlineRevenueTable({
     () => ONLINE_COLUMNS.map((c) => c.representative),
     [],
   )
-  const { sort, toggleSort, sortedRows } = useRoasTableSort(
+  const { sort, toggleSort, sortedRows, compareRowAt } = useRoasTableSort(
     rows,
     representatives,
   )
@@ -1001,7 +1010,7 @@ function OnlineRevenueTable({
                 </thead>
                 <tbody>
                   {sortedRows.map((row, i) => {
-                    const prevRow = i > 0 ? sortedRows[i - 1] : null
+                    const prevRow = compareRowAt(i)
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
@@ -1060,7 +1069,10 @@ function RoasSubTable({
   grouping: RoasGrouping
   onGroupingChange: (grouping: RoasGrouping) => void
 }) {
-  const { sort, toggleSort, sortedRows } = useRoasTableSort(rows, fields)
+  const { sort, toggleSort, sortedRows, compareRowAt } = useRoasTableSort(
+    rows,
+    fields,
+  )
   const {
     visibleKeys,
     toggle: toggleMetric,
@@ -1131,7 +1143,7 @@ function RoasSubTable({
                 </thead>
                 <tbody>
                   {sortedRows.map((row, i) => {
-                    const prevRow = i > 0 ? sortedRows[i - 1] : null
+                    const prevRow = compareRowAt(i)
                     return (
                       <tr key={row.key}>
                         <td>{row.label}</td>
@@ -1241,6 +1253,7 @@ export function RoasPanel({
     sort: trendSort,
     toggleSort: toggleTrendSort,
     sortedRows: sortedTrendRows,
+    compareRowAt: compareTrendRowAt,
   } = useRoasTableSort(rows, ROAS_FIELDS)
 
   // "ROAS 요약"/"기간별 추이" 섹션 접기·펼치기(9/30 요청) — 오프라인 매출/
@@ -1378,7 +1391,7 @@ export function RoasPanel({
                     </thead>
                     <tbody>
                       {sortedTrendRows.map((row, i) => {
-                        const prevRow = i > 0 ? sortedTrendRows[i - 1] : null
+                        const prevRow = compareTrendRowAt(i)
                         return (
                           <tr key={row.key}>
                             <td>{row.label}</td>
