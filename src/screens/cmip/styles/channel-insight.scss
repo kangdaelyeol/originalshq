@@ -1576,3 +1576,50 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     color: $color-muted;
   }
 }
+
+// ── 광고 성과 탭(ad-performance.tsx) ─────────────────────────────────────
+.ad-performance {
+  &__table {
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+
+    th:nth-child(2),
+    td:nth-child(2) {
+      text-align: right;
+    }
+  }
+
+  &__name {
+    max-width: 520px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__toggle,
+  &__toggle-space {
+    display: inline-block;
+    width: 18px;
+    margin-right: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $color-muted;
+    text-align: center;
+    cursor: pointer;
+  }
+
+  &__level {
+    margin-right: 6px;
+    padding: 0 5px;
+    border: 1px solid $color-border-soft;
+    border-radius: 4px;
+    font-size: 11px;
+    color: $color-muted;
+  }
+
+  &__row--캠페인 td {
+    font-weight: 600;
+  }
+}

@@ -16,14 +16,16 @@ export type AttributionChannel =
   'meta' | 'google' | 'naver' | 'other' | 'unknown'
 
 /** 고객 1명 — [처음 나타난 날, 채널, UTM source, [결제일, 금액][], 그 UTM
- * 상담의 접수일]. 구매는 날짜별로 합쳐져 있고 취소는 빠져 있다(오래된 순).
- * 접수일은 UTM이 없으면 ''(예전 형식의 데이터엔 아예 없을 수 있다). */
+ * 상담의 접수일, 그 UTM 상담의 utm_campaign]. 구매는 날짜별로 합쳐져 있고
+ * 취소는 빠져 있다(오래된 순). 접수일·utm_campaign은 없으면 ''(예전 형식의
+ * 데이터엔 아예 없을 수 있다). Meta의 utm_campaign은 광고(소재) 이름이다. */
 export type AttributionRow = [
   ISODate,
   AttributionChannel,
   string,
   [ISODate, number][],
   (ISODate | '')?,
+  string?,
 ]
 
 export async function getAttribution(): Promise<AttributionRow[]> {

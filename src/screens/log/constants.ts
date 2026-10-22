@@ -51,6 +51,15 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     timeoutSeconds: 300,
   },
   {
+    id: 'meta-ads',
+    label: 'Meta 광고 단위',
+    description:
+      '최근 14일 광고(소재)별 광고비와 광고 → 광고셋 → 캠페인 연결을 다시 읽어 저장합니다(cmip 광고 성과 탭). Meta 인사이트 직후에 돕니다.',
+    codebase: 'cmip',
+    functionName: 'syncMetaInsightsScheduled',
+    timeoutSeconds: 300,
+  },
+  {
     id: 'google-insights',
     label: 'Google Ads 인사이트',
     description: '최근 14일 캠페인·광고그룹 성과를 다시 읽어 저장합니다.',

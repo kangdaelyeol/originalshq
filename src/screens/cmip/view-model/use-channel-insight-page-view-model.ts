@@ -15,7 +15,13 @@ import type {
 } from './use-channel-insight-chart-modal-view-model'
 import type { ISODate } from '../types'
 
-export type ResultTab = 'total' | 'campaign' | 'adset' | 'periodTest' | 'roas'
+export type ResultTab =
+  | 'total'
+  | 'campaign'
+  | 'adset'
+  | 'periodTest'
+  | 'roas'
+  | 'adPerformance'
 
 /** 캠페인/adset 탭의 "보기 단위" — 교차표(PivotSummary)의 행 축(첫 컬럼)을
  * 날짜/요일/주차 중 무엇으로 묶을지. */

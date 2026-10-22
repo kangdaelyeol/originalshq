@@ -533,6 +533,9 @@ export type MondayAttributionRow = [
   [string, number][],
   /** 그 UTM 상담의 접수일 — UTM이 없으면 ''. */
   string,
+  /** 그 UTM 상담의 utm_campaign — Meta는 광고(소재) 이름이 들어 있다. cmip
+   * "광고 성과" 탭이 광고 단위 광고비와 이 이름으로 맞춘다. 없으면 ''. */
+  string,
 ]
 
 /** 오프라인 매출 원장 1줄(결제 보드의 품목 줄 하나) — purchases.ts의

@@ -6,8 +6,8 @@ import * as logger from 'firebase-functions/logger'
 import { DataSetInsight } from './types'
 import { getFetchUrl } from './utils'
 
-interface MetaInsightApiResponse {
-  data?: DataSetInsight[]
+interface MetaInsightApiResponse<T = DataSetInsight> {
+  data?: T[]
   paging?: {
     cursors?: { before?: string; after?: string }
     next?: string
@@ -36,13 +36,13 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 /** 한 페이지를 받아 온다 — 일시 오류면 RETRY_DELAYS_MS만큼 기다렸다가 다시
  * 보낸다. 끝내 실패하면 Meta의 오류 코드를 로그에 남기고 던진다(화면에는
  * 메시지만 가서, 코드·fbtrace_id가 없으면 원인을 되짚을 수 없다). */
-async function fetchInsightPage(
+async function fetchInsightPage<T>(
   url: string,
   adsId: string,
-): Promise<MetaInsightApiResponse> {
+): Promise<MetaInsightApiResponse<T>> {
   for (let attempt = 0; ; attempt++) {
     const res: Response = await fetch(url)
-    const data = (await res.json()) as MetaInsightApiResponse
+    const data = (await res.json()) as MetaInsightApiResponse<T>
     if (res.ok && !data.error) return data
 
     const error = data.error
@@ -84,11 +84,26 @@ export async function fetchAllMetaInsightRows(
   adsId: string,
   accessToken: string,
 ): Promise<DataSetInsight[]> {
-  const rows: DataSetInsight[] = []
-  let url: string | null = getFetchUrl(dateStart, dateEnd, adsId, accessToken)
+  return fetchAllInsightPages<DataSetInsight>(
+    getFetchUrl(dateStart, dateEnd, adsId, accessToken),
+    adsId,
+  )
+}
+
+/** 첫 페이지 URL부터 paging.next를 따라가며 행을 전부 모은다 — adset 단위
+ * (fetchAllMetaInsightRows)와 광고 단위(ads.ts) 조회가 같이 쓴다. */
+export async function fetchAllInsightPages<T>(
+  firstUrl: string,
+  adsId: string,
+): Promise<T[]> {
+  const rows: T[] = []
+  let url: string | null = firstUrl
 
   while (url) {
-    const data = await fetchInsightPage(url, adsId)
+    const data: MetaInsightApiResponse<T> = await fetchInsightPage<T>(
+      url,
+      adsId,
+    )
     rows.push(...(data.data ?? []))
     url = data.paging?.next ?? null
   }

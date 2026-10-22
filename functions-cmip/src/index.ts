@@ -36,6 +36,7 @@ import {
   getMetaInsightWithHistory,
   syncMetaInsightRows,
 } from './channel/meta'
+import { readMetaAdInsights, syncMetaAdRows } from './channel/meta/ads'
 import { validateGetInsightBody } from './util'
 import {
   exchangeAndSaveGoogleTokens,
@@ -593,6 +594,87 @@ export const syncMetaInsightsScheduled = onSchedule(
         err instanceof Error ? err.message : err,
       )
     }
+    // 광고(소재) 단위 — 광고셋 단위가 실패해도 따로 돈다(/log에 따로 남는다).
+    try {
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'meta-ads',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        () => syncMetaAdRows(dateStart, dateEnd, metaAdsId.value()),
+      )
+      logger.info('Meta 광고 단위 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        'Meta 광고 단위 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
+  },
+)
+
+/**
+ * Meta 광고(소재) 단위 인사이트를 Firestore(metaAdInsightDaily)에 upsert한다 —
+ * 과거분 백필용. body에 startDate/endDate가 없으면 최근 14일. 광고 × 날짜라
+ * 행이 많아서, 넓은 기간은 한 달씩 나눠 부른다.
+ */
+export const syncMetaAdInsights = onRequest(
+  { secrets: [metaAdsId], timeoutSeconds: 300, memory: '512MiB' },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -META_SYNC_WINDOW_DAYS)
+
+      try {
+        response
+          .status(200)
+          .send(await syncMetaAdRows(dateStart, dateEnd, metaAdsId.value()))
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'Meta 광고 단위 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/** "광고 성과" 탭 — [dateStart, dateEnd]의 광고 단위 광고비와 광고 →
+ * 광고셋 → 캠페인 연결. 저장된 값만 읽는다(예약 동기화가 최근 14일을 하루
+ * 6번 다시 받는다). */
+export const getMetaAdInsights = onRequest(
+  { memory: '512MiB' },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+      const validationRes = validateGetInsightBody(req.query)
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+      const { dateStart, dateEnd } = validationRes.data
+      try {
+        res.status(200).send(await readMetaAdInsights(dateStart, dateEnd))
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
   },
 )
 

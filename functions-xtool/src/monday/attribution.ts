@@ -72,6 +72,7 @@ export const buildAttributionRows = (
         utmSource ?? '',
         purchases,
         utmAt,
+        utmRecord?.utmCampaign ?? '',
       ],
     ]
   })
