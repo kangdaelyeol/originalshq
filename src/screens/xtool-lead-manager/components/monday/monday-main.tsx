@@ -22,6 +22,8 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
     missingItems,
     paymentIssues,
     missingOpen,
+    page,
+    pageSize,
   } = state
   const { openDetail, closeDetail, closeMissing, reload } = actions
 
@@ -38,6 +40,7 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
         ) : (
           <MondayTable
             rows={rows}
+            startIndex={(page - 1) * pageSize}
             loading={status === 'idle' || status === 'loading'}
             onOpen={openDetail}
           />

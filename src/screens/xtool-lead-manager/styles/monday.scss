@@ -99,12 +99,17 @@
     all: unset;
     box-sizing: border-box;
     display: flex;
-    align-items: center;
+    // 글자 크기가 다른 이름(13px)과 건수(11.5px)를 상자 가운데(center)로
+    // 맞추면 숫자가 한글보다 1px쯤 떠 보인다 — 한글(대체 글꼴)과 숫자(Inter)의
+    // 글자 높이가 달라서다. 기준선(baseline)으로 맞추고, 줄 높이를 버튼
+    // 높이와 같게 둬서 세로 가운데는 줄 높이로 잡는다.
+    align-items: baseline;
     gap: 6px;
     height: 28px;
     padding: 0 10px;
     border-radius: 6px;
     font-size: 13px;
+    line-height: 28px;
     color: variables.$color-text-muted;
     white-space: nowrap;
     cursor: pointer;
@@ -162,8 +167,15 @@
 
 // ── 표 ──────────────────────────────────────────────────────────────────
 .xtool-main .wrapper .table .lead_table.monday_table {
+  .col-monday-no {
+    width: 56px;
+    font-variant-numeric: tabular-nums;
+  }
+  td.col-monday-no {
+    color: variables.$color-text-faint;
+  }
   .col-monday-name {
-    width: 180px;
+    width: 170px;
   }
   .col-monday-status {
     width: 140px;
@@ -185,7 +197,7 @@
     width: 90px;
   }
   .col-monday-assignee {
-    width: 170px;
+    width: 145px;
   }
   .col-monday-boards {
     width: 70px;

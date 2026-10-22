@@ -10,6 +10,8 @@ import { LoadingNotice, SkeletonRows, type SkeletonCell } from '../skeleton'
 
 interface MondayRowProps {
   customer: MondayCustomerListItem
+  /** 전체 목록(필터·정렬 반영)에서의 순번 — 1부터, 페이지를 넘겨도 이어진다. */
+  no: number
   onOpen: (phone: string) => void
 }
 
@@ -32,6 +34,7 @@ const CountCell = ({
 
 const MondayRow = memo(function MondayRow({
   customer,
+  no,
   onOpen,
 }: MondayRowProps) {
   const { summary, names } = customer
@@ -39,6 +42,7 @@ const MondayRow = memo(function MondayRow({
 
   return (
     <tr className="row-clickable" onClick={() => onOpen(customer.phone)}>
+      <td className="col-monday-no">{no.toLocaleString('ko-KR')}</td>
       <td className="col-ph">
         <span>{formatMondayPhone(customer.phone)}</span>
       </td>
@@ -138,8 +142,9 @@ const MondayRow = memo(function MondayRow({
 
 /** Monday 통합 고객 표 — 한 줄이 번호 하나(고객 1명)다. 줄을 누르면 그
  * 고객의 전체 기록(상세 모달)이 열린다. */
-// 전화번호·이름·상태·상담·방문체험·구매(두 줄)·설문·담당자·보드·최근 수정.
+// 순번·전화번호·이름·상태·상담·방문체험·구매(두 줄)·설문·담당자·보드·최근 수정.
 const MONDAY_SKELETON: SkeletonCell[] = [
+  { width: 20 },
   { width: 100 },
   { width: 60 },
   { width: 70 },
@@ -154,10 +159,13 @@ const MONDAY_SKELETON: SkeletonCell[] = [
 
 export const MondayTable = ({
   rows,
+  startIndex,
   loading,
   onOpen,
 }: {
   rows: MondayCustomerListItem[]
+  /** 이 페이지 첫 줄 앞에 있는 줄 수 — 순번은 startIndex + 1부터. */
+  startIndex: number
   /** 목록을 받는 중 — 몸통 자리에 스켈레톤을 그린다. */
   loading: boolean
   onOpen: (phone: string) => void
@@ -170,6 +178,7 @@ export const MondayTable = ({
           <table className="lead_table monday_table">
             <thead>
               <tr>
+                <th className="col-monday-no">순번</th>
                 <th className="col-ph">전화번호</th>
                 <th className="col-monday-name">이름</th>
                 <th className="col-monday-status">최근 상담 상태</th>
@@ -184,16 +193,17 @@ export const MondayTable = ({
             </thead>
             <tbody>
               {loading && <SkeletonRows cells={MONDAY_SKELETON} rows={15} />}
-              {rows.map((customer) => (
+              {rows.map((customer, index) => (
                 <MondayRow
                   key={customer.phone}
                   customer={customer}
+                  no={startIndex + index + 1}
                   onOpen={onOpen}
                 />
               ))}
               {!loading && rows.length === 0 && (
                 <tr>
-                  <td className="monday_no_rows" colSpan={10}>
+                  <td className="monday_no_rows" colSpan={11}>
                     조건에 맞는 고객이 없습니다.
                   </td>
                 </tr>
