@@ -18,7 +18,6 @@ export function SegmentedToggle<T extends string>({
 }: Props<T>) {
   return (
     <div className="segmented-toggle">
-      <span className="segmented-toggle__label">{label}</span>
       <div className="segmented-toggle__row" role="group" aria-label={label}>
         {options.map((o) => (
           <button

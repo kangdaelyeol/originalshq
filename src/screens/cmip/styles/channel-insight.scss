@@ -32,9 +32,8 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   color: $color-text;
 
   // 날짜 범위 선택기 — 여기서 "업데이트"를 누르면 바로 조회되므로 별도 조회
-  // 버튼은 없다. 로딩 중 표시는 탭 로딩 배지(__tab-loading-badge) 하나로
-  // 충분해 여기엔 따로 안내를 안 둔다(예전엔 둘 다 있어서 로딩 표시가
-  // 두 번 겹쳐 보였다).
+  // 버튼은 없다. 조회 중에는 각 탭이 자기 모양의 스켈레톤을 그려서 여기엔
+  // 따로 안내를 안 둔다.
   // 이제 __result-tabs 행 안에 같이 들어간다 — margin-left: auto로 그 행의
   // 맨 오른쪽에 붙는다(보기 단위 select/그래프 버튼이 있든 없든 항상).
   &__query-row {
@@ -42,19 +41,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     align-items: center;
     gap: 8px;
     margin-left: auto;
-  }
-
-  // 조회 중 표시(탭 로딩 배지) 공용 스피너 — 테두리 4면 중 위쪽만 강조색을
-  // 줘서 회전 애니메이션으로 도는 것처럼 보이게 하는 표준 CSS 스피너 기법.
-  &__spinner {
-    display: inline-block;
-    width: 13px;
-    height: 13px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    border: 2px solid color-mix(in srgb, $color-accent 25%, transparent);
-    border-top-color: $color-accent;
-    animation: channel-insight-spin 0.7s linear infinite;
   }
 
   &__btn {
@@ -1502,11 +1488,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 
   // ------------------------------------------------------------------ 탭 재조회 중 표시
-  // 캠페인/adset/매체별 테스트/ROAS 탭 — 전체 요약(ResultPanel)처럼 표마다 정확한
-  // 스켈레톤을 두는 대신, 재조회 중엔 직전 기간 값을 흐리게 깐 채 배지 하나로
-  // "지금 보이는 값이 최신이 아니다"를 알린다.
+  // 캠페인·광고셋/매체별 테스트/ROAS/광고 성과 탭의 틀 — 재조회 중에는 탭마다
+  // 자기 모양의 스켈레톤(tab-skeletons.tsx)을 이 안에 그린다.
   &__tab-content {
-    position: relative;
     // 캠페인·광고셋·광고 성과 탭은 섹션을 __result로 감싸지 않고 여기에 바로
     // 쌓는다 — __result와 같은 세로 간격을 여기서 준다(다른 탭은 자식이
     // __result 하나라 영향 없다). min-width: 0은 __result 주석과 같은 이유.
@@ -1514,32 +1498,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     flex-direction: column;
     gap: 16px;
     min-width: 0;
-
-    &.is-loading > *:not(.channel-insight__tab-loading-badge) {
-      opacity: 0.35;
-      pointer-events: none;
-      transition: opacity 0.15s ease;
-    }
-  }
-
-  &__tab-loading-badge {
-    position: absolute;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 6;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 16px;
-    border-radius: 3px;
-    background: $color-canvas-subtle;
-    border: 1px solid $color-border;
-    color: $color-text;
-    font-size: 12.5px;
-    font-weight: 500;
-    white-space: nowrap;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   }
 
   // ------------------------------------------------------------------ 모바일(≤640px)
@@ -1612,12 +1570,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
   100% {
     background-position: -200% 50%;
-  }
-}
-
-@keyframes channel-insight-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -1857,26 +1809,261 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 }
 
-// 요약 카드에서 누른 줄 — 두 번 반짝인다. 칸마다 배경색이 달라서(이름 칸은
-// 고정 배경) 배경 대신 안쪽 그림자를 덧칠해 깜빡인다.
-.channel-insight__full-list-row--flash td {
-  animation: channel-insight-row-flash 1.4s ease-out;
+// ── 탭 스켈레톤(tab-skeletons.tsx) ─────────────────────────────────────
+.tab-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__lines {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 6px 0;
+  }
+
+  &__line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  // 요약 카드 자리 — 막대 바탕색과 카드 배경이 같아 막대가 안 보여서, 카드만
+  // 섹션 배경색으로 둔다.
+  .campaign-highlights__card {
+    background: $color-surface;
+  }
+
+  // 표 스켈레톤 칸 — 실제 표처럼 첫 칸(이름)은 왼쪽, 숫자 칸은 오른쪽.
+  &__table {
+    th:first-child,
+    td:first-child {
+      text-align: left;
+    }
+  }
+
+  &__sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+// 요약 카드에서 누른 줄 — 약 2초 동안 세 겹으로 빛난다. 크기(scale)는 건드리지
+// 않고 그림자·배경 색만 움직여 레이아웃이 다시 계산되지 않게 한다.
+//   1) 줄 전체에 파란 빛이 확 켜졌다가 서서히 가라앉는다.
+//   2) 그 위로 밝은 빛줄기가 왼쪽에서 오른쪽으로 한 번 훑고 지나간다 — 배경을
+//      화면 기준(fixed)으로 깔아 칸마다 끊기지 않고 한 줄로 이어 보인다.
+//   3) 줄 둘레의 빛나는 테두리가 두 번 맥박치고 사라진다.
+// 테두리는 줄(tr)의 외곽선이 아니라 칸마다 안쪽 그림자(위·아래, 첫 칸은 왼쪽
+// 강조 막대, 마지막 칸은 오른쪽)로 그린다 — 첫 칸은 가로 스크롤 고정 칸
+// (sticky, z-index)이라 줄의 외곽선 위에 덮여 그 구간만 테두리가 가려졌다.
+// 선택자는 목록 표의 첫 칸 규칙(.channel-insight .channel-insight__table--full-list
+// td:first-child — 배경을 단축 속성으로 다시 깔아 빛줄기를 지운다)과 같은
+// 우선순위로 맞추고, 파일 뒤쪽에 둬서 그 규칙을 이기게 한다.
+.channel-insight .channel-insight__full-list-row--flash td {
+  background-image: linear-gradient(
+    100deg,
+    rgba(140, 190, 255, 0) 0%,
+    rgba(140, 190, 255, 0) 30%,
+    rgba(170, 210, 255, 0.55) 50%,
+    rgba(140, 190, 255, 0) 70%,
+    rgba(140, 190, 255, 0) 100%
+  );
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-size: 45vw 100%;
+  background-position: -45vw 0;
+  animation:
+    channel-insight-row-flash 2s ease-out,
+    channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
+
+  &:first-child {
+    animation:
+      channel-insight-row-flash-first 2s ease-out,
+      channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
+  }
+
+  &:last-child {
+    animation:
+      channel-insight-row-flash-last 2s ease-out,
+      channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
+  }
 
   @media (prefers-reduced-motion: reduce) {
-    animation-duration: 0.01s;
+    &,
+    &:first-child,
+    &:last-child {
+      background-image: none;
+      animation: channel-insight-row-flash 0.01s;
+    }
   }
 }
 
 @keyframes channel-insight-row-flash {
-  0%,
-  40% {
-    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0.32);
+  0% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
   }
-  20%,
-  60% {
-    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0.08);
+  8% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.8),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
+  }
+  10% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 1),
+      inset 0 -2px 0 rgba(120, 180, 255, 1),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
+  }
+  30% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.3),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
+  }
+  45% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.75),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
+  }
+  50% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.95),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
   }
   100% {
-    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0);
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
+  }
+}
+
+@keyframes channel-insight-row-flash-first {
+  0% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset 4px 0 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
+  }
+  8% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.8),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
+      inset 4px 0 0 rgba(120, 180, 255, 1),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
+  }
+  10% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 1),
+      inset 0 -2px 0 rgba(120, 180, 255, 1),
+      inset 4px 0 0 rgba(120, 180, 255, 1),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
+  }
+  30% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.3),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
+      inset 4px 0 0 rgba(120, 180, 255, 0.9),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
+  }
+  45% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.75),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
+      inset 4px 0 0 rgba(120, 180, 255, 0.85),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
+  }
+  50% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.95),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
+      inset 4px 0 0 rgba(120, 180, 255, 0.85),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
+  }
+  100% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset 4px 0 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
+  }
+}
+
+@keyframes channel-insight-row-flash-last {
+  0% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset -2px 0 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
+  }
+  8% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.8),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
+      inset -2px 0 0 rgba(120, 180, 255, 0.8),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
+  }
+  10% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 1),
+      inset 0 -2px 0 rgba(120, 180, 255, 1),
+      inset -2px 0 0 rgba(120, 180, 255, 1),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
+  }
+  30% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.3),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
+      inset -2px 0 0 rgba(120, 180, 255, 0.3),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
+  }
+  45% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.75),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
+      inset -2px 0 0 rgba(120, 180, 255, 0.75),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
+  }
+  50% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0.95),
+      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
+      inset -2px 0 0 rgba(120, 180, 255, 0.95),
+      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
+  }
+  100% {
+    box-shadow:
+      inset 0 2px 0 rgba(120, 180, 255, 0),
+      inset 0 -2px 0 rgba(120, 180, 255, 0),
+      inset -2px 0 0 rgba(120, 180, 255, 0),
+      inset 0 0 0 999px rgba(68, 147, 248, 0);
+  }
+}
+
+@keyframes channel-insight-row-sweep {
+  from {
+    background-position: -45vw 0;
+  }
+  to {
+    background-position: 110vw 0;
   }
 }

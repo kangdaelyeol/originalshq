@@ -51,6 +51,12 @@ import { PeriodTestPanel } from './period-test-panel'
 import { RoasPanel } from './roas-panel'
 import { AdPerformancePanel } from './ad-performance'
 import { CampaignHighlightCards } from './campaign-highlights'
+import {
+  AdPerformanceSkeleton,
+  CampaignAdsetSkeleton,
+  PeriodTestSkeleton,
+  RoasSkeleton,
+} from './tab-skeletons'
 import { dateRange } from '../utils'
 
 // exceljs가 꽤 커서(~900KB) 실제로 모달을 열 때만 불러온다 — cmip 화면
@@ -792,33 +798,12 @@ function ResultSkeleton({
   )
 }
 
-/** 캠페인/adset/매체별 테스트/ROAS 탭 전용 — "전체 요약"(ResultPanel)처럼 표마다
- * 정확한 모양의 스켈레톤을 다 만드는 대신, 재조회 중(loading)엔 그 탭에 이미
- * 그려져 있던(직전 기간 기준) 내용을 흐리게 깔아두고 그 위에 "조회하는 중…"
- * 배지를 띄운다. combinedInsight는 재조회가 끝나야 새 값으로 바뀌므로, 이
- * 처리가 없으면 다른 기간을 골라도 화면은 이전 기간 값을 그대로 보여준 채
- * 아무 신호도 주지 않는다(전체 요약 탭만 ResultPanel이 loading prop을 직접
- * 받아 이 문제가 없었다). */
-function TabLoadingOverlay({
-  loading,
-  children,
-}: {
-  loading: boolean
-  children: ReactNode
-}) {
-  return (
-    <div
-      className={`channel-insight__tab-content${loading ? ' is-loading' : ''}`}
-    >
-      {children}
-      {loading && (
-        <div className="channel-insight__tab-loading-badge" aria-live="polite">
-          <span className="channel-insight__spinner" aria-hidden />
-          조회하는 중…
-        </div>
-      )}
-    </div>
-  )
+/** 캠페인·광고셋/매체별 테스트/ROAS/광고 성과 탭의 내용 틀 — 섹션 사이 세로
+ * 간격만 준다. 재조회 중에는 각 탭이 이 안에 자기 모양의 스켈레톤
+ * (tab-skeletons.tsx)을 대신 그린다 — combinedInsight는 재조회가 끝나야 새
+ * 값으로 바뀌어서, 그동안 이전 기간 값을 그대로 보여 주지 않기 위해서다. */
+function TabContent({ children }: { children: ReactNode }) {
+  return <div className="channel-insight__tab-content">{children}</div>
 }
 
 interface ResultPanelProps {
@@ -1546,7 +1531,16 @@ function FullListTableRow({
         onToggleOpen ? ' channel-insight__table-row--clickable' : ''
       }${flashing ? ' channel-insight__full-list-row--flash' : ''}`}
       onClick={onToggleOpen}
-      onAnimationEnd={flashing ? onFlashEnd : undefined}
+      // 반짝임은 여러 애니메이션이 겹쳐 있어(빛줄기는 더 빨리 끝난다) 가장
+      // 긴 빛·테두리 애니메이션(칸에서 끝나 줄로 올라온다)이 끝날 때만 비운다.
+      onAnimationEnd={
+        flashing
+          ? (event) => {
+              if (event.animationName.startsWith('channel-insight-row-flash'))
+                onFlashEnd()
+            }
+          : undefined
+      }
     >
       <td>
         <span
@@ -1592,14 +1586,18 @@ function FullListTableRow({
           )}
         </span>
       </td>
-      <td className="channel-insight__full-list-channels">
-        {row.channels.map((ch) => (
-          <ChannelLabel
-            key={ch}
-            channelKey={ch}
-            label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
-          />
-        ))}
+      {/* flex는 칸 안쪽 묶음에 준다 — td 자체를 flex로 두면 표 칸이 아니게 돼
+          줄 높이만큼 늘어나지 않고(다른 칸보다 낮게) 따로 그려진다. */}
+      <td>
+        <span className="channel-insight__full-list-channels">
+          {row.channels.map((ch) => (
+            <ChannelLabel
+              key={ch}
+              channelKey={ch}
+              label={CHANNELS.find((c) => c.key === ch)?.label ?? ch}
+            />
+          ))}
+        </span>
       </td>
       {visibleFields.map((f) => (
         <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
@@ -1876,6 +1874,8 @@ export const ChannelInsight = () => {
   // 사용 분석(/log) — 지금 보고 있는 결과 탭(전체 요약·캠페인·광고셋·매체별
   // 테스트·ROAS).
   useUsageTracking('cmip', resultTab)
+  // 스켈레톤 표의 줄 수 — 조회 기간 일수에 맞춘다.
+  const dayCount = dateRange(dateStart, dateEnd).length
 
   return (
     <div className="channel-insight">
@@ -1976,117 +1976,135 @@ export const ChannelInsight = () => {
             />
           )}
           {resultTab === 'campaignAdset' && (
-            <TabLoadingOverlay loading={loading}>
-              <CampaignHighlightCards
-                highlights={campaignHighlights}
-                level={highlightLevel}
-                onLevelChange={setHighlightLevel}
-                onFocus={focusHighlight}
-              />
-              <section className="channel-insight__section">
-                <h3 className="channel-insight__section-title">
-                  캠페인 · 광고셋
-                </h3>
-                <FullListTable
-                  rows={campaigns.map((c) => ({
-                    key: c.campaignName,
-                    selectKey: campaignKey(c.campaignName),
-                    name: c.campaignName,
-                    metrics: aggregateMetrics(c.combined.byDate),
-                    resultType: c.resultType,
-                    channels: channelsOf(c),
-                    children: c.adsets.map((a) => ({
-                      key: `${c.campaignName}::${a.adsetName}`,
-                      selectKey: adsetKey(c.campaignName, a.adsetName),
-                      name: a.adsetName,
-                      metrics: aggregateMetrics(a.combined.byDate),
-                      channels: channelsOf(a),
-                    })),
-                  }))}
-                  headLabel="캠페인 / 광고셋"
-                  emptyLabel="캠페인 데이터 없음"
-                  selected={selectedKeys}
-                  onToggleSelect={toggleSelected}
-                  expanded={expandedCampaigns}
-                  onToggleExpanded={toggleExpandedCampaign}
-                  flashKey={flashKey}
-                  onFlashEnd={clearFlash}
-                />
-              </section>
-              <PivotSummary
-                groups={selectedGroups.map((g) => ({
-                  key: g.key,
-                  label: g.label,
-                  byDate: g.series.combined.byDate,
-                }))}
-                metricKeys={metricKeyList}
-                dates={canonicalDates}
-                emptyLabel="위 목록에서 비교할 캠페인·광고셋을 체크해주세요."
-                showUnit={showUnit}
-                view={pivotView}
-                toolbar={
-                  <>
-                    <SingleSelectDropdown<PivotView>
-                      options={PIVOT_VIEW_OPTIONS}
-                      value={pivotView}
-                      onChange={setPivotView}
-                      ariaLabel="보기 단위"
-                    />
-
-                    <MultiSelectDropdown<MetricKey>
-                      options={METRIC_FIELDS.map((f) => ({
-                        key: f.key,
-                        label: f.label,
+            <TabContent>
+              {loading ? (
+                <CampaignAdsetSkeleton dayCount={dayCount} />
+              ) : (
+                <>
+                  <CampaignHighlightCards
+                    highlights={campaignHighlights}
+                    level={highlightLevel}
+                    onLevelChange={setHighlightLevel}
+                    onFocus={focusHighlight}
+                  />
+                  <section className="channel-insight__section">
+                    <h3 className="channel-insight__section-title">
+                      캠페인 · 광고셋
+                    </h3>
+                    <FullListTable
+                      rows={campaigns.map((c) => ({
+                        key: c.campaignName,
+                        selectKey: campaignKey(c.campaignName),
+                        name: c.campaignName,
+                        metrics: aggregateMetrics(c.combined.byDate),
+                        resultType: c.resultType,
+                        channels: channelsOf(c),
+                        children: c.adsets.map((a) => ({
+                          key: `${c.campaignName}::${a.adsetName}`,
+                          selectKey: adsetKey(c.campaignName, a.adsetName),
+                          name: a.adsetName,
+                          metrics: aggregateMetrics(a.combined.byDate),
+                          channels: channelsOf(a),
+                        })),
                       }))}
-                      selected={selectedMetricKeys}
-                      onToggle={toggleMetric}
-                      emptyLabel="지표 선택"
-                      countSuffix="개 지표"
+                      headLabel="캠페인 / 광고셋"
+                      emptyLabel="캠페인 데이터 없음"
+                      selected={selectedKeys}
+                      onToggleSelect={toggleSelected}
+                      expanded={expandedCampaigns}
+                      onToggleExpanded={toggleExpandedCampaign}
+                      flashKey={flashKey}
+                      onFlashEnd={clearFlash}
                     />
-                    <button
-                      type="button"
-                      className={`channel-insight__unit-toggle${
-                        showUnit ? ' is-active' : ''
-                      }`}
-                      aria-pressed={showUnit}
-                      onClick={() => setShowUnit((v) => !v)}
-                    >
-                      단위 표시
-                    </button>
-                  </>
-                }
-              />
-            </TabLoadingOverlay>
+                  </section>
+                  <PivotSummary
+                    groups={selectedGroups.map((g) => ({
+                      key: g.key,
+                      label: g.label,
+                      byDate: g.series.combined.byDate,
+                    }))}
+                    metricKeys={metricKeyList}
+                    dates={canonicalDates}
+                    emptyLabel="위 목록에서 비교할 캠페인·광고셋을 체크해주세요."
+                    showUnit={showUnit}
+                    view={pivotView}
+                    toolbar={
+                      <>
+                        <SingleSelectDropdown<PivotView>
+                          options={PIVOT_VIEW_OPTIONS}
+                          value={pivotView}
+                          onChange={setPivotView}
+                          ariaLabel="보기 단위"
+                        />
+
+                        <MultiSelectDropdown<MetricKey>
+                          options={METRIC_FIELDS.map((f) => ({
+                            key: f.key,
+                            label: f.label,
+                          }))}
+                          selected={selectedMetricKeys}
+                          onToggle={toggleMetric}
+                          emptyLabel="지표 선택"
+                          countSuffix="개 지표"
+                        />
+                        <button
+                          type="button"
+                          className={`channel-insight__unit-toggle${
+                            showUnit ? ' is-active' : ''
+                          }`}
+                          aria-pressed={showUnit}
+                          onClick={() => setShowUnit((v) => !v)}
+                        >
+                          단위 표시
+                        </button>
+                      </>
+                    }
+                  />
+                </>
+              )}
+            </TabContent>
           )}
           {resultTab === 'periodTest' && (
-            <TabLoadingOverlay loading={loading}>
-              <PeriodTestPanel
-                combinedInsight={combinedInsight}
-                dateStart={dateStart}
-                dateEnd={dateEnd}
-              />
-            </TabLoadingOverlay>
+            <TabContent>
+              {loading ? (
+                <PeriodTestSkeleton />
+              ) : (
+                <PeriodTestPanel
+                  combinedInsight={combinedInsight}
+                  dateStart={dateStart}
+                  dateEnd={dateEnd}
+                />
+              )}
+            </TabContent>
           )}
           {resultTab === 'roas' && (
-            <TabLoadingOverlay loading={loading}>
-              <RoasPanel
-                combinedInsight={combinedInsight}
-                offlineRevenue={offlineRevenueData}
-                onlineRevenue={onlineRevenueData}
-                repeatRevenue={repeatRevenueData}
-                adRevenue={adRevenueData}
-                attribution={attributionData}
-              />
-            </TabLoadingOverlay>
+            <TabContent>
+              {loading ? (
+                <RoasSkeleton dayCount={dayCount} />
+              ) : (
+                <RoasPanel
+                  combinedInsight={combinedInsight}
+                  offlineRevenue={offlineRevenueData}
+                  onlineRevenue={onlineRevenueData}
+                  repeatRevenue={repeatRevenueData}
+                  adRevenue={adRevenueData}
+                  attribution={attributionData}
+                />
+              )}
+            </TabContent>
           )}
           {resultTab === 'adPerformance' && (
-            <TabLoadingOverlay loading={loading}>
-              <AdPerformancePanel
-                attribution={attributionData}
-                dateStart={dateStart}
-                dateEnd={dateEnd}
-              />
-            </TabLoadingOverlay>
+            <TabContent>
+              {loading ? (
+                <AdPerformanceSkeleton />
+              ) : (
+                <AdPerformancePanel
+                  attribution={attributionData}
+                  dateStart={dateStart}
+                  dateEnd={dateEnd}
+                />
+              )}
+            </TabContent>
           )}
         </>
       )}

@@ -1,6 +1,7 @@
 import type { AdPerformanceNode, AttributionRow } from '../client'
 import type { ISODate } from '../types'
 import { useAdPerformanceViewModel } from '../view-model/use-ad-performance-view-model'
+import { AdPerformanceSkeleton } from './tab-skeletons'
 
 const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
 /** 사람 수 — 같은 이름의 광고가 여럿이라 나눠 가진 경우만 소수 한 자리. */
@@ -128,13 +129,7 @@ export function AdPerformancePanel({
       </section>
     )
   }
-  if (!performance) {
-    return (
-      <section className="channel-insight__section">
-        <p className="channel-insight__result-empty">불러오는 중…</p>
-      </section>
-    )
-  }
+  if (!performance) return <AdPerformanceSkeleton />
 
   const { total, campaigns, unmatched, unmatchedTotal } = performance
   const allRevenue = total.revenue + unmatchedTotal.revenue
