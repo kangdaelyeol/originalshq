@@ -2,7 +2,7 @@ import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/ga-tracking.scss'
-import { Fragment } from 'react'
+import { useEffect, useRef } from 'react'
 import { Loading } from '@/screens/xtool-lead-manager/components'
 import {
   eventSource,
@@ -93,6 +93,94 @@ const Timeline = ({ row }: { row: GaTrackingRow }) => {
   )
 }
 
+/** 한 사람의 추적 상세(모달) — 위에 상담 정보와 요약, 아래에 GA4 이벤트
+ * 타임라인. Esc·바깥 클릭·닫기 버튼으로 닫는다. */
+const TrackingModal = ({
+  row,
+  onClose,
+}: {
+  row: GaTrackingRow
+  onClose: () => void
+}) => {
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const { consultation } = row
+
+  useEffect(() => {
+    // 모달이 떠 있는 동안 뒤 화면은 스크롤되지 않게 하고, 포커스를 모달로.
+    document.body.style.overflow = 'hidden'
+    closeRef.current?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = ''
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [onClose])
+
+  const facts: [string, string][] = [
+    ['접수일', consultation.receivedAt ?? '-'],
+    ['보드', consultation.boardName],
+    ['입력한 번호', consultation.phoneRaw ?? '-'],
+    ['상태', consultation.status ?? '-'],
+    ['GA ClientId', consultation.gaClientId],
+    ['이벤트', `${row.events.length}건`],
+    ['방문', `${row.sessionCount}회`],
+    ['첫 유입', row.firstTouch ?? '-'],
+    ['기기', row.device ?? '-'],
+    ['위치', row.location ?? '-'],
+    ['첫 활동', formatTime(row.firstAt)],
+    ['마지막 활동', formatTime(row.lastAt)],
+  ]
+
+  return (
+    <div className="ga_tracking_modal" onClick={onClose}>
+      <div
+        className="ga_tracking_dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ga-tracking-title"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="ga_tracking_dialog_head">
+          <h2 id="ga-tracking-title">
+            {consultation.url ? (
+              <a href={consultation.url} target="_blank" rel="noreferrer">
+                {consultation.name}
+              </a>
+            ) : (
+              consultation.name
+            )}
+            {consultation.misentry && (
+              <span className="ga_tracking_badge">오기입</span>
+            )}
+          </h2>
+          <button
+            ref={closeRef}
+            type="button"
+            className="ga_tracking_close"
+            onClick={onClose}
+          >
+            닫기
+          </button>
+        </div>
+        <dl className="ga_tracking_facts">
+          {facts.map(([label, value]) => (
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <div className="ga_tracking_dialog_body">
+          <Timeline row={row} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /**
  * 오기입 추적 탭 — 상담 보드에 GA ClientId가 적힌 문의를, 같은 id의 GA4
  * 이벤트(BigQuery)와 맞춰 본다. 오기입 문의가 실제 사람이 번호를 잘못 적은
@@ -112,6 +200,8 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
     bytesProcessed,
     ga4Error,
   } = state
+  const openRow =
+    rows.find((row) => row.consultation.itemId === openItemId) ?? null
 
   return (
     <>
@@ -199,68 +289,48 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                     <tbody>
                       {rows.map((row) => {
                         const { consultation } = row
-                        const open = openItemId === consultation.itemId
                         return (
-                          <Fragment key={consultation.itemId}>
-                            <tr
-                              className={`ga_tracking_row${open ? ' open' : ''}`}
-                              onClick={() =>
-                                actions.toggleRow(consultation.itemId)
-                              }
-                              aria-expanded={open}
-                            >
-                              <td>
-                                <span
-                                  className="ga_tracking_caret"
-                                  aria-hidden="true"
+                          <tr
+                            key={consultation.itemId}
+                            className="ga_tracking_row"
+                            onClick={() => actions.openRow(consultation.itemId)}
+                          >
+                            <td>{consultation.receivedAt ?? '-'}</td>
+                            <td>{consultation.boardName}</td>
+                            <td>
+                              {consultation.url ? (
+                                <a
+                                  href={consultation.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  {open ? '▾' : '▸'}
-                                </span>
-                                {consultation.receivedAt ?? '-'}
-                              </td>
-                              <td>{consultation.boardName}</td>
-                              <td>
-                                {consultation.url ? (
-                                  <a
-                                    href={consultation.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {consultation.name}
-                                  </a>
-                                ) : (
-                                  consultation.name
-                                )}
-                              </td>
-                              <td>{consultation.phoneRaw ?? '-'}</td>
-                              <td
-                                className={
-                                  consultation.misentry
-                                    ? 'ga_tracking_misentry'
-                                    : undefined
-                                }
-                              >
-                                {consultation.status ?? '-'}
-                              </td>
-                              <td title={consultation.gaClientId}>
-                                {shortClientId(consultation.gaClientId)}
-                              </td>
-                              <td>{row.events.length}</td>
-                              <td>{row.sessionCount}</td>
-                              <td>{row.firstTouch ?? '-'}</td>
-                              <td>{row.device ?? '-'}</td>
-                              <td>{row.location ?? '-'}</td>
-                              <td>{formatTime(row.lastAt)}</td>
-                            </tr>
-                            {open && (
-                              <tr className="ga_tracking_detail">
-                                <td colSpan={12}>
-                                  <Timeline row={row} />
-                                </td>
-                              </tr>
-                            )}
-                          </Fragment>
+                                  {consultation.name}
+                                </a>
+                              ) : (
+                                consultation.name
+                              )}
+                            </td>
+                            <td>{consultation.phoneRaw ?? '-'}</td>
+                            <td
+                              className={
+                                consultation.misentry
+                                  ? 'ga_tracking_misentry'
+                                  : undefined
+                              }
+                            >
+                              {consultation.status ?? '-'}
+                            </td>
+                            <td title={consultation.gaClientId}>
+                              {shortClientId(consultation.gaClientId)}
+                            </td>
+                            <td>{row.events.length}</td>
+                            <td>{row.sessionCount}</td>
+                            <td>{row.firstTouch ?? '-'}</td>
+                            <td>{row.device ?? '-'}</td>
+                            <td>{row.location ?? '-'}</td>
+                            <td>{formatTime(row.lastAt)}</td>
+                          </tr>
                         )
                       })}
                     </tbody>
@@ -270,6 +340,7 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
             </section>
           )}
         </div>
+        {openRow && <TrackingModal row={openRow} onClose={actions.closeRow} />}
         {status === 'loading' && <Loading />}
       </div>
     </>

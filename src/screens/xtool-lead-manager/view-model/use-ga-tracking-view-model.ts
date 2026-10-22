@@ -40,6 +40,10 @@ export const useGaTrackingViewModel = (active: boolean) => {
     })()
   }, [active, status, load])
 
+  // 상세(모달)를 여닫는 함수 — 모달이 Esc 리스너를 다시 붙이지 않도록 고정한다.
+  const openRow = useCallback((itemId: string) => setOpenItemId(itemId), [])
+  const closeRow = useCallback(() => setOpenItemId(null), [])
+
   const allRows = useMemo(
     () =>
       data
@@ -72,8 +76,8 @@ export const useGaTrackingViewModel = (active: boolean) => {
     actions: {
       changeFilter: setFilter,
       reload: load,
-      toggleRow: (itemId: string) =>
-        setOpenItemId((prev) => (prev === itemId ? null : itemId)),
+      openRow,
+      closeRow,
     },
   }
 }
