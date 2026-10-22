@@ -220,18 +220,29 @@ const buildCustomer = (
   // 최초 인입일 — 이 고객이 처음 기록에 나타난 날. 상담은 접수일, 방문체험은
   // 예약을 받은 날(Monday에 기록이 만들어진 날 — 방문일은 그보다 나중이다),
   // 샘플테스트는 요청일, 구매는 결제일.
-  const firstContactAt = earliest([
+  const firstInquiryAt = earliest([
     ...consultations.map((record) => day(record.receivedAt)),
     ...visits.map((record) =>
       earliest([day(record.createdAt), day(record.visitAt)]),
     ),
     ...sampleTests.map((record) => day(record.requestedAt)),
+  ])
+  const firstContactAt = earliest([
+    firstInquiryAt,
     ...activePurchases.map((record) => day(record.paidAt)),
   ])
+  const purchaseAmountByMonth: Record<string, number> = {}
+  for (const purchase of activePurchases) {
+    const month = day(purchase.paidAt)?.slice(0, 7)
+    if (!month) continue
+    purchaseAmountByMonth[month] =
+      (purchaseAmountByMonth[month] ?? 0) + purchase.amount
+  }
   const oldestFirst = [...consultations].reverse()
   const funnel = {
     firstContactAt,
     firstPurchaseAt: earliest(activePurchases.map((p) => day(p.paidAt))),
+    firstInquiryAt,
     // 채널별 첫 구매일 — 통계를 오프라인/온라인으로 나눠 볼 때 쓴다.
     firstOfflinePurchaseAt: earliest(
       activePurchases
@@ -306,6 +317,7 @@ const buildCustomer = (
       onlinePurchaseCount: onlineActive.length,
       onlinePurchaseAmount: onlineActive.reduce((sum, p) => sum + p.amount, 0),
       ...money,
+      purchaseAmountByMonth,
       issueCount: issues.length,
       funnel,
       // "홍길동, 김철수"처럼 한 칸에 여러 명이 적힌 값은 사람별로 나눈다.

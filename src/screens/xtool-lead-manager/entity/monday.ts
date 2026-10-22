@@ -25,6 +25,9 @@ export interface MondayCustomerSummary {
   balanceAmount: number
   /** 장기 할부 이자 합계 — 구매 금액과 별개. */
   interestAmount: number
+  /** 월별 구매 금액('YYYY-MM' → 금액, 결제일 기준·취소 제외). 예전에 저장된
+   * 고객 문서에는 없다. */
+  purchaseAmountByMonth?: Record<string, number>
   /** 확인이 필요한 결제 기록 수. */
   issueCount: number
   funnel: MondayCustomerFunnel
@@ -38,6 +41,9 @@ export interface MondayCustomerFunnel {
   firstContactAt: string | null
   /** 첫 구매(계약)일 — 취소 건 제외. 오프라인·온라인 중 이른 쪽. */
   firstPurchaseAt: string | null
+  /** 첫 문의일 — 상담·방문체험·샘플 중 가장 이른 날(구매 제외). 문의 없이
+   * 산 고객은 null, 예전에 저장된 고객 문서에는 없다. */
+  firstInquiryAt?: string | null
   /** 오프라인(Monday 결제 보드) / 온라인(Cafe24) 각각의 첫 구매일. */
   firstOfflinePurchaseAt: string | null
   firstOnlinePurchaseAt: string | null

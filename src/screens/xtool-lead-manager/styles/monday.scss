@@ -703,3 +703,118 @@
     display: none;
   }
 }
+
+// ── 표 아래 요약 카드(monday-highlights.tsx) ──────────────────────────────
+.xtool-main .wrapper .monday_highlights {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .monday_highlight {
+    min-width: 0;
+    padding: 16px 18px;
+    background-color: variables.$color-surface;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+
+    h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+  }
+
+  .monday_highlight_desc {
+    margin: 4px 0 12px;
+    font-size: 11.5px;
+    color: variables.$color-text-faint;
+  }
+
+  .monday_highlight_empty {
+    margin: 0;
+    padding: 12px 0;
+    font-size: 12.5px;
+    color: variables.$color-text-muted;
+  }
+
+  .monday_highlight_list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 0;
+      border-top: 1px solid variables.$color-border-soft;
+
+      &:first-child {
+        border-top: 0;
+      }
+    }
+  }
+
+  .monday_highlight_rank {
+    flex: none;
+    width: 18px;
+    font-size: 12px;
+    font-weight: 600;
+    color: variables.$color-text-faint;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  // 1등만 강조 — 글자로도 순위가 있어 색만으로 구분하지 않는다.
+  li:first-child .monday_highlight_rank {
+    color: #d29922;
+  }
+
+  .monday_highlight_who {
+    all: unset;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+    cursor: pointer;
+
+    &:hover .monday_highlight_name {
+      color: variables.$color-accent;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+      outline-offset: 2px;
+    }
+  }
+
+  .monday_highlight_name,
+  .monday_highlight_note {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .monday_highlight_name {
+    font-size: 13px;
+    color: variables.$color-text;
+  }
+
+  .monday_highlight_note {
+    font-size: 11px;
+    color: variables.$color-text-faint;
+  }
+
+  .monday_highlight_value {
+    flex: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: variables.$color-text;
+    font-variant-numeric: tabular-nums;
+  }
+}

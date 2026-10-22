@@ -14,7 +14,9 @@ import type {
 } from '@/screens/xtool-lead-manager/entity'
 import type { PageSize } from '@/screens/xtool-lead-manager/types'
 import {
+  buildMondayHighlights,
   filterMondayCustomers,
+  todayInKorea,
   matchesMondayCategory,
   sortMondayCustomers,
   type MondayCategory,
@@ -54,6 +56,8 @@ export const useMondayViewModel = (active: boolean) => {
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
   const [detailFailed, setDetailFailed] = useState(false)
   const [missingOpen, setMissingOpen] = useState(false)
+  // 요약 카드의 "이번 달"·경과 일수 기준일 — 탭을 연 날로 고정한다.
+  const [today] = useState(todayInKorea)
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -189,9 +193,16 @@ export const useMondayViewModel = (active: boolean) => {
     [customers, detailPhone],
   )
 
+  // 표 아래 요약 카드 — 검색·분류와 무관하게 고객 전체 기준.
+  const highlights = useMemo(
+    () => buildMondayHighlights(customers, today),
+    [customers, today],
+  )
+
   return {
     state: {
       status,
+      highlights,
       /** 걸러내지 않은 전체 고객 — 퍼널 통계가 쓴다. */
       customers,
       rows,
