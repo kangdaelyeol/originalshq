@@ -6,6 +6,7 @@ import type { AppDocs, AppName, DocType } from './types'
 export const DOC_TYPES: DocType[] = [
   'privacy',
   'terms',
+  'location',
   'consent',
   'consent-third',
 ]
@@ -13,6 +14,7 @@ export const DOC_TYPES: DocType[] = [
 export const DOC_TITLES: Record<DocType, string> = {
   privacy: '개인정보 처리방침',
   terms: '서비스 이용약관',
+  location: '위치기반서비스 이용약관',
   consent: '개인정보 수집·이용 동의서',
   'consent-third': '개인정보 제3자 제공 동의서',
 }
@@ -31,7 +33,8 @@ export const APPS: Record<AppName, AppInfo> = {
     name: 'Parke',
     subtitle: 'Smart Parking Solution',
     icon: ParkeIcon,
-    effectiveDate: '2026년 3월 17일',
+    // 2026-10-21 GPS 개정본의 시행일(이전 시행일은 2026년 3월 17일).
+    effectiveDate: '2026년 10월 22일',
     docs: PARKE_DOCS,
   },
 }
