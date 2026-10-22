@@ -1,6 +1,6 @@
 /**
- * 캠페인·광고셋 탭 맨 위의 요약 카드(순수 함수) — 광고셋 단위로 조회 기간
- * 합계를 내서, 지표마다 양쪽 끝 TOP 5를 고른다(8개).
+ * 캠페인·광고셋 탭 맨 위의 요약 카드(순수 함수) — 캠페인 또는 광고셋 단위로
+ * 조회 기간 합계를 내서, 지표마다 양쪽 끝 TOP 5를 고른다(8개).
  *
  *   · 광고비 — 광고비를 쓴 광고셋 중 많은 순 / 적은 순, 전체 대비 비중.
  *   · 문의 단가 — 전환 목표가 문의인 Meta 광고셋 중 문의 3건 이상, 낮은 순 /
@@ -8,7 +8,7 @@
  *   · 클릭 단가(CPC) — 클릭 50회 이상, 낮은 순 / 높은 순(모든 매체).
  *   · CPM — 노출 1,000회 이상, 낮은 순 / 높은 순(모든 매체).
  *
- * 전환 목표(결과 유형)는 Meta 캠페인에만 있어서, 문의 단가는 Meta 광고셋만
+ * 전환 목표(결과 유형)는 Meta 캠페인에만 있어서, 문의 단가는 Meta 캠페인·광고셋만
  * 본다(Google·네이버 전환은 무엇을 센 것인지 알 수 없다). 캠페인마다 전환
  * 목표가 달라(문의·장바구니·랜딩 조회) 목표가 다른 전환끼리 단가를 비교하지
  * 않기 위해서다. 건수가 너무 적은 광고셋은 단가가 우연히 튀어서 뺀다.
@@ -17,9 +17,24 @@ import { aggregateMetrics } from './insight-aggregate'
 import type { CombinedCampaign } from './insight-channel-combine'
 import type { MetricsSummary } from './insight-client'
 
+export type CampaignHighlightLevel = 'campaign' | 'adset'
+
+/** 캠페인·광고셋 탭의 선택 키 — 캠페인은 "c:캠페인", 광고셋은
+ * "a:캠페인::광고셋". 이름이 같은 광고셋이 여러 캠페인에 있어서 광고셋은
+ * 캠페인까지 붙여 구분한다. */
+export const campaignKey = (campaignName: string) => `c:${campaignName}`
+export const adsetKey = (campaignName: string, adsetName: string) =>
+  `a:${campaignName}::${adsetName}`
+
 export interface CampaignHighlightRow {
+  /** 목록 표의 선택 키(campaignKey/adsetKey 모양) — 누르면 이 줄을 체크한다. */
+  selectKey: string
   campaignName: string
-  adsetName: string
+  /** 광고셋 단위일 때만 있다. */
+  adsetName: string | null
+  /** 이름 아래 작은 줄 — 광고셋이면 소속 캠페인, 캠페인이면 광고셋 수. */
+  name: string
+  sub: string
   value: string
   note: string
 }
@@ -55,27 +70,33 @@ const count = (v: number) => Math.round(v).toLocaleString()
 export const isInquiryGoal = (resultType: string | null | undefined) =>
   !!resultType && /contact|lead/i.test(resultType)
 
-interface AdsetFacts {
+interface EntityFacts {
+  selectKey: string
   campaignName: string
-  adsetName: string
+  adsetName: string | null
+  name: string
+  sub: string
   inquiryGoal: boolean
   metrics: MetricsSummary
 }
 
 /** 한 지표로 매긴 광고셋 묶음 — 같은 묶음에서 앞(낮은 순)·뒤(높은 순) 5개씩. */
 const rankBoth = (
-  adsets: readonly AdsetFacts[],
-  include: (a: AdsetFacts) => boolean,
-  valueOf: (a: AdsetFacts) => number,
-  format: (a: AdsetFacts, value: number) => { value: string; note: string },
+  adsets: readonly EntityFacts[],
+  include: (a: EntityFacts) => boolean,
+  valueOf: (a: EntityFacts) => number,
+  format: (a: EntityFacts, value: number) => { value: string; note: string },
 ): { low: CampaignHighlightRow[]; high: CampaignHighlightRow[] } => {
   const ranked = adsets
     .filter(include)
     .map((a) => ({ a, value: valueOf(a) }))
     .sort((x, y) => x.value - y.value)
-  const toRow = ({ a, value }: { a: AdsetFacts; value: number }) => ({
+  const toRow = ({ a, value }: { a: EntityFacts; value: number }) => ({
+    selectKey: a.selectKey,
     campaignName: a.campaignName,
     adsetName: a.adsetName,
+    name: a.name,
+    sub: a.sub,
     ...format(a, value),
   })
   return {
@@ -86,15 +107,30 @@ const rankBoth = (
 
 export function buildCampaignHighlights(
   campaigns: readonly CombinedCampaign[],
+  level: CampaignHighlightLevel,
 ): CampaignHighlights {
-  const adsets: AdsetFacts[] = campaigns.flatMap((c) =>
-    c.adsets.map((a) => ({
-      campaignName: c.campaignName,
-      adsetName: a.adsetName,
-      inquiryGoal: isInquiryGoal(c.resultType),
-      metrics: aggregateMetrics(a.combined.byDate),
-    })),
-  )
+  const adsets: EntityFacts[] =
+    level === 'campaign'
+      ? campaigns.map((c) => ({
+          selectKey: campaignKey(c.campaignName),
+          campaignName: c.campaignName,
+          adsetName: null,
+          name: c.campaignName,
+          sub: `광고셋 ${c.adsets.length}개`,
+          inquiryGoal: isInquiryGoal(c.resultType),
+          metrics: aggregateMetrics(c.combined.byDate),
+        }))
+      : campaigns.flatMap((c) =>
+          c.adsets.map((a) => ({
+            selectKey: adsetKey(c.campaignName, a.adsetName),
+            campaignName: c.campaignName,
+            adsetName: a.adsetName,
+            name: a.adsetName,
+            sub: c.campaignName,
+            inquiryGoal: isInquiryGoal(c.resultType),
+            metrics: aggregateMetrics(a.combined.byDate),
+          })),
+        )
   const totalSpend = adsets.reduce((sum, a) => sum + a.metrics.spend, 0)
   const share = (spend: number) => {
     if (totalSpend <= 0) return ''

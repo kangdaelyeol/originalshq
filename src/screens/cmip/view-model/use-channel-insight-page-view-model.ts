@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import {
+  adsetKey,
   buildCampaignHighlights,
+  campaignKey,
   emptyMetrics,
   emptySeries,
+  type CampaignHighlightLevel,
+  type CampaignHighlightRow,
   type ChannelSplitSeries,
   type CombinedInsight,
 } from '../client'
@@ -23,12 +27,6 @@ export type ResultTab =
  * 날짜/요일/주차 중 무엇으로 묶을지. */
 export type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
 
-/** 캠페인·광고셋 탭의 선택 키 — 캠페인은 "c:캠페인", 광고셋은
- * "a:캠페인::광고셋". 이름이 같은 광고셋이 여러 캠페인에 있어서 광고셋은
- * 캠페인까지 붙여 구분한다. */
-export const campaignKey = (campaignName: string) => `c:${campaignName}`
-export const adsetKey = (campaignName: string, adsetName: string) =>
-  `a:${campaignName}::${adsetName}`
 
 /** ChannelInsight 페이지 전용 상태 — useChannelInsightViewModel(날짜 범위/조회)과는
  * 별개로, 탭 전환·캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
@@ -88,13 +86,24 @@ export const useChannelInsightPageViewModel = (
       return next
     })
   }
-  const focusAdset = (campaignName: string, adsetName: string) => {
-    setExpandedCampaigns((prev) => new Set(prev).add(campaignName))
-    setSelectedKeys((prev) =>
-      new Set(prev).add(adsetKey(campaignName, adsetName)),
-    )
+  // 요약 카드 단위(캠페인/광고셋)와, 카드에서 누른 줄을 목록 표에서 잠깐
+  // 반짝이게 할 키(애니메이션이 끝나면 비운다 — 같은 줄을 다시 눌러도 또
+  // 반짝이도록).
+  const [highlightLevel, setHighlightLevel] =
+    useState<CampaignHighlightLevel>('adset')
+  const [flashKey, setFlashKey] = useState<string | null>(null)
+  const campaignHighlights = buildCampaignHighlights(campaigns, highlightLevel)
+
+  /** 요약 카드의 한 줄을 누름 — 광고셋이면 그 캠페인을 펼치고, 그 줄을 체크해
+   * 비교 표에 넣고, 목록 표에서 반짝이게 한다. */
+  const focusHighlight = (row: CampaignHighlightRow) => {
+    if (row.adsetName !== null) {
+      setExpandedCampaigns((prev) => new Set(prev).add(row.campaignName))
+    }
+    setSelectedKeys((prev) => new Set(prev).add(row.selectKey))
+    setFlashKey(row.selectKey)
   }
-  const campaignHighlights = buildCampaignHighlights(campaigns)
+  const clearFlash = () => setFlashKey(null)
 
   const toggleSelected = (key: string) => {
     setSelectedKeys((prev) => {
@@ -202,6 +211,8 @@ export const useChannelInsightPageViewModel = (
     selectedGroups,
     expandedCampaigns,
     campaignHighlights,
+    highlightLevel,
+    flashKey,
     metricMode,
     selectedMetricKeys,
     showUnit,
@@ -221,7 +232,9 @@ export const useChannelInsightPageViewModel = (
     setResultTab,
     toggleSelected,
     toggleExpandedCampaign,
-    focusAdset,
+    setHighlightLevel,
+    focusHighlight,
+    clearFlash,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,

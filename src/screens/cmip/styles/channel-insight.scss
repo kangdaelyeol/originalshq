@@ -1714,25 +1714,31 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 }
 
-// ── 캠페인·광고셋 탭 맨 위 요약 카드(campaign-highlights.tsx) ──────────────
+// ── 캠페인·광고셋 탭 맨 위 요약(campaign-highlights.tsx) ──────────────────
 .campaign-highlights {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-
-  @media (max-width: 1200px) {
+  // 지표 묶음 두 개씩 한 줄 — 묶음마다 카드 두 장이라 한 줄에 카드 네 장.
+  &__groups {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 20px;
+
+    @media (max-width: 1200px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
-  &__card {
+  &__group {
     min-width: 0;
-    padding: 12px 16px 14px;
-    border: 1px solid $color-border;
-    border-radius: $radius-lg;
-    background: $color-surface;
   }
 
-  &__title {
+  &__group-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  &__group-title {
     margin: 0;
     font-size: 13.5px;
     font-weight: 600;
@@ -1740,8 +1746,28 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 
   &__desc {
-    margin: 3px 0 10px;
     font-size: 11.5px;
+    color: $color-muted;
+  }
+
+  &__cards {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  &__card {
+    min-width: 0;
+    padding: 10px 14px 12px;
+    border: 1px solid $color-border-soft;
+    border-radius: $radius;
+    background: $color-canvas-subtle;
+  }
+
+  &__title {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 600;
     color: $color-muted;
   }
 
@@ -1828,5 +1854,29 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     .campaign-highlights__note {
       font-weight: 400;
     }
+  }
+}
+
+// 요약 카드에서 누른 줄 — 두 번 반짝인다. 칸마다 배경색이 달라서(이름 칸은
+// 고정 배경) 배경 대신 안쪽 그림자를 덧칠해 깜빡인다.
+.channel-insight__full-list-row--flash td {
+  animation: channel-insight-row-flash 1.4s ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 0.01s;
+  }
+}
+
+@keyframes channel-insight-row-flash {
+  0%,
+  40% {
+    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0.32);
+  }
+  20%,
+  60% {
+    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0.08);
+  }
+  100% {
+    box-shadow: inset 0 0 0 999px rgba(68, 147, 248, 0);
   }
 }

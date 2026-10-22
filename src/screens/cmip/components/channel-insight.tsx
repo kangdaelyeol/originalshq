@@ -5,8 +5,6 @@ import metaIconPng from '../assets/meta_icon.png'
 import naverLogoPng from '../assets/naver_logo.png'
 import { useChannelInsightViewModel } from '../view-model/use-channel-insight-view-model'
 import {
-  adsetKey,
-  campaignKey,
   useChannelInsightPageViewModel,
   type ResultTab,
   type PivotView,
@@ -30,7 +28,9 @@ import type {
   WeekSummary,
 } from '../client'
 import {
+  adsetKey,
   aggregateMetrics,
+  campaignKey,
   emptyMetrics,
   groupByDayOfWeek,
   groupByWeek,
@@ -1524,6 +1524,8 @@ function FullListTableRow({
   onToggleOpen,
   showResultType,
   visibleFields,
+  flashing,
+  onFlashEnd,
 }: {
   row: FullListRow
   level: 0 | 1
@@ -1534,14 +1536,17 @@ function FullListTableRow({
   onToggleOpen?: () => void
   showResultType: boolean
   visibleFields: readonly MetricField[]
+  flashing: boolean
+  onFlashEnd: () => void
 }) {
   return (
     <tr
       data-select-key={row.selectKey}
       className={`channel-insight__full-list-row--level${level}${
         onToggleOpen ? ' channel-insight__table-row--clickable' : ''
-      }`}
+      }${flashing ? ' channel-insight__full-list-row--flash' : ''}`}
       onClick={onToggleOpen}
+      onAnimationEnd={flashing ? onFlashEnd : undefined}
     >
       <td>
         <span
@@ -1616,6 +1621,8 @@ function FullListTable({
   onToggleSelect,
   expanded,
   onToggleExpanded,
+  flashKey,
+  onFlashEnd,
 }: {
   rows: readonly FullListRow[]
   headLabel: string
@@ -1625,6 +1632,9 @@ function FullListTable({
   /** 펼친 캠페인(row.key) — 위 요약 카드도 바꾸므로 밖에서 받는다. */
   expanded: ReadonlySet<string>
   onToggleExpanded: (key: string) => void
+  /** 위 요약 카드에서 누른 줄 — 잠깐 반짝인다. */
+  flashKey: string | null
+  onFlashEnd: () => void
 }) {
   const {
     sort,
@@ -1771,6 +1781,8 @@ function FullListTable({
                       }
                       showResultType={showResultType}
                       visibleFields={visibleFields}
+                      flashing={flashKey === row.selectKey}
+                      onFlashEnd={onFlashEnd}
                     />
                     {open &&
                       children.map((child) => (
@@ -1782,6 +1794,8 @@ function FullListTable({
                           onToggleSelect={onToggleSelect}
                           showResultType={showResultType}
                           visibleFields={visibleFields}
+                          flashing={flashKey === child.selectKey}
+                          onFlashEnd={onFlashEnd}
                         />
                       ))}
                   </Fragment>
@@ -1828,6 +1842,8 @@ export const ChannelInsight = () => {
     selectedGroups,
     expandedCampaigns,
     campaignHighlights,
+    highlightLevel,
+    flashKey,
     metricMode,
     selectedMetricKeys,
     showUnit,
@@ -1846,7 +1862,9 @@ export const ChannelInsight = () => {
     setResultTab,
     toggleSelected,
     toggleExpandedCampaign,
-    focusAdset,
+    setHighlightLevel,
+    focusHighlight,
+    clearFlash,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,
@@ -1961,7 +1979,9 @@ export const ChannelInsight = () => {
             <TabLoadingOverlay loading={loading}>
               <CampaignHighlightCards
                 highlights={campaignHighlights}
-                onFocus={focusAdset}
+                level={highlightLevel}
+                onLevelChange={setHighlightLevel}
+                onFocus={focusHighlight}
               />
               <section className="channel-insight__section">
                 <h3 className="channel-insight__section-title">
@@ -1989,6 +2009,8 @@ export const ChannelInsight = () => {
                   onToggleSelect={toggleSelected}
                   expanded={expandedCampaigns}
                   onToggleExpanded={toggleExpandedCampaign}
+                  flashKey={flashKey}
+                  onFlashEnd={clearFlash}
                 />
               </section>
               <PivotSummary
