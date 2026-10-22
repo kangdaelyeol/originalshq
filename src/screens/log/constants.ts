@@ -26,6 +26,15 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     timeoutSeconds: 540,
   },
   {
+    id: 'ga-events',
+    label: 'GA4 이벤트 수집',
+    description:
+      'GA ClientId가 적힌 상담의 GA4 이벤트를 BigQuery에서 모아 저장합니다(오기입 추적). Monday 동기화 직후에 돕니다.',
+    codebase: 'xtool',
+    functionName: 'syncMondayBoardsScheduled',
+    timeoutSeconds: 540,
+  },
+  {
     id: 'cafe24-orders',
     label: 'Cafe24 주문',
     description: '최근 30일 주문·환불을 다시 읽어 저장합니다.',

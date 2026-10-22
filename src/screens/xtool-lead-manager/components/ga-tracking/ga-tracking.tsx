@@ -28,10 +28,6 @@ const formatTime = (ms: number | null): string => {
   return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, 19)}`
 }
 
-/** "20261021" → "2026-10-21" */
-const formatYmd = (ymd: string) =>
-  `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`
-
 /** GA ClientId를 짧게 — 앞 4자리…뒤 4자리. */
 const shortClientId = (id: string) =>
   id.length > 12 ? `${id.slice(0, 4)}…${id.slice(-4)}` : id
@@ -196,9 +192,10 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
     misentryCount,
     matchedCount,
     openItemId,
-    range,
-    bytesProcessed,
-    ga4Error,
+    collectedAt,
+    lastResult,
+    collectError,
+    collecting,
   } = state
   const openRow =
     rows.find((row) => row.consultation.itemId === openItemId) ?? null
@@ -228,9 +225,10 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
           <button
             type="button"
             className="stats_reset"
-            onClick={() => void actions.reload()}
+            disabled={collecting}
+            onClick={() => void actions.collectNow()}
           >
-            다시 조회
+            {collecting ? '수집 중…' : '지금 수집'}
           </button>
         </div>
       </div>
@@ -250,15 +248,18 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
               <p className="stats_desc">
                 상담 보드의 GA ClientId와 GA4 BigQuery의 사용자 id가 같은
                 이벤트를 모았습니다. 줄을 누르면 그 사람의 이벤트가 시간순으로
-                펼쳐집니다.
-                {range &&
-                  ` 조회 범위 ${formatYmd(range.fromDate)} ~ ${formatYmd(range.toDate)}`}
-                {bytesProcessed > 0 &&
-                  ` · 읽은 데이터 ${(bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
+                모달에 뜹니다. 이벤트는 Monday 동기화(매일 09·11·13·15·17·22시)
+                직후 자동으로 수집되고, GA4 내보내기가 일별이라 당일 이벤트는
+                다음 날 들어옵니다.
+                {collectedAt
+                  ? ` 마지막 수집 ${formatTime(collectedAt)}`
+                  : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
+                {lastResult &&
+                  ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
               </p>
-              {ga4Error && (
+              {collectError && (
                 <p className="ga_tracking_error">
-                  GA4 이벤트를 불러오지 못했습니다 — {ga4Error}
+                  GA4 이벤트 수집에 실패했습니다 — {collectError}
                 </p>
               )}
               {rows.length === 0 ? (

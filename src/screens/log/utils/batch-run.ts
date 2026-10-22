@@ -198,6 +198,16 @@ export const summarizeRun = (run: BatchRun): string => {
       return `저장 ${num(result.inserted)}줄 · 삭제 ${num(result.deleted)}줄`
     case 'cafe24-orders':
       return `주문 ${num(result.upsertedOrders)} · 환불 ${num(result.upsertedRefunds)} · 고객 ${num(result.upsertedOrderCustomers)}`
+    case 'ga-events':
+      return [
+        `대상 id ${num(result.clientIds)}개 (새 ${num(result.newClientIds)})`,
+        `갱신 ${num(result.writtenDocs)}명 · 이벤트 ${num(result.storedEvents)}건`,
+        `읽은 데이터 ${
+          typeof result.bytesProcessed === 'number'
+            ? `${(result.bytesProcessed / 1024 ** 2).toFixed(1)}MB`
+            : '-'
+        }`,
+      ].join(' · ')
     case 'google-insights': {
       const campaign = result.campaignResult as Record<string, unknown>
       const adGroup = result.adGroupResult as Record<string, unknown>

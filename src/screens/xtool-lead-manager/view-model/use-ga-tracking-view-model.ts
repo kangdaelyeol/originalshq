@@ -20,6 +20,9 @@ export const useGaTrackingViewModel = (active: boolean) => {
   const [data, setData] = useState<MondayGaTracking | null>(null)
   const [filter, setFilter] = useState<GaTrackingFilter>('misentry')
   const [openItemId, setOpenItemId] = useState<string | null>(null)
+  // "지금 수집" 진행 중인지, 실패했으면 그 이유.
+  const [collecting, setCollecting] = useState(false)
+  const [collectError, setCollectError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -39,6 +42,19 @@ export const useGaTrackingViewModel = (active: boolean) => {
       await load()
     })()
   }, [active, status, load])
+
+  /** GA4 이벤트를 지금 바로 수집하고, 끝나면 다시 불러온다. */
+  const collectNow = useCallback(async () => {
+    setCollecting(true)
+    setCollectError(null)
+    const res = await mondayClient.syncGaEvents()
+    setCollecting(false)
+    if (!res.ok) {
+      setCollectError(res.error)
+      return
+    }
+    await load()
+  }, [load])
 
   // 상세(모달)를 여닫는 함수 — 모달이 Esc 리스너를 다시 붙이지 않도록 고정한다.
   const openRow = useCallback((itemId: string) => setOpenItemId(itemId), [])
@@ -68,9 +84,11 @@ export const useGaTrackingViewModel = (active: boolean) => {
       misentryCount: allRows.filter((row) => row.consultation.misentry).length,
       matchedCount: rows.filter((row) => row.events.length > 0).length,
       openItemId,
-      range: data?.range ?? null,
-      bytesProcessed: data?.bytesProcessed ?? 0,
-      ga4Error: data?.ga4Error ?? null,
+      collectedAt: data?.collectedAt ?? null,
+      lastResult: data?.lastResult ?? null,
+      // 탭에서 누른 수집이 실패했거나, 마지막 예약 수집이 실패한 이유.
+      collectError: collectError ?? data?.lastError ?? null,
+      collecting,
       syncedAt: data?.syncedAt ?? null,
     },
     actions: {
@@ -78,6 +96,7 @@ export const useGaTrackingViewModel = (active: boolean) => {
       reload: load,
       openRow,
       closeRow,
+      collectNow,
     },
   }
 }

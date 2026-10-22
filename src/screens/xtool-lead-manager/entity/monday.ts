@@ -340,14 +340,27 @@ export interface Ga4Event {
   city: string | null
 }
 
+/** GA4 이벤트 수집(배치) 한 번의 결과 — functions-xtool/src/ga-sync.ts. */
+export interface GaSyncResult {
+  clientIds: number
+  newClientIds: number
+  writtenDocs: number
+  storedEvents: number
+  bytesProcessed: number
+  /** 다시 읽은 최근 날짜 범위(YYYYMMDD). */
+  refreshFrom: string
+  refreshTo: string
+}
+
 export interface MondayGaTracking {
   consultations: MondayGaConsultation[]
+  /** 배치가 모아 둔 이벤트(gaEvents). */
   events: Ga4Event[]
-  /** 조회한 GA4 테이블 범위(YYYYMMDD). */
-  range: { fromDate: string; toDate: string }
-  bytesProcessed: number
-  /** GA4 조회 실패 이유(권한 등) — 성공이면 null. */
-  ga4Error: string | null
   syncedAt: number | null
+  /** 마지막으로 GA4 이벤트를 수집한 시각 — 아직 없으면 null. */
+  collectedAt: number | null
+  lastResult: GaSyncResult | null
+  /** 마지막 수집 뒤에 실패한 적이 있으면 그 이유. */
+  lastError: string | null
   fetchedAt: number
 }

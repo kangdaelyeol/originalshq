@@ -8,7 +8,7 @@ import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
 import { ConsultationRecord, IntakeRecord, Lead, PurchaseRecord } from './types'
 import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from './meta'
-import { fetchGa4Events, type Ga4Event } from './ga4-bigquery'
+import { readGaTracking, saveGaSyncError, syncGaEvents } from './ga-sync'
 import {
   listUsageSegments,
   parseUsageSegments,
@@ -19,7 +19,6 @@ import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
   getAttributionRows,
-  getGaConsultations,
   getCustomer,
   getDailyInflow,
   getDailySales,
@@ -1811,20 +1810,12 @@ export const getMondayAttribution = onRequest(
 )
 
 // ────────────────────────────────
-// getMondayGaTracking — "오기입 추적" 탭. GA ClientId가 적힌 상담 기록과, 그
-// id들의 GA4 이벤트(BigQuery)를 함께 준다. GA4 조회가 실패해도(권한 등) 상담
-// 목록은 그대로 주고 실패 이유를 ga4Error에 담는다.
+// getMondayGaTracking — "오기입 추적" 탭. GA ClientId가 적힌 상담과, 배치가
+// 모아 둔 그 id들의 GA4 이벤트(gaEvents)를 준다. BigQuery는 부르지 않는다 —
+// 수집은 syncGaEvents(Monday 예약 동기화 직후, 또는 syncMondayGaEvents)가 한다.
 // ────────────────────────────────
-
-// GA4 BigQuery 내보내기를 시작한 날 — 이보다 앞 날짜는 테이블이 없다.
-const GA4_EXPORT_START = '20260908'
-// 상담 접수일보다 이만큼 앞 이벤트부터 본다(문의 전에 사이트를 둘러본 기록).
-const GA_LOOKBACK_DAYS = 30
-
-const yyyymmdd = (iso: string) => iso.replace(/-/g, '')
-
 export const getMondayGaTracking = onRequest(
-  { memory: '512MiB', timeoutSeconds: 120 },
+  { memory: '512MiB' },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -1832,51 +1823,40 @@ export const getMondayGaTracking = onRequest(
           response.status(405).send({ error: 'Method Not Allowed' })
           return
         }
-        const { rows, syncedAt } = await getGaConsultations(db)
-        const clientIds = [...new Set(rows.map((row) => row.gaClientId))]
-        const today = new Date(Date.now() + 9 * 3_600_000)
-          .toISOString()
-          .slice(0, 10)
-        const earliest =
-          rows
-            .map((row) => row.receivedAt ?? row.createdAt?.slice(0, 10))
-            .filter((date): date is string => Boolean(date))
-            .sort()[0] ?? today
-        const lookback = new Date(
-          Date.parse(earliest) - GA_LOOKBACK_DAYS * 86_400_000,
-        )
-          .toISOString()
-          .slice(0, 10)
-        const fromDate =
-          yyyymmdd(lookback) < GA4_EXPORT_START
-            ? GA4_EXPORT_START
-            : yyyymmdd(lookback)
-        const toDate = yyyymmdd(today)
-
-        let events: Ga4Event[] = []
-        let bytesProcessed = 0
-        let ga4Error: string | null = null
-        try {
-          const result = await fetchGa4Events(clientIds, fromDate, toDate)
-          events = result.events
-          bytesProcessed = result.bytesProcessed
-        } catch (error) {
-          logger.error('GA4 BigQuery 조회 실패:', error)
-          ga4Error = error instanceof Error ? error.message : String(error)
-        }
-
-        response.status(200).send({
-          consultations: rows,
-          events,
-          range: { fromDate, toDate },
-          bytesProcessed,
-          ga4Error,
-          syncedAt,
-          fetchedAt: Date.now(),
-        })
+        response.status(200).send(await readGaTracking(db))
       } catch (error) {
         logger.error('getMondayGaTracking 처리 실패:', error)
         response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// syncMondayGaEvents — GA4 이벤트 수집을 지금 바로 한 번(탭의 "지금 수집").
+// 예약 실행과 같은 함수를 쓰고, /log에는 수동 실행으로 남는다.
+// ────────────────────────────────
+export const syncMondayGaEvents = onRequest(
+  { memory: '512MiB', timeoutSeconds: 300 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+        const result = await recordBatchRun(
+          db,
+          { job: 'ga-events', codebase: 'xtool', trigger: 'manual' },
+          () => syncGaEvents(db),
+        )
+        response.status(200).send(result)
+      } catch (error) {
+        logger.error('syncMondayGaEvents 처리 실패:', error)
+        await saveGaSyncError(db, error)
+        response.status(500).send({
+          error: error instanceof Error ? error.message : '서버 오류',
+        })
       }
     })
   },
@@ -2016,6 +1996,25 @@ export const syncMondayBoardsScheduled = onSchedule(
       )
     } catch (error) {
       logger.error('Monday 자동 동기화 실패:', error)
+    }
+
+    // 이어서 GA4 이벤트 수집 — 방금 동기화로 GA ClientId 상담 목록이 새로
+    // 저장됐으므로 그 직후에 돈다. /log에는 별도 작업(ga-events)으로 남는다.
+    try {
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'ga-events',
+          codebase: 'xtool',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+        },
+        () => syncGaEvents(db),
+      )
+      logger.info('GA4 이벤트 수집 완료:', result)
+    } catch (error) {
+      logger.error('GA4 이벤트 수집 실패:', error)
+      await saveGaSyncError(db, error)
     }
   },
 )

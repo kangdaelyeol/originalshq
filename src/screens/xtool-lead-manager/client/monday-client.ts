@@ -5,6 +5,7 @@ import type {
   MondayDailyInflow,
   MondayDailySale,
   MondayFollowUp,
+  GaSyncResult,
   MondayGaTracking,
   MondayKpiFacts,
   MondayMissingPhoneItem,
@@ -87,4 +88,32 @@ export const mondayClient = {
       'getMondayGaTracking',
       '오기입 추적 데이터를 불러오지 못했습니다',
     ),
+  /** GA4 이벤트를 지금 바로 한 번 수집한다(오기입 추적 탭의 "지금 수집"). */
+  syncGaEvents: async (): Promise<ClientResponse<GaSyncResult>> => {
+    try {
+      const response = await fetch(`${API_BASE}/syncMondayGaEvents`, {
+        method: 'POST',
+      })
+      const body = (await response.json().catch(() => ({}))) as
+        GaSyncResult | { error?: string }
+      if (!response.ok) {
+        return {
+          ok: false,
+          error:
+            ('error' in body && body.error) ||
+            'GA4 이벤트를 수집하지 못했습니다',
+          status: response.status,
+        }
+      }
+      return { ok: true, data: body as GaSyncResult }
+    } catch (error) {
+      return {
+        ok: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'GA4 이벤트를 수집하지 못했습니다',
+      }
+    }
+  },
 }
