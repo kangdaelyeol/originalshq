@@ -1,8 +1,9 @@
-import type { Device } from '../types'
-
-/** 웹사이트 상담 신청을 받는 기기 — 기기마다 Monday 상담 보드가 하나씩이다.
- * 코드 값은 리드 관리자의 Device와 같다. */
+/** 웹사이트 상담 신청을 받는 보드 — 기기마다 Monday 상담 보드가 하나씩이고,
+ * 기기를 고르지 않은 문의(other)는 "기타 온라인 문의" 보드로 간다. 기기 코드는
+ * 리드 관리자의 Device와 같고, 기타만 전송 중 한글이 깨지지 않게 영문(other)을
+ * 쓴다. */
 export const INQUIRY_BOARDS = {
+  F1Ultra: { boardId: '5032080241', label: 'F1 울트라' },
   F2: { boardId: '5031196508', label: 'F2' },
   F2Ultra: { boardId: '5026295471', label: 'F2 울트라' },
   F2UltraUV: { boardId: '5026295498', label: 'F2 울트라 UV' },
@@ -11,7 +12,8 @@ export const INQUIRY_BOARDS = {
   M2: { boardId: '5031196408', label: 'M2' },
   o1: { boardId: '5031196400', label: 'O1' },
   Metalfab: { boardId: '5026295489', label: '메탈팹' },
-} as const satisfies Partial<Record<Device, { boardId: string; label: string }>>
+  other: { boardId: '5031373952', label: '기타 온라인 문의' },
+} as const satisfies Record<string, { boardId: string; label: string }>
 
 export type InquiryDevice = keyof typeof INQUIRY_BOARDS
 
@@ -26,6 +28,9 @@ export interface InquiryInput {
   phone: string
   email: string
   installment: string
+  /** 고객이 적은 문의 내용 — "기타 온라인 문의" 보드의 "고객 문의 상세 내용"
+   * 컬럼에 넣는다(기기 보드에는 그 컬럼이 없다). */
+  message: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

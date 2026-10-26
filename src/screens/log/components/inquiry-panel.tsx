@@ -68,6 +68,7 @@ const InquiryDetail = ({
       <dl className="inquiry-log__facts">
         <Fact label="이메일" value={inquiry.email} />
         <Fact label="할부상담여부" value={inquiry.installment} />
+        <Fact label="문의 내용" value={inquiry.message ?? ''} />
         <Fact label="utm_source" value={inquiry.utmSource} />
         <Fact label="utm_medium" value={inquiry.utmMedium} />
         <Fact label="utm_campaign" value={inquiry.utmCampaign} />

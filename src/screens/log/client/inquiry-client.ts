@@ -15,6 +15,8 @@ export interface Inquiry {
   phoneFormatted: string
   email: string
   installment: string
+  /** 고객이 적은 문의 내용(기타 온라인 문의). 예전 기록에는 없다. */
+  message?: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

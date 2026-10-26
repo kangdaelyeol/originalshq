@@ -90,6 +90,7 @@ export const validateInquiry = (
       phone,
       email: cleanEmpty(text(record, 'email')),
       installment: cleanEmpty(text(record, 'installment')),
+      message: cleanEmpty(text(record, 'message')),
       utmCampaign: cleanEmpty(text(record, 'utmCampaign')),
       utmMedium: cleanEmpty(text(record, 'utmMedium')),
       utmSource: cleanEmpty(text(record, 'utmSource')),
