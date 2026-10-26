@@ -638,3 +638,152 @@ $status-running: v.$color-accent;
     color: v.$color-text-muted;
   }
 }
+
+// ── 문의 접수 탭(inquiry-panel.tsx) ────────────────────────────────────
+.inquiry-log {
+  &__detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    padding: 6px 4px;
+    white-space: normal;
+
+    @media (max-width: 900px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 16px;
+    margin: 0;
+
+    div {
+      min-width: 0;
+    }
+
+    dt {
+      font-size: 11.5px;
+      color: v.$color-text-muted;
+    }
+
+    dd {
+      margin: 2px 0 0;
+      font-size: 12.5px;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__steps {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  &__step {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid v.$color-border-soft;
+    border-radius: 8px;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    a {
+      font-size: 12.5px;
+      color: v.$color-accent;
+    }
+  }
+
+  &__sms {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: v.$color-text-muted;
+    white-space: pre-wrap;
+  }
+
+  &__settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  &__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    color: v.$color-text-muted;
+
+    input,
+    textarea {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 640px;
+      padding: 8px 10px;
+      border: 1px solid v.$color-border;
+      border-radius: 6px;
+      background: v.$color-surface-raised;
+      color: v.$color-text;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    input {
+      max-width: 240px;
+    }
+
+    textarea {
+      resize: vertical;
+      line-height: 1.5;
+    }
+  }
+
+  &__preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 640px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px dashed v.$color-border;
+    border-radius: 6px;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+
+    span {
+      font-size: 11.5px;
+      color: v.$color-text-muted;
+    }
+  }
+
+  &__settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}

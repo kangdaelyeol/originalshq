@@ -15,6 +15,14 @@ import {
   saveUsageSegments,
 } from './usage'
 import { listBatchRuns, recordBatchRun } from './batch-log'
+import {
+  getInquirySettings,
+  listInquiries,
+  retryInquiryStep,
+  saveInquirySettings,
+  submitInquiry as processInquiry,
+  validateInquiry,
+} from './inquiry'
 import { GA4_CONSULTATION_EVENTS, sendGa4Event } from './ga4'
 import {
   deleteBoard,
@@ -75,6 +83,9 @@ const metaAccessToken = defineSecret('META_ACCESS_TOKEN')
 const ga4MeasurementId = defineSecret('GA4_MEASUREMENT_ID')
 const ga4ApiSecret = defineSecret('GA4_API_SECRET')
 const mondayApiKey = defineSecret('MONDAY_API_KEY')
+// 상담 신청 접수 안내 문자(SOLAPI).
+const solapiApiKey = defineSecret('SOLAPI_API_KEY')
+const solapiApiSecret = defineSecret('SOLAPI_API_SECRET')
 
 // ────────────────────────────────
 // getAllLeads
@@ -2018,3 +2029,124 @@ export const syncMondayBoardsScheduled = onSchedule(
     }
   },
 )
+
+// ────────────────────────────────
+// 웹사이트 상담 신청 — 예전 Zapier 자동화(Monday 보드 등록 + 접수 안내 문자)를
+// 대신한다(inquiry/index.ts). 폼이 브라우저에서 바로 부른다(그래야 고객의
+// IP·브라우저 정보가 잡힌다).
+// ────────────────────────────────
+const inquirySecrets = () => ({
+  mondayApiKey: mondayApiKey.value(),
+  solapiApiKey: solapiApiKey.value(),
+  solapiApiSecret: solapiApiSecret.value(),
+})
+
+export const submitInquiry = onRequest(
+  { secrets: [mondayApiKey, solapiApiKey, solapiApiSecret] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+        const validation = validateInquiry(request.body)
+        if (!validation.ok) {
+          response.status(400).send({ error: validation.error })
+          return
+        }
+        const ip =
+          (request.headers['x-forwarded-for'] as string)
+            ?.split(',')[0]
+            ?.trim() ||
+          request.ip ||
+          ''
+        const { inquiry, duplicate } = await processInquiry(
+          db,
+          validation.data,
+          { ip, userAgent: request.headers['user-agent'] ?? '' },
+          inquirySecrets(),
+        )
+        // 폼에는 접수 여부만 알려 준다(내부 처리 결과는 접수 로그 화면에서).
+        response
+          .status(duplicate ? 200 : 201)
+          .send({ id: inquiry.id, duplicate })
+      } catch (error) {
+        logger.error('submitInquiry 처리 실패:', error)
+        response.status(500).send({ error: '서버 오류' })
+      }
+    })
+  },
+)
+
+// listInquiries — 접수 로그 화면. ?days=N(기본 7, 최대 90)일 안의 문의.
+export const listInquiryLogs = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'GET') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+      const days = Math.min(Math.max(Number(request.query.days) || 7, 1), 90)
+      const inquiries = await listInquiries(db, Date.now() - days * 86_400_000)
+      response.status(200).send({ inquiries, days, fetchedAt: Date.now() })
+    } catch (error) {
+      logger.error('listInquiryLogs 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
+    }
+  })
+})
+
+// retryInquiry — 실패한 단계(monday | sms)를 다시 실행. body: { id, step }
+export const retryInquiry = onRequest(
+  { secrets: [mondayApiKey, solapiApiKey, solapiApiSecret] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      try {
+        if (request.method !== 'POST') {
+          response.status(405).send({ error: 'Method Not Allowed' })
+          return
+        }
+        const { id, step } = (request.body ?? {}) as {
+          id?: unknown
+          step?: unknown
+        }
+        if (typeof id !== 'string' || (step !== 'monday' && step !== 'sms')) {
+          response.status(400).send({ error: 'id와 step(monday|sms)이 필요합니다' })
+          return
+        }
+        const inquiry = await retryInquiryStep(db, id, step, inquirySecrets())
+        response.status(200).send({ inquiry })
+      } catch (error) {
+        logger.error('retryInquiry 처리 실패:', error)
+        response.status(400).send({
+          error: error instanceof Error ? error.message : '서버 오류',
+        })
+      }
+    })
+  },
+)
+
+// inquirySettings — 문자 발송 설정. GET은 조회, POST는 저장
+// (body: { smsEnabled, senderNumber, template }).
+export const inquirySettings = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method === 'GET') {
+        response.status(200).send({ settings: await getInquirySettings(db) })
+        return
+      }
+      if (request.method === 'POST') {
+        const settings = await saveInquirySettings(db, request.body)
+        response.status(200).send({ settings })
+        return
+      }
+      response.status(405).send({ error: 'Method Not Allowed' })
+    } catch (error) {
+      logger.error('inquirySettings 처리 실패:', error)
+      response.status(400).send({
+        error: error instanceof Error ? error.message : '서버 오류',
+      })
+    }
+  })
+})
