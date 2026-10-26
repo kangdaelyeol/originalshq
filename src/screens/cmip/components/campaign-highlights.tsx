@@ -34,7 +34,7 @@ const GROUPS: {
     ],
   },
   {
-    title: '클릭 단가',
+    title: 'CPC',
     desc: () => '전체 매체 · 클릭 50회 이상',
     cards: [
       { key: 'cpcLow', title: '낮은 TOP 5' },

@@ -113,6 +113,13 @@ export const splitNameForMeta = (
 
 type MetaEventName = 'Contact' | 'Purchase'
 
+/** website 이벤트의 event_source_url — Meta가 이벤트가 어느 사이트에서 났는지
+ * (도메인 확인·웹 전환 위치) 보는 값이라, 빠지면 이벤트 관리자에 "누락" 경고가
+ * 뜨고 기여·최적화에 덜 쓰인다. 상담·구매 이벤트는 CS가 등록할 때 서버에서
+ * 보내 특정 페이지와 묶이지 않으므로 사이트 대표 주소를 고정으로 쓴다(고객
+ * 연결은 fbc/fbp·해시 값이 한다). */
+const EVENT_SOURCE_URL = 'https://www.xtool.co.kr/'
+
 type SendMetaEventParams = {
   pixelId: string
   accessToken: string
@@ -155,6 +162,10 @@ export const sendMetaEvent = async ({
         event_name: eventName,
         event_time: eventTime,
         action_source: actionSource,
+        // physical_store(7일 지난 이벤트)는 웹 이벤트가 아니라 넣지 않는다.
+        ...(actionSource === 'website'
+          ? { event_source_url: EVENT_SOURCE_URL }
+          : {}),
         ...(eventId ? { event_id: eventId } : {}),
         ...(customData ? { custom_data: customData } : {}),
         user_data: {
