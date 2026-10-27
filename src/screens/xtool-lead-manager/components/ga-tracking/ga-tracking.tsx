@@ -2,7 +2,8 @@ import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/ga-tracking.scss'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
+import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import {
   LoadingNotice,
   SkeletonRows,
@@ -121,19 +122,7 @@ const TrackingModal = ({
   const closeRef = useRef<HTMLButtonElement>(null)
   const { consultation } = row
 
-  useEffect(() => {
-    // 모달이 떠 있는 동안 뒤 화면은 스크롤되지 않게 하고, 포커스를 모달로.
-    document.body.style.overflow = 'hidden'
-    closeRef.current?.focus()
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = ''
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [onClose])
+  useModal(onClose, closeRef)
 
   const facts: [string, string][] = [
     ['접수일', consultation.receivedAt ?? '-'],

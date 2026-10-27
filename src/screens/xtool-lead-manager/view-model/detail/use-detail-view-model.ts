@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import { getLeadState, type Lead } from '@/screens/xtool-lead-manager/entity'
 
 const byLatest = <T extends { at: number }>(records: readonly T[] = []): T[] =>
@@ -11,20 +11,7 @@ const byLatest = <T extends { at: number }>(records: readonly T[] = []): T[] =>
  * 전에 필요한 파생값(상태, 최신순으로 정렬한 접수/상담/구매 이력)을 다룬다.
  */
 export const useDetailViewModel = (lead: Lead, onClose: () => void) => {
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  useModal(onClose)
 
   return {
     state: {

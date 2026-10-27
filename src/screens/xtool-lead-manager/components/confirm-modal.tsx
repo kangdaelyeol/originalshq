@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import {
   ConfirmVariant,
   type RegisterFormValues,
@@ -60,12 +61,10 @@ export const ConfirmModal = ({
   const content = VARIANT_CONTENT[variant]
   const isRegister = variant !== ConfirmVariant.DELETE
 
-  useEffect(() => {
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [])
+  // 저장 중에는 Esc로 닫지 않는다.
+  useModal(() => {
+    if (!isSubmitting) onCancel()
+  })
 
   const handleConfirm = useCallback(async () => {
     if (isSubmitting) return
@@ -81,7 +80,6 @@ export const ConfirmModal = ({
     const handleKeyDown = async (e: KeyboardEvent) => {
       // 등록 폼의 입력창에 포커스가 있을 때 Enter로 바로 확정되면 입력을
       // 마치기도 전에 등록되기 쉬우므로, 등록 폼에서는 Enter 단축키를 끈다.
-      if (e.key === 'Escape' && !isSubmitting) onCancel()
       if (e.key === 'Enter' && !isSubmitting && !isRegister)
         await handleConfirm()
     }
