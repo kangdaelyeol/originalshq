@@ -344,3 +344,15 @@ export const listInquiries = async (
     .get()
   return snapshot.docs.map((doc) => doc.data() as Inquiry)
 }
+
+/** 접수 기록을 지운다(접수 로그 화면의 선택 삭제). 기록만 지우고, 이미 만든
+ * Monday 아이템이나 보낸 문자는 그대로다. 한 번에 최대 500건. */
+export const deleteInquiries = async (
+  db: Firestore,
+  ids: string[],
+): Promise<number> => {
+  const batch = db.batch()
+  for (const id of ids) batch.delete(db.collection(INQUIRIES).doc(id))
+  await batch.commit()
+  return ids.length
+}

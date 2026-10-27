@@ -1,5 +1,9 @@
 import { Fragment } from 'react'
-import type { Inquiry, InquiryStepStatus } from '../client/inquiry-client'
+import {
+  INQUIRY_DEVICES,
+  type Inquiry,
+  type InquiryStepStatus,
+} from '../client/inquiry-client'
 import { formatAgo, formatDateTime } from '../utils/batch-run'
 import {
   INQUIRY_PERIOD_OPTIONS,
@@ -9,6 +13,7 @@ import {
   useInquiryLogViewModel,
   type InquiryFilter,
 } from '../view-model/use-inquiry-log-view-model'
+import { DeviceSelect } from './device-select'
 
 const MONDAY_ITEM_URL = (boardId: string, itemId: string) =>
   `https://cyankorea-company.monday.com/boards/${boardId}/pulses/${itemId}`
@@ -149,6 +154,12 @@ export function InquiryPanel() {
   const {
     days,
     filter,
+    search,
+    device,
+    deviceCounts,
+    selected,
+    visibleSelected,
+    deleting,
     rows,
     status,
     error,
@@ -164,6 +175,17 @@ export function InquiryPanel() {
     saving,
     settingsMessage,
   } = state
+  const allVisibleSelected = rows.length > 0 && visibleSelected === rows.length
+  const confirmDelete = () => {
+    if (
+      window.confirm(
+        `선택한 ${selected.size}건의 접수 기록을 지울까요?\n` +
+          '지운 기록은 되돌릴 수 없습니다. Monday 아이템과 이미 보낸 문자는 지워지지 않습니다.',
+      )
+    ) {
+      void actions.deleteSelected()
+    }
+  }
   const preview = draft ? previewTemplate(draft.template) : ''
   const bytes = smsBytes(preview)
 
@@ -340,19 +362,87 @@ export function InquiryPanel() {
       </section>
 
       <section className="batch-log__card">
+        <div className="inquiry-log__toolbar">
+          <label className="inquiry-log__search">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <circle
+                cx="9"
+                cy="9"
+                r="5.5"
+                stroke="currentColor"
+                strokeWidth="1.6"
+              />
+              <path
+                d="m13.5 13.5 3 3"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+            <input
+              type="search"
+              placeholder="고객명 · 전화번호 검색"
+              aria-label="고객명 또는 전화번호로 검색"
+              value={search}
+              onChange={(event) => actions.changeSearch(event.target.value)}
+            />
+          </label>
+          <DeviceSelect
+            value={device}
+            options={INQUIRY_DEVICES.map((each) => ({
+              value: each.device,
+              label: each.label,
+              count: deviceCounts.get(each.device) ?? 0,
+            }))}
+            onChange={actions.changeDevice}
+          />
+          <span className="batch-log__muted inquiry-log__count">
+            {rows.length.toLocaleString('ko-KR')}건
+          </span>
+          {selected.size > 0 && (
+            <div className="inquiry-log__bulk">
+              <span>{selected.size}건 선택</span>
+              <button
+                type="button"
+                className="inquiry-log__delete"
+                disabled={deleting}
+                onClick={confirmDelete}
+              >
+                {deleting ? '지우는 중…' : '선택 삭제'}
+              </button>
+            </div>
+          )}
+        </div>
         {rows.length === 0 ? (
           <p className="batch-log__empty">
             {status === 'loading'
               ? '불러오는 중…'
-              : filter === 'problem'
-                ? '확인이 필요한 신청이 없습니다.'
-                : '이 기간에 들어온 상담 신청이 없습니다.'}
+              : search || device
+                ? '검색 조건에 맞는 신청이 없습니다.'
+                : filter === 'problem'
+                  ? '확인이 필요한 신청이 없습니다.'
+                  : '이 기간에 들어온 상담 신청이 없습니다.'}
           </p>
         ) : (
           <div className="batch-log__table-scroll">
             <table className="batch-log__table">
               <thead>
                 <tr>
+                  <th className="inquiry-log__check-cell">
+                    <input
+                      type="checkbox"
+                      className="inquiry-log__check"
+                      aria-label="보이는 기록 전체 선택"
+                      checked={allVisibleSelected}
+                      ref={(el) => {
+                        if (el) {
+                          el.indeterminate =
+                            visibleSelected > 0 && !allVisibleSelected
+                        }
+                      }}
+                      onChange={actions.toggleSelectAll}
+                    />
+                  </th>
                   <th>접수 시각</th>
                   <th>기기</th>
                   <th>고객명</th>
@@ -372,6 +462,18 @@ export function InquiryPanel() {
                         className={`batch-log__row${open ? ' is-open' : ''}`}
                         onClick={() => actions.toggleOpen(inquiry.id)}
                       >
+                        <td
+                          className="inquiry-log__check-cell"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            className="inquiry-log__check"
+                            aria-label={`${inquiry.name || inquiry.phoneFormatted} 선택`}
+                            checked={selected.has(inquiry.id)}
+                            onChange={() => actions.toggleSelect(inquiry.id)}
+                          />
+                        </td>
                         <td>{formatDateTime(inquiry.receivedAt)}</td>
                         <td>{inquiry.boardName}</td>
                         <td>{inquiry.name || '-'}</td>
@@ -393,7 +495,7 @@ export function InquiryPanel() {
                       </tr>
                       {open && (
                         <tr className="batch-log__detail-row">
-                          <td colSpan={8}>
+                          <td colSpan={9}>
                             <InquiryDetail
                               inquiry={inquiry}
                               retrying={retrying}

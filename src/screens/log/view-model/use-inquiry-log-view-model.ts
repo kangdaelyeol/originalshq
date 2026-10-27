@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  deleteInquiries,
   getInquiries,
   getInquirySettings,
   retryInquiry,
@@ -37,6 +38,16 @@ export const previewTemplate = (template: string) =>
 const isProblem = (inquiry: Inquiry) =>
   inquiry.monday.status !== 'success' || inquiry.sms.status === 'failed'
 
+/** 검색 — 고객명에 그대로 들어 있거나, 숫자만 비교해 번호에 들어 있으면
+ * 맞는다(010-1234-5678을 "1234"나 "01012345678"로 찾을 수 있게). */
+const matchesSearch = (inquiry: Inquiry, query: string) => {
+  const text = query.trim().toLowerCase()
+  if (!text) return true
+  if (inquiry.name.toLowerCase().includes(text)) return true
+  const digits = text.replace(/\D/g, '')
+  return digits.length >= 2 && inquiry.phone.replace(/\D/g, '').includes(digits)
+}
+
 /**
  * /log의 "문의 접수" 탭 — 웹사이트 상담 신청(inquiries)이 Monday 보드에
  * 등록되고 접수 안내 문자가 나갔는지 확인한다. 실패한 단계는 다시 실행하고,
@@ -45,6 +56,12 @@ const isProblem = (inquiry: Inquiry) =>
 export const useInquiryLogViewModel = () => {
   const [days, setDays] = useState(7)
   const [filter, setFilter] = useState<InquiryFilter>('all')
+  const [search, setSearch] = useState('')
+  // 기기 필터 — null이면 전체.
+  const [device, setDevice] = useState<string | null>(null)
+  // 체크한 접수 기록(id) — 한 번에 지운다.
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
+  const [deleting, setDeleting] = useState(false)
   const [inquiries, setInquiries] = useState<Inquiry[]>([])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +90,9 @@ export const useInquiryLogViewModel = () => {
       return
     }
     setInquiries(res.data.inquiries)
+    // 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
+    const ids = new Set(res.data.inquiries.map((each) => each.id))
+    setSelected((prev) => new Set([...prev].filter((id) => ids.has(id))))
     setFetchedAt(res.data.fetchedAt)
     setError(null)
     setStatus('ready')
@@ -140,9 +160,66 @@ export const useInquiryLogViewModel = () => {
   )
 
   const rows = useMemo(
-    () => (filter === 'problem' ? inquiries.filter(isProblem) : inquiries),
-    [inquiries, filter],
+    () =>
+      inquiries.filter(
+        (each) =>
+          (filter === 'all' || isProblem(each)) &&
+          (device === null || each.device === device) &&
+          matchesSearch(each, search),
+      ),
+    [inquiries, filter, device, search],
   )
+
+  // 기기별 건수(기간 안 전체 기준) — 기기 필터 목록에 같이 보여 준다.
+  const deviceCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const each of inquiries) {
+      counts.set(each.device, (counts.get(each.device) ?? 0) + 1)
+    }
+    return counts
+  }, [inquiries])
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  /** 지금 보이는 줄 전체를 선택/해제 — 전부 선택돼 있으면 해제한다. */
+  const toggleSelectAll = useCallback(() => {
+    setSelected((prev) => {
+      const visible = rows.map((each) => each.id)
+      const allOn = visible.length > 0 && visible.every((id) => prev.has(id))
+      const next = new Set(prev)
+      for (const id of visible) {
+        if (allOn) next.delete(id)
+        else next.add(id)
+      }
+      return next
+    })
+  }, [rows])
+
+  const deleteSelected = useCallback(async () => {
+    const ids = [...selected]
+    if (ids.length === 0) return
+    setDeleting(true)
+    setActionError(null)
+    const res = await deleteInquiries(ids)
+    setDeleting(false)
+    if (!res.ok) {
+      setActionError(res.error)
+      return
+    }
+    const removed = new Set(ids)
+    setInquiries((prev) => prev.filter((each) => !removed.has(each.id)))
+    setSelected(new Set())
+    setOpenId((prev) => (prev && removed.has(prev) ? null : prev))
+  }, [selected])
+
+  const visibleSelected = rows.filter((each) => selected.has(each.id)).length
 
   const dirty =
     !!draft &&
@@ -155,6 +232,12 @@ export const useInquiryLogViewModel = () => {
     state: {
       days,
       filter,
+      search,
+      device,
+      deviceCounts,
+      selected,
+      visibleSelected,
+      deleting,
       rows,
       status,
       error,
@@ -174,6 +257,11 @@ export const useInquiryLogViewModel = () => {
     actions: {
       changeDays: setDays,
       changeFilter: setFilter,
+      changeSearch: setSearch,
+      changeDevice: setDevice,
+      toggleSelect,
+      toggleSelectAll,
+      deleteSelected,
       reload: load,
       toggleOpen: (id: string) =>
         setOpenId((prev) => (prev === id ? null : id)),

@@ -16,6 +16,7 @@ import {
 } from './usage'
 import { listBatchRuns, recordBatchRun } from './batch-log'
 import {
+  deleteInquiries,
   getInquirySettings,
   listInquiries,
   retryInquiryStep,
@@ -2147,6 +2148,36 @@ export const inquirySettings = onRequest((request, response) => {
       response.status(400).send({
         error: error instanceof Error ? error.message : '서버 오류',
       })
+    }
+  })
+})
+
+// deleteInquiryLogs — 접수 기록 선택 삭제. body: { ids: string[] }(최대 500).
+// Monday 아이템·보낸 문자는 지우지 않는다.
+export const deleteInquiryLogs = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    try {
+      if (request.method !== 'POST') {
+        response.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+      const { ids } = (request.body ?? {}) as { ids?: unknown }
+      if (
+        !Array.isArray(ids) ||
+        ids.length === 0 ||
+        ids.length > 500 ||
+        !ids.every((id) => typeof id === 'string' && id.length > 0)
+      ) {
+        response
+          .status(400)
+          .send({ error: 'ids는 문자열 1~500개 배열이어야 합니다' })
+        return
+      }
+      const deleted = await deleteInquiries(db, ids as string[])
+      response.status(200).send({ deleted })
+    } catch (error) {
+      logger.error('deleteInquiryLogs 처리 실패:', error)
+      response.status(500).send({ error: '서버 오류' })
     }
   })
 })

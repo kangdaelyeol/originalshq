@@ -115,3 +115,26 @@ export const saveInquirySettings = (
     post(settings),
     '문자 설정을 저장하지 못했습니다',
   )
+
+/** 접수 기록을 지운다(최대 500건). Monday 아이템·보낸 문자는 그대로다. */
+export const deleteInquiries = (ids: string[]) =>
+  request<{ deleted: number }>(
+    'deleteInquiryLogs',
+    post({ ids }),
+    '접수 기록을 지우지 못했습니다',
+  )
+
+/** 기기 코드 → 보드 이름(functions-xtool/src/inquiry/types.ts의
+ * INQUIRY_BOARDS와 같은 순서·이름). 기기 필터 목록에 쓴다. */
+export const INQUIRY_DEVICES = [
+  { device: 'F1Ultra', label: 'F1 울트라' },
+  { device: 'F2', label: 'F2' },
+  { device: 'F2Ultra', label: 'F2 울트라' },
+  { device: 'F2UltraUV', label: 'F2 울트라 UV' },
+  { device: 'P3', label: 'P3' },
+  { device: 'DTF', label: 'DTF' },
+  { device: 'M2', label: 'M2' },
+  { device: 'o1', label: 'O1' },
+  { device: 'Metalfab', label: '메탈팹' },
+  { device: 'other', label: '기타 온라인 문의' },
+] as const
