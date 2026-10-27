@@ -259,10 +259,6 @@ export function InquiryPanel() {
       <header className="batch-log__header">
         <div>
           <h2 className="batch-log__title">문의 접수</h2>
-          <p className="batch-log__muted">
-            웹사이트 상담 신청이 Monday 보드에 등록되고 접수 안내 문자가
-            나갔는지 확인합니다. 내용 수정은 Monday에서 합니다.
-          </p>
         </div>
         <div className="batch-log__controls">
           <div
