@@ -248,10 +248,16 @@ const runMonday = async (
   }
 }
 
+/** 테스트 신청 — 고객명(B2B는 회사명도)에 "테스트"나 "test"가 들어간 것.
+ * 문자 비용이 드니 자동으로는 보내지 않는다(Monday 등록은 그대로). */
+export const isTestInquiry = (inquiry: Pick<Inquiry, 'name' | 'company'>) =>
+  /테스트|test/i.test(`${inquiry.name} ${inquiry.company ?? ''}`)
+
 const runSms = async (
   inquiry: Inquiry,
   settings: InquirySettings,
   secrets: InquirySecrets,
+  { manual = false }: { manual?: boolean } = {},
 ): Promise<SmsStep> => {
   const to = normalizeDomesticPhone(inquiry.phone.replace(/\D/g, ''))
   const text = renderTemplate(settings.template, inquiry)
@@ -268,6 +274,14 @@ const runSms = async (
   }
   if (!settings.smsEnabled) {
     return { ...base, status: 'skipped', error: '문자 발송이 꺼져 있습니다' }
+  }
+  // 테스트는 접수 로그 화면에서 직접 보낼 때만 보낸다.
+  if (!manual && isTestInquiry(inquiry)) {
+    return {
+      ...base,
+      status: 'skipped',
+      error: '테스트 신청이라 자동으로 보내지 않았습니다',
+    }
   }
   if (!isMobilePhone(to)) {
     return { ...base, status: 'skipped', error: '휴대폰 번호가 아닙니다' }
@@ -375,7 +389,12 @@ export const retryInquiryStep = async (
     if (inquiry.sms.status === 'success') {
       throw new Error('이미 문자를 보낸 문의입니다')
     }
-    inquiry.sms = await runSms(inquiry, await getInquirySettings(db), secrets)
+    inquiry.sms = await runSms(
+      inquiry,
+      await getInquirySettings(db),
+      secrets,
+      { manual: true },
+    )
     await ref.update({ sms: inquiry.sms })
   }
   return inquiry

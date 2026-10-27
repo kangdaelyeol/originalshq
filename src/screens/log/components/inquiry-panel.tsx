@@ -168,7 +168,11 @@ const InquiryDetail = ({
               disabled={busy('sms')}
               onClick={() => onRetry(inquiry.id, 'sms')}
             >
-              {busy('sms') ? '보내는 중…' : '문자 다시 보내기'}
+              {busy('sms')
+                ? '보내는 중…'
+                : inquiry.sms.status === 'skipped'
+                  ? '문자 보내기'
+                  : '문자 다시 보내기'}
             </button>
           )}
         </div>
