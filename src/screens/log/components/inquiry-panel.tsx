@@ -8,7 +8,9 @@ import { formatAgo, formatDateTime } from '../utils/batch-run'
 import {
   INQUIRY_PERIOD_OPTIONS,
   TEMPLATE_TOKENS,
+  LMS_SUBJECT_MAX_BYTES,
   previewTemplate,
+  SMS_MAX_BYTES,
   smsBytes,
   useInquiryLogViewModel,
   type InquiryFilter,
@@ -57,6 +59,22 @@ const Fact = ({ label, value }: { label: string; value: string }) => (
   </div>
 )
 
+/** 시도 횟수 — 한 번에 끝났으면 보이지 않는다. */
+const Attempts = ({
+  status,
+  attempts,
+}: {
+  status: InquiryStepStatus
+  attempts?: number
+}) =>
+  attempts && attempts > 1 ? (
+    <p className="inquiry-log__attempts">
+      {status === 'success'
+        ? `${attempts}번째 시도에 성공`
+        : `${attempts}번 시도 후 실패`}
+    </p>
+  ) : null
+
 /** 펼친 줄 — 받은 값 전부와 단계별 결과, 다시 실행 버튼. */
 const InquiryDetail = ({
   inquiry,
@@ -100,6 +118,10 @@ const InquiryDetail = ({
               {inquiry.boardName} 보드에서 열기
             </a>
           )}
+          <Attempts
+            status={inquiry.monday.status}
+            attempts={inquiry.monday.attempts}
+          />
           {inquiry.monday.error && (
             <p className="batch-log__error">{inquiry.monday.error}</p>
           )}
@@ -123,9 +145,19 @@ const InquiryDetail = ({
               {inquiry.sms.from ? `${inquiry.sms.from} → ` : ''}
               {inquiry.sms.to}
               <br />
+              {inquiry.sms.subject && (
+                <>
+                  <strong>{inquiry.sms.subject}</strong>
+                  <br />
+                </>
+              )}
               {inquiry.sms.text}
             </p>
           )}
+          <Attempts
+            status={inquiry.sms.status}
+            attempts={inquiry.sms.attempts}
+          />
           {inquiry.sms.error && (
             <p className="batch-log__error">{inquiry.sms.error}</p>
           )}
@@ -190,6 +222,8 @@ export function InquiryPanel() {
   }
   const preview = draft ? previewTemplate(draft.template) : ''
   const bytes = smsBytes(preview)
+  const isLms = bytes > SMS_MAX_BYTES
+  const subjectBytes = draft ? smsBytes(draft.subject.trim()) : 0
 
   return (
     <>
@@ -286,6 +320,21 @@ export function InquiryPanel() {
             />
           </label>
           <label className="inquiry-log__field">
+            <span>
+              장문 제목 — 내용이 {SMS_MAX_BYTES}byte를 넘어 장문(LMS)으로 갈
+              때 붙습니다 · {subjectBytes}/{LMS_SUBJECT_MAX_BYTES}byte
+            </span>
+            <input
+              type="text"
+              placeholder="[엑스툴] 상담 신청 접수 안내"
+              aria-invalid={subjectBytes > LMS_SUBJECT_MAX_BYTES}
+              value={draft.subject}
+              onChange={(event) =>
+                actions.updateDraft({ subject: event.target.value })
+              }
+            />
+          </label>
+          <label className="inquiry-log__field">
             <span>문자 내용 — 쓸 수 있는 값: {TEMPLATE_TOKENS.join(' ')}</span>
             <textarea
               rows={4}
@@ -297,8 +346,12 @@ export function InquiryPanel() {
           </label>
           <p className="inquiry-log__preview">
             <span>
-              미리보기 · {bytes}byte · {bytes > 90 ? 'LMS(장문)' : 'SMS(단문)'}
+              미리보기 · {bytes}byte ·{' '}
+              {isLms ? 'LMS(장문)' : 'SMS(단문)'}
             </span>
+            {isLms && draft.subject.trim() && (
+              <strong>{draft.subject.trim()}</strong>
+            )}
             {preview}
           </p>
           <div className="inquiry-log__settings-actions">

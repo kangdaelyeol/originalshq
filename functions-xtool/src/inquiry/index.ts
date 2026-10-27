@@ -7,7 +7,13 @@ import * as logger from 'firebase-functions/logger'
 import { isMobilePhone } from '../monday/helper'
 import { normalizeDomesticPhone } from '../utils'
 import { createMondayItem } from './monday-write'
-import { sendSms } from './solapi'
+import { RetryError } from './retry'
+import {
+  LMS_SUBJECT_MAX_BYTES,
+  sendSms,
+  SMS_MAX_BYTES,
+  smsBytes,
+} from './solapi'
 import {
   INQUIRY_BOARDS,
   isInquiryDevice,
@@ -29,6 +35,7 @@ const DEFAULT_SETTINGS: InquirySettings = {
   senderNumber: '',
   template:
     '[XTOOL] {고객명}님, {기기} 상담 신청이 접수되었습니다. 담당자가 확인 후 곧 연락드리겠습니다.',
+  subject: '[엑스툴] 상담 신청 접수 안내',
   updatedAt: null,
 }
 
@@ -181,6 +188,8 @@ export const saveInquirySettings = async (
       : ''
   const template =
     typeof record.template === 'string' ? record.template.trim() : ''
+  const subject =
+    typeof record.subject === 'string' ? record.subject.trim() : ''
   if (typeof record.smsEnabled !== 'boolean') {
     throw new Error('smsEnabled must be boolean')
   }
@@ -197,10 +206,16 @@ export const saveInquirySettings = async (
   if (template.length > 1000) {
     throw new Error('문자 내용은 1,000자 이하로 입력해 주세요')
   }
+  if (smsBytes(subject) > LMS_SUBJECT_MAX_BYTES) {
+    throw new Error(
+      `장문 제목은 ${LMS_SUBJECT_MAX_BYTES}byte(한글 20자) 이하로 입력해 주세요`,
+    )
+  }
   const settings: InquirySettings = {
     smsEnabled: record.smsEnabled,
     senderNumber,
     template,
+    subject,
     updatedAt: Date.now(),
   }
   await db.doc(SETTINGS_DOC).set(settings)
@@ -212,10 +227,15 @@ export const saveInquirySettings = async (
 const runMonday = async (
   inquiry: Inquiry,
   secrets: InquirySecrets,
+  options: { checkFirst?: boolean } = {},
 ): Promise<MondayStep> => {
   try {
-    const itemId = await createMondayItem(secrets.mondayApiKey, inquiry)
-    return { status: 'success', itemId, error: null, at: Date.now() }
+    const { itemId, attempts } = await createMondayItem(
+      secrets.mondayApiKey,
+      inquiry,
+      options,
+    )
+    return { status: 'success', itemId, error: null, at: Date.now(), attempts }
   } catch (error) {
     logger.error('문의 Monday 등록 실패:', inquiry.id, error)
     return {
@@ -223,6 +243,7 @@ const runMonday = async (
       itemId: null,
       error: error instanceof Error ? error.message : String(error),
       at: Date.now(),
+      attempts: error instanceof RetryError ? error.attempts : 1,
     }
   }
 }
@@ -233,10 +254,15 @@ const runSms = async (
   secrets: InquirySecrets,
 ): Promise<SmsStep> => {
   const to = normalizeDomesticPhone(inquiry.phone.replace(/\D/g, ''))
+  const text = renderTemplate(settings.template, inquiry)
+  // 제목은 장문일 때만 — 단문에 붙이면 SOLAPI가 장문으로 바꿔 보낸다.
+  const subject =
+    smsBytes(text) > SMS_MAX_BYTES && settings.subject ? settings.subject : null
   const base = {
     to,
     from: settings.senderNumber || null,
-    text: renderTemplate(settings.template, inquiry),
+    subject,
+    text,
     messageId: null,
     at: Date.now(),
   }
@@ -247,20 +273,22 @@ const runSms = async (
     return { ...base, status: 'skipped', error: '휴대폰 번호가 아닙니다' }
   }
   try {
-    const messageId = await sendSms({
+    const { messageId, attempts } = await sendSms({
       apiKey: secrets.solapiApiKey,
       apiSecret: secrets.solapiApiSecret,
       to,
       from: settings.senderNumber,
-      text: base.text,
+      text,
+      subject: subject ?? undefined,
     })
-    return { ...base, status: 'success', messageId, error: null }
+    return { ...base, status: 'success', messageId, error: null, attempts }
   } catch (error) {
     logger.error('문의 문자 발송 실패:', inquiry.id, error)
     return {
       ...base,
       status: 'failed',
       error: error instanceof Error ? error.message : String(error),
+      attempts: error instanceof RetryError ? error.attempts : 1,
     }
   }
 }
@@ -340,7 +368,8 @@ export const retryInquiryStep = async (
     if (inquiry.monday.status === 'success') {
       throw new Error('이미 Monday에 등록된 문의입니다')
     }
-    inquiry.monday = await runMonday(inquiry, secrets)
+    // 앞선 처리가 중간에 끊겼거나 응답만 못 받았을 수 있어 먼저 확인한다.
+    inquiry.monday = await runMonday(inquiry, secrets, { checkFirst: true })
     await ref.update({ monday: inquiry.monday })
   } else {
     if (inquiry.sms.status === 'success') {

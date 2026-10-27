@@ -713,6 +713,12 @@ $status-running: v.$color-accent;
     white-space: pre-wrap;
   }
 
+  &__attempts {
+    margin: 0;
+    font-size: 12px;
+    color: v.$color-text-muted;
+  }
+
   &__settings {
     display: flex;
     flex-direction: column;
@@ -754,6 +760,15 @@ $status-running: v.$color-accent;
 
     input {
       max-width: 240px;
+    }
+
+    // 장문 제목은 한글 20자까지 들어가게 조금 넓게.
+    input:not([inputmode='numeric']) {
+      max-width: 360px;
+    }
+
+    [aria-invalid='true'] {
+      border-color: $status-failed;
     }
 
     textarea {

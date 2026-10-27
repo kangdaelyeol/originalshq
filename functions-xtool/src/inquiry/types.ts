@@ -58,6 +58,8 @@ export interface MondayStep {
   itemId: string | null
   error: string | null
   at: number | null
+  /** 마지막 실행에서 시도한 횟수(일시적인 오류는 최대 3번). */
+  attempts?: number
 }
 
 export interface SmsStep {
@@ -65,10 +67,14 @@ export interface SmsStep {
   /** 보낸 번호·내용 — 나중에 무엇을 보냈는지 확인용. */
   to: string | null
   from: string | null
+  /** 장문(LMS)으로 보낼 때 붙인 제목. */
+  subject?: string | null
   text: string | null
   messageId: string | null
   error: string | null
   at: number | null
+  /** 마지막 실행에서 시도한 횟수. */
+  attempts?: number
 }
 
 /** inquiries/{id} — 문의 1건과 처리 단계별 결과. */
@@ -94,5 +100,8 @@ export interface InquirySettings {
   senderNumber: string
   /** 문자 내용 — {고객명}·{기기}·{전화번호}를 실제 값으로 바꿔 보낸다. */
   template: string
+  /** 장문(LMS) 제목 — 내용이 90byte를 넘을 때만 붙는다. 비우면 SOLAPI가
+   * 내용 앞부분을 잘라 제목으로 쓴다. 최대 40byte. */
+  subject: string
   updatedAt: number | null
 }

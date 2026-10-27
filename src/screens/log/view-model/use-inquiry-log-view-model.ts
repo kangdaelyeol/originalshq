@@ -25,6 +25,12 @@ export const TEMPLATE_TOKENS = ['{고객명}', '{기기}', '{전화번호}'] as 
 export const smsBytes = (text: string) =>
   [...text].reduce((sum, ch) => sum + (ch.charCodeAt(0) > 127 ? 2 : 1), 0)
 
+/** 단문(SMS) 한도 — 넘으면 장문(LMS)으로 나가고 제목이 붙는다. */
+export const SMS_MAX_BYTES = 90
+
+/** 장문(LMS) 제목 한도 — 서버(inquiry/solapi.ts)와 같다. */
+export const LMS_SUBJECT_MAX_BYTES = 40
+
 /** 미리보기용 — 서버와 같은 규칙으로 예시 값을 넣는다. */
 export const previewTemplate = (template: string) =>
   template
@@ -227,7 +233,8 @@ export const useInquiryLogViewModel = () => {
     !!settings &&
     (draft.smsEnabled !== settings.smsEnabled ||
       draft.senderNumber !== settings.senderNumber ||
-      draft.template !== settings.template)
+      draft.template !== settings.template ||
+      draft.subject !== settings.subject)
 
   return {
     state: {

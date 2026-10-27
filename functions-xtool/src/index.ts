@@ -2043,7 +2043,11 @@ const inquirySecrets = () => ({
 })
 
 export const submitInquiry = onRequest(
-  { secrets: [mondayApiKey, solapiApiKey, solapiApiSecret] },
+  // 바깥 API 재시도(최대 3번 × 10초 + 대기)까지 기다릴 수 있게 넉넉히.
+  {
+    secrets: [mondayApiKey, solapiApiKey, solapiApiSecret],
+    timeoutSeconds: 120,
+  },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -2100,7 +2104,11 @@ export const listInquiryLogs = onRequest((request, response) => {
 
 // retryInquiry — 실패한 단계(monday | sms)를 다시 실행. body: { id, step }
 export const retryInquiry = onRequest(
-  { secrets: [mondayApiKey, solapiApiKey, solapiApiSecret] },
+  // 바깥 API 재시도(최대 3번 × 10초 + 대기)까지 기다릴 수 있게 넉넉히.
+  {
+    secrets: [mondayApiKey, solapiApiKey, solapiApiSecret],
+    timeoutSeconds: 120,
+  },
   (request, response) => {
     corsHandler(request, response, async () => {
       try {
@@ -2129,7 +2137,7 @@ export const retryInquiry = onRequest(
 )
 
 // inquirySettings — 문자 발송 설정. GET은 조회, POST는 저장
-// (body: { smsEnabled, senderNumber, template }).
+// (body: { smsEnabled, senderNumber, template, subject }).
 export const inquirySettings = onRequest((request, response) => {
   corsHandler(request, response, async () => {
     try {

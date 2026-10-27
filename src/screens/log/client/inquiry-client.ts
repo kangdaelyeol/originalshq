@@ -37,15 +37,19 @@ export interface Inquiry {
     itemId: string | null
     error: string | null
     at: number | null
+    /** 마지막 실행에서 시도한 횟수(일시적인 오류는 최대 3번). */
+    attempts?: number
   }
   sms: {
     status: InquiryStepStatus
     to: string | null
     from: string | null
+    subject?: string | null
     text: string | null
     messageId: string | null
     error: string | null
     at: number | null
+    attempts?: number
   }
 }
 
@@ -53,6 +57,8 @@ export interface InquirySettings {
   smsEnabled: boolean
   senderNumber: string
   template: string
+  /** 장문(LMS) 제목 — 내용이 90byte를 넘을 때만 붙는다. 최대 40byte. */
+  subject: string
   updatedAt: number | null
 }
 
