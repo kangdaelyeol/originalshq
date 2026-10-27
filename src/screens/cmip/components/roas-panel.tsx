@@ -15,7 +15,10 @@ import {
   type RoasMetrics,
   type RoasRow,
 } from '../view-model/use-roas-view-model'
-import { useRoasTrendChartViewModel } from '../view-model/use-roas-trend-chart-view-model'
+import {
+  useRoasTrendChartViewModel,
+} from '../view-model/use-roas-trend-chart-view-model'
+import { ChevronIcon, InfoIcon, SortArrows, type SortDir } from './icons'
 
 const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
   { value: RoasGrouping.DATE, label: '일별' },
@@ -347,49 +350,6 @@ const ONLINE_COLUMNS: readonly OnlineColumn[] = [
   { key: 'shipping', representative: onlineField('onlineShippingFee') },
 ]
 
-// channel-insight.tsx의 InfoIcon과 같은 모양 — roas-panel.tsx 전용으로 따로
-// 둔다(single-select-dropdown.tsx의 ChevronIcon과 같은 모듈 독립성 이유).
-function InfoIcon() {
-  return (
-    <svg
-      className="channel-insight__info-icon"
-      viewBox="0 0 16 16"
-      fill="none"
-      aria-hidden
-    >
-      <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth={1.3} />
-      <path
-        d="M8 7.2v4"
-        stroke="currentColor"
-        strokeWidth={1.3}
-        strokeLinecap="round"
-      />
-      <circle cx="8" cy="4.8" r="0.9" fill="currentColor" />
-    </svg>
-  )
-}
-
-// single-select-dropdown.tsx의 ChevronIcon과 같은 모양 — roas-panel.tsx
-// 전용으로 따로 둔다(모듈 독립성, 위 InfoIcon과 같은 이유).
-function ChevronIcon() {
-  return (
-    <svg
-      className="channel-insight__chevron"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M5 7.5 10 12.5 15 7.5"
-        stroke="currentColor"
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
-
 /** ROAS 탭의 표 섹션들(기간별 추이/오프라인 매출/카페24 온라인 매출) 제목을
  * 감싸는 접기/펼치기 버튼 — 부모(<h3 className="channel-insight__section-title">
  * 등)의 글자 스타일을 font: inherit로 그대로 물려받아서, 버튼 자체엔 텍스트
@@ -433,28 +393,6 @@ function RoasFieldLabel({ field }: { field: RoasField }) {
         </span>
       </span>
     </>
-  )
-}
-
-type SortDir = 'asc' | 'desc'
-
-/** channel-insight.tsx의 SortArrows/__sort-arrow(s) 클래스를 그대로 재사용 —
- * 이 화면도 channel-insight__* 클래스를 이미 쓰고 있어서(RoasFieldLabel의
- * __info 등) 별도 CSS 추가 없이 그대로 붙는다. */
-function SortArrows({ active, dir }: { active: boolean; dir: SortDir }) {
-  return (
-    <span className="channel-insight__sort-arrows">
-      <span
-        className={`channel-insight__sort-arrow${active && dir === 'asc' ? ' is-active' : ''}`}
-      >
-        ▲
-      </span>
-      <span
-        className={`channel-insight__sort-arrow${active && dir === 'desc' ? ' is-active' : ''}`}
-      >
-        ▼
-      </span>
-    </span>
   )
 }
 

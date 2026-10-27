@@ -2,31 +2,9 @@ import {
   useSingleSelectDropdownViewModel,
   type SingleSelectOption,
 } from '../view-model/use-single-select-dropdown-view-model'
+import { ChevronIcon } from './icons'
 
 export type { SingleSelectOption } from '../view-model/use-single-select-dropdown-view-model'
-
-// channel-insight.tsx의 ChevronIcon과 같은 모양이지만, roas-panel.tsx 등
-// channel-insight.tsx 밖에서도 이 컴포넌트를 쓸 수 있도록 따로 둔다(모듈
-// 독립성 우선 — 이 코드베이스 여러 곳이 같은 작은 조각을 각자 갖고 있는 것과
-// 같은 패턴).
-function ChevronIcon() {
-  return (
-    <svg
-      className="channel-insight__chevron"
-      viewBox="0 0 20 20"
-      fill="none"
-      aria-hidden
-    >
-      <path
-        d="M5 7.5 10 12.5 15 7.5"
-        stroke="currentColor"
-        strokeWidth={1.6}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  )
-}
 
 /** "보기 단위"(전체 요약/캠페인/adset/…), pivot 축(날짜별/요일별/주차별), adset
  * 탭의 캠페인 선택, ROAS 탭의 그룹핑 선택이 공유하는 네이티브 <select> 대체용
