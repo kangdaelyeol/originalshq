@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import {
   INQUIRY_DEVICES,
   type Inquiry,
@@ -20,7 +20,9 @@ import {
   useInquiryLogViewModel,
   type InquiryFilter,
 } from '../view-model/use-inquiry-log-view-model'
+import { useToast } from '../view-model/use-toast'
 import { DeviceSelect } from './device-select'
+import { ToastStack } from './toast'
 
 const MONDAY_ITEM_URL = (boardId: string, itemId: string) =>
   `https://cyankorea-company.monday.com/boards/${boardId}/pulses/${itemId}`
@@ -195,6 +197,23 @@ const InquiryDetail = ({
  */
 export function InquiryPanel() {
   const { state, actions } = useInquiryLogViewModel()
+  const toast = useToast()
+  const [refreshing, setRefreshing] = useState(false)
+
+  const refresh = async () => {
+    setRefreshing(true)
+    const id = toast.show('새로고침 중입니다…', 'info')
+    const error = await actions.reload()
+    setRefreshing(false)
+    if (error) toast.show(`새로고침하지 못했습니다: ${error}`, 'error', id)
+    else toast.show('최신 접수 기록을 불러왔습니다', 'success', id)
+  }
+
+  const save = async () => {
+    const error = await actions.saveSettings()
+    if (error) toast.show(`저장하지 못했습니다: ${error}`, 'error')
+    else toast.show('문자 설정을 저장했습니다', 'success')
+  }
   const {
     days,
     filter,
@@ -284,7 +303,7 @@ export function InquiryPanel() {
           </div>
           <button
             type="button"
-            className="batch-log__refresh"
+            className={`batch-log__refresh${settingsOpen ? ' is-active' : ''}`}
             onClick={actions.toggleSettings}
             aria-expanded={settingsOpen}
           >
@@ -293,7 +312,8 @@ export function InquiryPanel() {
           <button
             type="button"
             className="batch-log__refresh"
-            onClick={() => void actions.reload()}
+            disabled={refreshing}
+            onClick={() => void refresh()}
           >
             새로고침
           </button>
@@ -371,7 +391,7 @@ export function InquiryPanel() {
               type="button"
               className="batch-log__refresh"
               disabled={!dirty || saving}
-              onClick={() => void actions.saveSettings()}
+              onClick={() => void save()}
             >
               {saving ? '저장 중…' : '저장'}
             </button>
@@ -587,6 +607,7 @@ export function InquiryPanel() {
           </div>
         )}
       </section>
+      <ToastStack toasts={toast.toasts} />
     </>
   )
 }

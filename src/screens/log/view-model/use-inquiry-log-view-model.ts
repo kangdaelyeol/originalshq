@@ -88,13 +88,14 @@ export const useInquiryLogViewModel = () => {
   const [saving, setSaving] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
 
-  const load = useCallback(async () => {
+  /** 다시 받는다 — 실패하면 오류 문구, 성공하면 null(새로고침 알림용). */
+  const load = useCallback(async (): Promise<string | null> => {
     const res = await getInquiries(days)
     setNow(Date.now())
     if (!res.ok) {
       setError(res.error)
       setStatus('error')
-      return
+      return res.error
     }
     setInquiries(res.data.inquiries)
     // 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
@@ -103,6 +104,7 @@ export const useInquiryLogViewModel = () => {
     setFetchedAt(res.data.fetchedAt)
     setError(null)
     setStatus('ready')
+    return null
   }, [days])
 
   useEffect(() => {
@@ -139,19 +141,20 @@ export const useInquiryLogViewModel = () => {
     )
   }, [])
 
-  const saveSettings = useCallback(async () => {
-    if (!draft) return
+  /** 저장 — 실패하면 오류 문구, 성공하면 null(저장 알림용). */
+  const saveSettings = useCallback(async (): Promise<string | null> => {
+    if (!draft) return null
     setSaving(true)
     setSettingsMessage(null)
     const res = await saveInquirySettings(draft)
     setSaving(false)
     if (!res.ok) {
       setSettingsMessage(res.error)
-      return
+      return res.error
     }
     setSettings(res.data.settings)
     setDraft(res.data.settings)
-    setSettingsMessage('저장했습니다')
+    return null
   }, [draft])
 
   const summary = useMemo(

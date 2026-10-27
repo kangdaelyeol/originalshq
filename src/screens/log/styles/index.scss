@@ -127,6 +127,16 @@ $status-running: v.$color-accent;
     &:focus-visible {
       outline: 2px solid v.$color-accent;
     }
+    // 켜진 상태(예: 문자 설정 패널이 열려 있음).
+    &.is-active {
+      border-color: v.$color-accent;
+      background: rgba(v.$color-accent, 0.16);
+      color: v.$color-accent;
+    }
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
   }
 
   &__card {
@@ -1036,5 +1046,74 @@ $status-running: v.$color-accent;
     font-weight: 400;
     color: v.$color-text-muted;
     font-variant-numeric: tabular-nums;
+  }
+}
+
+// 화면 아래 가운데 알림 — 리드 관리자 토스트와 같은 모양(어두운 알약 +
+// 상태 점). 점 색만으로 구분하지 않도록 문구에 결과를 쓴다.
+.log-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 1px solid v.$color-border;
+    border-radius: 8px;
+    background: #181819;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    color: v.$color-text;
+    font-size: 14px;
+    animation: log-toast-in 0.18s ease-out;
+
+    &.is-info .log-toast__dot {
+      background: v.$color-accent;
+      animation: log-toast-pulse 1s ease-in-out infinite;
+    }
+    &.is-success .log-toast__dot {
+      background: $status-success;
+    }
+    &.is-error .log-toast__dot {
+      background: $status-failed;
+    }
+  }
+
+  &__dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+}
+
+@keyframes log-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes log-toast-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .log-toast__item,
+  .log-toast__item.is-info .log-toast__dot {
+    animation: none;
   }
 }
