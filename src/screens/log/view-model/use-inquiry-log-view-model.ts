@@ -44,6 +44,7 @@ const matchesSearch = (inquiry: Inquiry, query: string) => {
   const text = query.trim().toLowerCase()
   if (!text) return true
   if (inquiry.name.toLowerCase().includes(text)) return true
+  if (inquiry.company?.toLowerCase().includes(text)) return true
   const digits = text.replace(/\D/g, '')
   return digits.length >= 2 && inquiry.phone.replace(/\D/g, '').includes(digits)
 }

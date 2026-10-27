@@ -41,11 +41,31 @@ export interface InquirySecrets {
 // ── 입력 검증 ───────────────────────────────────────────────────────────
 
 const MAX_TEXT = 500
+// 문의 내용은 여러 줄로 길게 쓰는 경우가 있어 따로 넉넉히 받는다.
+const MAX_MESSAGE = 2000
 
-const text = (body: Record<string, unknown>, key: string): string => {
+const text = (
+  body: Record<string, unknown>,
+  key: string,
+  max = MAX_TEXT,
+): string => {
   const value = body[key]
   if (typeof value !== 'string') return ''
-  return value.trim().slice(0, MAX_TEXT)
+  return value.trim().slice(0, max)
+}
+
+/** 여러 개 고를 수 있는 값 — 배열로 와도 문자열로 와도 ", "로 이어 붙인다. */
+const textList = (body: Record<string, unknown>, key: string): string => {
+  const value = body[key]
+  if (Array.isArray(value)) {
+    return value
+      .filter((each): each is string => typeof each === 'string')
+      .map((each) => each.trim())
+      .filter(Boolean)
+      .join(', ')
+      .slice(0, MAX_TEXT)
+  }
+  return text(body, key)
 }
 
 /** 빈 값 대신 들어오는 글자들 — 예전 폼·Zapier가 "null"을 그대로 넘겼다. */
@@ -90,8 +110,10 @@ export const validateInquiry = (
       phone,
       email: cleanEmpty(text(record, 'email')),
       installment: cleanEmpty(text(record, 'installment')),
-      message: cleanEmpty(text(record, 'message')),
+      message: cleanEmpty(text(record, 'message', MAX_MESSAGE)),
       introPeriod: cleanEmpty(text(record, 'introPeriod')),
+      company: cleanEmpty(text(record, 'company')).slice(0, 100),
+      inquiryType: cleanEmpty(textList(record, 'inquiryType')),
       utmCampaign: cleanEmpty(text(record, 'utmCampaign')),
       utmMedium: cleanEmpty(text(record, 'utmMedium')),
       utmSource: cleanEmpty(text(record, 'utmSource')),

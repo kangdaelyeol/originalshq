@@ -13,6 +13,8 @@ export const INQUIRY_BOARDS = {
   o1: { boardId: '5031196400', label: 'O1' },
   Metalfab: { boardId: '5026295489', label: '메탈팹' },
   other: { boardId: '5031373952', label: '기타 온라인 문의' },
+  // 기업·교육기관·공공기관 도입 문의 — 아이템 이름이 회사명이다.
+  B2B: { boardId: '5027795374', label: 'B2B 솔루션' },
 } as const satisfies Record<string, { boardId: string; label: string }>
 
 export type InquiryDevice = keyof typeof INQUIRY_BOARDS
@@ -34,6 +36,11 @@ export interface InquiryInput {
   /** 도입 시기(예: "3개월 이내") — 메탈팹 보드의 "도입시기" 컬럼에 넣는다(다른
    * 보드에는 그 컬럼이 없다). */
   introPeriod: string
+  /** 회사·기관명(B2B) — B2B 보드에서는 아이템 이름이 되고, name은 "기업 담당자
+   * 성함" 컬럼으로 간다. */
+  company: string
+  /** 문의 유형(B2B) — 여러 개면 ", "로 이어 붙인 값. */
+  inquiryType: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

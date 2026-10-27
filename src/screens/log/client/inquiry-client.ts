@@ -19,6 +19,9 @@ export interface Inquiry {
   message?: string
   /** 도입 시기(메탈팹). 예전 기록에는 없다. */
   introPeriod?: string
+  /** 회사·기관명과 문의 유형(B2B). 예전 기록에는 없다. */
+  company?: string
+  inquiryType?: string
   utmCampaign: string
   utmMedium: string
   utmSource: string
@@ -137,4 +140,5 @@ export const INQUIRY_DEVICES = [
   { device: 'o1', label: 'O1' },
   { device: 'Metalfab', label: '메탈팹' },
   { device: 'other', label: '기타 온라인 문의' },
+  { device: 'B2B', label: 'B2B 솔루션' },
 ] as const

@@ -74,6 +74,9 @@ const columnEntries = (
   [/^할부상담여부$/, inquiry.installment],
   [/^고객문의상세내용$/, inquiry.message ?? ''],
   [/^도입시기$/, inquiry.introPeriod ?? ''],
+  // B2B 보드 — 아이템 이름은 회사명이고 고객명은 담당자 칸으로 간다.
+  [/^기업담당자성함$/, inquiry.name],
+  [/^문의유형$/, inquiry.inquiryType ?? ''],
   [/^이메일$/, inquiry.email],
   [/^광고UTM$/i, inquiry.utmCampaign],
   [/^광고UTMmedium$/i, inquiry.utmMedium],
@@ -112,7 +115,11 @@ export const createMondayItem = async (
     {
       board: inquiry.boardId,
       group: group?.id ?? null,
-      name: inquiry.name || '이름 없음',
+      // B2B는 회사명이 아이템 이름이다(회사명이 없으면 고객명).
+      name:
+        (inquiry.device === 'B2B' && inquiry.company) ||
+        inquiry.name ||
+        '이름 없음',
       values: JSON.stringify(values),
     },
   )

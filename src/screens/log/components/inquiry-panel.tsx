@@ -73,6 +73,8 @@ const InquiryDetail = ({
       <dl className="inquiry-log__facts">
         <Fact label="이메일" value={inquiry.email} />
         <Fact label="할부상담여부" value={inquiry.installment} />
+        <Fact label="회사·기관" value={inquiry.company ?? ''} />
+        <Fact label="문의 유형" value={inquiry.inquiryType ?? ''} />
         <Fact label="문의 내용" value={inquiry.message ?? ''} />
         <Fact label="도입시기" value={inquiry.introPeriod ?? ''} />
         <Fact label="utm_source" value={inquiry.utmSource} />
@@ -476,7 +478,12 @@ export function InquiryPanel() {
                         </td>
                         <td>{formatDateTime(inquiry.receivedAt)}</td>
                         <td>{inquiry.boardName}</td>
-                        <td>{inquiry.name || '-'}</td>
+                        <td>
+                          {/* B2B는 회사명을 앞에 — Monday 아이템 이름과 같다. */}
+                          {inquiry.company
+                            ? `${inquiry.company} · ${inquiry.name || '-'}`
+                            : inquiry.name || '-'}
+                        </td>
                         <td>{inquiry.phoneFormatted}</td>
                         <td>
                           {[inquiry.utmSource, inquiry.utmMedium]
