@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ConfirmVariant,
   EditingField,
@@ -37,6 +37,9 @@ export const useMainViewModel = () => {
   // 이력 모달(고객명 클릭) 대상 — 상담/구매 이력을 보여주고, 개별 항목을
   // 수정·삭제하는 곳.
   const [detail, setDetail] = useState<Lead | null>(null)
+  // 상세 모달에서 고객을 지울 때, 지운 뒤 모달에 보여줄 고객 id — 삭제 확인을
+  // 누를 때까지 들고 있는다(null이면 모달을 닫는다).
+  const nextDetailIdRef = useRef<string | null>(null)
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [loading, setLoading] = useState(false)
@@ -232,9 +235,13 @@ export const useMainViewModel = () => {
       showToast('error')
     } else {
       setRows((prev) => prev.filter((row) => row.id !== targetLead.id))
-      // 이력 모달이 지금 이 리드를 보여주는 중이었다면 더는 존재하지 않는
-      // 데이터를 붙들고 있게 되므로 같이 닫는다.
-      setDetail((prev) => (prev && prev.id === targetLead.id ? null : prev))
+      // 상세 모달이 지금 이 리드를 보여주는 중이었다면, 닫지 않고 목록에서
+      // 바로 위(맨 위였다면 바로 아래) 고객으로 넘어간다 — 이어서 정리하기
+      // 편하도록. 남은 고객이 없으면 닫는다.
+      const next = rows.find((row) => row.id === nextDetailIdRef.current)
+      setDetail((prev) =>
+        prev && prev.id === targetLead.id ? (next ?? null) : prev,
+      )
       showToast('deleted')
     }
     setSelectedRow(null)
@@ -320,9 +327,12 @@ export const useMainViewModel = () => {
     setLoading(false)
   }
 
-  const deleteRow = (rowId: string) => {
+  /** 고객 삭제 확인창을 띄운다. 상세 모달에서 지울 때는 지운 뒤 보여줄
+   * 고객(nextLeadId)도 같이 받는다. */
+  const deleteRow = (rowId: string, nextLeadId: string | null = null) => {
     const row = rows.find((row) => row.id === rowId)
     if (!row) return
+    nextDetailIdRef.current = nextLeadId
     setSelectedRow(row)
     setVariant(ConfirmVariant.DELETE)
   }

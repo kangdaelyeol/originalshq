@@ -1,19 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { formatPhoneNumber } from '@/screens/xtool-lead-manager/utils'
 import type { Lead } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
+import { SideListSortField } from '@/screens/xtool-lead-manager/view-model/detail'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
-
-const SideListSortField = {
-  PHONE: 'ph',
-  FIRST_NAME: 'fn',
-  REMARKS: 'remarks',
-} as const
-
-// ''는 "아직 정렬 버튼을 안 눌렀다"는 뜻 — leads가 이미 메인 표의 정렬이
-// 적용된 순서라, 굳이 기본값으로 한 컬럼을 골라 다시 정렬하지 않는다.
-type SideListSortField =
-  (typeof SideListSortField)[keyof typeof SideListSortField] | ''
 
 const FOCUSABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
 
@@ -26,33 +16,20 @@ export const DetailSideList = ({
   leads,
   activeLeadId,
   onSelect,
+  sortField,
+  sortDirection,
+  onSort,
 }: {
+  /** 정렬까지 적용된 목록 — 정렬 상태는 모달이 들고 있다
+   * (useSideListSortViewModel). */
   leads: Lead[]
   activeLeadId: string
   onSelect: (rowId: string) => void
+  sortField: SideListSortField
+  sortDirection: SortDirection
+  onSort: (field: SideListSortField) => void
 }) => {
-  const [sortField, setSortField] = useState<SideListSortField>('')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const scrollRef = useRef<HTMLDivElement>(null)
-
-  const toggleSort = (field: SideListSortField) => {
-    if (sortField === field) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
-    } else {
-      setSortField(field)
-      setSortDirection('asc')
-    }
-  }
-
-  const sortedLeads = useMemo(() => {
-    if (!sortField) return leads
-    const sorted = [...leads]
-    sorted.sort((a, b) => {
-      const res = a[sortField].localeCompare(b[sortField], 'ko')
-      return sortDirection === 'asc' ? res : -res
-    })
-    return sorted
-  }, [leads, sortField, sortDirection])
 
   // 상세 폼 안의 입력창(고객명 수정, 기기 선택 등)에 포커스가 있을 때
   // 방향키를 누르면 그건 그 입력창에서 커서 이동 등으로 써야 하는 키라
@@ -63,22 +40,22 @@ export const DetailSideList = ({
       const target = e.target as HTMLElement | null
       if (target && FOCUSABLE_TAGS.has(target.tagName)) return
 
-      const currentIndex = sortedLeads.findIndex((l) => l.id === activeLeadId)
+      const currentIndex = leads.findIndex((l) => l.id === activeLeadId)
       if (currentIndex === -1) return
 
       const nextIndex =
         e.key === 'ArrowUp'
           ? Math.max(0, currentIndex - 1)
-          : Math.min(sortedLeads.length - 1, currentIndex + 1)
+          : Math.min(leads.length - 1, currentIndex + 1)
 
       if (nextIndex === currentIndex) return
       e.preventDefault()
-      onSelect(sortedLeads[nextIndex].id)
+      onSelect(leads[nextIndex].id)
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [sortedLeads, activeLeadId, onSelect])
+  }, [leads, activeLeadId, onSelect])
 
   // 방향키로 넘어간 행이 스크롤 영역 밖에 있으면 안 보이니 시야 안으로 끌어온다.
   useEffect(() => {
@@ -102,7 +79,7 @@ export const DetailSideList = ({
                   columnKey={SideListSortField.PHONE}
                   sortField={sortField}
                   sortDirection={sortDirection}
-                  onSort={toggleSort}
+                  onSort={onSort}
                 />
               </th>
               <th>
@@ -111,7 +88,7 @@ export const DetailSideList = ({
                   columnKey={SideListSortField.FIRST_NAME}
                   sortField={sortField}
                   sortDirection={sortDirection}
-                  onSort={toggleSort}
+                  onSort={onSort}
                 />
               </th>
               <th>
@@ -120,13 +97,13 @@ export const DetailSideList = ({
                   columnKey={SideListSortField.REMARKS}
                   sortField={sortField}
                   sortDirection={sortDirection}
-                  onSort={toggleSort}
+                  onSort={onSort}
                 />
               </th>
             </tr>
           </thead>
           <tbody>
-            {sortedLeads.map((row) => (
+            {leads.map((row) => (
               <tr
                 key={row.id}
                 className={row.id === activeLeadId ? 'active' : ''}

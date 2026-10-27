@@ -1,7 +1,11 @@
 import type { Lead, LeadState } from '@/screens/xtool-lead-manager/entity'
 import { EditingField } from '@/screens/xtool-lead-manager/types'
 import { formatPhoneNumber } from '@/screens/xtool-lead-manager/utils'
-import { useDetailViewModel } from '@/screens/xtool-lead-manager/view-model/detail'
+import {
+  neighborAfterDelete,
+  useDetailViewModel,
+  useSideListSortViewModel,
+} from '@/screens/xtool-lead-manager/view-model/detail'
 import type { useLeadMondayMatchViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { DetailSideList } from '../detail-side-list'
 import { ConsultationRow } from './consultation-row'
@@ -78,13 +82,16 @@ export const Detail = ({
   onResendPurchase: ResendRecord
   onRegisterConsultation: () => void
   onRegisterPurchase: () => void
-  onDeleteLead: () => void
+  /** 이 고객 삭제 — 지운 뒤 보여줄 고객 id(왼쪽 목록에서 바로 위, 맨
+   * 위였다면 바로 아래)를 같이 넘긴다. null이면 남은 고객이 없어 닫는다. */
+  onDeleteLead: (nextLeadId: string | null) => void
   onUpdateField: UpdateLeadField
   /** 이 리드와 같은 번호의 Monday 고객 — 오른쪽 패널이 쓴다. */
   mondayMatch: ReturnType<typeof useLeadMondayMatchViewModel>['state']
   onOpenInMonday: (phone: string) => void
 }) => {
   const { state } = useDetailViewModel(lead, onConfirm)
+  const sideList = useSideListSortViewModel(leads)
   const {
     leadState,
     intakes: sortedIntakes,
@@ -96,9 +103,12 @@ export const Detail = ({
     <div className="lead_manager_detail_modal" onClick={onConfirm}>
       <div className="detail_layout" onClick={(e) => e.stopPropagation()}>
         <DetailSideList
-          leads={leads}
+          leads={sideList.sortedLeads}
           activeLeadId={lead.id}
           onSelect={onSelectLead}
+          sortField={sideList.sortField}
+          sortDirection={sideList.sortDirection}
+          onSort={sideList.toggleSort}
         />
         <div className="detail_form">
           <div className="header">
@@ -317,7 +327,11 @@ export const Detail = ({
               <button
                 type="button"
                 className="btn delete"
-                onClick={onDeleteLead}
+                onClick={() =>
+                  onDeleteLead(
+                    neighborAfterDelete(sideList.sortedLeads, lead.id),
+                  )
+                }
               >
                 삭제
               </button>

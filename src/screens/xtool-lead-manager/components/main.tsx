@@ -96,7 +96,7 @@ export const Main = ({
           onResendPurchase={resendPurchaseRecord}
           onRegisterConsultation={() => registerConsultationRow(detail.id)}
           onRegisterPurchase={() => registerPurchaseRow(detail.id)}
-          onDeleteLead={() => deleteRow(detail.id)}
+          onDeleteLead={(nextLeadId) => deleteRow(detail.id, nextLeadId)}
           onUpdateField={updateLeadField}
           mondayMatch={mondayMatch}
           onOpenInMonday={onOpenInMonday}
