@@ -73,6 +73,7 @@ const columnEntries = (
   [/^전화번호/, inquiry.phoneFormatted],
   [/^할부상담여부$/, inquiry.installment],
   [/^고객문의상세내용$/, inquiry.message ?? ''],
+  [/^도입시기$/, inquiry.introPeriod ?? ''],
   [/^이메일$/, inquiry.email],
   [/^광고UTM$/i, inquiry.utmCampaign],
   [/^광고UTMmedium$/i, inquiry.utmMedium],

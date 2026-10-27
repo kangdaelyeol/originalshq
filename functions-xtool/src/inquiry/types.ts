@@ -31,6 +31,9 @@ export interface InquiryInput {
   /** 고객이 적은 문의 내용 — "기타 온라인 문의" 보드의 "고객 문의 상세 내용"
    * 컬럼에 넣는다(기기 보드에는 그 컬럼이 없다). */
   message: string
+  /** 도입 시기(예: "3개월 이내") — 메탈팹 보드의 "도입시기" 컬럼에 넣는다(다른
+   * 보드에는 그 컬럼이 없다). */
+  introPeriod: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

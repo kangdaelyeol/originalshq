@@ -32,3 +32,5 @@ keys
 Parke_Developer_Handoff_v29_20260929
 # 로컬 테스트용 비밀 키(MONDAY_API_KEY 등)
 .env
+
+cafe24
