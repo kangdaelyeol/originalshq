@@ -1,98 +1,18 @@
-import { API_BASE } from '../constants'
 import type { Lead } from '../entity'
+import { request, type ClientResponse } from './request'
 
-export type ClientResponse<T> =
-  | {
-      ok: true
-      data: T
-    }
-  | {
-      ok: false
-      error: string
-      /** HTTP 응답은 받았지만 실패한 경우의 상태 코드 — "없음"(404)과 진짜
-       * 오류를 가려야 하는 호출부만 본다. */
-      status?: number
-    }
-
-const post = async (
-  endpoint: string,
-  body: Record<string, unknown>,
-): Promise<ClientResponse<Lead>> => {
-  try {
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      return { ok: false, error: error.error ?? '요청 실패' }
-    }
-
-    const updatedLead = (await response.json()) as Lead
-    return { ok: true, data: updatedLead }
-  } catch (error) {
-    return {
-      ok: false,
-      error: `${endpoint} 실패: ${error instanceof Error ? error.message : 'unknown error'}`,
-    }
-  }
-}
+// 고친 리드 전체를 돌려받는 POST — 수정·삭제·등록·재전송이 전부 이 모양이다.
+const post = (endpoint: string, body: Record<string, unknown>) =>
+  request<Lead>(endpoint, `${endpoint} 실패`, { body })
 
 export const leadClient = {
-  getAll: async (): Promise<
-    ClientResponse<{ leads: Lead[]; count: number }>
-  > => {
-    try {
-      const response = await fetch(`${API_BASE}/listLeads`)
-
-      if (!response.ok) {
-        return { ok: false, error: '리드 목록을 불러오지 못했습니다' }
-      }
-
-      const data = (await response.json()) as { leads: Lead[]; count: number }
-      return { ok: true, data }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'unknown error: userclient - get all',
-      }
-    }
-  },
-  create: async (
-    body: Record<string, unknown>,
-  ): Promise<ClientResponse<Lead>> => {
-    try {
-      const response = await fetch(`${API_BASE}/createLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error: error.error ?? '등록 실패' }
-      }
-
-      // 백엔드(createLead)가 이미 생성된 리드 전체({id, ...})를 응답으로
-      // 돌려준다 — "고객 등록 + 상담 등록"을 이어서 호출하려면 방금 만든
-      // 리드의 id가 필요해서 더 이상 버리지 않고 그대로 반환한다.
-      const createdLead = (await response.json()) as Lead
-      return { ok: true, data: createdLead }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'leadClient - create: known error',
-      }
-    }
-  },
+  getAll: (): Promise<ClientResponse<{ leads: Lead[]; count: number }>> =>
+    request('listLeads', '리드 목록을 불러오지 못했습니다'),
+  // 백엔드(createLead)가 이미 생성된 리드 전체({id, ...})를 응답으로
+  // 돌려준다 — "고객 등록 + 상담 등록"을 이어서 호출하려면 방금 만든 리드의
+  // id가 필요해서 버리지 않고 그대로 반환한다.
+  create: (body: Record<string, unknown>) =>
+    request<Lead>('createLead', '등록 실패', { body }),
   updateFn: (body: Record<string, unknown>) => post('updateLeadFn', body),
   updatePh: (body: Record<string, unknown>) => post('updateLeadPhone', body),
   updateEm: (body: Record<string, unknown>) => post('updateLeadEm', body),
@@ -118,30 +38,11 @@ export const leadClient = {
     post('updatePurchase', body),
   deletePurchase: (body: Record<string, unknown>) =>
     post('deletePurchase', body),
+  // 성공 응답 내용은 쓰지 않는다(목록에서 빼기만 한다).
   delete: async (
     body: Record<string, unknown>,
   ): Promise<ClientResponse<null>> => {
-    try {
-      const response = await fetch(`${API_BASE}/deleteLead`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        return { ok: false, error }
-      }
-
-      return { ok: true, data: null }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'unknown error: leadclient-delete',
-      }
-    }
+    const res = await request<unknown>('deleteLead', '삭제 실패', { body })
+    return res.ok ? { ok: true, data: null } : res
   },
 }

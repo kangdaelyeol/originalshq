@@ -1,4 +1,3 @@
-import { API_BASE } from '../constants'
 import type {
   MondayCustomer,
   MondayCustomerListItem,
@@ -11,27 +10,10 @@ import type {
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '../entity'
-import type { ClientResponse } from './lead-client'
+import { request, type ClientResponse } from './request'
 
-const get = async <T>(
-  endpoint: string,
-  fallbackError: string,
-): Promise<ClientResponse<T>> => {
-  try {
-    const response = await fetch(`${API_BASE}/${endpoint}`)
-
-    if (!response.ok) {
-      return { ok: false, error: fallbackError, status: response.status }
-    }
-
-    return { ok: true, data: (await response.json()) as T }
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : fallbackError,
-    }
-  }
-}
+const get = <T>(endpoint: string, fallbackError: string) =>
+  request<T>(endpoint, fallbackError)
 
 export const mondayClient = {
   /** 통합 고객 전체(요약만) — 표가 쓴다. */
@@ -89,31 +71,8 @@ export const mondayClient = {
       '오기입 추적 데이터를 불러오지 못했습니다',
     ),
   /** GA4 이벤트를 지금 바로 한 번 수집한다(오기입 추적 탭의 "지금 수집"). */
-  syncGaEvents: async (): Promise<ClientResponse<GaSyncResult>> => {
-    try {
-      const response = await fetch(`${API_BASE}/syncMondayGaEvents`, {
-        method: 'POST',
-      })
-      const body = (await response.json().catch(() => ({}))) as
-        GaSyncResult | { error?: string }
-      if (!response.ok) {
-        return {
-          ok: false,
-          error:
-            ('error' in body && body.error) ||
-            'GA4 이벤트를 수집하지 못했습니다',
-          status: response.status,
-        }
-      }
-      return { ok: true, data: body as GaSyncResult }
-    } catch (error) {
-      return {
-        ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : 'GA4 이벤트를 수집하지 못했습니다',
-      }
-    }
-  },
+  syncGaEvents: (): Promise<ClientResponse<GaSyncResult>> =>
+    request('syncMondayGaEvents', 'GA4 이벤트를 수집하지 못했습니다', {
+      method: 'POST',
+    }),
 }
