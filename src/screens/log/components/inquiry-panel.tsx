@@ -6,6 +6,11 @@ import {
 } from '../client/inquiry-client'
 import { formatAgo, formatDateTime } from '../utils/batch-run'
 import {
+  ACCESS_DEVICE_LABEL,
+  accessDevice,
+  describeUserAgent,
+} from '../utils/user-agent'
+import {
   INQUIRY_PERIOD_OPTIONS,
   TEMPLATE_TOKENS,
   LMS_SUBJECT_MAX_BYTES,
@@ -102,6 +107,7 @@ const InquiryDetail = ({
         <Fact label="fbc" value={inquiry.fbc} />
         <Fact label="fbp" value={inquiry.fbp} />
         <Fact label="IP" value={inquiry.ip} />
+        <Fact label="접속 환경" value={describeUserAgent(inquiry.userAgent)} />
         <Fact label="브라우저" value={inquiry.userAgent} />
       </dl>
       <div className="inquiry-log__steps">
@@ -325,8 +331,8 @@ export function InquiryPanel() {
           </label>
           <label className="inquiry-log__field">
             <span>
-              장문 제목 — 내용이 {SMS_MAX_BYTES}byte를 넘어 장문(LMS)으로 갈
-              때 붙습니다 · {subjectBytes}/{LMS_SUBJECT_MAX_BYTES}byte
+              장문 제목 — 내용이 {SMS_MAX_BYTES}byte를 넘어 장문(LMS)으로 갈 때
+              붙습니다 · {subjectBytes}/{LMS_SUBJECT_MAX_BYTES}byte
             </span>
             <input
               type="text"
@@ -350,8 +356,7 @@ export function InquiryPanel() {
           </label>
           <p className="inquiry-log__preview">
             <span>
-              미리보기 · {bytes}byte ·{' '}
-              {isLms ? 'LMS(장문)' : 'SMS(단문)'}
+              미리보기 · {bytes}byte · {isLms ? 'LMS(장문)' : 'SMS(단문)'}
             </span>
             {isLms && draft.subject.trim() && (
               <strong>{draft.subject.trim()}</strong>
@@ -507,6 +512,7 @@ export function InquiryPanel() {
                   <th>고객명</th>
                   <th>전화번호</th>
                   <th>유입</th>
+                  <th>접속</th>
                   <th>Monday</th>
                   <th>문자</th>
                   <th aria-label="펼치기" />
@@ -548,6 +554,9 @@ export function InquiryPanel() {
                             .join(' / ') || '-'}
                         </td>
                         <td>
+                          {ACCESS_DEVICE_LABEL[accessDevice(inquiry.userAgent)]}
+                        </td>
+                        <td>
                           <StepBadge status={inquiry.monday.status} />
                         </td>
                         <td>
@@ -559,7 +568,7 @@ export function InquiryPanel() {
                       </tr>
                       {open && (
                         <tr className="batch-log__detail-row">
-                          <td colSpan={9}>
+                          <td colSpan={10}>
                             <InquiryDetail
                               inquiry={inquiry}
                               retrying={retrying}
