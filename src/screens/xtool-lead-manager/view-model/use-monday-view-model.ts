@@ -12,7 +12,7 @@ import type {
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '@/screens/xtool-lead-manager/entity'
-import type { PageSize } from '@/screens/xtool-lead-manager/types'
+import { usePagination } from '@/screens/xtool-lead-manager/hooks/use-pagination'
 import {
   buildMondayHighlights,
   filterMondayCustomers,
@@ -49,8 +49,6 @@ export const useMondayViewModel = (active: boolean) => {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<MondayCategory>('all')
   const [sort, setSort] = useState<MondaySort>('updated')
-  const [pageSize, setPageSize] = useState<PageSize>(15)
-  const [page, setPage] = useState(1)
 
   const [detailPhone, setDetailPhone] = useState<string | null>(null)
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
@@ -118,46 +116,8 @@ export const useMondayViewModel = (active: boolean) => {
     [searched, category, sort],
   )
 
-  const totalRows = filtered.length
-  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize))
-  // 검색·분류를 바꿔 결과가 줄면 지금 쪽 번호가 범위를 벗어날 수 있다 —
-  // 상태를 고치는 대신 보여줄 때 범위 안으로 당긴다.
-  const currentPage = Math.min(page, totalPages)
-
-  const rows = useMemo(
-    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
-    [filtered, currentPage, pageSize],
-  )
-
-  const changeSearch = useCallback((value: string) => {
-    setSearch(value)
-    setPage(1)
-  }, [])
-
-  const changeCategory = useCallback((value: MondayCategory) => {
-    setCategory(value)
-    setPage(1)
-  }, [])
-
-  const changeSort = useCallback((value: MondaySort) => {
-    setSort(value)
-    setPage(1)
-  }, [])
-
-  const changePageSize = useCallback((value: PageSize) => {
-    setPageSize(value)
-    setPage(1)
-  }, [])
-
-  const goToPrevPage = useCallback(
-    () => setPage(Math.max(1, currentPage - 1)),
-    [currentPage],
-  )
-
-  const goToNextPage = useCallback(
-    () => setPage(Math.min(totalPages, currentPage + 1)),
-    [currentPage, totalPages],
-  )
+  // 검색어·분류·정렬이 바뀌면 1페이지로.
+  const pagination = usePagination(filtered, `${search}|${category}|${sort}`)
 
   const openDetail = useCallback(async (phone: string) => {
     setDetailPhone(phone)
@@ -205,17 +165,17 @@ export const useMondayViewModel = (active: boolean) => {
       highlights,
       /** 걸러내지 않은 전체 고객 — 퍼널 통계가 쓴다. */
       customers,
-      rows,
+      rows: pagination.pagedItems,
       totalCustomers: customers.length,
       search,
       category,
       categories: CATEGORIES,
       categoryCounts,
       sort,
-      pageSize,
-      page: currentPage,
-      totalPages,
-      totalRows,
+      pageSize: pagination.pageSize,
+      page: pagination.page,
+      totalPages: pagination.totalPages,
+      totalRows: pagination.totalRows,
       detailPhone,
       detailSummary,
       detail,
@@ -226,12 +186,12 @@ export const useMondayViewModel = (active: boolean) => {
     },
     actions: {
       reload: load,
-      changeSearch,
-      changeCategory,
-      changeSort,
-      changePageSize,
-      goToPrevPage,
-      goToNextPage,
+      changeSearch: setSearch,
+      changeCategory: setCategory,
+      changeSort: setSort,
+      changePageSize: pagination.setPageSize,
+      goToPrevPage: pagination.goToPrevPage,
+      goToNextPage: pagination.goToNextPage,
       openDetail,
       closeDetail,
       openMissing,
