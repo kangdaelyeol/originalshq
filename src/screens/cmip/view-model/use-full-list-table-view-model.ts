@@ -5,7 +5,13 @@ import {
   METRIC_FIELDS,
   type MetricKey,
 } from '../components/metric-fields'
-import type { ChannelKey } from '../components/channels'
+import { CHANNELS, type ChannelKey } from '../components/channels'
+import {
+  boolean,
+  oneOf,
+  setOf,
+  usePersistentState,
+} from '@/hooks/use-persistent-state'
 
 type SortDir = 'asc' | 'desc'
 
@@ -30,6 +36,12 @@ export interface FullListRow {
  * 표시 여부(지표/전환 목표), 정렬을 다루고 그 결과인 sortedRows를 돌려준다.
  * 정렬·채널 필터는 캠페인 줄과 그 아래 광고셋 줄에 똑같이 걸린다. 캠페인
  * 펼침은 위 요약 카드도 바꿔야 해서 페이지 view-model이 들고 있다. */
+const LIST_KEYS = channelSafeFields(METRIC_FIELDS).map((f) => f.key)
+const CHANNEL_FILTERS: readonly ('all' | ChannelKey)[] = [
+  'all',
+  ...CHANNELS.map((c) => c.key),
+]
+
 export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   const [sort, setSort] = useState<{ key: FullListSortKey; dir: SortDir }>({
     key: 'name',
@@ -39,7 +51,11 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   // 채널 필터 — "전체"가 기본이고, 특정 채널을 고르면 그 채널 데이터가 있는
   // 행만 남긴다(row.channels 기준 — 이름이 같아 여러 채널이 합쳐진 행은 그
   // 채널이 channels 배열에 있기만 하면 보인다).
-  const [channelFilter, setChannelFilter] = useState<'all' | ChannelKey>('all')
+  // 채널 필터·컬럼 표시·전환 목표 표시는 이 브라우저에 남아 다음에 들어와도
+  // 그대로다(정렬은 그때그때 바꾸는 값이라 남기지 않는다).
+  const [channelFilter, setChannelFilter] = usePersistentState<
+    'all' | ChannelKey
+  >('cmip.fullList.channelFilter', 'all', oneOf(CHANNEL_FILTERS))
   const filteredRows = useMemo(() => {
     if (channelFilter === 'all') return rows
     const keep = (r: FullListRow) => r.channels.includes(channelFilter)
@@ -55,11 +71,19 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   // 단위에 귀속시킬 방법이 없어 항상 0이라(channelSafeFields) 애초에 토글
   // 대상에도 안 넣는다 — channel-insight.tsx의 FullListTable이 컬럼 목록
   // 자체를 이 필드들 뺀 걸로만 그린다.
-  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<MetricKey>>(
-    () => new Set(channelSafeFields(METRIC_FIELDS).map((f) => f.key)),
+  // 저장은 "끈 컬럼"으로 한다 — 나중에 지표가 새로 생기면 기본으로 보이도록.
+  const [hiddenKeys, setHiddenKeys] = usePersistentState<ReadonlySet<MetricKey>>(
+    'cmip.fullList.hiddenColumns',
+    () => new Set(),
+    setOf(LIST_KEYS),
+    (value) => [...value],
+  )
+  const visibleKeys = useMemo(
+    () => new Set(LIST_KEYS.filter((key) => !hiddenKeys.has(key))),
+    [hiddenKeys],
   )
   const toggleColumn = (key: MetricKey) => {
-    setVisibleKeys((prev) => {
+    setHiddenKeys((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -69,7 +93,11 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
 
   // 전환 목표(결과 유형) 뱃지 표시 여부 — Meta 캠페인에만 있는 값이라, 이
   // 표에 Meta 캠페인이 하나도 없으면(예: adset 목록) 토글 자체를 안 보여준다.
-  const [showResultType, setShowResultType] = useState(true)
+  const [showResultType, setShowResultType] = usePersistentState(
+    'cmip.fullList.showResultType',
+    true,
+    boolean,
+  )
   const hasResultType = filteredRows.some((r) => r.resultType)
 
   const toggleSort = (key: FullListSortKey) => {

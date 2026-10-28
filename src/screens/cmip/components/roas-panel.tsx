@@ -7,6 +7,7 @@ import type {
   AttributionRow,
 } from '../client'
 import { SingleSelectDropdown } from './single-select-dropdown'
+import { setOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { RoasAttribution } from './roas-attribution'
 import {
   RoasGrouping,
@@ -727,12 +728,27 @@ function useRoasTableSort(
  * useRoasTableSort와 같은 이유로 표 인스턴스별 독립 상태. 기본은 전부 표시.
  * fields 매개변수는 채널 인사이트의 FullListTable "컬럼 표시" 토글과 같은
  * 패턴을 그대로 쓴다(channel-insight.tsx). */
-function useFieldVisibility(fields: readonly RoasField[]) {
-  const [visibleKeys, setVisibleKeys] = useState<ReadonlySet<string>>(
-    () => new Set(fields.map((f) => f.key)),
+function useFieldVisibility(
+  fields: readonly RoasField[],
+  storageKey: string,
+) {
+  // 이 브라우저에 남겨 다음에 들어와도 그대로 — 저장은 "끈 지표"로 한다
+  // (나중에 지표가 새로 생기면 기본으로 보이도록).
+  const [hiddenKeys, setHiddenKeys] = usePersistentState<ReadonlySet<string>>(
+    storageKey,
+    () => new Set(),
+    setOf(fields.map((f) => f.key)),
+    (value) => [...value],
+  )
+  const visibleKeys = useMemo(
+    () =>
+      new Set(
+        fields.filter((f) => !hiddenKeys.has(f.key)).map((f) => f.key),
+      ),
+    [fields, hiddenKeys],
   )
   const toggle = (key: string) => {
-    setVisibleKeys((prev) => {
+    setHiddenKeys((prev) => {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
@@ -806,8 +822,10 @@ function OnlineRevenueTable({
     rows,
     representatives,
   )
-  const { visibleKeys, toggle: toggleMetric } =
-    useFieldVisibility(representatives)
+  const { visibleKeys, toggle: toggleMetric } = useFieldVisibility(
+    representatives,
+    'cmip.roas.online.hiddenFields',
+  )
   const visibleColumns = ONLINE_COLUMNS.filter((c) =>
     visibleKeys.has(c.representative.key),
   )
@@ -990,6 +1008,7 @@ function OnlineRevenueTable({
  * 유일한 시각화로 충분하다고 판단). */
 function RoasSubTable({
   title,
+  storageKey,
   fields,
   rows,
   total,
@@ -998,6 +1017,8 @@ function RoasSubTable({
   onGroupingChange,
 }: {
   title: string
+  /** 지표 표시 설정을 이 브라우저에 남길 이름. */
+  storageKey: string
   fields: readonly RoasField[]
   rows: readonly RoasRow[]
   total: RoasMetrics
@@ -1015,7 +1036,7 @@ function RoasSubTable({
     visibleKeys,
     toggle: toggleMetric,
     visibleFields,
-  } = useFieldVisibility(fields)
+  } = useFieldVisibility(fields, storageKey)
   const [open, setOpen] = useState(true)
 
   return (
@@ -1175,7 +1196,7 @@ export function RoasPanel({
     visibleKeys,
     toggle: toggleMetric,
     visibleFields,
-  } = useFieldVisibility(ROAS_FIELDS)
+  } = useFieldVisibility(ROAS_FIELDS, 'cmip.roas.trend.hiddenFields')
 
   // "기간별 추이" 표 전용 정렬 — RoasSubTable과 같은 훅을 쓰지만, 필드
   // 목록은 ROAS_FIELDS 전체로 둔다(지금 숨겨진 컬럼 기준으로 정렬 중이었다가
@@ -1375,6 +1396,7 @@ export function RoasPanel({
 
       <RoasSubTable
         title="오프라인 매출"
+        storageKey="cmip.roas.offline.hiddenFields"
         fields={OFFLINE_FIELDS}
         rows={offline.rows}
         total={total}
