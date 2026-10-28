@@ -845,14 +845,6 @@ $trend-y-axis-width: 44px;
     font-size: 14px;
   }
 
-  // 이 섹션만의 기간 고르기 — 개인 KPI 내비 줄과 같은 컨트롤.
-  .cs_team_period {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-  }
-
   .cs_team_row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

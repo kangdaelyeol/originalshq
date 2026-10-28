@@ -70,28 +70,6 @@ export const defaultKpiRange = (unit: KpiUnit): KpiRange => {
   return { from: shiftDays(today, -7), to: shiftDays(today, -1) }
 }
 
-/** 월 단위 최근 n개월(이번 달 포함) — 인입통계 CS팀 섹션의 처음 기간. */
-export const recentMonthsRange = (count: number): KpiRange => {
-  const thisMonth = todayInKorea().slice(0, 7)
-  return { from: shiftMonths(thisMonth, -(count - 1)), to: thisMonth }
-}
-
-/** 기간 키 범위를 날짜 범위(YYYY-MM-DD, 양 끝 포함)로 — 월은 그 달 1일~말일,
- * 주는 월요일~일요일. */
-export const kpiRangeDates = (
-  unit: KpiUnit,
-  range: KpiRange,
-): { start: string; end: string } => {
-  if (unit === 'month') {
-    return {
-      start: `${range.from}-01`,
-      end: shiftDays(`${shiftMonths(range.to, 1)}-01`, -1),
-    }
-  }
-  if (unit === 'week') return { start: range.from, end: shiftDays(range.to, 6) }
-  return { start: range.from, end: range.to }
-}
-
 /** 기간 범위 안의 모든 기간 키(오름차순). */
 export const periodsBetween = (unit: KpiUnit, range: KpiRange): string[] => {
   const keys: string[] = []
@@ -180,6 +158,9 @@ const aggregate = (
   }
 
   for (const event of events) {
+    // 날짜가 없는 기록(확정·결제 전, 조회 기간 밖이라 지운 날짜)은 건너뛴다 —
+    // 주 단위 키(월요일 찾기)는 빈 날짜에서 계산할 수 없다.
+    if (!event.date) continue
     const at = index.get(periodKeyOf(event.date, unit))
     if (at === undefined) continue
     const assignee = event.assignee || NO_ASSIGNEE

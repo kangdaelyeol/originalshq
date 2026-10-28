@@ -46,12 +46,14 @@ const XtoolLeadManagerScreen = () => {
   // 날짜별 집계만 쓴다).
   const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
   const trend = useMondayTrendViewModel(tab === 'trend')
-  // 인입통계 맨 아래 CS팀 인입 성과 — 위 기간과 따로 자기 기간으로. 명단은
+  // 인입통계 맨 아래 CS팀 인입 성과 — 위 인입통계와 같은 기간·단위로. 명단은
   // 각자 브라우저에, 숫자는 통계 탭이 받아 둔 데이터로.
   const csTeam = useCsTeamViewModel({
     facts: trend.state.kpiFacts,
     callbackNeglect: trend.state.neglect.callback,
     tableSorts: trend.state.tableSorts,
+    unit: trend.state.unit,
+    dates: trend.state.range,
   })
   // 인입통계 맨 위의 오늘 웹 문의(실시간) — 그 화면을 보고 있을 때만 받는다.
   const live = useLiveInflowViewModel(

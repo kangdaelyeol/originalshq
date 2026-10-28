@@ -5,7 +5,7 @@ import type {
   CsMemberStats,
   TableSort,
 } from '@/screens/xtool-lead-manager/utils'
-import { KpiCard, KpiControls } from './kpi-section'
+import { KpiCard } from './kpi-section'
 import { KpiPairCard } from './kpi-pair-card'
 import { CallbackNeglect } from './neglect-section'
 
@@ -182,8 +182,8 @@ const MemberEditor = ({
   )
 }
 
-/** 인입통계 맨 아래 — CS팀 담당자별 성과. 위 인입통계 기간과 따로 자기
- * 기간(처음엔 월별 최근 6개월)으로 본다: 인입 처리·구매 전환·방문체험 전환
+/** 인입통계 맨 아래 — CS팀 담당자별 성과. 위 인입통계와 같은 기간·단위로
+ * 본다: 인입 처리·구매 전환·방문체험 전환
  * 카드, 개인 KPI에서 가져온 방문체험 확정·결제 전환(건수와 비율을 한 표에),
  * 그리고 지금 기준 콜백 방치. */
 export const CsTeamSection = ({
@@ -202,7 +202,7 @@ export const CsTeamSection = ({
   today: string
 }) => {
   const { state, actions } = csTeam
-  const { members, stats, candidates, editing, period, kpi, neglect } = state
+  const { members, stats, candidates, editing, unit, kpi, neglect } = state
 
   return (
     <div className="cs_team">
@@ -210,9 +210,9 @@ export const CsTeamSection = ({
         <div>
           <h2>CS팀 인입 성과</h2>
           <p className="stats_desc">
-            위 인입통계 기간과 따로, 아래에서 고른 기간으로 봅니다. 카드는 그
-            기간에 접수된 상담 중 처리된 것 기준(오기입·신규 상담 유입 제외) ·
-            결제·방문체험 확정은 지금까지 된 것까지 센다
+            위 인입통계와 같은 기간·단위로 봅니다. 카드는 그 기간에 접수된 상담
+            중 처리된 것 기준(오기입·신규 상담 유입 제외) · 결제·방문체험 확정은
+            지금까지 된 것까지 센다
           </p>
         </div>
         <button
@@ -239,15 +239,6 @@ export const CsTeamSection = ({
       )}
       {members.length > 0 && (
         <>
-          {/* 이 섹션만의 기간 — 개인 KPI와 같은 고르기(일별·주별·월별). */}
-          <div className="cs_team_period">
-            <KpiControls
-              kpi={period}
-              onUnit={actions.changeUnit}
-              onRange={actions.changeRange}
-            />
-          </div>
-
           <div className="cs_team_row">
             {METRICS.map((metric) => (
               <MetricCard
@@ -262,7 +253,7 @@ export const CsTeamSection = ({
 
           <KpiCard
             each={kpi.intake}
-            unit={period.unit}
+            unit={unit}
             periods={kpi.periods}
             sort={sorts['cs-kpi:intake']}
             onSort={(key) => onSort('cs-kpi:intake', key)}
@@ -272,7 +263,7 @@ export const CsTeamSection = ({
             <KpiPairCard
               key={each.id}
               each={each}
-              unit={period.unit}
+              unit={unit}
               periods={kpi.periods}
               sort={sorts[`cs-kpi:${each.id}`]}
               onSort={(key) => onSort(`cs-kpi:${each.id}`, key)}

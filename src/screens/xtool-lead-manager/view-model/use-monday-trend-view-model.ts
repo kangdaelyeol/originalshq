@@ -33,13 +33,28 @@ import {
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
 // 것이라, "오늘"·"지난 7일"의 기준이 두 화면에서 어긋나지 않게 한다.
-import { addDays, todayISO } from '@/screens/cmip/utils'
+import {
+  addDays,
+  addMonths,
+  startOfMonth,
+  todayISO,
+} from '@/screens/cmip/utils'
 
-/** 처음 열었을 때의 기간 — 오늘을 뺀 직전 7일(어제까지). 오늘은 아직 하루가
- * 끝나지 않아 건수가 덜 쌓였다. cmip 기간 선택기의 "지난 7일"과 같다. */
-const defaultRange = (): { start: string; end: string } => {
-  const end = addDays(todayISO(), -1)
-  return { start: addDays(end, -6), end }
+/** 단위마다의 기본 기간 — 처음 열 때와 단위를 바꿀 때 이 기간으로 맞춘다.
+ *   · 일별 — 오늘을 뺀 직전 7일(어제까지). 오늘은 아직 하루가 끝나지 않아
+ *     건수가 덜 쌓였다. cmip 기간 선택기의 "지난 7일"과 같다.
+ *   · 주차별 — 어제까지 직전 8주(56일). 주차는 기간 끝에서부터 7일씩 끊어서
+ *     딱 8개 주가 된다.
+ *   · 월별 — 이번 달 포함 6개월(5개월 전 1일부터 오늘까지). */
+const defaultRange = (
+  unit: InflowUnit = 'day',
+): { start: string; end: string } => {
+  const today = todayISO()
+  if (unit === 'month') {
+    return { start: addMonths(startOfMonth(today), -5), end: today }
+  }
+  const end = addDays(today, -1)
+  return { start: addDays(end, unit === 'week' ? -55 : -6), end }
 }
 
 /** 통계 탭의 소주제. */
@@ -83,7 +98,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [section, setSection] = useState<TrendSection>('inflow')
   // 기간은 두 소주제가 같이 쓴다 — 오가며 같은 기간을 비교하기 쉽게.
-  const [range, setRange] = useState(defaultRange)
+  const [range, setRange] = useState(() => defaultRange('day'))
   // 판매통계 — 채널(통합/오프라인/온라인)과 표의 정렬(처음엔 최근 날짜가 위).
   const [salesScope, setSalesScope] = useState<PurchaseScope>('all')
   const [salesSortKey, setSalesSortKey] = useState<InflowSortKey>('date')
@@ -339,7 +354,12 @@ export const useMondayTrendViewModel = (active: boolean) => {
     },
     actions: {
       changeRange,
-      changeUnit: setUnit,
+      // 단위를 바꾸면 기간도 그 단위의 기본 기간으로 맞춘다(일별 7일, 주차별
+      // 8주, 월별 6개월).
+      changeUnit: (next: InflowUnit) => {
+        setUnit(next)
+        setRange(defaultRange(next))
+      },
       toggleSort,
       reload: load,
       changeSection: setSection,

@@ -107,8 +107,11 @@ export const useDateRangePickerViewModel = (
         : [draftStart, hoverDay]
       : [draftStart, draftEnd]
 
+  // 버튼 이름표는 적용된 기간(props) 기준 — 팝업용 draft는 열 때만 복사해서,
+  // 바깥에서 기간을 바꾸면(예: 단위를 바꿔 기간이 자동으로 바뀜) 이름이 남는다.
   const triggerPresetLabel =
-    PRESETS.find((p) => p.key === activeKey)?.label ?? '직접 입력'
+    PRESETS.find((p) => p.key === matchPreset(dateStart, dateEnd))?.label ??
+    '직접 입력'
 
   return {
     // 입력(draft)
