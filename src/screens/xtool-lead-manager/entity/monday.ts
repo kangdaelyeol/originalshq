@@ -300,8 +300,9 @@ export interface MondayFollowUp {
 /** 개인 KPI의 재료 — 서버(functions-xtool/src/monday/kpi.ts)가 기록마다 짧은
  * 배열로 뽑아 둔 것. 날짜는 YYYY-MM-DD(한국 시간), 없으면 ''. */
 export interface MondayKpiFacts {
-  /** 상담(오기입 제외): [주 담당자, 접수일, 방문체험 확정일, 결제일] */
-  consultations: [string, string, string, string][]
+  /** 상담(오기입 제외): [주 담당자, 접수일, 방문체험 확정일, 결제일,
+   * 신규 상담 유입(1/0)]. 마지막 값은 나중에 생겨 예전 데이터엔 없을 수 있다. */
+  consultations: [string, string, string, string, number?][]
   /** 방문체험: [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
   visits: [string, string, number, string][]
   /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */

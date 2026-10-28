@@ -356,7 +356,14 @@ export const MondayTrend = ({
                 onSort={(key) => toggleTableSort('pipeline', key)}
               />
 
-              <CsTeamSection csTeam={csTeam} />
+              <CsTeamSection
+                csTeam={csTeam}
+                sorts={tableSorts}
+                onSort={toggleTableSort}
+                neglectExpanded={neglect.expanded}
+                onToggleNeglect={toggleExpanded}
+                today={neglect.today}
+              />
             </>
           )}
         </div>

@@ -32,7 +32,7 @@ export const PipelineSection = ({
         현재 파이프라인 <span className="neglect_total">{sum.total}건</span>
       </h2>
       <p className="stats_desc">
-        진행 중인 상담의 단계별 건수 — 기간 선택과 무관. 결제, 미전환, 오기입,
+        기간 선택과 무관. 결제, 미전환, 오기입,
         완료 그룹은 제외.
       </p>
       <div className="trend_table_scroll pipeline_table_scroll">

@@ -193,6 +193,37 @@ const NeglectTable = ({
  *   · 기한 = 상담 마감일, 없으면 마지막 연락일 + 7일
  *   · 방치 = 보류가 아닌 진행 중 기록 가운데 기한이 오늘보다 지난 것
  */
+const CALLBACK_DESCRIPTION = (today: string) =>
+  `기간 선택과 무관(${today} 기준). 상담 보드에서 진행 중(신규·콜백)인데 다음 연락 기한(상담 마감일)을 넘긴 건. 완료 그룹("완료", "완료된 영업")은 빼고, 보류는 방치가 아니라 보류 칸에 따로 셉니다.`
+
+/** 콜백 방치 표 하나만 — 인입통계 CS팀 섹션이 CS팀 담당자만 걸러 쓴다. */
+export const CallbackNeglect = ({
+  rows,
+  today,
+  expanded,
+  onToggle,
+  sort,
+  onSort,
+}: {
+  rows: NeglectRow[]
+  today: string
+  expanded: ReadonlySet<string>
+  onToggle: (key: string) => void
+  sort: TableSort | undefined
+  onSort: (key: string) => void
+}) => (
+  <NeglectTable
+    kind="callback"
+    title="콜백 방치"
+    description={CALLBACK_DESCRIPTION(today)}
+    rows={rows}
+    expanded={expanded}
+    onToggle={onToggle}
+    sort={sort}
+    onSort={onSort}
+  />
+)
+
 export const NeglectSection = ({
   neglect,
   onToggle,
@@ -203,7 +234,7 @@ export const NeglectSection = ({
     <NeglectTable
       kind="callback"
       title="콜백 방치"
-      description={`상담 보드에서 진행 중(신규·콜백)인데 다음 연락 기한(상담 마감일)을 넘긴 건. 완료 그룹("완료", "완료된 영업")은 빼고, 보류는 방치가 아니라 보류 칸에 따로 셉니다. ${neglect.today} 기준. 줄을 누르면 해당 고객이 펼쳐집니다.`}
+      description={CALLBACK_DESCRIPTION(neglect.today)}
       rows={neglect.callback}
       expanded={neglect.expanded}
       onToggle={onToggle}

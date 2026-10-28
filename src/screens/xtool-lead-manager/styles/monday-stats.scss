@@ -4,7 +4,10 @@
 // 숫자와 이름은 글자색으로 적는다(막대 색을 글자에 입히지 않는다).
 $stats-bar: variables.$color-accent;
 
-.lead_manager_nav.monday_stats_nav {
+// 통계 탭 내비 줄의 컨트롤(단위 탭·기간 드롭다운 등). 인입통계 CS팀 섹션의
+// 기간 고르기(.cs_team_period)도 같은 컨트롤을 써서 같이 적용한다.
+.lead_manager_nav.monday_stats_nav,
+.monday_trend .cs_team_period {
   .inner {
     gap: 10px;
   }

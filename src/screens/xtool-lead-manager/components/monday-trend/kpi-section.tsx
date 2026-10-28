@@ -25,7 +25,7 @@ export const KpiControls = ({
   onUnit,
   onRange,
 }: {
-  kpi: Kpi
+  kpi: Pick<Kpi, 'unit' | 'range' | 'firstDate'>
   onUnit: (unit: KpiUnit) => void
   onRange: (range: Partial<KpiRange>) => void
 }) => {
@@ -99,7 +99,7 @@ const ratioTitle = (each: KpiResult, cell: Cell): string | undefined =>
 
 /** 지표 하나의 카드(전체 보기) — 줄이 담당자, 칸이 기간, 맨 오른쪽이 조회 기간
  * 전체, 맨 아래가 모든 담당자 합. */
-const KpiCard = ({
+export const KpiCard = ({
   each,
   unit,
   periods,

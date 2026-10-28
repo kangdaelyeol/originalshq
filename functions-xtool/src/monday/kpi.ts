@@ -31,7 +31,8 @@ const paidDateOf = (item: MondayItem): string | null =>
  * 개인 KPI 재료를 만든다(순수 함수).
  *
  *   consultations — 상담 보드의 상담(오기입 제외):
- *     [주 담당자, 접수일, 방문체험 확정일(확정 안 했으면 ''), 결제일('')]
+ *     [주 담당자, 접수일, 방문체험 확정일(확정 안 했으면 ''), 결제일(''),
+ *      신규 상담 유입(1/0)]
  *   visits — 방문체험 보드의 방문:
  *     [주 담당자, 방문일, 체험 완료 여부(1/0), 결제일('')]
  *   sales — 오프라인 결제(계약 기준, 취소 제외):
@@ -52,14 +53,17 @@ export const buildKpiFacts = (
     const receivedAt =
       koreaDate(pick(item, /^접수일$/)) ?? koreaDate(item.createdAt)
     if (!receivedAt) continue
-    const confirmed = pick(item, /^방문체험확정$/) !== null
+    // 방문체험 확정 — 확정일이 있으면 확정이다(체크박스를 안 눌러도). 날짜
+    // 없이 체크만 했으면 접수일을 확정일로 본다.
+    const confirmedDate = koreaDate(pick(item, /^방문체험확정일$/))
+    const checked = pick(item, /^방문체험확정$/) !== null
     consultations.push([
       assigneesOf(item)[0] ?? '',
       receivedAt,
-      confirmed
-        ? (koreaDate(pick(item, /^방문체험확정일$/)) ?? receivedAt)
-        : '',
+      confirmedDate ?? (checked ? receivedAt : ''),
       paidDateOf(item) ?? '',
+      // 아직 "신규 상담 유입" — 담당자가 처리 전(인입통계 CS팀 섹션이 뺀다).
+      pick(item, /^상담진행상태$/) === '신규 상담 유입' ? 1 : 0,
     ])
   }
 

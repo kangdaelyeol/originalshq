@@ -1,11 +1,13 @@
 import type { MondayKpiFacts } from '../entity'
 
-/** CS팀 담당자 한 명의 기간 성과 — 접수일이 기간 안인 상담 기준(코호트).
- * 결제·방문체험 확정은 그 상담들 중 지금까지 된 것(확정·결제가 기간 뒤여도
- * 센다). */
+/** CS팀 담당자 한 명의 기간 성과 — 접수일이 기간 안이고 상담 진행 상태가
+ * "신규 상담 유입"이 아닌(처리된) 상담 기준(코호트). 결제·방문체험 확정은 그
+ * 상담들 중 지금까지 된 것(확정·결제가 기간 뒤여도 센다). 방문체험 확정은
+ * 확정일이 있는 것, 결제는 결제일이 있거나 상태가 "결제"인 것. */
 export interface CsMemberStats {
   name: string
-  /** 접수일이 기간 안이고 이 사람이 (주)담당자인 상담 — 오기입 제외. */
+  /** 접수일이 기간 안이고 이 사람이 (주)담당자인 상담 — 오기입·신규 상담
+   * 유입 제외. */
   intake: number
   /** 그 상담 중 결제된 수. */
   paid: number
@@ -16,7 +18,8 @@ export interface CsMemberStats {
 export interface CsTeamStats {
   members: CsMemberStats[]
   total: CsMemberStats
-  /** 같은 기간 전체 상담(담당자 무관) — CS팀이 맡은 비중을 보여 주려고. */
+  /** 같은 기간 처리된 상담 전체(담당자 무관, 신규 상담 유입 제외) — CS팀이
+   * 맡은 비중을 보여 주려고. */
   allIntake: number
 }
 
@@ -32,9 +35,17 @@ export const buildCsTeamStats = (
   )
   let allIntake = 0
 
-  for (const [assignee, receivedAt, confirmedAt, paidAt] of consultations) {
+  for (const [
+    assignee,
+    receivedAt,
+    confirmedAt,
+    paidAt,
+    isNew,
+  ] of consultations) {
     if (!receivedAt || receivedAt < range.start || receivedAt > range.end)
       continue
+    // 아직 "신규 상담 유입"인 상담은 처리 전이라 세지 않는다.
+    if (isNew === 1) continue
     allIntake += 1
     const stats = byName.get(assignee)
     if (!stats) continue

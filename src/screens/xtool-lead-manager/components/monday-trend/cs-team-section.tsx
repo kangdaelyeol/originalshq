@@ -1,7 +1,13 @@
 import { useRef, useState } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type { useCsTeamViewModel } from '@/screens/xtool-lead-manager/view-model'
-import type { CsMemberStats } from '@/screens/xtool-lead-manager/utils'
+import type {
+  CsMemberStats,
+  TableSort,
+} from '@/screens/xtool-lead-manager/utils'
+import { KpiControls } from './kpi-section'
+import { KpiPairCard } from './kpi-pair-card'
+import { CallbackNeglect } from './neglect-section'
 
 type CsTeam = ReturnType<typeof useCsTeamViewModel>
 
@@ -19,7 +25,7 @@ const METRICS: {
   {
     key: 'intake',
     title: '인입 처리 수',
-    desc: '기간에 접수된 상담 중 담당한 건수',
+    desc: '기간에 접수된 상담 중 처리한(신규 상담 유입 아닌) 건수',
   },
   {
     key: 'paid',
@@ -136,10 +142,7 @@ const MemberEditor = ({
             ×
           </button>
         </div>
-        <p className="stats_desc">
-          상담 보드의 담당자 중 볼 사람을 골라 주세요. 이 브라우저에만 저장돼서
-          사람마다 따로 고를 수 있습니다. 숫자는 지금까지 맡은 상담 수입니다.
-        </p>
+        <p className="stats_desc">숫자는 지금까지 맡은 총 상담 수입니다.</p>
         <div className="cs_editor_options" role="group" aria-label="담당자">
           {options.map(({ name, count: total }) => (
             <button
@@ -179,11 +182,27 @@ const MemberEditor = ({
   )
 }
 
-/** 인입통계 맨 아래 — CS팀 담당자별 인입 처리·구매 전환·방문체험 전환. 기간은
- * 위 인입통계와 같다. */
-export const CsTeamSection = ({ csTeam }: { csTeam: CsTeam }) => {
+/** 인입통계 맨 아래 — CS팀 담당자별 성과. 위 인입통계 기간과 따로 자기
+ * 기간(처음엔 월별 최근 6개월)으로 본다: 인입 처리·구매 전환·방문체험 전환
+ * 카드, 개인 KPI에서 가져온 방문체험 확정·결제 전환(건수와 비율을 한 표에),
+ * 그리고 지금 기준 콜백 방치. */
+export const CsTeamSection = ({
+  csTeam,
+  sorts,
+  onSort,
+  neglectExpanded,
+  onToggleNeglect,
+  today,
+}: {
+  csTeam: CsTeam
+  sorts: Record<string, TableSort>
+  onSort: (table: string, key: string) => void
+  neglectExpanded: ReadonlySet<string>
+  onToggleNeglect: (key: string) => void
+  today: string
+}) => {
   const { state, actions } = csTeam
-  const { members, stats, candidates, editing } = state
+  const { members, stats, candidates, editing, period, kpi, neglect } = state
 
   return (
     <div className="cs_team">
@@ -191,8 +210,9 @@ export const CsTeamSection = ({ csTeam }: { csTeam: CsTeam }) => {
         <div>
           <h2>CS팀 인입 성과</h2>
           <p className="stats_desc">
-            위와 같은 기간에 접수된 상담 기준(오기입 제외) · 결제·방문체험
-            확정은 지금까지 된 것까지 센다
+            위 인입통계 기간과 따로, 아래에서 고른 기간으로 봅니다. 카드는 그
+            기간에 접수된 상담 중 처리된 것 기준(오기입·신규 상담 유입 제외) ·
+            결제·방문체험 확정은 지금까지 된 것까지 센다
           </p>
         </div>
         <button
@@ -218,17 +238,50 @@ export const CsTeamSection = ({ csTeam }: { csTeam: CsTeam }) => {
         </div>
       )}
       {members.length > 0 && (
-        <div className="cs_team_row">
-          {METRICS.map((metric) => (
-            <MetricCard
-              key={metric.key}
-              metric={metric}
-              members={stats.members}
-              total={stats.total}
-              allIntake={stats.allIntake}
+        <>
+          {/* 이 섹션만의 기간 — 개인 KPI와 같은 고르기(일별·주별·월별). */}
+          <div className="cs_team_period">
+            <KpiControls
+              kpi={period}
+              onUnit={actions.changeUnit}
+              onRange={actions.changeRange}
+            />
+          </div>
+
+          <div className="cs_team_row">
+            {METRICS.map((metric) => (
+              <MetricCard
+                key={metric.key}
+                metric={metric}
+                members={stats.members}
+                total={stats.total}
+                allIntake={stats.allIntake}
+              />
+            ))}
+          </div>
+
+          {kpi.kpis.map((each) => (
+            <KpiPairCard
+              key={each.id}
+              each={each}
+              unit={period.unit}
+              periods={kpi.periods}
+              sort={sorts[`cs-kpi:${each.id}`]}
+              onSort={(key) => onSort(`cs-kpi:${each.id}`, key)}
+              sortBy={each.sortBy}
+              onSortBy={(by) => actions.changeSortBy(each.id, by)}
             />
           ))}
-        </div>
+
+          <CallbackNeglect
+            rows={neglect}
+            today={today}
+            expanded={neglectExpanded}
+            onToggle={onToggleNeglect}
+            sort={sorts['neglect:callback']}
+            onSort={(key) => onSort('neglect:callback', key)}
+          />
+        </>
       )}
 
       {editing && (

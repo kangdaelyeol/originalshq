@@ -57,6 +57,24 @@ export const sortKpiRows = (
       : cell.value
   })
 
+/** 건수·비율을 한 칸에 같이 보이는 KPI 표(인입통계 CS팀 섹션) — by가
+ * 'count'면 건수(분자)로, 'rate'면 비율로 정렬한다. 비율의 빈 칸(모수 0)은
+ * 0%보다도 아래로. */
+export const sortKpiPairRows = (
+  rows: KpiRow[],
+  sort: TableSort | undefined,
+  periods: string[],
+  by: 'count' | 'rate',
+): KpiRow[] =>
+  by === 'rate'
+    ? sortKpiRows(rows, sort, periods)
+    : sortRows(rows, sort, (row, key) => {
+        if (key === 'assignee') return row.assignee
+        const cell =
+          key === 'total' ? row.total : row.byPeriod[periods.indexOf(key)]
+        return cell?.num ?? 0
+      })
+
 /** 현재 파이프라인 표 — 칸 키는 'board', 'total', 또는 단계 이름. */
 export const sortPipelineRows = (
   rows: PipelineRow[],

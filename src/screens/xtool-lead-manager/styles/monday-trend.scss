@@ -845,6 +845,14 @@ $trend-y-axis-width: 44px;
     font-size: 14px;
   }
 
+  // 이 섹션만의 기간 고르기 — 개인 KPI 내비 줄과 같은 컨트롤.
+  .cs_team_period {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
   .cs_team_row {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1063,5 +1071,70 @@ $trend-y-axis-width: 44px;
         outline: 2px solid variables.$color-accent;
       }
     }
+  }
+}
+
+// 인입통계 CS팀 섹션 — 건수와 비율을 한 칸에(위 건수, 아래 비율).
+.xtool-main.monday_trend .kpi_pair_card {
+  .kpi_pair_side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  .kpi_total span {
+    font-size: 16px;
+    font-weight: 600;
+    color: variables.$color-text-muted;
+  }
+
+  .kpi_pair_sortby {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid variables.$color-border;
+    border-radius: 6px;
+
+    button {
+      all: unset;
+      height: 24px;
+      padding: 0 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: variables.$color-text-muted;
+      cursor: pointer;
+
+      &:hover {
+        color: variables.$color-text;
+      }
+      &.active {
+        background: variables.$color-surface-raised;
+        color: variables.$color-text;
+      }
+      &:focus-visible {
+        outline: 2px solid variables.$color-accent;
+      }
+    }
+  }
+
+  .kpi_pair_count {
+    display: block;
+  }
+
+  .kpi_pair_rate {
+    display: block;
+    margin-top: 2px;
+    font-size: 11.5px;
+    font-weight: 400;
+    color: variables.$color-text-muted;
+  }
+
+  // 합계 줄 — 표 공통 합계 줄은 한 줄 높이로 고정돼 있어 두 줄 칸에 맞게 푼다.
+  .trend_table_scroll tfoot td {
+    height: auto;
+    padding-top: 8px;
+    padding-bottom: 8px;
+    line-height: 1.4;
   }
 }

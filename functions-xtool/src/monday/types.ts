@@ -506,8 +506,8 @@ export interface MondayFollowUp {
 /** 개인 KPI의 재료(kpi.ts의 buildKpiFacts 참고) — 문서 하나에 다 들어가도록
  * 짧은 배열로 둔다. 날짜는 YYYY-MM-DD(한국 시간), 없으면 ''. */
 export interface MondayKpiFacts {
-  /** [주 담당자, 접수일, 방문체험 확정일, 결제일] */
-  consultations: [string, string, string, string][]
+  /** [주 담당자, 접수일, 방문체험 확정일, 결제일, 신규 상담 유입(1/0)] */
+  consultations: [string, string, string, string, number][]
   /** [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
   visits: [string, string, number, string][]
   /** [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
