@@ -14,9 +14,9 @@ const DEFAULT_FOLLOW_UP_DAYS = 7
 // 다시 일정을 잡거나 연락해야 해서 대상이다.
 const VISIT_DONE = /체험\s*완료|노쇼/
 
-// 응대를 마친 고객을 옮겨 두는 그룹 — 여기 있으면 상태 칸이 아직 콜백·보류로
-// 남아 있어도 방치가 아니다. 보드마다 이름이 달라 목록으로 둔다(상담 보드는
-// "완료", 전체 오프라인 영업 보드는 "완료된 영업").
+// 응대를 마친 고객을 옮겨 두는 그룹 — 방문체험 보드는 여기 있으면 상태 칸이
+// 아직 남아 있어도 방치가 아니다. 상담 보드(콜백)는 그룹이 아니라 상태와
+// 방문체험 확정으로만 가린다(아래 buildFollowUps).
 const DONE_GROUPS = new Set(['완료', '완료된 영업'])
 // "보류" 그룹이나 보류 상태 — 고객이 고민 중이라 기다리는 것이지 방치가 아니다.
 // 방치와 따로 센다.
@@ -69,8 +69,10 @@ const primaryAssignee = (item: MondayItem): string | null =>
  * "방치 현황"이 쓴다. 방치인지(기한이 지났는지)는 화면이 오늘 날짜로 가린다
  * (여기서 정해 두면 하루만 지나도 값이 틀려지므로).
  *
- *   · 콜백 — 상담 보드의 진행 중 기록. 완료 그룹(DONE_GROUPS)은 뺀다.
- *   · 방문체험 — 방문체험 보드의 진행 중 기록 가운데 체험 완료·노쇼가 아닌 것.
+ *   · 콜백 — 상담 보드의 진행 중 기록(상담 진행 상태가 결제·미전환·오기입이
+ *     아닌 것) 가운데 방문체험이 확정되지 않은 것. 그룹은 보지 않는다.
+ *   · 방문체험 — 방문체험 보드의 진행 중 기록 가운데 체험 완료·노쇼가 아니고
+ *     완료 그룹(DONE_GROUPS)에 있지 않은 것.
  *   · 보류(보류 상태이거나 "보류" 그룹)는 onHold로 표시만 하고, 화면이 방치와
  *     따로 센다.
  */
@@ -86,7 +88,18 @@ export const buildFollowUps = (
 
     const status = pick(item, /^상담진행상태$/)
     if (status && CLOSED_STATUS.test(status)) continue
-    if (DONE_GROUPS.has(item.groupTitle?.trim() ?? '')) continue
+    if (kind === 'consultation') {
+      // 콜백 — 방문체험이 확정됐으면(확정일이 있거나 체크) 다음 단계는
+      // 방문체험 쪽이라 콜백 방치가 아니다. 그룹은 보지 않는다.
+      if (
+        pick(item, /^방문체험확정일$/) !== null ||
+        pick(item, /^방문체험확정$/) !== null
+      ) {
+        continue
+      }
+    } else if (DONE_GROUPS.has(item.groupTitle?.trim() ?? '')) {
+      continue
+    }
 
     let visitStatus: string | null = null
     let firstDate: string | null
