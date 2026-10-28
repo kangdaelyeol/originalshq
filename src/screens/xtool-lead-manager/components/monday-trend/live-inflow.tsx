@@ -23,7 +23,9 @@ export const LiveInflow = ({ live }: { live: LiveInflow }) => {
         </h2>
         <span className="live_inflow_meta">
           웹사이트 상담 신청 기준
-          {fetchedAt !== null && ` · ${time(fetchedAt)} 기준, 1분마다 갱신`}
+          {fetchedAt !== null && (
+            <span>{time(fetchedAt)} 기준 · 1분마다 갱신</span>
+          )}
         </span>
       </div>
 

@@ -194,9 +194,6 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
 
       <div className="xtool-main monday_stats monday_trend">
         <div className="wrapper">
-          {/* 실시간 웹 문의는 아래 Monday 통계와 따로 받아, 그쪽이 불러오는
-              중이어도 먼저 보인다. */}
-          {section === 'inflow' && <LiveInflow live={live} />}
           {status === 'error' ? (
             <div className="monday_error">
               <p>통계를 불러오지 못했습니다.</p>
@@ -205,7 +202,12 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
               </button>
             </div>
           ) : status === 'idle' || status === 'loading' ? (
-            <TrendSkeleton section={section} />
+            // 실시간 웹 문의는 Monday 통계와 따로 받아, 이쪽이 불러오는
+            // 중이어도 오른쪽 자리에 먼저 보인다.
+            <TrendSkeleton
+              section={section}
+              inflowAside={<LiveInflow live={live} />}
+            />
           ) : section === 'kpi' ? (
             <KpiSection
               kpi={kpi}
@@ -219,57 +221,55 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (
             <>
-              <PipelineSection
-                pipeline={pipeline}
-                sort={tableSorts.pipeline}
-                onSort={(key) => toggleTableSort('pipeline', key)}
-              />
+              {/* 맨 위 한 줄 — 왼쪽 기간 인입 건수, 오른쪽 오늘 웹 문의(실시간). */}
+              <div className="inflow_top_row">
+                <section className="stats_card">
+                  <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
+                  <p className="stats_desc">
+                    같은 고객이 여러 번 문의해도 각각 포함
+                  </p>
 
-              <section className="stats_card">
-                <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
-                <p className="stats_desc">
-                  같은 고객이 여러 번 문의해도 각각 포함
-                </p>
+                  <div className="stats_tiles trend_tiles">
+                    <div className="stats_tile">
+                      <span className="stats_tile_label">전체 인입</span>
+                      <strong className="stats_tile_value">
+                        {count(summary.total)}
+                      </strong>
+                    </div>
+                    <div className="stats_tile">
+                      <span className="stats_tile_label">
+                        {INFLOW_UNIT_AVERAGE[unit]}
+                      </span>
+                      <strong className="stats_tile_value">
+                        {(Math.round(summary.average * 10) / 10).toLocaleString(
+                          'ko-KR',
+                        )}
+                        건
+                      </strong>
+                    </div>
+                    <div className="stats_tile">
+                      {/* 어느 날(주·달)인지는 이름 옆에 붙인다 — 값 아래에 따로
+                          두면 이 칸만 한 줄 길어져 네 칸의 높이가 같이 늘어난다. */}
+                      <span className="stats_tile_label">
+                        가장 많은 {noun}
+                        {summary.peak && ` - ${summary.peak.label}`}
+                      </span>
+                      <strong className="stats_tile_value">
+                        {summary.peak ? count(summary.peak.total) : '-'}
+                      </strong>
+                    </div>
+                    <div className="stats_tile">
+                      <span className="stats_tile_label">오기입</span>
+                      <strong className="stats_tile_value">
+                        {count(summary.misentry)}
+                      </strong>
+                    </div>
+                  </div>
 
-                <div className="stats_tiles trend_tiles">
-                  <div className="stats_tile">
-                    <span className="stats_tile_label">전체 인입</span>
-                    <strong className="stats_tile_value">
-                      {count(summary.total)}
-                    </strong>
-                  </div>
-                  <div className="stats_tile">
-                    <span className="stats_tile_label">
-                      {INFLOW_UNIT_AVERAGE[unit]}
-                    </span>
-                    <strong className="stats_tile_value">
-                      {(Math.round(summary.average * 10) / 10).toLocaleString(
-                        'ko-KR',
-                      )}
-                      건
-                    </strong>
-                  </div>
-                  <div className="stats_tile">
-                    {/* 어느 날(주·달)인지는 이름 옆에 붙인다 — 값 아래에 따로
-                        두면 이 칸만 한 줄 길어져 네 칸의 높이가 같이 늘어난다. */}
-                    <span className="stats_tile_label">
-                      가장 많은 {noun}
-                      {summary.peak && ` - ${summary.peak.label}`}
-                    </span>
-                    <strong className="stats_tile_value">
-                      {summary.peak ? count(summary.peak.total) : '-'}
-                    </strong>
-                  </div>
-                  <div className="stats_tile">
-                    <span className="stats_tile_label">오기입</span>
-                    <strong className="stats_tile_value">
-                      {count(summary.misentry)}
-                    </strong>
-                  </div>
-                </div>
-
-                <InflowChart points={points} average={summary.average} />
-              </section>
+                  <InflowChart points={points} average={summary.average} />
+                </section>
+                <LiveInflow live={live} />
+              </div>
 
               <section className="stats_card">
                 <h2>{INFLOW_UNIT_LABEL[unit]} 표</h2>
@@ -340,6 +340,12 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
                   </table>
                 </div>
               </section>
+
+              <PipelineSection
+                pipeline={pipeline}
+                sort={tableSorts.pipeline}
+                onSort={(key) => toggleTableSort('pipeline', key)}
+              />
             </>
           )}
         </div>

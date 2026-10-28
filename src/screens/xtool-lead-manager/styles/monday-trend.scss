@@ -584,16 +584,28 @@ $trend-y-axis-width: 44px;
   }
 }
 
-// 인입통계 맨 위 — 오늘 웹 문의 실시간.
+// 인입통계 맨 위 줄 — 왼쪽 기간 인입 건수(그래프), 오른쪽 오늘 웹 문의.
+// 좁아지면 위아래로 쌓는다.
+.monday_trend .inflow_top_row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 16px;
+  align-items: stretch;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// 인입통계 맨 위 — 오늘 웹 문의 실시간. 오른쪽 좁은 칸이라 타일을 세로로 쌓는다.
 .monday_trend .live_inflow {
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
 
   .live_inflow_head {
     display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 6px 16px;
+    flex-direction: column;
+    gap: 6px;
     margin-bottom: 15px;
 
     h2 {
@@ -614,21 +626,33 @@ $trend-y-axis-width: 44px;
   }
 
   .live_inflow_meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     color: variables.$color-text-muted;
     font-size: 12px;
   }
 
   .live_inflow_tiles {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 
-    @media (max-width: 720px) {
-      grid-template-columns: minmax(0, 1fr);
+    // 위아래로 쌓였을 때(좁은 화면)는 넓으니 다시 가로로.
+    @media (max-width: 1100px) {
+      flex-direction: row;
+
+      > * {
+        flex: 1;
+        min-width: 0;
+      }
+    }
+    @media (max-width: 640px) {
+      flex-direction: column;
     }
 
     &.is-loading span {
-      height: 92px;
+      height: 84px;
       border-radius: 8px;
       background: variables.$color-surface-raised;
     }
@@ -668,7 +692,7 @@ $trend-y-axis-width: 44px;
       gap: 6px;
       padding: 4px 10px;
       border: 1px solid variables.$color-border-soft;
-      border-radius: 999px;
+      border-radius: 3px;
       color: variables.$color-text-muted;
       font-size: 12px;
 

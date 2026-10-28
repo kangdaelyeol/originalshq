@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import {
   Bone,
   LoadingNotice,
@@ -36,13 +37,16 @@ const ChartCard = () => (
 
 /**
  * 통계 탭이 데이터를 받는 동안 — 지금 보고 있는 소주제의 배치를 회색으로
- * 그린다. 인입: 파이프라인 표·타일+그래프·기간 표 / 판매: 타일+그래프·기간
+ * 그린다. 인입: 타일+그래프(옆에 실시간)·기간 표·파이프라인 표 / 판매: 타일+그래프·기간
  * 표 / 개인 KPI: 담당자 칩·KPI 표.
  */
 export const TrendSkeleton = ({
   section,
+  inflowAside,
 }: {
   section: 'inflow' | 'sales' | 'kpi'
+  /** 인입통계 맨 위 줄 오른쪽(실시간 웹 문의) — 로딩 중에도 실제 내용을 둔다. */
+  inflowAside?: ReactNode
 }) => (
   <>
     <LoadingNotice label="통계를 불러오는 중" />
@@ -59,15 +63,27 @@ export const TrendSkeleton = ({
       </>
     ) : (
       <>
-        {section === 'inflow' && (
-          <SkeletonCard titleWidth={140}>
-            <TableSkeleton widths={[90, 40, 40, 40, 40, 40, 40]} rows={6} />
-          </SkeletonCard>
+        {section === 'inflow' ? (
+          <>
+            <div className="inflow_top_row">
+              <ChartCard />
+              {inflowAside}
+            </div>
+            <SkeletonCard titleWidth={90}>
+              <TableSkeleton widths={[80, 40, 40, 40, 40, 40]} rows={8} />
+            </SkeletonCard>
+            <SkeletonCard titleWidth={140}>
+              <TableSkeleton widths={[90, 40, 40, 40, 40, 40, 40]} rows={6} />
+            </SkeletonCard>
+          </>
+        ) : (
+          <>
+            <ChartCard />
+            <SkeletonCard titleWidth={90}>
+              <TableSkeleton widths={[80, 40, 40, 40, 40, 40]} rows={8} />
+            </SkeletonCard>
+          </>
         )}
-        <ChartCard />
-        <SkeletonCard titleWidth={90}>
-          <TableSkeleton widths={[80, 40, 40, 40, 40, 40]} rows={8} />
-        </SkeletonCard>
       </>
     )}
   </>
