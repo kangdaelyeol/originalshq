@@ -13,6 +13,7 @@ import {
   useCreateLeadViewModel,
   useGaTrackingViewModel,
   useLeadMondayMatchViewModel,
+  useLiveInflowViewModel,
   useMainViewModel,
   useMondayStatsViewModel,
   useMondayTrendViewModel,
@@ -44,6 +45,11 @@ const XtoolLeadManagerScreen = () => {
   // 날짜별 집계만 쓴다).
   const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
   const trend = useMondayTrendViewModel(tab === 'trend')
+  // 인입통계 맨 위의 오늘 웹 문의(실시간) — 그 화면을 보고 있을 때만 받는다.
+  const live = useLiveInflowViewModel(
+    tab === 'trend' && trend.state.section === 'inflow',
+    trend.state.syncedAt,
+  )
   // 오기입 추적 — BigQuery를 부르는 조회라 그 탭을 처음 열 때만 받는다.
   const gaTracking = useGaTrackingViewModel(tab === 'tracking')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
@@ -72,7 +78,13 @@ const XtoolLeadManagerScreen = () => {
   }
 
   if (tab === 'trend') {
-    return <MondayTrend state={trend.state} actions={trend.actions} />
+    return (
+      <MondayTrend
+        state={trend.state}
+        actions={trend.actions}
+        live={live.state}
+      />
+    )
   }
 
   if (tab === 'stats') {

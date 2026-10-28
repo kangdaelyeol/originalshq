@@ -583,3 +583,114 @@ $trend-y-axis-width: 44px;
     max-height: none;
   }
 }
+
+// 인입통계 맨 위 — 오늘 웹 문의 실시간.
+.monday_trend .live_inflow {
+  margin-bottom: 20px;
+
+  .live_inflow_head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 6px 16px;
+    margin-bottom: 15px;
+
+    h2 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+    }
+  }
+
+  .live_dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3fb950;
+    box-shadow: 0 0 0 0 rgba(63, 185, 80, 0.6);
+    animation: live-dot-pulse 2s ease-out infinite;
+  }
+
+  .live_inflow_meta {
+    color: variables.$color-text-muted;
+    font-size: 12px;
+  }
+
+  .live_inflow_tiles {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 720px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &.is-loading span {
+      height: 92px;
+      border-radius: 8px;
+      background: variables.$color-surface-raised;
+    }
+  }
+
+  .stats_tile_value.is-warn {
+    color: #d29922;
+  }
+
+  .live_inflow_sub {
+    color: variables.$color-text-muted;
+    font-size: 12px;
+  }
+
+  .live_inflow_link {
+    align-self: flex-start;
+    color: variables.$color-accent;
+    font-size: 12px;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .live_inflow_boards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border: 1px solid variables.$color-border-soft;
+      border-radius: 999px;
+      color: variables.$color-text-muted;
+      font-size: 12px;
+
+      strong {
+        color: variables.$color-text;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+@keyframes live-dot-pulse {
+  70% {
+    box-shadow: 0 0 0 6px rgba(63, 185, 80, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(63, 185, 80, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .monday_trend .live_dot {
+    animation: none;
+  }
+}
