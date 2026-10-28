@@ -37,7 +37,7 @@ const ChartCard = () => (
 
 /**
  * 통계 탭이 데이터를 받는 동안 — 지금 보고 있는 소주제의 배치를 회색으로
- * 그린다. 인입: 타일+그래프(옆에 실시간)·기간 표·파이프라인 표 / 판매: 타일+그래프·기간
+ * 그린다. 인입: 타일+그래프+기간 표(옆에 실시간)·파이프라인 표 / 판매: 타일+그래프·기간
  * 표 / 개인 KPI: 담당자 칩·KPI 표.
  */
 export const TrendSkeleton = ({
@@ -66,12 +66,14 @@ export const TrendSkeleton = ({
         {section === 'inflow' ? (
           <>
             <div className="inflow_top_row">
-              <ChartCard />
+              {/* 왼쪽 카드: 타일+그래프 아래에 기간 표까지 */}
+              <SkeletonCard titleWidth={120}>
+                <SkeletonTiles count={4} />
+                <Bone width="100%" height={220} />
+                <TableSkeleton widths={[80, 40, 40, 40, 40, 40]} rows={8} />
+              </SkeletonCard>
               {inflowAside}
             </div>
-            <SkeletonCard titleWidth={90}>
-              <TableSkeleton widths={[80, 40, 40, 40, 40, 40]} rows={8} />
-            </SkeletonCard>
             <SkeletonCard titleWidth={140}>
               <TableSkeleton widths={[90, 40, 40, 40, 40, 40, 40]} rows={6} />
             </SkeletonCard>

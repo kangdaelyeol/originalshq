@@ -20,6 +20,11 @@ $trend-y-axis-width: 44px;
 }
 
 .xtool-main.monday_trend {
+  // .xtool-main의 overflow: scroll을 이 탭에서만 푼다 — 스크롤 영역이 되면
+  // 안의 고정 요소(오른쪽 실시간 카드)가 화면 스크롤을 따라오지 못한다. 이
+  // 탭의 표들은 각자 스크롤 영역(trend_table_scroll)이 있다.
+  overflow: visible;
+
   .trend_tiles {
     grid-template-columns: repeat(4, minmax(0, 1fr));
     margin-bottom: 26px;
@@ -30,11 +35,32 @@ $trend-y-axis-width: 44px;
     max-height: 420px;
     // 보드가 열 개가 넘어 좁은 화면에서는 가로로도 넘친다.
     overflow: auto;
+    // 아래 고정 칸들의 z-index가 이 표 안에서만 비교되게 — 없으면 페이지를
+    // 내릴 때 첫 칸이 위쪽 고정 메뉴 바 위로 올라온다.
+    isolation: isolate;
 
     thead th {
       position: sticky;
       top: 0;
       background-color: variables.$color-surface;
+    }
+
+    // 첫 칸(날짜·보드 이름)은 가로로 스크롤해도 왼쪽에 붙어 있게 한다.
+    // 고정된 칸은 테두리가 같이 움직이지 않아서, 오른쪽 경계선은 안쪽
+    // 그림자로 긋는다. 머리글·합계 줄의 첫 칸은 위아래 고정과 겹치므로 더
+    // 위에 그린다.
+    th:first-child,
+    td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      padding-right: 16px;
+      background-color: variables.$color-surface;
+      box-shadow: inset -1px 0 0 variables.$color-border-soft;
+    }
+    thead th:first-child,
+    tfoot td:first-child {
+      z-index: 2;
     }
 
     // 합계·평균 — 표가 길어 스크롤해도 아래에 붙어 있게 한다. 본문 줄과
@@ -60,6 +86,13 @@ $trend-y-axis-width: 44px;
       // (sticky) 있는 동안 그려지지 않아서, 안쪽 그림자로 선을 긋는다.
       padding-top: 6px;
       box-shadow: inset 0 1px 0 variables.$color-border;
+
+      // 첫 칸은 오른쪽 경계선도 같이(위 첫 칸 고정 참고).
+      &:first-child {
+        box-shadow:
+          inset 0 1px 0 variables.$color-border,
+          inset -1px 0 0 variables.$color-border-soft;
+      }
     }
     tfoot tr:last-child td {
       padding-bottom: 2px;
@@ -594,6 +627,39 @@ $trend-y-axis-width: 44px;
 
   @media (max-width: 1100px) {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  // 왼쪽 카드 — 타일·그래프 아래에 같은 기간의 표를 이어 둔다.
+  .inflow_main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .inflow_table_block {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid variables.$color-border-soft;
+
+    h3 {
+      margin: 0 0 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+  }
+
+  // 오른쪽 실시간 카드 — 왼쪽(그래프+표)이 길어서, 내려가도 위에 붙어
+  // 따라온다(헤더 60px + 통계 메뉴 줄 아래). 위아래로 쌓이는 좁은 화면에서는
+  // 따라오지 않는다.
+  > .live_inflow {
+    position: sticky;
+    top: 144px;
+    align-self: start;
+
+    @media (max-width: 1100px) {
+      position: static;
+    }
   }
 }
 

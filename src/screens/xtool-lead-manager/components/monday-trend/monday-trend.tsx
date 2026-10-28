@@ -221,9 +221,9 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
             <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
           ) : (
             <>
-              {/* 맨 위 한 줄 — 왼쪽 기간 인입 건수, 오른쪽 오늘 웹 문의(실시간). */}
+              {/* 맨 위 한 줄 — 왼쪽 기간 인입 건수(그래프+표), 오른쪽 오늘 웹 문의(실시간). */}
               <div className="inflow_top_row">
-                <section className="stats_card">
+                <section className="stats_card inflow_main">
                   <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
                   <p className="stats_desc">
                     같은 고객이 여러 번 문의해도 각각 포함
@@ -267,79 +267,79 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
                   </div>
 
                   <InflowChart points={points} average={summary.average} />
+                  {/* 같은 기간의 표 — 그래프와 한 카드에 둔다. */}
+                  <div className="inflow_table_block">
+                    <h3>{INFLOW_UNIT_LABEL[unit]} 표</h3>
+                    <div className="trend_table_scroll">
+                      <table className="stats_table">
+                        <thead>
+                          <tr>
+                            {columns.map((column) => (
+                              <th
+                                key={column.key}
+                                className="sortable"
+                                aria-sort={
+                                  column.key !== sortKey
+                                    ? 'none'
+                                    : sortDirection === 'asc'
+                                      ? 'ascending'
+                                      : 'descending'
+                                }
+                                onClick={() => toggleSort(column.key)}
+                              >
+                                {column.label}
+                                <SortButton
+                                  columnKey={column.key}
+                                  sortField={sortKey}
+                                  sortDirection={sortDirection}
+                                  onSort={toggleSort}
+                                />
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tableRows.map((point) => (
+                            <tr key={point.date}>
+                              <td>{point.label}</td>
+                              <td>{point.total}</td>
+                              <td>{point.misentry}</td>
+                              {summary.boards.map((board) => (
+                                <td key={board.name}>
+                                  {point.boards?.[board.name] ?? 0}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                        {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
+                          보이는 줄 수(일·주·월)로 나눈 값이다. */}
+                        <tfoot>
+                          <tr>
+                            <td>합계</td>
+                            <td>{summary.total.toLocaleString('ko-KR')}</td>
+                            <td>{summary.misentry.toLocaleString('ko-KR')}</td>
+                            {summary.boards.map((board) => (
+                              <td key={board.name}>
+                                {board.count.toLocaleString('ko-KR')}
+                              </td>
+                            ))}
+                          </tr>
+                          <tr>
+                            <td>평균</td>
+                            <td>{average(summary.total)}</td>
+                            <td>{average(summary.misentry)}</td>
+                            {summary.boards.map((board) => (
+                              <td key={board.name}>{average(board.count)}</td>
+                            ))}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
                 </section>
                 <LiveInflow live={live} />
               </div>
-
-              <section className="stats_card">
-                <h2>{INFLOW_UNIT_LABEL[unit]} 표</h2>
-                <div className="trend_table_scroll">
-                  <table className="stats_table">
-                    <thead>
-                      <tr>
-                        {columns.map((column) => (
-                          <th
-                            key={column.key}
-                            className="sortable"
-                            aria-sort={
-                              column.key !== sortKey
-                                ? 'none'
-                                : sortDirection === 'asc'
-                                  ? 'ascending'
-                                  : 'descending'
-                            }
-                            onClick={() => toggleSort(column.key)}
-                          >
-                            {column.label}
-                            <SortButton
-                              columnKey={column.key}
-                              sortField={sortKey}
-                              sortDirection={sortDirection}
-                              onSort={toggleSort}
-                            />
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableRows.map((point) => (
-                        <tr key={point.date}>
-                          <td>{point.label}</td>
-                          <td>{point.total}</td>
-                          <td>{point.misentry}</td>
-                          {summary.boards.map((board) => (
-                            <td key={board.name}>
-                              {point.boards?.[board.name] ?? 0}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                    {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
-                        보이는 줄 수(일·주·월)로 나눈 값이다. */}
-                    <tfoot>
-                      <tr>
-                        <td>합계</td>
-                        <td>{summary.total.toLocaleString('ko-KR')}</td>
-                        <td>{summary.misentry.toLocaleString('ko-KR')}</td>
-                        {summary.boards.map((board) => (
-                          <td key={board.name}>
-                            {board.count.toLocaleString('ko-KR')}
-                          </td>
-                        ))}
-                      </tr>
-                      <tr>
-                        <td>평균</td>
-                        <td>{average(summary.total)}</td>
-                        <td>{average(summary.misentry)}</td>
-                        {summary.boards.map((board) => (
-                          <td key={board.name}>{average(board.count)}</td>
-                        ))}
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              </section>
 
               <PipelineSection
                 pipeline={pipeline}
