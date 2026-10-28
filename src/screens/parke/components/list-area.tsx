@@ -105,12 +105,12 @@ const Row = ({ serial }: RowProps) => {
 }
 
 export const ListArea = () => {
-  const { serialList } = useParkeContext()
+  const { pagedSerials } = useParkeContext()
 
   return (
     <div id="listArea" className='parke_listarea'>
       <div className="list">
-        {serialList.map((v) => (
+        {pagedSerials.map((v) => (
           <Row serial={v} key={v} />
         ))}
       </div>
