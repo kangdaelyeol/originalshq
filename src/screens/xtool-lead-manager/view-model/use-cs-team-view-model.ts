@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { MondayKpiFacts } from '@/screens/xtool-lead-manager/entity'
 import {
   buildCsTeamStats,
+  buildIntakeKpi,
   computeKpis,
   csCandidates,
   defaultKpiRange,
@@ -9,6 +10,7 @@ import {
   kpiRangeDates,
   recentMonthsRange,
   sortKpiPairRows,
+  sortKpiRows,
   type KpiRange,
   type KpiUnit,
   type NeglectRow,
@@ -35,13 +37,12 @@ const parseMembers = (stored: unknown): string[] | undefined =>
 const CS_KPIS: Record<string, { title: string; description: string }> = {
   'confirm-rate': {
     title: '방문체험 확정',
-    description:
-      '위: 그 기간에 확정된 방문체험 수(방문체험 확정일 기준) · 아래: 그 기간에 들어온 상담 수 대비 비율(오기입 제외).',
+    description: '설정 기간동안 확정된 방문체험 수와 전체 상담수 대비 비율',
   },
   'paid-rate': {
     title: '결제 전환',
     description:
-      '위: 그 기간에 결제된 상담 수(결제일 기준) · 아래: 그 기간에 들어온 상담 수 대비 비율 — 상담 담당자 기준.',
+      '설정 기간동안 결제된 상담 수(결제일 기준), 전체 상담수 대비 비율',
   },
 }
 
@@ -51,6 +52,7 @@ export type KpiPairSortBy = 'count' | 'rate'
  * 인입통계 맨 아래 CS팀 섹션 — 위 인입통계 기간과 따로, 자기 기간(처음엔
  * 월별 최근 6개월)으로 본다.
  *   · 인입 처리·구매 전환·방문체험 전환 카드 — 그 기간에 접수된 상담 기준
+ *   · 인입 처리 수(담당자 × 기간) — 위 카드와 같은 기준을 기간별로
  *   · 방문체험 확정·결제 전환(건수와 비율을 한 표에) — 개인 KPI와 같은 계산을
  *     CS팀 담당자 기록만으로(합계도 CS팀 합)
  *   · 콜백 방치 — 기간과 무관한 지금 현황, CS팀 담당자만
@@ -125,6 +127,14 @@ export const useCsTeamViewModel = ({
     )
     return {
       periods,
+      // 인입 처리 수 — 건수만 있는 표(방문체험 확정·결제 전환 위에 둔다).
+      intake: (() => {
+        const intake = buildIntakeKpi(facts.consultations, members, unit, range)
+        return {
+          ...intake,
+          rows: sortKpiRows(intake.rows, tableSorts['cs-kpi:intake'], periods),
+        }
+      })(),
       kpis: kpis
         .filter((each) => each.id in CS_KPIS)
         .map((each) => {
@@ -142,7 +152,7 @@ export const useCsTeamViewModel = ({
           }
         }),
     }
-  }, [facts, memberSet, unit, range, tableSorts, sortBy])
+  }, [facts, members, memberSet, unit, range, tableSorts, sortBy])
 
   const neglect = useMemo(
     () => callbackNeglect.filter((row) => memberSet.has(row.assignee)),

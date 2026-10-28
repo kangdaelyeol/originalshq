@@ -1,4 +1,12 @@
 import type { MondayKpiFacts } from '../entity'
+import {
+  periodKeyOf,
+  periodsBetween,
+  type KpiCell,
+  type KpiRange,
+  type KpiResult,
+  type KpiUnit,
+} from './monday-kpi'
 
 /** CS팀 담당자 한 명의 기간 성과 — 접수일이 기간 안이고 상담 진행 상태가
  * "신규 상담 유입"이 아닌(처리된) 상담 기준(코호트). 결제·방문체험 확정은 그
@@ -80,4 +88,48 @@ export const csCandidates = (
   return [...counts.entries()]
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'ko'))
+}
+
+/** 인입 처리 수 표 — 담당자 × 기간. 그 기간에 접수된 상담 중 처리된 것(신규
+ * 상담 유입·오기입 제외)을 접수일 기준으로 센다. 위 카드의 "인입 처리 수"를
+ * 기간별로 나눈 것이다. 명단에 있는 사람만, 명단 순서대로(건수 많은 순 정렬은
+ * 표가 한다) — 기간에 상담이 없는 사람도 0으로 나온다. */
+export const buildIntakeKpi = (
+  consultations: MondayKpiFacts['consultations'],
+  members: readonly string[],
+  unit: KpiUnit,
+  range: KpiRange,
+): KpiResult => {
+  const periods = periodsBetween(unit, range)
+  const index = new Map(periods.map((key, i) => [key, i]))
+  const blank = (): KpiCell => ({ value: 0 })
+  const rows = new Map(
+    members.map((name) => [
+      name,
+      { assignee: name, total: blank(), byPeriod: periods.map(blank) },
+    ]),
+  )
+  const sum = { total: blank(), byPeriod: periods.map(blank) }
+
+  for (const [assignee, receivedAt, , , isNew] of consultations) {
+    if (isNew === 1 || !receivedAt) continue
+    const row = rows.get(assignee)
+    if (!row) continue
+    const at = index.get(periodKeyOf(receivedAt, unit))
+    if (at === undefined) continue
+    row.total.value += 1
+    row.byPeriod[at].value += 1
+    sum.total.value += 1
+    sum.byPeriod[at].value += 1
+  }
+
+  return {
+    id: 'intake',
+    title: '인입 처리 수',
+    description:
+      '그 기간에 접수된 상담 중 처리한(신규 상담 유입 아닌) 건수 — 접수일 기준, 오기입 제외.',
+    format: 'count',
+    rows: [...rows.values()].sort((a, b) => b.total.value - a.total.value),
+    sum,
+  }
 }

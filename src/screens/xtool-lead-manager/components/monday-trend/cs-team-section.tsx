@@ -5,7 +5,7 @@ import type {
   CsMemberStats,
   TableSort,
 } from '@/screens/xtool-lead-manager/utils'
-import { KpiControls } from './kpi-section'
+import { KpiCard, KpiControls } from './kpi-section'
 import { KpiPairCard } from './kpi-pair-card'
 import { CallbackNeglect } from './neglect-section'
 
@@ -259,6 +259,14 @@ export const CsTeamSection = ({
               />
             ))}
           </div>
+
+          <KpiCard
+            each={kpi.intake}
+            unit={period.unit}
+            periods={kpi.periods}
+            sort={sorts['cs-kpi:intake']}
+            onSort={(key) => onSort('cs-kpi:intake', key)}
+          />
 
           {kpi.kpis.map((each) => (
             <KpiPairCard
