@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
 import { QrModal } from '@/screens/parke/components'
 import { useParkeContext } from '@/screens/parke/context'
@@ -105,14 +105,27 @@ const Row = ({ serial }: RowProps) => {
 }
 
 export const ListArea = () => {
-  const { pagedSerials } = useParkeContext()
+  const { pagedSerials, page, searchValue } = useParkeContext()
+  const listRef = useRef<HTMLDivElement>(null)
+
+  // 쪽을 바꾸면 목록 스크롤을 맨 위로 — 앞 쪽에서 내려 본 위치가 남지 않게.
+  useEffect(() => {
+    listRef.current?.scrollTo({ top: 0 })
+  }, [page])
 
   return (
     <div id="listArea" className='parke_listarea'>
-      <div className="list">
+      <div className="list" ref={listRef}>
         {pagedSerials.map((v) => (
           <Row serial={v} key={v} />
         ))}
+        {pagedSerials.length === 0 && (
+          <div className="empty">
+            {searchValue.trim()
+              ? `"${searchValue.trim()}"에 맞는 시리얼이 없습니다`
+              : '아직 만든 시리얼이 없습니다'}
+          </div>
+        )}
       </div>
     </div>
   )

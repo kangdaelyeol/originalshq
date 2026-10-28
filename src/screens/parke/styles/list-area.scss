@@ -1,6 +1,12 @@
 @use './variables.scss';
 
 .parke_listarea {
+  .empty {
+    padding: 32px 0;
+    text-align: center;
+    color: variables.$text-muted;
+    font-size: 14px;
+  }
   .list {
     display: flex;
     flex-direction: column;
