@@ -1,0 +1,294 @@
+@use './variables.scss';
+
+// 시리얼 목록 → 카드 상세 모달.
+.card-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.78);
+
+  &__dialog {
+    width: min(760px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: variables.$surface-1;
+    border: 1px solid variables.$border;
+    border-radius: 14px;
+    color: variables.$text-primary;
+    font-family: variables.$font-sans;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 20px;
+    border-bottom: 1px solid variables.$border;
+
+    > div {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+
+  &__label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: variables.$text-muted;
+  }
+
+  &__serial {
+    margin: 2px 0 0;
+    font-family: variables.$font-mono;
+    font-size: 20px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  &__badge {
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid variables.$border-strong;
+    font-size: 12px;
+    color: variables.$text-secondary;
+
+    &.is-registered {
+      border-color: #1f6f43;
+      background: #0f2a1b;
+      color: #5fd394;
+    }
+  }
+
+  &__close {
+    all: unset;
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: variables.$text-secondary;
+    cursor: pointer;
+
+    &:hover {
+      background: variables.$surface-2;
+      color: variables.$text-primary;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$accent;
+    }
+  }
+
+  &__body {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 24px;
+    padding: 20px;
+
+    @media (max-width: 640px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+
+    canvas {
+      border-radius: 8px;
+    }
+  }
+
+  &__url {
+    font-family: variables.$font-mono;
+    font-size: 11px;
+    color: variables.$text-secondary;
+    text-align: center;
+    overflow-wrap: anywhere;
+
+    &:hover {
+      color: variables.$text-primary;
+    }
+  }
+
+  &__download {
+    all: unset;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 9px 0;
+    border: 1px solid variables.$border-strong;
+    border-radius: variables.$btn-border-radius;
+    text-align: center;
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+      background: variables.$surface-2;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$accent;
+    }
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 0;
+  }
+
+  &__section {
+    h3 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: variables.$text-muted;
+    }
+
+    dl {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+  }
+
+  &__grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+
+    dt {
+      font-size: 12px;
+      color: variables.$text-secondary;
+    }
+
+    dd {
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 15px;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__mono {
+    font-family: variables.$font-mono;
+  }
+
+  &__message {
+    white-space: pre-wrap;
+  }
+
+  &__owners {
+    font-size: 13px;
+  }
+
+  &__empty {
+    color: variables.$text-muted;
+  }
+
+  &__hint {
+    font-size: 12px;
+    color: variables.$text-muted;
+  }
+
+  // 저장값이 규칙에 맞지 않아 기본값으로 보여줄 때 — 데이터 확인용 표시.
+  &__replaced {
+    align-self: flex-start;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: variables.$accent-dim;
+    color: #f1c453;
+    font-size: 11px;
+  }
+
+  &__accent {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  &__notice {
+    margin: 0;
+    padding: 28px 16px;
+    border: 1px dashed variables.$border-strong;
+    border-radius: variables.$radius;
+    text-align: center;
+    font-size: 15px;
+
+    span {
+      display: block;
+      margin-top: 6px;
+      font-size: 13px;
+      color: variables.$text-muted;
+    }
+
+    &.is-error {
+      border-color: variables.$danger-dim;
+      color: variables.$danger;
+    }
+  }
+
+  &__skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    span {
+      height: 18px;
+      border-radius: 4px;
+      background: linear-gradient(
+        90deg,
+        variables.$surface-2,
+        variables.$border,
+        variables.$surface-2
+      );
+      background-size: 200% 100%;
+      animation: card-detail-shimmer 1.2s linear infinite;
+
+      &:nth-child(odd) {
+        width: 40%;
+        height: 12px;
+      }
+    }
+  }
+}
+
+@keyframes card-detail-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-detail__skeleton span {
+    animation: none;
+  }
+}

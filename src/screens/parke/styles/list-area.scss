@@ -30,6 +30,24 @@
     .qr-box-hidden {
       display: none;
     }
+    // QR·시리얼 부분 — 누르면 카드 상세 모달.
+    .row-open {
+      all: unset;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      gap: 14px;
+      cursor: pointer;
+      border-radius: 6px;
+
+      &:hover .serial {
+        text-decoration: underline;
+      }
+      &:focus-visible {
+        outline: 2px solid variables.$accent;
+        outline-offset: 4px;
+      }
+    }
     .row-qr {
       position: relative;
       cursor: pointer;

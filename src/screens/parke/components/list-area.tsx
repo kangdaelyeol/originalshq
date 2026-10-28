@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QRCodeCanvas } from 'qrcode.react'
-import { QrModal } from '@/screens/parke/components'
+import { CardDetailModal } from '@/screens/parke/components/card-detail-modal'
 import { useParkeContext } from '@/screens/parke/context'
 import { downloadQrCode, getSerialUrl } from '@/screens/parke/utils'
 import '@/screens/parke/styles/list-area.scss'
@@ -64,20 +64,29 @@ const Row = ({ serial }: RowProps) => {
   const [modal, setModal] = useState(false)
 
   const showModal = () => setModal(true)
-  const hideModal = () => setModal(false)
+  // 모달의 Esc 리스너가 매 렌더 다시 붙지 않게 고정한다.
+  const hideModal = useCallback(() => setModal(false), [])
 
   const url = getSerialUrl(serial)
 
   return (
     <div className="row">
-      <div className="row-qr" onClick={showModal}>
-        <QRCodeCanvas value={url} size={50} marginSize={1} />
-        <div className="bg" />
-      </div>
-      <div className="row-main">
-        <div className="serial">{serial}</div>
-        <div className="url">{url}</div>
-      </div>
+      {/* QR·시리얼 부분을 누르면 카드 상세 모달 */}
+      <button
+        type="button"
+        className="row-open"
+        onClick={showModal}
+        aria-label={`${serial} 카드 정보 보기`}
+      >
+        <div className="row-qr">
+          <QRCodeCanvas value={url} size={50} marginSize={1} />
+          <div className="bg" />
+        </div>
+        <div className="row-main">
+          <div className="serial">{serial}</div>
+          <div className="url">{url}</div>
+        </div>
+      </button>
       <div className="row-actions">
         <DonwloadButton
           onClick={() => {
@@ -99,7 +108,7 @@ const Row = ({ serial }: RowProps) => {
           marginSize={3}
         />
       </div>
-      {modal && <QrModal url={url} onCloseClick={hideModal} />}
+      {modal && <CardDetailModal serial={serial} onClose={hideModal} />}
     </div>
   )
 }
