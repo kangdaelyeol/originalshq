@@ -45,7 +45,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
 
   // 기간 단위(일별·주차별·월별) — 날짜 선택기 왼쪽. 누르면 그 단위의 기본
   // 기간을 고른다. 날짜를 직접 고른 기간이면 아무것도 켜지지 않는다.
-  &__period-units {
+  // "기간별 성과" 섹션의 보기 버튼(일별·주차별·월별·요일별)도 같은 모양이다.
+  &__period-units,
+  &__period-views {
     display: inline-flex;
     gap: 2px;
     padding: 3px;
@@ -757,6 +759,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     flex-wrap: wrap;
   }
 
+  // "기간별 성과" — 보기 버튼은 제목 바로 옆, "대비 표시"는 오른쪽 끝.
+  &__section-head &__period-views {
+    margin-right: auto;
+  }
+
   // "이전 일정 vs 지정 일정 비교분석" 헤더 — 구간 일수(N) 입력과 "대비 표시"
   // 토글을 오른쪽에 묶어, __section-head의 space-between이 [제목] vs [이 묶음]
   // 두 덩이로만 나뉘게 한다.
@@ -908,6 +915,58 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     // 있어도 트리거될 일이 없다(넘치는 게 없으니까) — 대신 그 폭 그대로
     // 부모까지 계속 새어 나가 페이지 전체가 가로 스크롤되는 원인이 됐다.
     min-width: 0;
+  }
+
+  // 기간별 성과·지정 기간 비교 표(MetricsTable) — 줄이 많으면(6개월을 일별로
+  // 보면 180줄) 약 20줄 높이에서 세로로 스크롤한다. 머리글은 위에, 합계·평균
+  // 줄은 아래에 붙인다. 합계가 평균 바로 위에 붙도록 두 줄의 높이를 고정한다.
+  //
+  // z-index는 !important로 올린다 — 왼쪽 고정 칸(토글·날짜) 규칙(아래 &__table의
+  // :not(...) 묶음)이 선택자가 훨씬 구체적이라 그대로 두면 z-index 1로 덮여,
+  // 가로로 스크롤할 때 머리글·합계 줄의 다른 칸이 왼쪽 고정 칸 위로 올라온다.
+  &__table-wrap--scroll {
+    // 실제 렌더 높이(13px 글자 + 위아래 6px 여백 + 테두리) — 머리글 27px, 본문
+    // 줄 28px. 합계·평균 줄은 아래에서 32px로 고정한다.
+    $head-h: 27px;
+    $row-h: 28px;
+    $foot-h: 32px;
+    // 머리글 + 본문 20줄 + 합계·평균.
+    max-height: calc(#{$head-h} + #{$row-h} * 20 + #{$foot-h} * 2);
+    overflow-y: auto;
+    // 안의 고정 칸 z-index가 이 표 안에서만 비교되게(페이지 위 고정 메뉴 등과
+    // 섞이지 않게).
+    isolation: isolate;
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2 !important;
+    }
+    thead th:first-child,
+    thead th:nth-child(2) {
+      z-index: 3 !important;
+    }
+
+    .channel-insight__table-row--total td,
+    .channel-insight__table-row--average td {
+      position: sticky;
+      z-index: 2 !important;
+      height: $foot-h;
+    }
+    .channel-insight__table-row--total td {
+      bottom: $foot-h;
+      background: $pivot-total-bg;
+    }
+    .channel-insight__table-row--average td {
+      bottom: 0;
+      background: $pivot-average-bg;
+    }
+    .channel-insight__table-row--total td:first-child,
+    .channel-insight__table-row--total td:nth-child(2),
+    .channel-insight__table-row--average td:first-child,
+    .channel-insight__table-row--average td:nth-child(2) {
+      z-index: 3 !important;
+    }
   }
 
   &__table {

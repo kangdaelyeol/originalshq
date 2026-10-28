@@ -1,5 +1,7 @@
 import {
+  PERIOD_VIEWS,
   useResultPanelViewModel,
+  type PeriodView,
 } from '../../view-model/use-result-panel-view-model'
 import {
   metricsForDateSubset,
@@ -43,21 +45,8 @@ export function ResultSkeleton({
       </section>
 
       <section className="channel-insight__section">
-        <h3 className="channel-insight__section-title">일별 성과</h3>
+        <h3 className="channel-insight__section-title">기간별 성과</h3>
         <TableSkeleton headLabel="날짜" rowCount={dayCount} />
-      </section>
-
-      <section className="channel-insight__section">
-        <h3 className="channel-insight__section-title">요일별 성과</h3>
-        <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
-      </section>
-
-      <section className="channel-insight__section">
-        <h3 className="channel-insight__section-title">주차별 성과</h3>
-        <TableSkeleton
-          headLabel="기간"
-          rowCount={Math.max(1, Math.ceil(dayCount / 7))}
-        />
       </section>
 
       {/* ResultPanel의 bucketSize 기본값(7)과 맞춘다 — 실제 값은 ResultPanel이
@@ -96,19 +85,40 @@ interface ResultPanelProps {
   dateEnd: ISODate
 }
 
-/** 일별/요일별/주차별 성과 섹션 제목 + "대비 표시" 토글을 한 줄에 배치. */
-function SectionHead({
-  title,
+/** "기간별 성과" 섹션 머리 — 제목, 보기 버튼(일별/주차별/월별/요일별), "대비
+ * 표시" 토글을 한 줄에. */
+function PeriodSectionHead({
+  view,
+  onViewChange,
   active,
   onToggle,
 }: {
-  title: string
+  view: PeriodView
+  onViewChange: (view: PeriodView) => void
   active: boolean
   onToggle: () => void
 }) {
   return (
     <div className="channel-insight__section-head">
-      <h3 className="channel-insight__section-title">{title}</h3>
+      <h3 className="channel-insight__section-title">기간별 성과</h3>
+      <div
+        className="channel-insight__period-views"
+        role="tablist"
+        aria-label="보기"
+      >
+        {PERIOD_VIEWS.map((each) => (
+          <button
+            key={each.value}
+            type="button"
+            role="tab"
+            aria-selected={each.value === view}
+            className={each.value === view ? 'is-active' : ''}
+            onClick={() => onViewChange(each.value)}
+          >
+            {each.label}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
         className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
@@ -189,12 +199,15 @@ export function ResultPanel({
 }: ResultPanelProps) {
   const {
     showChannelTotal,
+    periodView,
+    byMonth,
     compareOn,
     visibleMetrics,
     channelFilter,
     bucketSize,
     customPeriodRows,
     setShowChannelTotal,
+    setPeriodView,
     toggleCompare,
     toggleMetricVisible,
     setChannelFilterFor,
@@ -208,6 +221,14 @@ export function ResultPanel({
   const applicableChannels = CHANNELS.filter(
     (c) => series[c.key].byDate.length > 0,
   )
+
+  // 표의 한 줄을 펼쳤을 때 채널별 값 — 그 줄이 가리키는 날짜들만 원본
+  // 일별 값에서 다시 더한다.
+  const breakdownOf = (match: (date: ISODate) => boolean) => ({
+    meta: metricsForDateSubset(series.meta.byDate, match),
+    google: metricsForDateSubset(series.google.byDate, match),
+    naver: metricsForDateSubset(series.naver.byDate, match),
+  })
 
   return (
     <div className="channel-insight__result">
@@ -254,16 +275,32 @@ export function ResultPanel({
         )}
       </section>
 
+      {/* 기간별 성과 — 일별/주차별/월별/요일별을 버튼으로 바꿔 본다. 보기마다
+          대비 표시·지표 컬럼·채널 필터를 따로 기억한다. MetricsTable은 보기가
+          바뀌면 새로 그려 정렬·펼침이 섞이지 않게 한다(key). */}
       <section className="channel-insight__section">
-        <SectionHead
-          title="일별 성과"
-          active={compareOn.byDate}
-          onToggle={() => toggleCompare('byDate')}
+        <PeriodSectionHead
+          view={periodView}
+          onViewChange={setPeriodView}
+          active={compareOn[periodView]}
+          onToggle={() => toggleCompare(periodView)}
         />
         {loading ? (
-          <TableSkeleton headLabel="날짜" rowCount={dayCount} />
-        ) : (
+          <TableSkeleton
+            headLabel={periodView === 'byDayOfWeek' ? '요일' : periodView === 'byDate' ? '날짜' : '기간'}
+            rowCount={
+              periodView === 'byDate'
+                ? dayCount
+                : periodView === 'byDayOfWeek'
+                  ? Math.min(7, dayCount)
+                  : periodView === 'byGroupedWeek'
+                    ? Math.max(1, Math.ceil(dayCount / 7))
+                    : Math.max(1, Math.ceil(dayCount / 30))
+            }
+          />
+        ) : periodView === 'byDate' ? (
           <MetricsTable<DateSummary>
+            key="byDate"
             rows={
               channelFilter.byDate === 'all'
                 ? series.combined.byDate
@@ -278,34 +315,13 @@ export function ResultPanel({
             onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
             channelFilter={channelFilter.byDate}
             onChannelFilterChange={(v) => setChannelFilterFor('byDate', v)}
-            getChannelBreakdown={(row) => ({
-              meta: metricsForDateSubset(
-                series.meta.byDate,
-                (d) => d === row.date,
-              ),
-              google: metricsForDateSubset(
-                series.google.byDate,
-                (d) => d === row.date,
-              ),
-              naver: metricsForDateSubset(
-                series.naver.byDate,
-                (d) => d === row.date,
-              ),
-            })}
+            getChannelBreakdown={(row) =>
+              breakdownOf((d) => d === row.date)
+            }
           />
-        )}
-      </section>
-
-      <section className="channel-insight__section">
-        <SectionHead
-          title="요일별 성과"
-          active={compareOn.byDayOfWeek}
-          onToggle={() => toggleCompare('byDayOfWeek')}
-        />
-        {loading ? (
-          <TableSkeleton headLabel="요일" rowCount={Math.min(7, dayCount)} />
-        ) : (
+        ) : periodView === 'byDayOfWeek' ? (
           <MetricsTable<DayOfWeekSummary>
+            key="byDayOfWeek"
             labelDefaultDir="asc"
             rows={
               channelFilter.byDayOfWeek === 'all'
@@ -323,69 +339,35 @@ export function ResultPanel({
             onToggleMetric={(key) => toggleMetricVisible('byDayOfWeek', key)}
             channelFilter={channelFilter.byDayOfWeek}
             onChannelFilterChange={(v) => setChannelFilterFor('byDayOfWeek', v)}
-            getChannelBreakdown={(row) => ({
-              meta: metricsForDateSubset(
-                series.meta.byDate,
-                (d) => weekdayLabelOf(d) === row.dayOfWeek,
-              ),
-              google: metricsForDateSubset(
-                series.google.byDate,
-                (d) => weekdayLabelOf(d) === row.dayOfWeek,
-              ),
-              naver: metricsForDateSubset(
-                series.naver.byDate,
-                (d) => weekdayLabelOf(d) === row.dayOfWeek,
-              ),
-            })}
-          />
-        )}
-      </section>
-
-      <section className="channel-insight__section">
-        <SectionHead
-          title="주차별 성과"
-          active={compareOn.byGroupedWeek}
-          onToggle={() => toggleCompare('byGroupedWeek')}
-        />
-        {loading ? (
-          <TableSkeleton
-            headLabel="기간"
-            rowCount={Math.max(1, Math.ceil(dayCount / 7))}
+            getChannelBreakdown={(row) =>
+              breakdownOf((d) => weekdayLabelOf(d) === row.dayOfWeek)
+            }
           />
         ) : (
+          // 주차별·월별 — 같은 모양(기간 이름 + 시작·끝 날짜)이라 한 표로.
           <MetricsTable<WeekSummary>
+            key={periodView}
             rows={
-              channelFilter.byGroupedWeek === 'all'
-                ? series.combined.byGroupedWeek
-                : series[channelFilter.byGroupedWeek].byGroupedWeek
+              periodView === 'byGroupedWeek'
+                ? channelFilter.byGroupedWeek === 'all'
+                  ? series.combined.byGroupedWeek
+                  : series[channelFilter.byGroupedWeek].byGroupedWeek
+                : byMonth[channelFilter.byMonth === 'all' ? 'combined' : channelFilter.byMonth]
             }
             rowKey={(row) => row.period}
-            headLabel="기간"
+            headLabel={periodView === 'byMonth' ? '월' : '기간'}
             headValue={(row) => row.period}
             channels={
-              channelFilter.byGroupedWeek === 'all' ? applicableChannels : []
+              channelFilter[periodView] === 'all' ? applicableChannels : []
             }
-            showCompare={compareOn.byGroupedWeek}
-            visibleKeys={visibleMetrics.byGroupedWeek}
-            onToggleMetric={(key) => toggleMetricVisible('byGroupedWeek', key)}
-            channelFilter={channelFilter.byGroupedWeek}
-            onChannelFilterChange={(v) =>
-              setChannelFilterFor('byGroupedWeek', v)
+            showCompare={compareOn[periodView]}
+            visibleKeys={visibleMetrics[periodView]}
+            onToggleMetric={(key) => toggleMetricVisible(periodView, key)}
+            channelFilter={channelFilter[periodView]}
+            onChannelFilterChange={(v) => setChannelFilterFor(periodView, v)}
+            getChannelBreakdown={(row) =>
+              breakdownOf((d) => d >= row.startDate && d <= row.endDate)
             }
-            getChannelBreakdown={(row) => ({
-              meta: metricsForDateSubset(
-                series.meta.byDate,
-                (d) => d >= row.startDate && d <= row.endDate,
-              ),
-              google: metricsForDateSubset(
-                series.google.byDate,
-                (d) => d >= row.startDate && d <= row.endDate,
-              ),
-              naver: metricsForDateSubset(
-                series.naver.byDate,
-                (d) => d >= row.startDate && d <= row.endDate,
-              ),
-            })}
           />
         )}
       </section>

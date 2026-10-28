@@ -136,7 +136,9 @@ export function MetricsTable<T extends MetricsSummary>({
         })}
       </div>
 
-      <div className="channel-insight__table-wrap">
+      {/* 줄이 많으면(예: 6개월을 일별로) 약 20줄 높이에서 세로 스크롤 —
+          머리글은 위에, 합계·평균은 아래에 붙어 있다. */}
+      <div className="channel-insight__table-wrap channel-insight__table-wrap--scroll">
         <table className="channel-insight__table">
           <thead>
             <tr>

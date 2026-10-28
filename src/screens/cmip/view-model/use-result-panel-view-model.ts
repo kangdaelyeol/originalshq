@@ -1,5 +1,9 @@
 import { useMemo, useState } from 'react'
-import { groupByCustomPeriod, type GroupedInsightSeries } from '../client'
+import {
+  groupByCustomPeriod,
+  groupByMonth,
+  type GroupedInsightSeries,
+} from '../client'
 import { METRIC_FIELDS, type MetricKey } from '../components/metric-fields'
 import { CHANNELS, type ChannelKey } from '../components/channels'
 import {
@@ -11,13 +15,29 @@ import {
 } from '@/hooks/use-persistent-state'
 import type { ISODate } from '../types'
 
-type ResultTable = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek' | 'byCustomPeriod'
+type ResultTable =
+  | 'byDate'
+  | 'byDayOfWeek'
+  | 'byGroupedWeek'
+  | 'byMonth'
+  | 'byCustomPeriod'
 
-/** 표 네 개에 같은 값을 넣은 객체. */
+/** "기간별 성과" 섹션의 보기 — 버튼 순서대로. */
+export type PeriodView = 'byDate' | 'byGroupedWeek' | 'byMonth' | 'byDayOfWeek'
+
+export const PERIOD_VIEWS: readonly { value: PeriodView; label: string }[] = [
+  { value: 'byDate', label: '일별' },
+  { value: 'byGroupedWeek', label: '주차별' },
+  { value: 'byMonth', label: '월별' },
+  { value: 'byDayOfWeek', label: '요일별' },
+]
+
+/** 표 다섯 개(기간별 성과의 네 보기 + 지정 기간 비교)에 같은 값을 넣은 객체. */
 const tablesOf = <V>(value: V): Record<ResultTable, V> => ({
   byDate: value,
   byDayOfWeek: value,
   byGroupedWeek: value,
+  byMonth: value,
   byCustomPeriod: value,
 })
 
@@ -34,8 +54,8 @@ interface ResultSeries {
   naver: GroupedInsightSeries
 }
 
-/** "전체 요약" 탭(ResultPanel) 전용 상태 — Summary 카드의 채널별 펼침, 일별/
- * 요일별/주차별/지정기간 표마다 독립적인 "대비 표시"·지표 컬럼·채널 필터,
+/** "전체 요약" 탭(ResultPanel) 전용 상태 — Summary 카드의 채널별 펼침, "기간별
+ * 성과"에서 보고 있는 보기(일별/주차별/월별/요일별), 보기·지정기간 표마다 독립적인 "대비 표시"·지표 컬럼·채널 필터,
  * 그리고 "이전 일정 vs 지정 일정" 표의 구간 일수와 그 결과 행(customPeriodRows)을
  * 다룬다. 표마다 독립 상태를 두는 이유(MetricsTable이 재조회 시 unmount/remount
  * 되어 자체 상태를 두면 초기화되어 버림)는 기존 컴포넌트 주석 그대로다. */
@@ -45,6 +65,25 @@ export const useResultPanelViewModel = (
   dateEnd: ISODate,
 ) => {
   const [showChannelTotal, setShowChannelTotal] = useState(false)
+
+  // "기간별 성과" 섹션에서 보고 있는 보기 — 이 브라우저에 남는다.
+  const [periodView, setPeriodView] = usePersistentState<PeriodView>(
+    'cmip.resultPanel.periodView',
+    'byDate',
+    oneOf(PERIOD_VIEWS.map((each) => each.value)),
+  )
+
+  // 월별 — 일별 값을 달력 월로 묶는다(조회 기간에 걸친 날만). 채널별로 미리
+  // 만들어 두어 채널 필터를 바꿔도 다시 계산하지 않는다.
+  const byMonth = useMemo(
+    () => ({
+      combined: groupByMonth(series.combined.byDate),
+      meta: groupByMonth(series.meta.byDate),
+      google: groupByMonth(series.google.byDate),
+      naver: groupByMonth(series.naver.byDate),
+    }),
+    [series],
+  )
 
   // 일별/요일별/주차별 표마다 "대비 표시" 토글을 독립적으로 둔다 — 표 하나만
   // 켜서 보고 싶은 경우가 많아서다(예: 일별은 대비로, 주차별은 그냥 값만).
@@ -79,6 +118,7 @@ export const useResultPanelViewModel = (
       byDate: visibleOf(hiddenMetrics.byDate),
       byDayOfWeek: visibleOf(hiddenMetrics.byDayOfWeek),
       byGroupedWeek: visibleOf(hiddenMetrics.byGroupedWeek),
+      byMonth: visibleOf(hiddenMetrics.byMonth),
       byCustomPeriod: visibleOf(hiddenMetrics.byCustomPeriod),
     }
   }, [hiddenMetrics])
@@ -136,6 +176,8 @@ export const useResultPanelViewModel = (
   return {
     // 진행 상태
     showChannelTotal,
+    periodView,
+    byMonth,
     compareOn,
     visibleMetrics,
     channelFilter,
@@ -143,6 +185,7 @@ export const useResultPanelViewModel = (
     customPeriodRows,
     // 액션
     setShowChannelTotal,
+    setPeriodView,
     toggleCompare,
     toggleMetricVisible,
     setChannelFilterFor,
