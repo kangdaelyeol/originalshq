@@ -1,0 +1,50 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "user": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+    "card": {
+      "$cardId": {
+        ".read": true,
+        ".write": "auth != null",
+        "title":   { ".validate": "newData.isString() && newData.val().length <= 30" },
+        "phone":   { ".validate": "newData.isString() && newData.val().matches(/^[0-9]{0,15}$/)" },
+        "theme":   { ".validate": "newData.val() === 'dark' || newData.val() === 'light' || newData.val() === 'amber' || newData.val() === 'mint'" },
+        "custom": {
+          "accent":  { ".validate": "newData.isString() && newData.val().matches(/^#[0-9a-fA-F]{6}$/)" },
+          "scale":   { ".validate": "newData.isNumber() && newData.val() >= 0.85 && newData.val() <= 1.3" },
+          "message": { ".validate": "newData.isString() && newData.val().length <= 40" }
+        }
+      }
+    },
+    "allow": {
+      ".read": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists()",
+      "$serial": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists()",
+        ".validate": "newData.val() === true"
+      }
+    },
+    "admin": {
+      ".read": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists()",
+      "$emailKey": {
+        ".write": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists() && $emailKey !== auth.token.email.toLowerCase().replace('.', ',')",
+        ".validate": "newData.hasChildren(['email', 'addedAt', 'addedBy']) && newData.child('email').isString() && newData.child('email').val().toLowerCase().replace('.', ',') === $emailKey"
+      }
+    },
+    "adminLog": {
+      ".read": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists()",
+      "deletions": {
+        "$logId": {
+          ".write": "auth != null && auth.token.email_verified === true && root.child('admin').child(auth.token.email.toLowerCase().replace('.', ',')).exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['serial', 'deletedAt', 'deletedBy'])"
+        }
+      }
+    }
+  }
+}

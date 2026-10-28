@@ -1,0 +1,422 @@
+@use './variables.scss';
+
+// 관리자 화면 공통 — 버튼, 로그인 화면, 계정 줄, 모달, 토스트, 삭제 기록,
+// 관리자 관리.
+
+.parke-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: variables.$btn-border-radius;
+  background: variables.$text-primary;
+  color: #000;
+  font-family: variables.$font-sans;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    background: #fff;
+  }
+  &:focus-visible {
+    outline: 2px solid variables.$accent;
+    outline-offset: 2px;
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  &.is-ghost {
+    background: transparent;
+    color: variables.$text-primary;
+    border: 1px solid variables.$border-strong;
+    &:hover {
+      background: variables.$surface-2;
+    }
+  }
+  &.is-danger {
+    background: variables.$danger;
+    color: #fff;
+    &:hover {
+      background: #ff7366;
+    }
+  }
+  &.is-small {
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+}
+
+.parke-auth {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 16px;
+  font-family: variables.$font-sans;
+
+  &__text {
+    margin: 0;
+    color: variables.$text-primary;
+    font-size: 15px;
+    text-align: center;
+    line-height: 1.6;
+
+    span {
+      display: block;
+      color: variables.$text-secondary;
+      font-size: 13px;
+    }
+  }
+  &__error {
+    margin: 0;
+    color: variables.$danger;
+    font-size: 13px;
+  }
+}
+
+.parke-account {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-family: variables.$font-sans;
+
+  &__email {
+    margin-right: auto;
+    color: variables.$text-secondary;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+}
+
+.parke-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.78);
+  font-family: variables.$font-sans;
+
+  &__box {
+    width: min(520px, 100%);
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    padding: 20px;
+    background: variables.$surface-1;
+    border: 1px solid variables.$border;
+    border-radius: 14px;
+    color: variables.$text-primary;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+
+    &.is-narrow {
+      width: min(420px, 100%);
+    }
+  }
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  &__title {
+    margin: 0 0 12px;
+    font-size: 17px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+
+  &__close {
+    all: unset;
+    width: 32px;
+    height: 32px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: variables.$text-secondary;
+    cursor: pointer;
+    &:hover {
+      background: variables.$surface-2;
+    }
+  }
+
+  &__mono {
+    font-family: variables.$font-mono;
+  }
+
+  &__text {
+    margin: 0 0 12px;
+    color: variables.$text-secondary;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  &__hint {
+    margin: 0 0 12px;
+    color: variables.$text-muted;
+    font-size: 12px;
+  }
+
+  &__warn {
+    margin-bottom: 12px;
+    padding: 12px 14px;
+    border: 1px solid variables.$danger-dim;
+    border-radius: variables.$radius;
+    background: rgba(255, 92, 77, 0.06);
+    color: variables.$danger;
+    font-size: 14px;
+
+    dl {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 4px 12px;
+      margin: 10px 0 0;
+      color: variables.$text-primary;
+    }
+    dt {
+      color: variables.$text-secondary;
+      font-size: 13px;
+    }
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+  }
+}
+
+.parke-toasts {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 120;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  transform: translateX(-50%);
+  font-family: variables.$font-sans;
+}
+
+.parke-toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid variables.$border-strong;
+  border-left: 3px solid #5fd394;
+  border-radius: 8px;
+  background: #181819;
+  color: variables.$text-primary;
+  font-size: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  &.is-error {
+    border-left-color: variables.$danger;
+  }
+
+  &__action {
+    all: unset;
+    padding: 4px 10px;
+    border-radius: 6px;
+    color: #8ab4ff;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover {
+      background: variables.$surface-2;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$accent;
+    }
+  }
+
+  &__close {
+    all: unset;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: variables.$text-muted;
+    cursor: pointer;
+    &:hover {
+      color: variables.$text-primary;
+    }
+  }
+}
+
+.parke-log {
+  margin-top: 16px;
+  font-family: variables.$font-sans;
+
+  &__toggle {
+    all: unset;
+    color: variables.$text-secondary;
+    font-size: 13px;
+    cursor: pointer;
+    &:hover {
+      color: variables.$text-primary;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$accent;
+    }
+  }
+
+  &__empty {
+    margin: 10px 0 0;
+    color: variables.$text-muted;
+    font-size: 13px;
+  }
+
+  &__list {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  &__item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 4px 12px;
+    padding: 10px 12px;
+    border: 1px solid variables.$border;
+    border-radius: 8px;
+    background: variables.$surface-1;
+
+    > button {
+      grid-row: 1 / span 2;
+      grid-column: 2;
+    }
+    &.is-restored {
+      opacity: 0.6;
+    }
+  }
+
+  &__main {
+    display: flex;
+    gap: 10px;
+    min-width: 0;
+    align-items: baseline;
+  }
+
+  &__serial {
+    font-family: variables.$font-mono;
+    color: variables.$text-primary;
+    font-size: 14px;
+  }
+
+  &__card {
+    color: variables.$text-secondary;
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta {
+    color: variables.$text-muted;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  &__restored {
+    display: block;
+    color: #5fd394;
+  }
+}
+
+.parke-admin {
+  &__add {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+
+    input {
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      padding: 0 12px;
+      border: 1px solid variables.$border;
+      border-radius: variables.$btn-border-radius;
+      background: variables.$surface-2;
+      color: variables.$text-primary;
+      font-size: 14px;
+      outline: none;
+      &:focus {
+        border-color: variables.$accent;
+      }
+    }
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border: 1px solid variables.$border;
+      border-radius: 8px;
+
+      > div {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+    }
+  }
+
+  &__email {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+
+    em {
+      color: variables.$text-muted;
+      font-style: normal;
+    }
+  }
+
+  &__meta {
+    color: variables.$text-muted;
+    font-size: 12px;
+  }
+}

@@ -114,7 +114,7 @@ const Row = ({ serial }: RowProps) => {
 }
 
 export const ListArea = () => {
-  const { pagedSerials, page, searchValue } = useParkeContext()
+  const { pagedSerials, page, searchValue, listStatus } = useParkeContext()
   const listRef = useRef<HTMLDivElement>(null)
 
   // 쪽을 바꾸면 목록 스크롤을 맨 위로 — 앞 쪽에서 내려 본 위치가 남지 않게.
@@ -128,7 +128,15 @@ export const ListArea = () => {
         {pagedSerials.map((v) => (
           <Row serial={v} key={v} />
         ))}
-        {pagedSerials.length === 0 && (
+        {listStatus === 'loading' && (
+          <div className="empty">시리얼 목록을 불러오는 중…</div>
+        )}
+        {listStatus === 'error' && (
+          <div className="empty">
+            시리얼 목록을 불러오지 못했습니다(권한을 확인해 주세요)
+          </div>
+        )}
+        {listStatus === 'ready' && pagedSerials.length === 0 && (
           <div className="empty">
             {searchValue.trim()
               ? `"${searchValue.trim()}"에 맞는 시리얼이 없습니다`

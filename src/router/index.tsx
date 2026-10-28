@@ -5,7 +5,6 @@ import Cafe24Adjustments from '@/screens/cafe24-adjustments'
 import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
 import BatchLogScreen from '@/screens/log'
-import ParkeScreen from '@/screens/parke'
 import PrivacyScreen from '@/screens/privacy'
 import PrivacyDocScreen from '@/screens/privacy/doc'
 import XtoolLeadManager from '@/screens/xtool-lead-manager'
@@ -25,7 +24,14 @@ export const router = createBrowserRouter([
     path: '/admin',
     element: <AdminPage />,
     children: [
-      { path: 'parke', element: <ParkeScreen /> },
+      {
+        // Lazy: Parké 관리자 화면만 Firebase SDK(로그인·Realtime Database)를
+        // 쓴다 — 다른 화면 번들에 넣지 않는다.
+        path: 'parke',
+        lazy: async () => ({
+          Component: (await import('@/screens/parke')).default,
+        }),
+      },
       { path: 'cafe24', element: <Cafe24Adjustments /> },
     ],
   },

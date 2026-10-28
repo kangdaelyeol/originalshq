@@ -4,17 +4,18 @@ import { usePanel } from '@/screens/parke/controller'
 import { QrModal } from './qr-modal'
 
 export const Panel = () => {
-  const { handler, modalActive, icon, qrImageUrl, serial } = usePanel()
+  const { handler, modalActive, icon, qrImageUrl, serial, saving } = usePanel()
   return (
     <div className="panel">
       <div className="panel-label">QR 코드 생성</div>
       <div className="gen-row">
         <button
-          onClick={handler.createClick}
+          onClick={() => void handler.createClick()}
           className="btn btn-generate"
           id="genBtn"
+          disabled={saving}
         >
-          생성하기
+          {saving ? '저장 중…' : '생성하기'}
         </button>
       </div>
 
