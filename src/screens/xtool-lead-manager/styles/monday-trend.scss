@@ -784,3 +784,284 @@ $trend-y-axis-width: 44px;
     animation: none;
   }
 }
+
+// 인입통계 맨 아래 — CS팀 인입 성과(담당자별 세 지표를 한 줄에).
+.monday_trend .cs_team {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+
+  .cs_team_head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+
+    h2 {
+      margin: 0 0 4px;
+      font-size: 15px;
+      font-weight: 600;
+      color: variables.$color-text;
+    }
+    .stats_desc {
+      margin: 0;
+    }
+  }
+
+  .cs_team_edit {
+    all: unset;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid variables.$color-border;
+    border-radius: 8px;
+    font-size: 13px;
+    color: variables.$color-text;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: variables.$color-surface-raised;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+
+  .cs_team_link {
+    all: unset;
+    color: variables.$color-accent;
+    cursor: pointer;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .cs_team_empty {
+    color: variables.$color-text-muted;
+    font-size: 14px;
+  }
+
+  .cs_team_row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+
+    @media (max-width: 1000px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  .cs_metric {
+    h2 {
+      margin-bottom: 4px;
+    }
+  }
+
+  .cs_metric_total {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    margin: 12px 0 14px;
+
+    strong {
+      font-size: 20px;
+      font-weight: 600;
+      color: variables.$color-text;
+      font-variant-numeric: tabular-nums;
+    }
+    span {
+      font-size: 12px;
+      color: variables.$color-text-muted;
+    }
+  }
+
+  .cs_metric_rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    li {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+    }
+  }
+
+  .cs_metric_name {
+    color: variables.$color-text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cs_metric_bar {
+    height: 8px;
+    border-radius: 4px;
+    background: variables.$color-surface-raised;
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+      background: variables.$color-accent;
+    }
+  }
+
+  .cs_metric_value {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 92px;
+    justify-content: flex-end;
+    color: variables.$color-text;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      width: 44px;
+      text-align: right;
+      font-size: 12px;
+      color: variables.$color-text-muted;
+    }
+  }
+}
+
+// CS팀 명단 편집 창.
+.cs_editor_backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.cs_editor {
+  width: min(520px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  padding: 20px 22px;
+  background: variables.$color-surface;
+  border: 1px solid variables.$color-border;
+  border-radius: 12px;
+  color: variables.$color-text;
+
+  .cs_editor_head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 600;
+    }
+  }
+
+  .cs_editor_close {
+    all: unset;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 20px;
+    color: variables.$color-text-muted;
+    cursor: pointer;
+    &:hover {
+      background: variables.$color-surface-raised;
+    }
+    &:focus-visible {
+      outline: 2px solid variables.$color-accent;
+    }
+  }
+
+  .stats_desc {
+    margin: 8px 0 14px;
+    font-size: 13px;
+    color: variables.$color-text-muted;
+  }
+
+  .cs_editor_options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+
+    button {
+      all: unset;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border: 1px solid variables.$color-border;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+
+      small {
+        color: variables.$color-text-muted;
+        font-size: 11px;
+      }
+      &:hover {
+        background: variables.$color-surface-raised;
+      }
+      &.is-selected {
+        border-color: variables.$color-accent;
+        background: variables.$color-accent-soft;
+        color: variables.$color-accent;
+      }
+      &:focus-visible {
+        outline: 2px solid variables.$color-accent;
+      }
+    }
+  }
+
+  .cs_editor_actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 18px;
+
+    span {
+      margin-right: auto;
+      font-size: 13px;
+      color: variables.$color-text-muted;
+    }
+    button {
+      all: unset;
+      height: 34px;
+      padding: 0 14px;
+      border: 1px solid variables.$color-border;
+      border-radius: 8px;
+      font-size: 13px;
+      cursor: pointer;
+
+      &.is-primary {
+        background: variables.$color-accent;
+        border-color: variables.$color-accent;
+        color: #fff;
+      }
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+      &:focus-visible {
+        outline: 2px solid variables.$color-accent;
+      }
+    }
+  }
+}

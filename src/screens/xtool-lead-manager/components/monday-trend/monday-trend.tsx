@@ -5,6 +5,7 @@ import '@/screens/xtool-lead-manager/styles/monday-trend.scss'
 import {
   TREND_SECTION_LABEL,
   type TrendSection,
+  type useCsTeamViewModel,
   type useLiveInflowViewModel,
   type useMondayTrendViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
@@ -24,6 +25,7 @@ import {
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
 import { LiveInflow } from './live-inflow'
+import { CsTeamSection } from './cs-team-section'
 import { TrendSkeleton } from './trend-skeleton'
 import { KpiControls, KpiSection } from './kpi-section'
 import { PipelineSection } from './pipeline-section'
@@ -32,6 +34,8 @@ import { SalesSection } from './sales-section'
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
   /** 인입통계 맨 위 "오늘 웹 문의 · 실시간"(useLiveInflowViewModel). */
   live: ReturnType<typeof useLiveInflowViewModel>['state']
+  /** 인입통계 맨 아래 CS팀 인입 성과(useCsTeamViewModel). */
+  csTeam: ReturnType<typeof useCsTeamViewModel>
 }
 
 const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
@@ -45,7 +49,12 @@ const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
  * 인입된 고객의 다음 단계라 세지 않는다. 퍼널 통계와 달리 고객이 아니라 기록
  * 단위라서, 한 사람이 두 번 문의하면 2건으로 센다.
  */
-export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
+export const MondayTrend = ({
+  state,
+  actions,
+  live,
+  csTeam,
+}: MondayTrendProps) => {
   const {
     status,
     range,
@@ -346,6 +355,8 @@ export const MondayTrend = ({ state, actions, live }: MondayTrendProps) => {
                 sort={tableSorts.pipeline}
                 onSort={(key) => toggleTableSort('pipeline', key)}
               />
+
+              <CsTeamSection csTeam={csTeam} />
             </>
           )}
         </div>

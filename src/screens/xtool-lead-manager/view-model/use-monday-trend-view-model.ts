@@ -310,6 +310,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
       sortKey,
       sortDirection,
       syncedAt,
+      /** 상담 기록 원본(개인 KPI 재료) — 인입통계의 CS팀 섹션이 같이 쓴다. */
+      consultations: kpiFacts.consultations,
       section,
       neglect: { ...neglect, expanded },
       tableSorts,
