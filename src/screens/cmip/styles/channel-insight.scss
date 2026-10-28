@@ -43,6 +43,46 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     margin-left: auto;
   }
 
+  // 기간 단위(일별·주차별·월별) — 날짜 선택기 왼쪽. 누르면 그 단위의 기본
+  // 기간을 고른다. 날짜를 직접 고른 기간이면 아무것도 켜지지 않는다.
+  &__period-units {
+    display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid $color-border;
+    border-radius: 8px;
+    background: $color-surface;
+
+    button {
+      appearance: none;
+      border: none;
+      background: none;
+      height: 28px;
+      padding: 0 12px;
+      border-radius: 6px;
+      color: $color-muted;
+      font: inherit;
+      font-size: 13px;
+      white-space: nowrap;
+      cursor: pointer;
+
+      &:hover:not(:disabled):not(.is-active) {
+        color: $color-text;
+      }
+      &.is-active {
+        background: $color-canvas-subtle;
+        color: $color-text;
+      }
+      &:focus-visible {
+        outline: 2px solid $color-accent;
+      }
+      &:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+    }
+  }
+
   &__btn {
     appearance: none;
     border: 1px solid $color-accent;

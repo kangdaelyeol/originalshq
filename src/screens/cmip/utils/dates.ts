@@ -108,3 +108,44 @@ export const formatMD = (iso: ISODate): string => {
   const d = fromISO(iso)
   return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`
 }
+
+// ── 묶는 단위별 기본 기간 ─────────────────────────────────────────────
+// cmip 채널 인사이트와 xtool-lead-manager 통계 탭이 같이 쓴다 — 일별/주차별/
+// 월별을 고르면 그 단위에 맞는 기간으로 자동으로 바꾼다.
+
+export type PeriodUnit = 'day' | 'week' | 'month'
+
+export const PERIOD_UNIT_LABEL: Record<PeriodUnit, string> = {
+  day: '일별',
+  week: '주차별',
+  month: '월별',
+}
+
+/**
+ * 단위의 기본 기간(양 끝 포함).
+ *   · 일별 — 오늘을 뺀 직전 7일(어제까지). 오늘은 아직 하루가 안 끝났다.
+ *   · 주차별 — 어제까지 직전 8주(56일). 기간 끝에서부터 7일씩 끊으면 딱
+ *     8개 주가 된다.
+ *   · 월별 — 이번 달 포함 6개월(5개월 전 1일부터 오늘까지).
+ */
+export const defaultRangeOf = (
+  unit: PeriodUnit,
+): { start: ISODate; end: ISODate } => {
+  const today = todayISO()
+  if (unit === 'month') {
+    return { start: addMonths(startOfMonth(today), -5), end: today }
+  }
+  const end = addDays(today, -1)
+  return { start: addDays(end, unit === 'week' ? -55 : -6), end }
+}
+
+/** 이 기간이 어느 단위의 기본 기간과 같은지 — 같은 게 없으면(직접 고른 기간)
+ * null. */
+export const periodUnitOf = (
+  start: ISODate,
+  end: ISODate,
+): PeriodUnit | null =>
+  (Object.keys(PERIOD_UNIT_LABEL) as PeriodUnit[]).find((unit) => {
+    const range = defaultRangeOf(unit)
+    return range.start === start && range.end === end
+  }) ?? null

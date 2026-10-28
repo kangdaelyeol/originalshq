@@ -13,6 +13,7 @@ import { adsetKey, aggregateMetrics, campaignKey } from '../../client'
 import { METRIC_FIELDS, type MetricKey } from '../metric-fields'
 import { channelsOf } from '../channels'
 import { DateRangePicker } from '../date-range-picker'
+import { PeriodUnitPicker } from '../period-unit-picker'
 import { ChannelInsightChartModal } from '../channel-insight-chart-modal'
 import { PeriodTestPanel } from '../period-test-panel'
 import { RoasPanel } from '../roas-panel'
@@ -24,7 +25,7 @@ import {
   PeriodTestSkeleton,
   RoasSkeleton,
 } from '../tab-skeletons'
-import { dateRange } from '../../utils'
+import { dateRange, defaultRangeOf } from '../../utils'
 import { ResultSkeleton, ResultPanel } from './result-panel'
 import { MultiSelectDropdown } from './multi-select-dropdown'
 import { PIVOT_VIEW_OPTIONS } from './constants'
@@ -173,6 +174,18 @@ export const ChannelInsight = () => {
         {/* 이 row 맨 오른쪽에 고정(margin-left: auto) — 보기 단위 select/그래프
             버튼이 있든 없든 항상 오른쪽 끝에 붙는다. */}
         <div className="channel-insight__query-row">
+          {/* 단위를 누르면 그 단위의 기본 기간으로 바로 조회한다. */}
+          <PeriodUnitPicker
+            dateStart={dateStart}
+            dateEnd={dateEnd}
+            onSelect={(unit) => {
+              const { start, end } = defaultRangeOf(unit)
+              setDateStart(start)
+              setDateEnd(end)
+              loadRange(start, end)
+            }}
+            disabled={loading}
+          />
           <DateRangePicker
             dateStart={dateStart}
             dateEnd={dateEnd}
