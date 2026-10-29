@@ -69,7 +69,7 @@
 
 // ── 본문 ────────────────────────────────────────────────────────────────
 .xtool-main.monday_main.glass_theme {
-  @include glass.ambient;
+  background: transparent;
   @include theme.list-table;
   @include theme.detail-modal;
 

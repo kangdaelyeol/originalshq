@@ -69,8 +69,6 @@ $trail: 0.06s;
   right: var(--thumb-right);
   border-radius: 999px;
   background: color-mix(in srgb, var(--glass-ink) 20%, transparent);
-  -webkit-backdrop-filter: blur(8px) saturate(160%);
-  backdrop-filter: blur(8px) saturate(160%);
   pointer-events: none;
   transition:
     left $slide,

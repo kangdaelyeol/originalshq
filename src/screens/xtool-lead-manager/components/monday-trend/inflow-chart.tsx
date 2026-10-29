@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { GlassLine, useElementSize } from '@/components/glass'
 import {
   niceTicks,
@@ -37,6 +37,8 @@ export const InflowChart = ({
 }) => {
   // 선은 그래프 상자의 실제 크기(px)로 그린다 — 늘려 맞추면 곡선이 찌그러진다.
   const [plotRef, plot] = useElementSize<HTMLDivElement>()
+  // 마우스를 올린(초점이 간) 날 — 그 칸의 툴팁만 그린다.
+  const [hover, setHover] = useState<number | null>(null)
   const ticks = niceTicks(Math.max(...points.map((point) => point.total), 0))
   const top = ticks[ticks.length - 1]
   const count = points.length
@@ -102,61 +104,69 @@ export const InflowChart = ({
                 .join(' ')
                 .trim()}
               tabIndex={0}
+              onMouseEnter={() => setHover(index)}
+              onMouseLeave={() => setHover(null)}
+              onFocus={() => setHover(index)}
+              onBlur={() => setHover(null)}
               aria-label={`${point.label} ${metric.name} ${point.total}${metric.unit}`}
             >
               <span
                 className="inflow_marker"
                 style={{ top: `${yOf(point.total)}%` }}
               />
-              <div
-                className={[
-                  'inflow_tooltip',
-                  // 오른쪽 끝에서는 툴팁이 그래프 밖으로 나가지 않게 왼쪽으로 편다.
-                  index > count * 0.6 ? 'to_left' : '',
-                ]
-                  .join(' ')
-                  .trim()}
-                style={{ top: `${yOf(point.total)}%` }}
-              >
-                <strong>{point.label}</strong>
-                <span className="total">
-                  {metric.name} {point.total.toLocaleString('ko-KR')}
-                  {metric.unit}
-                </span>
-                <dl>
-                  {/* 그 칸에 있던 항목(보드·제품)만, 많은 순으로. */}
-                  {(() => {
-                    const entries = Object.entries(point.boards ?? {}).sort(
-                      (a, b) => b[1] - a[1],
-                    )
-                    const rest = entries.length - TOOLTIP_ROWS
-                    return (
+              {/* 툴팁은 마우스를 올린(초점이 간) 칸 하나만 그린다 — 칸마다 미리
+                  만들면 기간이 길 때 수천 개가 된다. */}
+              {hover === index && (
+                <div
+                  className={[
+                    'inflow_tooltip',
+                    // 오른쪽 끝에서는 툴팁이 그래프 밖으로 나가지 않게 왼쪽으로 편다.
+                    index > count * 0.6 ? 'to_left' : '',
+                  ]
+                    .join(' ')
+                    .trim()}
+                  style={{ top: `${yOf(point.total)}%` }}
+                >
+                  <strong>{point.label}</strong>
+                  <span className="total">
+                    {metric.name} {point.total.toLocaleString('ko-KR')}
+                    {metric.unit}
+                  </span>
+                  <dl>
+                    {/* 그 칸에 있던 항목(보드·제품)만, 많은 순으로. */}
+                    {(() => {
+                      const entries = Object.entries(point.boards ?? {}).sort(
+                        (a, b) => b[1] - a[1],
+                      )
+                      const rest = entries.length - TOOLTIP_ROWS
+                      return (
+                        <>
+                          {entries
+                            .slice(0, TOOLTIP_ROWS)
+                            .map(([name, boardCount]) => (
+                              <Fragment key={name}>
+                                <dt>{shortBoardName(name)}</dt>
+                                <dd>{boardCount}</dd>
+                              </Fragment>
+                            ))}
+                          {rest > 0 && (
+                            <>
+                              <dt className="sub">외 {rest}개</dt>
+                              <dd className="sub" />
+                            </>
+                          )}
+                        </>
+                      )
+                    })()}
+                    {point.misentry > 0 && (
                       <>
-                        {entries
-                          .slice(0, TOOLTIP_ROWS)
-                          .map(([name, boardCount]) => (
-                            <Fragment key={name}>
-                              <dt>{shortBoardName(name)}</dt>
-                              <dd>{boardCount}</dd>
-                            </Fragment>
-                          ))}
-                        {rest > 0 && (
-                          <>
-                            <dt className="sub">외 {rest}개</dt>
-                            <dd className="sub" />
-                          </>
-                        )}
+                        <dt className="sub">오기입</dt>
+                        <dd className="sub">{point.misentry}</dd>
                       </>
-                    )
-                  })()}
-                  {point.misentry > 0 && (
-                    <>
-                      <dt className="sub">오기입</dt>
-                      <dd className="sub">{point.misentry}</dd>
-                    </>
-                  )}
-                </dl>
-              </div>
+                    )}
+                  </dl>
+                </div>
+              )}
             </div>
           ))}
         </div>

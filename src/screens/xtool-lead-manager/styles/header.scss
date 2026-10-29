@@ -46,8 +46,6 @@
   // 가운데 탭 — Segmented(유리 알약, 고른 탭으로 미끄러진다).
   .page-tabs {
     justify-self: center;
-    -webkit-backdrop-filter: $glass-blur;
-    backdrop-filter: $glass-blur;
     border-radius: 999px;
 
     .glass_segmented button {

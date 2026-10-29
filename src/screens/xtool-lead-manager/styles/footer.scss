@@ -4,7 +4,7 @@
 // 맨 아래 — 페이지와 같은 배경 빛(ambient) 위에 떠 있는 유리 띠. 선 없이
 // 배경(반투명 + 흐림)으로만.
 .lead_manager_footer {
-  @include glass.ambient;
+  background: transparent;
   box-sizing: border-box;
   width: 100%;
   padding: 8px 20px 20px;

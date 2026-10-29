@@ -200,7 +200,8 @@ $register-purchase: #f762fe;
 
 // 본문 — 배경, 카드, 표, 스켈레톤, 카드 머리의 합계·알약.
 @mixin page {
-  @include glass.ambient;
+  // 배경은 비운다 — 화면 뒤 한 장(xtool-global.scss의 ambient-layer)이 비친다.
+  background: transparent;
 
   .stats_card {
     @include glass.card;

@@ -1,5 +1,10 @@
 import './trend-list.scss'
-import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
+import {
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+  type ReactNode,
+} from 'react'
 import { GlassLine } from './glass-line'
 import { useElementSize } from './use-element-size'
 
@@ -48,6 +53,8 @@ const Sparkline = ({
   labels: string[]
 }) => {
   const [ref, { width, height }] = useElementSize<HTMLDivElement>()
+  // 마우스를 올린 칸(없으면 null).
+  const [hover, setHover] = useState<number | null>(null)
   const count = row.series.length
   const top = Math.max(...row.series, 0) || 1
   // 점·마우스 칸은 %로(HTML), 선은 상자의 실제 px로 그린다.
@@ -76,21 +83,36 @@ const Sparkline = ({
           aria-hidden="true"
         />
       )}
-      <div className="glass_trend_list_cols">
-        {row.series.map((value, index) => (
+      {/* 마우스 자리 — 칸마다 미리 만들지 않고(기간이 길면 수천 개) 하나만 두고
+          포인터 위치로 칸을 골라 그 칸의 세로선·점·툴팁만 그린다. */}
+      <div
+        className="glass_trend_list_cols"
+        onPointerMove={(event) => {
+          const box = event.currentTarget.getBoundingClientRect()
+          const index = Math.floor(
+            ((event.clientX - box.left) / box.width) * count,
+          )
+          setHover(Math.min(count - 1, Math.max(0, index)))
+        }}
+        onPointerLeave={() => setHover(null)}
+      >
+        {hover !== null && (
           <span
-            key={labels[index]}
-            className={`glass_trend_list_col${index > count * 0.6 ? ' to_left' : ''}`}
+            className={`glass_trend_list_col${hover > count * 0.6 ? ' to_left' : ''}`}
+            style={{
+              left: `${(hover / count) * 100}%`,
+              width: `${100 / count}%`,
+            }}
           >
             <span
               className="glass_trend_list_dot"
-              style={{ top: `${yOf(value)}%` }}
+              style={{ top: `${yOf(row.series[hover])}%` }}
             />
             <span className="glass_trend_list_tip">
-              {labels[index]} · <strong>{row.seriesText[index]}</strong>
+              {labels[hover]} · <strong>{row.seriesText[hover]}</strong>
             </span>
           </span>
-        ))}
+        )}
       </div>
     </div>
   )

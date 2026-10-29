@@ -20,7 +20,7 @@
 }
 
 .xtool-main.lead_main.glass_theme {
-  @include glass.ambient;
+  background: transparent;
   @include theme.list-table;
   @include theme.detail-modal;
   @include theme.confirm-modal;
