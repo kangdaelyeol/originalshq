@@ -15,6 +15,7 @@ import type {
 import { usePagination } from '@/screens/xtool-lead-manager/hooks/use-pagination'
 import {
   buildMondayHighlights,
+  buildMondayOverview,
   filterMondayCustomers,
   todayInKorea,
   matchesMondayCategory,
@@ -159,10 +160,17 @@ export const useMondayViewModel = (active: boolean) => {
     [customers, today],
   )
 
+  // 표 위 숫자 타일 — 이것도 고객 전체 기준.
+  const overview = useMemo(
+    () => buildMondayOverview(customers, today),
+    [customers, today],
+  )
+
   return {
     state: {
       status,
       highlights,
+      overview,
       /** 걸러내지 않은 전체 고객 — 퍼널 통계가 쓴다. */
       customers,
       rows: pagination.pagedItems,

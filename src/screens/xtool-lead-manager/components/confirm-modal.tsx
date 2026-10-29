@@ -95,9 +95,11 @@ export const ConfirmModal = ({
   return (
     <div className="lead_manager_confirm_modal" onClick={handleOverlayClick}>
       <div
-        className={['confirm_form', isRegister ? 'register' : variant].join(
-          ' ',
-        )}
+        // register는 공통 모양, variant(register_consultation·register_purchase·
+        // delete)는 색을 정한다.
+        className={['confirm_form', isRegister ? 'register' : '', variant]
+          .join(' ')
+          .trim()}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="icon_wrap">

@@ -1,4 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
+import type { ReactNode } from 'react'
+import { Segmented } from '@/components/glass'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
 import {
   CloseIcon,
@@ -8,6 +10,7 @@ import type { useMondayViewModel } from '@/screens/xtool-lead-manager/view-model
 import {
   MONDAY_CATEGORY_LABEL,
   MONDAY_SORT_LABEL,
+  type MondayCategory,
   type MondaySort,
 } from '@/screens/xtool-lead-manager/utils'
 
@@ -43,10 +46,22 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
   } = actions
 
   const typed = search.trim() !== ''
+  // 분류 버튼 — 이름 옆에 그 분류의 고객 수(검색 결과 안에서).
+  const categoryOptions = Object.fromEntries(
+    categories.map((each) => [
+      each,
+      <span key={each} className="monday_category_label">
+        {MONDAY_CATEGORY_LABEL[each]}
+        <span className="count">
+          {categoryCounts[each].toLocaleString('ko-KR')}
+        </span>
+      </span>,
+    ]),
+  ) as Record<MondayCategory, ReactNode>
   const reviewCount = missingItems.length + paymentIssues.length
 
   return (
-    <div className="lead_manager_nav monday_nav">
+    <div className="lead_manager_nav monday_nav glass_theme">
       <div className="inner">
         <div className="search-box">
           <SearchIcon />
@@ -67,25 +82,13 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
           </div>
         </div>
 
-        <div className="monday_categories" role="tablist" aria-label="분류">
-          {categories.map((each) => (
-            <button
-              key={each}
-              type="button"
-              role="tab"
-              aria-selected={each === category}
-              className={['monday_category', each === category ? 'active' : '']
-                .join(' ')
-                .trim()}
-              onClick={() => changeCategory(each)}
-            >
-              {MONDAY_CATEGORY_LABEL[each]}
-              <span className="count">
-                {categoryCounts[each].toLocaleString('ko-KR')}
-              </span>
-            </button>
-          ))}
-        </div>
+        <Segmented
+          options={categoryOptions}
+          value={category}
+          onChange={changeCategory}
+          label="분류"
+          size="md"
+        />
 
         <div className="page_size_select monday_sort">
           <select

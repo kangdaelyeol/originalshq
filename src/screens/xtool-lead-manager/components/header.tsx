@@ -1,11 +1,18 @@
 import '@/screens/xtool-lead-manager/styles/header.scss'
+import { Segmented } from '@/components/glass'
 import {
   PAGE_TABS,
   type PageTab,
 } from '@/screens/xtool-lead-manager/view-model/use-page-tab-view-model'
 
-/** 화면 맨 위 줄 — 로고 옆에 최상위 탭(리드 / Monday 고객)을 둔다. 어느 탭이
- * 열려 있는지는 부모(pages/xtool-page)가 넘겨준다. */
+// 최상위 탭 이름 — Segmented가 받는 { id: 이름 } 모양.
+const TAB_LABEL = Object.fromEntries(
+  PAGE_TABS.map((each) => [each.id, each.label]),
+) as Record<PageTab, string>
+
+/** 화면 맨 위 줄 — 로고, 가운데 최상위 탭(유리 알약 — 탭을 바꾸면 알약이
+ * 미끄러져 간다), 오른쪽 회사 로고. 어느 탭이 열려 있는지는 부모
+ * (pages/xtool-page)가 넘겨준다. */
 export const Header = ({
   tab,
   onSelectTab,
@@ -16,31 +23,23 @@ export const Header = ({
   return (
     <div className="xtool-header">
       <div className="wrapper">
-        <div className="header-left">
-          <div className="title-box">
-            <img
-              src="https://www.xtool.co.kr/web/upload/goodymall/kr/main/LOGO_1.png"
-              alt="xtool logo"
-              className="xtool-logo"
-            />
-            <span className="title">Lead manager</span>
-          </div>
-          <nav className="page-tabs" aria-label="데이터 출처">
-            {PAGE_TABS.map((each) => (
-              <button
-                key={each.id}
-                type="button"
-                className={['page-tab', each.id === tab ? 'active' : '']
-                  .join(' ')
-                  .trim()}
-                aria-current={each.id === tab ? 'page' : undefined}
-                onClick={() => onSelectTab(each.id)}
-              >
-                {each.label}
-              </button>
-            ))}
-          </nav>
+        <div className="title-box">
+          <img
+            src="https://www.xtool.co.kr/web/upload/goodymall/kr/main/LOGO_1.png"
+            alt="xtool logo"
+            className="xtool-logo"
+          />
+          <span className="title">Lead manager</span>
         </div>
+        <nav className="page-tabs" aria-label="화면">
+          <Segmented
+            options={TAB_LABEL}
+            value={tab}
+            onChange={onSelectTab}
+            label="화면"
+            size="md"
+          />
+        </nav>
         <div className="enterprise-logo-badge">
           <img
             src="https://framerusercontent.com/images/tuTnWS8IWm4eabExSlzNTTtkeQk.png"

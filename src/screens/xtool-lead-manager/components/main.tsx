@@ -1,4 +1,15 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
+import '@/screens/xtool-lead-manager/styles/lead-glass.scss'
+import { useMemo, useState } from 'react'
+import {
+  CalendarPlus,
+  Inbox,
+  MessagesSquare,
+  Plus,
+  ShoppingBag,
+} from 'lucide-react'
+import { StatTile } from '@/components/glass'
+import { buildLeadOverview } from '@/screens/xtool-lead-manager/utils'
 import type {
   useCreateLeadViewModel,
   useLeadMondayMatchViewModel,
@@ -62,10 +73,47 @@ export const Main = ({
     updateLeadField,
   } = actions
   const { ToastContainer } = component
+  // 표 위 숫자 타일 — 검색·기기 필터가 걸린 목록 기준(페이지와 무관).
+  // "오늘"은 화면을 연 날 기준(자정을 넘겨 켜 두면 새로고침 때 바뀐다).
+  const [openedAt] = useState(() => Date.now())
+  const overview = useMemo(
+    () => buildLeadOverview(filteredRows, openedAt),
+    [filteredRows, openedAt],
+  )
+  const percent = (part: number) =>
+    overview.total > 0 ? `${((part / overview.total) * 100).toFixed(1)}%` : '-'
+  const count = (value: number) =>
+    initialLoading ? '-' : `${value.toLocaleString('ko-KR')}명`
 
   return (
-    <div className="xtool-main">
+    <div className="xtool-main lead_main glass_theme">
       <div className="wrapper">
+        <div className="stats_tiles lead_tiles">
+          <StatTile
+            icon={Inbox}
+            label="리드"
+            value={count(overview.total)}
+            sub="검색·기기 필터 반영"
+          />
+          <StatTile
+            icon={CalendarPlus}
+            label="오늘 접수"
+            value={count(overview.today)}
+            sub="오늘 접수 기록이 있는 리드"
+          />
+          <StatTile
+            icon={MessagesSquare}
+            label="상담 진행"
+            value={count(overview.consulted)}
+            sub={`리드의 ${percent(overview.consulted)}`}
+          />
+          <StatTile
+            icon={ShoppingBag}
+            label="구매"
+            value={count(overview.purchased)}
+            sub={`전환율 ${percent(overview.purchased)}`}
+          />
+        </div>
         <Table state={{ ...state }} actions={{ ...actions }} />
       </div>
       {selectedRow && (
@@ -106,9 +154,14 @@ export const Main = ({
       {createLead.state.createOpen && (
         <CreateModal state={createLead.state} actions={createLead.actions} />
       )}
-      <div className="create-btn" onClick={createLead.actions.openCreateModal}>
-        +
-      </div>
+      <button
+        type="button"
+        className="create-btn"
+        onClick={createLead.actions.openCreateModal}
+      >
+        <Plus strokeWidth={2.2} aria-hidden="true" />
+        리드 등록
+      </button>
       <ToastContainer />
     </div>
   )

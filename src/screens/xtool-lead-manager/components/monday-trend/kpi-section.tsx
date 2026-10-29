@@ -1,5 +1,22 @@
-import type { KeyboardEvent } from 'react'
-import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-model'
+import type { KeyboardEvent, ReactNode } from 'react'
+import {
+  Banknote,
+  CalendarCheck,
+  CreditCard,
+  Hourglass,
+  Percent,
+  PhoneCall,
+  ShoppingBag,
+  Target,
+  TrendingUp,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react'
+import { Segmented, StatTile, TrendList } from '@/components/glass'
+import type {
+  CardView,
+  useMondayTrendViewModel,
+} from '@/screens/xtool-lead-manager/view-model'
 import {
   formatKpi,
   KPI_UNIT_LABEL,
@@ -11,6 +28,7 @@ import {
 } from '@/screens/xtool-lead-manager/utils'
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { NeglectSection } from './neglect-section'
+import { kpiTrendColumns, kpiTrendRows } from './kpi-trend-rows'
 import { SortableTh } from './sortable-th'
 
 type Kpi = ReturnType<typeof useMondayTrendViewModel>['state']['kpi']
@@ -34,20 +52,13 @@ export const KpiControls = ({
 
   return (
     <>
-      <div className="stats_scope" role="tablist" aria-label="묶는 단위">
-        {(Object.keys(KPI_UNIT_LABEL) as KpiUnit[]).map((each) => (
-          <button
-            key={each}
-            type="button"
-            role="tab"
-            aria-selected={each === unit}
-            className={each === unit ? 'active' : ''}
-            onClick={() => onUnit(each)}
-          >
-            {KPI_UNIT_LABEL[each]}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        options={KPI_UNIT_LABEL}
+        value={unit}
+        onChange={onUnit}
+        label="묶는 단위"
+        size="md"
+      />
       {unit === 'day' ? (
         <DateRangePicker
           dateStart={range.from}
@@ -90,6 +101,29 @@ export const KpiControls = ({
 }
 
 type Neglect = ReturnType<typeof useMondayTrendViewModel>['state']['neglect']
+
+const VIEW_LABEL: Record<CardView, string> = {
+  chart: '그래프',
+  table: '표',
+}
+
+/** 단위별 "날/주/달" — 추이 목록의 가장 큰 칸 머리글. */
+const UNIT_NOUN: Record<KpiUnit, string> = {
+  day: '날',
+  week: '주',
+  month: '달',
+}
+
+/** 지표 타일의 아이콘. */
+const KPI_ICON: Record<string, LucideIcon> = {
+  'confirm-count': CalendarCheck,
+  'confirm-rate': Percent,
+  'paid-rate': CreditCard,
+  'direct-paid': ShoppingBag,
+  'visit-paid-rate': Target,
+  'visit-sales': Wallet,
+  sales: Banknote,
+}
 type KpiResult = Kpi['kpis'][number]
 type Cell = { num?: number; den?: number }
 
@@ -105,14 +139,25 @@ export const KpiCard = ({
   periods,
   sort,
   onSort,
+  aside,
+  body,
 }: {
   each: KpiResult
   unit: Kpi['unit']
   periods: string[]
   sort: TableSort | undefined
   onSort: (key: string) => void
+  /** 합계 아래에 덧붙이는 것(보기 전환 등). */
+  aside?: ReactNode
+  /** 표 대신 그릴 것(그래프 보기) — 없으면 표. */
+  body?: ReactNode
 }) => {
   const title = (cell: Cell) => ratioTitle(each, cell)
+  const totalEl = (
+    <strong className="kpi_total" title={title(each.sum.total)}>
+      {formatKpi(each.sum.total, each.format)}
+    </strong>
+  )
   return (
     <section className="stats_card kpi_card">
       <div className="kpi_head">
@@ -120,71 +165,77 @@ export const KpiCard = ({
           <h2>{each.title}</h2>
           <p className="stats_desc">{each.description}</p>
         </div>
-        <strong className="kpi_total" title={title(each.sum.total)}>
-          {formatKpi(each.sum.total, each.format)}
-        </strong>
+        {aside ? (
+          <div className="kpi_side">
+            {totalEl}
+            {aside}
+          </div>
+        ) : (
+          totalEl
+        )}
       </div>
-      {each.rows.length === 0 ? (
-        <p className="kpi_empty">이 기간에 기록이 없습니다.</p>
-      ) : (
-        <div className="trend_table_scroll">
-          <table className="stats_table kpi_table">
-            <thead>
-              <tr>
-                <SortableTh columnKey="assignee" sort={sort} onSort={onSort}>
-                  담당자
-                </SortableTh>
-                {periods.map((key) => (
+      {body ??
+        (each.rows.length === 0 ? (
+          <p className="kpi_empty">이 기간에 기록이 없습니다.</p>
+        ) : (
+          <div className="trend_table_scroll">
+            <table className="stats_table kpi_table">
+              <thead>
+                <tr>
+                  <SortableTh columnKey="assignee" sort={sort} onSort={onSort}>
+                    담당자
+                  </SortableTh>
+                  {periods.map((key) => (
+                    <SortableTh
+                      key={key}
+                      columnKey={key}
+                      sort={sort}
+                      onSort={onSort}
+                    >
+                      {periodLabel(key, unit)}
+                    </SortableTh>
+                  ))}
                   <SortableTh
-                    key={key}
-                    columnKey={key}
+                    columnKey="total"
                     sort={sort}
                     onSort={onSort}
+                    className="kpi_total_col"
                   >
-                    {periodLabel(key, unit)}
+                    전체
                   </SortableTh>
+                </tr>
+              </thead>
+              <tbody>
+                {each.rows.map((row) => (
+                  <tr key={row.assignee}>
+                    <td>{row.assignee}</td>
+                    {row.byPeriod.map((cell, i) => (
+                      <td key={periods[i]} title={title(cell)}>
+                        {formatKpi(cell, each.format)}
+                      </td>
+                    ))}
+                    <td className="kpi_total_col" title={title(row.total)}>
+                      {formatKpi(row.total, each.format)}
+                    </td>
+                  </tr>
                 ))}
-                <SortableTh
-                  columnKey="total"
-                  sort={sort}
-                  onSort={onSort}
-                  className="kpi_total_col"
-                >
-                  전체
-                </SortableTh>
-              </tr>
-            </thead>
-            <tbody>
-              {each.rows.map((row) => (
-                <tr key={row.assignee}>
-                  <td>{row.assignee}</td>
-                  {row.byPeriod.map((cell, i) => (
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>{each.format === 'percent' ? '전체' : '합계'}</td>
+                  {each.sum.byPeriod.map((cell, i) => (
                     <td key={periods[i]} title={title(cell)}>
                       {formatKpi(cell, each.format)}
                     </td>
                   ))}
-                  <td className="kpi_total_col" title={title(row.total)}>
-                    {formatKpi(row.total, each.format)}
+                  <td className="kpi_total_col" title={title(each.sum.total)}>
+                    {formatKpi(each.sum.total, each.format)}
                   </td>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <td>{each.format === 'percent' ? '전체' : '합계'}</td>
-                {each.sum.byPeriod.map((cell, i) => (
-                  <td key={periods[i]} title={title(cell)}>
-                    {formatKpi(cell, each.format)}
-                  </td>
-                ))}
-                <td className="kpi_total_col" title={title(each.sum.total)}>
-                  {formatKpi(each.sum.total, each.format)}
-                </td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-      )}
+              </tfoot>
+            </table>
+          </div>
+        ))}
     </section>
   )
 }
@@ -221,31 +272,39 @@ const PersonSummary = ({
         <div className="stats_tiles kpi_person_tiles">
           {kpis.map((each) => {
             const row = rowOf(each)
+            const team = each.sum.total
             return (
-              <div
+              <StatTile
                 key={each.id}
-                className="stats_tile"
-                title={ratioTitle(each, row.total)}
-              >
-                <span className="stats_tile_label">{each.title}</span>
-                <strong className="stats_tile_value">
-                  {formatKpi(row.total, each.format)}
-                </strong>
-              </div>
+                icon={KPI_ICON[each.id] ?? TrendingUp}
+                label={each.title}
+                value={formatKpi(row.total, each.format)}
+                sub={
+                  each.format === 'percent'
+                    ? `${row.total.num ?? 0}건 / ${row.total.den ?? 0}건 · 팀 ${formatKpi(team, 'percent')}`
+                    : `팀 전체의 ${
+                        team.value > 0
+                          ? ((row.total.value / team.value) * 100).toFixed(1)
+                          : '0.0'
+                      }%`
+                }
+              />
             )
           })}
-          <div className="stats_tile">
-            <span className="stats_tile_label">콜백 미처리</span>
-            <strong className="stats_tile_value">
-              {neglected(neglect.callback)}건
-            </strong>
-          </div>
-          <div className="stats_tile">
-            <span className="stats_tile_label">방문체험 고객 미처리</span>
-            <strong className="stats_tile_value">
-              {neglected(neglect.visit)}건
-            </strong>
-          </div>
+          <StatTile
+            icon={PhoneCall}
+            label="콜백 미처리"
+            value={`${neglected(neglect.callback)}건`}
+            warn={neglected(neglect.callback) > 0}
+            sub="다음 연락 기한을 넘긴 상담"
+          />
+          <StatTile
+            icon={Hourglass}
+            label="방문체험 고객 미처리"
+            value={`${neglected(neglect.visit)}건`}
+            warn={neglected(neglect.visit) > 0}
+            sub="다음 연락 기한을 넘긴 방문체험"
+          />
         </div>
       </section>
 
@@ -305,6 +364,8 @@ export const KpiSection = ({
   onSort,
   onSelectAssignee,
   onToggleNeglect,
+  views,
+  onView,
 }: {
   kpi: Kpi
   neglect: Neglect
@@ -312,8 +373,15 @@ export const KpiSection = ({
   onSort: (table: string, key: string) => void
   onSelectAssignee: (assignee: string | null) => void
   onToggleNeglect: (key: string) => void
+  /** 카드마다의 보기(지표 id·neglect:callback·neglect:visit, 없으면 그래프). */
+  views: Record<string, CardView>
+  onView: (id: string, view: CardView) => void
 }) => {
   const { unit, periods, kpis, assignees, assignee } = kpi
+  const viewOf = (id: string): CardView => views[id] ?? 'chart'
+  const labels = periods.map((key) => periodLabel(key, unit))
+  // 기간이 바뀌면 그래프를 새로 붙여 처음부터 다시 그린다.
+  const drawKey = `${unit}:${periods[0]}:${periods[periods.length - 1]}`
   const options = [null, ...assignees]
 
   /** ←/→로 이전·다음 담당자(끝에서는 반대쪽 끝으로), Home/End로 처음·끝. 고르는
@@ -382,6 +450,24 @@ export const KpiSection = ({
             periods={periods}
             sort={sorts[`kpi:${each.id}`]}
             onSort={(key) => onSort(`kpi:${each.id}`, key)}
+            aside={
+              <Segmented
+                options={VIEW_LABEL}
+                value={viewOf(each.id)}
+                onChange={(next) => onView(each.id, next)}
+                label={`${each.title} 보기`}
+              />
+            }
+            body={
+              viewOf(each.id) === 'chart' ? (
+                <TrendList
+                  key={drawKey}
+                  rows={kpiTrendRows(each, labels)}
+                  labels={labels}
+                  columns={kpiTrendColumns(each, UNIT_NOUN[unit])}
+                />
+              ) : undefined
+            }
           />
         ))
       )}
@@ -398,6 +484,11 @@ export const KpiSection = ({
         onToggle={onToggleNeglect}
         sorts={sorts}
         onSort={onSort}
+        views={{
+          callback: viewOf('neglect:callback'),
+          visit: viewOf('neglect:visit'),
+        }}
+        onView={(kind, next) => onView(`neglect:${kind}`, next)}
       />
 
       <p className="stats_footnote">

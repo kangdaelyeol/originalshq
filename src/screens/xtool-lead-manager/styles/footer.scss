@@ -1,43 +1,78 @@
-@use './variables.scss';
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
 
+// 맨 아래 — 페이지와 같은 배경 빛(ambient) 위에 떠 있는 유리 띠. 선 없이
+// 배경(반투명 + 흐림)으로만.
 .lead_manager_footer {
+  @include glass.ambient;
   box-sizing: border-box;
   width: 100%;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid variables.$color-border;
-  background-color: variables.$color-bg;
+  padding: 8px 20px 20px;
+
+  .lead_manager_footer_bar {
+    @include glass.card;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 52px;
+    padding: 8px 10px 8px 18px;
+    border-radius: 999px;
+  }
 
   .brand {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+  }
 
-    .brand_name {
-      font-size: 13.5px;
-      font-weight: 600;
-      color: variables.$color-text;
-    }
+  // 데이터색 점 — 이름 앞의 작은 표시.
+  .brand_mark {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--glass-accent);
+  }
 
-    .sub_label {
-      font-size: 12.5px;
-      color: variables.$color-text-muted;
-    }
+  .brand_name {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text;
+  }
+
+  .sub_label {
+    font-size: 12.5px;
+    color: $text-3;
   }
 
   .meta {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
     font-size: 12px;
-    color: variables.$color-text-faint;
+    color: $text-3;
   }
 
-  .divider {
-    width: 1px;
-    height: 12px;
-    background-color: variables.$color-border;
+  // 버전 — 한 겹 밝은 작은 알약.
+  .version {
+    padding: 5px 12px;
+    border-radius: 999px;
+    background-color: $fill-2;
+    color: $text-2;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .copyright {
+    padding-right: 8px;
+  }
+
+  @media (max-width: 700px) {
+    .lead_manager_footer_bar {
+      flex-direction: column;
+      align-items: flex-start;
+      border-radius: 22px;
+      padding: 12px 16px;
+    }
   }
 }

@@ -1,0 +1,898 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// 리드 상담·구매 등록 색 — 리드 상태 뱃지와 같은 뜻(variables.scss의 accent·
+// purchase-complete).
+$register-consultation: #4493f8;
+$register-purchase: #f762fe;
+
+// xtool 유리 테마(믹스인만) — 유리 부품(@/components/glass)을 xtool 화면의
+// 기존 모양에 입힌다:
+//   nav·page        통계 화면(stats_card 카드, stats_table 표, 기간 선택, 스켈레톤)
+//   list-nav        리드·Monday 고객 탭 상단 줄(검색, 드롭다운, 쪽 넘기기)
+//   list-table      리드·Monday 고객 표(lead_table)
+//   detail-modal    상세 모달(lead_manager_detail_modal — 고객 목록·Monday 패널 포함)
+//   confirm-modal   확인 모달(lead_manager_confirm_modal)
+// 화면을 유리로 바꾸려면 그 화면의 내비 줄과 본문에 glass_theme 클래스를
+// 붙이고, 그 화면 선택자에 필요한 믹스인을 include한다(통계: glass-theme.scss,
+// Monday 고객: monday-glass.scss).
+// 화면에만 있는 것(인입통계의 실시간 카드·그래프 등)은 화면 파일에 둔다
+// (monday-inflow-glass.scss).
+//
+// 선택자를 화면 클래스까지 길게 쓰는 건 기존 화면 스타일(.xtool-main.monday_stats
+// .stats_card 등)보다 우선하기 위해서다.
+
+// 내비 줄 — 기간 선택 버튼과 팝오버(알약 메뉴는 Segmented가 스스로 그린다).
+// 테두리 없이 배경 겹으로만: 팝오버 판 → 그 위 칸·버튼(한 겹 밝게) → 고른 것.
+@mixin nav {
+  @include glass.ambient;
+  border-bottom: none;
+
+  .date-range-picker__trigger {
+    @include glass.pill-button;
+    height: 38px;
+    padding: 0 16px;
+  }
+
+  // 개인 KPI 주·월 선택(드롭다운) — 알약 버튼 모양, 화살표는 그대로.
+  .page_size_select select {
+    height: 38px;
+    padding-left: 16px;
+    @include glass.field;
+    border-radius: 999px;
+    color: $text;
+
+    option {
+      background: #1d2021;
+    }
+  }
+
+  .stats_nav_label {
+    color: $text-3;
+  }
+
+  // 켜고 끄는 단추(삭제된 팀원 포함) — 알약 + 스위치. 켜면 스위치가 데이터색.
+  .stats_toggle {
+    @include glass.pill-button;
+    height: 38px;
+    padding: 0 16px;
+    color: $text-2;
+
+    &.on {
+      color: $text;
+    }
+    .stats_toggle_switch {
+      background-color: $fill-3;
+    }
+    &.on .stats_toggle_switch {
+      background-color: var(--glass-accent);
+
+      &::after {
+        background-color: var(--glass-on-accent);
+      }
+    }
+  }
+
+  // 기간 팝오버 — 아래 본문 위에 뜨는 유리 판. 카드보다 진하게(뒤 표·그래프
+  // 글자가 비치면 달력 숫자가 안 읽힌다) + 흐림을 세게.
+  .date-range-picker__popover {
+    top: calc(100% + 10px);
+    border: none;
+    border-radius: 24px;
+    background: rgba(32, 35, 36, 0.78);
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(32px) saturate(160%);
+    backdrop-filter: blur(32px) saturate(160%);
+    color-scheme: dark;
+  }
+
+  // 프리셋 목록 — 선 대신 한 겹 옅은 판으로 달력과 나눈다.
+  .date-range-picker__presets {
+    margin: 8px;
+    padding: 8px;
+    border: none;
+    border-radius: 18px;
+    background: $fill-1;
+  }
+
+  .date-range-picker__preset-item {
+    border-radius: 999px;
+    padding: 7px 12px;
+
+    &:hover {
+      background: $fill-1;
+    }
+    // 고른 항목 — 메뉴 줄의 알약과 같은 밝은 알약.
+    &:has(input:checked) {
+      background: $fill-3;
+      color: #fff;
+    }
+    input[type='radio'] {
+      accent-color: var(--glass-accent);
+    }
+  }
+
+  .date-range-picker__calendar {
+    padding: 16px 18px;
+  }
+
+  .date-range-picker__nav-btn {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 999px;
+    background: $fill-2;
+
+    &:hover {
+      background: $fill-3;
+    }
+  }
+
+  .date-range-picker__month-select,
+  .date-range-picker__range-inputs input[type='date'] {
+    @include glass.field;
+    border-radius: 10px;
+  }
+
+  .date-range-picker__weekdays span {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  // 기간 띠·시작/끝 — 데이터 색(라임). 라임 위 글자는 어둡게. 오늘은 옅은
+  // 라임 바탕(테두리 고리 대신).
+  .date-range-picker__cell.is-in-range::before {
+    background: color-mix(in srgb, var(--glass-accent) 16%, transparent);
+  }
+  .date-range-picker__cell:hover:not(:disabled):not(.is-start):not(.is-end)
+    .date-range-picker__cell-num {
+    background: $fill-2;
+  }
+  .date-range-picker__cell.is-start .date-range-picker__cell-num,
+  .date-range-picker__cell.is-end .date-range-picker__cell-num {
+    background: var(--glass-accent);
+    color: var(--glass-on-accent);
+  }
+  .date-range-picker__cell.is-today .date-range-picker__cell-num {
+    box-shadow: none;
+    background: color-mix(in srgb, var(--glass-accent) 22%, transparent);
+    color: var(--glass-accent);
+  }
+  .date-range-picker__cell.is-today.is-start .date-range-picker__cell-num,
+  .date-range-picker__cell.is-today.is-end .date-range-picker__cell-num {
+    background: var(--glass-accent);
+    color: var(--glass-on-accent);
+  }
+
+  .date-range-picker__range-inputs {
+    border-top: none;
+  }
+
+  .date-range-picker__cancel,
+  .date-range-picker__apply {
+    border: none;
+    border-radius: 999px;
+    padding: 9px 18px;
+  }
+  .date-range-picker__cancel {
+    background: $fill-2;
+
+    &:hover {
+      background: $fill-3;
+    }
+  }
+  .date-range-picker__apply {
+    background: var(--glass-accent);
+    color: var(--glass-on-accent);
+    font-weight: 600;
+  }
+}
+
+// 본문 — 배경, 카드, 표, 스켈레톤, 카드 머리의 합계·알약.
+@mixin page {
+  @include glass.ambient;
+
+  .stats_card {
+    @include glass.card;
+    padding: 24px 26px;
+  }
+
+  .stats_card h2 {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .stats_desc {
+    color: rgba(230, 237, 243, 0.55);
+  }
+
+  // ── 스켈레톤(skeleton.tsx) ─────────────────────────────────────────────
+  // 회색 막대 대신 흰 빛이 옅게 깔린 유리 막대. 타일 자리도 실제 숫자 타일
+  // 모양(아이콘 상자 + 이름·값)으로.
+  .xtool_bone {
+    @include glass.shimmer;
+    border-radius: 999px;
+  }
+  // 그래프처럼 큰 덩어리는 알약이 아니라 둥근 판.
+  .xtool_skeleton_card > .xtool_bone {
+    border-radius: 12px;
+  }
+  .xtool_skeleton_card > .xtool_bone:first-child {
+    border-radius: 999px;
+  }
+
+  .xtool_skeleton_tile {
+    @include glass.inner;
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: start;
+    column-gap: 14px;
+    row-gap: 10px;
+    padding: 16px 18px;
+    min-height: 116px;
+    box-sizing: border-box;
+
+    // 아이콘 상자 자리.
+    &::before {
+      content: '';
+      grid-row: 1 / 3;
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: $fill-1;
+    }
+    .xtool_bone {
+      grid-column: 2;
+      align-self: center;
+    }
+  }
+
+  // ── 표 ────────────────────────────────────────────────────────────────
+  // 표는 카드 유리 위에 바로 — 선 없이 한 줄 걸러 옅은 흰빛, 머리글·합계 줄은
+  // 한 겹 밝은 띠, 붙어 있는 칸은 밑으로 다른 칸이 지나갈 때만 바탕
+  // (glass.sticky-table).
+  .trend_table_scroll {
+    @include glass.sticky-table('.stats_table');
+
+    .stats_table th:first-child,
+    .stats_table td:first-child {
+      padding-left: 14px;
+    }
+    .stats_table th:last-child,
+    .stats_table td:last-child {
+      padding-right: 14px;
+    }
+
+    thead th.sortable:hover {
+      color: #fff;
+    }
+    .sort_btn.asc .arrow_up,
+    .sort_btn.desc .arrow_down {
+      fill: var(--glass-link);
+    }
+  }
+
+  // 전체 칸 — 선 대신 옅은 흰빛 세로 띠.
+  .trend_table_scroll .kpi_table td.kpi_total_col,
+  .trend_table_scroll .kpi_table th.kpi_total_col {
+    background-color: rgba(255, 255, 255, 0.035);
+  }
+
+  // 방치 표 — 줄 강조(위 투명 칸보다 뒤에 와야 이긴다).
+  .neglect_row.clickable:hover td {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  .neglect_detail td {
+    background-color: rgba(0, 0, 0, 0.16);
+    background-image: none;
+  }
+  // 방치 기록 줄 — 선 대신 한 줄 걸러 옅은 흰빛.
+  .neglect_items li {
+    padding-right: 10px;
+    padding-left: 10px;
+    border-bottom: none;
+    border-radius: 10px;
+
+    &:nth-child(even) {
+      background: rgba(255, 255, 255, 0.035);
+    }
+  }
+  .neglect_items a {
+    color: var(--glass-link);
+  }
+
+  // ── 개인 KPI ────────────────────────────────────────────────────────────
+  // 담당자 고르기 — 알약 칩. 고른 사람은 한 겹 밝게.
+  .kpi_assignees {
+    gap: 8px;
+
+    button {
+      box-sizing: border-box;
+      height: 34px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 999px;
+      background: $fill-1;
+      color: $text-2;
+      transition:
+        background-color 0.2s,
+        color 0.2s;
+
+      &:hover {
+        background: $fill-2;
+        color: $text;
+      }
+      &.active {
+        background: $fill-3;
+        color: $text;
+      }
+      &:focus-visible {
+        outline: 2px solid var(--glass-link);
+      }
+    }
+  }
+
+  .kpi_group_title {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+
+    small {
+      color: $text-3;
+    }
+  }
+
+  .stats_footnote {
+    color: $text-3;
+  }
+
+  // ── 판매통계 ────────────────────────────────────────────────────────────
+  .sales_empty {
+    color: $text-3;
+  }
+
+  // 가장 많이 팔린 제품 이름 — 타일 보조 줄에 한 줄로.
+  .glass_stat_tile_sub .sales_top_label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // 항목이 많아 일부만 보여 줄 때의 안내(board-trend-list.tsx).
+  .board_trend_more {
+    margin: 12px 14px 0;
+    font-size: 12px;
+    color: $text-3;
+  }
+
+  // ── 현재 파이프라인 / 방치 ───────────────────────────────────────────────
+  .neglect_total {
+    color: var(--glass-warn);
+  }
+
+  // 표 카드 머리의 오른쪽 — 합계 아래 보기 전환(kpi-section.tsx KpiCard).
+  .kpi_side {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+
+  // 카드 머리(제목·설명 | 합계·알약) — 오른쪽 알약 쪽이 더 길 때도 아래
+  // 내용(그래프·표)과 같은 간격을 두도록 머리 자체에 아래 여백을 둔다.
+  .stats_card > .kpi_head {
+    margin-bottom: 18px;
+
+    .stats_desc {
+      margin-bottom: 0;
+    }
+  }
+
+  // 정렬 기준 + 보기 전환을 한 줄에(kpi-pair-card.tsx).
+  .kpi_pair_controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .kpi_total {
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+}
+
+// 리드·Monday 고객 탭의 상단 줄 — 검색창, n개씩 보기·정렬 드롭다운, 쪽 넘기기.
+@mixin list-nav {
+  @include glass.ambient;
+  border-bottom: none;
+
+  .search-container .search-input {
+    @include glass.field;
+    border-radius: 999px;
+    filter: none;
+
+    // 입력한 채 초점이 빠져도 옅은 청록이 남는다(초점 중에는 위 초점 색).
+    &.typed:not(:focus) {
+      background-color: color-mix(in srgb, var(--glass-link) 14%, transparent);
+    }
+    &:hover,
+    &:focus {
+      filter: none;
+    }
+    &::placeholder {
+      color: $text-3;
+    }
+  }
+  .search-container .reset-btn svg.close-icon:hover {
+    background-color: $fill-2;
+  }
+
+  .page_size_select select {
+    height: 38px;
+    padding-left: 16px;
+    @include glass.field;
+    border-radius: 999px;
+    color: $text;
+
+    option {
+      background: #1d2021;
+    }
+  }
+
+  // 리드 탭의 접힌 검색 버튼.
+  .search-btn {
+    height: 38px;
+    border-radius: 999px;
+    color: $text-2;
+    font-size: 15px;
+
+    &:hover {
+      background-color: $fill-2;
+    }
+  }
+
+  // 기기 필터(device-filter.tsx) — 알약 버튼 + 유리 드롭다운.
+  .device_filter_btn {
+    height: 38px;
+    padding: 0 14px 0 16px;
+    border: none;
+    border-radius: 999px;
+    background-color: $fill-2;
+    color: $text;
+
+    &:hover,
+    &.open {
+      background-color: $fill-3;
+    }
+    &.active {
+      background-color: color-mix(in srgb, var(--glass-link) 18%, transparent);
+      color: var(--glass-link);
+    }
+  }
+  .device_filter_menu {
+    padding: 8px;
+    border: none;
+    border-radius: 18px;
+    background: $float-bg;
+    box-shadow: none;
+    -webkit-backdrop-filter: $float-blur;
+    backdrop-filter: $float-blur;
+  }
+  .device_filter_item {
+    border-radius: 10px;
+
+    &:hover {
+      background-color: $fill-1;
+    }
+    input {
+      accent-color: var(--glass-accent);
+    }
+  }
+
+  .pagination_bar .total_count {
+    color: $text-3;
+  }
+  .pagination_bar .page_nav .page_nav_btn {
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 999px;
+    background: $fill-2;
+    color: $text-2;
+
+    &:hover:not(:disabled) {
+      background: $fill-3;
+      color: $text;
+    }
+  }
+}
+
+// 리드·Monday 고객 표(lead_table) — 바깥 상자는 유리 카드, 칸 선 대신 한 줄
+// 걸러 옅은 흰빛, 머리글은 한 겹 밝은 띠, 줄에 마우스를 올리면 한 겹 더.
+@mixin list-table {
+  .table {
+    @include glass.card;
+    padding: 12px;
+  }
+  .table .table_scroll {
+    border-radius: 16px;
+  }
+  .table .lead_table {
+    th,
+    td {
+      border: none;
+    }
+    thead th {
+      z-index: 1;
+      background-color: rgb(40, 43, 44);
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
+    }
+    thead th:first-child {
+      border-top-left-radius: 14px;
+      border-bottom-left-radius: 14px;
+    }
+    thead th:last-child {
+      border-top-right-radius: 14px;
+      border-bottom-right-radius: 14px;
+    }
+    tbody td {
+      background-color: transparent;
+    }
+    tbody tr:nth-child(even) td {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    tbody tr td:first-child {
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+    tbody tr td:last-child {
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+  }
+  .table tbody tr.row-clickable:hover td {
+    background-color: $fill-2;
+  }
+  .table .status_stack .latest {
+    color: $text-3;
+  }
+  // 목록을 받는 동안의 표 스켈레톤 — 회색 막대 대신 유리 막대.
+  .table .xtool_bone {
+    @include glass.shimmer;
+    border-radius: 999px;
+  }
+}
+
+// 상세 모달(lead_manager_detail_modal) — 뒤는 어둡게 흐리고, 판은 카드보다
+// 진한 유리. 판 안의 묶음(기록·금액 요약 등)은 한 겹 밝게, 선 없이.
+@mixin detail-modal {
+  .lead_manager_detail_modal {
+    background-color: rgba(4, 6, 6, 0.5);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+
+  .lead_manager_detail_modal .detail_form,
+  .lead_manager_detail_modal .detail_side_list,
+  .lead_manager_detail_modal .detail_monday_panel {
+    border: none;
+    border-radius: $radius-card;
+    background: linear-gradient(
+      160deg,
+      rgba(50, 54, 55, 0.8),
+      rgba(26, 28, 29, 0.86)
+    );
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+  }
+
+  .lead_manager_detail_modal .detail_form {
+    .header {
+      border-bottom: none;
+    }
+    .header .close_btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: $fill-2;
+      color: $text-2;
+
+      &:hover {
+        background: $fill-3;
+        color: $text;
+      }
+    }
+    .body .section {
+      border-bottom: none;
+    }
+    .body .section_title {
+      color: $text-3;
+    }
+    .header .state_badge {
+      border-radius: 999px;
+    }
+
+    // 고칠 수 있는 줄·입력칸 — 선 없이 한 겹 밝은 칸.
+    .body .info_row.editable:hover {
+      background-color: $fill-1;
+    }
+    .body .control,
+    .body .code_input,
+    .body .record_row.editing .control {
+      @include glass.field;
+      border-radius: 10px;
+    }
+    .body .save_btn,
+    .body .cancel_btn {
+      border-radius: 999px;
+    }
+    .body .cancel_btn {
+      background-color: $fill-2;
+    }
+
+    // 기록 한 줄(접수·상담·구매) — 한 겹 밝은 알약 판.
+    .body .record_row {
+      border: none;
+      border-radius: 14px;
+      background-color: $fill-1;
+
+      .device {
+        border-radius: 999px;
+      }
+      .icon_btn {
+        border-radius: 999px;
+
+        &:hover {
+          background-color: $fill-2;
+        }
+      }
+    }
+    .body .resend_panel {
+      border: none;
+      border-radius: 14px;
+      background-color: rgba(0, 0, 0, 0.16);
+    }
+
+    // 아래 버튼 묶음 — 판 바닥에 떠 있는 한 겹 밝은 유리 판(본문이 그 밑으로
+    // 지나가면 흐려 비친다). 페이지 바닥글(footer.scss의 .footer)과 이름이 같아
+    // 들어오는 검정 바탕은 지운다.
+    .footer {
+      margin: 0 14px 14px;
+      padding: 12px;
+      border-top: none;
+      border-radius: 22px;
+      background-color: $fill-1;
+      -webkit-backdrop-filter: blur(16px) saturate(150%);
+      backdrop-filter: blur(16px) saturate(150%);
+    }
+    .footer .btn {
+      gap: 8px;
+      border: none;
+      border-radius: 999px;
+      transition:
+        background-color 0.15s,
+        color 0.15s;
+
+      svg {
+        width: 17px;
+        height: 17px;
+      }
+      &:hover {
+        filter: none;
+      }
+      &:focus-visible {
+        outline: 2px solid var(--glass-link);
+        outline-offset: 2px;
+      }
+    }
+
+    // 상담 등록·구매 등록 — 꽉 찬 색 대신 그 색을 옅게 깐 유리 + 그 색의 글자
+    // (상담 파랑·구매 분홍 — 리드 상태 색과 같은 뜻).
+    .footer .btn.register {
+      font-weight: 600;
+    }
+    .footer .btn.register.consultation {
+      background-color: color-mix(
+        in srgb,
+        $register-consultation 24%,
+        transparent
+      );
+      color: color-mix(in srgb, $register-consultation 55%, white);
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          $register-consultation 36%,
+          transparent
+        );
+      }
+    }
+    .footer .btn.register.purchase {
+      background-color: color-mix(in srgb, $register-purchase 22%, transparent);
+      color: color-mix(in srgb, $register-purchase 55%, white);
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          $register-purchase 34%,
+          transparent
+        );
+      }
+    }
+    .footer .btn.delete {
+      background-color: transparent;
+      color: $text-3;
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          var(--glass-danger) 20%,
+          transparent
+        );
+        color: #ff8a83;
+      }
+    }
+    .footer .btn.confirm {
+      background-color: $fill-2;
+      color: $text;
+
+      &:hover {
+        background-color: $fill-3;
+      }
+    }
+  }
+
+  // 왼쪽 고객 목록(detail-side-list.tsx).
+  .lead_manager_detail_modal .detail_side_list {
+    .detail_side_list_head {
+      border-bottom: none;
+    }
+    .detail_side_list_table {
+      th,
+      td {
+        border-bottom: none;
+      }
+      thead th {
+        background-color: rgb(44, 47, 48);
+        color: $text-3;
+      }
+      tbody tr:nth-child(even) td {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+      tbody tr:hover td {
+        background-color: $fill-2;
+      }
+      tbody tr.active td {
+        background-color: color-mix(
+          in srgb,
+          var(--glass-link) 18%,
+          transparent
+        );
+        color: var(--glass-link);
+      }
+    }
+  }
+
+  // 오른쪽 Monday 패널(리드 상세) — 요약 칸·필드 선 대신 한 겹 밝은 판.
+  .lead_manager_detail_modal .detail_monday_panel {
+    .detail_monday_head {
+      border-bottom: none;
+    }
+    .detail_monday_summary > * {
+      border: none;
+      border-radius: 14px;
+      background-color: $fill-1;
+    }
+    .detail_monday_field {
+      border-top: none;
+      padding-right: 10px;
+      padding-left: 10px;
+      border-radius: 12px;
+
+      &:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.03);
+      }
+    }
+    .detail_monday_open,
+    .detail_monday_fill,
+    .detail_monday_field .copy {
+      border: none;
+      border-radius: 999px;
+      background-color: color-mix(in srgb, var(--glass-link) 16%, transparent);
+      color: var(--glass-link);
+
+      &:hover {
+        background-color: color-mix(
+          in srgb,
+          var(--glass-link) 26%,
+          transparent
+        );
+      }
+    }
+  }
+}
+
+// 확인 모달(confirm-modal.tsx — 삭제·상담 등록·구매 등록 확인).
+@mixin confirm-modal {
+  .lead_manager_confirm_modal {
+    background-color: rgba(4, 6, 6, 0.5);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+  .lead_manager_confirm_modal .confirm_form {
+    border: none;
+    border-radius: $radius-card;
+    background: linear-gradient(
+      160deg,
+      rgba(50, 54, 55, 0.8),
+      rgba(26, 28, 29, 0.86)
+    );
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+
+    .lead_summary {
+      border: none;
+      border-radius: 16px;
+      background-color: $fill-1;
+    }
+    .control {
+      @include glass.field;
+      border-radius: 10px;
+    }
+    .actions .btn {
+      border-radius: 999px;
+    }
+    .actions .btn.cancel {
+      background-color: $fill-2;
+
+      &:hover {
+        background-color: $fill-3;
+      }
+    }
+
+    // 등록 입력 — 기기·금액·시각 칸, 테스트 이벤트 체크.
+    .register_form .form_row .label,
+    .register_form .test_toggle {
+      color: $text-3;
+    }
+    .register_form .test_toggle input[type='checkbox'] {
+      accent-color: var(--glass-accent);
+    }
+
+    // 확인 버튼·아이콘 — 꽉 찬 색 대신 그 색을 옅게 깐 유리 + 그 색의 글자.
+    .actions .btn.confirm {
+      font-weight: 600;
+    }
+    @each $variant,
+      $color
+        in (
+          'register_consultation': $register-consultation,
+          'register_purchase': $register-purchase,
+          'delete': #e5534b
+        )
+    {
+      &.#{$variant} .icon_wrap {
+        background-color: color-mix(in srgb, $color 20%, transparent);
+        color: color-mix(in srgb, $color 60%, white);
+      }
+      &.#{$variant} .actions .btn.confirm {
+        background-color: color-mix(in srgb, $color 26%, transparent);
+        color: color-mix(in srgb, $color 55%, white);
+
+        &:hover:not(:disabled) {
+          filter: none;
+          background-color: color-mix(in srgb, $color 38%, transparent);
+        }
+      }
+    }
+    .actions .spinner {
+      border-color: rgba(255, 255, 255, 0.25);
+      border-top-color: currentColor;
+    }
+  }
+}

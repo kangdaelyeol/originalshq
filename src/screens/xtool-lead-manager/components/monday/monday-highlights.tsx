@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import type {
   MondayHighlightRow,
   MondayHighlights as MondayHighlightsData,
@@ -35,6 +36,8 @@ const CARDS: {
   },
 ]
 
+/** 카드 하나의 순위 — 순위 배지(1~3위 데이터색), 이름(누르면 상세), 값, 그
+ * 아래 1위 대비 막대(막대가 없는 카드는 생략). */
 const HighlightList = ({
   rows,
   empty,
@@ -43,14 +46,19 @@ const HighlightList = ({
   rows: MondayHighlightRow[]
   empty: string
   onOpen: (phone: string) => void
-}) =>
-  rows.length === 0 ? (
+}) => {
+  const top = Math.max(0, ...rows.map((row) => row.amount ?? 0))
+  return rows.length === 0 ? (
     <p className="monday_highlight_empty">{empty}</p>
   ) : (
     <ol className="monday_highlight_list">
       {rows.map((row, index) => (
-        <li key={row.phone}>
-          <span className="monday_highlight_rank">{index + 1}</span>
+        <li key={row.phone} style={{ '--glass-i': index } as CSSProperties}>
+          <span
+            className={`monday_highlight_rank${index < 3 ? ' is-top' : ''}`}
+          >
+            {index + 1}
+          </span>
           <button
             type="button"
             className="monday_highlight_who"
@@ -60,10 +68,19 @@ const HighlightList = ({
             <span className="monday_highlight_note">{row.note}</span>
           </button>
           <span className="monday_highlight_value">{row.value}</span>
+          {row.amount !== null && top > 0 && (
+            <span className="monday_highlight_track" aria-hidden="true">
+              <span
+                className="monday_highlight_fill"
+                style={{ width: `${(row.amount / top) * 100}%` }}
+              />
+            </span>
+          )}
         </li>
       ))}
     </ol>
   )
+}
 
 /** Monday 고객 표 아래의 요약 카드 네 개 — 이름을 누르면 고객 상세가 열린다. */
 export const MondayHighlights = ({

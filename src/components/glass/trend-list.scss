@@ -1,0 +1,269 @@
+@use './styles/tokens' as *;
+@use './styles/mixins' as glass;
+
+// 추이 목록(trend-list.tsx) — [순위 | 이름 | 추이 | 합계 | 막대 | 가장 큰 칸].
+$cols: 26px 132px minmax(120px, 1fr) 68px 150px 128px;
+
+.glass_trend_list_head,
+.glass_trend_list_row {
+  display: grid;
+  grid-template-columns: $cols;
+  align-items: center;
+  column-gap: 16px;
+}
+
+.glass_trend_list_head {
+  padding: 0 14px 8px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.5);
+
+  span:nth-child(4),
+  span:nth-child(6) {
+    text-align: right;
+  }
+}
+
+.glass_trend_list_rows {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 줄 — 평소엔 투명, 마우스를 올리면 옅은 유리 알약.
+.glass_trend_list_row {
+  box-sizing: border-box;
+  min-height: 50px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: $hover-bg;
+  }
+}
+
+// 맨 아래 따로 둔 줄(오기입 등) — 한 겹 밝은 판에 따로 담고, 선·막대·점을
+// 주의색으로.
+.glass_trend_list_extra {
+  margin-top: 10px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.glass_trend_list_rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 9px;
+  background: $fill-2;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+
+  &.is-top {
+    background: color-mix(in srgb, var(--glass-accent) 18%, transparent);
+    color: var(--glass-accent);
+  }
+}
+
+.glass_trend_list_name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glass_trend_list_total {
+  text-align: right;
+  font-size: 17px;
+  font-weight: 500;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+
+  small {
+    margin-left: 2px;
+    font-size: 11.5px;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.55);
+  }
+}
+
+.glass_trend_list_share {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.glass_trend_list_share_track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.glass_trend_list_share_fill {
+  @include glass.fill-in;
+  display: block;
+  height: 100%;
+  min-width: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--glass-accent) 45%, transparent),
+    var(--glass-accent)
+  );
+}
+
+.glass_trend_list_share_text {
+  min-width: 42px;
+  text-align: right;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}
+
+.glass_trend_list_best {
+  font-size: 11.5px;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+
+  strong {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: #fff;
+  }
+}
+
+// 작은 추이 그래프 — 데이터색 곡선·면.
+.glass_trend_list_spark {
+  position: relative;
+  height: 36px;
+
+  // 처음 그릴 때 왼쪽에서 오른쪽으로 그려진다.
+  .glass_line {
+    @include glass.draw-in;
+  }
+}
+
+// 가장 큰 칸 — 작은 점.
+.glass_trend_list_peak {
+  @include glass.fade-in(0.75s);
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--glass-accent);
+  pointer-events: none;
+}
+
+// 칸마다 마우스 자리 — 세로선·점·툴팁.
+.glass_trend_list_cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+
+.glass_trend_list_col {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: rgba(255, 255, 255, 0.2);
+    opacity: 0;
+  }
+  &:hover::before {
+    opacity: 1;
+  }
+}
+
+.glass_trend_list_dot {
+  position: absolute;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+}
+
+.glass_trend_list_tip {
+  @include glass.tooltip;
+  bottom: calc(100% + 6px);
+  padding: 4px 10px;
+  font-size: 11.5px;
+}
+
+.glass_trend_list_col:hover {
+  .glass_trend_list_dot {
+    opacity: 1;
+  }
+  .glass_trend_list_tip {
+    display: block;
+  }
+}
+
+.glass_trend_list_row.is-warn {
+  .glass_trend_list_rank {
+    background: color-mix(in srgb, var(--glass-warn) 18%, transparent);
+    color: var(--glass-warn);
+  }
+  --glass-line: var(--glass-warn);
+
+  .glass_trend_list_peak {
+    background: var(--glass-warn);
+  }
+  .glass_trend_list_share_fill {
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--glass-warn) 45%, transparent),
+      var(--glass-warn)
+    );
+  }
+}
+
+// 이름이 긴 항목(제품명) — 이름 칸을 넓히고 추이 칸을 줄인다.
+.glass_trend_list.is-wide-name {
+  .glass_trend_list_head,
+  .glass_trend_list_row {
+    grid-template-columns: 26px 240px minmax(120px, 1fr) 68px 150px 128px;
+  }
+}
+
+// 좁은 화면 — 가장 큰 칸을 빼고 나머지를 좁힌다.
+@media (max-width: 900px) {
+  .glass_trend_list_head,
+  .glass_trend_list_row,
+  .glass_trend_list.is-wide-name .glass_trend_list_head,
+  .glass_trend_list.is-wide-name .glass_trend_list_row {
+    grid-template-columns: 26px 104px minmax(90px, 1fr) 56px 110px;
+    column-gap: 12px;
+  }
+  .glass_trend_list_head span:nth-child(6),
+  .glass_trend_list_best {
+    display: none;
+  }
+}
+
+.glass_trend_list_empty {
+  margin: 0;
+  font-size: 12.5px;
+  color: $text-3;
+}

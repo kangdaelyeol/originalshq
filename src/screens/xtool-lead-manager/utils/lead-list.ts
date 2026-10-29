@@ -73,3 +73,37 @@ export const filterLeadsByDevice = (
       (row.purchases ?? []).some((p) => selectedDevices.has(p.device)),
   )
 }
+
+/** 리드 탭 맨 위 숫자 타일 — 검색·기기 필터가 걸린 목록 기준. */
+export interface LeadOverview {
+  total: number
+  /** 오늘(한국 날짜) 접수 기록이 있는 리드. */
+  today: number
+  /** 상담 기록이 1건 이상인 리드. */
+  consulted: number
+  /** 구매 기록이 1건 이상인 리드. */
+  purchased: number
+}
+
+const koreaDay = (ms: number) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(ms)
+
+export const buildLeadOverview = (
+  leads: readonly Lead[],
+  now: number,
+): LeadOverview => {
+  const today = koreaDay(now)
+  const overview: LeadOverview = {
+    total: leads.length,
+    today: 0,
+    consulted: 0,
+    purchased: 0,
+  }
+  for (const lead of leads) {
+    if ((lead.intakes ?? []).some((intake) => koreaDay(intake.at) === today))
+      overview.today += 1
+    if ((lead.consultations ?? []).length > 0) overview.consulted += 1
+    if ((lead.purchases ?? []).length > 0) overview.purchased += 1
+  }
+  return overview
+}

@@ -1,3 +1,4 @@
+import { MessageSquarePlus, ShoppingCart, Trash2 } from 'lucide-react'
 import type { Lead, LeadState } from '@/screens/xtool-lead-manager/entity'
 import { EditingField } from '@/screens/xtool-lead-manager/types'
 import { formatPhoneNumber } from '@/screens/xtool-lead-manager/utils'
@@ -313,6 +314,7 @@ export const Detail = ({
                 className="btn register consultation"
                 onClick={onRegisterConsultation}
               >
+                <MessageSquarePlus strokeWidth={1.8} aria-hidden="true" />
                 상담 등록
               </button>
               <button
@@ -320,6 +322,7 @@ export const Detail = ({
                 className="btn register purchase"
                 onClick={onRegisterPurchase}
               >
+                <ShoppingCart strokeWidth={1.8} aria-hidden="true" />
                 구매 등록
               </button>
             </div>
@@ -333,6 +336,7 @@ export const Detail = ({
                   )
                 }
               >
+                <Trash2 strokeWidth={1.8} aria-hidden="true" />
                 삭제
               </button>
               <button type="button" className="btn confirm" onClick={onConfirm}>

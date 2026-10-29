@@ -1,0 +1,266 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+@use './xtool-glass' as theme;
+
+// 퍼널 통계·오기입 추적 탭의 유리 모양 — 카드·스켈레톤·기간 선택은
+// _xtool-glass.scss의 nav·page, 여기에는 두 탭의 막대·전환율 표·모달만 둔다.
+// 두 탭은 퍼널 통계의 카드·표(monday-stats.scss)를 같이 쓴다.
+
+// ── 상단 줄 ─────────────────────────────────────────────────────────────
+.lead_manager_nav.monday_stats_nav.funnel_nav.glass_theme,
+.lead_manager_nav.monday_stats_nav.ga_nav.glass_theme {
+  @include theme.nav;
+
+  .stats_nav_note {
+    color: $text-3;
+  }
+
+  // 전체 기간 · 지금 수집 — 알약 버튼.
+  .stats_reset {
+    @include glass.pill-button;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 16px;
+    color: $text;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+    &:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .is-spinning {
+      animation: funnel-spin 1s linear infinite;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+      }
+    }
+  }
+}
+
+// ── 본문 ────────────────────────────────────────────────────────────────
+.xtool-main.monday_stats.funnel_main.glass_theme,
+.xtool-main.monday_stats.ga_main.glass_theme {
+  @include theme.page;
+
+  .wrapper {
+    gap: 16px;
+  }
+
+  .stats_footnote {
+    color: $text-3;
+  }
+
+  // 가로 막대(퍼널·소요 일수) — 데이터색 캡슐, 처음 그릴 때 왼쪽에서 자란다.
+  .stats_bar_label {
+    color: $text-2;
+  }
+  .stats_bar_track {
+    height: 12px;
+    border-radius: 999px;
+    background-color: $track;
+    overflow: hidden;
+  }
+  .stats_bar_fill {
+    @include glass.fill-in;
+    min-width: 6px;
+    border-radius: 999px;
+    background: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--glass-accent) 45%, transparent),
+      var(--glass-accent)
+    );
+  }
+  .stats_bar_value small {
+    color: $text-3;
+  }
+
+  // 구매 고객 구성 한 줄 — 선 대신 한 겹 밝은 판.
+  .stats_split {
+    padding: 10px 14px;
+    border-top: none;
+    border-radius: 14px;
+    background-color: $fill-1;
+    color: $text-2;
+  }
+
+  // 전환율 표(콜백 단계·유입 경로) — 선 대신 한 줄 걸러 옅은 흰빛, 머리글은
+  // 양 끝이 둥근 밝은 띠.
+  .stats_table {
+    border-collapse: separate;
+    border-spacing: 0;
+
+    th,
+    td {
+      border-bottom: none;
+    }
+    th:first-child,
+    td:first-child {
+      padding-left: 14px;
+    }
+    th:last-child,
+    td:last-child {
+      padding-right: 14px;
+    }
+    thead th {
+      background-color: $fill-1;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 600;
+    }
+    thead th:first-child {
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+    thead th:last-child {
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+    tbody tr:nth-child(even) td {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+    tbody td:first-child {
+      border-top-left-radius: 10px;
+      border-bottom-left-radius: 10px;
+    }
+    tbody td:last-child {
+      border-top-right-radius: 10px;
+      border-bottom-right-radius: 10px;
+    }
+  }
+
+  .stats_rate_bar {
+    @include glass.fill-in;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--glass-accent);
+    opacity: 1;
+  }
+
+  // ── 경로별 고객 목록 모달(퍼널) ─────────────────────────────────────────
+  .stats_path_modal,
+  .ga_tracking_modal {
+    background-color: rgba(4, 6, 6, 0.5);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+  .stats_path_dialog,
+  .ga_tracking_dialog {
+    border: none;
+    border-radius: $radius-card;
+    background: linear-gradient(
+      160deg,
+      rgba(50, 54, 55, 0.8),
+      rgba(26, 28, 29, 0.86)
+    );
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+  }
+  .stats_path_close,
+  .ga_tracking_close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background-color: $fill-2;
+    color: $text-2;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+    &:hover {
+      background-color: $fill-3;
+      color: $text;
+    }
+  }
+  // 모달 안 표의 머리글은 스크롤해도 붙어 있다 — 밑이 비치지 않게 불투명.
+  .stats_path_scroll thead th,
+  .ga_tracking_dialog_body thead th {
+    z-index: 1;
+    background-color: rgb(46, 49, 50);
+  }
+  .stats_path_name {
+    color: var(--glass-link);
+  }
+  .stats_path_count {
+    color: $text-3;
+  }
+
+  // ── 오기입 추적 ─────────────────────────────────────────────────────────
+  .ga_tiles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 1000px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .ga_tracking_table a,
+  .ga_tracking_dialog_head a {
+    color: var(--glass-link);
+  }
+  .ga_tracking_row {
+    transition: background-color 0.15s;
+  }
+  .ga_tracking_table tbody tr.ga_tracking_row:hover td {
+    background-color: $fill-2;
+  }
+  .ga_tracking_table td.ga_tracking_misentry {
+    color: var(--glass-danger);
+  }
+
+  .ga_tracking_badge {
+    border: none;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--glass-danger) 22%, transparent);
+    color: #ff8a83;
+  }
+
+  .ga_tracking_facts {
+    border: none;
+    border-radius: 18px;
+    background-color: $fill-1;
+
+    dt {
+      color: $text-3;
+    }
+  }
+
+  // 새 방문(GA4 세션)이 시작되는 줄 — 선 대신 옅은 청록 바탕으로 방문을 나눈다.
+  .ga_tracking_timeline tr.ga_tracking_session_start td {
+    box-shadow: none;
+    background-color: color-mix(in srgb, var(--glass-link) 12%, transparent);
+  }
+  .ga_tracking_event {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background-color: $fill-2;
+  }
+
+  .ga_tracking_empty {
+    color: $text-3;
+  }
+  .ga_tracking_error {
+    border: none;
+    border-radius: 14px;
+    background-color: color-mix(in srgb, var(--glass-danger) 16%, transparent);
+  }
+}
+
+@keyframes funnel-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

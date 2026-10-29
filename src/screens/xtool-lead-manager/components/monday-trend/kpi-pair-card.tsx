@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react'
+import { Segmented } from '@/components/glass'
 import type {
   KpiCell,
   KpiResult,
@@ -9,8 +11,8 @@ import type { KpiPairSortBy } from '@/screens/xtool-lead-manager/view-model'
 import { SortableTh } from './sortable-th'
 
 const SORT_BY_LABEL: Record<KpiPairSortBy, string> = {
-  count: '건수',
-  rate: '비율',
+  count: '건수 순',
+  rate: '비율 순',
 }
 
 /** 건수·비율 글자 — 정렬 기준인 쪽을 위(크게), 나머지를 아래(작게) 둔다. */
@@ -53,6 +55,8 @@ export const KpiPairCard = ({
   onSort,
   sortBy,
   onSortBy,
+  aside,
+  body,
 }: {
   each: KpiResult & { sortBy: KpiPairSortBy }
   unit: KpiUnit
@@ -61,6 +65,10 @@ export const KpiPairCard = ({
   onSort: (key: string) => void
   sortBy: KpiPairSortBy
   onSortBy: (by: KpiPairSortBy) => void
+  /** 정렬 기준 옆에 덧붙이는 것(보기 전환 등). */
+  aside?: ReactNode
+  /** 표 대신 그릴 것(그래프 보기) — 없으면 표. */
+  body?: ReactNode
 }) => (
   <section className="stats_card kpi_card kpi_pair_card">
     <div className="kpi_head">
@@ -88,81 +96,80 @@ export const KpiPairCard = ({
             </>
           )}
         </strong>
-        <div className="kpi_pair_sortby" role="group" aria-label="정렬 기준">
-          {(Object.keys(SORT_BY_LABEL) as KpiPairSortBy[]).map((by) => (
-            <button
-              key={by}
-              type="button"
-              aria-pressed={by === sortBy}
-              className={by === sortBy ? 'active' : ''}
-              onClick={() => onSortBy(by)}
-            >
-              {SORT_BY_LABEL[by]} 순
-            </button>
-          ))}
+        {/* 정렬 기준과 보기 전환(aside)을 한 줄에. */}
+        <div className="kpi_pair_controls">
+          <Segmented
+            options={SORT_BY_LABEL}
+            value={sortBy}
+            onChange={onSortBy}
+            label="정렬 기준"
+            role="buttons"
+          />
+          {aside}
         </div>
       </div>
     </div>
-    {each.rows.length === 0 ? (
-      <p className="kpi_empty">이 기간에 기록이 없습니다.</p>
-    ) : (
-      <div className="trend_table_scroll">
-        <table className="stats_table kpi_table">
-          <thead>
-            <tr>
-              <SortableTh columnKey="assignee" sort={sort} onSort={onSort}>
-                담당자
-              </SortableTh>
-              {periods.map((key) => (
+    {body ??
+      (each.rows.length === 0 ? (
+        <p className="kpi_empty">이 기간에 기록이 없습니다.</p>
+      ) : (
+        <div className="trend_table_scroll">
+          <table className="stats_table kpi_table">
+            <thead>
+              <tr>
+                <SortableTh columnKey="assignee" sort={sort} onSort={onSort}>
+                  담당자
+                </SortableTh>
+                {periods.map((key) => (
+                  <SortableTh
+                    key={key}
+                    columnKey={key}
+                    sort={sort}
+                    onSort={onSort}
+                  >
+                    {periodLabel(key, unit)}
+                  </SortableTh>
+                ))}
                 <SortableTh
-                  key={key}
-                  columnKey={key}
+                  columnKey="total"
                   sort={sort}
                   onSort={onSort}
+                  className="kpi_total_col"
                 >
-                  {periodLabel(key, unit)}
+                  전체
                 </SortableTh>
+              </tr>
+            </thead>
+            <tbody>
+              {each.rows.map((row) => (
+                <tr key={row.assignee}>
+                  <td>{row.assignee}</td>
+                  {row.byPeriod.map((cell, i) => (
+                    <PairCell key={periods[i]} cell={cell} sortBy={sortBy} />
+                  ))}
+                  <PairCell
+                    cell={row.total}
+                    sortBy={sortBy}
+                    className="kpi_total_col"
+                  />
+                </tr>
               ))}
-              <SortableTh
-                columnKey="total"
-                sort={sort}
-                onSort={onSort}
-                className="kpi_total_col"
-              >
-                전체
-              </SortableTh>
-            </tr>
-          </thead>
-          <tbody>
-            {each.rows.map((row) => (
-              <tr key={row.assignee}>
-                <td>{row.assignee}</td>
-                {row.byPeriod.map((cell, i) => (
+            </tbody>
+            <tfoot>
+              <tr>
+                <td>합계</td>
+                {each.sum.byPeriod.map((cell, i) => (
                   <PairCell key={periods[i]} cell={cell} sortBy={sortBy} />
                 ))}
                 <PairCell
-                  cell={row.total}
+                  cell={each.sum.total}
                   sortBy={sortBy}
                   className="kpi_total_col"
                 />
               </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td>합계</td>
-              {each.sum.byPeriod.map((cell, i) => (
-                <PairCell key={periods[i]} cell={cell} sortBy={sortBy} />
-              ))}
-              <PairCell
-                cell={each.sum.total}
-                sortBy={sortBy}
-                className="kpi_total_col"
-              />
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    )}
+            </tfoot>
+          </table>
+        </div>
+      ))}
   </section>
 )

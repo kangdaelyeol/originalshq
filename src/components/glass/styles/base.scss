@@ -1,0 +1,77 @@
+// 유리 컴포넌트가 함께 쓰는 전역 — 색 변수, 애니메이션. index.ts가 한 번 불러온다.
+
+// 색 — 페이지(또는 그 안 어느 상자)에서 다시 정하면 그 아래 컴포넌트가 따른다.
+:root {
+  --glass-accent: #d4f25c;
+  --glass-on-accent: #141a05;
+  --glass-link: #6ee7e0;
+  --glass-warn: #f5c84c;
+  --glass-danger: #e5534b;
+}
+
+@keyframes glass_shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
+@keyframes glass_grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+// 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다 — 선 그래프가 그려지듯.
+@keyframes glass_reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes glass_fade {
+  from {
+    opacity: 0;
+  }
+}
+
+// 표 고정 칸 바탕의 세기(0~1) — mixins.scss sticky-table의 스크롤 연동 애니메이션.
+@property --glass-sticky-x {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+@property --glass-sticky-y {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0;
+}
+@keyframes glass_sticky_x_on {
+  from {
+    --glass-sticky-x: 0;
+  }
+  to {
+    --glass-sticky-x: 1;
+  }
+}
+@keyframes glass_sticky_y_on {
+  from {
+    --glass-sticky-y: 0;
+  }
+  to {
+    --glass-sticky-y: 1;
+  }
+}
+@keyframes glass_sticky_y_off {
+  from {
+    --glass-sticky-y: 1;
+  }
+  to {
+    --glass-sticky-y: 0;
+  }
+}

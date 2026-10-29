@@ -1,0 +1,39 @@
+// 유리 선(glass-line.tsx) — 아래로 옅어지는 면 + 굵은 선. 번지는 빛(glow)은
+// 쓰지 않는다(유리 원칙: 반짝이는 효과 없이 배경·면으로만).
+// 색은 --glass-line(없으면 데이터색 --glass-accent). 주의색 줄 등은 부르는
+// 쪽에서 --glass-line만 바꾼다.
+.glass_line {
+  --line: var(--glass-line, var(--glass-accent));
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+
+  // 면(area)은 fill 속성(그라데이션)을 써야 해서 선들만 비운다.
+  path:not(.glass_line_area) {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+.glass_line_area {
+  stroke: none;
+}
+.glass_line_area_top {
+  stop-color: var(--line);
+  stop-opacity: 0.26;
+}
+.glass_line_area_bottom {
+  stop-color: var(--line);
+  stop-opacity: 0;
+}
+
+.glass_line_stroke {
+  stroke: var(--line);
+  stroke-width: 3;
+}
+
+// 작은 추이 그래프 — 한 단계 가늘게.
+.glass_line.is-sm .glass_line_stroke {
+  stroke-width: 2.2;
+}

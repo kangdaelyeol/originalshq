@@ -8,6 +8,9 @@ export interface MondayHighlightRow {
   value: string
   /** 이름 아래 작은 설명. */
   note: string
+  /** 막대 길이를 정하는 수(금액·횟수) — 카드 안 1위 대비. 막대가 없는 카드
+   * (가장 빨리 산 고객 — 짧을수록 좋아 막대가 뜻이 없다)는 null. */
+  amount: number | null
 }
 
 export interface MondayHighlights {
@@ -63,6 +66,7 @@ export function buildMondayHighlights(
       name: nameOf(customer),
       value: won(amount),
       note: assigneeOf(customer),
+      amount,
     }))
 
   const topBalances = valid
@@ -73,6 +77,7 @@ export function buildMondayHighlights(
       phone: customer.phone,
       name: nameOf(customer),
       value: won(customer.summary.balanceAmount),
+      amount: customer.summary.balanceAmount,
       note: `최근 구매 ${customer.summary.latestPurchaseAt?.slice(0, 10) ?? '-'} · ${assigneeOf(customer)}`,
     }))
 
@@ -99,6 +104,7 @@ export function buildMondayHighlights(
       phone: customer.phone,
       name: nameOf(customer),
       value: days === 0 ? '당일' : `${days}일`,
+      amount: null,
       note: `${customer.summary.funnel.firstInquiryAt} → ${firstPurchaseAt}`,
     }))
 
@@ -125,8 +131,51 @@ export function buildMondayHighlights(
       phone: customer.phone,
       name: nameOf(customer),
       value: `상담 ${customer.summary.consultationCount}회`,
+      amount: customer.summary.consultationCount,
       note: `첫 문의 후 ${waited}일 · ${customer.summary.latestConsultationStatus ?? '상태 없음'}`,
     }))
 
   return { topBuyers, topBalances, fastestBuyers, pondering }
+}
+
+/** 고객 탭 맨 위 숫자 타일 — 고객 전체(검색·분류와 무관, 오기입 제외) 기준. */
+export interface MondayOverview {
+  customers: number
+  buyers: number
+  /** 이번 달 결제일 기준 구매 금액 합계와 그 고객 수. */
+  monthAmount: number
+  monthBuyers: number
+  balanceAmount: number
+  balanceCustomers: number
+}
+
+export function buildMondayOverview(
+  customers: readonly MondayCustomerListItem[],
+  today: string,
+): MondayOverview {
+  const month = today.slice(0, 7)
+  const valid = customers.filter(
+    (customer) => !customer.summary.funnel.misentry,
+  )
+  const overview: MondayOverview = {
+    customers: valid.length,
+    buyers: 0,
+    monthAmount: 0,
+    monthBuyers: 0,
+    balanceAmount: 0,
+    balanceCustomers: 0,
+  }
+  for (const { summary } of valid) {
+    if (summary.purchaseCount > 0) overview.buyers += 1
+    const monthAmount = summary.purchaseAmountByMonth?.[month] ?? 0
+    if (monthAmount > 0) {
+      overview.monthAmount += monthAmount
+      overview.monthBuyers += 1
+    }
+    if (summary.balanceAmount > 0) {
+      overview.balanceAmount += summary.balanceAmount
+      overview.balanceCustomers += 1
+    }
+  }
+  return overview
 }

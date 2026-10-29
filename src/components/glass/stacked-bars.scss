@@ -1,0 +1,211 @@
+@use './styles/tokens' as *;
+@use './styles/mixins' as glass;
+
+// 쌓은 가로 막대(stacked-bars.tsx) — 맨 위 100% 요약 띠 + 범례, 줄마다 막대.
+// 조각 색은 부르는 쪽이 조각마다 준다(--seg). 조각 사이는 2px 틈.
+.glass_stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+// 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다(조각·둥근 끝 모양 그대로).
+.glass_stack_bar {
+  @include glass.draw-in(0.8s);
+  display: flex;
+  gap: 2px;
+  height: 12px;
+  min-width: 4px;
+  border-radius: 999px;
+
+  &.is-summary {
+    height: 30px;
+  }
+}
+
+.glass_stack_seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3px;
+  background: var(--seg);
+  transition: filter 0.15s;
+
+  &:first-child {
+    border-radius: 999px 0 0 999px;
+  }
+  &:last-child {
+    border-radius: 0 999px 999px 0;
+  }
+  &:only-child {
+    border-radius: 999px;
+  }
+  &:hover {
+    filter: brightness(1.15);
+  }
+}
+
+// 요약 띠 안의 건수 — 밝은 조각 위라 어두운 글자.
+.glass_stack_seg_count {
+  font-size: 12px;
+  font-weight: 600;
+  color: #0c1414;
+  font-variant-numeric: tabular-nums;
+}
+
+.glass_stack_tip {
+  @include glass.tooltip;
+}
+
+.glass_stack_seg:hover .glass_stack_tip {
+  display: block;
+}
+
+.glass_stack_legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  strong {
+    font-weight: 600;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+  small {
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+}
+
+.glass_stack_swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--seg);
+}
+
+.glass_stack_rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  margin-top: 6px;
+  padding: 0;
+  list-style: none;
+}
+
+.glass_stack_row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr) 64px;
+  align-items: center;
+  column-gap: 16px;
+  box-sizing: border-box;
+  min-height: 38px;
+  padding: 4px 12px;
+  border-radius: 14px;
+  transition: background-color 0.15s;
+
+  &:hover {
+    background: $hover-bg;
+  }
+}
+
+.glass_stack_name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.glass_stack_track {
+  display: block;
+}
+
+.glass_stack_total {
+  text-align: right;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+
+  small {
+    margin-left: 2px;
+    font-size: 11.5px;
+    color: rgba(255, 255, 255, 0.55);
+  }
+}
+
+// 합계 옆 칸(aside) — "진행 중 166 · 48%" 등.
+.glass_stack_row.has-aside {
+  grid-template-columns: 132px minmax(0, 1fr) 64px 200px;
+}
+
+.glass_stack_aside {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+
+  strong {
+    font-weight: 600;
+    color: #fff;
+  }
+}
+
+.glass_stack_badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--glass-danger) 22%, transparent);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ff8a83;
+}
+
+// 눌러서 펼치는 줄(detail) — 내용이 바로 아래 유리 판에 열린다.
+.glass_stack_row.is-clickable {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+    outline-offset: 1px;
+  }
+}
+
+.glass_stack_row.is-open {
+  background: $fill-1;
+}
+
+.glass_stack_caret {
+  display: inline-block;
+  width: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.glass_stack_detail {
+  margin: 2px 0 8px;
+  padding: 4px 16px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_stack_seg {
+    transition: none;
+  }
+}

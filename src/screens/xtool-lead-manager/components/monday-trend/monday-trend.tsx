@@ -2,11 +2,13 @@ import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/monday-trend.scss'
+import '@/screens/xtool-lead-manager/styles/glass-theme.scss'
+import '@/screens/xtool-lead-manager/styles/monday-inflow-glass.scss'
 import {
   TREND_SECTION_LABEL,
-  type TrendSection,
   type useCsTeamViewModel,
   type useLiveInflowViewModel,
+  type InflowView,
   type useMondayTrendViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
@@ -18,12 +20,15 @@ import {
   shortBoardName,
   type InflowSortKey,
   type InflowUnit,
-  type PurchaseScope,
 } from '@/screens/xtool-lead-manager/utils'
 // 기간 선택은 cmip의 것을 그대로 쓴다 — 프리셋(지난 7일 등)과 달력이 같은
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
+import { CalendarDays, FileWarning, Inbox, TrendingUp } from 'lucide-react'
+import { Segmented, StatTile } from '@/components/glass'
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import { InflowChart } from './inflow-chart'
+import { BoardTrendList } from './board-trend-list'
+import { HeatCell } from './heat-cell'
 import { LiveInflow } from './live-inflow'
 import { CsTeamSection } from './cs-team-section'
 import { TrendSkeleton } from './trend-skeleton'
@@ -39,6 +44,18 @@ type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
 }
 
 const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
+
+const INFLOW_VIEW_LABEL: Record<InflowView, string> = {
+  trend: '보드별 추이',
+  table: '표',
+}
+
+/** 평균 타일의 "n일 기준" — 표의 줄 수를 세는 단위. */
+const INFLOW_UNIT_COUNT: Record<InflowUnit, string> = {
+  day: '일',
+  week: '주',
+  month: '개월',
+}
 
 /**
  * 통계 탭 — 소주제 둘: 인입통계(날짜별 인입 건수)와 판매통계(제품별 판매
@@ -64,6 +81,9 @@ export const MondayTrend = ({
     tableRows,
     sortKey,
     sortDirection,
+    boardTrends,
+    columnMax,
+    inflowView,
     section,
     sales,
     neglect,
@@ -71,11 +91,17 @@ export const MondayTrend = ({
     tableSorts,
     includeInactive,
     pipeline,
+    pipelineView,
+    cardViews,
   } = state
   const {
     changeRange,
     changeUnit,
     toggleSort,
+    changeInflowView,
+    changeSalesView,
+    changeCardView,
+    changePipelineView,
     reload,
     changeSection,
     changeSalesScope,
@@ -88,6 +114,9 @@ export const MondayTrend = ({
     selectKpiAssignee,
   } = actions
   const noun = INFLOW_UNIT_NOUN[unit]
+  // 기간(단위·시작·끝)이 바뀌면 그래프를 새로 붙여 처음부터 다시 그린다 —
+  // 그대로 두면 값만 바뀌어 "그려지는" 움직임이 없다(새로 생긴 줄만 그려진다).
+  const drawKey = `${unit}:${range.start}:${range.end}`
 
   /** 합계를 표의 줄 수로 나눈 평균 — 소수 첫째 자리까지. */
   const average = (total: number): string =>
@@ -109,29 +138,17 @@ export const MondayTrend = ({
 
   return (
     <>
-      <div className="lead_manager_nav monday_stats_nav monday_trend_nav">
+      <div className="lead_manager_nav monday_stats_nav monday_trend_nav glass_theme">
         <div className="inner">
           {/* 소주제 — 인입통계 / 판매통계. 기간은 둘이 같이 쓴다. */}
-          <div
-            className="stats_scope trend_sections"
-            role="tablist"
-            aria-label="통계 소주제"
-          >
-            {(Object.keys(TREND_SECTION_LABEL) as TrendSection[]).map(
-              (each) => (
-                <button
-                  key={each}
-                  type="button"
-                  role="tab"
-                  aria-selected={each === section}
-                  className={each === section ? 'active' : ''}
-                  onClick={() => changeSection(each)}
-                >
-                  {TREND_SECTION_LABEL[each]}
-                </button>
-              ),
-            )}
-          </div>
+          <Segmented
+            options={TREND_SECTION_LABEL}
+            value={section}
+            onChange={changeSection}
+            label="통계 소주제"
+            size="md"
+            className="trend_sections"
+          />
           {/* 개인 KPI는 단위마다 기간을 따로 고른다. */}
           {section === 'kpi' && (
             <KpiControls
@@ -165,43 +182,27 @@ export const MondayTrend = ({
           {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
               선택이 더 붙는다. */}
           {section !== 'kpi' && (
-            <div className="stats_scope" role="tablist" aria-label="묶는 단위">
-              {(Object.keys(INFLOW_UNIT_LABEL) as InflowUnit[]).map((each) => (
-                <button
-                  key={each}
-                  type="button"
-                  role="tab"
-                  aria-selected={each === unit}
-                  className={each === unit ? 'active' : ''}
-                  onClick={() => changeUnit(each)}
-                >
-                  {INFLOW_UNIT_LABEL[each]}
-                </button>
-              ))}
-            </div>
+            <Segmented
+              options={INFLOW_UNIT_LABEL}
+              value={unit}
+              onChange={changeUnit}
+              label="묶는 단위"
+              size="md"
+            />
           )}
           {section === 'sales' && (
-            <div className="stats_scope" role="tablist" aria-label="판매 채널">
-              {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
-                (each) => (
-                  <button
-                    key={each}
-                    type="button"
-                    role="tab"
-                    aria-selected={each === sales.scope}
-                    className={each === sales.scope ? 'active' : ''}
-                    onClick={() => changeSalesScope(each)}
-                  >
-                    {PURCHASE_SCOPE_LABEL[each]}
-                  </button>
-                ),
-              )}
-            </div>
+            <Segmented
+              options={PURCHASE_SCOPE_LABEL}
+              value={sales.scope}
+              onChange={changeSalesScope}
+              label="판매 채널"
+              size="md"
+            />
           )}
         </div>
       </div>
 
-      <div className="xtool-main monday_stats monday_trend">
+      <div className="xtool-main monday_stats monday_trend glass_theme">
         <div className="wrapper">
           {status === 'error' ? (
             <div className="monday_error">
@@ -225,9 +226,17 @@ export const MondayTrend = ({
               onSort={toggleTableSort}
               onSelectAssignee={selectKpiAssignee}
               onToggleNeglect={toggleExpanded}
+              views={cardViews}
+              onView={changeCardView}
             />
           ) : section === 'sales' ? (
-            <SalesSection sales={sales} unit={unit} onSort={toggleSalesSort} />
+            <SalesSection
+              sales={sales}
+              unit={unit}
+              onSort={toggleSalesSort}
+              onView={changeSalesView}
+              drawKey={drawKey}
+            />
           ) : (
             <>
               {/* 맨 위 한 줄 — 왼쪽 기간 인입 건수(그래프+표), 오른쪽 오늘 웹 문의(실시간). */}
@@ -239,112 +248,144 @@ export const MondayTrend = ({
                   </p>
 
                   <div className="stats_tiles trend_tiles">
-                    <div className="stats_tile">
-                      <span className="stats_tile_label">전체 인입</span>
-                      <strong className="stats_tile_value">
-                        {count(summary.total)}
-                      </strong>
-                    </div>
-                    <div className="stats_tile">
-                      <span className="stats_tile_label">
-                        {INFLOW_UNIT_AVERAGE[unit]}
-                      </span>
-                      <strong className="stats_tile_value">
-                        {(Math.round(summary.average * 10) / 10).toLocaleString(
-                          'ko-KR',
-                        )}
-                        건
-                      </strong>
-                    </div>
-                    <div className="stats_tile">
-                      {/* 어느 날(주·달)인지는 이름 옆에 붙인다 — 값 아래에 따로
-                          두면 이 칸만 한 줄 길어져 네 칸의 높이가 같이 늘어난다. */}
-                      <span className="stats_tile_label">
-                        가장 많은 {noun}
-                        {summary.peak && ` - ${summary.peak.label}`}
-                      </span>
-                      <strong className="stats_tile_value">
-                        {summary.peak ? count(summary.peak.total) : '-'}
-                      </strong>
-                    </div>
-                    <div className="stats_tile">
-                      <span className="stats_tile_label">오기입</span>
-                      <strong className="stats_tile_value">
-                        {count(summary.misentry)}
-                      </strong>
-                    </div>
+                    <StatTile
+                      icon={Inbox}
+                      label="전체 인입"
+                      value={count(summary.total)}
+                      sub={`인입 있던 보드 ${summary.boards.length}개`}
+                    />
+                    <StatTile
+                      icon={CalendarDays}
+                      label={INFLOW_UNIT_AVERAGE[unit]}
+                      value={`${(
+                        Math.round(summary.average * 10) / 10
+                      ).toLocaleString('ko-KR')}건`}
+                      sub={`${points.length}${INFLOW_UNIT_COUNT[unit]} 기준`}
+                    />
+                    <StatTile
+                      icon={TrendingUp}
+                      label={`가장 많은 ${noun}`}
+                      value={summary.peak ? count(summary.peak.total) : '-'}
+                      sub={summary.peak?.label}
+                    />
+                    <StatTile
+                      icon={FileWarning}
+                      label="오기입"
+                      value={count(summary.misentry)}
+                      sub={
+                        summary.total > 0
+                          ? `전체 인입의 ${((summary.misentry / summary.total) * 100).toFixed(1)}%`
+                          : undefined
+                      }
+                      to={{ search: '?tab=tracking' }}
+                      linkLabel="오기입 추적 탭으로"
+                    />
                   </div>
 
-                  <InflowChart points={points} average={summary.average} />
+                  <InflowChart
+                    key={drawKey}
+                    points={points}
+                    average={summary.average}
+                  />
                   {/* 같은 기간의 표 — 그래프와 한 카드에 둔다. */}
                   <div className="inflow_table_block">
-                    <h3>{INFLOW_UNIT_LABEL[unit]} 표</h3>
-                    <div className="trend_table_scroll">
-                      <table className="stats_table">
-                        <thead>
-                          <tr>
-                            {columns.map((column) => (
-                              <th
-                                key={column.key}
-                                className="sortable"
-                                aria-sort={
-                                  column.key !== sortKey
-                                    ? 'none'
-                                    : sortDirection === 'asc'
-                                      ? 'ascending'
-                                      : 'descending'
-                                }
-                                onClick={() => toggleSort(column.key)}
-                              >
-                                {column.label}
-                                <SortButton
-                                  columnKey={column.key}
-                                  sortField={sortKey}
-                                  sortDirection={sortDirection}
-                                  onSort={toggleSort}
+                    <div className="inflow_table_head">
+                      <h3>보드별 {INFLOW_UNIT_LABEL[unit]} 현황</h3>
+                      <Segmented
+                        options={INFLOW_VIEW_LABEL}
+                        value={inflowView}
+                        onChange={changeInflowView}
+                        label="보드 현황 보기"
+                      />
+                    </div>
+                    {inflowView === 'trend' ? (
+                      <BoardTrendList
+                        key={drawKey}
+                        trends={boardTrends.boards}
+                        extra={boardTrends.misentry}
+                        points={points}
+                        columns={{ name: '보드', peak: `가장 많은 ${noun}` }}
+                        empty="이 기간에 인입이 없습니다."
+                      />
+                    ) : (
+                      <div className="trend_table_scroll">
+                        <table className="stats_table">
+                          <thead>
+                            <tr>
+                              {columns.map((column) => (
+                                <th
+                                  key={column.key}
+                                  className="sortable"
+                                  aria-sort={
+                                    column.key !== sortKey
+                                      ? 'none'
+                                      : sortDirection === 'asc'
+                                        ? 'ascending'
+                                        : 'descending'
+                                  }
+                                  onClick={() => toggleSort(column.key)}
+                                >
+                                  {column.label}
+                                  <SortButton
+                                    columnKey={column.key}
+                                    sortField={sortKey}
+                                    sortDirection={sortDirection}
+                                    onSort={toggleSort}
+                                  />
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tableRows.map((point) => (
+                              <tr key={point.date}>
+                                <td>{point.label}</td>
+                                <HeatCell
+                                  value={point.total}
+                                  max={columnMax.total}
                                 />
-                              </th>
+                                <HeatCell
+                                  value={point.misentry}
+                                  max={columnMax.misentry}
+                                  warn
+                                />
+                                {summary.boards.map((board) => (
+                                  <HeatCell
+                                    key={board.name}
+                                    value={point.boards?.[board.name] ?? 0}
+                                    max={columnMax[`board:${board.name}`]}
+                                  />
+                                ))}
+                              </tr>
                             ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tableRows.map((point) => (
-                            <tr key={point.date}>
-                              <td>{point.label}</td>
-                              <td>{point.total}</td>
-                              <td>{point.misentry}</td>
+                          </tbody>
+                          {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
+                          보이는 줄 수(일·주·월)로 나눈 값이다. */}
+                          <tfoot>
+                            <tr>
+                              <td>합계</td>
+                              <td>{summary.total.toLocaleString('ko-KR')}</td>
+                              <td>
+                                {summary.misentry.toLocaleString('ko-KR')}
+                              </td>
                               {summary.boards.map((board) => (
                                 <td key={board.name}>
-                                  {point.boards?.[board.name] ?? 0}
+                                  {board.count.toLocaleString('ko-KR')}
                                 </td>
                               ))}
                             </tr>
-                          ))}
-                        </tbody>
-                        {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
-                          보이는 줄 수(일·주·월)로 나눈 값이다. */}
-                        <tfoot>
-                          <tr>
-                            <td>합계</td>
-                            <td>{summary.total.toLocaleString('ko-KR')}</td>
-                            <td>{summary.misentry.toLocaleString('ko-KR')}</td>
-                            {summary.boards.map((board) => (
-                              <td key={board.name}>
-                                {board.count.toLocaleString('ko-KR')}
-                              </td>
-                            ))}
-                          </tr>
-                          <tr>
-                            <td>평균</td>
-                            <td>{average(summary.total)}</td>
-                            <td>{average(summary.misentry)}</td>
-                            {summary.boards.map((board) => (
-                              <td key={board.name}>{average(board.count)}</td>
-                            ))}
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
+                            <tr>
+                              <td>평균</td>
+                              <td>{average(summary.total)}</td>
+                              <td>{average(summary.misentry)}</td>
+                              {summary.boards.map((board) => (
+                                <td key={board.name}>{average(board.count)}</td>
+                              ))}
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 </section>
                 <LiveInflow live={live} />
@@ -354,6 +395,8 @@ export const MondayTrend = ({
                 pipeline={pipeline}
                 sort={tableSorts.pipeline}
                 onSort={(key) => toggleTableSort('pipeline', key)}
+                view={pipelineView}
+                onView={changePipelineView}
               />
 
               <CsTeamSection

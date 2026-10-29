@@ -13,7 +13,11 @@ import {
   type NeglectRow,
   type TableSort,
 } from '@/screens/xtool-lead-manager/utils'
-import { usePersistentState } from '@/hooks/use-persistent-state'
+import {
+  oneOf,
+  recordOf,
+  usePersistentState,
+} from '@/hooks/use-persistent-state'
 
 /** 저장값 검사 — 이름(문자열) 배열이면 그대로(빈 이름·중복은 뺀다). */
 const parseMembers = (stored: unknown): string[] | undefined =>
@@ -44,6 +48,17 @@ const CS_KPIS: Record<string, { title: string; description: string }> = {
 }
 
 export type KpiPairSortBy = 'count' | 'rate'
+
+/** 카드마다 보기 — 그래프 / 표. 키: 인입 처리(intake), 방문체험 확정
+ * (confirm-rate), 결제 전환(paid-rate), 콜백 미처리(neglect). */
+export type CsCardView = 'chart' | 'table'
+export type CsCardKey = 'intake' | 'confirm-rate' | 'paid-rate' | 'neglect'
+const DEFAULT_VIEWS: Record<CsCardKey, CsCardView> = {
+  intake: 'chart',
+  'confirm-rate': 'chart',
+  'paid-rate': 'chart',
+  neglect: 'chart',
+}
 
 /**
  * 인입통계 맨 아래 CS팀 섹션 — 위 인입통계와 같은 기간·단위(내비 줄)로 본다.
@@ -77,6 +92,12 @@ export const useCsTeamViewModel = ({
     parseMembers,
   )
   const [editing, setEditing] = useState(false)
+  // 카드마다 그래프 / 표 — 이 브라우저에 남긴다.
+  const [views, setViews] = usePersistentState<Record<CsCardKey, CsCardView>>(
+    'xtool.csTeam.views',
+    DEFAULT_VIEWS,
+    recordOf(DEFAULT_VIEWS, oneOf<CsCardView>(['chart', 'table'])),
+  )
   // 표마다 정렬 기준 — 건수(기본) / 비율.
   const [sortBy, setSortBy] = useState<Record<string, KpiPairSortBy>>({})
 
@@ -180,6 +201,7 @@ export const useCsTeamViewModel = ({
       stats,
       kpi,
       neglect,
+      views,
     },
     actions: {
       openEditor: () => setEditing(true),
@@ -192,6 +214,9 @@ export const useCsTeamViewModel = ({
       /** 표 하나의 정렬 기준(건수 / 비율)을 바꾼다. */
       changeSortBy: (id: string, by: KpiPairSortBy) =>
         setSortBy((prev) => ({ ...prev, [id]: by })),
+      /** 카드 하나의 보기(그래프 / 표)를 바꾼다. */
+      changeView: (key: CsCardKey, view: CsCardView) =>
+        setViews((prev) => ({ ...prev, [key]: view })),
     },
   }
 }

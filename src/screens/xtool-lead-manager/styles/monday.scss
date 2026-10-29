@@ -86,56 +86,6 @@
     }
   }
 
-  .monday_categories {
-    display: flex;
-    gap: 4px;
-    padding: 3px;
-    border: 1px solid variables.$color-border;
-    border-radius: 8px;
-    background-color: variables.$color-surface;
-  }
-
-  .monday_category {
-    all: unset;
-    box-sizing: border-box;
-    display: flex;
-    // 글자 크기가 다른 이름(13px)과 건수(11.5px)를 상자 가운데(center)로
-    // 맞추면 숫자가 한글보다 1px쯤 떠 보인다 — 한글(대체 글꼴)과 숫자(Inter)의
-    // 글자 높이가 달라서다. 기준선(baseline)으로 맞추고, 줄 높이를 버튼
-    // 높이와 같게 둬서 세로 가운데는 줄 높이로 잡는다.
-    align-items: baseline;
-    gap: 6px;
-    height: 28px;
-    padding: 0 10px;
-    border-radius: 6px;
-    font-size: 13px;
-    line-height: 28px;
-    color: variables.$color-text-muted;
-    white-space: nowrap;
-    cursor: pointer;
-
-    .count {
-      font-size: 11.5px;
-      color: variables.$color-text-faint;
-      font-variant-numeric: tabular-nums;
-    }
-
-    &:hover {
-      color: variables.$color-text;
-    }
-    &.active {
-      background-color: variables.$color-surface-raised;
-      color: variables.$color-text;
-
-      .count {
-        color: variables.$color-text-muted;
-      }
-    }
-    &:focus-visible {
-      outline: 2px solid variables.$color-accent;
-    }
-  }
-
   // 정렬 select — pagination_bar의 "n개씩 보기"와 같은 모양.
   .monday_sort select {
     @include variables.select-control;

@@ -1,9 +1,13 @@
 import { Fragment } from 'react'
+import { GlassLine, useElementSize } from '@/components/glass'
 import {
   niceTicks,
   shortBoardName,
   type InflowPoint,
 } from '@/screens/xtool-lead-manager/utils'
+
+/** 툴팁에 적는 항목 수 — 판매통계처럼 제품이 많아도 툴팁이 화면을 덮지 않게. */
+const TOOLTIP_ROWS = 10
 
 /** x축 날짜 표기를 몇 칸마다 하나씩 보일지 — 많아야 10개쯤 보이게. */
 const labelEvery = (count: number): number => Math.max(1, Math.ceil(count / 10))
@@ -15,19 +19,24 @@ const labelEvery = (count: number): number => Math.max(1, Math.ceil(count / 10))
  * 없고(평균선은 선 끝에 이름을 직접 적는다), 제목이 무엇을 그렸는지 말해 준다. 값은 축과 툴팁으로 읽고, 표(아래 InflowTable)가 같은
  * 숫자를 전부 보여준다.
  *
- * 크기에 맞춰 늘어나도록 선·면만 SVG(가로세로 0~100, 비율 무시)로 그리고,
- * 글자와 점은 그 위에 %로 얹은 HTML이다 — SVG를 늘리면 글자와 점까지
- * 찌그러지기 때문이다. 마우스를 올린 날의 세로선·점·툴팁은 날짜 칸의
+ * 선·면은 그래프 상자의 실제 크기(px)로 그린 유리 선(GlassLine)이고, 글자와
+ * 점은 그 위에 %로 얹은 HTML이다. 마우스를 올린 날의 세로선·점·툴팁은 날짜 칸의
  * :hover / :focus로만 띄워서 상태를 두지 않는다.
  */
 export const InflowChart = ({
   points,
   average,
+  metric = { name: '인입', unit: '건' },
 }: {
   points: InflowPoint[]
   /** 기간 평균 — 가로 기준선으로 그린다. */
   average: number
+  /** 툴팁의 이름·단위 — 판매통계는 { name: '판매', unit: '개' }. 툴팁의
+   * 항목(보드·제품)은 많은 순으로 TOOLTIP_ROWS개까지, 나머지는 "외 n개". */
+  metric?: { name: string; unit: string }
 }) => {
+  // 선은 그래프 상자의 실제 크기(px)로 그린다 — 늘려 맞추면 곡선이 찌그러진다.
+  const [plotRef, plot] = useElementSize<HTMLDivElement>()
   const ticks = niceTicks(Math.max(...points.map((point) => point.total), 0))
   const top = ticks[ticks.length - 1]
   const count = points.length
@@ -35,15 +44,6 @@ export const InflowChart = ({
   // 날짜 칸의 한가운데에 점이 오도록 — 호버 칸(같은 너비로 n등분)과 맞춘다.
   const xOf = (index: number) => ((index + 0.5) / count) * 100
   const yOf = (value: number) => 100 - (value / top) * 100
-
-  const line = points
-    .map(
-      (point, index) =>
-        `${index === 0 ? 'M' : 'L'}${xOf(index)},${yOf(point.total)}`,
-    )
-    .join(' ')
-  const area =
-    count > 0 ? `${line} L${xOf(count - 1)},100 L${xOf(0)},100 Z` : ''
 
   const every = labelEvery(count)
   // 점은 날짜가 많으면 서로 붙어 선을 가리므로, 한 달 이내일 때만 늘 보인다.
@@ -59,7 +59,7 @@ export const InflowChart = ({
         ))}
       </div>
 
-      <div className="inflow_plot">
+      <div ref={plotRef} className="inflow_plot">
         {ticks.map((tick) => (
           <span
             key={tick}
@@ -81,15 +81,16 @@ export const InflowChart = ({
           </span>
         )}
 
-        <svg
-          className="inflow_svg"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path className="inflow_area" d={area} />
-          <path className="inflow_line" d={line} />
-        </svg>
+        <div className="inflow_svg">
+          <GlassLine
+            width={plot.width}
+            height={plot.height}
+            points={points.map((point, index) => [
+              (xOf(index) / 100) * plot.width,
+              (yOf(point.total) / 100) * plot.height,
+            ])}
+          />
+        </div>
 
         {/* 날짜마다 한 칸 — 그 칸 전체가 호버 대상이라, 가느다란 선이나 작은
             점을 정확히 겨누지 않아도 된다. */}
@@ -101,7 +102,7 @@ export const InflowChart = ({
                 .join(' ')
                 .trim()}
               tabIndex={0}
-              aria-label={`${point.label} 인입 ${point.total}건`}
+              aria-label={`${point.label} ${metric.name} ${point.total}${metric.unit}`}
             >
               <span
                 className="inflow_marker"
@@ -119,18 +120,35 @@ export const InflowChart = ({
               >
                 <strong>{point.label}</strong>
                 <span className="total">
-                  인입 {point.total.toLocaleString('ko-KR')}건
+                  {metric.name} {point.total.toLocaleString('ko-KR')}
+                  {metric.unit}
                 </span>
                 <dl>
-                  {/* 그날 인입이 있던 보드만, 많은 순으로. */}
-                  {Object.entries(point.boards ?? {})
-                    .sort((a, b) => b[1] - a[1])
-                    .map(([name, boardCount]) => (
-                      <Fragment key={name}>
-                        <dt>{shortBoardName(name)}</dt>
-                        <dd>{boardCount}</dd>
-                      </Fragment>
-                    ))}
+                  {/* 그 칸에 있던 항목(보드·제품)만, 많은 순으로. */}
+                  {(() => {
+                    const entries = Object.entries(point.boards ?? {}).sort(
+                      (a, b) => b[1] - a[1],
+                    )
+                    const rest = entries.length - TOOLTIP_ROWS
+                    return (
+                      <>
+                        {entries
+                          .slice(0, TOOLTIP_ROWS)
+                          .map(([name, boardCount]) => (
+                            <Fragment key={name}>
+                              <dt>{shortBoardName(name)}</dt>
+                              <dd>{boardCount}</dd>
+                            </Fragment>
+                          ))}
+                        {rest > 0 && (
+                          <>
+                            <dt className="sub">외 {rest}개</dt>
+                            <dd className="sub" />
+                          </>
+                        )}
+                      </>
+                    )
+                  })()}
                   {point.misentry > 0 && (
                     <>
                       <dt className="sub">오기입</dt>

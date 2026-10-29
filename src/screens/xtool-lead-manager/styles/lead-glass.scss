@@ -1,0 +1,83 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+@use './xtool-glass' as theme;
+
+// 리드 탭의 유리 모양 — 공통(내비·표·상세·확인 모달)은 _xtool-glass.scss,
+// 여기에는 이 탭에만 있는 것(숫자 타일, 리드 등록 버튼)만 둔다. 리드 수기
+// 등록 창은 CSS 모듈이라 create-modal.module.scss가 :global(.glass_theme)
+// 아래에서 직접 바꾼다.
+
+.lead_manager_nav.lead_nav.glass_theme {
+  @include theme.list-nav;
+
+  .search-container,
+  .search-container .search-input {
+    height: 38px;
+  }
+  .search-container .search-input {
+    font-size: 15px;
+  }
+}
+
+.xtool-main.lead_main.glass_theme {
+  @include glass.ambient;
+  @include theme.list-table;
+  @include theme.detail-modal;
+  @include theme.confirm-modal;
+
+  .wrapper {
+    padding-top: 20px;
+    padding-bottom: 90px;
+  }
+
+  .lead_tiles {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+
+    @media (max-width: 1000px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  // 정렬 화살표 — 고른 방향은 누르는 색.
+  .table .lead_table .sort_btn.asc .arrow_up,
+  .table .lead_table .sort_btn.desc .arrow_down {
+    fill: var(--glass-link);
+  }
+
+  // 리드 등록 — 오른쪽 아래에 떠 있는 데이터색 알약.
+  .create-btn {
+    all: unset;
+    position: fixed;
+    right: 28px;
+    bottom: 28px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-sizing: border-box;
+    height: 46px;
+    padding: 0 22px 0 18px;
+    border-radius: 999px;
+    background: var(--glass-accent);
+    color: var(--glass-on-accent);
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 1;
+    cursor: pointer;
+    transition: filter 0.15s;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+    &:hover {
+      filter: brightness(1.06);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+      outline-offset: 3px;
+    }
+  }
+}

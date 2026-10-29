@@ -76,8 +76,15 @@ export const useLiveInflowViewModel = (
           : real.filter((each) => each.receivedAt > syncedAt).length,
       // Monday 등록이 안 된(실패·대기) 건 — 처리는 /log 문의 접수에서.
       problems: real.filter((each) => each.monday.status !== 'success').length,
+      // 기기별 막대 — 길이(ratio)는 가장 많은 기기를 100%로, share는 오늘
+      // 전체 대비 비율.
       byBoard: [...byBoard.entries()]
-        .map(([board, total]) => ({ board, total }))
+        .map(([board, total]) => ({
+          board,
+          total,
+          share: total / real.length,
+          ratio: total / Math.max(...byBoard.values()),
+        }))
         .sort((a, b) => b.total - a.total || a.board.localeCompare(b.board)),
       latestAt: real[0]?.receivedAt ?? null,
     }

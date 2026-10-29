@@ -1,6 +1,20 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
+import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
+import type { CSSProperties } from 'react'
+import {
+  CalendarClock,
+  CreditCard,
+  Footprints,
+  Gauge,
+  Route,
+  ShoppingBag,
+  Timer,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
+import { Segmented, StatTile } from '@/components/glass'
 import { useRef } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type {
@@ -47,13 +61,20 @@ const Bar = ({
   share,
   value,
   note,
+  order = 0,
 }: {
   label: string
   share: number
   value: string
   note: string
+  /** 처음 그릴 때 위에서부터 차례로 자라게 — 순서(0부터). */
+  order?: number
 }) => (
-  <div className="stats_bar" title={`${label}: ${value} (${note})`}>
+  <div
+    className="stats_bar"
+    title={`${label}: ${value} (${note})`}
+    style={{ '--glass-i': order } as CSSProperties}
+  >
     <span className="stats_bar_label">{label}</span>
     <span className="stats_bar_track">
       <span
@@ -68,24 +89,13 @@ const Bar = ({
   </div>
 )
 
-const Tile = ({
-  label,
-  value,
-  note,
-  title,
-}: {
-  label: string
-  value: string
-  note?: string
-  /** 마우스를 올리면 보이는 설명(모수 등). */
-  title?: string
-}) => (
-  <div className="stats_tile" title={title}>
-    <span className="stats_tile_label">{label}</span>
-    <strong className="stats_tile_value">{value}</strong>
-    {note && <span className="stats_tile_note">{note}</span>}
-  </div>
-)
+/** 경로별 전환 타일의 아이콘(경로 id별). */
+const PATH_ICONS: Record<string, LucideIcon> = {
+  'consult-visit': Footprints,
+  'consult-buy': ShoppingBag,
+  'visit-buy': CreditCard,
+  'consult-visit-buy': Route,
+}
 
 /** 전환율 표 — 한 줄이 한 집단(콜백 단계, 유입 경로, 담당자). 전환율 칸에는
  * 숫자 옆에 같은 값의 얇은 막대를 깔아 줄끼리 비교하기 쉽게 한다. */
@@ -192,9 +202,10 @@ const PathCustomersModal = ({
             ref={closeRef}
             type="button"
             className="stats_path_close"
+            aria-label="닫기"
             onClick={onClose}
           >
-            닫기
+            <X strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
         <p className="stats_desc">
@@ -284,7 +295,7 @@ export const MondayStats = ({
 
   return (
     <>
-      <div className="lead_manager_nav monday_stats_nav">
+      <div className="lead_manager_nav monday_stats_nav funnel_nav glass_theme">
         <div className="inner">
           <span className="stats_nav_label">최초 인입 월</span>
           <div className="page_size_select">
@@ -324,22 +335,13 @@ export const MondayStats = ({
           {/* 구매 기준 — 아래 모든 구매 지표(전환율·건수·금액·소요 일수)가
               이 선택을 따른다. */}
           <span className="stats_nav_label stats_scope_label">구매 기준</span>
-          <div className="stats_scope" role="tablist" aria-label="구매 기준">
-            {(Object.keys(PURCHASE_SCOPE_LABEL) as PurchaseScope[]).map(
-              (each) => (
-                <button
-                  key={each}
-                  type="button"
-                  role="tab"
-                  aria-selected={each === scope}
-                  className={each === scope ? 'active' : ''}
-                  onClick={() => changeScope(each)}
-                >
-                  {PURCHASE_SCOPE_LABEL[each]}
-                </button>
-              ),
-            )}
-          </div>
+          <Segmented
+            options={PURCHASE_SCOPE_LABEL}
+            value={scope}
+            onChange={changeScope}
+            label="구매 기준"
+            size="md"
+          />
           <span className="stats_nav_note">
             고객 {people(stats.totalCustomers)} 중 오기입{' '}
             {people(stats.misentryCustomers)} 제외
@@ -347,7 +349,7 @@ export const MondayStats = ({
         </div>
       </div>
 
-      <div className="xtool-main monday_stats">
+      <div className="xtool-main monday_stats funnel_main glass_theme">
         <div className="wrapper">
           {status === 'error' ? (
             <div className="monday_error">
@@ -367,9 +369,10 @@ export const MondayStats = ({
                   일어나므로 앞 단계의 부분집합이 아닙니다. {SCOPE_DESC[scope]}
                 </p>
                 <div className="stats_bars">
-                  {steps.map((step) => (
+                  {steps.map((step, index) => (
                     <Bar
                       key={step.label}
+                      order={index}
                       label={step.label}
                       share={step.rate}
                       value={people(step.count)}
@@ -396,29 +399,19 @@ export const MondayStats = ({
                   </p>
                   <div className="stats_tiles">
                     {paths.map((each) => (
-                      <div
-                        key={each.id}
-                        className={`stats_tile stats_path${
-                          each.id === openPathId ? ' open' : ''
-                        }`}
-                        title={each.base}
-                      >
-                        <span className="stats_tile_label">{each.label}</span>
-                        <strong className="stats_tile_value">
-                          {percent(each.rate)}
-                        </strong>
-                        <span className="stats_tile_note">
-                          {people(each.from)} 중 {people(each.to)}
-                        </span>
-                        <button
-                          type="button"
-                          className="stats_path_more"
-                          aria-expanded={each.id === openPathId}
-                          disabled={each.to === 0}
-                          onClick={() => togglePath(each.id)}
-                        >
-                          자세히 보기
-                        </button>
+                      <div key={each.id} title={each.base}>
+                        <StatTile
+                          icon={PATH_ICONS[each.id] ?? Gauge}
+                          label={each.label}
+                          value={percent(each.rate)}
+                          sub={`${people(each.from)} 중 ${people(each.to)}`}
+                          onGo={
+                            each.to === 0
+                              ? undefined
+                              : () => togglePath(each.id)
+                          }
+                          linkLabel={`${each.label} 고객 자세히 보기`}
+                        />
                       </div>
                     ))}
                   </div>
@@ -431,13 +424,24 @@ export const MondayStats = ({
                     기준. 결제 기록만 있는 고객 제외.
                   </p>
                   <div className="stats_tiles">
-                    <Tile label="중앙값" value={days(stats.days.median)} />
-                    <Tile label="평균" value={days(stats.days.mean)} />
+                    <StatTile
+                      icon={Timer}
+                      label="중앙값"
+                      value={days(stats.days.median)}
+                      sub="절반이 이 안에 구매"
+                    />
+                    <StatTile
+                      icon={CalendarClock}
+                      label="평균"
+                      value={days(stats.days.mean)}
+                      sub="오래 걸린 고객에 끌려 길어짐"
+                    />
                   </div>
                   <div className="stats_bars compact">
-                    {stats.days.buckets.map((bucket) => (
+                    {stats.days.buckets.map((bucket, index) => (
                       <Bar
                         key={bucket.label}
+                        order={index}
                         label={bucket.label}
                         share={bucket.rate}
                         value={people(bucket.count)}

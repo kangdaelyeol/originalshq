@@ -191,3 +191,80 @@ select.control {
     filter: brightness(1.1);
   }
 }
+
+// ── 유리 테마(리드 탭 본문이 glass_theme일 때) ──────────────────────────
+// 테두리·그림자 없이 배경 겹으로만: 진한 유리 판 → 입력칸(한 겹 밝게).
+:global(.glass_theme) {
+  .overlay {
+    background-color: rgba(4, 6, 6, 0.5);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+    backdrop-filter: blur(10px) saturate(120%);
+  }
+
+  .panel {
+    border: none;
+    border-radius: 26px;
+    background: linear-gradient(
+      160deg,
+      rgba(50, 54, 55, 0.8),
+      rgba(26, 28, 29, 0.86)
+    );
+    box-shadow: none;
+    -webkit-backdrop-filter: blur(28px) saturate(150%);
+    backdrop-filter: blur(28px) saturate(150%);
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+  }
+
+  // 입력칸 — 테두리·초점 선 없이 배경으로만(glass.field와 같은 움직임).
+  .control {
+    border: none;
+    outline: none;
+    border-radius: 12px;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition:
+      background-color 0.25s ease,
+      color 0.25s ease;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.16);
+    }
+    &:focus,
+    &:focus-visible {
+      outline: none;
+      box-shadow: none;
+      background-color: color-mix(
+        in srgb,
+        var(--glass-link) 18%,
+        rgba(255, 255, 255, 0.08)
+      );
+    }
+  }
+  // 잘못 입력한 칸 — 빨강을 옅게 깔고, 초점이 가도 빨강 그대로.
+  .control--invalid,
+  .control--invalid:hover,
+  .control--invalid:focus,
+  .control--invalid:focus-visible {
+    box-shadow: none;
+    background-color: rgba(229, 83, 75, 0.18);
+  }
+
+  .footer {
+    border-top: none;
+  }
+
+  .btn {
+    border: none;
+    border-radius: 999px;
+  }
+  .btn--ghost {
+    background-color: rgba(255, 255, 255, 0.1);
+
+    &:hover:not(:disabled) {
+      background-color: rgba(255, 255, 255, 0.18);
+    }
+  }
+  .btn--primary {
+    background-color: var(--glass-accent);
+    color: var(--glass-on-accent);
+  }
+}

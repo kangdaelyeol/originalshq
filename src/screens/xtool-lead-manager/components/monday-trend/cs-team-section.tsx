@@ -1,13 +1,30 @@
+import { Check, UsersRound, X } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type { useCsTeamViewModel } from '@/screens/xtool-lead-manager/view-model'
 import type {
-  CsMemberStats,
-  TableSort,
+  CsCardKey,
+  CsCardView,
+  KpiPairSortBy,
+} from '@/screens/xtool-lead-manager/view-model'
+import {
+  INFLOW_UNIT_NOUN,
+  formatKpi,
+  periodLabel,
+  type CsMemberStats,
+  type KpiResult,
+  type TableSort,
 } from '@/screens/xtool-lead-manager/utils'
 import { KpiCard } from './kpi-section'
+import { kpiTrendRows } from './kpi-trend-rows'
 import { KpiPairCard } from './kpi-pair-card'
 import { CallbackNeglect } from './neglect-section'
+import {
+  Ring,
+  TrendList,
+  Segmented,
+  type TrendListRow,
+} from '@/components/glass'
 
 type CsTeam = ReturnType<typeof useCsTeamViewModel>
 
@@ -16,6 +33,71 @@ const rate = (part: number, whole: number) =>
   whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
 type MetricKey = 'intake' | 'paid' | 'visit'
+
+const VIEW_LABEL: Record<CsCardView, string> = {
+  chart: '그래프',
+  table: '표',
+}
+
+const ratio = (part: number, whole: number) => (whole > 0 ? part / whole : 0)
+
+/**
+ * 건수+비율 지표(방문체험 확정·결제 전환)를 추이 목록 줄로. 정렬 기준이
+ * 그래프가 무엇을 그릴지도 정한다 — 건수 순이면 기간별 건수, 비율 순이면
+ * 기간별 전환율. 합계 칸은 건수, 막대는 전환율(가장 높은 사람 = 가득).
+ */
+const pairRows = (
+  each: KpiResult,
+  labels: string[],
+  by: KpiPairSortBy,
+): TrendListRow[] => {
+  const metric = (cell: KpiResult['sum']['total']) =>
+    by === 'count' ? (cell.num ?? 0) : cell.value
+  const maxRate = Math.max(0, ...each.rows.map((row) => row.total.value))
+  return [...each.rows]
+    .sort((a, b) => metric(b.total) - metric(a.total))
+    .map((row) => {
+      const series = row.byPeriod.map(metric)
+      const peak = series.indexOf(Math.max(...series))
+      const cellText = (cell: KpiResult['sum']['total']) =>
+        by === 'count'
+          ? `${count(cell.num ?? 0)} · ${formatKpi(cell, 'percent')}`
+          : `${formatKpi(cell, 'percent')} · ${count(cell.num ?? 0)}`
+      return {
+        key: row.assignee,
+        name: row.assignee,
+        series,
+        seriesText: row.byPeriod.map(cellText),
+        value: (
+          <>
+            {(row.total.num ?? 0).toLocaleString('ko-KR')}
+            <small>건</small>
+          </>
+        ),
+        bar: {
+          ratio: ratio(row.total.value, maxRate),
+          text: formatKpi(row.total, 'percent'),
+        },
+        peak:
+          series[peak] > 0
+            ? {
+                index: peak,
+                text: (
+                  <>
+                    {labels[peak]} ·{' '}
+                    <strong>
+                      {by === 'count'
+                        ? count(series[peak])
+                        : formatKpi(row.byPeriod[peak], 'percent')}
+                    </strong>
+                  </>
+                ),
+              }
+            : null,
+        ariaLabel: `${row.assignee} ${row.total.num ?? 0}건, ${formatKpi(row.total, 'percent')}`,
+      }
+    })
+}
 
 const METRICS: {
   key: MetricKey
@@ -63,12 +145,26 @@ const MetricCard = ({
       <h2>{metric.title}</h2>
       <p className="stats_desc">{metric.desc}</p>
       <div className="cs_metric_total">
-        <strong>{count(total[metric.key])}</strong>
-        <span>
-          {isRate
-            ? `CS팀 전환율 ${rate(total[metric.key], total.intake)}`
-            : `전체 상담 ${count(allIntake)} 중 ${rate(total.intake, allIntake)}`}
-        </span>
+        {/* 링 — 구매·방문체험은 CS팀 전환율, 인입 처리는 전체 상담 중 CS팀 몫. */}
+        <Ring
+          value={
+            isRate
+              ? ratio(total[metric.key], total.intake)
+              : ratio(total.intake, allIntake)
+          }
+          text={
+            isRate
+              ? rate(total[metric.key], total.intake)
+              : rate(total.intake, allIntake)
+          }
+          label={isRate ? 'CS팀 전환율' : '전체 상담 중 CS팀'}
+        />
+        <div className="cs_metric_total_text">
+          <strong>{count(total[metric.key])}</strong>
+          <span>
+            {isRate ? 'CS팀 전환율' : `전체 상담 ${count(allIntake)} 중`}
+          </span>
+        </div>
       </div>
       <ul className="cs_metric_rows">
         {rows.map((each) => (
@@ -139,7 +235,7 @@ const MemberEditor = ({
             aria-label="닫기"
             onClick={onClose}
           >
-            ×
+            <X strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
         <p className="stats_desc">숫자는 지금까지 맡은 총 상담 수입니다.</p>
@@ -152,6 +248,9 @@ const MemberEditor = ({
               className={selected.has(name) ? 'is-selected' : ''}
               onClick={() => toggle(name)}
             >
+              <span className="cs_editor_check" aria-hidden="true">
+                <Check strokeWidth={2.4} />
+              </span>
               {name}
               <small>{total.toLocaleString('ko-KR')}</small>
             </button>
@@ -202,7 +301,22 @@ export const CsTeamSection = ({
   today: string
 }) => {
   const { state, actions } = csTeam
-  const { members, stats, candidates, editing, unit, kpi, neglect } = state
+  const { members, stats, candidates, editing, unit, kpi, neglect, views } =
+    state
+  // 그래프 툴팁·가장 큰 칸의 이름 — 표 머리글과 같은 기간 이름.
+  const labels = kpi.periods.map((key) => periodLabel(key, unit))
+  const noun = INFLOW_UNIT_NOUN[unit]
+  // 기간(단위·첫 칸·끝 칸)이 바뀌면 카드·그래프를 새로 붙여 처음부터 다시
+  // 그린다(그대로 두면 값만 바뀌어 막대·곡선이 그려지지 않는다).
+  const drawKey = `${unit}:${kpi.periods[0]}:${kpi.periods[kpi.periods.length - 1]}`
+  const toggle = (key: CsCardKey, label: string) => (
+    <Segmented
+      options={VIEW_LABEL}
+      value={views[key]}
+      onChange={(next) => actions.changeView(key, next)}
+      label={label}
+    />
+  )
 
   return (
     <div className="cs_team">
@@ -220,7 +334,11 @@ export const CsTeamSection = ({
           className="cs_team_edit"
           onClick={actions.openEditor}
         >
-          명단 설정{members.length > 0 && ` (${members.length}명)`}
+          <UsersRound strokeWidth={1.8} aria-hidden="true" />
+          명단 설정
+          {members.length > 0 && (
+            <span className="cs_team_edit_count">{members.length}명</span>
+          )}
         </button>
       </div>
 
@@ -239,7 +357,7 @@ export const CsTeamSection = ({
       )}
       {members.length > 0 && (
         <>
-          <div className="cs_team_row">
+          <div key={drawKey} className="cs_team_row">
             {METRICS.map((metric) => (
               <MetricCard
                 key={metric.key}
@@ -257,6 +375,22 @@ export const CsTeamSection = ({
             periods={kpi.periods}
             sort={sorts['cs-kpi:intake']}
             onSort={(key) => onSort('cs-kpi:intake', key)}
+            aside={toggle('intake', '인입 처리 수 보기')}
+            body={
+              views.intake === 'chart' ? (
+                <TrendList
+                  key={drawKey}
+                  rows={kpiTrendRows(kpi.intake, labels)}
+                  labels={labels}
+                  columns={{
+                    name: '담당자',
+                    value: '합계',
+                    bar: 'CS팀 중 비중',
+                    peak: `가장 많은 ${noun}`,
+                  }}
+                />
+              ) : undefined
+            }
           />
 
           {kpi.kpis.map((each) => (
@@ -269,6 +403,26 @@ export const CsTeamSection = ({
               onSort={(key) => onSort(`cs-kpi:${each.id}`, key)}
               sortBy={each.sortBy}
               onSortBy={(by) => actions.changeSortBy(each.id, by)}
+              aside={toggle(each.id as CsCardKey, `${each.title} 보기`)}
+              body={
+                views[each.id as CsCardKey] === 'chart' ? (
+                  <TrendList
+                    // 건수 순 / 비율 순을 바꿔도 그래프 내용이 바뀌므로 다시 그린다.
+                    key={`${drawKey}:${each.sortBy}`}
+                    rows={pairRows(each, labels, each.sortBy)}
+                    labels={labels}
+                    columns={{
+                      name: '담당자',
+                      value: '건수',
+                      bar: '전환율',
+                      peak:
+                        each.sortBy === 'count'
+                          ? `가장 많은 ${noun}`
+                          : `가장 높은 ${noun}`,
+                    }}
+                  />
+                ) : undefined
+              }
             />
           ))}
 
@@ -279,6 +433,8 @@ export const CsTeamSection = ({
             onToggle={onToggleNeglect}
             sort={sorts['neglect:callback']}
             onSort={(key) => onSort('neglect:callback', key)}
+            view={views.neglect}
+            onView={(next) => actions.changeView('neglect', next)}
           />
         </>
       )}

@@ -6,6 +6,9 @@ export interface InflowPoint extends MondayDailyInflow {
   label: string
   /** x축에 쓰는 짧은 이름 — "10/12", "10/6~", "10월". */
   axisLabel: string
+  /** 좁은 칸(보드별 추이의 가장 많은 칸)에 쓰는 이름 — "10/12 (월)",
+   * "10/6~10/12", "2026.10"(달은 범위를 뺀다). */
+  shortLabel: string
 }
 
 /** 묶는 단위. */
@@ -109,6 +112,7 @@ export const inflowSeries = (
       ...row,
       label: formatDay(row.date),
       axisLabel: formatDayShort(row.date),
+      shortLabel: formatDay(row.date),
     }))
   }
 
@@ -122,6 +126,7 @@ export const inflowSeries = (
       ...mergeDays(chunk),
       label: unit === 'week' ? range : `${year}.${month} (${range})`,
       axisLabel: unit === 'week' ? range : `${Number(month)}월`,
+      shortLabel: unit === 'week' ? range : `${year}.${month}`,
     }
   })
 }
@@ -165,6 +170,87 @@ export const summarizeInflow = (points: InflowPoint[]): InflowSummary => {
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count),
   }
+}
+
+/** 보드별 추이 목록의 한 줄 — 기간 칸마다의 건수와 그 합·비중·최고 칸. */
+export interface BoardTrend {
+  name: string
+  /** 기간 칸(points 순서 = 오래된 것부터)마다의 건수. */
+  series: number[]
+  total: number
+  /** 기간 전체 인입 대비(0~1). */
+  share: number
+  /** 가장 많았던 칸 — 한 번도 없었으면 null. */
+  peak: { index: number; label: string; count: number } | null
+}
+
+const boardTrendOf = (
+  name: string,
+  series: number[],
+  points: InflowPoint[],
+  allTotal: number,
+): BoardTrend => {
+  const total = series.reduce((sum, value) => sum + value, 0)
+  const peakIndex = series.reduce(
+    (best, value, index) => (value > series[best] ? index : best),
+    0,
+  )
+  return {
+    name,
+    series,
+    total,
+    share: allTotal === 0 ? 0 : total / allTotal,
+    peak:
+      total === 0
+        ? null
+        : {
+            index: peakIndex,
+            label: points[peakIndex].shortLabel,
+            count: series[peakIndex],
+          },
+  }
+}
+
+/**
+ * 표(기간 × 보드)를 보드 쪽으로 돌려 본 것 — 보드마다 한 줄(많은 순), 그리고
+ * 오기입 한 줄. 오기입은 여러 보드에 걸친 별도 지표라 따로 돌려준다.
+ */
+export const buildBoardTrends = (
+  points: InflowPoint[],
+  summary: InflowSummary,
+): { boards: BoardTrend[]; misentry: BoardTrend } => ({
+  boards: summary.boards.map((board) =>
+    boardTrendOf(
+      board.name,
+      points.map((point) => point.boards?.[board.name] ?? 0),
+      points,
+      summary.total,
+    ),
+  ),
+  misentry: boardTrendOf(
+    '오기입',
+    points.map((point) => point.misentry),
+    points,
+    summary.total,
+  ),
+})
+
+/** 표의 칸(열)마다 가장 큰 값 — 히트맵 칸의 색 세기(값 / 이 값)에 쓴다. */
+export const inflowColumnMax = (
+  points: InflowPoint[],
+  summary: InflowSummary,
+): Record<string, number> => {
+  const keys: InflowSortKey[] = [
+    'total',
+    'misentry',
+    ...summary.boards.map((board) => `board:${board.name}` as const),
+  ]
+  return Object.fromEntries(
+    keys.map((key) => [
+      key,
+      Math.max(0, ...points.map((point) => Number(sortValue(point, key)))),
+    ]),
+  )
 }
 
 /** y축 눈금 — 최댓값을 덮는 "깔끔한" 수(1·2·5 × 10ⁿ 간격)로 4칸 안팎. */

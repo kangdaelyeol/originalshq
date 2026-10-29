@@ -2,6 +2,9 @@ import '@/screens/xtool-lead-manager/styles/nav.scss'
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/ga-tracking.scss'
+import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
+import { Fingerprint, Radar, RefreshCw, UserX, X } from 'lucide-react'
+import { Segmented, StatTile } from '@/components/glass'
 import { useRef } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import {
@@ -37,10 +40,10 @@ const TRACKING_SKELETON: SkeletonCell[] = [
   { width: 90 },
 ]
 
-const FILTERS: { id: GaTrackingFilter; label: string }[] = [
-  { id: 'misentry', label: '오기입만' },
-  { id: 'all', label: 'GA ClientId 있는 상담 전체' },
-]
+const FILTER_LABEL: Record<GaTrackingFilter, string> = {
+  misentry: '오기입만',
+  all: 'GA ClientId 있는 상담 전체',
+}
 
 /** ms → "10/21 14:03:21"(KST). */
 const formatTime = (ms: number | null): string => {
@@ -165,9 +168,10 @@ const TrackingModal = ({
             ref={closeRef}
             type="button"
             className="ga_tracking_close"
+            aria-label="닫기"
             onClick={onClose}
           >
-            닫기
+            <X strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
         <dl className="ga_tracking_facts">
@@ -206,43 +210,38 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
     collectError,
     collecting,
   } = state
+  const ready = status === 'ready'
   const openRow =
     rows.find((row) => row.consultation.itemId === openItemId) ?? null
 
   return (
     <>
-      <div className="lead_manager_nav monday_stats_nav">
+      <div className="lead_manager_nav monday_stats_nav ga_nav glass_theme">
         <div className="inner">
-          <div className="stats_scope" role="tablist" aria-label="보기">
-            {FILTERS.map((each) => (
-              <button
-                key={each.id}
-                type="button"
-                role="tab"
-                aria-selected={each.id === filter}
-                className={each.id === filter ? 'active' : ''}
-                onClick={() => actions.changeFilter(each.id)}
-              >
-                {each.label}
-              </button>
-            ))}
-          </div>
-          <span className="stats_nav_note">
-            GA ClientId 있는 상담 {totalCount}건 · 오기입 {misentryCount}건 · 이
-            목록 중 GA4에서 찾은 건 {matchedCount}건
-          </span>
+          <Segmented
+            options={FILTER_LABEL}
+            value={filter}
+            onChange={actions.changeFilter}
+            label="보기"
+            size="md"
+          />
           <button
             type="button"
             className="stats_reset"
             disabled={collecting}
             onClick={() => void actions.collectNow()}
           >
+            <RefreshCw
+              strokeWidth={1.8}
+              className={collecting ? 'is-spinning' : undefined}
+              aria-hidden="true"
+            />
             {collecting ? '수집 중…' : '지금 수집'}
           </button>
         </div>
       </div>
 
-      <div className="xtool-main monday_stats ga_tracking">
+      <div className="xtool-main monday_stats ga_tracking ga_main glass_theme">
         <div className="wrapper">
           {status === 'error' ? (
             <div className="monday_error">
@@ -252,109 +251,157 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
               </button>
             </div>
           ) : (
-            <section className="stats_card">
-              <h2>GA4 이벤트로 본 문의자</h2>
-              <p className="stats_desc">
-                상담 보드의 GA ClientId와 GA4 BigQuery의 사용자 id가 같은
-                이벤트를 모았습니다. 줄을 누르면 그 사람의 이벤트가 시간순으로
-                모달에 뜹니다. 이벤트는 Monday 동기화(매일 09·11·13·15·17·22시)
-                직후 자동으로 수집되고, GA4 내보내기가 일별이라 당일 이벤트는
-                다음 날 들어옵니다.
-                {status !== 'ready'
-                  ? ''
-                  : collectedAt
-                    ? ` 마지막 수집 ${formatTime(collectedAt)}`
-                    : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
-                {lastResult &&
-                  ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
-              </p>
-              {collectError && (
-                <p className="ga_tracking_error">
-                  GA4 이벤트 수집에 실패했습니다 — {collectError}
+            <>
+              {/* 위 줄 — 건수 요약(보기 선택과 무관). */}
+              <div className="stats_tiles ga_tiles">
+                <StatTile
+                  icon={Fingerprint}
+                  label="GA ClientId 있는 상담"
+                  value={
+                    ready ? `${totalCount.toLocaleString('ko-KR')}건` : '-'
+                  }
+                  sub="상담 보드에 GA ClientId가 적힌 문의"
+                />
+                <StatTile
+                  icon={UserX}
+                  label="오기입"
+                  value={
+                    ready ? `${misentryCount.toLocaleString('ko-KR')}건` : '-'
+                  }
+                  warn={misentryCount > 0}
+                  sub={
+                    totalCount > 0
+                      ? `GA ClientId 있는 상담의 ${((misentryCount / totalCount) * 100).toFixed(1)}%`
+                      : undefined
+                  }
+                  onGo={
+                    filter === 'misentry'
+                      ? undefined
+                      : () => actions.changeFilter('misentry')
+                  }
+                  linkLabel="오기입만 보기"
+                />
+                <StatTile
+                  icon={Radar}
+                  label="GA4에서 찾은 건"
+                  value={
+                    ready ? `${matchedCount.toLocaleString('ko-KR')}건` : '-'
+                  }
+                  sub={`지금 목록 ${rows.length.toLocaleString('ko-KR')}건 중`}
+                />
+                <StatTile
+                  icon={RefreshCw}
+                  label="마지막 수집"
+                  value={collectedAt ? formatTime(collectedAt) : '-'}
+                  sub="Monday 동기화 직후 자동 · 당일 이벤트는 다음 날"
+                />
+              </div>
+              <section className="stats_card">
+                <h2>GA4 이벤트로 본 문의자</h2>
+                <p className="stats_desc">
+                  상담 보드의 GA ClientId와 GA4 BigQuery의 사용자 id가 같은
+                  이벤트를 모았습니다. 줄을 누르면 그 사람의 이벤트가 시간순으로
+                  모달에 뜹니다. 이벤트는 Monday 동기화(매일
+                  09·11·13·15·17·22시) 직후 자동으로 수집되고, GA4 내보내기가
+                  일별이라 당일 이벤트는 다음 날 들어옵니다.
+                  {status !== 'ready'
+                    ? ''
+                    : collectedAt
+                      ? ` 마지막 수집 ${formatTime(collectedAt)}`
+                      : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
+                  {lastResult &&
+                    ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
                 </p>
-              )}
-              {status === 'ready' && rows.length === 0 ? (
-                <p className="ga_tracking_empty">해당하는 상담이 없습니다.</p>
-              ) : (
-                <div
-                  className="ga_tracking_scroll"
-                  aria-busy={status !== 'ready'}
-                >
-                  {status !== 'ready' && (
-                    <LoadingNotice label="오기입 추적 데이터를 불러오는 중" />
-                  )}
-                  <table className="stats_table ga_tracking_table">
-                    <thead>
-                      <tr>
-                        <th>접수일</th>
-                        <th>보드</th>
-                        <th>이름</th>
-                        <th>입력한 번호</th>
-                        <th>상태</th>
-                        <th>GA ClientId</th>
-                        <th>이벤트</th>
-                        <th>방문</th>
-                        <th>첫 유입</th>
-                        <th>기기</th>
-                        <th>위치</th>
-                        <th>마지막 활동</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {status !== 'ready' && (
-                        <SkeletonRows cells={TRACKING_SKELETON} rows={12} />
-                      )}
-                      {rows.map((row) => {
-                        const { consultation } = row
-                        return (
-                          <tr
-                            key={consultation.itemId}
-                            className="ga_tracking_row"
-                            onClick={() => actions.openRow(consultation.itemId)}
-                          >
-                            <td>{consultation.receivedAt ?? '-'}</td>
-                            <td>{consultation.boardName}</td>
-                            <td>
-                              {consultation.url ? (
-                                <a
-                                  href={consultation.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {consultation.name}
-                                </a>
-                              ) : (
-                                consultation.name
-                              )}
-                            </td>
-                            <td>{consultation.phoneRaw ?? '-'}</td>
-                            <td
-                              className={
-                                consultation.misentry
-                                  ? 'ga_tracking_misentry'
-                                  : undefined
+                {collectError && (
+                  <p className="ga_tracking_error">
+                    GA4 이벤트 수집에 실패했습니다 — {collectError}
+                  </p>
+                )}
+                {status === 'ready' && rows.length === 0 ? (
+                  <p className="ga_tracking_empty">해당하는 상담이 없습니다.</p>
+                ) : (
+                  <div
+                    className="ga_tracking_scroll"
+                    aria-busy={status !== 'ready'}
+                  >
+                    {status !== 'ready' && (
+                      <LoadingNotice label="오기입 추적 데이터를 불러오는 중" />
+                    )}
+                    <table className="stats_table ga_tracking_table">
+                      <thead>
+                        <tr>
+                          <th>접수일</th>
+                          <th>보드</th>
+                          <th>이름</th>
+                          <th>입력한 번호</th>
+                          <th>상태</th>
+                          <th>GA ClientId</th>
+                          <th>이벤트</th>
+                          <th>방문</th>
+                          <th>첫 유입</th>
+                          <th>기기</th>
+                          <th>위치</th>
+                          <th>마지막 활동</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {status !== 'ready' && (
+                          <SkeletonRows cells={TRACKING_SKELETON} rows={12} />
+                        )}
+                        {rows.map((row) => {
+                          const { consultation } = row
+                          return (
+                            <tr
+                              key={consultation.itemId}
+                              className="ga_tracking_row"
+                              onClick={() =>
+                                actions.openRow(consultation.itemId)
                               }
                             >
-                              {consultation.status ?? '-'}
-                            </td>
-                            <td title={consultation.gaClientId}>
-                              {shortClientId(consultation.gaClientId)}
-                            </td>
-                            <td>{row.events.length}</td>
-                            <td>{row.sessionCount}</td>
-                            <td>{row.firstTouch ?? '-'}</td>
-                            <td>{row.device ?? '-'}</td>
-                            <td>{row.location ?? '-'}</td>
-                            <td>{formatTime(row.lastAt)}</td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
+                              <td>{consultation.receivedAt ?? '-'}</td>
+                              <td>{consultation.boardName}</td>
+                              <td>
+                                {consultation.url ? (
+                                  <a
+                                    href={consultation.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {consultation.name}
+                                  </a>
+                                ) : (
+                                  consultation.name
+                                )}
+                              </td>
+                              <td>{consultation.phoneRaw ?? '-'}</td>
+                              <td
+                                className={
+                                  consultation.misentry
+                                    ? 'ga_tracking_misentry'
+                                    : undefined
+                                }
+                              >
+                                {consultation.status ?? '-'}
+                              </td>
+                              <td title={consultation.gaClientId}>
+                                {shortClientId(consultation.gaClientId)}
+                              </td>
+                              <td>{row.events.length}</td>
+                              <td>{row.sessionCount}</td>
+                              <td>{row.firstTouch ?? '-'}</td>
+                              <td>{row.device ?? '-'}</td>
+                              <td>{row.location ?? '-'}</td>
+                              <td>{formatTime(row.lastAt)}</td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            </>
           )}
         </div>
         {openRow && <TrackingModal row={openRow} onClose={actions.closeRow} />}

@@ -1,0 +1,10 @@
+@use './xtool-glass' as theme;
+
+// 통계 탭(monday-trend.tsx — 인입통계·판매통계·개인 KPI 모두 glass_theme).
+// 믹스인은 _xtool-glass.scss.
+.lead_manager_nav.monday_trend_nav.glass_theme {
+  @include theme.nav;
+}
+.xtool-main.monday_trend.glass_theme {
+  @include theme.page;
+}

@@ -39,6 +39,14 @@ $trend-y-axis-width: 44px;
     // 내릴 때 첫 칸이 위쪽 고정 메뉴 바 위로 올라온다.
     isolation: isolate;
 
+    // 줄 사이 선을 칸이 직접 갖게 한다. 기본(collapse)이면 선이 표에 그려져
+    // 고정 칸과 같이 움직이지 않아서, 가로로 밀 때 첫 칸 줄 사이 1px로 밑에
+    // 지나가는 칸이 비친다. 선은 아래쪽에만 있어 겹칠 일이 없다.
+    .stats_table {
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
     thead th {
       position: sticky;
       top: 0;
@@ -190,28 +198,10 @@ $trend-y-axis-width: 44px;
     }
   }
 
+  // 선·면(GlassLine)을 얹는 자리 — 그래프 칸을 가득 채운다.
   .inflow_svg {
     position: absolute;
     inset: 0;
-    width: 100%;
-    height: 100%;
-    overflow: visible;
-  }
-
-  // 선은 2px. SVG가 가로로 늘어나도 굵기가 따라 늘지 않게 고정한다.
-  .inflow_line {
-    fill: none;
-    stroke: $trend-line;
-    stroke-width: 2;
-    stroke-linejoin: round;
-    stroke-linecap: round;
-    vector-effect: non-scaling-stroke;
-  }
-
-  // 선 아래는 같은 색을 아주 옅게.
-  .inflow_area {
-    fill: $trend-line;
-    opacity: 0.1;
   }
 
   .inflow_columns {
@@ -465,13 +455,13 @@ $trend-y-axis-width: 44px;
     background-color: rgba(255, 255, 255, 0.02);
   }
 
-  .neglect_detail ul {
+  .neglect_items {
     margin: 0;
     padding: 0 0 0 14px;
     list-style: none;
   }
 
-  .neglect_detail li {
+  .neglect_items li {
     display: grid;
     grid-template-columns: 150px 170px minmax(0, 1fr) 300px 80px 64px;
     align-items: center;
@@ -724,49 +714,93 @@ $trend-y-axis-width: 44px;
     }
   }
 
-  .stats_tile_value.is-warn {
-    color: #d29922;
-  }
-
-  .live_inflow_sub {
-    color: variables.$color-text-muted;
-    font-size: 12px;
-  }
-
-  .live_inflow_link {
-    align-self: flex-start;
-    color: variables.$color-accent;
-    font-size: 12px;
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-
+  // 기기별 오늘 문의 — 이름·건수 줄 아래에 막대(가장 많은 기기 = 가득).
+  // 칸이 좁아 이름이 길어도 막대 폭이 줄지 않게 두 줄로 둔다.
   .live_inflow_boards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin: 12px 0 0;
-    padding: 0;
-    list-style: none;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+
+    h3 {
+      margin: 0 0 10px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: variables.$color-text-muted;
+    }
+
+    ul {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
 
     li {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border: 1px solid variables.$color-border-soft;
-      border-radius: 3px;
-      color: variables.$color-text-muted;
-      font-size: 12px;
-
-      strong {
-        color: variables.$color-text;
-        font-weight: 600;
-      }
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'name value'
+        'track track';
+      align-items: baseline;
+      row-gap: 5px;
+      column-gap: 10px;
+      font-size: 12.5px;
     }
+  }
+
+  .live_board_name {
+    grid-area: name;
+    overflow: hidden;
+    color: variables.$color-text;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live_board_value {
+    grid-area: value;
+    color: variables.$color-text;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+
+    small {
+      font-size: 11.5px;
+      font-weight: 400;
+      color: variables.$color-text-muted;
+    }
+  }
+
+  .live_board_track {
+    grid-area: track;
+    display: block;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  // 1분마다 갱신될 때 길이가 부드럽게 바뀌고, 처음 그릴 때는 왼쪽에서 자란다.
+  .live_board_fill {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(68, 147, 248, 0.55), #4493f8);
+    box-shadow: 0 0 10px rgba(68, 147, 248, 0.45);
+    transform-origin: left center;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    animation: live-bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+      animation: none;
+    }
+  }
+}
+
+@keyframes live-bar-grow {
+  from {
+    transform: scaleX(0);
   }
 }
 
@@ -861,12 +895,18 @@ $trend-y-axis-width: 44px;
     }
   }
 
+  // 큰 숫자 — 왼쪽에 비율 링(ring.tsx), 오른쪽에 건수와 설명.
   .cs_metric_total {
     display: flex;
-    align-items: baseline;
-    flex-wrap: wrap;
-    gap: 4px 10px;
+    align-items: center;
+    gap: 14px;
     margin: 12px 0 14px;
+  }
+
+  .cs_metric_total_text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 
     strong {
       font-size: 20px;
@@ -1079,35 +1119,6 @@ $trend-y-axis-width: 44px;
     font-size: 16px;
     font-weight: 600;
     color: variables.$color-text-muted;
-  }
-
-  .kpi_pair_sortby {
-    display: flex;
-    gap: 2px;
-    padding: 2px;
-    border: 1px solid variables.$color-border;
-    border-radius: 6px;
-
-    button {
-      all: unset;
-      height: 24px;
-      padding: 0 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: variables.$color-text-muted;
-      cursor: pointer;
-
-      &:hover {
-        color: variables.$color-text;
-      }
-      &.active {
-        background: variables.$color-surface-raised;
-        color: variables.$color-text;
-      }
-      &:focus-visible {
-        outline: 2px solid variables.$color-accent;
-      }
-    }
   }
 
   .kpi_pair_main {

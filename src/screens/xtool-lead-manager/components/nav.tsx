@@ -30,7 +30,7 @@ export const Nav = ({ state, actions }: NavProps) => {
   const typed = searchValue?.trim() !== ''
 
   return (
-    <div className="lead_manager_nav">
+    <div className="lead_manager_nav lead_nav glass_theme">
       <div className="inner">
         <div className="search-box">
           <SearchIcon />

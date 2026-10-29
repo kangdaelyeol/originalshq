@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import type {
   MondayDailyInflow,
@@ -9,6 +10,8 @@ import type {
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   aggregateSales,
+  buildBoardTrends,
+  inflowColumnMax,
   buildPipeline,
   computeKpis,
   sortPipelineRows,
@@ -51,6 +54,29 @@ export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
 
 /** 통계 탭의 상태 — 소주제 둘(인입통계 / 판매통계)의 원본 데이터(한 번 받아
  * 둔다)와 조회 기간, 그 기간의 그래프·표용 데이터. `active`가 처음 true가 될 때 받아온다. */
+/** 보드 현황 보기 — 보드별 추이(목록) / 표(히트맵). */
+export type InflowView = 'trend' | 'table'
+export const INFLOW_VIEWS: readonly InflowView[] = ['trend', 'table']
+
+/** 현재 파이프라인 보기 — 그래프 / 표. */
+export type PipelineView = 'chart' | 'table'
+const PIPELINE_VIEWS: readonly PipelineView[] = ['chart', 'table']
+
+/** 판매통계·개인 KPI 카드의 보기 — 그래프 / 표. 개인 KPI·방치 카드는 지표
+ * id(방치는 neglect:callback·neglect:visit)마다 따로, 없으면 그래프. */
+export type CardView = 'chart' | 'table'
+const parseCardViews = (
+  stored: unknown,
+): Record<string, CardView> | undefined =>
+  typeof stored === 'object' && stored !== null
+    ? Object.fromEntries(
+        Object.entries(stored).filter(
+          (entry): entry is [string, CardView] =>
+            entry[1] === 'chart' || entry[1] === 'table',
+        ),
+      )
+    : undefined
+
 export const useMondayTrendViewModel = (active: boolean) => {
   const [days, setDays] = useState<MondayDailyInflow[]>([])
   const [syncedAt, setSyncedAt] = useState<number | null>(null)
@@ -91,7 +117,29 @@ export const useMondayTrendViewModel = (active: boolean) => {
   const [unit, setUnit] = useState<InflowUnit>('day')
   // 표의 정렬 — 처음에는 최근 날짜가 위로.
   const [sortKey, setSortKey] = useState<InflowSortKey>('date')
+  // 보드 현황을 무엇으로 볼지 — 보드별 추이(목록) / 표(히트맵). 이 브라우저에 남긴다.
+  const [inflowView, setInflowView] = usePersistentState<InflowView>(
+    'xtool.trend.inflowView',
+    'trend',
+    oneOf(INFLOW_VIEWS),
+  )
+  // 현재 파이프라인 — 그래프(단계별 쌓은 막대) / 표.
+  const [pipelineView, setPipelineView] = usePersistentState<PipelineView>(
+    'xtool.trend.pipelineView',
+    'chart',
+    oneOf(PIPELINE_VIEWS),
+  )
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  // 판매통계 제품 현황 — 제품별 추이(목록) / 표(히트맵).
+  const [salesView, setSalesView] = usePersistentState<InflowView>(
+    'xtool.trend.salesView',
+    'trend',
+    oneOf(INFLOW_VIEWS),
+  )
+  // 개인 KPI 카드마다 그래프 / 표.
+  const [cardViews, setCardViews] = usePersistentState<
+    Record<string, CardView>
+  >('xtool.kpi.views', {}, parseCardViews)
 
   const load = useCallback(async () => {
     setStatus('loading')
@@ -126,6 +174,15 @@ export const useMondayTrendViewModel = (active: boolean) => {
     [days, range, unit],
   )
   const summary = useMemo(() => summarizeInflow(points), [points])
+  // 표 아래 보드 현황 — 보드별 추이(목록)와 히트맵 표의 색 세기.
+  const boardTrends = useMemo(
+    () => buildBoardTrends(points, summary),
+    [points, summary],
+  )
+  const columnMax = useMemo(
+    () => inflowColumnMax(points, summary),
+    [points, summary],
+  )
 
   // 그래프는 늘 시간순이고, 정렬은 표에만 적용한다.
   const tableRows = useMemo(
@@ -170,6 +227,15 @@ export const useMondayTrendViewModel = (active: boolean) => {
   )
   const salesColumns = useMemo(
     () => summarizeInflow(salesPoints).boards,
+    [salesPoints],
+  )
+  // 제품별 추이(목록)와 히트맵 표의 색 세기 — 인입통계의 보드 현황과 같은 함수.
+  const salesTrends = useMemo(
+    () => buildBoardTrends(salesPoints, summarizeInflow(salesPoints)).boards,
+    [salesPoints],
+  )
+  const salesColumnMax = useMemo(
+    () => inflowColumnMax(salesPoints, summarizeInflow(salesPoints)),
     [salesPoints],
   )
   const salesTableRows = useMemo(
@@ -305,6 +371,9 @@ export const useMondayTrendViewModel = (active: boolean) => {
       points,
       summary,
       tableRows,
+      boardTrends,
+      columnMax,
+      inflowView,
       sortKey,
       sortDirection,
       syncedAt,
@@ -314,6 +383,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       neglect: { ...neglect, expanded },
       tableSorts,
       pipeline,
+      pipelineView,
       includeInactive,
       kpi: {
         unit: kpiUnit,
@@ -333,7 +403,15 @@ export const useMondayTrendViewModel = (active: boolean) => {
         tableRows: salesTableRows,
         sortKey: salesSortKey,
         sortDirection: salesSortDirection,
+        /** 기간 칸(오래된 것부터) — 그래프용. */
+        points: salesPoints,
+        /** 제품별 추이(수량 많은 순). */
+        trends: salesTrends,
+        columnMax: salesColumnMax,
+        view: salesView,
       },
+      /** 개인 KPI 카드마다의 보기(없으면 그래프). */
+      cardViews,
     },
     actions: {
       changeRange,
@@ -344,6 +422,11 @@ export const useMondayTrendViewModel = (active: boolean) => {
         setRange(defaultRange(next))
       },
       toggleSort,
+      changeInflowView: setInflowView,
+      changeSalesView: setSalesView,
+      changeCardView: (id: string, view: CardView) =>
+        setCardViews((prev) => ({ ...prev, [id]: view })),
+      changePipelineView: setPipelineView,
       reload: load,
       changeSection: setSection,
       changeSalesScope: setSalesScope,

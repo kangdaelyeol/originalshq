@@ -1,0 +1,298 @@
+@use 'sass:string';
+@use './tokens' as *;
+
+// 화면 뒤 색 번짐 — 유리는 뒤에 비칠 게 있어야 보여서 페이지(와 붙어 있는
+// 메뉴 줄)에 깐다. 화면에 고정이라 스크롤해도 그대로이고, 같은 배경을 쓰는
+// 요소끼리는 경계 없이 이어진다.
+@mixin ambient {
+  background-color: #050606;
+  background-image:
+    radial-gradient(
+      900px 520px at 38% -6%,
+      rgba(178, 206, 74, 0.32),
+      transparent 70%
+    ),
+    radial-gradient(
+      700px 600px at 6% 58%,
+      rgba(64, 190, 178, 0.2),
+      transparent 70%
+    ),
+    radial-gradient(
+      800px 640px at 92% 92%,
+      rgba(168, 104, 138, 0.26),
+      transparent 70%
+    ),
+    radial-gradient(
+      520px 700px at 104% 46%,
+      rgba(206, 146, 70, 0.15),
+      transparent 70%
+    );
+  background-attachment: fixed;
+}
+
+// 바깥 카드 — 배경(반투명 + 흐림)만. 테두리·그림자 없음.
+@mixin card {
+  border: none;
+  border-radius: $radius-card;
+  background: $glass-bg;
+  box-shadow: none;
+  -webkit-backdrop-filter: $glass-blur;
+  backdrop-filter: $glass-blur;
+}
+
+// 카드 안 타일 — 한 겹 밝게.
+@mixin inner {
+  border: none;
+  border-radius: $radius-inner;
+  background: $fill-1;
+  box-shadow: none;
+}
+
+// 불러오는 중 — 옅은 흰빛이 왼쪽에서 오른쪽으로 지나간다(keyframes는 base.scss).
+@mixin shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.11) 40%,
+    rgba(255, 255, 255, 0.04) 80%
+  );
+  background-size: 300% 100%;
+  animation: glass_shimmer 1.4s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// 알약 안의 알약 — 바깥은 옅은 유리 띠, 고른 버튼(.active)만 밝은 알약.
+@mixin pill-group {
+  padding: 4px;
+  gap: 2px;
+  border: none;
+  border-radius: 999px;
+  background: $fill-1;
+
+  button {
+    border-radius: 999px;
+    padding: 0 14px;
+
+    &.active {
+      background: $fill-3;
+      color: $text;
+    }
+    &:focus-visible {
+      outline-color: var(--glass-link);
+    }
+  }
+}
+
+// 알약 버튼 하나.
+@mixin pill-button {
+  border: none;
+  border-radius: 999px;
+  background: $fill-2;
+  box-shadow: none;
+
+  &:hover:not(:disabled) {
+    background: $fill-3;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
+}
+
+// 입력칸·드롭다운 — 테두리·초점 선 없이 배경으로만. 마우스를 올리면 한 겹
+// 밝게, 누르면(초점) 누르는 색(청록)이 옅게 번지며 차오른다.
+@mixin field {
+  border: none;
+  outline: none;
+  box-shadow: none;
+  background-color: $fill-2;
+  transition:
+    background-color 0.25s ease,
+    color 0.25s ease;
+
+  &:hover {
+    background-color: $fill-3;
+  }
+  &:focus,
+  &:focus-visible {
+    outline: none;
+    box-shadow: none;
+    background-color: color-mix(
+      in srgb,
+      var(--glass-link) 18%,
+      rgba(255, 255, 255, 0.08)
+    );
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+// 마우스를 올리면 뜨는 작은 알약 툴팁(부모 :hover에서 display: block).
+@mixin tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  display: none;
+  padding: 5px 12px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: $float-bg;
+  -webkit-backdrop-filter: $float-blur;
+  backdrop-filter: $float-blur;
+  font-size: 12px;
+  color: $text-2;
+  white-space: nowrap;
+  pointer-events: none;
+
+  strong {
+    font-weight: 600;
+    color: $text;
+  }
+}
+
+// 스크롤하는 표 상자 안의 표를 유리 위에 — 칸은 투명, 선 없음. 줄은 한 줄
+// 걸러 옅은 흰빛(zebra), 머리글·합계 줄은 한 겹 밝게 — 다 배경 그림
+// (background-image)이라 아래 고정 칸 바탕색 위에 겹친다.
+// 붙어 있는(sticky) 칸(머리글 줄·첫 칸·합계 줄)은 평소엔 투명이고, 그 밑으로
+// 다른 칸이 지나갈 때만 불투명 바탕을 깐다:
+//   머리글 = 세로로 조금이라도 내렸을 때, 첫 칸 = 가로로 밀었을 때,
+//   합계 = 아래에 아직 줄이 남았을 때, 모서리 칸 = 둘 중 하나라도.
+// 표 상자의 스크롤 위치로 --glass-sticky-x/y(0~1, base.scss)를 움직여(스크롤
+// 연동 애니메이션) 큰 값만큼 칠한다. 그 방향으로 넘치지 않으면 0(투명).
+// 칸을 sticky로 만드는 것 자체는 부르는 쪽이 한다.
+@mixin sticky-table($table: 'table') {
+  $stuck: rgb(18, 20, 20);
+
+  $tint: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03));
+  $tint-strong: linear-gradient($fill-1, $fill-1);
+
+  #{$table} th,
+  #{$table} td {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  #{$table} tbody tr:nth-child(even) td {
+    background-image: $tint;
+  }
+  #{$table} thead th {
+    background-image: $tint-strong;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 600;
+  }
+  #{$table} tfoot td {
+    background-image: $tint-strong;
+  }
+  // 머리글·합계 줄 양 끝을 둥글게 — 띠처럼.
+  #{$table} thead th:first-child,
+  #{$table} tfoot tr:first-child td:first-child {
+    border-top-left-radius: 12px;
+  }
+  #{$table} thead th:last-child,
+  #{$table} tfoot tr:first-child td:last-child {
+    border-top-right-radius: 12px;
+  }
+  #{$table} thead th:first-child,
+  #{$table} tfoot tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+  }
+  #{$table} thead th:last-child,
+  #{$table} tfoot tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
+  }
+  #{$table} thead th,
+  #{$table} th:first-child,
+  #{$table} td:first-child,
+  #{$table} tfoot td {
+    // Sass가 rgb()를 직접 계산하려 해서 문자열로 넘긴다.
+    background-color: string.unquote(
+      'rgb(18 20 20 / max(var(--glass-sticky-x), var(--glass-sticky-y)))'
+    );
+  }
+  #{$table} thead th {
+    animation: glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: 0 8px;
+  }
+  #{$table} tbody td:first-child {
+    animation: glass_sticky_x_on linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 8px;
+  }
+  #{$table} tfoot td {
+    animation: glass_sticky_y_off linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: calc(100% - 8px) 100%;
+  }
+  #{$table} thead th:first-child {
+    animation:
+      glass_sticky_x_on linear both,
+      glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest block);
+    animation-range:
+      0 8px,
+      0 8px;
+  }
+  #{$table} tfoot td:first-child {
+    animation:
+      glass_sticky_x_on linear both,
+      glass_sticky_y_off linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest block);
+    animation-range:
+      0 8px,
+      calc(100% - 8px) 100%;
+  }
+
+  // 스크롤 연동 애니메이션이 없는 브라우저(Firefox 등) — 늘 바탕을 깐다.
+  @supports not (animation-timeline: scroll()) {
+    #{$table} thead th,
+    #{$table} th:first-child,
+    #{$table} td:first-child,
+    #{$table} tfoot td {
+      background-color: $stuck;
+    }
+  }
+}
+
+// ── 처음 그릴 때의 움직임 ─────────────────────────────────────────────────
+// 화면에 처음 붙을 때(데이터를 다 받아 스켈레톤이 바뀔 때, 보기를 바꿀 때)
+// 한 번만 돈다. 줄마다 --glass-i(순서)를 주면 그만큼 조금씩 늦게 시작한다.
+// 채우기는 backwards — 끝나면 clip-path·transform이 풀려 툴팁이 안 잘린다.
+$enter-ease: cubic-bezier(0.33, 1, 0.68, 1);
+$enter-stagger: 45ms;
+
+// 선 그래프·쌓은 막대 — 왼쪽에서 오른쪽으로 그리듯 드러난다(모양은 그대로).
+@mixin draw-in($duration: 0.9s, $delay: 0s) {
+  animation: glass_reveal $duration $enter-ease
+    calc(var(--glass-i, 0) * #{$enter-stagger} + #{$delay}) backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// 막대 하나 — 왼쪽 끝에서 오른쪽으로 자란다.
+@mixin fill-in($duration: 0.8s, $delay: 0s) {
+  transform-origin: left center;
+  animation: glass_grow $duration $enter-ease
+    calc(var(--glass-i, 0) * #{$enter-stagger} + #{$delay}) backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// 다 그린 뒤 나타나는 점·이름표.
+@mixin fade-in($delay: 0.7s) {
+  animation: glass_fade 0.3s ease
+    calc(var(--glass-i, 0) * #{$enter-stagger} + #{$delay}) backwards;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
