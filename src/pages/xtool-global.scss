@@ -1,10 +1,87 @@
 @use '../screens/xtool-lead-manager/styles/variables.scss';
 
-// global
+// global — 바탕은 테마의 바탕색(테마 고르기는 헤더, 변수는 components/glass).
+body:has(.xtool-lead-manager) {
+  background-color: var(--glass-base, #000);
+}
+
 .xtool-lead-manager {
-  background-color: rgb(0, 0, 0);
+  background-color: var(--glass-base, #000);
   width: 100vw;
   min-height: 100vh;
   color: #d5d8df;
   font-family: variables.$font-sans;
+}
+
+// 밝은 테마(Daylight) — xtool 기본 색(variables.scss의 --xt-*)을 밝은 쪽으로.
+// 유리 스타일이 덮지 않는 예전 화면 부분(글자·표·뱃지)이 따라 바뀐다.
+[data-glass-theme='daylight'] {
+  --xt-bg: #e8ecf2;
+  --xt-surface: #ffffff;
+  --xt-surface-raised: #f1f4f8;
+  --xt-border: #d5dbe3;
+  --xt-border-soft: #e3e8ee;
+  --xt-text: #0f1720;
+  --xt-text-muted: #556070;
+  --xt-text-faint: #8590a0;
+  --xt-accent: #2563eb;
+  --xt-accent-soft: rgba(37, 99, 235, 0.12);
+  --xt-danger: #dc2626;
+  --xt-new-read: #15803d;
+  --xt-read-complete: #0f766e;
+  --xt-purchase-complete: #a21caf;
+
+  .xtool-lead-manager {
+    color: var(--glass-text);
+  }
+
+  // 로고 이미지(흰 글자 + 초록 X) — 밝은 바탕에서는 뒤집어 짙은 글자로(색상
+  // 회전으로 초록은 그대로).
+  .xtool-logo {
+    filter: invert(1) hue-rotate(180deg);
+  }
+}
+
+// ── 탭을 바꿀 때 — 화면이 흐려지며 사라지고 새 화면이 선명해지며 나타난다 ──
+// usePageTabViewModel이 View Transitions API로 바꾼다(지원하지 않는 브라우저는
+// 바로 바뀐다). 헤더는 따로 떼어(view-transition-name) 그대로 두고 탭 알약만
+// 미끄러진다.
+.xtool-header {
+  view-transition-name: xtool-header;
+}
+
+::view-transition-old(root) {
+  animation: xtool-page-out 0.26s ease both;
+}
+::view-transition-new(root) {
+  animation: xtool-page-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+}
+::view-transition-old(xtool-header),
+::view-transition-new(xtool-header) {
+  animation: none;
+}
+::view-transition-old(xtool-header) {
+  display: none;
+}
+
+@keyframes xtool-page-out {
+  to {
+    opacity: 0;
+    filter: blur(14px);
+    transform: scale(0.995);
+  }
+}
+@keyframes xtool-page-in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
 }

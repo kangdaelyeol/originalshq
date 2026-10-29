@@ -1,6 +1,6 @@
 import '@/screens/xtool-lead-manager/styles/nav.scss'
 import type { ReactNode } from 'react'
-import { Segmented } from '@/components/glass'
+import { Segmented, Select } from '@/components/glass'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
 import {
   CloseIcon,
@@ -90,19 +90,15 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
           size="md"
         />
 
-        <div className="page_size_select monday_sort">
-          <select
-            value={sort}
-            aria-label="정렬"
-            onChange={(e) => changeSort(e.target.value as MondaySort)}
-          >
-            {(Object.keys(MONDAY_SORT_LABEL) as MondaySort[]).map((each) => (
-              <option key={each} value={each}>
-                {MONDAY_SORT_LABEL[each]}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Select
+          className="page_size_select monday_sort"
+          value={sort}
+          options={(Object.keys(MONDAY_SORT_LABEL) as MondaySort[]).map(
+            (each) => ({ value: each, label: MONDAY_SORT_LABEL[each] }),
+          )}
+          onChange={changeSort}
+          label="정렬"
+        />
 
         {reviewCount > 0 && (
           <button

@@ -230,7 +230,7 @@
       border-top: none;
       padding: 10px 12px;
       border-radius: 12px;
-      background: rgba(0, 0, 0, 0.16);
+      background: var(--glass-sunken);
     }
     .monday_money .balance dd {
       color: var(--glass-warn);
@@ -248,7 +248,7 @@
         border-top: none;
       }
       tbody tr:nth-child(even) td {
-        background: rgba(255, 255, 255, 0.035);
+        background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
       }
     }
     .monday_issues li {
@@ -275,7 +275,7 @@
         color: $text-3;
       }
       tbody tr:nth-child(even) td {
-        background: rgba(255, 255, 255, 0.035);
+        background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
       }
       tbody tr td:first-child {
         border-top-left-radius: 12px;

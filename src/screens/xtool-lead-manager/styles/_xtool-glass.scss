@@ -34,17 +34,28 @@ $register-purchase: #f762fe;
     padding: 0 16px;
   }
 
-  // 개인 KPI 주·월 선택(드롭다운) — 알약 버튼 모양, 화살표는 그대로.
-  .page_size_select select {
-    height: 38px;
-    padding-left: 16px;
-    @include glass.field;
-    border-radius: 999px;
+  // 기간 선택(cmip 부품)의 글자색은 cmip 다크 값으로 고정돼 있다 — 테마
+  // 글자 단계로 바꾼다(밝은 테마에서도 읽히게).
+  .date-range-picker,
+  .date-range-picker__trigger,
+  .date-range-picker__preset-item,
+  .date-range-picker__cell,
+  .date-range-picker__month-select,
+  .date-range-picker__range-inputs input[type='date'],
+  .date-range-picker__cancel {
     color: $text;
-
-    option {
-      background: #1d2021;
-    }
+  }
+  .date-range-picker__trigger-icon,
+  .date-range-picker__trigger-chevron,
+  .date-range-picker__nav-btn,
+  .date-range-picker__range-inputs {
+    color: $text-3;
+  }
+  .date-range-picker__cell:disabled {
+    color: $text-3;
+  }
+  .date-range-picker__month-select option {
+    background: var(--glass-solid-2);
   }
 
   .stats_nav_label {
@@ -79,11 +90,11 @@ $register-purchase: #f762fe;
     top: calc(100% + 10px);
     border: none;
     border-radius: 24px;
-    background: rgba(32, 35, 36, 0.78);
+    background: var(--glass-panel-top);
     box-shadow: none;
     -webkit-backdrop-filter: blur(32px) saturate(160%);
     backdrop-filter: blur(32px) saturate(160%);
-    color-scheme: dark;
+    color-scheme: var(--glass-scheme);
   }
 
   // 프리셋 목록 — 선 대신 한 겹 옅은 판으로 달력과 나눈다.
@@ -105,7 +116,7 @@ $register-purchase: #f762fe;
     // 고른 항목 — 메뉴 줄의 알약과 같은 밝은 알약.
     &:has(input:checked) {
       background: $fill-3;
-      color: #fff;
+      color: var(--glass-text);
     }
     input[type='radio'] {
       accent-color: var(--glass-accent);
@@ -135,7 +146,7 @@ $register-purchase: #f762fe;
   }
 
   .date-range-picker__weekdays span {
-    color: rgba(255, 255, 255, 0.55);
+    color: color-mix(in srgb, var(--glass-ink) 55%, transparent);
   }
 
   // 기간 띠·시작/끝 — 데이터 색(라임). 라임 위 글자는 어둡게. 오늘은 옅은
@@ -203,7 +214,7 @@ $register-purchase: #f762fe;
   }
 
   .stats_desc {
-    color: rgba(230, 237, 243, 0.55);
+    color: var(--glass-text-3);
   }
 
   // ── 스켈레톤(skeleton.tsx) ─────────────────────────────────────────────
@@ -265,7 +276,7 @@ $register-purchase: #f762fe;
     }
 
     thead th.sortable:hover {
-      color: #fff;
+      color: var(--glass-text);
     }
     .sort_btn.asc .arrow_up,
     .sort_btn.desc .arrow_down {
@@ -276,15 +287,15 @@ $register-purchase: #f762fe;
   // 전체 칸 — 선 대신 옅은 흰빛 세로 띠.
   .trend_table_scroll .kpi_table td.kpi_total_col,
   .trend_table_scroll .kpi_table th.kpi_total_col {
-    background-color: rgba(255, 255, 255, 0.035);
+    background-color: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
   }
 
   // 방치 표 — 줄 강조(위 투명 칸보다 뒤에 와야 이긴다).
   .neglect_row.clickable:hover td {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: color-mix(in srgb, var(--glass-ink) 5%, transparent);
   }
   .neglect_detail td {
-    background-color: rgba(0, 0, 0, 0.16);
+    background-color: var(--glass-sunken);
     background-image: none;
   }
   // 방치 기록 줄 — 선 대신 한 줄 걸러 옅은 흰빛.
@@ -295,7 +306,7 @@ $register-purchase: #f762fe;
     border-radius: 10px;
 
     &:nth-child(even) {
-      background: rgba(255, 255, 255, 0.035);
+      background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
     }
   }
   .neglect_items a {
@@ -429,18 +440,6 @@ $register-purchase: #f762fe;
     background-color: $fill-2;
   }
 
-  .page_size_select select {
-    height: 38px;
-    padding-left: 16px;
-    @include glass.field;
-    border-radius: 999px;
-    color: $text;
-
-    option {
-      background: #1d2021;
-    }
-  }
-
   // 리드 탭의 접힌 검색 버튼.
   .search-btn {
     height: 38px;
@@ -526,8 +525,8 @@ $register-purchase: #f762fe;
     }
     thead th {
       z-index: 1;
-      background-color: rgb(40, 43, 44);
-      color: rgba(255, 255, 255, 0.9);
+      background-color: var(--glass-solid-2);
+      color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
       font-weight: 600;
     }
     thead th:first-child {
@@ -542,7 +541,7 @@ $register-purchase: #f762fe;
       background-color: transparent;
     }
     tbody tr:nth-child(even) td {
-      background-color: rgba(255, 255, 255, 0.03);
+      background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
     }
     tbody tr td:first-child {
       border-top-left-radius: 12px;
@@ -570,7 +569,7 @@ $register-purchase: #f762fe;
 // 진한 유리. 판 안의 묶음(기록·금액 요약 등)은 한 겹 밝게, 선 없이.
 @mixin detail-modal {
   .lead_manager_detail_modal {
-    background-color: rgba(4, 6, 6, 0.5);
+    background-color: var(--glass-scrim);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
   }
@@ -582,8 +581,8 @@ $register-purchase: #f762fe;
     border-radius: $radius-card;
     background: linear-gradient(
       160deg,
-      rgba(50, 54, 55, 0.8),
-      rgba(26, 28, 29, 0.86)
+      var(--glass-panel-top),
+      var(--glass-panel-bottom)
     );
     box-shadow: none;
     -webkit-backdrop-filter: blur(28px) saturate(150%);
@@ -654,7 +653,7 @@ $register-purchase: #f762fe;
     .body .resend_panel {
       border: none;
       border-radius: 14px;
-      background-color: rgba(0, 0, 0, 0.16);
+      background-color: var(--glass-sunken);
     }
 
     // 아래 버튼 묶음 — 판 바닥에 떠 있는 한 겹 밝은 유리 판(본문이 그 밑으로
@@ -701,7 +700,7 @@ $register-purchase: #f762fe;
         $register-consultation 24%,
         transparent
       );
-      color: color-mix(in srgb, $register-consultation 55%, white);
+      color: color-mix(in srgb, $register-consultation 55%, var(--glass-ink));
 
       &:hover {
         background-color: color-mix(
@@ -713,7 +712,7 @@ $register-purchase: #f762fe;
     }
     .footer .btn.register.purchase {
       background-color: color-mix(in srgb, $register-purchase 22%, transparent);
-      color: color-mix(in srgb, $register-purchase 55%, white);
+      color: color-mix(in srgb, $register-purchase 55%, var(--glass-ink));
 
       &:hover {
         background-color: color-mix(
@@ -733,7 +732,7 @@ $register-purchase: #f762fe;
           var(--glass-danger) 20%,
           transparent
         );
-        color: #ff8a83;
+        color: color-mix(in srgb, var(--glass-danger) 60%, var(--glass-ink));
       }
     }
     .footer .btn.confirm {
@@ -757,11 +756,11 @@ $register-purchase: #f762fe;
         border-bottom: none;
       }
       thead th {
-        background-color: rgb(44, 47, 48);
+        background-color: var(--glass-solid-2);
         color: $text-3;
       }
       tbody tr:nth-child(even) td {
-        background-color: rgba(255, 255, 255, 0.03);
+        background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
       }
       tbody tr:hover td {
         background-color: $fill-2;
@@ -794,7 +793,7 @@ $register-purchase: #f762fe;
       border-radius: 12px;
 
       &:nth-child(even) {
-        background-color: rgba(255, 255, 255, 0.03);
+        background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
       }
     }
     .detail_monday_open,
@@ -819,7 +818,7 @@ $register-purchase: #f762fe;
 // 확인 모달(confirm-modal.tsx — 삭제·상담 등록·구매 등록 확인).
 @mixin confirm-modal {
   .lead_manager_confirm_modal {
-    background-color: rgba(4, 6, 6, 0.5);
+    background-color: var(--glass-scrim);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
   }
@@ -828,8 +827,8 @@ $register-purchase: #f762fe;
     border-radius: $radius-card;
     background: linear-gradient(
       160deg,
-      rgba(50, 54, 55, 0.8),
-      rgba(26, 28, 29, 0.86)
+      var(--glass-panel-top),
+      var(--glass-panel-bottom)
     );
     box-shadow: none;
     -webkit-backdrop-filter: blur(28px) saturate(150%);
@@ -878,11 +877,11 @@ $register-purchase: #f762fe;
     {
       &.#{$variant} .icon_wrap {
         background-color: color-mix(in srgb, $color 20%, transparent);
-        color: color-mix(in srgb, $color 60%, white);
+        color: color-mix(in srgb, $color 60%, var(--glass-ink));
       }
       &.#{$variant} .actions .btn.confirm {
         background-color: color-mix(in srgb, $color 26%, transparent);
-        color: color-mix(in srgb, $color 55%, white);
+        color: color-mix(in srgb, $color 55%, var(--glass-ink));
 
         &:hover:not(:disabled) {
           filter: none;
@@ -891,7 +890,7 @@ $register-purchase: #f762fe;
       }
     }
     .actions .spinner {
-      border-color: rgba(255, 255, 255, 0.25);
+      border-color: color-mix(in srgb, var(--glass-ink) 25%, transparent);
       border-top-color: currentColor;
     }
   }

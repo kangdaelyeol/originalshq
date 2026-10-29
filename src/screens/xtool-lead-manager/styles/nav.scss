@@ -30,10 +30,6 @@
       color: variables.$color-text-faint;
     }
 
-    .page_size_select select {
-      @include variables.select-control;
-    }
-
     .page_nav {
       display: flex;
       align-items: center;

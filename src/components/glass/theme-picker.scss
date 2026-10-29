@@ -1,0 +1,121 @@
+@use './styles/tokens' as *;
+
+// 테마 고르기(theme-picker.tsx) — 한 알약. 접히면 지금 견본 + 이름, 펼치면
+// 견본 6개가 차례로 자라 나온다(폭·크기·투명도를 같이 움직인다).
+$swatch: 30px;
+$ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+.glass_theme_picker {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background-color: $fill-1;
+  transition: background-color 0.25s ease;
+
+  &:hover,
+  &.is-open {
+    background-color: $fill-2;
+  }
+}
+
+.glass_theme_option {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: $swatch;
+  height: $swatch;
+  border-radius: 50%;
+  cursor: pointer;
+  transition:
+    width 0.38s $ease,
+    margin 0.38s $ease,
+    opacity 0.28s ease,
+    transform 0.38s $ease,
+    background-color 0.2s ease;
+
+  // 펼친 동안의 고른 견본 — 뒤에 밝은 원.
+  &.is-selected {
+    background-color: transparent;
+  }
+  &:hover {
+    background-color: $fill-2;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
+}
+.glass_theme_picker.is-open .glass_theme_option.is-selected {
+  background-color: $fill-3;
+}
+
+// 접힌 동안 — 지금 견본 말고는 폭 0으로 숨긴다.
+.glass_theme_picker:not(.is-open) .glass_theme_option:not(.is-selected) {
+  width: 0;
+  opacity: 0;
+  transform: scale(0.4);
+  pointer-events: none;
+}
+// 펼칠 때 왼쪽부터 차례로(접을 때는 한꺼번에).
+.glass_theme_picker.is-open .glass_theme_option {
+  transition-delay: calc(var(--glass-i, 0) * 28ms);
+}
+
+.glass_theme_swatch {
+  position: relative;
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--sw-base);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--glass-ink) 18%, transparent);
+
+  // 가운데 — 데이터색·누르는 색 반반.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--sw-a) 50%, var(--sw-b) 50%);
+  }
+}
+
+// 지금 테마 이름 — 접힌 동안만(펼치면 폭 0으로 접힌다).
+.glass_theme_name {
+  overflow: hidden;
+  max-width: 80px;
+  padding: 0 10px 0 4px;
+  color: $text-2;
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition:
+    max-width 0.38s $ease,
+    padding 0.38s $ease,
+    opacity 0.2s ease;
+}
+.glass_theme_picker.is-open .glass_theme_name {
+  max-width: 0;
+  padding: 0;
+  opacity: 0;
+}
+
+.glass_sr_only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_theme_option,
+  .glass_theme_name {
+    transition: none;
+  }
+}

@@ -1,0 +1,116 @@
+@use './styles/tokens' as *;
+
+// 유리 드롭다운(select.tsx) — 알약 버튼 + 아래로 펼쳐지는 유리 목록.
+.glass_select {
+  position: relative;
+  display: inline-flex;
+}
+
+.glass_select_button {
+  all: unset;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px 0 16px;
+  border-radius: 999px;
+  background-color: $fill-2;
+  color: $text;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: $fill-3;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
+}
+.glass_select.is-open .glass_select_button {
+  background-color: color-mix(
+    in srgb,
+    var(--glass-link) 18%,
+    var(--glass-fill-2)
+  );
+}
+
+.glass_select_chevron {
+  width: 15px;
+  height: 15px;
+  color: $text-3;
+  transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.glass_select.is-open .glass_select_chevron {
+  transform: rotate(180deg);
+}
+
+// 펼친 목록 — 떠 있는 유리 판. 위에서 살짝 내려오며 나타나고, 항목이 차례로.
+.glass_select_list {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  min-width: 100%;
+  max-height: 300px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  list-style: none;
+  border-radius: 18px;
+  background: $float-bg;
+  -webkit-backdrop-filter: $float-blur;
+  backdrop-filter: $float-blur;
+  transform-origin: top center;
+  animation: glass_select_in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  scrollbar-width: thin;
+  scrollbar-color: var(--glass-fill-3) transparent;
+  outline: none;
+}
+
+.glass_select_option {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 12px;
+  color: $text-2;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+  animation: glass_fade 0.25s ease both;
+  animation-delay: calc(min(var(--glass-i, 0), 8) * 18ms);
+
+  &.is-active {
+    background-color: $fill-1;
+    color: $text;
+  }
+  &[aria-selected='true'] {
+    background-color: $fill-3;
+    color: $text;
+    font-weight: 600;
+  }
+}
+
+@keyframes glass_select_in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_select_list,
+  .glass_select_option {
+    animation: none;
+  }
+  .glass_select_chevron {
+    transition: none;
+  }
+}

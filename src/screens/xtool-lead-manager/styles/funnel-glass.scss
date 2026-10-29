@@ -109,7 +109,7 @@
     }
     thead th {
       background-color: $fill-1;
-      color: rgba(255, 255, 255, 0.9);
+      color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
       font-weight: 600;
     }
     thead th:first-child {
@@ -121,7 +121,7 @@
       border-bottom-right-radius: 12px;
     }
     tbody tr:nth-child(even) td {
-      background-color: rgba(255, 255, 255, 0.03);
+      background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
     }
     tbody td:first-child {
       border-top-left-radius: 10px;
@@ -144,7 +144,7 @@
   // ── 경로별 고객 목록 모달(퍼널) ─────────────────────────────────────────
   .stats_path_modal,
   .ga_tracking_modal {
-    background-color: rgba(4, 6, 6, 0.5);
+    background-color: var(--glass-scrim);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
   }
@@ -154,8 +154,8 @@
     border-radius: $radius-card;
     background: linear-gradient(
       160deg,
-      rgba(50, 54, 55, 0.8),
-      rgba(26, 28, 29, 0.86)
+      var(--glass-panel-top),
+      var(--glass-panel-bottom)
     );
     box-shadow: none;
     -webkit-backdrop-filter: blur(28px) saturate(150%);
@@ -187,7 +187,7 @@
   .stats_path_scroll thead th,
   .ga_tracking_dialog_body thead th {
     z-index: 1;
-    background-color: rgb(46, 49, 50);
+    background-color: var(--glass-solid-2);
   }
   .stats_path_name {
     color: var(--glass-link);
@@ -225,7 +225,7 @@
     border: none;
     border-radius: 999px;
     background-color: color-mix(in srgb, var(--glass-danger) 22%, transparent);
-    color: #ff8a83;
+    color: color-mix(in srgb, var(--glass-danger) 60%, var(--glass-ink));
   }
 
   .ga_tracking_facts {

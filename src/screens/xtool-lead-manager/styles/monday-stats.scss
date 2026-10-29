@@ -14,10 +14,6 @@ $stats-bar: variables.$color-accent;
     color: variables.$color-text-muted;
   }
 
-  .page_size_select select {
-    @include variables.select-control;
-  }
-
   .stats_reset {
     all: unset;
     box-sizing: border-box;

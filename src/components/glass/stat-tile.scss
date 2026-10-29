@@ -46,7 +46,7 @@ $notch-fill: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
   height: 42px;
   border-radius: 13px;
   background: $fill-2;
-  color: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--glass-ink) 85%, transparent);
 
   svg {
     width: 20px;
@@ -134,7 +134,7 @@ $notch-fill: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewB
   box-sizing: border-box;
   border-radius: 12px;
   background: $fill-1;
-  color: rgba(255, 255, 255, 0.85);
+  color: color-mix(in srgb, var(--glass-ink) 85%, transparent);
   transition:
     background-color 0.15s,
     color 0.15s;

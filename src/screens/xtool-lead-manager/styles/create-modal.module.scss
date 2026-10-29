@@ -196,7 +196,7 @@ select.control {
 // 테두리·그림자 없이 배경 겹으로만: 진한 유리 판 → 입력칸(한 겹 밝게).
 :global(.glass_theme) {
   .overlay {
-    background-color: rgba(4, 6, 6, 0.5);
+    background-color: var(--glass-scrim);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
   }
@@ -206,13 +206,29 @@ select.control {
     border-radius: 26px;
     background: linear-gradient(
       160deg,
-      rgba(50, 54, 55, 0.8),
-      rgba(26, 28, 29, 0.86)
+      var(--glass-panel-top),
+      var(--glass-panel-bottom)
     );
     box-shadow: none;
     -webkit-backdrop-filter: blur(28px) saturate(150%);
     backdrop-filter: blur(28px) saturate(150%);
-    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    scrollbar-color: color-mix(in srgb, var(--glass-ink) 18%, transparent)
+      transparent;
+    color: var(--glass-text);
+  }
+
+  // 글자 — 테마 글자 단계(밝은 테마에서도 읽히게).
+  .title {
+    color: var(--glass-text);
+  }
+  .sectionLabel,
+  .formRow__label,
+  .checkboxRow {
+    color: var(--glass-text-2);
+  }
+  .control {
+    color: var(--glass-text);
+    color-scheme: var(--glass-scheme);
   }
 
   // 입력칸 — 테두리·초점 선 없이 배경으로만(glass.field와 같은 움직임).
@@ -220,13 +236,13 @@ select.control {
     border: none;
     outline: none;
     border-radius: 12px;
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: color-mix(in srgb, var(--glass-ink) 10%, transparent);
     transition:
       background-color 0.25s ease,
       color 0.25s ease;
 
     &:hover {
-      background-color: rgba(255, 255, 255, 0.16);
+      background-color: color-mix(in srgb, var(--glass-ink) 16%, transparent);
     }
     &:focus,
     &:focus-visible {
@@ -235,7 +251,7 @@ select.control {
       background-color: color-mix(
         in srgb,
         var(--glass-link) 18%,
-        rgba(255, 255, 255, 0.08)
+        color-mix(in srgb, var(--glass-ink) 8%, transparent)
       );
     }
   }
@@ -245,7 +261,7 @@ select.control {
   .control--invalid:focus,
   .control--invalid:focus-visible {
     box-shadow: none;
-    background-color: rgba(229, 83, 75, 0.18);
+    background-color: color-mix(in srgb, var(--glass-danger) 18%, transparent);
   }
 
   .footer {
@@ -257,10 +273,10 @@ select.control {
     border-radius: 999px;
   }
   .btn--ghost {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: color-mix(in srgb, var(--glass-ink) 10%, transparent);
 
     &:hover:not(:disabled) {
-      background-color: rgba(255, 255, 255, 0.18);
+      background-color: color-mix(in srgb, var(--glass-ink) 18%, transparent);
     }
   }
   .btn--primary {

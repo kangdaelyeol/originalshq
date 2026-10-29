@@ -14,7 +14,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Segmented, StatTile } from '@/components/glass'
+import { Segmented, Select, StatTile } from '@/components/glass'
 import { useRef } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type {
@@ -298,35 +298,33 @@ export const MondayStats = ({
       <div className="lead_manager_nav monday_stats_nav funnel_nav glass_theme">
         <div className="inner">
           <span className="stats_nav_label">최초 인입 월</span>
-          <div className="page_size_select">
-            <select
-              value={period.from ?? ''}
-              aria-label="시작 월"
-              onChange={(e) => changeFrom(e.target.value || null)}
-            >
-              <option value="">처음부터</option>
-              {months.map((month) => (
-                <option key={month} value={month}>
-                  {monthLabel(month)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            className="page_size_select"
+            value={period.from ?? ''}
+            options={[
+              { value: '', label: '처음부터' },
+              ...months.map((month) => ({
+                value: month,
+                label: monthLabel(month),
+              })),
+            ]}
+            onChange={(from) => changeFrom(from || null)}
+            label="시작 월"
+          />
           <span className="stats_nav_label">~</span>
-          <div className="page_size_select">
-            <select
-              value={period.to ?? ''}
-              aria-label="끝 월"
-              onChange={(e) => changeTo(e.target.value || null)}
-            >
-              <option value="">지금까지</option>
-              {months.map((month) => (
-                <option key={month} value={month}>
-                  {monthLabel(month)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            className="page_size_select"
+            value={period.to ?? ''}
+            options={[
+              { value: '', label: '지금까지' },
+              ...months.map((month) => ({
+                value: month,
+                label: monthLabel(month),
+              })),
+            ]}
+            onChange={(to) => changeTo(to || null)}
+            label="끝 월"
+          />
           {(period.from || period.to) && (
             <button type="button" className="stats_reset" onClick={resetPeriod}>
               전체 기간

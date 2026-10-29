@@ -1,3 +1,4 @@
+import { Select } from '@/components/glass'
 import {
   PAGE_SIZE_OPTIONS,
   type PageSize,
@@ -26,18 +27,16 @@ export const PaginationBar = ({
     <div className="pagination_bar">
       <span className="total_count">총 {totalRows}건</span>
 
-      <div className="page_size_select">
-        <select
-          value={pageSize}
-          onChange={(e) => onSetPageSize(Number(e.target.value) as PageSize)}
-        >
-          {PAGE_SIZE_OPTIONS.map((size) => (
-            <option key={size} value={size}>
-              {size}개씩 보기
-            </option>
-          ))}
-        </select>
-      </div>
+      <Select
+        className="page_size_select"
+        value={pageSize}
+        options={PAGE_SIZE_OPTIONS.map((size) => ({
+          value: size,
+          label: `${size}개씩 보기`,
+        }))}
+        onChange={onSetPageSize}
+        label="한 쪽에 보일 개수"
+      />
 
       <div className="page_nav">
         <button

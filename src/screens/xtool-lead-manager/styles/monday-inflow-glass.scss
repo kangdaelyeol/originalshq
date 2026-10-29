@@ -1,4 +1,3 @@
-@use 'sass:string';
 @use '../../../components/glass/styles/tokens' as *;
 @use '../../../components/glass/styles/mixins' as glass;
 
@@ -9,16 +8,16 @@
   // 쌓은 막대 조각 색(pipeline-section.tsx, neglect-section.tsx가 var로 쓴다).
   // 단계: 신규 → 콜백 1~4는 순서라 청록 한 색의 옅은 → 진한 색, 보류는 회색,
   // 상태 없음·기타는 더 옅은 회색. 경과일: 주의색 그대로(노랑 → 주황 → 빨강).
-  --pipe-0: #d3faf6;
-  --pipe-1: #8ff0e9;
-  --pipe-2: #55d6cf;
-  --pipe-3: #2fb2ad;
-  --pipe-4: #1f8b88;
+  --pipe-0: color-mix(in srgb, var(--glass-link) 30%, white);
+  --pipe-1: color-mix(in srgb, var(--glass-link) 62%, white);
+  --pipe-2: var(--glass-link);
+  --pipe-3: color-mix(in srgb, var(--glass-link) 76%, black);
+  --pipe-4: color-mix(in srgb, var(--glass-link) 56%, black);
   --pipe-hold: #8a9096;
   --pipe-other: #4a4f55;
-  --age-recent: #f5c84c;
+  --age-recent: var(--glass-warn);
   --age-month: #f08c3a;
-  --age-old: #e5534b;
+  --age-old: var(--glass-danger);
 
   // ── 그래프 + 표 카드 ─────────────────────────────────────────────────────
   // 그래프와 표 사이 — 선 대신 여백.
@@ -30,7 +29,7 @@
 
   // 눈금선 — 그래프 안의 기준선이라 남기되 아주 옅게.
   .inflow_grid {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: color-mix(in srgb, var(--glass-ink) 5%, transparent);
   }
 
   // 처음 그릴 때 선·면이 왼쪽에서 오른쪽으로 그려지고, 평균선 이름표는 그 뒤에.
@@ -42,12 +41,12 @@
   }
 
   .inflow_average {
-    border-top-color: rgba(230, 237, 243, 0.35);
+    border-top-color: color-mix(in srgb, var(--glass-ink) 35%, transparent);
 
     em {
       border-radius: 999px;
       padding: 1px 8px;
-      background-color: rgba(17, 19, 21, 0.85);
+      background-color: var(--glass-float);
     }
   }
 
@@ -70,12 +69,12 @@
   // 축 글자 — 유리 위에서도 읽히게 밝은 흰색.
   .inflow_y_axis span,
   .inflow_x_axis span {
-    color: rgba(255, 255, 255, 0.82);
+    color: color-mix(in srgb, var(--glass-ink) 82%, transparent);
     font-weight: 500;
   }
 
   .inflow_column::before {
-    background-color: rgba(255, 255, 255, 0.18);
+    background-color: color-mix(in srgb, var(--glass-ink) 18%, transparent);
   }
 
   .inflow_tooltip {
@@ -106,17 +105,21 @@
   // 표 보기 — 칸(열)마다 가장 큰 값을 가장 진하게(최대 38%: 그 이상은 흰
   // 글자가 안 읽힌다). 0은 비우고 글자도 흐리게.
   .trend_table_scroll .stats_table td.heat_cell {
-    background-color: string.unquote(
-      'rgb(212 242 92 / calc(var(--heat) * 0.38))'
+    background-color: color-mix(
+      in srgb,
+      var(--glass-accent) calc(var(--heat) * 38%),
+      transparent
     );
 
     &.is-warn {
-      background-color: string.unquote(
-        'rgb(245 200 76 / calc(var(--heat) * 0.34))'
+      background-color: color-mix(
+        in srgb,
+        var(--glass-warn) calc(var(--heat) * 34%),
+        transparent
       );
     }
     &.is-zero {
-      color: rgba(255, 255, 255, 0.3);
+      color: color-mix(in srgb, var(--glass-ink) 30%, transparent);
     }
   }
 
@@ -247,7 +250,7 @@
   }
 
   .cs_editor_backdrop {
-    background: rgba(4, 6, 6, 0.5);
+    background: var(--glass-scrim);
     -webkit-backdrop-filter: blur(10px) saturate(120%);
     backdrop-filter: blur(10px) saturate(120%);
     animation: glass_fade 0.25s ease both;
@@ -261,8 +264,8 @@
     border-radius: $radius-card;
     background: linear-gradient(
       160deg,
-      rgba(50, 54, 55, 0.78),
-      rgba(26, 28, 29, 0.84)
+      var(--glass-panel-top),
+      var(--glass-panel-bottom)
     );
     box-shadow: none;
     -webkit-backdrop-filter: blur(28px) saturate(150%);
@@ -275,7 +278,8 @@
 
     // 목록이 길 때의 스크롤 막대도 유리 톤으로.
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    scrollbar-color: color-mix(in srgb, var(--glass-ink) 18%, transparent)
+      transparent;
   }
 
   .cs_editor_head h2 {
@@ -334,7 +338,7 @@
       small {
         padding: 1px 7px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.06);
+        background: color-mix(in srgb, var(--glass-ink) 6%, transparent);
         color: $text-3;
         font-variant-numeric: tabular-nums;
       }
@@ -369,7 +373,7 @@
     overflow: hidden;
     border-radius: 999px;
     background: var(--glass-link);
-    color: #052523;
+    color: var(--glass-on-link);
     opacity: 0;
     transition:
       width 0.2s,
@@ -480,7 +484,7 @@
     margin: 0 -8px 4px;
     padding: 6px 10px;
     border-radius: 14px;
-    background: rgba(0, 0, 0, 0.16);
+    background: var(--glass-sunken);
     animation: glass_fade 0.25s ease both;
   }
 
@@ -494,7 +498,8 @@
     overflow-y: auto;
     list-style: none;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+    scrollbar-color: color-mix(in srgb, var(--glass-ink) 18%, transparent)
+      transparent;
 
     li {
       display: grid;
@@ -507,7 +512,7 @@
       cursor: default;
 
       &:nth-child(even) {
-        background: rgba(255, 255, 255, 0.035);
+        background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
       }
     }
   }

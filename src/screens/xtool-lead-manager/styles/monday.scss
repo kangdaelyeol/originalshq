@@ -86,11 +86,6 @@
     }
   }
 
-  // 정렬 select — pagination_bar의 "n개씩 보기"와 같은 모양.
-  .monday_sort select {
-    @include variables.select-control;
-  }
-
   // 번호 확인 필요 — 경고지만 급한 오류는 아니라 호박색으로.
   .monday_missing_btn {
     all: unset;

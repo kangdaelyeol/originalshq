@@ -1,5 +1,5 @@
 import '@/screens/xtool-lead-manager/styles/header.scss'
-import { Segmented } from '@/components/glass'
+import { Segmented, ThemePicker, type GlassThemeId } from '@/components/glass'
 import {
   PAGE_TABS,
   type PageTab,
@@ -11,14 +11,18 @@ const TAB_LABEL = Object.fromEntries(
 ) as Record<PageTab, string>
 
 /** 화면 맨 위 줄 — 로고, 가운데 최상위 탭(유리 알약 — 탭을 바꾸면 알약이
- * 미끄러져 간다), 오른쪽 회사 로고. 어느 탭이 열려 있는지는 부모
+ * 미끄러져 간다), 오른쪽 테마 고르기와 회사 로고. 어느 탭이 열려 있는지는 부모
  * (pages/xtool-page)가 넘겨준다. */
 export const Header = ({
   tab,
   onSelectTab,
+  theme,
+  onSelectTheme,
 }: {
   tab: PageTab
   onSelectTab: (tab: PageTab) => void
+  theme: GlassThemeId
+  onSelectTheme: (theme: GlassThemeId) => void
 }) => {
   return (
     <div className="xtool-header">
@@ -40,12 +44,15 @@ export const Header = ({
             size="md"
           />
         </nav>
-        <div className="enterprise-logo-badge">
-          <img
-            src="https://framerusercontent.com/images/tuTnWS8IWm4eabExSlzNTTtkeQk.png"
-            alt="enterprise logo"
-            className="enterprise-logo"
-          />
+        <div className="header-right">
+          <ThemePicker value={theme} onChange={onSelectTheme} />
+          <div className="enterprise-logo-badge">
+            <img
+              src="https://framerusercontent.com/images/tuTnWS8IWm4eabExSlzNTTtkeQk.png"
+              alt="enterprise logo"
+              className="enterprise-logo"
+            />
+          </div>
         </div>
       </div>
     </div>

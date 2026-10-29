@@ -7,23 +7,25 @@ $font-poppins: 'Poppins', sans-serif;
 // 블랙톤 다크 팔레트 — 예전엔 네이비/퍼플 계열(rgba(24,27,52) 등)이었는데,
 // 화면 전체를 검정 기반으로 통일한다. 상태 3색(new/read/purchase)은 신호
 // 색상 역할이라 그대로 유지.
-$color-bg: #000000;
-$color-surface: #0d1117;
-$color-surface-raised: #161b22;
-$color-border: #30363d;
-$color-border-soft: #21262d;
-$color-text: #e6edf3;
-$color-text-muted: #8b949e;
-$color-text-faint: #5c6485;
-$color-accent: #4493f8;
-$color-accent-soft: rgba(68, 147, 248, 0.15);
-$color-danger: #e5534b;
+// 값은 CSS 변수(--xt-*)로 — 테마가 밝은 쪽(Daylight)이면 pages/xtool-global.scss가
+// 바꾼다. 괄호 안이 기본(다크) 값. Sass 색 함수(rgba($x, …) 등)에 넣으면 안 된다.
+$color-bg: var(--xt-bg, #000000);
+$color-surface: var(--xt-surface, #0d1117);
+$color-surface-raised: var(--xt-surface-raised, #161b22);
+$color-border: var(--xt-border, #30363d);
+$color-border-soft: var(--xt-border-soft, #21262d);
+$color-text: var(--xt-text, #e6edf3);
+$color-text-muted: var(--xt-text-muted, #8b949e);
+$color-text-faint: var(--xt-text-faint, #5c6485);
+$color-accent: var(--xt-accent, #4493f8);
+$color-accent-soft: var(--xt-accent-soft, rgba(68, 147, 248, 0.15));
+$color-danger: var(--xt-danger, #e5534b);
 
 $table-border-color: $color-border;
 $table-header-bg-color: $color-surface-raised;
-$color-new-read: rgb(17, 217, 37);
-$color-read-complete: rgb(23, 242, 184);
-$color-purchase-complete: rgb(247, 98, 254);
+$color-new-read: var(--xt-new-read, rgb(17, 217, 37));
+$color-read-complete: var(--xt-read-complete, rgb(23, 242, 184));
+$color-purchase-complete: var(--xt-purchase-complete, rgb(247, 98, 254));
 
 // 드롭다운(select) 공통 모양 — 내비 줄의 "n개씩 보기", 정렬, 기간 선택이 같이
 // 쓴다. 브라우저 기본 모양(appearance)을 끄지 않으면 Safari는 배경·높이·

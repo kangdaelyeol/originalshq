@@ -57,9 +57,15 @@
     }
   }
 
+  .header-right {
+    justify-self: end;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
   // 회사 로고 — 바탕 없이.
   .enterprise-logo-badge {
-    justify-self: end;
     display: inline-flex;
     align-items: center;
     height: 40px;

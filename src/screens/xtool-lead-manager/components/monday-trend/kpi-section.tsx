@@ -12,7 +12,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react'
-import { Segmented, StatTile, TrendList } from '@/components/glass'
+import { Segmented, Select, StatTile, TrendList } from '@/components/glass'
 import type {
   CardView,
   useMondayTrendViewModel,
@@ -67,33 +67,27 @@ export const KpiControls = ({
         />
       ) : (
         <>
-          <div className="page_size_select">
-            <select
-              value={range.from}
-              aria-label={unit === 'week' ? '시작 주' : '시작 월'}
-              onChange={(e) => onRange({ from: e.target.value })}
-            >
-              {options.map((key) => (
-                <option key={key} value={key}>
-                  {periodLabel(key, unit)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            className="page_size_select"
+            value={range.from}
+            options={options.map((key) => ({
+              value: key,
+              label: periodLabel(key, unit),
+            }))}
+            onChange={(from) => onRange({ from })}
+            label={unit === 'week' ? '시작 주' : '시작 월'}
+          />
           <span className="stats_nav_label">~</span>
-          <div className="page_size_select">
-            <select
-              value={range.to}
-              aria-label={unit === 'week' ? '끝 주' : '끝 월'}
-              onChange={(e) => onRange({ to: e.target.value })}
-            >
-              {options.map((key) => (
-                <option key={key} value={key}>
-                  {periodLabel(key, unit)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Select
+            className="page_size_select"
+            value={range.to}
+            options={options.map((key) => ({
+              value: key,
+              label: periodLabel(key, unit),
+            }))}
+            onChange={(to) => onRange({ to })}
+            label={unit === 'week' ? '끝 주' : '끝 월'}
+          />
         </>
       )}
     </>

@@ -1,30 +1,29 @@
-@use 'sass:string';
 @use './tokens' as *;
 
 // 화면 뒤 색 번짐 — 유리는 뒤에 비칠 게 있어야 보여서 페이지(와 붙어 있는
 // 메뉴 줄)에 깐다. 화면에 고정이라 스크롤해도 그대로이고, 같은 배경을 쓰는
 // 요소끼리는 경계 없이 이어진다.
 @mixin ambient {
-  background-color: #050606;
+  background-color: var(--glass-base);
   background-image:
     radial-gradient(
       900px 520px at 38% -6%,
-      rgba(178, 206, 74, 0.32),
+      var(--glass-glow-1),
       transparent 70%
     ),
     radial-gradient(
       700px 600px at 6% 58%,
-      rgba(64, 190, 178, 0.2),
+      var(--glass-glow-2),
       transparent 70%
     ),
     radial-gradient(
       800px 640px at 92% 92%,
-      rgba(168, 104, 138, 0.26),
+      var(--glass-glow-3),
       transparent 70%
     ),
     radial-gradient(
       520px 700px at 104% 46%,
-      rgba(206, 146, 70, 0.15),
+      var(--glass-glow-4),
       transparent 70%
     );
   background-attachment: fixed;
@@ -52,9 +51,9 @@
 @mixin shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.11) 40%,
-    rgba(255, 255, 255, 0.04) 80%
+    color-mix(in srgb, var(--glass-ink) 4%, transparent) 0%,
+    color-mix(in srgb, var(--glass-ink) 11%, transparent) 40%,
+    color-mix(in srgb, var(--glass-ink) 4%, transparent) 80%
   );
   background-size: 300% 100%;
   animation: glass_shimmer 1.4s ease-in-out infinite;
@@ -122,7 +121,7 @@
     background-color: color-mix(
       in srgb,
       var(--glass-link) 18%,
-      rgba(255, 255, 255, 0.08)
+      color-mix(in srgb, var(--glass-ink) 8%, transparent)
     );
   }
 
@@ -166,9 +165,12 @@
 // 연동 애니메이션) 큰 값만큼 칠한다. 그 방향으로 넘치지 않으면 0(투명).
 // 칸을 sticky로 만드는 것 자체는 부르는 쪽이 한다.
 @mixin sticky-table($table: 'table') {
-  $stuck: rgb(18, 20, 20);
+  $stuck: var(--glass-solid);
 
-  $tint: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03));
+  $tint: linear-gradient(
+    color-mix(in srgb, var(--glass-ink) 3%, transparent),
+    color-mix(in srgb, var(--glass-ink) 3%, transparent)
+  );
   $tint-strong: linear-gradient($fill-1, $fill-1);
 
   #{$table} th,
@@ -182,7 +184,7 @@
   }
   #{$table} thead th {
     background-image: $tint-strong;
-    color: rgba(255, 255, 255, 0.9);
+    color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
     font-weight: 600;
   }
   #{$table} tfoot td {
@@ -209,9 +211,11 @@
   #{$table} th:first-child,
   #{$table} td:first-child,
   #{$table} tfoot td {
-    // Sass가 rgb()를 직접 계산하려 해서 문자열로 넘긴다.
-    background-color: string.unquote(
-      'rgb(18 20 20 / max(var(--glass-sticky-x), var(--glass-sticky-y)))'
+    background-color: color-mix(
+      in srgb,
+      var(--glass-solid)
+        calc(max(var(--glass-sticky-x), var(--glass-sticky-y)) * 100%),
+      transparent
     );
   }
   #{$table} thead th {
