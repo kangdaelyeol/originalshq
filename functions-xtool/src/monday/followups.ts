@@ -90,7 +90,7 @@ export const buildFollowUps = (
     if (status && CLOSED_STATUS.test(status)) continue
     if (kind === 'consultation') {
       // 콜백 — 방문체험이 확정됐으면(확정일이 있거나 체크) 다음 단계는
-      // 방문체험 쪽이라 콜백 방치가 아니다. 그룹은 보지 않는다.
+      // 방문체험 쪽이라 콜백 미처리가 아니다. 그룹은 보지 않는다.
       if (
         pick(item, /^방문체험확정일$/) !== null ||
         pick(item, /^방문체험확정$/) !== null

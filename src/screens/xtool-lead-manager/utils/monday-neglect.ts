@@ -11,7 +11,7 @@ export const overdueDays = (followUp: MondayFollowUp, today: string): number =>
 /** 담당자 한 명의 방치 현황. */
 export interface NeglectRow {
   assignee: string
-  /** 진행 중인 기록 수(보류 제외) — 방치율의 모수. */
+  /** 진행 중인 기록 수(보류 제외) — 미처리율의 모수. */
   open: number
   /** 보류 중인 기록 수 — 방치로 세지 않는다. */
   onHold: number

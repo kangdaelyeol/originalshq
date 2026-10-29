@@ -51,7 +51,7 @@ export type KpiPairSortBy = 'count' | 'rate'
  *   · 인입 처리 수(담당자 × 기간) — 위 카드와 같은 기준을 기간별로
  *   · 방문체험 확정·결제 전환(건수와 비율을 한 표에) — 개인 KPI와 같은 계산을
  *     CS팀 담당자 기록만으로(합계도 CS팀 합)
- *   · 콜백 방치 — 기간과 무관한 지금 현황, CS팀 담당자만
+ *   · 콜백 미처리 — 기간과 무관한 지금 현황, CS팀 담당자만
  * 명단은 이 브라우저(localStorage)에 두어 사람마다 따로 고를 수 있다.
  */
 export const useCsTeamViewModel = ({
@@ -62,7 +62,7 @@ export const useCsTeamViewModel = ({
   dates,
 }: {
   facts: MondayKpiFacts
-  /** 통계 탭의 콜백 방치(담당자별, 정렬까지 된 것). */
+  /** 통계 탭의 콜백 미처리(담당자별, 정렬까지 된 것). */
   callbackNeglect: NeglectRow[]
   /** 표 정렬 상태 — 통계 탭과 같이 쓴다(키는 "cs-kpi:지표"). */
   tableSorts: Record<string, TableSort>

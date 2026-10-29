@@ -15,8 +15,8 @@ const COLUMNS: { key: keyof NeglectRow; label: string }[] = [
   { key: 'assignee', label: '담당자' },
   { key: 'open', label: '진행 중' },
   { key: 'onHold', label: '보류' },
-  { key: 'neglected', label: '방치' },
-  { key: 'rate', label: '방치율' },
+  { key: 'neglected', label: '미처리' },
+  { key: 'rate', label: '미처리율' },
   { key: 'recent', label: '1~7일' },
   { key: 'month', label: '8~30일' },
   { key: 'old', label: '31일 이상' },
@@ -193,10 +193,11 @@ const NeglectTable = ({
  *   · 기한 = 상담 마감일, 없으면 마지막 연락일 + 7일
  *   · 방치 = 보류가 아닌 진행 중 기록 가운데 기한이 오늘보다 지난 것
  */
-const CALLBACK_DESCRIPTION = (today: string) =>
-  `기간 선택과 무관(${today} 기준). 상담 보드에서 진행 중(신규·콜백)인데 다음 연락 기한(상담 마감일)을 넘긴 건. 상담 진행 상태가 미전환·결제이거나 방문체험이 확정된 건은 빼고, 보류는 방치가 아니라 보류 칸에 따로 셉니다.`
+const CALLBACK_DESCRIPTION = (today: string) => `
+기간 선택과 무관(${today} 기준 전체 데이터). 상담 보드에서 진행 중(신규·콜백)인데다음 연락 기한(상담 마감일)을 넘긴 건. 상담 진행 상태가 미전환·결제이거나 방문체험이 확정된 건과 보류에 있는 명단 제외.
+`
 
-/** 콜백 방치 표 하나만 — 인입통계 CS팀 섹션이 CS팀 담당자만 걸러 쓴다. */
+/** 콜백 미처리 표 하나만 — 인입통계 CS팀 섹션이 CS팀 담당자만 걸러 쓴다. */
 export const CallbackNeglect = ({
   rows,
   today,
@@ -214,7 +215,7 @@ export const CallbackNeglect = ({
 }) => (
   <NeglectTable
     kind="callback"
-    title="콜백 방치"
+    title="콜백 미처리"
     description={CALLBACK_DESCRIPTION(today)}
     rows={rows}
     expanded={expanded}
@@ -233,7 +234,7 @@ export const NeglectSection = ({
   <>
     <NeglectTable
       kind="callback"
-      title="콜백 방치"
+      title="콜백 미처리"
       description={CALLBACK_DESCRIPTION(neglect.today)}
       rows={neglect.callback}
       expanded={neglect.expanded}

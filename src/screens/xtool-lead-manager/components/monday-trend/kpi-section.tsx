@@ -235,13 +235,13 @@ const PersonSummary = ({
             )
           })}
           <div className="stats_tile">
-            <span className="stats_tile_label">콜백 방치</span>
+            <span className="stats_tile_label">콜백 미처리</span>
             <strong className="stats_tile_value">
               {neglected(neglect.callback)}건
             </strong>
           </div>
           <div className="stats_tile">
-            <span className="stats_tile_label">방문체험 고객 방치</span>
+            <span className="stats_tile_label">방문체험 고객 미처리</span>
             <strong className="stats_tile_value">
               {neglected(neglect.visit)}건
             </strong>

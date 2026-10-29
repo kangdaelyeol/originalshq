@@ -13,21 +13,31 @@ const SORT_BY_LABEL: Record<KpiPairSortBy, string> = {
   rate: '비율',
 }
 
-/** 한 칸 — 위에 건수(분자), 아래에 비율. 마우스를 올리면 "건수 / 상담 수". */
+/** 건수·비율 글자 — 정렬 기준인 쪽을 위(크게), 나머지를 아래(작게) 둔다. */
+const pairValues = (cell: KpiCell, sortBy: KpiPairSortBy) => {
+  const count = (cell.num ?? 0).toLocaleString('ko-KR')
+  const rate = formatKpi(cell, 'percent')
+  return sortBy === 'count' ? [count, rate] : [rate, count]
+}
+
+/** 한 칸 — 위에 정렬 기준 값, 아래에 나머지. 마우스를 올리면 "건수 / 상담 수". */
 const PairCell = ({
   cell,
+  sortBy,
   className,
 }: {
   cell: KpiCell
+  sortBy: KpiPairSortBy
   className?: string
-}) => (
-  <td className={className} title={`${cell.num ?? 0} / ${cell.den ?? 0}`}>
-    <span className="kpi_pair_count">
-      {(cell.num ?? 0).toLocaleString('ko-KR')}
-    </span>
-    <span className="kpi_pair_rate">{formatKpi(cell, 'percent')}</span>
-  </td>
-)
+}) => {
+  const [main, sub] = pairValues(cell, sortBy)
+  return (
+    <td className={className} title={`${cell.num ?? 0} / ${cell.den ?? 0}`}>
+      <span className="kpi_pair_main">{main}</span>
+      <span className="kpi_pair_sub">{sub}</span>
+    </td>
+  )
+}
 
 /**
  * 건수와 비율을 한 표에 — 비율 지표(KpiResult) 하나가 분자(건수)·분모를 다
@@ -63,8 +73,20 @@ export const KpiPairCard = ({
           className="kpi_total"
           title={`${each.sum.total.num ?? 0} / ${each.sum.total.den ?? 0}`}
         >
-          {(each.sum.total.num ?? 0).toLocaleString('ko-KR')}건
-          <span> · {formatKpi(each.sum.total, 'percent')}</span>
+          {sortBy === 'count' ? (
+            <>
+              {(each.sum.total.num ?? 0).toLocaleString('ko-KR')}건
+              <span> · {formatKpi(each.sum.total, 'percent')}</span>
+            </>
+          ) : (
+            <>
+              {formatKpi(each.sum.total, 'percent')}
+              <span>
+                {' '}
+                · {(each.sum.total.num ?? 0).toLocaleString('ko-KR')}건
+              </span>
+            </>
+          )}
         </strong>
         <div className="kpi_pair_sortby" role="group" aria-label="정렬 기준">
           {(Object.keys(SORT_BY_LABEL) as KpiPairSortBy[]).map((by) => (
@@ -116,9 +138,13 @@ export const KpiPairCard = ({
               <tr key={row.assignee}>
                 <td>{row.assignee}</td>
                 {row.byPeriod.map((cell, i) => (
-                  <PairCell key={periods[i]} cell={cell} />
+                  <PairCell key={periods[i]} cell={cell} sortBy={sortBy} />
                 ))}
-                <PairCell cell={row.total} className="kpi_total_col" />
+                <PairCell
+                  cell={row.total}
+                  sortBy={sortBy}
+                  className="kpi_total_col"
+                />
               </tr>
             ))}
           </tbody>
@@ -126,9 +152,13 @@ export const KpiPairCard = ({
             <tr>
               <td>합계</td>
               {each.sum.byPeriod.map((cell, i) => (
-                <PairCell key={periods[i]} cell={cell} />
+                <PairCell key={periods[i]} cell={cell} sortBy={sortBy} />
               ))}
-              <PairCell cell={each.sum.total} className="kpi_total_col" />
+              <PairCell
+                cell={each.sum.total}
+                sortBy={sortBy}
+                className="kpi_total_col"
+              />
             </tr>
           </tfoot>
         </table>
