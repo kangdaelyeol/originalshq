@@ -214,6 +214,7 @@
   .ga_tracking_row {
     transition: background-color 0.15s;
   }
+  @include glass.enter-rows('.ga_tracking_table tbody tr.ga_tracking_row');
   .ga_tracking_table tbody tr.ga_tracking_row:hover td {
     background-color: $fill-2;
   }

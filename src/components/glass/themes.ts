@@ -3,13 +3,16 @@ import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 
 /**
  * 유리 테마 목록 — 실제 색은 styles/base.scss의 [data-glass-theme] 블록이고,
- * 여기 색은 테마 고르기의 견본(바탕·데이터색·누르는 색)용이다. 테마를 더할
+ * 여기 색은 테마 고르기의 견본(바탕·데이터색·누르는 색)용이다. scheme은
+ * 밝은/어두운 공통 값(base.scss의 [data-glass-scheme])을 고른다. 테마를 더할
  * 때는 두 곳을 같이 고친다.
  */
 export const GLASS_THEMES = [
+  // 다크
   {
     id: 'lime',
     label: 'Lime',
+    scheme: 'dark',
     base: '#050606',
     accent: '#d4f25c',
     link: '#6ee7e0',
@@ -17,6 +20,7 @@ export const GLASS_THEMES = [
   {
     id: 'ember',
     label: 'Ember',
+    scheme: 'dark',
     base: '#0d0907',
     accent: '#f5a37c',
     link: '#f3e3c8',
@@ -24,6 +28,7 @@ export const GLASS_THEMES = [
   {
     id: 'aurora',
     label: 'Aurora',
+    scheme: 'dark',
     base: '#070a14',
     accent: '#5eead4',
     link: '#a78bfa',
@@ -31,6 +36,7 @@ export const GLASS_THEMES = [
   {
     id: 'ocean',
     label: 'Ocean',
+    scheme: 'dark',
     base: '#04100f',
     accent: '#7dd3fc',
     link: '#86efac',
@@ -38,16 +44,67 @@ export const GLASS_THEMES = [
   {
     id: 'orchid',
     label: 'Orchid',
+    scheme: 'dark',
     base: '#0c0710',
     accent: '#f0abfc',
     link: '#93c5fd',
   },
   {
+    id: 'graphite',
+    label: 'Graphite',
+    scheme: 'dark',
+    base: '#09090b',
+    accent: '#e4e4e7',
+    link: '#93c5fd',
+  },
+  {
+    id: 'nebula',
+    label: 'Nebula',
+    scheme: 'dark',
+    base: '#0b0714',
+    accent: '#c4b5fd',
+    link: '#f9a8d4',
+  },
+  {
+    id: 'forest',
+    label: 'Forest',
+    scheme: 'dark',
+    base: '#050d08',
+    accent: '#8fe3b0',
+    link: '#bae6fd',
+  },
+  // 라이트
+  {
     id: 'daylight',
     label: 'Daylight',
+    scheme: 'light',
     base: '#e8ecf2',
     accent: '#7c3aed',
     link: '#0f766e',
+  },
+  {
+    id: 'paper',
+    label: 'Paper',
+    scheme: 'light',
+    base: '#f1f2f4',
+    accent: '#2563eb',
+    link: '#c026d3',
+  },
+  {
+    id: 'mint',
+    label: 'Mint',
+    scheme: 'light',
+    base: '#e7f3ee',
+    accent: '#059669',
+    link: '#4f46e5',
+  },
+  {
+    id: 'blush',
+    label: 'Blush',
+    scheme: 'light',
+    base: '#f5eaee',
+    accent: '#0e7490',
+    link: '#be185d',
   },
 ] as const
 
@@ -69,8 +126,12 @@ export const useGlassTheme = (storageKey: string) => {
   useLayoutEffect(() => {
     const root = document.documentElement
     root.dataset.glassTheme = theme
+    // 밝은/어두운 공통 값(base.scss의 [data-glass-scheme='light'])을 고른다.
+    root.dataset.glassScheme =
+      GLASS_THEMES.find((each) => each.id === theme)?.scheme ?? 'dark'
     return () => {
       delete root.dataset.glassTheme
+      delete root.dataset.glassScheme
     }
   }, [theme])
 

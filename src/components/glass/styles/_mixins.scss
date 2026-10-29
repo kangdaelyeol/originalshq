@@ -158,6 +158,24 @@
   }
 }
 
+// 기본 <select>를 그대로 쓰는 입력칸(모달 안 폼 등) — 브라우저 화살표는 칸
+// 오른쪽 끝에 바짝 붙어서, 기본 모양을 끄고 화살표를 오른쪽 여백 안에 직접
+// 그린다. 배경색(field)과 따로 background-image로 얹는다.
+@mixin select-arrow {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5 7.5 10 12.5l5-5' stroke='%239aa0a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 14px 14px;
+
+  option {
+    background-color: var(--glass-solid-2);
+    color: var(--glass-text);
+  }
+}
+
 // 마우스를 올리면 뜨는 작은 알약 툴팁(부모 :hover에서 display: block).
 @mixin tooltip {
   position: absolute;
@@ -326,5 +344,28 @@ $enter-stagger: 45ms;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
+  }
+}
+
+// 불러온 내용 — 처음 붙을 때 흐릿하게 떠올라 선명해진다(glass_enter). $order는
+// 차례(0부터)로, 그만큼 조금씩 늦게 시작한다.
+@mixin enter($order: 0, $step: 60ms, $duration: 0.55s) {
+  animation: glass_enter $duration cubic-bezier(0.22, 1, 0.36, 1)
+    calc(#{$order} * #{$step}) both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// 표의 줄 — 첫 $count 줄만 차례로(나머지는 마지막 줄과 같이) 떠오른다.
+@mixin enter-rows($row, $count: 15, $step: 22ms) {
+  #{$row} {
+    @include enter($count, $step, 0.45s);
+  }
+  @for $i from 1 through $count {
+    #{$row}:nth-child(#{$i}) {
+      animation-delay: ($i - 1) * $step;
+    }
   }
 }

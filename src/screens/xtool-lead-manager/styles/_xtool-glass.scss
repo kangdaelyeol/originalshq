@@ -203,6 +203,17 @@ $register-purchase: #f762fe;
   // 배경은 비운다 — 화면 뒤 한 장(xtool-global.scss의 ambient-layer)이 비친다.
   background: transparent;
 
+  // 다 받은 화면(wrapper.is-ready) — 스켈레톤이 있던 자리에 카드가 위에서부터
+  // 차례로 흐릿하게 떠올라 선명해진다.
+  .wrapper.is-ready > * {
+    @include glass.enter(6);
+  }
+  @for $i from 1 through 6 {
+    .wrapper.is-ready > :nth-child(#{$i}) {
+      animation-delay: ($i - 1) * 70ms;
+    }
+  }
+
   .stats_card {
     @include glass.card;
     padding: 24px 26px;
@@ -518,6 +529,8 @@ $register-purchase: #f762fe;
   }
   .table .table_scroll {
     border-radius: 16px;
+    // 머리글의 z-index가 이 표 안에서만 비교되게 가둔다.
+    isolation: isolate;
   }
   .table .lead_table {
     th,
@@ -553,6 +566,10 @@ $register-purchase: #f762fe;
       border-bottom-right-radius: 12px;
     }
   }
+  // 받은 줄 — 스켈레톤 줄 자리에 위에서부터 차례로 떠오른다(쪽을 넘겨 새로
+  // 그려질 때도).
+  @include glass.enter-rows('.table tbody tr.row-clickable');
+
   .table tbody tr.row-clickable:hover td {
     background-color: $fill-2;
   }
@@ -647,6 +664,9 @@ $register-purchase: #f762fe;
     .body .record_row.editing .control {
       @include glass.field;
       border-radius: 10px;
+    }
+    .body select.control {
+      @include glass.select-arrow;
     }
     .body .save_btn,
     .body .cancel_btn {
@@ -865,6 +885,9 @@ $register-purchase: #f762fe;
     .control {
       @include glass.field;
       border-radius: 10px;
+    }
+    select.control {
+      @include glass.select-arrow;
     }
     .actions .btn {
       border-radius: 999px;

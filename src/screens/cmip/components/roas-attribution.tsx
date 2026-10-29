@@ -13,11 +13,8 @@ const pct = (v: number): string =>
     ? `${v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
     : '-'
 const share = (v: number): string => `${(v * 100).toFixed(1)}%`
-const monthLabel = (month: string, start: string, end: string): string => {
-  const [year, mon] = month.split('-')
-  const day = (date: string) => Number(date.slice(8, 10))
-  return `${year}.${mon} (${day(start)}~${day(end)}일)`
-}
+/** 달 이름 — "2026.09"(며칠부터 며칠인지는 달 이름으로 안다). */
+const monthLabel = (month: string): string => month.replace('-', '.')
 
 const ChannelRow = ({
   row,
@@ -207,9 +204,7 @@ export function RoasAttribution({
               <tbody>
                 {cohorts.map((cohort) => (
                   <tr key={cohort.month}>
-                    <td>
-                      {monthLabel(cohort.month, cohort.start, cohort.end)}
-                    </td>
+                    <td>{monthLabel(cohort.month)}</td>
                     <td>
                       {cohort.customers.toLocaleString()}명
                       <span className="roas-attribution__sub">

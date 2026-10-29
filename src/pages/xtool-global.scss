@@ -16,9 +16,9 @@ body:has(.xtool-lead-manager) {
   font-family: variables.$font-sans;
 }
 
-// 밝은 테마(Daylight) — xtool 기본 색(variables.scss의 --xt-*)을 밝은 쪽으로.
+// 밝은 테마(라이트 scheme) — xtool 기본 색(variables.scss의 --xt-*)을 밝은 쪽으로.
 // 유리 스타일이 덮지 않는 예전 화면 부분(글자·표·뱃지)이 따라 바뀐다.
-[data-glass-theme='daylight'] {
+[data-glass-scheme='light'] {
   --xt-bg: #e8ecf2;
   --xt-surface: #ffffff;
   --xt-surface-raised: #f1f4f8;

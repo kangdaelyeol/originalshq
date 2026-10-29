@@ -203,7 +203,9 @@ export const MondayTrend = ({
       </div>
 
       <div className="xtool-main monday_stats monday_trend glass_theme">
-        <div className="wrapper">
+        {/* is-ready — 데이터를 다 받은 뒤의 화면: 카드가 흐릿하게 떠올라
+            선명해진다(_xtool-glass.scss page). */}
+        <div className={`wrapper${status === 'ready' ? ' is-ready' : ''}`}>
           {status === 'error' ? (
             <div className="monday_error">
               <p>통계를 불러오지 못했습니다.</p>

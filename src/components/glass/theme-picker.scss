@@ -1,73 +1,143 @@
 @use './styles/tokens' as *;
 
-// 테마 고르기(theme-picker.tsx) — 한 알약. 접히면 지금 견본 + 이름, 펼치면
-// 견본 6개가 차례로 자라 나온다(폭·크기·투명도를 같이 움직인다).
-$swatch: 30px;
+// 테마 고르기(theme-picker.tsx) — 접힌 알약 + 아래로 펼쳐지는 유리 판(다크·라이트
+// 두 줄).
 $ease: cubic-bezier(0.22, 1, 0.36, 1);
 
 .glass_theme_picker {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  height: 38px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background-color: $fill-1;
-  transition: background-color 0.25s ease;
-
-  &:hover,
-  &.is-open {
-    background-color: $fill-2;
-  }
 }
 
-.glass_theme_option {
+.glass_theme_current {
   all: unset;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex: none;
-  width: $swatch;
-  height: $swatch;
-  border-radius: 50%;
+  gap: 8px;
+  height: 38px;
+  padding: 0 10px 0 10px;
+  border-radius: 999px;
+  background-color: $fill-1;
+  color: $text-2;
+  font-size: 12.5px;
   cursor: pointer;
   transition:
-    width 0.38s $ease,
-    margin 0.38s $ease,
-    opacity 0.28s ease,
-    transform 0.38s $ease,
-    background-color 0.2s ease;
+    background-color 0.25s ease,
+    color 0.25s ease;
 
-  // 펼친 동안의 고른 견본 — 뒤에 밝은 원.
-  &.is-selected {
-    background-color: transparent;
-  }
   &:hover {
     background-color: $fill-2;
+    color: $text;
   }
   &:focus-visible {
     outline: 2px solid var(--glass-link);
   }
 }
-.glass_theme_picker.is-open .glass_theme_option.is-selected {
+.glass_theme_picker.is-open .glass_theme_current {
   background-color: $fill-3;
+  color: $text;
 }
 
-// 접힌 동안 — 지금 견본 말고는 폭 0으로 숨긴다.
-.glass_theme_picker:not(.is-open) .glass_theme_option:not(.is-selected) {
-  width: 0;
-  opacity: 0;
-  transform: scale(0.4);
-  pointer-events: none;
+.glass_theme_chevron {
+  width: 14px;
+  height: 14px;
+  color: $text-3;
+  transition: transform 0.3s $ease;
 }
-// 펼칠 때 왼쪽부터 차례로(접을 때는 한꺼번에).
-.glass_theme_picker.is-open .glass_theme_option {
-  transition-delay: calc(var(--glass-i, 0) * 28ms);
+.glass_theme_picker.is-open .glass_theme_chevron {
+  transform: rotate(180deg);
+}
+
+// 펼친 판 — 오른쪽 끝을 알약에 맞춰 아래로. 흐릿하게 커지며 나타나고, 견본은
+// 차례로.
+.glass_theme_panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      120% 70% at 15% 0%,
+      color-mix(in srgb, var(--glass-ink) 9%, transparent),
+      transparent 60%
+    ),
+    $panel-bg;
+  -webkit-backdrop-filter: $panel-blur;
+  backdrop-filter: $panel-blur;
+  transform-origin: top right;
+  animation: glass_theme_panel_in 0.32s $ease both;
+}
+
+.glass_theme_group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.glass_theme_group_label {
+  padding-left: 4px;
+  font-size: 11.5px;
+  color: $text-3;
+}
+
+.glass_theme_options {
+  display: grid;
+  grid-template-columns: repeat(4, 76px);
+  gap: 6px;
+}
+
+// 견본 하나 — 동그라미 + 이름. 고른 것은 밝은 판.
+.glass_theme_option {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 4px 8px;
+  border-radius: 16px;
+  color: $text-2;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+  animation: glass_theme_option_in 0.34s $ease both;
+  animation-delay: calc(var(--glass-i, 0) * 22ms + 60ms);
+
+  .glass_theme_swatch {
+    width: 26px;
+    height: 26px;
+
+    &::after {
+      inset: 6px;
+    }
+  }
+
+  &:hover {
+    background-color: $fill-1;
+    color: $text;
+  }
+  &.is-selected {
+    background-color: $fill-3;
+    color: $text;
+    font-weight: 600;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
 }
 
 .glass_theme_swatch {
   position: relative;
   display: block;
+  flex: none;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -85,37 +155,26 @@ $ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-// 지금 테마 이름 — 접힌 동안만(펼치면 폭 0으로 접힌다).
-.glass_theme_name {
-  overflow: hidden;
-  max-width: 80px;
-  padding: 0 10px 0 4px;
-  color: $text-2;
-  font-size: 12.5px;
-  white-space: nowrap;
-  transition:
-    max-width 0.38s $ease,
-    padding 0.38s $ease,
-    opacity 0.2s ease;
+@keyframes glass_theme_panel_in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(-6px) scale(0.96);
+  }
 }
-.glass_theme_picker.is-open .glass_theme_name {
-  max-width: 0;
-  padding: 0;
-  opacity: 0;
-}
-
-.glass_sr_only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
+@keyframes glass_theme_option_in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.9);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glass_theme_option,
-  .glass_theme_name {
+  .glass_theme_panel,
+  .glass_theme_option {
+    animation: none;
+  }
+  .glass_theme_chevron {
     transition: none;
   }
 }

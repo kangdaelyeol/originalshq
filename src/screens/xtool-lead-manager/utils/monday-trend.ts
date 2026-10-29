@@ -6,8 +6,8 @@ export interface InflowPoint extends MondayDailyInflow {
   label: string
   /** x축에 쓰는 짧은 이름 — "10/12", "10/6~", "10월". */
   axisLabel: string
-  /** 좁은 칸(보드별 추이의 가장 많은 칸)에 쓰는 이름 — "10/12 (월)",
-   * "10/6~10/12", "2026.10"(달은 범위를 뺀다). */
+  /** 좁은 칸(보드별 추이의 가장 많은 칸)에 쓰는 이름 — 지금은 label과 같다
+   * ("10/12 (월)", "10/6~10/12", "2026.10"). */
   shortLabel: string
 }
 
@@ -124,7 +124,9 @@ export const inflowSeries = (
     const [year, month] = first.split('-')
     return {
       ...mergeDays(chunk),
-      label: unit === 'week' ? range : `${year}.${month} (${range})`,
+      // 달은 "2026.09"만 — 며칠부터 며칠인지는 달 이름으로 다 안다. 주는 이름이
+      // 없어 날짜 범위가 곧 이름이다.
+      label: unit === 'week' ? range : `${year}.${month}`,
       axisLabel: unit === 'week' ? range : `${Number(month)}월`,
       shortLabel: unit === 'week' ? range : `${year}.${month}`,
     }

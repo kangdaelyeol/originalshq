@@ -348,7 +348,7 @@ export const MondayStats = ({
       </div>
 
       <div className="xtool-main monday_stats funnel_main glass_theme">
-        <div className="wrapper">
+        <div className={`wrapper${status === 'ready' ? ' is-ready' : ''}`}>
           {status === 'error' ? (
             <div className="monday_error">
               <p>Monday 고객 목록을 불러오지 못했습니다.</p>
