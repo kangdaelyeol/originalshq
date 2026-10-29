@@ -449,3 +449,120 @@
     transform: scale(2.6);
   }
 }
+
+// ── CS팀 인입 성과 — 줄을 눌러 펼치는 상담(고객) 목록 ────────────────────
+.xtool-main.monday_trend.glass_theme {
+  // 카드 3개의 담당자 줄 — 누를 수 있는 알약 줄.
+  .cs_metric_row {
+    margin: 0 -8px;
+    padding: 5px 8px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: $hover-bg;
+    }
+    &.is-open {
+      background-color: $fill-1;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+    }
+  }
+  .cs_metric_caret {
+    display: inline-block;
+    width: 13px;
+    color: $text-3;
+  }
+  .cs_metric_detail {
+    display: block;
+    margin: 0 -8px 4px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.16);
+    animation: glass_fade 0.25s ease both;
+  }
+
+  // 목록 — [이름 | 보드 | 날짜들], 한 줄 걸러 옅은 흰빛. 길면 안에서 스크롤.
+  .cs_contrib {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+
+    li {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      font-size: 12.5px;
+      cursor: default;
+
+      &:nth-child(even) {
+        background: rgba(255, 255, 255, 0.035);
+      }
+    }
+  }
+  // 좁은 카드(카드 3개) 안에서는 보드를 이름 아래로.
+  .cs_metric_detail .cs_contrib li {
+    grid-template-columns: minmax(0, 1fr) auto;
+
+    .cs_contrib_board {
+      grid-column: 1;
+      grid-row: 2;
+    }
+    .cs_contrib_dates {
+      grid-row: 1 / 3;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0;
+    }
+  }
+
+  .cs_contrib_name {
+    overflow: hidden;
+    color: $text;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  a.cs_contrib_name {
+    color: var(--glass-link);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  .cs_contrib_board {
+    overflow: hidden;
+    color: $text-3;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .cs_contrib_dates {
+    display: flex;
+    gap: 10px;
+    color: $text-3;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+
+    .is-main {
+      color: $text;
+      font-weight: 600;
+    }
+  }
+  .cs_contrib_empty {
+    margin: 4px 0;
+    font-size: 12.5px;
+    color: $text-3;
+  }
+}

@@ -1,5 +1,5 @@
 import { Check, UsersRound, X } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type { useCsTeamViewModel } from '@/screens/xtool-lead-manager/view-model'
 import type {
@@ -11,6 +11,8 @@ import {
   INFLOW_UNIT_NOUN,
   formatKpi,
   periodLabel,
+  type CsContributor,
+  type CsContributorKind,
   type CsMemberStats,
   type KpiResult,
   type TableSort,
@@ -121,17 +123,89 @@ const METRICS: {
   },
 ]
 
-/** 지표 하나(카드 하나) — 담당자를 그 지표가 큰 순으로, 막대와 숫자로. */
+/** 펼친 줄 — 그 숫자를 이룬 상담(고객) 목록. 이름을 누르면 Monday에서 그
+ * 상담이 열린다. 날짜는 그 숫자의 기준(접수·확정·결제)이 굵게. Monday 기록이
+ * 잘못 들어간 건을 찾는 용도다. */
+const ContributorList = ({
+  items,
+  kind,
+}: {
+  items: CsContributor[] | null
+  kind: CsContributorKind
+}) => {
+  if (items === null)
+    return (
+      <p className="cs_contrib_empty">
+        고객 목록은 다음 Monday 동기화(매일 09·11·13·15·17·22시) 뒤에 보입니다.
+      </p>
+    )
+  if (items.length === 0)
+    return <p className="cs_contrib_empty">해당하는 상담이 없습니다.</p>
+  const main =
+    kind === 'confirm' || kind === 'visit'
+      ? 'confirmedAt'
+      : kind === 'paid' || kind === 'paidAt'
+        ? 'paidAt'
+        : 'receivedAt'
+  return (
+    <ul className="cs_contrib">
+      {items.map((each) => (
+        <li key={each.key} onClick={(event) => event.stopPropagation()}>
+          {each.url ? (
+            <a
+              className="cs_contrib_name"
+              href={each.url}
+              target="_blank"
+              rel="noreferrer"
+            >
+              {each.name}
+            </a>
+          ) : (
+            <span className="cs_contrib_name">{each.name}</span>
+          )}
+          <span className="cs_contrib_board">{each.boardName}</span>
+          <span className="cs_contrib_dates">
+            {(
+              [
+                ['receivedAt', '접수'],
+                ['confirmedAt', '확정'],
+                ['paidAt', '결제'],
+              ] as const
+            )
+              .filter(([field]) => each[field])
+              .map(([field, label]) => (
+                <span
+                  key={field}
+                  className={field === main ? 'is-main' : undefined}
+                >
+                  {label} {each[field]}
+                </span>
+              ))}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** 지표 하나(카드 하나) — 담당자를 그 지표가 큰 순으로, 막대와 숫자로. 줄을
+ * 누르면 그 숫자를 이룬 상담이 펼쳐진다. */
 const MetricCard = ({
   metric,
   members,
   total,
   allIntake,
+  openRows,
+  onToggle,
+  contributorsOf,
 }: {
   metric: (typeof METRICS)[number]
   members: CsMemberStats[]
   total: CsMemberStats
   allIntake: number
+  openRows: ReadonlySet<string>
+  onToggle: (key: string) => void
+  contributorsOf: CsTeam['state']['contributorsOf']
 }) => {
   const rows = [...members].sort(
     (a, b) =>
@@ -167,18 +241,53 @@ const MetricCard = ({
         </div>
       </div>
       <ul className="cs_metric_rows">
-        {rows.map((each) => (
-          <li key={each.name}>
-            <span className="cs_metric_name">{each.name}</span>
-            <span className="cs_metric_bar" aria-hidden="true">
-              <span style={{ width: `${(each[metric.key] / max) * 100}%` }} />
-            </span>
-            <span className="cs_metric_value">
-              {count(each[metric.key])}
-              {isRate && <small>{rate(each[metric.key], each.intake)}</small>}
-            </span>
-          </li>
-        ))}
+        {rows.map((each) => {
+          const key = `${metric.key}:${each.name}`
+          const open = openRows.has(key)
+          return (
+            <Fragment key={each.name}>
+              <li
+                className={`cs_metric_row${open ? ' is-open' : ''}`}
+                role="button"
+                tabIndex={0}
+                aria-expanded={open}
+                onClick={() => onToggle(key)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onToggle(key)
+                  }
+                }}
+              >
+                <span className="cs_metric_name">
+                  <span className="cs_metric_caret" aria-hidden="true">
+                    {open ? '▾' : '▸'}
+                  </span>
+                  {each.name}
+                </span>
+                <span className="cs_metric_bar" aria-hidden="true">
+                  <span
+                    style={{ width: `${(each[metric.key] / max) * 100}%` }}
+                  />
+                </span>
+                <span className="cs_metric_value">
+                  {count(each[metric.key])}
+                  {isRate && (
+                    <small>{rate(each[metric.key], each.intake)}</small>
+                  )}
+                </span>
+              </li>
+              {open && (
+                <li className="cs_metric_detail">
+                  <ContributorList
+                    items={contributorsOf(each.name, metric.key)}
+                    kind={metric.key}
+                  />
+                </li>
+              )}
+            </Fragment>
+          )
+        })}
       </ul>
     </section>
   )
@@ -309,6 +418,27 @@ export const CsTeamSection = ({
   // 기간(단위·첫 칸·끝 칸)이 바뀌면 카드·그래프를 새로 붙여 처음부터 다시
   // 그린다(그대로 두면 값만 바뀌어 막대·곡선이 그려지지 않는다).
   const drawKey = `${unit}:${kpi.periods[0]}:${kpi.periods[kpi.periods.length - 1]}`
+  // 추이 목록 줄마다 — 누르면 그 줄 숫자를 이룬 상담이 펼쳐진다.
+  const withContributors = (
+    rows: TrendListRow[],
+    card: string,
+    kind: CsContributorKind,
+  ): TrendListRow[] =>
+    rows.map((row) => {
+      const key = `${card}:${row.key}`
+      const open = state.openRows.has(key)
+      return {
+        ...row,
+        open,
+        onToggle: () => actions.toggleRow(key),
+        detail: open ? (
+          <ContributorList
+            items={state.contributorsOf(row.key, kind)}
+            kind={kind}
+          />
+        ) : null,
+      }
+    })
   const toggle = (key: CsCardKey, label: string) => (
     <Segmented
       options={VIEW_LABEL}
@@ -365,6 +495,9 @@ export const CsTeamSection = ({
                 members={stats.members}
                 total={stats.total}
                 allIntake={stats.allIntake}
+                openRows={state.openRows}
+                onToggle={actions.toggleRow}
+                contributorsOf={state.contributorsOf}
               />
             ))}
           </div>
@@ -380,7 +513,11 @@ export const CsTeamSection = ({
               views.intake === 'chart' ? (
                 <TrendList
                   key={drawKey}
-                  rows={kpiTrendRows(kpi.intake, labels)}
+                  rows={withContributors(
+                    kpiTrendRows(kpi.intake, labels),
+                    'intake',
+                    'intake',
+                  )}
                   labels={labels}
                   columns={{
                     name: '담당자',
@@ -409,7 +546,11 @@ export const CsTeamSection = ({
                   <TrendList
                     // 건수 순 / 비율 순을 바꿔도 그래프 내용이 바뀌므로 다시 그린다.
                     key={`${drawKey}:${each.sortBy}`}
-                    rows={pairRows(each, labels, each.sortBy)}
+                    rows={withContributors(
+                      pairRows(each, labels, each.sortBy),
+                      each.id,
+                      each.id === 'confirm-rate' ? 'confirm' : 'paidAt',
+                    )}
                     labels={labels}
                     columns={{
                       name: '담당자',

@@ -45,6 +45,35 @@ $cols: 26px 132px minmax(120px, 1fr) 68px 150px 128px;
   }
 }
 
+// 눌러서 펼치는 줄(detail) — 내용이 바로 아래 옅은 안쪽 판에 열린다.
+.glass_trend_list_row.is-clickable {
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+    outline-offset: 1px;
+  }
+}
+.glass_trend_list_row.is-open {
+  background: $fill-1;
+}
+.glass_trend_list_caret {
+  display: inline-block;
+  width: 14px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.glass_trend_list_detail {
+  margin: 2px 0 8px;
+  padding: 6px 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.16);
+  animation: glass_fade 0.25s ease both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 // 맨 아래 따로 둔 줄(오기입 등) — 한 겹 밝은 판에 따로 담고, 선·막대·점을
 // 주의색으로.
 .glass_trend_list_extra {

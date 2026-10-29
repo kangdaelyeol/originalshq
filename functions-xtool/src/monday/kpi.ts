@@ -32,7 +32,8 @@ const paidDateOf = (item: MondayItem): string | null =>
  *
  *   consultations — 상담 보드의 상담(오기입 제외):
  *     [주 담당자, 접수일, 방문체험 확정일(확정 안 했으면 ''), 결제일(''),
- *      신규 상담 유입(1/0)]
+ *      신규 상담 유입(1/0), item id, 고객명, 보드 id]
+ *   boards — 상담 줄에 나온 보드의 이름·Monday 주소 앞부분
  *   visits — 방문체험 보드의 방문:
  *     [주 담당자, 방문일, 체험 완료 여부(1/0), 결제일('')]
  *   sales — 오프라인 결제(계약 기준, 취소 제외):
@@ -48,6 +49,7 @@ export const buildKpiFacts = (
     items.filter((item) => kindByBoardId.get(item.boardId) === kind)
 
   const consultations: MondayKpiFacts['consultations'] = []
+  const boards: MondayKpiFacts['boards'] = {}
   for (const item of of('consultation')) {
     if (pick(item, /^상담진행상태$/) === '오기입') continue
     const receivedAt =
@@ -64,7 +66,14 @@ export const buildKpiFacts = (
       paidDateOf(item) ?? '',
       // 아직 "신규 상담 유입" — 담당자가 처리 전(인입통계 CS팀 섹션이 뺀다).
       pick(item, /^상담진행상태$/) === '신규 상담 유입' ? 1 : 0,
+      item.id,
+      item.name,
+      item.boardId,
     ])
+    boards[item.boardId] ??= {
+      name: item.boardName,
+      url: item.url?.replace(/\/pulses\/[^/]+$/, '') ?? null,
+    }
   }
 
   // 번호별로, 체험을 마친 방문 — 매출을 방문체험 담당자에게 잇는 데 쓴다.
@@ -108,5 +117,5 @@ export const buildKpiFacts = (
     ])
   }
 
-  return { consultations, visits, sales }
+  return { consultations, visits, sales, boards }
 }

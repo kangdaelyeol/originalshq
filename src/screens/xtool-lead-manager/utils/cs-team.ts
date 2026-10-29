@@ -133,3 +133,80 @@ export const buildIntakeKpi = (
     sum,
   }
 }
+
+/** 숫자 하나를 이룬 상담 한 건 — "어떤 고객이 센 건인지" 펼쳐 볼 때. */
+export interface CsContributor {
+  key: string
+  name: string
+  boardName: string
+  /** Monday에서 이 상담을 여는 주소. */
+  url: string | null
+  receivedAt: string
+  confirmedAt: string
+  paidAt: string
+}
+
+/** 펼쳐 볼 숫자의 종류 —
+ *   intake  기간에 접수돼 처리된 상담(인입 처리 카드·인입 처리 수 표)
+ *   paid    그중 결제된 것(구매 전환 카드 — 결제는 지금까지)
+ *   visit   그중 방문체험이 확정된 것(방문체험 전환 카드)
+ *   confirm 확정일이 기간 안인 상담(방문체험 확정 표의 건수)
+ *   paidAt  결제일이 기간 안인 상담(결제 전환 표의 건수) */
+export type CsContributorKind =
+  'intake' | 'paid' | 'visit' | 'confirm' | 'paidAt'
+
+/** 한 담당자의 그 숫자를 이룬 상담들 — 최근 날짜 순. 고객명이 없는 예전
+ * 데이터면 null(다음 Monday 동기화 뒤에 생긴다). */
+export const csContributors = (
+  facts: MondayKpiFacts,
+  assignee: string,
+  kind: CsContributorKind,
+  range: { start: string; end: string },
+): CsContributor[] | null => {
+  if (!facts.boards || facts.consultations.some((row) => row[5] === undefined))
+    return null
+  const inRange = (date: string | undefined) =>
+    Boolean(date) && date! >= range.start && date! <= range.end
+  const out: CsContributor[] = []
+  for (const [
+    who,
+    receivedAt,
+    confirmedAt,
+    paidAt,
+    isNew,
+    itemId = '',
+    name = '',
+    boardId = '',
+  ] of facts.consultations) {
+    if (who !== assignee) continue
+    const cohort = inRange(receivedAt) && isNew !== 1
+    const hit =
+      kind === 'intake'
+        ? cohort
+        : kind === 'paid'
+          ? cohort && Boolean(paidAt)
+          : kind === 'visit'
+            ? cohort && Boolean(confirmedAt)
+            : kind === 'confirm'
+              ? inRange(confirmedAt)
+              : inRange(paidAt)
+    if (!hit) continue
+    const board = facts.boards[boardId]
+    out.push({
+      key: itemId,
+      name: name || '이름 없음',
+      boardName: board?.name ?? '-',
+      url: board?.url ? `${board.url}/pulses/${itemId}` : null,
+      receivedAt,
+      confirmedAt,
+      paidAt,
+    })
+  }
+  const dateOf = (each: CsContributor) =>
+    kind === 'confirm'
+      ? each.confirmedAt
+      : kind === 'paidAt' || kind === 'paid'
+        ? each.paidAt
+        : each.receivedAt
+  return out.sort((a, b) => dateOf(b).localeCompare(dateOf(a)))
+}

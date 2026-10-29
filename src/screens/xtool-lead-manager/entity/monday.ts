@@ -301,12 +301,25 @@ export interface MondayFollowUp {
  * 배열로 뽑아 둔 것. 날짜는 YYYY-MM-DD(한국 시간), 없으면 ''. */
 export interface MondayKpiFacts {
   /** 상담(오기입 제외): [주 담당자, 접수일, 방문체험 확정일, 결제일,
-   * 신규 상담 유입(1/0)]. 마지막 값은 나중에 생겨 예전 데이터엔 없을 수 있다. */
-  consultations: [string, string, string, string, number?][]
+   * 신규 상담 유입(1/0), Monday item id, 고객명, 보드 id]. 뒤의 값들은 나중에
+   * 생겨 예전 데이터엔 없을 수 있다. */
+  consultations: [
+    string,
+    string,
+    string,
+    string,
+    number?,
+    string?,
+    string?,
+    string?,
+  ][]
   /** 방문체험: [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
   visits: [string, string, number, string][]
   /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
   sales: [string, string, number, string][]
+  /** 상담 줄의 보드 id → 이름·Monday 주소 앞부분(…/boards/{id}). 예전
+   * 데이터엔 없다. */
+  boards?: Record<string, { name: string; url: string | null }>
 }
 
 /** GA ClientId가 적힌 상담 기록 — functions-xtool/src/monday/ga-tracking.ts.

@@ -3,6 +3,8 @@ import type { MondayKpiFacts } from '@/screens/xtool-lead-manager/entity'
 import {
   buildCsTeamStats,
   buildIntakeKpi,
+  csContributors,
+  type CsContributorKind,
   computeKpis,
   periodKeyOf,
   csCandidates,
@@ -92,6 +94,8 @@ export const useCsTeamViewModel = ({
     parseMembers,
   )
   const [editing, setEditing] = useState(false)
+  // 펼친 줄("카드:담당자") — 그 숫자를 이룬 상담 목록을 보여준다.
+  const [openRows, setOpenRows] = useState<ReadonlySet<string>>(() => new Set())
   // 카드마다 그래프 / 표 — 이 브라우저에 남긴다.
   const [views, setViews] = usePersistentState<Record<CsCardKey, CsCardView>>(
     'xtool.csTeam.views',
@@ -202,8 +206,20 @@ export const useCsTeamViewModel = ({
       kpi,
       neglect,
       views,
+      openRows,
+      /** 한 담당자의 그 숫자를 이룬 상담들(최근 순) — 예전 데이터면 null. */
+      contributorsOf: (assignee: string, kind: CsContributorKind) =>
+        csContributors(facts, assignee, kind, dates),
     },
     actions: {
+      /** 줄 하나를 펼치거나 접는다. */
+      toggleRow: (key: string) =>
+        setOpenRows((prev) => {
+          const next = new Set(prev)
+          if (next.has(key)) next.delete(key)
+          else next.add(key)
+          return next
+        }),
       openEditor: () => setEditing(true),
       closeEditor: () => setEditing(false),
       /** 명단 저장(이 브라우저) — 저장하고 편집 창을 닫는다. */

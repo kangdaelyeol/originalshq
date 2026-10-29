@@ -506,12 +506,26 @@ export interface MondayFollowUp {
 /** 개인 KPI의 재료(kpi.ts의 buildKpiFacts 참고) — 문서 하나에 다 들어가도록
  * 짧은 배열로 둔다. 날짜는 YYYY-MM-DD(한국 시간), 없으면 ''. */
 export interface MondayKpiFacts {
-  /** [주 담당자, 접수일, 방문체험 확정일, 결제일, 신규 상담 유입(1/0)] */
-  consultations: [string, string, string, string, number][]
+  /** [주 담당자, 접수일, 방문체험 확정일, 결제일, 신규 상담 유입(1/0),
+   *  Monday item id, 고객명(item 이름), 보드 id] — 뒤의 셋은 인입통계 CS팀
+   *  섹션에서 "어떤 고객이 센 건인지" 펼쳐 보는 데 쓴다. */
+  consultations: [
+    string,
+    string,
+    string,
+    string,
+    number,
+    string,
+    string,
+    string,
+  ][]
   /** [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
   visits: [string, string, number, string][]
   /** [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
   sales: [string, string, number, string][]
+  /** 상담 줄의 보드 id → 이름과 Monday 주소 앞부분(…/boards/{id}) — 줄마다
+   * 적지 않고 한 번만 둔다. item 주소는 `${url}/pulses/${itemId}`. */
+  boards: Record<string, { name: string; url: string | null }>
 }
 
 /** 하루의 구매 금액을 신규·재구매로 나눈 것 — cmip ROAS 탭의 "신규 고객

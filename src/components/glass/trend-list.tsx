@@ -1,5 +1,5 @@
 import './trend-list.scss'
-import type { CSSProperties, ReactNode } from 'react'
+import type { CSSProperties, KeyboardEvent, ReactNode } from 'react'
 import { GlassLine } from './glass-line'
 import { useElementSize } from './use-element-size'
 
@@ -22,6 +22,10 @@ export interface TrendListRow {
   peak: { index: number; text: ReactNode } | null
   /** 읽어 주는 요약. */
   ariaLabel: string
+  /** 줄을 눌러 펼치는 내용(그 숫자를 이룬 기록 등) — 있으면 줄이 눌린다. */
+  detail?: ReactNode
+  open?: boolean
+  onToggle?: () => void
 }
 
 export interface TrendListColumns {
@@ -106,37 +110,69 @@ const Row = ({
   /** 순위(1부터) — 아래 따로 둔 줄(오기입 등)은 없음. */
   rank?: number
   warn?: boolean
-}) => (
-  <li
-    className={`glass_trend_list_row${warn ? ' is-warn' : ''}`}
-    style={{ '--glass-i': order } as CSSProperties}
-    aria-label={row.ariaLabel}
-  >
-    <span
-      className={`glass_trend_list_rank${rank !== undefined && rank <= 3 ? ' is-top' : ''}`}
-      aria-hidden="true"
-    >
-      {rank ?? '!'}
-    </span>
-    <span className="glass_trend_list_name" title={row.title ?? row.name}>
-      {row.name}
-    </span>
-    <Sparkline row={row} labels={labels} />
-    <span className="glass_trend_list_total">{row.value}</span>
-    <span className="glass_trend_list_share">
-      <span className="glass_trend_list_share_track" aria-hidden="true">
+}) => {
+  const clickable = Boolean(row.detail !== undefined && row.onToggle)
+  return (
+    <>
+      <li
+        className={[
+          'glass_trend_list_row',
+          warn ? 'is-warn' : '',
+          clickable ? 'is-clickable' : '',
+          row.open ? 'is-open' : '',
+        ]
+          .join(' ')
+          .trim()}
+        style={{ '--glass-i': order } as CSSProperties}
+        aria-label={row.ariaLabel}
+        {...(clickable && {
+          role: 'button',
+          tabIndex: 0,
+          'aria-expanded': Boolean(row.open),
+          onClick: row.onToggle,
+          onKeyDown: (event: KeyboardEvent<HTMLLIElement>) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              row.onToggle?.()
+            }
+          },
+        })}
+      >
         <span
-          className="glass_trend_list_share_fill"
-          style={{ width: `${row.bar.ratio * 100}%` }}
-        />
-      </span>
-      <span className="glass_trend_list_share_text">{row.bar.text}</span>
-    </span>
-    <span className="glass_trend_list_best">
-      {row.peak ? row.peak.text : '-'}
-    </span>
-  </li>
-)
+          className={`glass_trend_list_rank${rank !== undefined && rank <= 3 ? ' is-top' : ''}`}
+          aria-hidden="true"
+        >
+          {rank ?? '!'}
+        </span>
+        <span className="glass_trend_list_name" title={row.title ?? row.name}>
+          {clickable && (
+            <span className="glass_trend_list_caret" aria-hidden="true">
+              {row.open ? '▾' : '▸'}
+            </span>
+          )}
+          {row.name}
+        </span>
+        <Sparkline row={row} labels={labels} />
+        <span className="glass_trend_list_total">{row.value}</span>
+        <span className="glass_trend_list_share">
+          <span className="glass_trend_list_share_track" aria-hidden="true">
+            <span
+              className="glass_trend_list_share_fill"
+              style={{ width: `${row.bar.ratio * 100}%` }}
+            />
+          </span>
+          <span className="glass_trend_list_share_text">{row.bar.text}</span>
+        </span>
+        <span className="glass_trend_list_best">
+          {row.peak ? row.peak.text : '-'}
+        </span>
+      </li>
+      {row.open && row.detail !== undefined && (
+        <li className="glass_trend_list_detail">{row.detail}</li>
+      )}
+    </>
+  )
+}
 
 /**
  * 추이 목록 — 기간 × 무엇(보드·담당자) 표를 "무엇" 쪽으로 돌려, 한 줄에

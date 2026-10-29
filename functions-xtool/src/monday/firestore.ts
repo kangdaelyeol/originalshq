@@ -311,6 +311,7 @@ export async function saveKpiFacts(
       consultations: facts.consultations.map((row) => JSON.stringify(row)),
       visits: facts.visits.map((row) => JSON.stringify(row)),
       sales: facts.sales.map((row) => JSON.stringify(row)),
+      boards: facts.boards,
       syncedAt: Date.now(),
     })
 }
@@ -321,6 +322,7 @@ export async function getKpiFacts(
   const doc = await db.collection(STATS_COLLECTION).doc(KPI_FACTS_DOC).get()
   const data = doc.data() as
     | (Record<'consultations' | 'visits' | 'sales', string[]> & {
+        boards?: MondayKpiFacts['boards']
         syncedAt: number
       })
     | undefined
@@ -330,6 +332,7 @@ export async function getKpiFacts(
     consultations: parse(data?.consultations),
     visits: parse(data?.visits),
     sales: parse(data?.sales),
+    boards: data?.boards ?? {},
     syncedAt: data?.syncedAt ?? null,
   }
 }
