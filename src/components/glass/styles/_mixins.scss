@@ -47,16 +47,25 @@
   box-shadow: none;
 }
 
-// 불러오는 중 — 옅은 흰빛이 왼쪽에서 오른쪽으로 지나간다(keyframes는 base.scss).
+// 불러오는 중 — 옅은 유리 위로 부드러운 빛 띠가 왼쪽에서 오른쪽으로 끝없이
+// 흐른다. 빛 띠 그림은 양 끝이 같은 색이고, 그림 한 장 폭(200%)만큼 정확히
+// 옮겨 다시 처음과 같은 자리가 되므로 0%↔100% 사이 끊김이 없다. 바탕은 아주
+// 천천히 숨 쉬듯 밝아졌다 어두워진다.
 @mixin shimmer {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--glass-ink) 4%, transparent) 0%,
-    color-mix(in srgb, var(--glass-ink) 11%, transparent) 40%,
-    color-mix(in srgb, var(--glass-ink) 4%, transparent) 80%
+  background-color: var(--glass-fill-1);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--glass-ink) 9%, transparent) 42%,
+    color-mix(in srgb, var(--glass-ink) 14%, transparent) 50%,
+    color-mix(in srgb, var(--glass-ink) 9%, transparent) 58%,
+    transparent 80%
   );
-  background-size: 300% 100%;
-  animation: glass_shimmer 1.4s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  animation:
+    glass_shimmer 1.8s linear infinite,
+    glass_breathe 2.6s ease-in-out infinite alternate;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;

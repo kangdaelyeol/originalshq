@@ -1,0 +1,27 @@
+// 높이를 따라 자라는 상자(auto-height.tsx).
+.glass_auto_height {
+  overflow: hidden;
+  transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+// 새로 나타나는 내용 — 높이가 자라는 동안 흐릿하고 투명하다가 선명해진다.
+.glass_reveal {
+  animation: glass_reveal_in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+}
+
+@keyframes glass_reveal_in {
+  from {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_auto_height {
+    transition: none;
+  }
+  .glass_reveal {
+    animation: none;
+  }
+}

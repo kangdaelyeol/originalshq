@@ -42,19 +42,32 @@ body:has(.xtool-lead-manager) {
   }
 }
 
-// ── 탭을 바꿀 때 — 화면이 흐려지며 사라지고 새 화면이 선명해지며 나타난다 ──
+// ── 탭을 바꿀 때 — 지금 화면이 흐려지는 위로 새 화면이 선명해지며 덮는다 ──
 // usePageTabViewModel이 View Transitions API로 바꾼다(지원하지 않는 브라우저는
 // 바로 바뀐다). 헤더는 따로 떼어(view-transition-name) 그대로 두고 탭 알약만
 // 미끄러진다.
+//
+// 지금 화면은 끝까지 불투명하게 남긴 채 흐리기만 하고, 새 화면을 그 위에서
+// 나타나게 한다 — 둘을 같이 투명하게 하면(교차 페이드) 그 사이로 맨 아래
+// 검정이 비친다. 겹치는 방식도 기본(plus-lighter 더하기) 대신 그냥 덮기로.
 .xtool-header {
   view-transition-name: xtool-header;
 }
 
+// 전환 동안 맨 아래 바닥 — 혹시 비치더라도 테마 바탕색.
+::view-transition {
+  background-color: var(--glass-base, #000);
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  mix-blend-mode: normal;
+}
 ::view-transition-old(root) {
-  animation: xtool-page-out 0.26s ease both;
+  animation: xtool-page-out 0.45s ease both;
 }
 ::view-transition-new(root) {
-  animation: xtool-page-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) 0.06s both;
+  animation: xtool-page-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 ::view-transition-old(xtool-header),
 ::view-transition-new(xtool-header) {
@@ -64,18 +77,17 @@ body:has(.xtool-lead-manager) {
   display: none;
 }
 
+// 지금 화면 — 불투명한 채로 흐려지기만.
 @keyframes xtool-page-out {
   to {
-    opacity: 0;
     filter: blur(14px);
-    transform: scale(0.995);
   }
 }
+// 새 화면 — 흐릿하고 투명한 채 위에서 나타나 선명해진다(자리는 그대로).
 @keyframes xtool-page-in {
   from {
     opacity: 0;
     filter: blur(14px);
-    transform: translateY(6px);
   }
 }
 

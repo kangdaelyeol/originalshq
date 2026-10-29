@@ -16,7 +16,9 @@ import {
   formatWon,
   mondayStatusTone,
 } from '@/screens/xtool-lead-manager/utils'
+import { AutoHeight } from '@/components/glass'
 import { CloseIcon } from '../detail/icons'
+import { Bone, LoadingNotice } from '../skeleton'
 import '@/screens/xtool-lead-manager/styles/detail.scss'
 
 /** "라벨 값" 한 쌍 — 값이 없으면 아예 그리지 않아서, 보드마다 채워진 항목이
@@ -382,74 +384,86 @@ export const MondayDetail = ({
             </dl>
           </section>
 
-          {failed && (
-            <p className="monday_detail_message">
-              기록을 불러오지 못했습니다. 창을 닫고 다시 열어 주세요.
-            </p>
-          )}
-          {!failed && !customer && (
-            <p className="monday_detail_message">기록을 불러오는 중…</p>
-          )}
+          {/* 불러오는 자리 → 다 받은 기록: 높이가 자라고 기록이 선명해진다. */}
+          <AutoHeight>
+            {failed && (
+              <p className="monday_detail_message">
+                기록을 불러오지 못했습니다. 창을 닫고 다시 열어 주세요.
+              </p>
+            )}
+            {!failed && !customer && (
+              <div className="monday_detail_loading" aria-busy="true">
+                <LoadingNotice label="기록을 불러오는 중" />
+                {[0, 1].map((each) => (
+                  <div key={each} className="monday_detail_loading_card">
+                    <Bone width="38%" height={13} />
+                    <Bone width="86%" height={10} />
+                    <Bone width="64%" height={10} />
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {customer && (
-            <>
-              <Section title="상담" count={customer.consultations.length}>
-                {customer.consultations.map((record) => (
-                  <ConsultationCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-              <Section title="방문체험" count={customer.visits.length}>
-                {customer.visits.map((record) => (
-                  <VisitCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-              {customer.issues.length > 0 && (
-                <ul className="monday_issues">
-                  {customer.issues.map((issue) => (
-                    <li key={`${issue.itemId}-${issue.type}`}>
-                      <span>
-                        {formatMondayDate(issue.date)} · {issue.message}
-                      </span>
-                      {issue.url && (
-                        <a
-                          className="monday_link"
-                          href={issue.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          Monday에서 열기
-                        </a>
-                      )}
-                    </li>
+            {customer && (
+              <div className="glass_reveal">
+                <Section title="상담" count={customer.consultations.length}>
+                  {customer.consultations.map((record) => (
+                    <ConsultationCard key={record.itemId} record={record} />
                   ))}
-                </ul>
-              )}
-              <Section title="구매" count={customer.purchases.length}>
-                <MoneySummary customer={customer} />
-                {customer.purchases.map((record) => (
-                  <PurchaseCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-              <Section title="납부 내역" count={customer.payments.length}>
-                {customer.purchases.length === 0 && (
-                  <MoneySummary customer={customer} />
+                </Section>
+                <Section title="방문체험" count={customer.visits.length}>
+                  {customer.visits.map((record) => (
+                    <VisitCard key={record.itemId} record={record} />
+                  ))}
+                </Section>
+                {customer.issues.length > 0 && (
+                  <ul className="monday_issues">
+                    {customer.issues.map((issue) => (
+                      <li key={`${issue.itemId}-${issue.type}`}>
+                        <span>
+                          {formatMondayDate(issue.date)} · {issue.message}
+                        </span>
+                        {issue.url && (
+                          <a
+                            className="monday_link"
+                            href={issue.url}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Monday에서 열기
+                          </a>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                {customer.payments.map((record) => (
-                  <PaymentCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-              <Section title="만족도 조사" count={customer.surveys.length}>
-                {customer.surveys.map((record) => (
-                  <SurveyCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-              <Section title="샘플테스트" count={customer.sampleTests.length}>
-                {customer.sampleTests.map((record) => (
-                  <SampleTestCard key={record.itemId} record={record} />
-                ))}
-              </Section>
-            </>
-          )}
+                <Section title="구매" count={customer.purchases.length}>
+                  <MoneySummary customer={customer} />
+                  {customer.purchases.map((record) => (
+                    <PurchaseCard key={record.itemId} record={record} />
+                  ))}
+                </Section>
+                <Section title="납부 내역" count={customer.payments.length}>
+                  {customer.purchases.length === 0 && (
+                    <MoneySummary customer={customer} />
+                  )}
+                  {customer.payments.map((record) => (
+                    <PaymentCard key={record.itemId} record={record} />
+                  ))}
+                </Section>
+                <Section title="만족도 조사" count={customer.surveys.length}>
+                  {customer.surveys.map((record) => (
+                    <SurveyCard key={record.itemId} record={record} />
+                  ))}
+                </Section>
+                <Section title="샘플테스트" count={customer.sampleTests.length}>
+                  {customer.sampleTests.map((record) => (
+                    <SampleTestCard key={record.itemId} record={record} />
+                  ))}
+                </Section>
+              </div>
+            )}
+          </AutoHeight>
         </div>
       </div>
     </div>

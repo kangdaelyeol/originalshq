@@ -48,6 +48,11 @@ $panel-bg: linear-gradient(
   var(--glass-panel-bottom)
 );
 
+// 모달 판·가림막의 흐림 — 판은 세게(글자가 읽히게), 가림막은 뒤 화면이
+// 형태만 남게.
+$panel-blur: blur(44px) saturate(180%);
+$scrim-blur: blur(6px) saturate(120%);
+
 $radius-card: 26px;
 $radius-inner: 18px;
 $radius-row: 16px;

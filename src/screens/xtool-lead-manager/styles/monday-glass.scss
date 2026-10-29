@@ -297,3 +297,25 @@
     }
   }
 }
+
+// 고객 상세 — 기록을 받는 동안의 자리(카드 두 장 모양의 유리 스켈레톤).
+.xtool-main.monday_main.glass_theme .detail_form.monday_detail {
+  .monday_detail_loading {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 0;
+  }
+  .monday_detail_loading_card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: 18px;
+    background: var(--glass-fill-1);
+  }
+  .xtool_bone {
+    @include glass.shimmer;
+    border-radius: 999px;
+  }
+}

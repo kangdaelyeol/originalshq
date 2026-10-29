@@ -40,14 +40,16 @@
   // 안쪽으로 들어간 판.
   --glass-card-top: rgba(255, 255, 255, 0.095);
   --glass-card-bottom: rgba(255, 255, 255, 0.045);
+  // 모달 판 — 뒤(흐린 화면)가 비치는 투명한 유리. 흐림을 세게 줘서 글자는
+  // 읽히고, 뒤의 색·형태는 번져 보인다.
   --glass-panel-top: color-mix(
     in srgb,
-    color-mix(in srgb, var(--glass-base) 78%, white) 80%,
+    color-mix(in srgb, var(--glass-base) 72%, white) 52%,
     transparent
   );
   --glass-panel-bottom: color-mix(
     in srgb,
-    color-mix(in srgb, var(--glass-base) 88%, white) 86%,
+    color-mix(in srgb, var(--glass-base) 86%, white) 60%,
     transparent
   );
   --glass-float: color-mix(
@@ -55,7 +57,7 @@
     color-mix(in srgb, var(--glass-base) 85%, white) 94%,
     transparent
   );
-  --glass-scrim: color-mix(in srgb, var(--glass-base) 50%, transparent);
+  --glass-scrim: color-mix(in srgb, var(--glass-base) 34%, transparent);
   --glass-sunken: rgba(0, 0, 0, 0.16);
   // 불투명 — 스크롤해도 붙어 있는 표 칸(밑이 비치면 글자가 겹친다).
   --glass-solid: color-mix(in srgb, var(--glass-base) 93%, white);
@@ -148,10 +150,10 @@
 
   --glass-card-top: rgba(255, 255, 255, 0.72);
   --glass-card-bottom: rgba(255, 255, 255, 0.48);
-  --glass-panel-top: rgba(255, 255, 255, 0.9);
-  --glass-panel-bottom: rgba(246, 248, 251, 0.86);
+  --glass-panel-top: rgba(255, 255, 255, 0.62);
+  --glass-panel-bottom: rgba(246, 248, 251, 0.5);
   --glass-float: rgba(255, 255, 255, 0.95);
-  --glass-scrim: rgba(214, 220, 230, 0.5);
+  --glass-scrim: rgba(214, 220, 230, 0.3);
   --glass-sunken: rgba(15, 23, 32, 0.035);
   --glass-solid: #f6f8fb;
   --glass-solid-2: #eaeef4;
@@ -162,15 +164,24 @@
   --glass-glow-4: rgba(125, 211, 252, 0.25);
 }
 
+// 빛 띠 — 그림 폭(200%)만큼 옮겨 처음과 같은 자리로(끊김 없는 반복).
 @keyframes glass_shimmer {
   from {
-    background-position: 100% 0;
+    background-position: 0% 0;
   }
   to {
-    background-position: 0 0;
+    background-position: -200% 0;
   }
 }
 
+@keyframes glass_breathe {
+  from {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes glass_grow {
   from {
     transform: scaleX(0);
@@ -226,5 +237,21 @@
   }
   to {
     --glass-sticky-y: 0;
+  }
+}
+
+// 모달 — 가림막의 흐림이 차오르고, 판이 흐릿하게 떠오르며 선명해진다.
+@keyframes glass_scrim_in {
+  from {
+    opacity: 0;
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+@keyframes glass_panel_in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(12px) scale(0.97);
   }
 }

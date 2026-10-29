@@ -8,14 +8,17 @@
   height: 12px;
   border-radius: 3px;
   vertical-align: middle;
-  background: linear-gradient(
-    90deg,
-    variables.$color-border-soft 0%,
-    variables.$color-surface-raised 40%,
-    variables.$color-border-soft 80%
+  // 빛 띠 — 양 끝이 같은 색인 그림을 그 폭(200%)만큼 옮겨 끊김 없이 반복.
+  background-color: variables.$color-border-soft;
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    variables.$color-surface-raised 50%,
+    transparent 80%
   );
-  background-size: 300% 100%;
-  animation: xtool_bone_shimmer 1.4s ease-in-out infinite;
+  background-size: 200% 100%;
+  background-repeat: repeat-x;
+  animation: xtool_bone_shimmer 1.8s linear infinite;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -24,13 +27,12 @@
 
 @keyframes xtool_bone_shimmer {
   from {
-    background-position: 100% 0;
+    background-position: 0% 0;
   }
   to {
-    background-position: 0 0;
+    background-position: -200% 0;
   }
 }
-
 // 표 스켈레톤 줄 — 칸 안의 막대를 두 줄로 쌓을 때.
 .xtool_skeleton_stack {
   display: flex;
