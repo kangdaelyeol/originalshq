@@ -1,5 +1,5 @@
 // 유리 판 — 반투명 바탕 + 배경 흐림 + 위쪽 빛 테두리. 사이드바·상단바·카드 공통.
-// 샘플 영상처럼 뒤의 파편이 흐릿한 얼룩으로 비쳐 보이는 정도로 흐림을 강하게 준다.
+// 흐림·농도·채도·테두리 빛은 설정(유리 효과)의 --glass-* 변수를 따른다.
 @mixin glass {
   background:
     linear-gradient(
@@ -8,13 +8,13 @@
       rgba(255, 255, 255, 0.022) 42%,
       rgba(255, 255, 255, 0.045) 100%
     ),
-    rgba(22, 23, 27, 0.46);
-  border: 1px solid rgba(255, 255, 255, 0.085);
+    rgba(22, 23, 27, var(--glass-opacity));
+  border: 1px solid rgba(255, 255, 255, calc(0.085 * var(--glass-rim)));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, calc(0.07 * var(--glass-rim))),
     0 24px 48px -24px rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 
   // 흐림을 못 쓰는 환경 — 뒤가 그대로 비쳐 글자가 묻히지 않게 거의 불투명하게.
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {

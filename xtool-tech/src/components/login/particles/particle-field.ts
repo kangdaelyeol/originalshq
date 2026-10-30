@@ -1,8 +1,9 @@
-import { fibonacciSphere, sampleImage, sampleText, type TextShape } from './shapes'
+import { mixHex } from '../../../settings/accent'
+import { sampleImage, sampleText, sampleXMark, type TextShape } from './shapes'
 
 // ────────────────────────────────────────────────────────────────────────
 // 입자 인트로 — 샘플 영상(particle-animation.mp4)의 흐름을 그대로 따른다.
-//   sphere  → 3D 구로 피어난다(천천히 회전)
+//   mark    → xTool의 X가 녹색 입자로 피어나 두께를 드러내며 3D로 돈다(샘플의 구 자리)
 //   scatter → 폭발해서 화면 전체로 흩어진다
 //   form    → 비스듬히 돌아가 있던 글자가 정면 쪽으로 돌며 모인다(3D 등장)
 //   move    → 카드 위 자리(slot)로 작아지며 옮겨 가고, 일부는 배경 먼지가 된다
@@ -12,7 +13,7 @@ import { fibonacciSphere, sampleImage, sampleText, type TextShape } from './shap
 // 원근 투영(FOCAL/(FOCAL+z))한다 — 가까운 입자는 크고 밝게, 먼 입자는 작고 흐리게.
 // ────────────────────────────────────────────────────────────────────────
 
-type Phase = 'sphere' | 'scatter' | 'form' | 'move' | 'idle'
+type Phase = 'mark' | 'scatter' | 'form' | 'move' | 'idle'
 
 interface Placement {
   x: number
@@ -30,6 +31,10 @@ export interface ParticleFieldOptions {
   logoUrl: string
   /** 이미지를 못 불러올 때 대신 글꼴로 쓸 글자 */
   fallbackText: string
+  /** 로고 아래 작은 부제(입자) — 예: 'TECH TEAM'. 비우면 로고만. */
+  subtitle?: string
+  /** 강조색(설정에서 고른 색) — 시작 X와 로고의 X 입자를 이 색으로 칠한다. */
+  accentColor: string
   reducedMotion: boolean
   /** 글자가 카드 위로 옮겨 가기 시작할 때(= 카드를 보여 줄 때) 한 번 부른다. */
   onSettle: () => void
@@ -50,15 +55,26 @@ const BASE_YAW = -0.36
 // 글자 두께(글자 폭 대비) — 돌렸을 때 옆면이 보여 입체감이 난다. 로고는 가늘고 길어서 얇게.
 const TEXT_DEPTH = 0.07
 const LOGO_DEPTH = 0.035
-// 로고 녹색 입자 — 브랜드 녹색(#00C767)보다 한 톤 밝게: 어두운 배경에서 겹쳐 빛날 때 같은 녹색으로 읽힌다.
-const ACCENT_PARTICLE = '#1fe07f'
 // 등장 회전 시작 각도 — 옆으로 돌아가 있던 글자가 정면 쪽으로 돈다.
 const ENTRY_YAW = 1.05
 const ENTRY_PITCH = 0.32
-const TIMING = { sphere: 900, scatter: 800, rotateIn: 1250, hold: 800, move: 950, replayScatter: 620 }
+const TIMING = { mark: 1500, scatter: 800, rotateIn: 1250, hold: 800, move: 950, replayScatter: 620 }
+// 시작 X — 두께(X 폭 대비)를 두껍게 줘서 돌 때 옆면이 보이고, 비스듬히 돌아가 있던 X가
+// 정면을 지나 반대쪽으로 살짝 넘어가는 순간 터진다.
+const MARK_DEPTH = 0.16
+const MARK_YAW_FROM = -1.25
+const MARK_YAW_TO = 0.4
+const MARK_PITCH = 0.18
 
 const FONT_FAMILY = '"Pretendard Variable", Pretendard, "Arial Black", sans-serif'
 const FONT = `900 200px ${FONT_FAMILY}`
+// 부제 — 워드마크의 넓은 대문자 느낌에 맞춰 자간을 벌린 굵은 글꼴(작아져도 획이 남게 800).
+const SUBTITLE_FONT = `800 120px ${FONT_FAMILY}`
+const SUBTITLE_TRACKING = 0.36
+// 부제 폭(로고 폭 대비)과 로고와의 간격(로고 폭 대비), 입자 몫(전체 대비).
+const SUBTITLE_WIDTH = 0.48
+const SUBTITLE_GAP = 0.05
+const SUBTITLE_SHARE = 0.24
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -72,6 +88,8 @@ export class ParticleField {
   private readonly slot: HTMLElement
   private readonly ctx: CanvasRenderingContext2D
   private readonly opts: ParticleFieldOptions
+  // 강조색 입자 — 강조색보다 한 톤 밝게: 어두운 배경에서 겹쳐 빛날 때 같은 색으로 읽힌다.
+  private readonly accentFill: string
 
   private width = 0
   private height = 0
@@ -81,7 +99,7 @@ export class ParticleField {
   // 입자마다 xyz — 타입 배열로 둬서 수천 개도 가볍게.
   private pos: Float32Array = new Float32Array(0)
   private vel: Float32Array = new Float32Array(0)
-  private sphere: Float32Array = new Float32Array(0)
+  private mark: Float32Array = new Float32Array(0)
   private scatter: Float32Array = new Float32Array(0)
   private text: Float32Array | null = null
   // 글자 높이(폭 = 1 기준) — 샘플링 뒤 실제 값으로 바뀐다.
@@ -99,7 +117,7 @@ export class ParticleField {
   private screenR: Float32Array = new Float32Array(0)
   private screenA: Float32Array = new Float32Array(0)
 
-  private phase: Phase = 'sphere'
+  private phase: Phase = 'mark'
   private phaseStart = 0
   private formFrom: 'big' | 'slot' = 'big'
   private replaying = false
@@ -116,6 +134,7 @@ export class ParticleField {
 
   constructor(opts: ParticleFieldOptions) {
     this.opts = opts
+    this.accentFill = mixHex(opts.accentColor, '#ffffff', 0.12)
     this.canvas = opts.canvas
     this.slot = opts.slot
     const ctx = opts.canvas.getContext('2d')
@@ -139,7 +158,7 @@ export class ParticleField {
     window.addEventListener('pointercancel', this.onPointerEnd)
     document.documentElement.addEventListener('pointerleave', this.onPointerEnd)
 
-    this.phase = 'sphere'
+    this.phase = 'mark'
     this.phaseStart = performance.now()
     this.last = this.phaseStart
     this.raf = requestAnimationFrame(this.frame)
@@ -191,7 +210,7 @@ export class ParticleField {
     const n = this.count
     this.pos = new Float32Array(n * 3)
     this.vel = new Float32Array(n * 3)
-    this.sphere = fibonacciSphere(n)
+    this.mark = sampleXMark(n, MARK_DEPTH)
     this.scatter = new Float32Array(n * 3)
     this.stiffness = new Float32Array(n)
     this.size = new Float32Array(n)
@@ -205,14 +224,14 @@ export class ParticleField {
     this.screenA = new Float32Array(n)
     this.fillScatter()
 
-    const radius = this.sphereRadius()
+    const markScale = this.markScale()
     for (let i = 0; i < n; i++) {
       const o = i * 3
-      // 구 안쪽 작은 핵에서 시작해 표면으로 피어난다.
-      const start = rand(0.08, 0.3) * radius
-      this.pos[o] = this.sphere[o] * start
-      this.pos[o + 1] = this.sphere[o + 1] * start - this.height * 0.03
-      this.pos[o + 2] = this.sphere[o + 2] * start
+      // X 가운데 작은 핵에서 시작해 제 모양으로 피어난다.
+      const start = rand(0.05, 0.25) * markScale
+      this.pos[o] = this.mark[o] * start
+      this.pos[o + 1] = this.mark[o + 1] * start - this.height * 0.03
+      this.pos[o + 2] = this.mark[o + 2] * start
       this.stiffness[i] = rand(0.024, 0.062)
       this.size[i] = rand(1, 2.3)
       this.dust[i] = Math.random() < DUST_RATIO ? 1 : 0
@@ -230,17 +249,29 @@ export class ParticleField {
   }
 
   private async loadShape(): Promise<void> {
-    let shape: TextShape
+    const subtitle = this.opts.subtitle?.trim() ?? ''
+    // 글꼴(부제·대체 글자용)이 늦으면 1.5초만 기다리고 대체 글꼴로 그린다.
+    const fontsReady = Promise.race([
+      Promise.all([document.fonts.load(FONT), document.fonts.load(SUBTITLE_FONT)]),
+      wait(1500),
+    ]).catch(() => undefined)
+    const logoCount = subtitle ? Math.round(this.count * (1 - SUBTITLE_SHARE)) : this.count
+
+    let logo: TextShape
     try {
-      shape = await sampleImage(this.opts.logoUrl, this.count, LOGO_DEPTH)
+      logo = await sampleImage(this.opts.logoUrl, logoCount, LOGO_DEPTH)
     } catch {
-      // 로고 이미지를 못 불러오면 글꼴로 — 글꼴이 늦으면 1.5초만 기다리고 대체 글꼴로 그린다.
-      try {
-        await Promise.race([document.fonts.load(FONT), wait(1500)])
-      } catch {
-        /* 대체 글꼴로 그린다 */
-      }
-      shape = sampleText(this.opts.fallbackText, FONT, this.count, TEXT_DEPTH)
+      // 로고 이미지를 못 불러오면 글꼴로.
+      await fontsReady
+      logo = sampleText(this.opts.fallbackText, FONT, logoCount, TEXT_DEPTH)
+    }
+    let shape = logo
+    if (subtitle) {
+      await fontsReady
+      const sub = sampleText(subtitle, SUBTITLE_FONT, this.count - logoCount, LOGO_DEPTH, SUBTITLE_TRACKING)
+      shape = stackShapes(logo, sub, SUBTITLE_WIDTH, SUBTITLE_GAP)
+      // 부제 입자는 먼지로 빠지지 않게 — 작은 글자라 입자가 줄면 바로 안 읽힌다.
+      this.dust.fill(0, logoCount)
     }
     if (this.destroyed) return
     this.text = shape.points
@@ -322,8 +353,8 @@ export class ParticleField {
   private advance(now: number): void {
     const t = now - this.phaseStart
     switch (this.phase) {
-      case 'sphere':
-        if (t > TIMING.sphere) this.enterScatter(now)
+      case 'mark':
+        if (t > TIMING.mark) this.enterScatter(now)
         break
       case 'scatter':
         if (!this.text) break // 글꼴이 아직이면 흩어진 채로 조금 더 기다린다
@@ -352,8 +383,9 @@ export class ParticleField {
 
   // ── 글자 놓을 자리(가운데·크기·회전) ───────────────────────────────────────
 
-  private sphereRadius(): number {
-    return Math.min(this.width, this.height) * 0.22
+  /** 시작 X의 폭(px) — 샘플의 구와 비슷한 크기. */
+  private markScale(): number {
+    return Math.min(this.width, this.height) * 0.44
   }
 
   private bigPlacement(): Placement {
@@ -426,14 +458,15 @@ export class ParticleField {
     // 작은 글자일수록 입자도 작게 — 큰 글자 그대로면 뭉개진다.
     const textSize = place ? Math.min(1.1, Math.max(0.68, place.scale / 900)) : 1
 
-    const sphereYaw = now * 0.0007
-    const sphereR = this.sphereRadius()
-    const sphereY = -this.height * 0.03
-    const sphereFade = phase === 'sphere' ? clamp01(t / 500) : 1
-    const cyS = Math.cos(sphereYaw)
-    const syS = Math.sin(sphereYaw)
-    const cpS = Math.cos(0.4)
-    const spS = Math.sin(0.4)
+    // 천천히 시작해 천천히 멈추게 — 입자가 피어나는 동안에도 돌고 있는 게 보이도록.
+    const markYaw = lerp(MARK_YAW_FROM, MARK_YAW_TO, easeInOutCubic(clamp01(t / TIMING.mark)))
+    const markScale = this.markScale()
+    const markY = -this.height * 0.03
+    const markFade = phase === 'mark' ? clamp01(t / 400) : 1
+    const cyM = Math.cos(markYaw)
+    const syM = Math.sin(markYaw)
+    const cpM = Math.cos(MARK_PITCH)
+    const spM = Math.sin(MARK_PITCH)
 
     const cy = place ? Math.cos(place.yaw) : 1
     const sy = place ? Math.sin(place.yaw) : 0
@@ -442,7 +475,7 @@ export class ParticleField {
 
     const damp = DAMPING ** f
     const pointer = this.pointer
-    const repel = pointer !== null && phase !== 'sphere'
+    const repel = pointer !== null && phase !== 'mark'
     const radius = this.settled ? REPEL_RADIUS_SMALL : REPEL_RADIUS
     const r2 = radius * radius
     const halfW = this.width / 2
@@ -462,17 +495,17 @@ export class ParticleField {
       let k: number
       let targetAlpha: number
 
-      if (phase === 'sphere') {
-        const mx = this.sphere[o] * sphereR
-        const my = this.sphere[o + 1] * sphereR
-        const mz = this.sphere[o + 2] * sphereR
-        const x1 = mx * cyS + mz * syS
-        const z1 = -mx * syS + mz * cyS
+      if (phase === 'mark') {
+        const mx = this.mark[o] * markScale
+        const my = this.mark[o + 1] * markScale
+        const mz = this.mark[o + 2] * markScale
+        const x1 = mx * cyM + mz * syM
+        const z1 = -mx * syM + mz * cyM
         tx = x1
-        ty = my * cpS - z1 * spS + sphereY
-        tz = my * spS + z1 * cpS
+        ty = my * cpM - z1 * spM + markY
+        tz = my * spM + z1 * cpM
         k = 0.11
-        targetAlpha = 0.85 * sphereFade
+        targetAlpha = 0.9 * markFade
       } else if (isDust || (phase === 'scatter' && !this.replaying) || !place || !text) {
         // 흩어진 자리 — 먼지는 그 근처를 천천히 떠돈다.
         tx = this.scatter[o]
@@ -540,7 +573,8 @@ export class ParticleField {
 
       this.alpha[i] += (targetAlpha - this.alpha[i]) * Math.min(1, 0.08 * f)
       // 로고의 녹색 X에서 뽑힌 입자는 글자로 모였을 때만 녹색으로 물든다(흩어지면 다시 흰색).
-      const tinted = this.tint[i] === 1 && !isDust && usesText && phase !== 'scatter' ? 1 : 0
+      const tinted =
+        phase === 'mark' || (this.tint[i] === 1 && !isDust && usesText && phase !== 'scatter') ? 1 : 0
       this.mix[i] += (tinted - this.mix[i]) * Math.min(1, 0.06 * f)
 
       if (FOCAL + nz < 60) {
@@ -570,9 +604,8 @@ export class ParticleField {
       ctx.globalAlpha = Math.min(1, a)
       ctx.fillRect(this.screenX[i] - r / 2, this.screenY[i] - r / 2, r, r)
     }
-    ctx.fillStyle = ACCENT_PARTICLE
+    ctx.fillStyle = this.accentFill
     for (let i = 0; i < this.count; i++) {
-      if (this.tint[i] !== 1) continue
       const a = this.screenA[i] * this.mix[i]
       if (a < 0.02) continue
       const r = this.screenR[i]
@@ -610,4 +643,29 @@ export class ParticleField {
     }
     this.drawParticles()
   }
+}
+
+/**
+ * 로고 아래에 부제를 붙여 하나의 모양으로 합친다(폭 = 로고 폭 1 기준). 부제는 subWidth만큼
+ * 줄여 가운데 맞추고, 두 덩어리 전체의 세로 가운데가 0이 되게 위아래로 민다.
+ */
+function stackShapes(logo: TextShape, sub: TextShape, subWidth: number, gap: number): TextShape {
+  const logoN = logo.points.length / 3
+  const subN = sub.points.length / 3
+  const subHeight = sub.height * subWidth
+  const total = logo.height + gap + subHeight
+  const logoShift = logo.height / 2 - total / 2
+  const subShift = total / 2 - subHeight / 2
+  const points = new Float32Array((logoN + subN) * 3)
+  points.set(logo.points)
+  for (let i = 0; i < logoN; i++) points[i * 3 + 1] += logoShift
+  for (let i = 0; i < subN; i++) {
+    const o = (logoN + i) * 3
+    points[o] = sub.points[i * 3] * subWidth
+    points[o + 1] = sub.points[i * 3 + 1] * subWidth + subShift
+    points[o + 2] = sub.points[i * 3 + 2]
+  }
+  const accent = new Uint8Array(logoN + subN)
+  if (logo.accent) accent.set(logo.accent)
+  return { points, height: total, accent }
 }

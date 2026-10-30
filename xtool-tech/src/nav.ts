@@ -1,4 +1,5 @@
 import {
+  KeyRound,
   LayoutGrid,
   ListTodo,
   Rocket,
@@ -33,6 +34,9 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     label: '시스템',
-    items: [{ to: '/security', label: '보안 & 키', icon: Settings }],
+    items: [
+      { to: '/settings', label: '설정', icon: Settings },
+      { to: '/security', label: '보안 & 키', icon: KeyRound },
+    ],
   },
 ]

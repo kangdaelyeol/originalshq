@@ -78,11 +78,11 @@ export const TEAM: readonly Member[] = [
 export const memberById = (id: string): Member =>
   TEAM.find((m) => m.id === id) ?? TEAM[0]
 
-/** 사이드바 아래 프로필(로그인 사용자 자리) — 강조 녹색 위 짙은 글자(앱 아이콘과 같은 짝). */
+/** 사이드바 아래 프로필(로그인 사용자 자리) — 강조색 판 위 강조색 글자색(설정을 따라간다). */
 export const CURRENT_USER = {
   name: '테크 관리자',
   role: '슈퍼 관리자',
   initials: 'XT',
-  color: '#00c767',
-  ink: '#07160e',
+  color: 'var(--accent)',
+  ink: 'var(--accent-ink)',
 }

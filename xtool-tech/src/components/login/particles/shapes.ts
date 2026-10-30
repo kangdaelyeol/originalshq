@@ -1,17 +1,31 @@
+import { X_BOX, X_POLYGONS } from '../../brand/x-shape'
+
 // 입자가 모일 모양 — 모두 "모델 좌표"(가운데 0, 글자 폭 = 1)로 돌려준다. 실제 크기·위치·
 // 회전은 ParticleField가 매 프레임 입힌다.
 
-/** 단위 구 표면에 고르게 퍼진 점(피보나치 나선). */
-export function fibonacciSphere(count: number): Float32Array {
+function insidePolygon(x: number, y: number, poly: readonly (readonly [number, number])[]): boolean {
+  let inside = false
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i]
+    const [xj, yj] = poly[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+
+/** xTool의 X(앱 아이콘과 같은 두 덩어리)를 면으로 채운 점 — 상자 안 아무 점이나 찍어 X 안에
+ * 든 것만 남긴다. z에 두께를 줘서 돌리면 X가 입체로 보인다. */
+export function sampleXMark(count: number, depth: number): Float32Array {
   const out = new Float32Array(count * 3)
-  const golden = Math.PI * (3 - Math.sqrt(5))
-  for (let i = 0; i < count; i++) {
-    const y = 1 - (i / Math.max(1, count - 1)) * 2
-    const r = Math.sqrt(1 - y * y)
-    const theta = golden * i
-    out[i * 3] = Math.cos(theta) * r
-    out[i * 3 + 1] = y
-    out[i * 3 + 2] = Math.sin(theta) * r
+  const { width, height } = X_BOX
+  for (let i = 0; i < count; ) {
+    const x = Math.random() * width
+    const y = Math.random() * height
+    if (!X_POLYGONS.some((poly) => insidePolygon(x, y, poly))) continue
+    out[i * 3] = (x - width / 2) / width
+    out[i * 3 + 1] = (y - height / 2) / width
+    out[i * 3 + 2] = (Math.random() - 0.5) * depth
+    i++
   }
   return out
 }
@@ -84,23 +98,34 @@ export async function sampleImage(url: string, count: number, depth: number): Pr
 /**
  * 글자를 화면 밖 캔버스에 그려 칠해진 픽셀 위치를 뽑는다 — 글자 "속"까지 채운 점(샘플의
  * CODEXR처럼 윤곽선이 아니라 면). z에 두께를 줘서, 비스듬히 돌리면 글자가 입체로 보인다.
+ * tracking(글자 크기 대비 자간)을 주면 한 글자씩 띄워 그린다 — canvas letterSpacing은
+ * 아직 일부 브라우저에서 안 돼서 직접 계산한다.
  */
-export function sampleText(text: string, font: string, count: number, depth: number): TextShape {
+export function sampleText(text: string, font: string, count: number, depth: number, tracking = 0): TextShape {
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d', { willReadFrequently: true })
   const out = new Float32Array(count * 3)
   if (!ctx) return { points: out, height: 0.35 }
 
+  const fontSize = parseFloat(font.match(/(\d+)px/)?.[1] ?? '200')
+  const chars = [...text]
+  const spacing = fontSize * tracking
   ctx.font = font
-  const width = Math.ceil(ctx.measureText(text).width) + 60
-  const height = Math.ceil(parseFloat(font.match(/(\d+)px/)?.[1] ?? '200') * 1.5)
+  const charWidths = chars.map((ch) => ctx.measureText(ch).width)
+  const inkWidth = charWidths.reduce((sum, w) => sum + w, 0) + spacing * (chars.length - 1)
+  const width = Math.ceil(inkWidth) + 60
+  const height = Math.ceil(fontSize * 1.5)
   canvas.width = width
   canvas.height = height
   ctx.font = font // 캔버스 크기를 바꾸면 상태가 초기화된다
-  ctx.textAlign = 'center'
+  ctx.textAlign = 'left'
   ctx.textBaseline = 'middle'
   ctx.fillStyle = '#fff'
-  ctx.fillText(text, width / 2, height / 2)
+  let x = (width - inkWidth) / 2
+  chars.forEach((ch, i) => {
+    ctx.fillText(ch, x, height / 2)
+    x += charWidths[i] + spacing
+  })
 
   const data = ctx.getImageData(0, 0, width, height).data
   const points: number[] = []

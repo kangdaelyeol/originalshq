@@ -53,38 +53,8 @@
     opacity: 0.78;
   }
 
-  .login__brand,
   .login__footer {
     opacity: 0;
-  }
-}
-
-.login__brand {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 26px 32px;
-  transition: opacity 0.8s ease;
-}
-
-.login__brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-
-  strong {
-    font-size: 15px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-
-  span {
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    color: var(--text-4);
   }
 }
 
@@ -97,15 +67,17 @@
   align-items: center;
   justify-content: center;
   gap: 14px;
-  padding: 0 16px 40px;
+  // 위쪽 머리(로고 줄)를 없앴으니 짧은 화면에서도 위 끝에 붙지 않게 여백을 둔다.
+  padding: 32px 16px 40px;
   perspective: 1400px;
 }
 
-// 입자 로고 자리 — 투명한 버튼(로고는 뒤 캔버스). 워드마크가 가로로 길어서(약 8:1) 넓고 낮게.
+// 입자 로고 자리 — 투명한 버튼(로고·부제는 뒤 캔버스). 워드마크가 가로로 길어서(약 8:1)
+// 넓게, 높이는 아래 "TECH TEAM" 부제까지 들어가게.
 .login__hero {
   flex: none;
   width: min(380px, 80vw);
-  height: 72px;
+  height: 96px;
   padding: 0;
   border: 0;
   border-radius: 16px;
@@ -185,9 +157,11 @@
       rgba(255, 255, 255, 0.015) 56%,
       rgba(255, 255, 255, 0.09) 100%
     ),
-    rgba(14, 15, 19, 0.22);
-  backdrop-filter: blur(26px) saturate(185%) brightness(1.1);
-  -webkit-backdrop-filter: blur(26px) saturate(185%) brightness(1.1);
+    rgba(14, 15, 19, calc(var(--glass-opacity) * 0.48));
+  // 설정의 유리 값에 비례 — 기본값(22px·140%·0.46)일 때 26px·185%·0.22.
+  backdrop-filter: blur(calc(var(--glass-blur) * 1.18)) saturate(calc(var(--glass-saturate) * 1.32)) brightness(1.1);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 1.18)) saturate(calc(var(--glass-saturate) * 1.32))
+    brightness(1.1);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.22),
     inset 0 -50px 70px -50px rgba(var(--accent-rgb), 0.28),
@@ -251,7 +225,7 @@
 }
 
 .login-card__beam {
-  stroke: #c6ffe0;
+  stroke: color-mix(in srgb, var(--accent) 22%, white);
   stroke-width: 1.6;
   stroke-linecap: round;
   stroke-dasharray: 70 930;
@@ -308,8 +282,8 @@
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.04) 62%);
-  backdrop-filter: blur(16px) saturate(170%);
-  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(calc(var(--glass-blur) * 0.72)) saturate(calc(var(--glass-saturate) * 1.2));
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) * 0.72)) saturate(calc(var(--glass-saturate) * 1.2));
 }
 
 // 카드가 드러날 때(입자 인트로가 끝난 순간) 조각·외곽선이 뒤따라 나타난다.
@@ -329,7 +303,7 @@
   position: absolute;
   inset: 0;
   opacity: 0;
-  background: linear-gradient(135deg, #b4ffd6 0%, var(--accent-hi) 38%, var(--accent-lo) 100%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, white) 0%, var(--accent-hi) 38%, var(--accent-lo) 100%);
 }
 
 // 로그인 실패 — 강조색 위에 덮이는 빨강(주황과 확실히 구분되게 채도 높은 빨강으로).
@@ -361,7 +335,7 @@
   height: 132px;
   margin: -66px 0 0 -66px;
   border-radius: 50%;
-  border: 1.5px solid rgba(120, 245, 180, 0.9);
+  border: 1.5px solid color-mix(in srgb, var(--accent-hi) 90%, transparent);
   box-shadow:
     0 0 26px rgba(var(--accent-rgb), 0.55),
     inset 0 0 26px rgba(var(--accent-rgb), 0.35);
@@ -416,17 +390,11 @@
 
   em {
     font-style: normal;
-    background: linear-gradient(95deg, #b4ffd6 0%, var(--accent-hi) 55%, var(--accent) 100%);
+    background: linear-gradient(95deg, color-mix(in srgb, var(--accent) 30%, white) 0%, var(--accent-hi) 55%, var(--accent) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-}
-
-.login-content__subtitle {
-  margin-top: 6px;
-  font-size: 13px;
-  color: var(--text-3);
 }
 
 .login-note {
@@ -786,10 +754,6 @@
 }
 
 @media (max-width: 480px) {
-  .login__brand {
-    padding: 20px;
-  }
-
   .login-content {
     padding: 44px 22px 26px;
   }

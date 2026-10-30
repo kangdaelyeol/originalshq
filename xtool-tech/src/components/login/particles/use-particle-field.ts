@@ -6,6 +6,8 @@ interface UseParticleFieldOptions {
   slotRef: RefObject<HTMLElement | null>
   logoUrl: string
   fallbackText: string
+  subtitle?: string
+  accentColor: string
   reducedMotion: boolean
   onSettle: () => void
 }
@@ -16,6 +18,8 @@ export function useParticleField({
   slotRef,
   logoUrl,
   fallbackText,
+  subtitle,
+  accentColor,
   reducedMotion,
   onSettle,
 }: UseParticleFieldOptions) {
@@ -35,6 +39,8 @@ export function useParticleField({
       slot,
       logoUrl,
       fallbackText,
+      subtitle,
+      accentColor,
       reducedMotion,
       onSettle: () => onSettleRef.current(),
     })
@@ -44,7 +50,7 @@ export function useParticleField({
       engine.destroy()
       engineRef.current = null
     }
-  }, [canvasRef, slotRef, logoUrl, fallbackText, reducedMotion])
+  }, [canvasRef, slotRef, logoUrl, fallbackText, subtitle, accentColor, reducedMotion])
 
   const skip = useCallback(() => engineRef.current?.skip(), [])
   const replay = useCallback(() => engineRef.current?.replay(), [])

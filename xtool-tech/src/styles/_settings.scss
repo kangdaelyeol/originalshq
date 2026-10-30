@@ -1,0 +1,341 @@
+// ── 배경 고르기 ──────────────────────────────────────────────────────────────
+.bg-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.bg-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  &.is-selected {
+    border-color: rgba(var(--accent-rgb), 0.7);
+    background: rgba(var(--accent-rgb), 0.06);
+    box-shadow:
+      0 0 0 3px rgba(var(--accent-rgb), 0.16),
+      0 12px 30px -16px rgba(var(--accent-rgb), 0.7);
+  }
+}
+
+.bg-tile__art {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: 11px;
+  isolation: isolate;
+}
+
+.bg-tile__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.6);
+}
+
+.bg-tile__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px 4px;
+}
+
+.bg-tile__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.bg-tile__kind {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-3);
+}
+
+.bg-tile__desc {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+// ── 강조색 ──────────────────────────────────────────────────────────────────
+.accent-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+
+  &.is-locked .swatches {
+    opacity: 0.4;
+  }
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.swatch {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--swatch);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+    0 4px 12px -4px var(--swatch, rgba(0, 0, 0, 0.6));
+  cursor: pointer;
+  transition: transform 0.15s;
+
+  &:hover:not(:disabled):not(:has(input:disabled)) {
+    transform: scale(1.08);
+  }
+
+  &:disabled,
+  &:has(input:disabled) {
+    cursor: not-allowed;
+  }
+
+  // 고른 색 — 카드 바탕색 틈을 두고 바깥 고리.
+  &.is-selected {
+    box-shadow:
+      0 0 0 2px #121316,
+      0 0 0 4px var(--swatch, var(--accent));
+  }
+}
+
+// 직접 고르기 — 아직 안 골랐으면 무지개 원, 골랐으면 그 색.
+.swatch--custom {
+  overflow: hidden;
+  background: var(
+    --swatch,
+    conic-gradient(from 0deg, #ff5a5a, #ffb84d, #e8ff4d, #4dff88, #4dd2ff, #6b5cff, #ff4dd2, #ff5a5a)
+  );
+
+  input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: inherit;
+  }
+
+  svg {
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.7));
+  }
+}
+
+.accent-preview {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.accent-preview__chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--accent-rgb), 0.32);
+  background: rgba(var(--accent-rgb), 0.12);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--accent-hi);
+}
+
+.accent-preview__hex {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.accent-picker__note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+
+  svg {
+    flex: none;
+    margin-top: 2px;
+    color: var(--info);
+  }
+}
+
+// ── 유리 효과 ────────────────────────────────────────────────────────────────
+.glass-settings {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.glass-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.glass-preset {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: inherit;
+  text-align: left;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.16);
+  }
+
+  &.is-selected {
+    border-color: rgba(var(--accent-rgb), 0.7);
+    background: rgba(var(--accent-rgb), 0.06);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.16);
+  }
+}
+
+// 강조색·흰색 줄무늬 — 위에 얹은 유리 칩의 흐림·농도 차이가 잘 보이게 대비를 세게.
+.glass-preset__sample {
+  position: relative;
+  height: 58px;
+  overflow: hidden;
+  border-radius: 10px;
+  isolation: isolate;
+  background: repeating-linear-gradient(
+    115deg,
+    rgba(var(--accent-rgb), 0.95) 0 6px,
+    rgba(255, 255, 255, 0.85) 6px 9px,
+    #14161b 9px 18px
+  );
+}
+
+.glass-preset__chip {
+  position: absolute;
+  inset: 11px 14px;
+  border-radius: 9px;
+}
+
+.glass-preset__label {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0 2px 2px;
+
+  strong {
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  span {
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--text-3);
+  }
+}
+
+.glass-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.glass-preview {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 16px;
+  isolation: isolate;
+}
+
+.glass-preview__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  width: min(280px, 100%);
+  padding: 20px;
+  border-radius: 16px;
+
+  strong {
+    font-size: 15px;
+  }
+
+  p {
+    font-size: 12.5px;
+    color: var(--text-2);
+  }
+}
+
+@media (max-width: 1080px) {
+  .bg-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .glass-settings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .bg-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .glass-presets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

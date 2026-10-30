@@ -12,7 +12,7 @@
   --text-4: rgba(255, 255, 255, 0.45);
   --line: rgba(255, 255, 255, 0.065);
 
-  // 강조색 — xTool 앱 아이콘의 녹색(assets/xtool-start-icon.png, #00C767).
+  // 강조색 — xTool 앱 아이콘의 녹색(assets/symbols/xtool-start-icon.png, #00C767).
   // 로고·주요 버튼·활성 메뉴 아이콘. 반투명이 필요하면 rgba(var(--accent-rgb), 0.x).
   --accent: #00c767;
   --accent-hi: #2fe08a;
@@ -26,6 +26,12 @@
   --warn: #fbbf24;
   --crit: #f87171;
   --info: #60a5fa;
+
+  // 유리 효과 — 설정(유리 효과)이 덮어쓴다. 기본값은 settings/glass.ts의 GLASS_DEFAULT와 같다.
+  --glass-blur: 22px;
+  --glass-opacity: 0.46;
+  --glass-saturate: 140%;
+  --glass-rim: 1;
 
   --radius-card: 18px;
   --radius-control: 10px;

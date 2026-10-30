@@ -3,8 +3,7 @@ import { useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import xtoolLogoUrl from '../../assets/xtool-logo-text.png'
-import { BrandMark } from '../components/brand/brand-mark'
+import xtoolLogoUrl from '../../assets/symbols/xtool-logo-text.png'
 import { AppBackground } from '../components/layout/app-background'
 import { GithubMark, GoogleMark } from '../components/login/brand-marks'
 import { LoginCard } from '../components/login/login-card'
@@ -14,6 +13,7 @@ import { useLoginChoreography } from '../components/login/use-login-choreography
 import { usePointerTilt } from '../components/login/use-pointer-tilt'
 import { LOGIN_FAILED_MESSAGE, verifyLogin } from '../data/auth'
 import { cx } from '../lib/cx'
+import { useSettings } from '../settings/settings'
 
 type Mode = 'login' | 'request'
 type Note = { tone: 'good' | 'info'; text: string }
@@ -34,6 +34,7 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
 export function LoginPage() {
   const navigate = useNavigate()
   const reduceMotion = useReducedMotion()
+  const { accentInUse } = useSettings()
   const tilt = usePointerTilt()
   const choreo = useLoginChoreography()
   const [mode, setMode] = useState<Mode>('login')
@@ -42,8 +43,8 @@ export function LoginPage() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [mismatch, setMismatch] = useState(false)
 
-  // 입자 인트로 — xTool 워드마크(assets/xtool-logo-text.png)가 카드 위 자리(hero)로 옮겨 가기
-  // 시작하면 카드를 보여 준다.
+  // 입자 인트로 — xTool 워드마크(assets/symbols/xtool-logo-text.png)와 그 아래 부제가 카드 위
+  // 자리(hero)로 옮겨 가기 시작하면 카드를 보여 준다.
   const [introDone, setIntroDone] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const heroRef = useRef<HTMLButtonElement>(null)
@@ -52,6 +53,8 @@ export function LoginPage() {
     slotRef: heroRef,
     logoUrl: xtoolLogoUrl,
     fallbackText: 'xTool',
+    subtitle: 'TECH TEAM',
+    accentColor: accentInUse,
     reducedMotion: Boolean(reduceMotion),
     onSettle: () => setIntroDone(true),
   })
@@ -151,14 +154,6 @@ export function LoginPage() {
       <div className="login__veil" aria-hidden />
       <canvas ref={canvasRef} className="login__particles" aria-hidden />
 
-      <header className="login__brand">
-        <BrandMark />
-        <div className="login__brand-text">
-          <strong>xtool tech</strong>
-          <span>TECH BOARD</span>
-        </div>
-      </header>
-
       <main className="login__stage">
         {/* 입자 'xTool'이 자리 잡는 곳 — 글자는 뒤 캔버스에 그려지고, 이 버튼은 위치와 클릭만 맡는다. */}
         <button
@@ -169,7 +164,7 @@ export function LoginPage() {
           disabled={!introDone}
           title="눌러서 다시 모으기"
         >
-          <span className="sr-only">xTool — 눌러서 입자를 다시 모으기</span>
+          <span className="sr-only">xTool TECH TEAM — 눌러서 입자를 다시 모으기</span>
         </button>
 
         <LoginCard
@@ -184,10 +179,7 @@ export function LoginPage() {
         >
           {mode === 'login' ? (
             <>
-              <h1 className="login-content__title">
-                다시 오신 걸 <em>환영해요</em>
-              </h1>
-              <p className="login-content__subtitle">사내 계정으로 로그인하고 기술팀 보드를 열어요</p>
+              <h1 className="login-content__title">환영합니다</h1>
 
               {note && (
                 <p className={cx('login-note', `login-note--${note.tone}`)} role="status">
@@ -260,7 +252,6 @@ export function LoginPage() {
               <h1 className="login-content__title">
                 보드 <em>접근 요청</em>
               </h1>
-              <p className="login-content__subtitle">승인되면 사내 메일로 알려드려요</p>
 
               <form className="login-form" onSubmit={onRequest}>
                 <LoginField label="이름" icon={User} name="name" placeholder="홍길동" autoComplete="name" required />

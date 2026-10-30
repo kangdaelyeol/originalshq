@@ -1,12 +1,13 @@
-/** 화면 뒤에 고정된 배경 — 검은 파편(public/bg-shards.svg) 위에 강조색 빛 번짐, 대각선
- * 빛줄기, 가장자리 어둡게를 겹친다. 유리 카드가 이걸 흐려서 비춰 보이게 하는 게 핵심. */
+import { useSettings } from '../../settings/settings'
+import { BackgroundArt } from '../backgrounds/background-art'
+
+/** 화면 뒤에 고정된 배경 — 설정에서 고른 배경을, 지금 쓰는 강조색으로 칠한다.
+ * 유리 카드가 이걸 흐려서 비추는 게 핵심이라, 여기 색·빛이 곧 "유리 느낌"의 재료다. */
 export function AppBackground() {
+  const { background, accentInUse } = useSettings()
   return (
     <div className="app-bg" aria-hidden>
-      <div className="app-bg__shards" />
-      <div className="app-bg__glow" />
-      <div className="app-bg__streaks" />
-      <div className="app-bg__vignette" />
+      <BackgroundArt kind={background} accent={accentInUse} />
     </div>
   )
 }

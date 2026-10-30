@@ -35,7 +35,7 @@
   // 글이 많은 판이라 대시보드 카드보다 조금 진하게 — 뒤 배경에 글자가 묻히지 않게.
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 45%),
-    rgba(18, 19, 23, 0.74);
+    rgba(18, 19, 23, min(0.95, calc(var(--glass-opacity) + 0.28)));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 30px 60px -20px rgba(0, 0, 0, 0.85);
