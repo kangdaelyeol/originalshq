@@ -88,8 +88,11 @@ import {
   AdSettingsError,
   backfillAdEntities as backfillAdEntitiesFromDb,
   deleteCreativeSet,
+  deleteTest,
   deleteVersion,
+  getAdEntityDaily as readAdEntityDaily,
   getAdSettingsSnapshot,
+  saveTest,
   saveCreativeSet,
   saveGoal,
   saveVersion,
@@ -2137,6 +2140,21 @@ export const saveAdSettings = onRequest((request, response) => {
           response.status(200).send({ set })
           return
         }
+        case 'saveTest': {
+          const test = await saveTest(req.test)
+          logger.info('매체별 테스트 저장:', test.id)
+          response.status(200).send({ test })
+          return
+        }
+        case 'deleteTest': {
+          if (!(await deleteTest(req.entityKey))) {
+            sendError(response, 404, '테스트를 찾을 수 없습니다')
+            return
+          }
+          logger.info('매체별 테스트 삭제:', req.entityKey)
+          response.status(200).send({ entityKey: req.entityKey, deleted: true })
+          return
+        }
         case 'deleteCreativeSet': {
           if (!(await deleteCreativeSet(req.id))) {
             sendError(response, 404, '소재 셋을 찾을 수 없습니다')
@@ -2156,6 +2174,39 @@ export const saveAdSettings = onRequest((request, response) => {
         response,
         500,
         err instanceof Error ? err.message : '광고 설정 저장 실패',
+      )
+    }
+  })
+})
+
+/** 캠페인·광고셋 하나의 일별 성과(GET ?entityKey=채널:단위:ID) — 매체별
+ * 테스트가 구간마다 지표를 나눠 본다. 데이터가 있는 날 전부(날짜 순). */
+export const getAdEntityDaily = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'GET') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    const entityKey = String(request.query.entityKey ?? '')
+    const match = /^(meta|google|naver|openai):(campaign|adset):([^/@]+)$/.exec(
+      entityKey,
+    )
+    if (!match) {
+      sendError(response, 400, 'entityKey는 "채널:단위:ID" 모양이어야 합니다')
+      return
+    }
+    try {
+      const byDate = await readAdEntityDaily(
+        match[1] as 'meta' | 'google' | 'naver' | 'openai',
+        match[2] as 'campaign' | 'adset',
+        match[3],
+      )
+      response.status(200).send({ entityKey, byDate })
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '일별 성과 조회 실패',
       )
     }
   })

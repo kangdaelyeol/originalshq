@@ -651,47 +651,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
   }
 
-  // "매체별 테스트" 탭 — 구분(캠페인/애드셋) 토글 + 엔티티 선택 한 줄.
-  &__period-test-controls {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 8px;
-  }
-
-  // 구간(시작일~종료일) 행 목록 — 한 줄에 하나씩.
-  &__period-test-rows {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin: 8px 0 12px;
-  }
-
-  &__period-test-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    color: $color-muted;
-    font-size: 13px;
-
-    input[type='date'] {
-      appearance: none;
-      border: 1px solid $color-border;
-      border-radius: $radius;
-      background: $color-canvas-subtle;
-      color: $color-text;
-      padding: 6px 8px;
-      font-size: 13px;
-      font-family: inherit;
-
-      &:focus {
-        outline: none;
-        border-color: $color-accent;
-      }
-    }
-  }
-
   &__compare-toggle {
     appearance: none;
     border: 1px solid $color-border;

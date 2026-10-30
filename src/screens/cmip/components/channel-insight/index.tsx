@@ -20,7 +20,6 @@ import { channelsOf } from '../channels'
 import { DateRangePicker } from '../date-range-picker'
 import { PeriodUnitPicker } from '../period-unit-picker'
 import { ChannelInsightChartModal } from '../channel-insight-chart-modal'
-import { PeriodTestPanel } from '../period-test-panel'
 import { RoasPanel } from '../roas-panel'
 import { AdPerformancePanel } from '../ad-performance'
 import { CampaignHighlightCards } from '../campaign-highlights'
@@ -343,19 +342,6 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
                       }
                     />
                   </>
-                )}
-              </TabContent>
-            )}
-            {resultTab === 'periodTest' && (
-              <TabContent>
-                {loading ? (
-                  <TabLoading />
-                ) : (
-                  <PeriodTestPanel
-                    combinedInsight={combinedInsight}
-                    dateStart={dateStart}
-                    dateEnd={dateEnd}
-                  />
                 )}
               </TabContent>
             )}

@@ -10,6 +10,9 @@ import type {
   AdSettingVersion,
   AdSettingVersionDoc,
   AdSettingVersionInput,
+  AdTest,
+  AdTestDoc,
+  AdTestInput,
   ConversionGoal,
   ConversionGoalDoc,
   ConversionGoalInput,
@@ -24,6 +27,8 @@ const goalsCol = (): CollectionReference<DocumentData> =>
   db.collection('adConversionGoals')
 const creativeSetsCol = (): CollectionReference<DocumentData> =>
   db.collection('adCreativeSets')
+const testsCol = (): CollectionReference<DocumentData> =>
+  db.collection('adTests')
 
 /** 설정 한 장의 문서 ID — 같은 대상·같은 시작일은 한 장. */
 export const versionId = (entityKey: string, effectiveFrom: string) =>
@@ -60,12 +65,14 @@ async function listGoals(): Promise<ConversionGoal[]> {
 
 /** 화면이 한 번에 받는 전부 — 목록·목표·소재 셋·설정 기록(수백 건 수준). */
 export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
-  const [entities, goals, creativeSetsSnap, versionsSnap] = await Promise.all([
-    listAdEntities(),
-    listGoals(),
-    creativeSetsCol().get(),
-    versionsCol().get(),
-  ])
+  const [entities, goals, creativeSetsSnap, versionsSnap, testsSnap] =
+    await Promise.all([
+      listAdEntities(),
+      listGoals(),
+      creativeSetsCol().get(),
+      versionsCol().get(),
+      testsCol().get(),
+    ])
   return {
     entities,
     goals,
@@ -80,6 +87,9 @@ export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
           a.entityKey.localeCompare(b.entityKey) ||
           a.effectiveFrom.localeCompare(b.effectiveFrom),
       ),
+    tests: testsSnap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as AdTestDoc) }))
+      .sort((a, b) => b.updatedAt - a.updatedAt),
   }
 }
 
@@ -196,6 +206,44 @@ export async function deleteCreativeSet(id: string): Promise<boolean> {
     )
   }
   const ref = creativeSetsCol().doc(id)
+  const snap = await ref.get()
+  if (!snap.exists) return false
+  await ref.delete()
+  return true
+}
+
+/** 테스트 저장 — 대상마다 하나(문서 ID = 대상 키)라 같은 대상이면 고친다. 대상은
+ * 목록(adEntities)에 있어야 한다. 구간은 시작일 순으로 정리해 둔다. */
+export async function saveTest(input: AdTestInput): Promise<AdTest> {
+  const entitySnap = await adEntitiesCol().doc(input.entityKey).get()
+  if (!entitySnap.exists) {
+    throw new AdSettingsError(`목록에 없는 대상입니다: ${input.entityKey}`, 404)
+  }
+  const entity = entitySnap.data() as AdEntityDoc
+  const ref = testsCol().doc(input.entityKey)
+  const now = Date.now()
+  const doc = await db.runTransaction(async (tx) => {
+    const prev = await tx.get(ref)
+    const next: AdTestDoc = {
+      ...input,
+      segments: [...input.segments].sort(
+        (a, b) => a.start.localeCompare(b.start) || a.end.localeCompare(b.end),
+      ),
+      channel: entity.channel,
+      level: entity.level,
+      platformId: entity.platformId,
+      entityName: entity.name,
+      createdAt: prev.exists ? (prev.data() as AdTestDoc).createdAt : now,
+      updatedAt: now,
+    }
+    tx.set(ref, next)
+    return next
+  })
+  return { id: input.entityKey, ...doc }
+}
+
+export async function deleteTest(entityKey: string): Promise<boolean> {
+  const ref = testsCol().doc(entityKey)
   const snap = await ref.get()
   if (!snap.exists) return false
   await ref.delete()

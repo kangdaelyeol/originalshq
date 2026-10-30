@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { startGlassTransition, useGlassTheme } from '@/components/glass'
 import { ChannelInsight, Header } from './components'
 import { AdSettingsPanel } from './components/ad-settings'
+import { AdTestPanel } from './components/ad-test'
 import { RESULT_TAB_LABEL } from './components/channel-insight/constants'
 import type { ResultTab } from './view-model/use-channel-insight-page-view-model'
 import './styles/cmip.scss'
@@ -22,6 +23,10 @@ const SCREEN_TAB_LABEL: Record<ScreenTab, string> = {
   adSettings: '광고 설정',
 }
 
+// 위쪽 조회(기간·인사이트)와 상관없이 따로 받는 탭 — 이 탭을 보는 동안
+// 인사이트는 숨겨 두고(조회 결과는 그대로) 이 탭만 그린다.
+const STANDALONE: ReadonlySet<ScreenTab> = new Set(['periodTest', 'adSettings'])
+
 export default function CmipScreen() {
   const [tab, setTab] = useState<ScreenTab>('total')
   // 광고 설정을 보는 동안에도 인사이트는 마지막 보기 그대로 붙여 둔다(숨김) —
@@ -38,16 +43,17 @@ export default function CmipScreen() {
         onSelectTab={(next) =>
           startGlassTransition(() => {
             setTab(next)
-            if (next !== 'adSettings') setResultTab(next)
+            if (!STANDALONE.has(next)) setResultTab(next as ResultTab)
           })
         }
         theme={theme}
         onSelectTheme={setTheme}
       />
       <main className="cmip glass_page">
-        <div hidden={tab === 'adSettings'}>
+        <div hidden={STANDALONE.has(tab)}>
           <ChannelInsight resultTab={resultTab} />
         </div>
+        {tab === 'periodTest' && <AdTestPanel />}
         {tab === 'adSettings' && <AdSettingsPanel />}
       </main>
     </div>

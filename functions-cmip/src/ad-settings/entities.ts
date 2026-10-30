@@ -235,47 +235,54 @@ export async function backfillAdEntities(): Promise<{
   recorded: number
   scanned: Record<string, number>
 }> {
-  const [meta, googleCampaigns, googleAdGroups, naver, openai] = await Promise.all([
-    db
-      .collection('metaInsightDaily')
-      .select(
-        'campaign_id',
-        'campaign_name',
-        'adset_id',
-        'adset_name',
-        'date_start',
-        'results',
-      )
-      .get(),
-    db
-      .collection('googleCampaignInsightDaily')
-      .select('campaignId', 'campaignName', 'date')
-      .get(),
-    db
-      .collection('googleAdGroupInsightDaily')
-      .select('campaignId', 'campaignName', 'adGroupId', 'adGroupName', 'date')
-      .get(),
-    db
-      .collection('naverInsightDaily')
-      .select(
-        'campaign_id',
-        'campaign_name',
-        'adgroup_id',
-        'adgroup_name',
-        'date_start',
-      )
-      .get(),
-    db
-      .collection('openaiInsightDaily')
-      .select(
-        'campaign_id',
-        'campaign_name',
-        'adgroup_id',
-        'adgroup_name',
-        'date_start',
-      )
-      .get(),
-  ])
+  const [meta, googleCampaigns, googleAdGroups, naver, openai] =
+    await Promise.all([
+      db
+        .collection('metaInsightDaily')
+        .select(
+          'campaign_id',
+          'campaign_name',
+          'adset_id',
+          'adset_name',
+          'date_start',
+          'results',
+        )
+        .get(),
+      db
+        .collection('googleCampaignInsightDaily')
+        .select('campaignId', 'campaignName', 'date')
+        .get(),
+      db
+        .collection('googleAdGroupInsightDaily')
+        .select(
+          'campaignId',
+          'campaignName',
+          'adGroupId',
+          'adGroupName',
+          'date',
+        )
+        .get(),
+      db
+        .collection('naverInsightDaily')
+        .select(
+          'campaign_id',
+          'campaign_name',
+          'adgroup_id',
+          'adgroup_name',
+          'date_start',
+        )
+        .get(),
+      db
+        .collection('openaiInsightDaily')
+        .select(
+          'campaign_id',
+          'campaign_name',
+          'adgroup_id',
+          'adgroup_name',
+          'date_start',
+        )
+        .get(),
+    ])
   const sightings = [
     ...sightingsFromMeta(meta.docs.map((d) => d.data() as DataSetInsight)),
     ...sightingsFromGoogleCampaigns(
@@ -285,7 +292,9 @@ export async function backfillAdEntities(): Promise<{
       googleAdGroups.docs.map((d) => d.data() as GoogleAdGroupInsightRow),
     ),
     ...sightingsFromNaver(naver.docs.map((d) => d.data() as NaverInsightRow)),
-    ...sightingsFromOpenai(openai.docs.map((d) => d.data() as OpenaiInsightRow)),
+    ...sightingsFromOpenai(
+      openai.docs.map((d) => d.data() as OpenaiInsightRow),
+    ),
   ]
   const { recorded } = await recordAdEntities(sightings)
   return {

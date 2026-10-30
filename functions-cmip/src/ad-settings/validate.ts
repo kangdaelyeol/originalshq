@@ -1,5 +1,7 @@
 import type {
   AdBudget,
+  AdTestInput,
+  AdTestSegment,
   AdSettingVersionInput,
   ConversionGoalInput,
   Creative,
@@ -170,6 +172,50 @@ const docId = (v: unknown, what: string): string => {
   return v
 }
 
+const MAX_SEGMENTS = 12
+
+const segment = (v: unknown, i: number): AdTestSegment => {
+  const x = record(v, `segments[${i}]`)
+  const start = isoDate(x.start, `segments[${i}].start`)
+  const end = isoDate(x.end, `segments[${i}].end`)
+  if (end < start) {
+    throw new Invalid(`segments[${i}]의 끝 날짜가 시작 날짜보다 앞입니다`)
+  }
+  return {
+    id: requiredText(x.id, `segments[${i}].id`, 40),
+    label: requiredText(x.label, `segments[${i}].label`, 30),
+    start,
+    end,
+    note: text(x.note, `segments[${i}].note`, 300),
+  }
+}
+
+const test = (v: unknown): AdTestInput => {
+  const x = record(v, 'test')
+  if (typeof x.entityKey !== 'string' || !ENTITY_KEY.test(x.entityKey)) {
+    throw new Invalid('entityKey는 "채널:단위:ID" 모양이어야 합니다')
+  }
+  const segments = x.segments ?? []
+  if (!Array.isArray(segments) || segments.length > MAX_SEGMENTS) {
+    throw new Invalid(`segments는 ${MAX_SEGMENTS}개 이하의 배열이어야 합니다`)
+  }
+  const primaryKpi = x.primaryKpi ?? null
+  if (primaryKpi !== null && !KPIS.includes(primaryKpi as GoalKpi)) {
+    throw new Invalid(`primaryKpi는 ${KPIS.join('·')} 중 하나입니다`)
+  }
+  if (x.status !== 'running' && x.status !== 'done') {
+    throw new Invalid('status는 running·done 중 하나입니다')
+  }
+  return {
+    entityKey: x.entityKey,
+    title: requiredText(x.title, 'title', 60),
+    hypothesis: text(x.hypothesis, 'hypothesis', 1000),
+    primaryKpi: primaryKpi as GoalKpi | null,
+    status: x.status,
+    segments: segments.map(segment),
+  }
+}
+
 /** saveAdSettings 요청 본문 — { action, ... }. */
 export function validateSaveAdSettings(
   body: unknown,
@@ -207,6 +253,17 @@ export function validateSaveAdSettings(
             set: creativeSet(x.set),
           },
         }
+      case 'saveTest':
+        return { ok: true, data: { action: 'saveTest', test: test(x.test) } }
+      case 'deleteTest': {
+        if (typeof x.entityKey !== 'string' || !ENTITY_KEY.test(x.entityKey)) {
+          throw new Invalid('entityKey는 "채널:단위:ID" 모양이어야 합니다')
+        }
+        return {
+          ok: true,
+          data: { action: 'deleteTest', entityKey: x.entityKey },
+        }
+      }
       case 'deleteCreativeSet':
         return {
           ok: true,
@@ -214,7 +271,7 @@ export function validateSaveAdSettings(
         }
       default:
         throw new Invalid(
-          'action은 saveVersion·deleteVersion·saveGoal·saveCreativeSet·deleteCreativeSet 중 하나입니다',
+          'action은 saveVersion·deleteVersion·saveGoal·saveCreativeSet·deleteCreativeSet·saveTest·deleteTest 중 하나입니다',
         )
     }
   } catch (error) {

@@ -112,7 +112,46 @@ export interface AdSettingsSnapshot {
   creativeSets: CreativeSet[]
   /** 대상·시작일 순. */
   versions: AdSettingVersion[]
+  /** 매체별 테스트 — 최근 저장 순. */
+  tests: AdTest[]
 }
+
+/** 매체별 테스트의 구간 하나. */
+export interface AdTestSegment {
+  id: string
+  label: string
+  start: ISODate
+  end: ISODate
+  /** 이 구간에 무엇이 달랐는지. */
+  note: string
+}
+
+export type AdTestStatus = 'running' | 'done'
+
+/** 매체별 테스트 — 캠페인·광고셋마다 하나(id = 대상 키), 모두가 같이 본다. */
+export interface AdTest {
+  id: string
+  entityKey: AdEntityKey
+  channel: AdChannel
+  level: AdLevel
+  platformId: string
+  /** 저장할 때의 대상 이름. */
+  entityName: string
+  title: string
+  hypothesis: string
+  /** null이면 대상 전환 목표의 판단 지표. */
+  primaryKpi: GoalKpi | null
+  status: AdTestStatus
+  /** 시작일 순. */
+  segments: AdTestSegment[]
+  createdAt: number
+  updatedAt: number
+}
+
+export type AdTestInput = Pick<
+  AdTest,
+  'entityKey' | 'title' | 'hypothesis' | 'primaryKpi' | 'status' | 'segments'
+>
 
 export interface AdSettingVersionInput extends AdSettingFields {
   entityKey: AdEntityKey
@@ -134,6 +173,8 @@ export type SaveAdSettingsRequest =
       set: Pick<CreativeSet, 'name' | 'description' | 'creatives'>
     }
   | { action: 'deleteCreativeSet'; id: string }
+  | { action: 'saveTest'; test: AdTestInput }
+  | { action: 'deleteTest'; entityKey: AdEntityKey }
 
 export const EMPTY_AD_SETTING: AdSettingFields = {
   conversionGoal: null,
@@ -168,7 +209,11 @@ const call = async <T>(endpoint: string, init?: RequestInit): Promise<T> => {
   return body as T
 }
 
-export const getAdSettings = () => call<AdSettingsSnapshot>('getAdSettings')
+export const getAdSettings = async (): Promise<AdSettingsSnapshot> => {
+  const body = await call<AdSettingsSnapshot>('getAdSettings')
+  // tests는 매체별 테스트와 함께 생겼다 — 그 전 서버 응답에는 없다.
+  return { ...body, tests: body.tests ?? [] }
+}
 
 /** 저장·삭제 — 응답은 action마다 { version } · { goal } · { set } · { id, deleted }. */
 export const saveAdSettings = <T = unknown>(request: SaveAdSettingsRequest) =>
@@ -177,6 +222,35 @@ export const saveAdSettings = <T = unknown>(request: SaveAdSettingsRequest) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   })
+
+/** 대상 하나의 하루 성과(플랫폼 수치) — getAdEntityDaily. */
+export interface AdEntityDay {
+  date: ISODate
+  spend: number
+  impressions: number
+  clicks: number
+  conversions: number
+  /** 플랫폼이 잡은 전환 가치(매출) — 목표가 문의 등이면 0. */
+  revenue: number
+}
+
+/** 캠페인·광고셋 하나의 일별 성과(데이터가 있는 날, 날짜 순) — 플랫폼 ID로
+ * 그 대상의 행만 읽는다. */
+export const getAdEntityDaily = async (
+  entityKey: AdEntityKey,
+): Promise<AdEntityDay[]> => {
+  const body = await call<{ byDate: AdEntityDay[] }>(
+    `getAdEntityDaily?${new URLSearchParams({ entityKey }).toString()}`,
+  )
+  return body.byDate.map((d) => ({
+    date: d.date,
+    spend: Number(d.spend) || 0,
+    impressions: Number(d.impressions) || 0,
+    clicks: Number(d.clicks) || 0,
+    conversions: Number(d.conversions) || 0,
+    revenue: Number(d.revenue) || 0,
+  }))
+}
 
 // ── 날짜로 풀기 ──────────────────────────────────────────────────────────
 

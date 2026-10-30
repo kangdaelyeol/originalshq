@@ -12,6 +12,8 @@ import type { ISODate } from '../types'
  *                                   설정 기록 — 적용 시작일마다 한 장(스냅숏).
  *   adConversionGoals/{key}         전환 목표 목록(문의·구매·장바구니 …).
  *   adCreativeSets/{id}             소재 셋 — 여러 광고셋이 같이 쓰는 소재 묶음.
+ *   adTests/{entityKey}             매체별 테스트 — 캠페인·광고셋마다 하나, 성과를
+ *                                   나눠 볼 구간들(모두가 같이 본다).
  *
  * 설정은 덮어쓰지 않고 적용 시작일(effectiveFrom)이 다른 새 장을 쌓는다. 어느
  * 날의 설정 = 그 날 이전(포함)에 시작한 장 중 가장 늦은 것. 그래서
@@ -151,7 +153,53 @@ export interface AdSettingsSnapshot {
   goals: ConversionGoal[]
   creativeSets: CreativeSet[]
   versions: AdSettingVersion[]
+  tests: AdTest[]
 }
+
+// ── 매체별 테스트 ────────────────────────────────────────────────────────
+
+/** 테스트 구간 하나 — 이 날들의 성과를 묶어 다른 구간과 견준다. */
+export interface AdTestSegment {
+  /** 화면에서 줄을 구분하는 값(저장된 뒤에도 그대로). */
+  id: string
+  label: string
+  start: ISODate
+  end: ISODate
+  /** 이 구간에 무엇이 달랐는지(소재 B안, 예산 증액 등). */
+  note: string
+}
+
+export type AdTestStatus = 'running' | 'done'
+
+/** adTests/{entityKey} — 캠페인·광고셋 하나의 테스트. 대상마다 하나라 문서
+ * ID가 대상 키다(같은 대상을 다시 저장하면 그 테스트를 고친다). */
+export interface AdTestDoc {
+  entityKey: AdEntityKey
+  channel: AdChannel
+  level: AdLevel
+  platformId: string
+  /** 저장할 때의 대상 이름 — 목록에 바로 보이게(이름은 adEntities가 따라간다). */
+  entityName: string
+  title: string
+  /** 가설·메모 — 무엇을 확인하려는 테스트인지. */
+  hypothesis: string
+  /** 승패를 가를 지표 — null이면 그 대상 전환 목표의 판단 지표를 따른다. */
+  primaryKpi: GoalKpi | null
+  status: AdTestStatus
+  /** 시작일 순. */
+  segments: AdTestSegment[]
+  createdAt: number
+  updatedAt: number
+}
+
+export interface AdTest extends AdTestDoc {
+  id: string
+}
+
+export type AdTestInput = Pick<
+  AdTestDoc,
+  'entityKey' | 'title' | 'hypothesis' | 'primaryKpi' | 'status' | 'segments'
+>
 
 // ── 저장 요청(saveAdSettings) ──────────────────────────────────────────────
 
@@ -161,6 +209,8 @@ export type SaveAdSettingsAction =
   | { action: 'saveGoal'; key: string; goal: ConversionGoalInput }
   | { action: 'saveCreativeSet'; id: string | null; set: CreativeSetInput }
   | { action: 'deleteCreativeSet'; id: string }
+  | { action: 'saveTest'; test: AdTestInput }
+  | { action: 'deleteTest'; entityKey: AdEntityKey }
 
 export interface AdSettingVersionInput extends AdSettingFields {
   entityKey: AdEntityKey
