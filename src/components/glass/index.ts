@@ -25,5 +25,8 @@ export {
 } from './trend-list'
 export { GlassLine } from './glass-line'
 export { Sparkline } from './sparkline'
+export { TrendGrid, type TrendTile } from './trend-grid'
+export { TrendDetailBody, type TrendDetailInfo } from './trend-detail'
+export { trendStats, type TrendStats } from './trend-stats'
 export { smoothPath } from './smooth-path'
 export { useElementSize } from './use-element-size'

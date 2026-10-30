@@ -1,0 +1,304 @@
+@use './styles/tokens' as *;
+@use './styles/mixins' as glass;
+
+// 펼친 추이의 내용(trend-detail.tsx TrendDetailBody) — TrendGrid가 누른 칸을
+// 섹션 크기로 키운 자리(trend-grid.scss)에 그린다. 다 커진 뒤 흐릿하게
+// 떠오르고, 접을 때는 먼저 사라진다.
+$ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+.glass_trend_body {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  height: 100%;
+  padding: 18px 20px 18px;
+  animation: glass_enter 0.5s $ease backwards;
+}
+.glass_tgrid.is-leave .glass_trend_body {
+  opacity: 0;
+  filter: blur(8px);
+  transition:
+    opacity 0.12s ease,
+    filter 0.12s ease;
+}
+
+// ── 머리 — 이름·기간 | 기간 값·추세 | 닫기 ─────────────────────────────
+.glass_trend_head {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.glass_trend_titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  p {
+    margin: 0;
+    font-size: 12.5px;
+    color: $text-3;
+  }
+}
+.glass_trend_headline {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+
+  strong {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.glass_trend_badge {
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: $fill-2;
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-2;
+  white-space: nowrap;
+
+  &.is-up {
+    background: color-mix(in srgb, var(--glass-accent) 22%, transparent);
+    color: $text;
+  }
+  &.is-down {
+    background: color-mix(in srgb, var(--glass-danger) 20%, transparent);
+    color: $text;
+  }
+}
+.glass_trend_close {
+  @include glass.icon-button;
+  flex: none;
+  cursor: pointer;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// ── 큰 그래프 ─────────────────────────────────────────────────────────
+.glass_trend_chart {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--glass-solid) 55%, transparent);
+  cursor: crosshair;
+
+  > svg {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+}
+.glass_trend_grid {
+  line {
+    stroke: $fill-2;
+    stroke-width: 1;
+  }
+  text {
+    font-size: 11px;
+    fill: $text-3;
+    font-variant-numeric: tabular-nums;
+  }
+}
+// 선·면 — 왼쪽에서 오른쪽으로 그려진다.
+.glass_trend_line {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  .glass_line {
+    @include glass.draw-in(0.9s, 0.05s);
+  }
+}
+.glass_trend_marks {
+  pointer-events: none;
+
+  text {
+    font-size: 11.5px;
+    font-weight: 600;
+    fill: $text-2;
+    stroke: var(--glass-solid);
+    stroke-width: 3px;
+    paint-order: stroke;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.glass_trend_mean {
+  stroke: $text-3;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+.glass_trend_fit {
+  stroke: var(--glass-link);
+  stroke-width: 1.6;
+  stroke-dasharray: 7 5;
+  opacity: 0.85;
+  @include glass.fade-in(0.6s);
+}
+.glass_trend_moving {
+  fill: none;
+  stroke: var(--glass-ink);
+  stroke-width: 1.6;
+  opacity: 0.45;
+  @include glass.fade-in(0.7s);
+}
+.glass_trend_extreme {
+  @include glass.fade-in(0.8s);
+
+  circle {
+    stroke: var(--glass-solid);
+    stroke-width: 2.5;
+  }
+  &.is-max circle {
+    fill: var(--glass-accent);
+  }
+  &.is-min circle {
+    fill: $text-3;
+  }
+}
+.glass_trend_hover {
+  line {
+    stroke: $text-3;
+    stroke-width: 1;
+  }
+  circle {
+    fill: var(--glass-accent);
+    stroke: var(--glass-solid);
+    stroke-width: 2.5;
+  }
+}
+.glass_trend_tip {
+  @include glass.float(14px);
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+  padding: 9px 12px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+
+  span,
+  small {
+    font-size: 11.5px;
+    color: $text-3;
+  }
+  strong {
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.glass_trend_legend {
+  position: absolute;
+  top: 12px;
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: $text-3;
+  pointer-events: none;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+      content: '';
+      width: 14px;
+      height: 0;
+      border-top: 2px solid;
+    }
+  }
+  .is-line::before {
+    border-color: var(--glass-accent);
+  }
+  .is-mean::before {
+    border-top: 1.5px dashed $text-3;
+  }
+  .is-fit::before {
+    border-top: 2px dashed var(--glass-link);
+  }
+  .is-moving::before {
+    border-color: color-mix(in srgb, var(--glass-ink) 45%, transparent);
+  }
+}
+
+// ── 요약 — 칸 7개 ────────────────────────────────────────────────────
+.glass_trend_stats {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  @media (max-width: 560px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  > div {
+    @include glass.inner;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    padding: 11px 12px;
+    border-radius: 14px;
+  }
+  dt {
+    font-size: 11.5px;
+    color: $text-3;
+  }
+  dd {
+    margin: 0;
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  // 보조 줄 — 두 줄까지(날짜·직전 대비·앞뒤 평균 등이 길다).
+  small {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: 11px;
+    line-height: 1.35;
+    color: $text-3;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  .is-up {
+    color: var(--glass-accent);
+  }
+  .is-down {
+    color: var(--glass-danger);
+  }
+}
+// 라이트 테마 — 데이터색 글자는 옅을 수 있어 한 단계 진하게.
+[data-glass-scheme='light'] .glass_trend_stats .is-up {
+  color: color-mix(in srgb, var(--glass-accent) 75%, var(--glass-ink));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_trend_body {
+    animation: none;
+  }
+}

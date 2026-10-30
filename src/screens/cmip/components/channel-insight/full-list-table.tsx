@@ -153,6 +153,7 @@ export function FullListTable({
   onFlashEnd,
   view,
   onViewChange,
+  periodLabel,
 }: {
   rows: readonly FullListRow[]
   headLabel: string
@@ -168,6 +169,8 @@ export function FullListTable({
   /** 카드(캠페인만, 작은 추이 그래프) / 표(광고셋까지, 지표 칸). */
   view: FullListView
   onViewChange: (view: FullListView) => void
+  /** 카드의 추이를 크게 볼 때 적을 기간. */
+  periodLabel?: string
 }) {
   const {
     sort,
@@ -261,6 +264,7 @@ export function FullListTable({
           flashKey={flashKey}
           onFlashEnd={onFlashEnd}
           emptyLabel={emptyLabel}
+          periodLabel={periodLabel}
         />
       ) : (
         <>

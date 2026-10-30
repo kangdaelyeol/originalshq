@@ -287,18 +287,22 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 
   // ------------------------------------------------------------------ ROAS 추이 그래프 (roas-panel.tsx)
+  // ROAS 막대 그래프(roas-panel.tsx RoasTrendChart) — 유리 막대·손익분기선·
+  // 평균선·마우스 위치의 떠 있는 판.
   &__roas-chart {
+    position: relative;
     margin-top: 4px;
   }
 
   &__roas-chart-svg {
     display: block;
     width: 100%;
-    height: 200px;
+    height: 220px;
+    overflow: visible;
   }
 
   &__roas-chart-grid {
-    stroke: $color-border;
+    stroke: var(--glass-fill-2);
     stroke-width: 1;
   }
 
@@ -307,28 +311,52 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     fill: $color-muted;
   }
 
-  &__roas-chart-bar {
-    fill: #3fb950;
-    opacity: 0.85;
-    transition: opacity 120ms ease;
+  // 막대 — 위(값)에서 아래로 옅어지는 그라데이션. 100% 이상은 데이터색, 아래는
+  // 위험색. 처음 붙을 때 바닥에서 차례로 자라 오른다.
+  &__roas-stop-top {
+    stop-color: var(--glass-accent);
+    stop-opacity: 0.95;
 
-    &:hover {
-      opacity: 1;
+    &.is-bad {
+      stop-color: var(--glass-danger);
+      stop-opacity: 0.85;
     }
+  }
+  &__roas-stop-bottom {
+    stop-color: var(--glass-accent);
+    stop-opacity: 0.22;
 
-    &.is-negative {
-      fill: #ff7b72;
+    &.is-bad {
+      stop-color: var(--glass-danger);
+      stop-opacity: 0.18;
     }
   }
 
-  // 막대 위 지푯값(ROAS %) — 항상 표시.
-  // 값·대비·평균 라벨 — 글자 뒤에 화면 바탕색 테두리(halo)를 깔아 막대·점선
-  // 위에서도 읽히게(테마를 따라간다).
+  &__roas-chart-bar {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    transition: filter 0.15s ease;
+    animation: roas-bar-grow 0.7s cubic-bezier(0.33, 1, 0.68, 1)
+      calc(var(--glass-i, 0) * 35ms) backwards;
+
+    &.is-hover {
+      filter: brightness(1.18);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  // 값·대비·평균 이름표 — 글자 뒤에 화면 바탕색 테두리(halo)를 깔아 막대·
+  // 점선 위에서도 읽히게(테마를 따라간다).
   &__roas-chart-value,
   &__roas-chart-delta,
-  &__roas-chart-avg-label {
-    stroke: var(--glass-base);
+  &__roas-chart-avg-label,
+  &__roas-chart-breakeven-label {
+    stroke: var(--glass-solid);
     stroke-width: 3px;
+    stroke-linejoin: round;
     paint-order: stroke;
   }
 
@@ -338,11 +366,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     fill: $color-text;
   }
 
-  // 막대 위 바로 앞 막대 대비 증감(%p) — channel-insight__metric-delta.is-up/
-  // is-down과 같은 색을 재사용해 표·그래프 사이에 색 의미가 어긋나지 않게 한다.
   &__roas-chart-delta {
-    font-size: 10.5px;
-    font-weight: 700;
+    font-size: 10px;
+    font-weight: 600;
     fill: $color-muted;
 
     &.is-up {
@@ -350,26 +376,67 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     }
 
     &.is-down {
-      fill: #ff7b72;
+      fill: var(--glass-danger);
     }
   }
 
-  // 평균 점선 — 표의 "평균" 행과 같은 값을 그대로 그린다.
   &__roas-chart-avg-line {
     stroke: $color-text;
-    stroke-width: 1.5;
-    stroke-dasharray: 5 3;
-    opacity: 0.5;
+    stroke-width: 1.2;
+    stroke-dasharray: 4 4;
+    opacity: 0.45;
   }
 
   &__roas-chart-avg-label {
     font-size: 11px;
     font-weight: 600;
     fill: $color-text;
-    opacity: 0.75;
+    opacity: 0.8;
   }
 
-  // ------------------------------------------------------------------ 지표 선택 (캠페인/adset 탭)
+  // 손익분기(100%) — 위험색 옅은 점선.
+  &__roas-chart-breakeven {
+    stroke: var(--glass-danger);
+    stroke-width: 1;
+    stroke-dasharray: 2 5;
+    opacity: 0.55;
+  }
+  &__roas-chart-breakeven-label {
+    font-size: 10.5px;
+    fill: var(--glass-danger);
+    opacity: 0.85;
+  }
+
+  // 마우스를 올린 날 — 막대 위에 떠 있는 유리 판.
+  &__roas-chart-tip {
+    position: absolute;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 140px;
+    padding: 9px 12px;
+    border-radius: 14px;
+    background: var(--glass-float);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(20px) saturate(150%);
+    transform: translate(-50%, -100%);
+    pointer-events: none;
+    white-space: nowrap;
+    animation: roas-tip-in 0.18s ease;
+
+    span,
+    small {
+      font-size: 11.5px;
+      color: $color-muted;
+    }
+    strong {
+      font-size: 13.5px;
+      color: $color-text;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
   &__metric-row {
     display: flex;
     align-items: center;
@@ -1821,211 +1888,36 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 }
 
-// 요약 카드에서 누른 줄 — 약 2초 동안 세 겹으로 빛난다. 크기(scale)는 건드리지
-// 않고 그림자·배경 색만 움직여 레이아웃이 다시 계산되지 않게 한다.
-//   1) 줄 전체에 파란 빛이 확 켜졌다가 서서히 가라앉는다.
-//   2) 그 위로 밝은 빛줄기가 왼쪽에서 오른쪽으로 한 번 훑고 지나간다 — 배경을
-//      화면 기준(fixed)으로 깔아 칸마다 끊기지 않고 한 줄로 이어 보인다.
-//   3) 줄 둘레의 빛나는 테두리가 두 번 맥박치고 사라진다.
-// 테두리는 줄(tr)의 외곽선이 아니라 칸마다 안쪽 그림자(위·아래, 첫 칸은 왼쪽
-// 강조 막대, 마지막 칸은 오른쪽)로 그린다 — 첫 칸은 가로 스크롤 고정 칸
-// (sticky, z-index)이라 줄의 외곽선 위에 덮여 그 구간만 테두리가 가려졌다.
-// 선택자는 목록 표의 첫 칸 규칙(.channel-insight .channel-insight__table--full-list
-// td:first-child — 배경을 단축 속성으로 다시 깔아 빛줄기를 지운다)과 같은
-// 우선순위로 맞추고, 파일 뒤쪽에 둬서 그 규칙을 이기게 한다.
+// 요약 카드에서 누른 줄 — 누르는 색이 한 번 옅게 차올랐다 빠진다(빛줄기·
+// 빛나는 테두리 없이 — 유리 원칙). 크기(scale)는 건드리지 않고 그림자 색만
+// 움직여 레이아웃이 다시 계산되지 않게 한다. 안쪽 그림자라 가로 스크롤 고정
+// 칸(첫 칸)에서도 같이 보인다. 애니메이션 이름은 full-list-table.tsx가 끝난
+// 때를 알려고 본다.
 .channel-insight .channel-insight__full-list-row--flash td {
-  background-image: linear-gradient(
-    100deg,
-    rgba(140, 190, 255, 0) 0%,
-    rgba(140, 190, 255, 0) 30%,
-    rgba(170, 210, 255, 0.55) 50%,
-    rgba(140, 190, 255, 0) 70%,
-    rgba(140, 190, 255, 0) 100%
-  );
-  background-repeat: no-repeat;
-  background-attachment: fixed;
-  background-size: 45vw 100%;
-  background-position: -45vw 0;
-  animation:
-    channel-insight-row-flash 2s ease-out,
-    channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
-
-  &:first-child {
-    animation:
-      channel-insight-row-flash-first 2s ease-out,
-      channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
-  }
-
-  &:last-child {
-    animation:
-      channel-insight-row-flash-last 2s ease-out,
-      channel-insight-row-sweep 1.1s cubic-bezier(0.45, 0, 0.2, 1) 0.15s;
-  }
+  animation: channel-insight-row-flash 1.4s ease-out;
 
   @media (prefers-reduced-motion: reduce) {
-    &,
-    &:first-child,
-    &:last-child {
-      background-image: none;
-      animation: channel-insight-row-flash 0.01s;
-    }
+    animation: channel-insight-row-flash 0.01s;
   }
 }
 
 @keyframes channel-insight-row-flash {
-  0% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
-  }
-  8% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.8),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
-  }
-  10% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 1),
-      inset 0 -2px 0 rgba(120, 180, 255, 1),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
-  }
-  30% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.3),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
-  }
-  45% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.75),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
-  }
-  50% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.95),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
+  15% {
+    box-shadow: inset 0 0 0 999px
+      color-mix(in srgb, var(--glass-link) 30%, transparent);
   }
   100% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
+    box-shadow: inset 0 0 0 999px transparent;
   }
 }
 
-@keyframes channel-insight-row-flash-first {
-  0% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset 4px 0 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
-  }
-  8% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.8),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
-      inset 4px 0 0 rgba(120, 180, 255, 1),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
-  }
-  10% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 1),
-      inset 0 -2px 0 rgba(120, 180, 255, 1),
-      inset 4px 0 0 rgba(120, 180, 255, 1),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
-  }
-  30% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.3),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
-      inset 4px 0 0 rgba(120, 180, 255, 0.9),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
-  }
-  45% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.75),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
-      inset 4px 0 0 rgba(120, 180, 255, 0.85),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
-  }
-  50% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.95),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
-      inset 4px 0 0 rgba(120, 180, 255, 0.85),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
-  }
-  100% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset 4px 0 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
-  }
-}
-
-@keyframes channel-insight-row-flash-last {
-  0% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset -2px 0 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
-  }
-  8% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.8),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.8),
-      inset -2px 0 0 rgba(120, 180, 255, 0.8),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.42);
-  }
-  10% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 1),
-      inset 0 -2px 0 rgba(120, 180, 255, 1),
-      inset -2px 0 0 rgba(120, 180, 255, 1),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.41);
-  }
-  30% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.3),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.3),
-      inset -2px 0 0 rgba(120, 180, 255, 0.3),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.3);
-  }
-  45% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.75),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.75),
-      inset -2px 0 0 rgba(120, 180, 255, 0.75),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.22);
-  }
-  50% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0.95),
-      inset 0 -2px 0 rgba(120, 180, 255, 0.95),
-      inset -2px 0 0 rgba(120, 180, 255, 0.95),
-      inset 0 0 0 999px rgba(68, 147, 248, 0.21);
-  }
-  100% {
-    box-shadow:
-      inset 0 2px 0 rgba(120, 180, 255, 0),
-      inset 0 -2px 0 rgba(120, 180, 255, 0),
-      inset -2px 0 0 rgba(120, 180, 255, 0),
-      inset 0 0 0 999px rgba(68, 147, 248, 0);
-  }
-}
-
-@keyframes channel-insight-row-sweep {
+@keyframes roas-bar-grow {
   from {
-    background-position: -45vw 0;
+    transform: scaleY(0);
   }
-  to {
-    background-position: 110vw 0;
+}
+@keyframes roas-tip-in {
+  from {
+    opacity: 0;
   }
 }

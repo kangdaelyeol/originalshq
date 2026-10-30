@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Check } from 'lucide-react'
-import { Sparkline } from '@/components/glass'
+import { Sparkline, TrendGrid } from '@/components/glass'
 import type { FullListRow } from '../../view-model/use-full-list-table-view-model'
 import { CHANNELS } from '../channels'
 import {
@@ -9,6 +9,7 @@ import {
   type MetricKey,
 } from '../metric-fields'
 import { ChannelMark } from './channel-label'
+import { formatMD } from '../../utils'
 
 const FIELD = Object.fromEntries(
   METRIC_FIELDS.map((field) => [field.key, field]),
@@ -51,8 +52,9 @@ const CHANNEL_LABEL = Object.fromEntries(
 /**
  * 캠페인·광고셋 목록의 카드 보기 — 캠페인 하나가 카드 하나(광고셋은 표 보기).
  * 카드에는 채널 표식, 이름, 정렬 지표의 값과 그 날짜별 작은 추이 그래프,
- * 아래에 다른 지표 두 개. 카드를 누르면 아래 비교 표에 넣고 뺀다(표 보기의
- * 체크와 같다).
+ * 아래에 다른 지표 두 개. 카드를 누르면 이 목록 안에서 그 카드가 커지며 추이를
+ * 자세히 보여 주고(TrendGrid), 오른쪽 위 동그라미로 아래 비교 표에 넣고 뺀다
+ * (표 보기의 체크와 같다).
  */
 export function CampaignCards({
   rows,
@@ -62,6 +64,7 @@ export function CampaignCards({
   flashKey,
   onFlashEnd,
   emptyLabel,
+  periodLabel,
 }: {
   rows: readonly FullListRow[]
   /** 큰 값·추이 그래프로 보여 줄 지표 — 정렬 지표(이름 정렬이면 Spend). */
@@ -71,6 +74,8 @@ export function CampaignCards({
   flashKey: string | null
   onFlashEnd: () => void
   emptyLabel: string
+  /** 크게 볼 때 적을 기간. */
+  periodLabel?: string
 }) {
   if (rows.length === 0)
     return <p className="channel-insight__result-empty">{emptyLabel}</p>
@@ -79,33 +84,36 @@ export function CampaignCards({
   const footFields = FOOT.filter((foot) => foot.key !== metricKey).slice(0, 2)
 
   return (
-    <ul className="campaign-cards">
-      {rows.map((row, index) => {
+    <TrendGrid
+      className="campaign-cards"
+      tiles={rows.map((row, index) => {
         const checked = selected.has(row.selectKey)
         const flashing = flashKey === row.selectKey
         const adsetCount = row.children?.length ?? 0
-        return (
-          <li key={row.key}>
-            <button
-              type="button"
-              data-select-key={row.selectKey}
-              className={`campaign-card${checked ? ' is-selected' : ''}${
-                flashing ? ' is-flash' : ''
-              }`}
-              aria-pressed={checked}
-              aria-label={`${row.name} — 비교 표에 ${checked ? '빼기' : '넣기'}`}
-              // 추이 그래프가 위 카드부터 차례로 그려진다(12장까지만 늦춘다).
-              style={{ '--glass-i': Math.min(index, 12) } as CSSProperties}
-              onClick={() => onToggleSelect(row.selectKey)}
-              onAnimationEnd={
-                flashing
-                  ? (event) => {
-                      if (event.animationName === 'campaign-card-flash')
-                        onFlashEnd()
-                    }
-                  : undefined
+        const values = (row.trend ?? []).map((day) => day[metricKey])
+        return {
+          key: row.key,
+          className: `campaign-card${checked ? ' is-selected' : ''}${
+            flashing ? ' is-flash' : ''
+          }`,
+          // 추이 그래프가 위 카드부터 차례로 그려진다(12장까지만 늦춘다).
+          style: { '--glass-i': Math.min(index, 12) } as CSSProperties,
+          data: { 'data-select-key': row.selectKey },
+          onAnimationEnd: flashing
+            ? (event) => {
+                if (event.animationName === 'campaign-card-flash') onFlashEnd()
               }
-            >
+            : undefined,
+          values,
+          detail: {
+            title: `${row.name} · ${field.label}`,
+            subtitle: periodLabel ? `${periodLabel} · 일별` : '일별',
+            value: field.format(row.metrics[metricKey]),
+            labels: (row.trend ?? []).map((day) => formatMD(day.date)),
+            format: field.format,
+          },
+          content: (
+            <>
               <span className="campaign-card__head">
                 <span className="campaign-card__avatar">
                   {row.channels[0] && (
@@ -121,9 +129,22 @@ export function CampaignCards({
                     {adsetCount > 0 && ` · 광고셋 ${adsetCount}`}
                   </span>
                 </span>
-                <span className="campaign-card__check" aria-hidden>
+                {/* 비교 표에 넣기·빼기 — 카드를 누르면 추이를 자세히 보므로
+                    고르기는 이 동그라미로. */}
+                <button
+                  type="button"
+                  className="campaign-card__check"
+                  aria-pressed={checked}
+                  aria-label={`${row.name} 비교 표에 ${checked ? '빼기' : '넣기'}`}
+                  title={checked ? '비교 표에서 빼기' : '비교 표에 넣기'}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onToggleSelect(row.selectKey)
+                  }}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <Check strokeWidth={2.6} />
-                </span>
+                </button>
               </span>
 
               <span className="campaign-card__body">
@@ -133,10 +154,7 @@ export function CampaignCards({
                     {field.format(row.metrics[metricKey])}
                   </strong>
                 </span>
-                <Sparkline
-                  className="campaign-card__spark"
-                  values={(row.trend ?? []).map((day) => day[metricKey])}
-                />
+                <Sparkline className="campaign-card__spark" values={values} />
               </span>
 
               <span className="campaign-card__foot">
@@ -149,10 +167,10 @@ export function CampaignCards({
                   </span>
                 ))}
               </span>
-            </button>
-          </li>
-        )
+            </>
+          ),
+        }
       })}
-    </ul>
+    />
   )
 }

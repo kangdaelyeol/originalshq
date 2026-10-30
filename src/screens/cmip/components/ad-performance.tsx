@@ -1,7 +1,13 @@
-import type { AdPerformanceNode, AttributionRow } from '../client'
+import type { CSSProperties } from 'react'
+import type {
+  AdPerformanceDay,
+  AdPerformanceNode,
+  AttributionRow,
+} from '../client'
+import { formatMD } from '../utils'
 import type { ISODate } from '../types'
 import { useAdPerformanceViewModel } from '../view-model/use-ad-performance-view-model'
-import { LoadingPanel } from '@/components/glass'
+import { LoadingPanel, Sparkline, TrendGrid } from '@/components/glass'
 
 const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
 /** 사람 수 — 같은 이름의 광고가 여럿이라 나눠 가진 경우만 소수 한 자리. */
@@ -137,8 +143,59 @@ export function AdPerformancePanel({
       </section>
     )
 
-  const { total, campaigns, unmatched, unmatchedTotal } = performance
+  const { total, campaigns, unmatched, unmatchedTotal, daily } = performance
   const allRevenue = total.revenue + unmatchedTotal.revenue
+  const dailyLabels = daily.map((day) => formatMD(day.date))
+  const tiles: {
+    key: string
+    label: string
+    value: string
+    format: (value: number) => string
+    dayValue: (day: AdPerformanceDay) => number
+    /** 하루치를 무엇으로 세는지 — 크게 볼 때 부제. */
+    basis: string
+  }[] = [
+    {
+      key: 'spend',
+      label: '광고비',
+      value: won(total.spend),
+      format: won,
+      dayValue: (day) => day.spend,
+      basis: '그날 쓴 광고비',
+    },
+    {
+      key: 'leads',
+      label: '문의 고객',
+      value: people(total.leads),
+      format: people,
+      dayValue: (day) => day.leads,
+      basis: 'UTM 상담 접수일 기준',
+    },
+    {
+      key: 'buyers',
+      label: '구매 고객',
+      value: people(total.buyers),
+      format: people,
+      dayValue: (day) => day.buyers,
+      basis: '귀속 첫 구매 결제일 기준',
+    },
+    {
+      key: 'revenue',
+      label: '귀속 매출',
+      value: won(total.revenue),
+      format: won,
+      dayValue: (day) => day.revenue,
+      basis: '귀속 첫 구매 결제일 기준',
+    },
+    {
+      key: 'roas',
+      label: '광고 ROAS',
+      value: pct(roasOf(total)),
+      format: pct,
+      dayValue: (day) => (day.spend > 0 ? (day.revenue / day.spend) * 100 : 0),
+      basis: '그날 귀속 매출 ÷ 그날 광고비',
+    },
+  ]
 
   return (
     <>
@@ -146,38 +203,44 @@ export function AdPerformancePanel({
         <div className="channel-insight__section-head">
           <h3 className="channel-insight__section-title">Meta 광고 성과</h3>
         </div>
-        <div className="channel-insight__summary-grid roas-attribution__tiles">
-          <div className="channel-insight__kpi">
-            <span className="channel-insight__kpi-label">광고비</span>
-            <span className="channel-insight__kpi-value">
-              {won(total.spend)}
-            </span>
-          </div>
-          <div className="channel-insight__kpi">
-            <span className="channel-insight__kpi-label">문의 고객</span>
-            <span className="channel-insight__kpi-value">
-              {people(total.leads)}
-            </span>
-          </div>
-          <div className="channel-insight__kpi">
-            <span className="channel-insight__kpi-label">구매 고객</span>
-            <span className="channel-insight__kpi-value">
-              {people(total.buyers)}
-            </span>
-          </div>
-          <div className="channel-insight__kpi">
-            <span className="channel-insight__kpi-label">귀속 매출</span>
-            <span className="channel-insight__kpi-value">
-              {won(total.revenue)}
-            </span>
-          </div>
-          <div className="channel-insight__kpi">
-            <span className="channel-insight__kpi-label">광고 ROAS</span>
-            <span className="channel-insight__kpi-value">
-              {pct(roasOf(total))}
-            </span>
-          </div>
-        </div>
+        {/* 숫자 칸 — 값 옆에 날짜별 추이. 칸을 누르면 이 묶음 안에서 그 칸이
+            커지며 추이를 자세히 보여 준다(TrendGrid). */}
+        <TrendGrid
+          className="channel-insight__summary-grid roas-attribution__tiles has-trend"
+          style={{ '--cols': 5 } as CSSProperties}
+          tiles={tiles.map((tile, index) => {
+            const values = daily.map(tile.dayValue)
+            return {
+              key: tile.key,
+              className: 'channel-insight__kpi',
+              style: { '--glass-i': index } as CSSProperties,
+              values,
+              detail: {
+                title: `Meta 광고 · ${tile.label}`,
+                subtitle: `${dateStart} ~ ${dateEnd} · 일별 · ${tile.basis}`,
+                value: tile.value,
+                labels: dailyLabels,
+                format: tile.format,
+              },
+              content: (
+                <>
+                  <span className="channel-insight__kpi-label">
+                    {tile.label}
+                  </span>
+                  <span className="channel-insight__kpi-row">
+                    <span className="channel-insight__kpi-value">
+                      {tile.value}
+                    </span>
+                    <Sparkline
+                      className="channel-insight__kpi-spark"
+                      values={values}
+                    />
+                  </span>
+                </>
+              ),
+            }
+          })}
+        />
         <p className="roas-attribution__note">
           * 문의 고객 = 조회 기간에 Meta UTM 상담이 접수된 고객 · 구매 고객·귀속
           매출 = UTM 상담 접수일부터 90일 안의 첫 구매 중 결제일이 조회 기간인

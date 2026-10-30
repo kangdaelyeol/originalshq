@@ -1,4 +1,8 @@
-import { useId, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useId,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { smoothPath } from '@/components/glass'
 import { useIndexLineChartViewModel } from '../view-model/use-index-line-chart-view-model'
 import type {
@@ -66,7 +70,7 @@ const BAR_GROUP_FRAC = 0.68
 // 자체는 이 폭에서 더 굵어지지 않는다. 남는 공간은 막대 사이 여백으로만 쓰인다
 // (폰트·마커와 같은 "절대 크기" 원칙을 막대에도 적용).
 const BAR_MAX_WIDTH = 22
-const BAR_FILL_OPACITY = 0.85
+const BAR_FILL_OPACITY = 1
 // 평균선은 실제 값(선/막대)보다 한눈에 옅어 보여야 배경처럼 읽힌다.
 const AVG_LINE_OPACITY = 0.45
 
@@ -132,6 +136,22 @@ function minMaxIndices(raw: readonly (number | null)[]): {
 }
 
 /** null(빠진 값) 구간을 건너뛰며 이어진 구간마다 별도 서브패스를 그리는 라인 path. */
+/** 막대 하나 — 값 쪽 끝만 둥근 사각형(바닥 쪽은 각지게, 기준선에 붙는다).
+ * up이면 위가 값(양수), 아니면 아래가 값(음수). */
+function barPath(
+  x: number,
+  top: number,
+  w: number,
+  h: number,
+  up: boolean,
+): string {
+  const r = Math.min(6, w / 2, h)
+  const bottom = top + h
+  return up
+    ? `M${x},${bottom} L${x},${top + r} Q${x},${top} ${x + r},${top} L${x + w - r},${top} Q${x + w},${top} ${x + w},${top + r} L${x + w},${bottom} Z`
+    : `M${x},${top} L${x},${bottom - r} Q${x},${bottom} ${x + r},${bottom} L${x + w - r},${bottom} Q${x + w},${bottom} ${x + w},${bottom - r} L${x + w},${top} Z`
+}
+
 /** 값이 이어지는 구간들(빈 값에서 끊긴다) — 구간마다 점(px) 목록. */
 function lineSegments(
   values: readonly (number | null)[],
@@ -312,7 +332,8 @@ export const IndexLineChart = ({
                 x={4}
                 y={14}
                 textAnchor="start"
-                fontSize={17}
+                fontSize={13}
+                fontWeight={600}
                 fill={axisColor}
               >
                 {series.length > 1
@@ -422,29 +443,61 @@ export const IndexLineChart = ({
 
               {/* 막대 — 라인 뒤에 깔린다. 0 기준선에서 값까지 채우고, 같은 컬럼에
                 여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
+              {/* 유리 막대 — 값 쪽 끝이 둥글고, 위(값)에서 아래로 옅어지는
+                그라데이션. 처음 붙을 때 기준선에서 차례로 자라 오른다. */}
               {barSeries.map((s) => {
                 const isFocused = focused?.key === s.key
                 const dimmed = focused != null && !isFocused
                 const yBase = yIn(s.range, Math.max(s.range.min, 0))
-                const w = Math.max(1, slotW - 1.5)
-                return s.raw.map((v, i) => {
-                  if (v == null) return null
-                  const yv = yIn(s.range, v)
-                  const top = Math.min(yBase, yv)
-                  const h = Math.max(1, Math.abs(yBase - yv))
-                  return (
-                    <rect
-                      key={`bar-${s.key}-${i}`}
-                      x={barCenterX(s.key, i) - w / 2}
-                      y={top}
-                      width={w}
-                      height={h}
-                      rx={1}
-                      fill={s.color}
-                      opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
-                    />
-                  )
-                })
+                const w = Math.max(1, slotW - 2)
+                const fillId = `${areaId}-bar-${s.key}`
+                return (
+                  <g
+                    key={`bar-${s.key}`}
+                    className="index-line-chart__bars"
+                    opacity={dimmed ? DIM_OPACITY : BAR_FILL_OPACITY}
+                  >
+                    <defs>
+                      <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="0%"
+                          stopColor={s.color}
+                          stopOpacity={0.95}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor={s.color}
+                          stopOpacity={0.3}
+                        />
+                      </linearGradient>
+                    </defs>
+                    {s.raw.map((v, i) => {
+                      if (v == null) return null
+                      const yv = yIn(s.range, v)
+                      const top = Math.min(yBase, yv)
+                      const h = Math.max(1, Math.abs(yBase - yv))
+                      return (
+                        <path
+                          key={`bar-${s.key}-${i}`}
+                          d={barPath(
+                            barCenterX(s.key, i) - w / 2,
+                            top,
+                            w,
+                            h,
+                            yv <= yBase,
+                          )}
+                          fill={`url(#${fillId})`}
+                          className={
+                            hover?.index === i ? 'is-hover' : undefined
+                          }
+                          style={
+                            { '--glass-i': Math.min(i, 20) } as CSSProperties
+                          }
+                        />
+                      )
+                    })}
+                  </g>
+                )
               })}
 
               {/* 선 — 부드러운 곡선, 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다.
@@ -511,19 +564,29 @@ export const IndexLineChart = ({
                 return s.raw.map((v, i) => {
                   if (v == null) return null
                   const isHoverX = hover?.index === i
+                  // 작은 점 + 판 색 테두리. 마우스를 올린 날은 그 색이 옅게 번진다.
                   return (
-                    <g key={`${s.key}-${i}`} opacity={dimmed ? DIM_OPACITY : 1}>
+                    <g
+                      key={`${s.key}-${i}`}
+                      className="index-line-chart__marker"
+                      opacity={dimmed ? DIM_OPACITY : 1}
+                    >
+                      {isHoverX && (
+                        <circle
+                          cx={xCenter(i)}
+                          cy={yIn(s.range, v)}
+                          r={11}
+                          fill={s.color}
+                          opacity={0.2}
+                        />
+                      )}
                       <circle
                         cx={xCenter(i)}
                         cy={yIn(s.range, v)}
-                        r={isHoverX ? 6 : 5}
-                        fill={SURFACE}
-                      />
-                      <circle
-                        cx={xCenter(i)}
-                        cy={yIn(s.range, v)}
-                        r={isHoverX ? 4.5 : 3.5}
+                        r={isHoverX ? 5.5 : 4.2}
                         fill={s.color}
+                        stroke={SURFACE}
+                        strokeWidth={2.2}
                       />
                     </g>
                   )
@@ -548,12 +611,14 @@ export const IndexLineChart = ({
                       x={cx}
                       y={above ? (isBar ? y - 5 : y - 9) : y + 16}
                       textAnchor="middle"
-                      fontSize={12}
+                      fontSize={11}
+                      fontWeight={600}
                       fill={series.length > 1 ? s.color : MUTED}
                       stroke={SURFACE}
                       strokeWidth={3}
+                      strokeLinejoin="round"
                       paintOrder="stroke"
-                      opacity={dimmed ? DIM_OPACITY : 1}
+                      opacity={dimmed ? DIM_OPACITY : 0.92}
                     >
                       {s.formatCompact(v)}
                     </text>
@@ -633,8 +698,10 @@ export const IndexLineChart = ({
                   x2={xCenter(hover.index)}
                   y1={MARGIN_TOP}
                   y2={MARGIN_TOP + PLOT_H}
-                  stroke={GRID}
+                  stroke={MUTED}
                   strokeWidth={1}
+                  strokeDasharray="3 4"
+                  opacity={0.6}
                 />
               )}
 

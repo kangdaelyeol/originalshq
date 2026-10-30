@@ -41,9 +41,21 @@ export interface UnmatchedUtm {
   revenue: number
 }
 
+/** 하루치 합계 — 광고비는 그날 쓴 돈, 문의는 그날 접수된 상담, 구매·매출은
+ * 그날 결제된 귀속 첫 구매(합계 total과 같은 기준, 광고를 찾은 것만). */
+export interface AdPerformanceDay {
+  date: ISODate
+  spend: number
+  leads: number
+  buyers: number
+  revenue: number
+}
+
 export interface AdPerformance {
   campaigns: AdPerformanceNode[]
   total: AdPerformanceMetrics
+  /** 조회 기간의 날짜마다(빈 날은 0) — 위 숫자 칸의 작은 추이 그래프. */
+  daily: AdPerformanceDay[]
   unmatched: UnmatchedUtm[]
   unmatchedTotal: Omit<UnmatchedUtm, 'utmCampaign'>
 }
@@ -54,6 +66,13 @@ const normalizeName = (name: string): string =>
 
 const minusDays = (date: ISODate, days: number): ISODate =>
   new Date(Date.parse(date) - days * 86_400_000).toISOString().slice(0, 10)
+
+/** start ~ end 날짜 목록. */
+const daysBetween = (start: ISODate, end: ISODate): ISODate[] => {
+  const out: ISODate[] = []
+  for (let day = start; day <= end; day = minusDays(day, -1)) out.push(day)
+  return out
+}
 
 const emptyMetrics = (): AdPerformanceMetrics => ({
   spend: 0,
@@ -94,12 +113,20 @@ export function buildAdPerformance(
   end: ISODate,
 ): AdPerformance {
   const metrics = ads.ads.map(emptyMetrics)
+  const daily = new Map<ISODate, AdPerformanceDay>(
+    daysBetween(start, end).map((date) => [
+      date,
+      { date, spend: 0, leads: 0, buyers: 0, revenue: 0 },
+    ]),
+  )
   // 광고별 날짜별 광고비 — 같은 이름의 광고가 여럿일 때 나눌 비율로 쓴다.
   const spendByDay = ads.ads.map(() => new Map<ISODate, number>())
   for (const [index, date, spend, impressions, clicks] of ads.daily) {
     spendByDay[index].set(date, spend)
     if (date < start || date > end) continue
     metrics[index].spend += spend
+    const day = daily.get(date)
+    if (day) day.spend += spend
     metrics[index].impressions += impressions
     metrics[index].clicks += clicks
   }
@@ -161,6 +188,14 @@ export function buildAdPerformance(
       unmatched.set(key, entry)
       continue
     }
+    // 광고를 찾은 것만 하루치에 — 합계(total)와 같은 기준.
+    const leadDay = lead ? daily.get(utmAt) : undefined
+    if (leadDay) leadDay.leads += lead
+    const buyDay = bought ? daily.get(first[0]) : undefined
+    if (buyDay) {
+      buyDay.buyers += buyer
+      buyDay.revenue += revenue
+    }
     weightsFor(candidates, utmAt).forEach((weight, i) => {
       const target = metrics[candidates[i]]
       target.leads += lead * weight
@@ -216,6 +251,7 @@ export function buildAdPerformance(
   return {
     campaigns: sorted,
     total,
+    daily: [...daily.values()],
     unmatched: unmatchedList,
     unmatchedTotal: {
       leads: unmatchedList.reduce((s, u) => s + u.leads, 0),

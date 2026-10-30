@@ -1,0 +1,88 @@
+@use './styles/tokens' as *;
+
+// 펼쳐지는 칸 묶음(trend-grid.tsx) — 칸 전체가 누르는 자리(pointer). 누르면
+// 그 칸 자리의 판(expander)이 묶음 크기로 커지고(top·left·width·height), 묶음
+// 높이도 펼친 내용에 맞게 자란다. 나머지 칸은 자리를 지킨 채 흐려져 사라졌다가,
+// 접을 때 판이 제자리로 줄어드는 끝무렵 다시 나타난다.
+$ease: cubic-bezier(0.22, 1, 0.36, 1);
+$move: 0.52s;
+
+.glass_tgrid {
+  position: relative;
+  transition: height $move $ease;
+
+  // 펼친 동안은 묶음 높이를 펼친 내용에 맞춰 묶어 두므로 넘치는(투명해진) 칸을
+  // 자른다.
+  &.is-expanded {
+    overflow: clip;
+  }
+}
+
+.glass_tgrid_tile {
+  cursor: pointer;
+  transition:
+    opacity 0.3s ease,
+    background-color 0.2s ease;
+
+  &:hover {
+    background-color: $fill-2;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+    outline-offset: 2px;
+  }
+}
+
+// 펼친 동안 — 다른 칸은 흐려져 사라지고, 누른 칸은 판이 덮으니 바로 숨긴다.
+.glass_tgrid.is-expanded .glass_tgrid_tile {
+  opacity: 0;
+  pointer-events: none;
+}
+.glass_tgrid.is-expanded .glass_tgrid_tile.is-source {
+  transition-duration: 0.12s;
+}
+// 접는 중 — 판이 거의 제자리에 닿을 무렵 다른 칸이 다시 나타난다.
+.glass_tgrid.is-leave .glass_tgrid_tile {
+  opacity: 1;
+  transition: opacity 0.32s ease 0.36s;
+}
+.glass_tgrid.is-leave .glass_tgrid_tile.is-source {
+  transition-delay: 0.6s;
+  transition-duration: 0.01s;
+}
+
+// 커지는 판 — 칸과 같은 한 겹 밝은 유리에서 시작한다.
+.glass_tgrid_expander {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: $radius-inner;
+  background: $fill-1;
+  color: $text;
+  cursor: default;
+  transition:
+    top $move $ease,
+    left $move $ease,
+    width $move $ease,
+    height $move $ease,
+    opacity 0.2s ease;
+}
+// 접는 마지막 — 제자리에 닿으면 판이 사라지고 원래 칸이 다시 보인다.
+.glass_tgrid.is-leave .glass_tgrid_expander {
+  opacity: 0;
+  transition:
+    top $move $ease,
+    left $move $ease,
+    width $move $ease,
+    height $move $ease,
+    opacity 0.12s ease 0.5s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass_tgrid,
+  .glass_tgrid_tile,
+  .glass_tgrid_expander {
+    transition: none;
+  }
+}

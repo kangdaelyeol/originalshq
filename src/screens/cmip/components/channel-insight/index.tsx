@@ -291,6 +291,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
                         onFlashEnd={clearFlash}
                         view={listView}
                         onViewChange={setListView}
+                        periodLabel={periodLabel}
                       />
                     </section>
                     <PivotSummary

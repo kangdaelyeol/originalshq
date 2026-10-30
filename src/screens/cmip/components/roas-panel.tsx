@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState, type CSSProperties } from 'react'
 import type {
   Cafe24RevenueSummary,
   CombinedInsight,
@@ -9,7 +9,9 @@ import type {
 import { SingleSelectDropdown } from './single-select-dropdown'
 import { setOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { RoasAttribution } from './roas-attribution'
+import { Sparkline, TrendGrid } from '@/components/glass'
 import {
+  computeRoasRows,
   RoasGrouping,
   RoasTable,
   useRoasViewModel,
@@ -505,16 +507,16 @@ function roundUpToHundred(value: number): number {
   return Math.max(100, Math.ceil(value / 100) * 100)
 }
 
-/** "기간별 추이" 표 바로 아래에 두는 간단한 ROAS 막대 그래프 — 표의 숫자를
- * 한눈에 훑어볼 수 있도록 그래프 하나만 곁들인다(엑셀 다운로드용 상세 차트인
- * IndexLineChart와 달리 호버·범례·지표 여러 개 겹쳐보기 같은 기능은 없다).
- * 막대 색은 이 앱 전역에서 "증가/양호"를 뜻하는 초록(#3fb950)과 "감소/부진"을
- * 뜻하는 빨강(#ff7b72)을 그대로 재사용한다(channel-insight.scss의
- * __metric-delta.is-up/is-down과 같은 색) — ROAS 100%(광고비만큼 매출이 났는지)
- * 기준으로 갈린다. 평균 점선은 표의 "평균" 행(useRoasViewModel의 average)과
- * 같은 값을 그대로 써서, 표와 그래프가 서로 다른 평균을 보여주지 않게 한다.
- * 막대마다 지푯값과 바로 앞 막대 대비 증감(퍼센트 포인트)을 항상 표시한다 —
- * 표의 MetricValueCell과 같은 계산(computeDelta)을 그대로 쓴다. */
+/** "기간별 추이" 표 바로 아래에 두는 ROAS 막대 그래프 — 표의 숫자를 한눈에
+ * 훑어볼 수 있게 한다(지표 여러 개를 겹쳐 보는 상세 그래프는 그래프로 보기
+ * 모달의 IndexLineChart).
+ *
+ * 유리 막대 — 위 끝이 둥글고 위에서 아래로 옅어지는 그라데이션. ROAS 100%(광고비
+ * 만큼 매출이 났는지)를 손익분기 기준선으로 긋고, 그 아래 막대는 위험색으로.
+ * 처음 붙을 때 바닥에서 차례로 자라 오른다. 막대마다 값과 바로 앞 막대 대비
+ * 증감(퍼센트 포인트 — 표의 MetricValueCell과 같은 computeDelta)을 적고,
+ * 마우스를 올리면 그날 값·직전 대비·평균 대비를 떠 있는 유리 판으로 보여 준다.
+ * 평균 점선은 표의 "평균" 행(useRoasViewModel의 average)과 같은 값이다. */
 function RoasTrendChart({
   rows,
   average,
@@ -523,6 +525,8 @@ function RoasTrendChart({
   average: RoasMetrics
 }) {
   const { ref, vbWidth, vbHeight } = useRoasTrendChartViewModel()
+  const [hover, setHover] = useState<number | null>(null)
+  const gradientId = `roas-bar-${useId().replace(/[^\w-]/g, '')}`
   // 그래프는 신규 고객 ROAS를 그린다 — 재구매 금액을 못 불러왔으면 광고비 대비
   // 매출로 대신한다(평균 옆에 어느 지표인지 적는다).
   const metric = Number.isFinite(average.newCustomerRoas)
@@ -545,9 +549,15 @@ function RoasTrendChart({
   const labelStride = Math.max(1, Math.ceil(n / 8))
   const ticks = [0, maxValue / 2, maxValue]
   const avgY = yOf(average[metric])
+  const breakEvenY = yOf(100)
+  const hovered = hover === null ? null : rows[hover]
 
   return (
-    <div className="channel-insight__roas-chart" ref={ref}>
+    <div
+      className="channel-insight__roas-chart"
+      ref={ref}
+      onPointerLeave={() => setHover(null)}
+    >
       <svg
         className="channel-insight__roas-chart-svg"
         viewBox={`0 0 ${vbWidth} ${vbHeight}`}
@@ -555,6 +565,28 @@ function RoasTrendChart({
         role="img"
         aria-label={`기간별 ${metricLabel} 추이 그래프`}
       >
+        <defs>
+          {(['good', 'bad'] as const).map((tone) => (
+            <linearGradient
+              key={tone}
+              id={`${gradientId}-${tone}`}
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                className={`channel-insight__roas-stop-top is-${tone}`}
+              />
+              <stop
+                offset="100%"
+                className={`channel-insight__roas-stop-bottom is-${tone}`}
+              />
+            </linearGradient>
+          ))}
+        </defs>
+
         {ticks.map((t) => (
           <g key={t}>
             <line
@@ -576,28 +608,45 @@ function RoasTrendChart({
           </g>
         ))}
 
+        {/* 손익분기 — ROAS 100%(광고비만큼 매출). */}
+        <line
+          x1={CHART_MARGIN.left}
+          x2={vbWidth - CHART_MARGIN.right}
+          y1={breakEvenY}
+          y2={breakEvenY}
+          className="channel-insight__roas-chart-breakeven"
+        />
+        <text
+          x={CHART_MARGIN.left + 6}
+          y={breakEvenY - 6}
+          className="channel-insight__roas-chart-breakeven-label"
+        >
+          손익분기 100%
+        </text>
+
         {rows.map((row, i) => {
-          const barY = yOf(row.metrics[metric])
+          const value = row.metrics[metric]
+          const barY = yOf(value)
           const h = Math.max(0, plotBottom - barY)
           const prevRow = i > 0 ? rows[i - 1] : null
           const delta = prevRow
-            ? computeDelta(row.metrics[metric], prevRow.metrics[metric])
+            ? computeDelta(value, prevRow.metrics[metric])
             : null
           const cx = xOf(i) + barW / 2
+          const r = Math.min(7, barW / 2, h)
+          const tone = value < 100 ? 'bad' : 'good'
           return (
             <g key={row.key}>
-              <rect
-                x={xOf(i)}
-                y={barY}
-                width={barW}
-                height={h}
-                rx={2}
-                className={`channel-insight__roas-chart-bar${
-                  row.metrics[metric] < 100 ? ' is-negative' : ''
-                }`}
-              >
-                <title>{`${row.label}: ${row.metrics[metric].toFixed(1)}%`}</title>
-              </rect>
+              {h > 0 && (
+                <path
+                  d={`M${xOf(i)},${plotBottom} L${xOf(i)},${barY + r} Q${xOf(i)},${barY} ${xOf(i) + r},${barY} L${xOf(i) + barW - r},${barY} Q${xOf(i) + barW},${barY} ${xOf(i) + barW},${barY + r} L${xOf(i) + barW},${plotBottom} Z`}
+                  fill={`url(#${gradientId}-${tone})`}
+                  className={`channel-insight__roas-chart-bar${
+                    hover === i ? ' is-hover' : ''
+                  }`}
+                  style={{ '--glass-i': Math.min(i, 20) } as CSSProperties}
+                />
+              )}
               {delta && (
                 <text
                   x={cx}
@@ -615,7 +664,7 @@ function RoasTrendChart({
                 textAnchor="middle"
                 className="channel-insight__roas-chart-value"
               >
-                {row.metrics[metric].toFixed(1)}%
+                {value.toFixed(1)}%
               </text>
               {(i % labelStride === 0 || i === n - 1) && (
                 <text
@@ -627,6 +676,15 @@ function RoasTrendChart({
                   {row.label}
                 </text>
               )}
+              {/* 마우스 자리 — 칸 전체(막대보다 넓게). */}
+              <rect
+                x={CHART_MARGIN.left + bandW * i}
+                y={CHART_MARGIN.top}
+                width={bandW}
+                height={plotH}
+                fill="transparent"
+                onPointerEnter={() => setHover(i)}
+              />
             </g>
           )
         })}
@@ -649,6 +707,39 @@ function RoasTrendChart({
           {metricLabel} 평균 {average[metric].toFixed(1)}%
         </text>
       </svg>
+
+      {hovered && hover !== null && (
+        <div
+          className="channel-insight__roas-chart-tip"
+          style={{
+            left: Math.min(Math.max(xOf(hover) + barW / 2, 90), vbWidth - 90),
+            top: Math.max(yOf(hovered.metrics[metric]) - 30, 4),
+          }}
+        >
+          <span>{hovered.label}</span>
+          <strong>
+            {metricLabel} {hovered.metrics[metric].toFixed(1)}%
+          </strong>
+          {hover > 0 && (
+            <small>
+              직전 대비{' '}
+              {(() => {
+                const d = computeDelta(
+                  hovered.metrics[metric],
+                  rows[hover - 1].metrics[metric],
+                )
+                return `${DELTA_ARROW[d.dir]} ${d.delta >= 0 ? '+' : '-'}${Math.abs(d.delta).toFixed(1)}%p`
+              })()}
+            </small>
+          )}
+          <small>
+            평균 대비{' '}
+            {(hovered.metrics[metric] - average[metric] >= 0 ? '+' : '-') +
+              Math.abs(hovered.metrics[metric] - average[metric]).toFixed(1)}
+            %p
+          </small>
+        </div>
+      )}
     </div>
   )
 }
@@ -1202,6 +1293,20 @@ export function RoasPanel({
     return <p className="channel-insight__result-empty">데이터 없음</p>
   }
 
+  // ROAS 요약 칸의 작은 추이 — 아래 표의 보기 단위와 무관하게 늘 일별(날짜마다
+  // 같은 계산). 칸을 누르면 이 묶음 안에서 커지며 자세히 보여 준다.
+  const daily = computeRoasRows(
+    RoasGrouping.DATE,
+    combinedInsight,
+    offlineRevenue,
+    onlineRevenue,
+    repeatRevenue,
+    adRevenue,
+  )
+  const dailyLabels = daily.map((row) => row.label)
+  const periodLabel =
+    daily.length > 0 ? `${daily[0].key} ~ ${daily[daily.length - 1].key}` : ''
+
   return (
     <div className="channel-insight__result">
       {/* 예전엔 이 요약 카드도 "지표 표시" 토글로 같이 숨겨졌는데, 그 토글은
@@ -1217,20 +1322,58 @@ export function RoasPanel({
           />
         </div>
 
-        {summaryOpen && (
-          <div className="channel-insight__summary-grid">
-            {ROAS_FIELDS.map((f) => (
-              <div key={f.key} className="channel-insight__kpi">
-                <span className="channel-insight__kpi-label">
-                  <RoasFieldLabel field={f} />
-                </span>
-                <span className="channel-insight__kpi-value">
-                  {f.format(f.getValue(total))}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
+        {summaryOpen &&
+          (daily.length > 1 ? (
+            <TrendGrid
+              className="channel-insight__summary-grid has-trend"
+              style={{ '--cols': 3 } as CSSProperties}
+              tiles={ROAS_FIELDS.map((f, index) => {
+                const values = daily.map((row) => f.getValue(row.metrics))
+                return {
+                  key: f.key,
+                  className: 'channel-insight__kpi',
+                  style: { '--glass-i': index } as CSSProperties,
+                  values,
+                  detail: {
+                    title: f.label,
+                    subtitle: `${periodLabel} · 일별`,
+                    value: f.format(f.getValue(total)),
+                    labels: dailyLabels,
+                    format: f.format,
+                  },
+                  content: (
+                    <>
+                      <span className="channel-insight__kpi-label">
+                        <RoasFieldLabel field={f} />
+                      </span>
+                      <span className="channel-insight__kpi-row">
+                        <span className="channel-insight__kpi-value">
+                          {f.format(f.getValue(total))}
+                        </span>
+                        <Sparkline
+                          className="channel-insight__kpi-spark"
+                          values={values}
+                        />
+                      </span>
+                    </>
+                  ),
+                }
+              })}
+            />
+          ) : (
+            <div className="channel-insight__summary-grid">
+              {ROAS_FIELDS.map((f) => (
+                <div key={f.key} className="channel-insight__kpi">
+                  <span className="channel-insight__kpi-label">
+                    <RoasFieldLabel field={f} />
+                  </span>
+                  <span className="channel-insight__kpi-value">
+                    {f.format(f.getValue(total))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ))}
       </section>
 
       {/* 광고 기여 ROAS — 범위(하한~상한)와 고객 유입 월 코호트. */}

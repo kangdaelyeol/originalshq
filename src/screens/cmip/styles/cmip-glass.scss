@@ -420,11 +420,6 @@
   color: var(--glass-link);
 }
 
-// ── ROAS 막대 그래프 ─────────────────────────────────────────────────────
-.cmip .channel-insight__roas-chart-bar {
-  fill: var(--glass-accent);
-}
-
 // ── 불러오는 중 ─────────────────────────────────────────────────────────
 // 섹션마다 로딩 판(LoadingPanel) 하나 — 다 받으면 섹션 몸통(AutoHeight)이 그
 // 높이에서 자라고, 새로 붙은 내용이 흐릿하게 떠오른다.
@@ -510,6 +505,8 @@
   --ilc-muted: var(--glass-text-3);
   --ilc-surface: var(--glass-float);
   --ilc-border: transparent;
+  --ilc-chip: var(--glass-fill-1);
+  --ilc-chip-strong: var(--glass-fill-3);
 }
 .cmip .index-line-chart__tooltip {
   border-radius: 14px;
@@ -644,7 +641,6 @@
 }
 
 .cmip .campaign-card {
-  all: unset;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -656,7 +652,6 @@
   background: $fill-1;
   color: $text;
   cursor: pointer;
-  transition: background-color 0.2s ease;
 
   &:hover {
     background: $fill-2;
@@ -729,8 +724,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-// 비교 표에 넣었는지 — 넣으면 누르는 색 동그라미에 체크.
+// 비교 표에 넣기·빼기 버튼 — 넣으면 누르는 색 동그라미에 체크.
 .cmip .campaign-card__check {
+  margin: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -748,6 +747,14 @@
     width: 12px;
     height: 12px;
   }
+}
+.cmip .campaign-card__check:hover {
+  background: $fill-3;
+  color: $text-3;
+}
+.cmip .campaign-card__check:focus-visible {
+  outline: 2px solid var(--glass-link);
+  outline-offset: 2px;
 }
 .cmip .campaign-card.is-selected .campaign-card__check {
   background: var(--glass-link);
@@ -818,8 +825,10 @@
 
 // ── Summary 칸의 작은 추이 그래프(kpi-grid.tsx) ─────────────────────────
 // 값 옆에 그 지표의 날짜별 추이 — 칸을 넓혀 값과 그래프를 한 줄에.
+// 줄마다 칸 수 — 칸 개수가 줄에 딱 떨어지게 부르는 쪽이 --cols로(기본 4 —
+// 전체 요약 16칸, ROAS 요약 9칸은 3, 광고 성과 5칸은 5).
 .cmip .channel-insight__summary-grid.has-trend {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--cols, 4), minmax(0, 1fr));
 
   @media (max-width: 1100px) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -848,4 +857,70 @@
 // 선·면이 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다(xtool 인입 그래프와 같다).
 .cmip .index-line-chart__lines {
   @include glass.draw-in(0.9s);
+}
+
+// ── 누르면 커지는 칸(TrendGrid) ─────────────────────────────────────────
+// 숫자 칸 전체가 누르는 자리 — 마우스를 올리면 한 겹 밝게.
+.cmip .glass_tgrid_tile.channel-insight__kpi:hover {
+  background: $fill-2;
+}
+
+// ── 그래프 모달의 기간 고르기(date-range-narrow.tsx) ────────────────────
+// 버튼은 알약, 펼친 달력은 떠 있는 유리 판, 기간 띠·시작/끝은 데이터색.
+.cmip .date-range-narrow__trigger {
+  @include glass.pill-button;
+  height: 32px;
+  padding: 0 12px;
+  color: $text;
+}
+// 그래프 바로 위에 펼쳐져 뒤 선·숫자가 비치면 날짜가 안 읽힌다 — 거의 불투명한
+// 떠 있는 판.
+.cmip .date-range-narrow__popover {
+  @include glass.float(20px);
+  @include glass.pop-in(0.26s);
+  padding: 14px;
+  transform-origin: top right;
+}
+.cmip .date-range-narrow__nav-btn {
+  border-radius: 999px;
+
+  &:hover {
+    background: $fill-2;
+  }
+}
+.cmip .date-range-narrow__month-select {
+  @include glass.field;
+  @include glass.select-arrow;
+  border-radius: 10px;
+  color: $text;
+}
+.cmip .date-range-narrow__cell.is-in-range::before {
+  background: color-mix(in srgb, var(--glass-accent) 16%, transparent);
+}
+.cmip
+  .date-range-narrow__cell:hover:not(:disabled):not(.is-start):not(.is-end)
+  .date-range-narrow__cell-num {
+  background: $fill-2;
+}
+.cmip .date-range-narrow__cell.is-start .date-range-narrow__cell-num,
+.cmip .date-range-narrow__cell.is-end .date-range-narrow__cell-num {
+  background: var(--glass-accent);
+  color: var(--glass-on-accent);
+}
+.cmip .date-range-narrow__footer {
+  border-top: none;
+}
+.cmip .date-range-narrow__cancel,
+.cmip .date-range-narrow__apply {
+  border: none;
+  border-radius: 999px;
+}
+.cmip .date-range-narrow__cancel {
+  background: $fill-2;
+  color: $text;
+}
+.cmip .date-range-narrow__apply {
+  background: var(--glass-accent);
+  color: var(--glass-on-accent);
+  font-weight: 600;
 }
