@@ -2,32 +2,106 @@ import { useEffect, useRef, useState } from 'react'
 import { FitCanvas } from './canvas'
 import { COLUMNS, GATE } from './data'
 import { useEngine, type Engine } from './engine'
-import { fmtTime, fmtTokens, fmtUsd, useModel } from './model'
+import {
+  fmtTime,
+  fmtTokens,
+  fmtUsd,
+  useModel,
+  type GraphStore,
+  type Meta,
+} from './model'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 /** 8 201 처럼 — 천 단위를 띄어 쓴다. */
 const grouped = (n: number) =>
   Math.floor(n).toLocaleString('en-US').replace(/,/g, ' ')
 
+/** 저장 상태 한 줄 — 서버 작업본 버전과 지금 상태. */
+const syncLabel = ({ status, savedAt }: Meta) => {
+  switch (status) {
+    case 'loading':
+      return '불러오는 중…'
+    case 'pending':
+    case 'saving':
+      return '저장 중…'
+    case 'offline':
+      return '오프라인 · 이 브라우저에 저장됨'
+    case 'conflict':
+      return '다른 곳에서 먼저 바뀜'
+    default:
+      return savedAt ? `${fmtTime(savedAt)} 저장` : '기본값'
+  }
+}
+
+/** 망 버전·저장 상태·게시 — 게시한 버전을 소재 분석 API가 쓴다. */
+function GraphSync({ store }: { store: GraphStore }) {
+  const { meta } = useModel()
+  const [publishing, setPublishing] = useState(false)
+  const upToDate =
+    meta.status === 'synced' && meta.published?.version === meta.version
+  const publish = async () => {
+    setPublishing(true)
+    await store.publish()
+    setPublishing(false)
+  }
+  return (
+    <span
+      className={`pn-sync is-${meta.status}`}
+      title={meta.error ?? '망을 고치면 CMIP 서버에 저장되고 버전이 오릅니다'}
+    >
+      <b>graph v{meta.version}</b>
+      <span>{syncLabel(meta)}</span>
+      {meta.status === 'offline' && (
+        <button type="button" onClick={() => store.retry()}>
+          다시 시도
+        </button>
+      )}
+      {meta.status === 'conflict' && (
+        <>
+          <button type="button" onClick={() => void store.takeServer()}>
+            서버 것 불러오기
+          </button>
+          <button type="button" onClick={() => void store.overwrite()}>
+            내 것으로 덮어쓰기
+          </button>
+        </>
+      )}
+      <em>{meta.published ? `게시 v${meta.published.version}` : '게시 전'}</em>
+      <button
+        type="button"
+        className="is-publish"
+        disabled={
+          publishing ||
+          upToDate ||
+          meta.status === 'loading' ||
+          meta.status === 'conflict' ||
+          meta.status === 'offline'
+        }
+        title="지금 망을 게시 — 소재 분석 API가 이 버전으로 프롬프트를 만듭니다"
+        onClick={() => void publish()}
+      >
+        {publishing ? '게시 중…' : upToDate ? '게시됨' : '게시'}
+      </button>
+    </span>
+  )
+}
+
 export function TopBar({
+  store,
   metricsOpen,
   onToggleMetrics,
 }: {
+  store: GraphStore
   metricsOpen: boolean
   onToggleMetrics: () => void
 }) {
-  // 망 버전 — 편집을 저장할 때마다 하나씩 오른다(기본 목업은 v0).
-  const { version, savedAt } = useModel().meta
   return (
     <header className="pn-top">
       <b className="pn-top__brand">CMIP / PROMPT PERCEPTRON</b>
-      <span
-        className="pn-top__ver"
-        title="망을 고쳐 저장할 때마다 버전이 오릅니다"
-      >
-        <b>LAYER ONE</b> · graph v{version} ·{' '}
-        {savedAt ? `${fmtTime(savedAt)} 저장` : '기본값'}
+      <span className="pn-top__ver">
+        <b>LAYER ONE</b>
       </span>
+      <GraphSync store={store} />
       <span className="pn-top__flow">
         INPUT → FEATURE → HIDDEN → GATE → PROMPT
       </span>

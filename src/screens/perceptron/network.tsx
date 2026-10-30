@@ -302,6 +302,13 @@ const fitView = (
   return { x: WORLD_W / 2, y: top + (vh * 0.45) / s, zoom: s / base }
 }
 
+/** 프리 모드 카메라는 화면 가운데가 망 안에 있는 동안만 움직인다 — 배율과
+ * 상관없이 두 축이 같이 움직인다(가운데에 묶지 않는다). */
+const keepInside = (free: FreeView, worldH: number) => {
+  free.x = Math.min(WORLD_W, Math.max(0, free.x))
+  free.y = Math.min(worldH, Math.max(0, free.y))
+}
+
 const ZOOM_MIN = 0.25
 const ZOOM_MAX = 3
 const ZOOM_STEP = 1.25
@@ -519,6 +526,8 @@ export function Network({
   })
   const sizeRef = useRef({ vw: 0, vh: 0, base: 1 })
   const freeRef = useRef<FreeView | null>(null)
+  // 휠·핀치를 받은 다음 프레임은 부드럽게 따라가지 않고 바로 그 자리로.
+  const snapRef = useRef(false)
   const modeRef = useRef(mode)
   const [zoomPct, setZoomPct] = useState(100)
   const dragRef = useRef<{
@@ -623,33 +632,28 @@ export function Network({
       if (!cam.ready) {
         Object.assign(cam, { ...target, s: zoom, ready: true })
       } else {
-        // 끄는 동안엔 손을 바로 따라오고, 프리 모드의 휠·핀치는 지연을 1/3로
-        // (3배 빨리 따라간다). 오토 카메라와 노드로 다가가는 움직임은 그대로.
+        // 끌기·휠·핀치는 바로 그 자리로(따라가는 부드러움 없이). 프리 모드의
+        // 버튼(+/−·전체)은 빠르게, 오토 카메라와 노드로 다가가는 움직임은 부드럽게.
+        const snap = !!dragRef.current?.moved || snapRef.current
+        snapRef.current = false
         const follow = free ? 3 : 1
-        const k = dragRef.current?.moved ? 1 : 1 - Math.exp(-dt * 4 * follow)
-        const kp = 1 - Math.exp(-dt * 2.6 * follow)
+        const k = snap ? 1 : 1 - Math.exp(-dt * 4 * follow)
+        const kp = snap ? 1 : 1 - Math.exp(-dt * 2.6 * follow)
         cam.x += (target.x - cam.x) * k
         cam.y += (target.y - cam.y) * k
         cam.s += (zoom - cam.s) * kp
         cam.yaw += (target.yaw - cam.yaw) * kp
         cam.pitch += (target.pitch - cam.pitch) * kp
       }
+      // 프리 모드는 손으로 옮긴 자리 그대로(망 안에 있게는 휠·끌기에서 막는다),
+      // 나머지는 화면 밖 빈 곳이 덜 보이게 가장자리에서 막는다.
       const halfW = (vw * 0.5) / cam.s
-      const pad = free ? 300 : 60
-      const x = clampAxis(
-        cam.x,
-        halfW,
-        (vw * 0.5 - inspW) / cam.s,
-        WORLD_W,
-        pad,
-      )
-      const y = clampAxis(
-        cam.y,
-        (vh * 0.45) / cam.s,
-        (vh * 0.55) / cam.s,
-        worldH,
-        free ? pad : 20,
-      )
+      const x = free
+        ? cam.x
+        : clampAxis(cam.x, halfW, (vw * 0.5 - inspW) / cam.s, WORLD_W, 60)
+      const y = free
+        ? cam.y
+        : clampAxis(cam.y, (vh * 0.45) / cam.s, (vh * 0.55) / cam.s, worldH, 20)
       cam.vx = x
       cam.vy = y
       // 프리 모드에서 편집하는 동안 옮겨 간 자리를 기억 — 패널을 닫아도 거기 있다.
@@ -884,6 +888,8 @@ export function Network({
         free.x += e.deltaX / cam.s
         free.y += e.deltaY / cam.s
       }
+      keepInside(free, modelRef.current.layout.worldH)
+      snapRef.current = true
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
@@ -958,6 +964,7 @@ export function Network({
         if (!free || focusRef.current) return
         free.x -= dx / camRef.current.s
         free.y -= dy / camRef.current.s
+        keepInside(free, modelRef.current.layout.worldH)
       }}
       onPointerUp={() => {
         const d = dragRef.current

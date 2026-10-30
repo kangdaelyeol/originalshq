@@ -1,45 +1,39 @@
 import { createContext, useContext, useSyncExternalStore } from 'react'
 import {
-  DEFAULT_CASES,
-  DEFAULT_LAYERS,
+  checkGraph,
+  composeCase,
+  fallbackResult,
+  fmtTokens,
+  fmtUsd,
   GATE,
-  HEAD_ID,
-  PRICE,
+  plain,
   type Answer,
   type CaseDef,
-  type Layers,
+  type Cost,
+  type Graph,
   type NodeDef,
-} from './data'
+} from '../../../functions-cmip/src/prompt-graph/compose'
+import { DEFAULT_CASES, DEFAULT_LAYERS, HEAD_ID } from './data'
 import { MAX_ROWS, createLayout, type Layout } from './geometry'
+import {
+  getPromptGraph,
+  publishPromptGraph,
+  savePromptGraph,
+} from './graph-client'
 import { buildTimeline, type CaseTimeline } from './timeline'
 
 // 편집할 수 있는 망 — 층마다 노드와 케이스 경로를 들고, 고칠 때마다 배치·
-// 시간표·프롬프트·비용을 다시 만든다. 이 브라우저(localStorage)에만 저장된다.
+// 시간표·프롬프트·비용을 다시 만든다. 프롬프트·비용은 소재 분석 API와 같은
+// 공용 모듈(composeCase)로 만든다. 망은 CMIP 서버에 저장되고(작업본·게시본),
+// 서버에 못 닿으면 이 브라우저에 두었다가 다음에 올린다.
 
-export interface Graph {
-  layers: Layers
-  cases: CaseDef[]
-}
+export type { Graph }
+export { fallbackResult, fmtTokens, fmtUsd }
 
 export interface NodeAt {
   node: NodeDef
   col: number
   row: number
-}
-
-/** 이 프롬프트를 Claude에 보낼 때의 토큰과 비용. */
-export interface Cost {
-  /** 프롬프트 글의 토큰(대략). */
-  textTokens: number
-  /** 경로 노드가 함께 보내는 입력(영상 프레임·표 등)의 토큰. */
-  attachedTokens: number
-  inTokens: number
-  outTokens: number
-  inCost: number
-  outCost: number
-  /** 보류면 0 — Claude를 부르지 않는다. */
-  total: number
-  price: { in: number; out: number }
 }
 
 /** 아래 PARALLEL FEATURES 한 줄 — 특징 노드 하나의 답. */
@@ -80,90 +74,46 @@ export interface CaseView {
   log: [string, string][]
 }
 
+/** 서버와 맞춰진 정도. */
+export type SyncStatus =
+  /** 서버에서 받는 중. */
+  | 'loading'
+  /** 서버 작업본과 같다. */
+  | 'synced'
+  /** 고쳤고 곧 저장한다. */
+  | 'pending'
+  | 'saving'
+  /** 서버에 못 닿는다 — 이 브라우저에만 저장해 두었다. */
+  | 'offline'
+  /** 다른 곳에서 먼저 저장했다 — 불러오거나 덮어쓴다. */
+  | 'conflict'
+
+export interface Meta {
+  /** 서버 작업본 버전(서버에 저장한 적 없으면 0). */
+  version: number
+  savedAt: number | null
+  /** 마지막 게시본 — 소재 분석 API가 쓰는 망. */
+  published: { version: number; publishedAt: number } | null
+  status: SyncStatus
+  /** 마지막으로 실패한 이유(오프라인·충돌·게시 실패). */
+  error: string | null
+}
+
 export interface Model {
   graph: Graph
   layout: Layout
   nodes: Map<string, NodeAt>
   cases: CaseView[]
-  /** 저장 횟수(망 버전)와 마지막 저장 시각 — 기본값 그대로면 0·null. */
-  meta: { version: number; savedAt: number | null }
+  meta: Meta
 }
 
-/** '→ 결과 먼저  0.97' → '결과 먼저 0.97'. */
-const plain = (s = '') => s.replace(/^→\s*/, '').replace(/\s+/g, ' ').trim()
-
-/** 1 234 → '1.2k', 41 800 → '42k'. */
-export const fmtTokens = (n: number) =>
-  n >= 10000
-    ? `${Math.round(n / 1000)}k`
-    : n >= 1000
-      ? `${(n / 1000).toFixed(1)}k`
-      : `${n}`
-
-/** 14:32 — 마지막 저장 시각. */
+/** 14:32 — 저장·게시 시각. */
 export const fmtTime = (at: number) =>
   new Date(at).toLocaleTimeString('ko-KR', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   })
-
-/** 1센트 아래는 소수 셋째 자리까지. */
-export const fmtUsd = (x: number) =>
-  x > 0 && x < 0.01 ? `$${x.toFixed(3)}` : `$${x.toFixed(2)}`
-
-/** 이 케이스에 적힌 결과가 없는 노드 — 강조한 값(없으면 첫 값)을 결과로 쓴다. */
-export const fallbackResult = (n: NodeDef) => {
-  const row = n.rows.find((r) => r[2] === 'accent') ?? n.rows[0]
-  return row ? `→ ${row[1]}` : ''
-}
-
-const answerResult = ([answer, conf]: Answer) =>
-  `→ ${answer}  ${conf.toFixed(2)}`
-
-/** 머리 칸 제목의 "·" 뒤 — 프롬프트 첫 줄에 붙는 모델 이름. */
-const modelName = (head?: NodeDef) =>
-  head?.title.split('·').slice(1).join('·').trim() || 'claude'
-
-/** 단가 — 머리 칸 카드 값 "in $/M"·"out $/M"(없거나 숫자가 아니면 기본값). */
-const priceOf = (head?: NodeDef) => {
-  const read = (key: string, fallback: number) => {
-    const row = head?.rows.find(([k]) => k.trim().toLowerCase().startsWith(key))
-    const v = row ? parseFloat(row[1].replace(/[^\d.]/g, '')) : NaN
-    return Number.isFinite(v) && v >= 0 ? v : fallback
-  }
-  return { in: read('in', PRICE.in), out: read('out', PRICE.out) }
-}
-
-/** 글의 토큰 — 한글이 섞인 글은 1.6자에 1토큰쯤으로 어림한다. */
-const textTokens = (lines: string[]) =>
-  Math.round(lines.join('\n').length / 1.6)
-
-/** 프롬프트 한 장 — 출력 노드의 칸 순서대로, 칸마다 [이 케이스만의 줄, 칸의
- * 기본 줄, 경로 노드 중 이 칸으로 오는 조각]을 모은다. 빈 칸은 건너뛴다. */
-const compose = (
-  layers: Layers,
-  c: CaseDef,
-  path: NodeDef[],
-  results: Record<string, string>,
-  hold: boolean,
-) => {
-  const [head, ...sections] = layers[4]
-  const out = [
-    `# ${c.title.toLowerCase()} · ${modelName(head)}${hold ? '  [HOLD]' : ''}`,
-  ]
-  for (const s of sections) {
-    const parts = [
-      c.lines[s.id],
-      s.prompt,
-      ...path
-        .filter((n) => n.feeds === s.id)
-        .map((n) => n.prompt.replaceAll('{result}', plain(results[n.id]))),
-    ].filter((p): p is string => !!p && p.trim() !== '')
-    if (parts.length) out.push(s.title, ...parts.join('\n').split('\n'))
-  }
-  return out
-}
 
 /** 패널에 보일 특징 질문 6개 — 층 순서대로, 경로가 지나는 질문은 꼭 넣는다. */
 const FEATURE_ROWS = 6
@@ -193,42 +143,9 @@ const viewCase = (
   layout: Layout,
   c: CaseDef,
 ): CaseView => {
+  const { confidence, hold, results, prompt, cost } = composeCase(graph, c)
   const path = c.path.map((id) => nodes.get(id)!.node)
-  const asked = c.answers[path[1].id]
-  const confidence = asked ? asked[1] : c.confidence
-  const hold = confidence < GATE
-  const results: Record<string, string> = {}
-  for (const n of path.slice(0, 3)) {
-    const a = c.answers[n.id]
-    results[n.id] = c.results[n.id] ?? (a ? answerResult(a) : fallbackResult(n))
-  }
   const verdict = `${confidence.toFixed(2)} ${hold ? '<' : '≥'} ${GATE.toFixed(2)}`
-  results[path[3].id] = `${verdict}   ${hold ? 'hold' : 'pass'}`
-  const prompt = compose(graph.layers, c, path.slice(0, 4), results, hold)
-
-  const head = graph.layers[4][0]
-  const price = priceOf(head)
-  const text = textTokens(prompt)
-  const attached = path
-    .slice(0, 4)
-    .reduce((sum, n) => sum + Math.max(0, n.tokens ?? 0), 0)
-  const inTokens = text + attached
-  const inCost = (inTokens / 1e6) * price.in
-  const outCost = (c.outTokens / 1e6) * price.out
-  const cost: Cost = {
-    textTokens: text,
-    attachedTokens: attached,
-    inTokens,
-    outTokens: c.outTokens,
-    inCost,
-    outCost,
-    total: hold ? 0 : inCost + outCost,
-    price,
-  }
-  results[HEAD_ID] = hold
-    ? '→ hold · human review'
-    : `→ ${fmtTokens(inTokens)} tok · ${fmtUsd(cost.total)}`
-
   const features = graph.layers[1]
   const answered = features.filter((n) => c.answers[n.id]).length
   const sections = prompt.filter((l) => /^#{2}\s/.test(l)).length
@@ -259,10 +176,18 @@ const viewCase = (
         'out',
         hold
           ? `${path[4].title.replace(/^#+\s*/, '')} → human review`
-          : `prompt ${fmtTokens(inTokens)} tok → ${fmtUsd(cost.total)}`,
+          : `prompt ${fmtTokens(cost.inTokens)} tok → ${fmtUsd(cost.total)}`,
       ],
     ],
   }
+}
+
+const EMPTY_META: Meta = {
+  version: 0,
+  savedAt: null,
+  published: null,
+  status: 'loading',
+  error: null,
 }
 
 /** 망 → 화면에 필요한 것 전부. 노드 구성이 그대로면 배치는 다시 쓴다(섬유를
@@ -270,7 +195,7 @@ const viewCase = (
 export const buildModel = (
   graph: Graph,
   prev?: Model,
-  meta: Model['meta'] = prev?.meta ?? { version: 0, savedAt: null },
+  meta: Meta = prev?.meta ?? EMPTY_META,
 ): Model => {
   const columns = graph.layers.map((l) => l.map((n) => n.id))
   const key = columns.map((c) => c.join(',')).join('|')
@@ -422,60 +347,21 @@ export const setCaseOutTokens = (g: Graph, slot: number, outTokens: number) =>
 
 // ── 저장 ────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = 'pn.graph.v1'
+/** 이 브라우저의 사본 — 서버에 못 닿을 때 고친 것을 잃지 않게. */
+const CACHE_KEY = 'pn.graph.v1'
 
-interface Saved {
+interface Cache {
   graph: Graph
+  /** 이 사본이 기댄 서버 버전. */
   version: number
-  savedAt: number
+  /** 서버에 아직 못 올린 수정이 있는지. */
+  dirty?: boolean
 }
 
 const defaults = (): Graph =>
   structuredClone({ layers: DEFAULT_LAYERS, cases: DEFAULT_CASES })
 
-const isNode = (n: unknown): n is NodeDef => {
-  if (!n || typeof n !== 'object') return false
-  const v = n as NodeDef
-  return (
-    typeof v.id === 'string' &&
-    typeof v.title === 'string' &&
-    typeof v.prompt === 'string' &&
-    typeof v.feeds === 'string' &&
-    Array.isArray(v.rows) &&
-    v.rows.every(
-      (r) =>
-        Array.isArray(r) &&
-        typeof r[0] === 'string' &&
-        typeof r[1] === 'string',
-    )
-  )
-}
-
-/** 저장된 값이 지금 구조와 맞는지 — 안 맞으면 기본값으로 시작한다. */
-const isGraph = (g: unknown): g is Graph => {
-  if (!g || typeof g !== 'object') return false
-  const { layers, cases } = g as Graph
-  return (
-    Array.isArray(layers) &&
-    layers.length === 5 &&
-    layers.every((l) => Array.isArray(l) && l.length > 0 && l.every(isNode)) &&
-    layers[4][0].id === HEAD_ID &&
-    Array.isArray(cases) &&
-    cases.length === DEFAULT_CASES.length &&
-    cases.every(
-      (c, i) =>
-        !!c &&
-        c.id === DEFAULT_CASES[i].id &&
-        Array.isArray(c.path) &&
-        c.path.length === 5 &&
-        c.path.every((id) => typeof id === 'string') &&
-        !!c.results &&
-        !!c.lines,
-    )
-  )
-}
-
-/** 예전에 저장한 망 — 나중에 생긴 값(입력 토큰·특징 답·응답 토큰)은 기본값으로 채운다. */
+/** 예전 망 — 나중에 생긴 값(입력 토큰·특징 답·응답 토큰)은 기본값으로 채운다. */
 const migrate = (g: Graph): Graph => {
   const tokens = new Map(
     DEFAULT_LAYERS.flat().map((n) => [n.id, n.tokens] as const),
@@ -490,44 +376,88 @@ const migrate = (g: Graph): Graph => {
     ),
     cases: g.cases.map((c, i) => ({
       ...c,
-      answers: c.answers ?? DEFAULT_CASES[i].answers,
-      outTokens: c.outTokens ?? DEFAULT_CASES[i].outTokens,
+      answers: c.answers ?? DEFAULT_CASES[i]?.answers ?? {},
+      outTokens: c.outTokens ?? DEFAULT_CASES[i]?.outTokens ?? 800,
     })),
   }
 }
 
-const load = (): Saved | null => {
+/** 받은 망을 화면에 쓸 수 있게 — 어긋나면 null. */
+const usable = (g: unknown): Graph | null => {
+  if (!g || typeof g !== 'object') return null
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    const v: unknown = raw ? JSON.parse(raw) : null
-    // 처음엔 망만 저장했다 — 그때 것은 버전 1로 읽는다.
-    const saved =
-      v && typeof v === 'object' && 'graph' in v
-        ? (v as Saved)
-        : { graph: v as Graph, version: 1, savedAt: 0 }
-    return isGraph(saved.graph)
-      ? { ...saved, graph: repair(migrate(saved.graph)) }
-      : null
+    const graph = repair(migrate(g as Graph))
+    return checkGraph(graph) ? null : graph
   } catch {
     return null
   }
 }
 
-/** 망을 들고 있는 곳 — 고치면 모델을 다시 만들어 알리고, 손을 멈추면(0.25초)
- * 저장하며 버전을 올린다. */
+const readCache = (): Cache | null => {
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY)
+    const v = raw ? (JSON.parse(raw) as Partial<Cache> & Graph) : null
+    if (!v) return null
+    // 처음엔 망만 저장했다 — 그때 것은 서버에 올린 적 없는 수정으로 본다.
+    const graph = usable('graph' in v ? v.graph : v)
+    if (!graph) return null
+    return 'graph' in v
+      ? { graph, version: v.version ?? 0, dirty: v.dirty }
+      : { graph, version: 0, dirty: true }
+  } catch {
+    return null
+  }
+}
+
+const writeCache = (cache: Cache) => {
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(cache))
+  } catch {
+    // 저장 공간을 못 쓰면 서버에만 둔다.
+  }
+}
+
+const reason = (err: unknown) =>
+  err instanceof Error ? err.message : '서버에 닿지 않습니다'
+
+const statusOf = (err: unknown) =>
+  typeof err === 'object' && err && 'status' in err
+    ? Number((err as { status: unknown }).status)
+    : 0
+
+/** 고치기를 멈추고 이만큼 지나면 서버에 올린다. */
+const SAVE_DELAY = 600
+
+/**
+ * 망을 들고 있는 곳 — 처음엔 이 브라우저의 사본(없으면 기본 목업)으로 그리고,
+ * 서버 작업본을 받으면 바꿔 그린다. 고치면 모델을 다시 만들어 알리고, 손을
+ * 멈추면 서버에 저장한다(버전이 오른다). 다른 곳에서 먼저 저장했으면 덮어쓰지
+ * 않고 'conflict'로 멈춘다.
+ */
 export class GraphStore {
   private model: Model
   private listeners = new Set<() => void>()
   private saveTimer = 0
+  private saving = false
+  /** 저장하는 동안 또 고쳤는지 — 끝나면 한 번 더 올린다. */
+  private dirtyDuringSave = false
+  private cache: Cache | null
+  private started = false
 
   constructor() {
-    const saved = load()
-    this.model = saved
-      ? buildModel(saved.graph, undefined, {
-          version: saved.version,
-          savedAt: saved.savedAt || null,
-        })
-      : buildModel(defaults())
+    this.cache = readCache()
+    this.model = buildModel(this.cache?.graph ?? defaults(), undefined, {
+      ...EMPTY_META,
+      version: this.cache?.version ?? 0,
+    })
+  }
+
+  /** 서버에서 받아 오기 시작 — 화면이 붙을 때 한 번만(개발 모드에서 저장소가
+   * 두 번 만들어져도 쓰는 쪽만 서버와 말하게). */
+  start() {
+    if (this.started) return
+    this.started = true
+    void this.pull(this.cache)
   }
 
   get = () => this.model
@@ -539,39 +469,147 @@ export class GraphStore {
     }
   }
 
-  update(fn: (g: Graph) => Graph) {
-    this.model = buildModel(repair(fn(this.model.graph)), this.model)
+  private setMeta(patch: Partial<Meta>) {
+    this.model = { ...this.model, meta: { ...this.model.meta, ...patch } }
     this.emit()
-    window.clearTimeout(this.saveTimer)
-    this.saveTimer = window.setTimeout(() => this.save(), 250)
   }
 
-  private save() {
-    const meta = { version: this.model.meta.version + 1, savedAt: Date.now() }
+  /** 서버 작업본을 받아 온다. 사본에 못 올린 수정이 있고 서버가 그 뒤로 안
+   * 바뀌었으면 그 수정을 올린다. */
+  private async pull(cache: Cache | null) {
     try {
-      const saved: Saved = { graph: this.model.graph, ...meta }
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(saved))
-    } catch {
-      // 저장 공간을 못 쓰면 이 화면에서만 유지된다(버전은 그대로).
+      const state = await getPromptGraph()
+      const draft = state.draft
+      const graph = draft ? usable(draft.graph) : null
+      if (cache?.dirty && (draft?.version ?? 0) === cache.version) {
+        // 이 브라우저에서 고친 게 최신이다 — 서버에 올린다.
+        this.setMeta({ version: cache.version, published: state.published })
+        this.schedule(0)
+        return
+      }
+      if (draft && graph) {
+        this.model = buildModel(graph, this.model, {
+          version: draft.version,
+          savedAt: draft.savedAt,
+          published: state.published,
+          status: 'synced',
+          error: null,
+        })
+        writeCache({ graph, version: draft.version })
+        this.emit()
+        return
+      }
+      this.setMeta({
+        version: 0,
+        published: state.published,
+        status: 'synced',
+        error: draft ? '서버 망 모양이 맞지 않아 기본 망으로 시작합니다' : null,
+      })
+    } catch (err) {
+      this.setMeta({ status: 'offline', error: reason(err) })
+    }
+  }
+
+  update(fn: (g: Graph) => Graph) {
+    const graph = repair(fn(this.model.graph))
+    const status =
+      this.model.meta.status === 'conflict' ? 'conflict' : 'pending'
+    this.model = buildModel(graph, this.model, { ...this.model.meta, status })
+    writeCache({ graph, version: this.model.meta.version, dirty: true })
+    this.emit()
+    if (status === 'pending') this.schedule(SAVE_DELAY)
+  }
+
+  private schedule(delay: number) {
+    window.clearTimeout(this.saveTimer)
+    this.saveTimer = window.setTimeout(() => void this.push(), delay)
+  }
+
+  /** 지금 망을 서버에 저장한다. */
+  private async push() {
+    if (this.saving) {
+      this.dirtyDuringSave = true
       return
     }
-    this.model = { ...this.model, meta }
-    this.emit()
+    this.saving = true
+    this.dirtyDuringSave = false
+    const graph = this.model.graph
+    this.setMeta({ status: 'saving' })
+    try {
+      const saved = await savePromptGraph(graph, this.model.meta.version)
+      const changed = this.model.graph !== graph
+      this.setMeta({
+        version: saved.version,
+        savedAt: saved.savedAt,
+        status: changed ? 'pending' : 'synced',
+        error: null,
+      })
+      writeCache({
+        graph: this.model.graph,
+        version: saved.version,
+        dirty: changed,
+      })
+      if (changed) this.schedule(SAVE_DELAY)
+    } catch (err) {
+      this.setMeta(
+        statusOf(err) === 409
+          ? { status: 'conflict', error: reason(err) }
+          : { status: 'offline', error: reason(err) },
+      )
+    } finally {
+      this.saving = false
+      if (this.dirtyDuringSave) this.schedule(SAVE_DELAY)
+    }
   }
 
-  /** 기본 목업으로 되돌린다. */
-  reset() {
+  /** 오프라인이었으면 다시 올려 본다. */
+  retry() {
+    this.schedule(0)
+  }
+
+  /** 충돌 — 서버 것을 받아 이 화면의 수정을 버린다. */
+  async takeServer() {
     window.clearTimeout(this.saveTimer)
+    this.setMeta({ status: 'loading', error: null })
+    await this.pull(null)
+  }
+
+  /** 충돌 — 서버 것 위에 이 화면의 망을 덮어쓴다. */
+  async overwrite() {
     try {
-      window.localStorage.removeItem(STORAGE_KEY)
-    } catch {
-      // 저장 공간을 못 쓰면 지울 것도 없다.
+      const state = await getPromptGraph()
+      this.setMeta({
+        version: state.draft?.version ?? 0,
+        status: 'pending',
+        error: null,
+      })
+      this.schedule(0)
+    } catch (err) {
+      this.setMeta({ status: 'offline', error: reason(err) })
     }
-    this.model = buildModel(defaults(), undefined, {
-      version: 0,
-      savedAt: null,
-    })
-    this.emit()
+  }
+
+  /** 지금 망을 게시 — 저장이 밀려 있으면 먼저 올리고 게시한다. 소재 분석 API가
+   * 이 버전을 쓴다. */
+  async publish() {
+    const { status } = this.model.meta
+    if (status === 'conflict' || status === 'loading') return
+    if (status !== 'synced') {
+      window.clearTimeout(this.saveTimer)
+      await this.push()
+      if (this.model.meta.status !== 'synced') return
+    }
+    try {
+      const published = await publishPromptGraph()
+      this.setMeta({ published, error: null })
+    } catch (err) {
+      this.setMeta({ error: `게시 실패 — ${reason(err)}` })
+    }
+  }
+
+  /** 기본 목업으로 되돌린다 — 이것도 한 번의 수정이라 서버에 저장된다. */
+  reset() {
+    this.update(() => defaults())
   }
 
   private emit() {

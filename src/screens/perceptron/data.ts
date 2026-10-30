@@ -1,12 +1,32 @@
 // 프롬프트 퍼셉트론 기본(목업) 데이터 — 입력층(신호) → 은닉층(특징·인코더·게이트)
 // → 출력층(프롬프트 노드 하나). 노드마다 "프롬프트 조각"이 있어서, 케이스가
 // 지나간 노드의 조각이 출력 노드의 해당 칸에 모여 프롬프트 한 장이 된다.
-// 화면에서 고친 내용은 이 기본값 대신 브라우저에 저장된다(model.ts).
+// 망의 모양과 조합 규칙은 소재 분석 API와 같은 공용 모듈
+// (functions-cmip/src/prompt-graph/compose.ts)에 있다 — 화면과 서버가 같은
+// 프롬프트를 만들도록. 화면에서 고친 망은 CMIP 서버에 저장된다(model.ts).
 
-export type Tone = 'accent' | 'white'
+import {
+  HEAD_ID,
+  type CaseDef,
+  type Layers,
+  type NodeDef,
+  type NodeRow,
+} from '../../../functions-cmip/src/prompt-graph/compose'
 
-/** 카드의 값 줄 — [이름, 값, 색(기둥 강조색이면 'accent')]. */
-export type NodeRow = [string, string, Tone?]
+export type {
+  Answer,
+  CaseDef,
+  Graph,
+  Layers,
+  NodeDef,
+  NodeRow,
+  Tone,
+} from '../../../functions-cmip/src/prompt-graph/compose'
+export {
+  GATE,
+  HEAD_ID,
+  PRICE,
+} from '../../../functions-cmip/src/prompt-graph/compose'
 
 export interface ColumnDef {
   num: string
@@ -24,34 +44,6 @@ export const COLUMNS: ColumnDef[] = [
   { num: '04', title: 'GATE / SECTIONS', color: '#e9c24a', stage: 'GATE' },
   { num: '05', title: 'OUTPUT / PROMPT', color: '#cfe85e', stage: 'PROMPT' },
 ]
-
-export interface NodeDef {
-  id: string
-  title: string
-  /** 카드에 보이는 값 줄(최대 3줄). */
-  rows: NodeRow[]
-  /** 프롬프트 조각 — 이 노드를 지나는 케이스의 프롬프트에서 feeds 칸에 들어간다
-   * ({result}는 그 케이스의 결과로 바뀐다). 출력 노드의 칸이면 모든 프롬프트에
-   * 들어가는 기본 줄. */
-  prompt: string
-  /** 조각이 들어갈 출력 노드의 칸 id(출력 노드의 칸 자신은 빈 값). */
-  feeds: string
-  /** 이 노드를 지나면 프롬프트와 함께 Claude에 보내는 입력의 토큰 수(영상
-   * 프레임·성과 표처럼) — 비용 계산에 들어간다. */
-  tokens?: number
-}
-
-/** 층마다 노드 — 0~3은 입력·은닉층, 4는 출력 노드의 칸(맨 위는 머리). */
-export type Layers = NodeDef[][]
-
-/** 출력 노드의 머리 칸 — 지울 수 없고, 제목의 "·" 뒤가 모델 이름이 된다. */
-export const HEAD_ID = 'out:head'
-
-export const GATE = 0.8
-
-/** 단가($ / 100만 토큰) 기본값 — claude-opus-5-5. PROMPT 칸의 카드 값
- * "in $/M"·"out $/M"을 고치면 그 값을 쓴다(다른 모델로 바꿀 때). */
-export const PRICE = { in: 4, out: 20 }
 
 export const WARN = '#ff4d6a'
 
@@ -556,32 +548,6 @@ export const USE_CASES = [
   'rival',
   'brief',
 ] as const
-
-/** 특징 질문의 답 — [답, 신뢰도(0~1)]. */
-export type Answer = [string, number]
-
-export interface CaseDef {
-  /** 1~12 — USE_CASES 순번. */
-  id: number
-  title: string
-  color: string
-  /** 층마다 지날 노드 id 5개 — 마지막은 출력 노드의 칸. */
-  path: string[]
-  /** 켜진 카드 아래 결과 띠 — 노드 id별(특징 노드는 답에서, 게이트·머리는
-   * 계산한다). */
-  results: Record<string, string>
-  /** 이 케이스 입력에 대한 특징 질문의 답 — 특징 노드 id별. 경로가 지나는
-   * 질문의 신뢰도가 게이트 판정에 쓰인다. */
-  answers: Record<string, Answer>
-  /** 이 케이스만의 프롬프트 줄 — 출력 노드의 칸 id별(역할·과제처럼). */
-  lines: Record<string, string>
-  /** 경로의 특징 노드에 답이 없을 때 쓰는 신뢰도. */
-  confidence: number
-  /** 은닉층이 답하는 데 걸린 시간(ms) — 실행 기록에 찍힌다. */
-  ms: number
-  /** Claude 응답의 예상 토큰 — 출력 형식이 길수록 크다. */
-  outTokens: number
-}
 
 /** 영상처럼 6개 케이스를 차례로 돈다(나머지 6개는 격자에만). */
 export const DEFAULT_CASES: CaseDef[] = [

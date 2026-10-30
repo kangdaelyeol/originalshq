@@ -123,6 +123,7 @@ export default function PerceptronScreen() {
   }
 
   useEffect(() => {
+    store.start()
     engine.start()
     // 시험용 — 개발자 도구에서 __pn.simulate(10, 12.3)으로 그 장면을 본다.
     Object.assign(window, { __pn: engine, __pnStore: store })
@@ -180,7 +181,11 @@ export default function PerceptronScreen() {
           } as CSSProperties
         }
       >
-        <TopBar metricsOpen={metricsOpen} onToggleMetrics={toggleMetrics} />
+        <TopBar
+          store={store}
+          metricsOpen={metricsOpen}
+          onToggleMetrics={toggleMetrics}
+        />
         <Fold open={metricsOpen}>
           <MetricRow engine={engine} />
         </Fold>

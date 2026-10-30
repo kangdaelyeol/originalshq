@@ -102,6 +102,62 @@
   }
 }
 
+// 망 버전·저장 상태·게시 — 맨 위 줄. 충돌·오프라인이면 색과 처리 버튼.
+.pn-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: u(6);
+  color: var(--ink-3);
+  white-space: nowrap;
+
+  b {
+    color: var(--pn-accent);
+    font-weight: 700;
+  }
+
+  em {
+    color: var(--ink-2);
+    font-style: normal;
+  }
+
+  button {
+    align-self: center;
+    height: max(16px, u(13));
+    padding: 0 u(6);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: u(3);
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: max(10px, u(7));
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      color: var(--ink);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.45;
+    }
+
+    &.is-publish:not(:disabled) {
+      border-color: var(--pn-accent);
+      background: var(--pn-accent);
+      color: rgba(14, 6, 12, 0.85);
+      font-weight: 700;
+    }
+  }
+
+  &.is-offline > span {
+    color: var(--yellow);
+  }
+
+  &.is-conflict > span {
+    color: var(--warn);
+  }
+}
+
 // ── 맨 위 줄 ────────────────────────────────────────────────────────────
 
 .pn-top {
@@ -1533,6 +1589,29 @@
   option {
     background: #15141c;
     color: var(--ink);
+  }
+
+  &__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  &__server {
+    margin: 0;
+    font-size: 11px;
+
+    &.is-same {
+      color: var(--lime);
+    }
+
+    &.is-diff {
+      color: var(--yellow);
+    }
+
+    &.is-error {
+      color: var(--warn);
+    }
   }
 
   &__answer {

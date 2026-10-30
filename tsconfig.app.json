@@ -25,6 +25,10 @@
     "noUncheckedSideEffectImports": true,
     "composite": true
   },
-  "include": ["src"],
+  "include": [
+    "src",
+    // 퍼셉트론 화면과 소재 분석 API가 함께 쓰는 프롬프트 망 모듈(의존성 없는 순수 파일).
+    "functions-cmip/src/prompt-graph/compose.ts"
+  ],
   "extends": "./tsconfig.paths.json"
 }

@@ -8,6 +8,7 @@ import {
   type NodeRow,
 } from './data'
 import { useEngine, type Engine } from './engine'
+import { previewPrompt } from './graph-client'
 import {
   editNode,
   fallbackResult,
@@ -70,6 +71,11 @@ export function Inspector({
   const slot = useEngine(engine, (s) => s.slot)
   const [confirm, setConfirm] = useState<'delete' | 'reset' | null>(null)
   const [copied, setCopied] = useState(false)
+  // 서버(소재 분석 API와 같은 코드)에서 만든 프롬프트가 화면과 같은지.
+  const [server, setServer] = useState<{
+    state: 'idle' | 'loading' | 'same' | 'diff' | 'error'
+    text?: string
+  }>({ state: 'idle' })
   const at = model.nodes.get(id)
   if (!at) return null
 
@@ -99,6 +105,35 @@ export function Inspector({
       window.setTimeout(() => setCopied(false), 1400)
     } catch {
       setCopied(false)
+    }
+  }
+
+  const checkServer = async () => {
+    setServer({ state: 'loading' })
+    try {
+      const res = await previewPrompt(model.graph, [c.id])
+      const got = res.cases[0]
+      const same =
+        !!got &&
+        got.prompt.join('\n') === view.prompt.join('\n') &&
+        Math.abs(got.cost.total - view.cost.total) < 1e-9 &&
+        got.hold === view.hold
+      setServer(
+        same
+          ? {
+              state: 'same',
+              text: `서버와 같습니다 — 프롬프트 ${got.prompt.length}줄 · ${fmtUsd(got.cost.total)} (Claude 호출 없음)`,
+            }
+          : {
+              state: 'diff',
+              text: '서버 결과가 화면과 다릅니다 — 서버에 배포된 코드가 이 화면보다 오래됐을 수 있습니다',
+            },
+      )
+    } catch (err) {
+      setServer({
+        state: 'error',
+        text: `서버에 닿지 않습니다 — ${err instanceof Error ? err.message : '알 수 없는 오류'} (functions-cmip previewPrompt 배포 필요)`,
+      })
     }
   }
 
@@ -285,9 +320,27 @@ export function Inspector({
             }
           >
             <pre className="pn-insp__prompt">{view.prompt.join('\n')}</pre>
-            <button type="button" className="pn-insp__ghost" onClick={copy}>
-              {copied ? '복사했습니다' : '프롬프트 복사'}
-            </button>
+            <div className="pn-insp__row">
+              <button type="button" className="pn-insp__ghost" onClick={copy}>
+                {copied ? '복사했습니다' : '프롬프트 복사'}
+              </button>
+              <button
+                type="button"
+                className="pn-insp__ghost"
+                disabled={server.state === 'loading'}
+                title="소재 분석 API와 같은 코드로 서버에서 만들어 비교합니다 — Claude는 부르지 않습니다"
+                onClick={() => void checkServer()}
+              >
+                {server.state === 'loading'
+                  ? '서버에서 만드는 중…'
+                  : '서버에서 만들어 보기'}
+              </button>
+            </div>
+            {server.state !== 'idle' && server.state !== 'loading' && (
+              <p className={`pn-insp__server is-${server.state}`}>
+                {server.text}
+              </p>
+            )}
           </Field>
         )}
 
