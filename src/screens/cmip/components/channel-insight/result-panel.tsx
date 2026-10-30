@@ -18,8 +18,13 @@ import type { ISODate } from '../../types'
 import { ChannelLabel } from './channel-label'
 import { ChevronIcon } from '../icons'
 import { KpiGrid, KpiSkeletonGrid } from './kpi-grid'
+import { Segmented } from '@/components/glass'
 import { MetricsTable, TableSkeleton } from './metrics-table'
 
+// 기간별 성과 보기 — { 보기: 이름 }(Segmented가 받는 모양).
+const PERIOD_VIEW_LABEL = Object.fromEntries(
+  PERIOD_VIEWS.map((each) => [each.value, each.label]),
+) as Record<PeriodView, string>
 /** 최초 조회 중(아직 combinedInsight 자체가 없어 ResultPanel이 렌더되지 않는
  * 시점)에 그 자리를 대신하는 전체 스켈레톤 — Summary 카드 + 일별/요일별/주차별
  * 표까지, ResultPanel이 조회 중 보여주는 모양을 그대로 미리 보여준다. */
@@ -101,24 +106,13 @@ function PeriodSectionHead({
   return (
     <div className="channel-insight__section-head">
       <h3 className="channel-insight__section-title">기간별 성과</h3>
-      <div
-        className="channel-insight__period-views"
-        role="tablist"
-        aria-label="보기"
-      >
-        {PERIOD_VIEWS.map((each) => (
-          <button
-            key={each.value}
-            type="button"
-            role="tab"
-            aria-selected={each.value === view}
-            className={each.value === view ? 'is-active' : ''}
-            onClick={() => onViewChange(each.value)}
-          >
-            {each.label}
-          </button>
-        ))}
-      </div>
+      <Segmented
+        className="channel-insight__period-view-picker"
+        options={PERIOD_VIEW_LABEL}
+        value={view}
+        onChange={onViewChange}
+        label="보기"
+      />
       <button
         type="button"
         className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
@@ -287,7 +281,13 @@ export function ResultPanel({
         />
         {loading ? (
           <TableSkeleton
-            headLabel={periodView === 'byDayOfWeek' ? '요일' : periodView === 'byDate' ? '날짜' : '기간'}
+            headLabel={
+              periodView === 'byDayOfWeek'
+                ? '요일'
+                : periodView === 'byDate'
+                  ? '날짜'
+                  : '기간'
+            }
             rowCount={
               periodView === 'byDate'
                 ? dayCount
@@ -315,9 +315,7 @@ export function ResultPanel({
             onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
             channelFilter={channelFilter.byDate}
             onChannelFilterChange={(v) => setChannelFilterFor('byDate', v)}
-            getChannelBreakdown={(row) =>
-              breakdownOf((d) => d === row.date)
-            }
+            getChannelBreakdown={(row) => breakdownOf((d) => d === row.date)}
           />
         ) : periodView === 'byDayOfWeek' ? (
           <MetricsTable<DayOfWeekSummary>
@@ -352,7 +350,11 @@ export function ResultPanel({
                 ? channelFilter.byGroupedWeek === 'all'
                   ? series.combined.byGroupedWeek
                   : series[channelFilter.byGroupedWeek].byGroupedWeek
-                : byMonth[channelFilter.byMonth === 'all' ? 'combined' : channelFilter.byMonth]
+                : byMonth[
+                    channelFilter.byMonth === 'all'
+                      ? 'combined'
+                      : channelFilter.byMonth
+                  ]
             }
             rowKey={(row) => row.period}
             headLabel={periodView === 'byMonth' ? '월' : '기간'}

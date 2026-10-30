@@ -1,22 +1,7 @@
 @use './font-family.scss';
+@use './palette' as *;
 
-// 다크 팔레트 (cmip 화면 공통 톤) — report-generator.scss와 동일 팔레트/구조를 재사용.
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-border: #30363d;
-$color-border-soft: #21262d;
-$color-surface: #161b22;
-$color-canvas-subtle: #1c2128;
-$color-td-first: #111519;
-
-$color-error-bg: #2a1416;
-$color-error-text: #ff7b72;
-$color-error-border: #5c2b2b;
-
-$color-accent: #4493f8;
-
-$radius: 6px;
-$radius-lg: 8px;
+// 색은 _palette.scss(유리 테마 변수), 유리 모양은 cmip-glass.scss.
 
 // 캠페인/adset 교차표의 합계/평균 행 배경 — 변수로 빼서 고정(sticky) 첫 컬럼의
 // 배경도 정확히 같은 값으로 맞춘다(&__pivot-sticky-col 참고).
@@ -41,48 +26,6 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     align-items: center;
     gap: 8px;
     margin-left: auto;
-  }
-
-  // 기간 단위(일별·주차별·월별) — 날짜 선택기 왼쪽. 누르면 그 단위의 기본
-  // 기간을 고른다. 날짜를 직접 고른 기간이면 아무것도 켜지지 않는다.
-  // "기간별 성과" 섹션의 보기 버튼(일별·주차별·월별·요일별)도 같은 모양이다.
-  &__period-units,
-  &__period-views {
-    display: inline-flex;
-    gap: 2px;
-    padding: 3px;
-    border: 1px solid $color-border;
-    border-radius: 8px;
-    background: $color-surface;
-
-    button {
-      appearance: none;
-      border: none;
-      background: none;
-      height: 28px;
-      padding: 0 12px;
-      border-radius: 6px;
-      color: $color-muted;
-      font: inherit;
-      font-size: 13px;
-      white-space: nowrap;
-      cursor: pointer;
-
-      &:hover:not(:disabled):not(.is-active) {
-        color: $color-text;
-      }
-      &.is-active {
-        background: $color-canvas-subtle;
-        color: $color-text;
-      }
-      &:focus-visible {
-        outline: 2px solid $color-accent;
-      }
-      &:disabled {
-        cursor: default;
-        opacity: 0.6;
-      }
-    }
   }
 
   &__btn {
@@ -379,6 +322,16 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   }
 
   // 막대 위 지푯값(ROAS %) — 항상 표시.
+  // 값·대비·평균 라벨 — 글자 뒤에 화면 바탕색 테두리(halo)를 깔아 막대·점선
+  // 위에서도 읽히게(테마를 따라간다).
+  &__roas-chart-value,
+  &__roas-chart-delta,
+  &__roas-chart-avg-label {
+    stroke: var(--glass-base);
+    stroke-width: 3px;
+    paint-order: stroke;
+  }
+
   &__roas-chart-value {
     font-size: 11px;
     font-weight: 600;
@@ -759,8 +712,9 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     flex-wrap: wrap;
   }
 
-  // "기간별 성과" — 보기 버튼은 제목 바로 옆, "대비 표시"는 오른쪽 끝.
-  &__section-head &__period-views {
+  // "기간별 성과" — 보기 버튼(유리 Segmented)은 제목 바로 옆, "대비 표시"는
+  // 오른쪽 끝.
+  &__section-head &__period-view-picker {
     margin-right: auto;
   }
 
@@ -1019,9 +973,11 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     // 1번째 칸이 28px보다 넓을 때 그 위로 2번째 칸이 겹쳐 보이는 버그가 났다
     // (ROAS 표는 "일별"은 짧지만 "주차별"/"월별"로 바꾸면 라벨이 길어지는 게
     // 바로 이 경우였다).
-    &:not(.channel-insight__table--pivot):not(.channel-insight__table--full-list):not(
-        .channel-insight__table--period-test
-      ):not(.channel-insight__table--roas) {
+    &:not(.channel-insight__table--pivot):not(
+        .channel-insight__table--full-list
+      ):not(.channel-insight__table--period-test):not(
+        .channel-insight__table--roas
+      ) {
       th:first-child,
       td:first-child,
       th:nth-child(2),

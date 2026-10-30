@@ -1,0 +1,538 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// cmip 유리 테마 — 유리 부품·믹스인(@/components/glass)을 cmip 화면의 기존
+// 클래스에 입힌다. 색은 _palette.scss가 테마 변수로 바꿔 두었고, 여기서는
+// 모양(카드·버튼·표·모달)을 xtool과 같은 유리로 덮는다. 원칙은 같다 — 테두리·
+// 그림자 없이 배경 겹(fill)과 흐림으로만.
+//
+// 선택자 앞의 .cmip는 각 화면 scss(channel-insight.scss 등)보다 우선하기 위해서다.
+
+// ── 화면 틀 ─────────────────────────────────────────────────────────────
+.cmip .channel-insight {
+  max-width: none;
+  gap: 18px;
+}
+
+// 조회 줄(보기 단위·그래프·엑셀 | 기간 단위·기간·새로고침) — 맨 위 줄 바로
+// 아래 붙어 있는 유리 줄(xtool 메뉴 줄과 같다). 본문 여백(.cmip 40px) 밖까지
+// 화면 폭 전체로 깐다.
+.cmip .channel-insight__result-tabs {
+  @include glass.ambient;
+  @include glass.date-range-picker;
+  position: sticky;
+  top: 60px;
+  z-index: 3;
+  margin: 0 -40px;
+  padding: 12px 40px;
+  gap: 10px;
+
+  @media (max-width: 640px) {
+    position: static;
+    margin: 0 -16px;
+    padding: 12px 16px;
+  }
+}
+
+// 기간 팝오버 — 오른쪽 끝에 맞춰 왼쪽으로 펼친다(cmip 기본 그대로).
+.cmip .channel-insight__query-row {
+  gap: 10px;
+}
+
+// 좁은 화면 — 세로로 쌓아 늘이는 대신(버튼이 화면 폭만큼 늘어난다) 줄바꿈:
+// 맨 위에 기간, 그 아래 단위·새로고침, 그 아래 보기 단위·그래프·엑셀.
+@media (max-width: 640px) {
+  .cmip .channel-insight__result-tabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .cmip .channel-insight__query-row {
+    order: -1;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  // 기간 버튼은 글자가 길어 한 줄을 다 쓴다(그 아래 단위·새로고침).
+  .cmip .channel-insight__query-row .date-range-picker {
+    order: -1;
+    flex: 1 1 100%;
+  }
+  .cmip .channel-insight__result-tabs .date-range-picker__trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+// ── 버튼 ────────────────────────────────────────────────────────────────
+.cmip .channel-insight__btn,
+.cmip .channel-insight__ghost {
+  @include glass.pill-button;
+  height: 38px;
+  padding: 0 16px;
+  color: $text;
+  font-size: 13px;
+
+  &:disabled {
+    opacity: 0.45;
+  }
+}
+
+// 켜고 끄는 단추(단위 표시·대비 표시) — 칩. 켜면 한 겹 밝게.
+.cmip .channel-insight__unit-toggle,
+.cmip .channel-insight__compare-toggle {
+  @include glass.chip('.is-active');
+  height: 32px;
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+// 표 위 칩(채널 필터 · 지표 칸 표시) — 알약. 켜진 지표 칩은 그 지표 색을
+// 옅게(--chip-color), 색이 없는 칩(채널·전환 목표)은 한 겹 밝게.
+.cmip .channel-insight__full-list-toggle-btn {
+  height: 30px;
+  padding: 0 13px;
+  border: none;
+  border-radius: 999px;
+  background: $fill-1;
+  color: $text-2;
+
+  &:hover:not(.is-active) {
+    background: $fill-2;
+    color: $text;
+  }
+  &.is-active {
+    border: none;
+    background: color-mix(
+      in srgb,
+      var(--chip-color, var(--glass-ink)) 26%,
+      transparent
+    );
+    color: $text;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
+}
+
+.cmip .channel-insight__group-toggle,
+.cmip .channel-insight__full-list-count,
+.cmip .channel-insight__result-type-badge {
+  border: none;
+  border-radius: 999px;
+  background: $fill-2;
+}
+
+// ── 고르기·입력 ─────────────────────────────────────────────────────────
+// 드롭다운(보기 단위·pivot 축 등)은 유리 Select(single-select-dropdown.tsx).
+// 지표 고르기(다중 선택)는 같은 모양의 알약 + 떠 있는 유리 목록.
+.cmip .channel-insight__multi-select-trigger {
+  box-sizing: border-box;
+  height: 38px;
+  padding: 0 12px 0 16px;
+  border: none;
+  border-radius: 999px;
+  background-color: $fill-2;
+  color: $text;
+  font-size: 12.5px;
+  transition: background-color 0.2s ease;
+
+  &:hover,
+  &.is-open {
+    background-color: $fill-3;
+  }
+  .channel-insight__chevron {
+    color: $text-3;
+  }
+}
+.cmip .channel-insight__multi-select-menu {
+  @include glass.float;
+  @include glass.pop-in(0.28s);
+  padding: 6px;
+  transform-origin: top left;
+}
+.cmip .channel-insight__multi-select-item {
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: $text-2;
+
+  &:hover {
+    background: $fill-1;
+    color: $text;
+  }
+}
+.cmip .channel-insight__multi-select-box {
+  border: none;
+  border-radius: 5px;
+  background: $fill-3;
+}
+.cmip .channel-insight__multi-select-fill {
+  inset: 0;
+  border-radius: 5px;
+  background: var(--glass-link);
+}
+.cmip .channel-insight__multi-select-check {
+  color: var(--glass-on-link);
+}
+
+// 캠페인·광고셋 표의 체크박스.
+.cmip .channel-insight__full-list-check {
+  border: none;
+  border-radius: 5px;
+  background: $fill-3;
+
+  &::after {
+    border-color: var(--glass-on-link);
+  }
+  &:checked {
+    background: var(--glass-link);
+  }
+}
+
+// 입력칸(구간 일수·날짜·네이티브 select) — 테두리 없이 배경으로만.
+.cmip .channel-insight__period-size input,
+.cmip .channel-insight__period-test-row input[type='date'],
+.cmip select.channel-insight__result-select {
+  @include glass.field;
+  border-radius: 10px;
+  color: $text;
+}
+.cmip .channel-insight__period-size input {
+  height: 30px;
+}
+.cmip .channel-insight__period-test-row input[type='date'] {
+  height: 34px;
+  padding: 0 10px;
+}
+.cmip select.channel-insight__result-select {
+  @include glass.select-arrow;
+  height: 38px;
+  padding-left: 14px;
+}
+
+// 설명 말풍선 — 떠 있는 유리 판.
+.cmip .channel-insight__info-tooltip {
+  @include glass.float(14px);
+  padding: 10px 12px;
+  color: $text-2;
+}
+
+// ── 카드 ────────────────────────────────────────────────────────────────
+// 섹션(표·그래프 묶음)과 요약 카드 — 바깥 유리 카드. 요약 칸(KPI)은 카드 안의
+// 한 겹 밝은 타일로 띄운다(선 대신 간격).
+.cmip .channel-insight__section {
+  @include glass.card;
+  gap: 12px;
+  padding: 20px 22px;
+}
+.cmip .channel-insight__section-title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.cmip .channel-insight__section-collapse-toggle:hover {
+  color: $text-2;
+}
+
+.cmip .channel-insight__summary {
+  @include glass.card;
+}
+.cmip .channel-insight__summary-head {
+  padding: 18px 22px 12px;
+  border-bottom: none;
+}
+.cmip .channel-insight__summary-label {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+// 칸은 숫자가 한 줄에 들어가는 폭으로(146,290,520원 등).
+.cmip .channel-insight__summary-grid {
+  grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  gap: 10px;
+  background: none;
+}
+.cmip .channel-insight__summary .channel-insight__summary-grid {
+  padding: 0 22px 20px;
+}
+.cmip .channel-insight__kpi {
+  @include glass.inner;
+  padding: 14px 16px;
+}
+.cmip .channel-insight__kpi-value {
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.cmip .channel-insight__summary-toggle {
+  padding: 10px 22px;
+
+  &:hover {
+    background: none;
+  }
+}
+.cmip .channel-insight__summary-channels {
+  gap: 0;
+  border-top: none;
+  background: none;
+}
+.cmip .channel-insight__summary-channel {
+  background: none;
+}
+.cmip .channel-insight__summary-channel-label {
+  padding: 4px 22px 8px;
+}
+
+// 오류 안내 — 위험색을 옅게 깐 판.
+.cmip .channel-insight__banner.is-error {
+  border: none;
+  border-radius: 16px;
+  padding: 12px 16px;
+}
+
+// ── 표 ──────────────────────────────────────────────────────────────────
+// 선 없이 — 머리글은 한 겹 밝은 띠, 줄은 한 줄 걸러 옅은 빛. 옆·위에 붙는
+// 칸은 평소 투명하다가 그 밑으로 다른 칸이 지나갈 때만 불투명해진다
+// (_palette.scss의 $color-td-first + 아래 스크롤 연동 애니메이션 — xtool
+// glass.sticky-table과 같은 방식).
+.cmip .channel-insight__table-wrap {
+  border-radius: 14px;
+}
+
+.cmip .channel-insight__table {
+  th,
+  td {
+    border: none;
+    padding: 8px 12px;
+  }
+
+  thead th {
+    background-color: color-mix(
+      in srgb,
+      var(--glass-solid-2)
+        calc(max(var(--glass-sticky-x), var(--glass-sticky-y)) * 100%),
+      transparent
+    );
+    background-image: linear-gradient($fill-1, $fill-1);
+    color: color-mix(in srgb, var(--glass-ink) 88%, transparent);
+    font-weight: 600;
+    animation: glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: 0 8px;
+  }
+  thead tr:first-child th:first-child {
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+  }
+  thead tr:first-child th:last-child {
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
+  }
+
+  tbody tr:nth-child(even) td {
+    background-image: linear-gradient(
+      color-mix(in srgb, var(--glass-ink) 3%, transparent),
+      color-mix(in srgb, var(--glass-ink) 3%, transparent)
+    );
+  }
+
+  // 옆에 붙는 칸 — 가로로 밀면 바탕이 차오른다.
+  td:first-child,
+  td:nth-child(2),
+  .channel-insight__pivot-sticky-col {
+    animation: glass_sticky_x_on linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 8px;
+  }
+  thead th:first-child,
+  thead th:nth-child(2) {
+    animation:
+      glass_sticky_x_on linear both,
+      glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest block);
+    animation-range:
+      0 8px,
+      0 8px;
+  }
+}
+
+// 누르는 줄(채널별 펼치기) — 마우스를 올리면 한 겹 밝게(붙어 있는 칸도 같이).
+.cmip .channel-insight__table-row--clickable:hover td,
+.cmip .channel-insight__table-row--clickable:hover td:first-child,
+.cmip .channel-insight__table-row--clickable:hover td:nth-child(2) {
+  background-image: linear-gradient($fill-2, $fill-2);
+}
+// 펼친 채널 줄 — 한 겹 들어간 판.
+.cmip .channel-insight__table-row--channel {
+  background: none;
+
+  td,
+  td:first-child,
+  td:nth-child(2) {
+    background-image: linear-gradient(var(--glass-sunken), var(--glass-sunken));
+  }
+}
+
+// 정렬 화살표 — 꺼진 쪽은 옅게, 켜진 쪽은 누르는 색.
+.cmip .channel-insight__sort-arrow {
+  color: $fill-3;
+
+  &.is-active {
+    color: var(--glass-link);
+  }
+}
+.cmip .channel-insight__sort-head:hover {
+  color: $text;
+}
+
+// 스크롤 연동 애니메이션이 없는 브라우저(Firefox 등) — 붙어 있는 칸은 늘 불투명.
+@supports not (animation-timeline: scroll()) {
+  .cmip .channel-insight__table thead th {
+    background-color: var(--glass-solid-2);
+  }
+  .cmip .channel-insight__table td:first-child,
+  .cmip .channel-insight__table td:nth-child(2),
+  .cmip .channel-insight__pivot-sticky-col {
+    background-color: var(--glass-solid) !important;
+  }
+}
+
+// ── 캠페인·광고셋 요약(campaign-highlights.tsx) ─────────────────────────
+.cmip .campaign-highlights__card {
+  @include glass.inner;
+  padding: 12px 16px 14px;
+}
+.cmip .campaign-highlights__list li {
+  border-top: none;
+  padding: 5px 0;
+}
+// 순위 — 작은 동그라미.
+.cmip .campaign-highlights__rank {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: $fill-2;
+  font-size: 11px;
+  line-height: 20px;
+}
+.cmip .campaign-highlights__who:hover .campaign-highlights__name {
+  color: var(--glass-link);
+}
+
+// ── ROAS 막대 그래프 ─────────────────────────────────────────────────────
+.cmip .channel-insight__roas-chart-bar {
+  fill: var(--glass-accent);
+}
+
+// ── 불러오는 중 ─────────────────────────────────────────────────────────
+// 회색 막대 대신 빛 띠가 흐르는 유리 막대(xtool 스켈레톤과 같다).
+.cmip .channel-insight__skeleton-bar {
+  @include glass.shimmer;
+  border-radius: 999px;
+}
+.cmip .tab-skeleton .campaign-highlights__card {
+  background: $fill-1;
+}
+
+// 다 받은 화면 — 탭 내용이 흐릿하게 떠올라 선명해진다.
+.cmip .channel-insight__tab-content > *,
+.cmip .channel-insight__result > * {
+  @include glass.enter;
+}
+
+// ── 모달(그래프로 보기 · 엑셀 다운로드) ──────────────────────────────────
+// 뒤는 흐리게 가리고, 판은 진한 유리(xtool 상세 모달과 같다).
+.cmip .channel-insight-chart-modal,
+.cmip .excel-export-modal {
+  @include glass.scrim;
+}
+.cmip .channel-insight-chart-modal__panel,
+.cmip .excel-export-modal__panel {
+  @include glass.panel;
+  @include glass.panel-in;
+}
+.cmip .channel-insight-chart-modal__close,
+.cmip .excel-export-modal__close {
+  @include glass.icon-button(32px);
+  font-size: 13px;
+}
+.cmip .channel-insight-chart-modal__expand,
+.cmip .channel-insight-chart-modal__dropdown-trigger {
+  @include glass.pill-button;
+  height: 32px;
+  padding: 0 14px;
+  color: $text;
+}
+// 채널 탭 — 알약 묶음.
+.cmip .channel-insight-chart-modal__channel-tabs {
+  @include glass.pill-group;
+  overflow: visible;
+}
+.cmip .channel-insight-chart-modal__channel-tab {
+  height: 30px;
+  border-radius: 999px;
+
+  & + & {
+    border-left: none;
+  }
+  &.is-active {
+    background: $fill-3;
+    color: $text;
+  }
+}
+.cmip .channel-insight-chart-modal__dropdown-menu,
+.cmip .channel-insight-chart-modal__metric-menu,
+.cmip .channel-insight-chart-modal__group-menu {
+  @include glass.float;
+}
+// 그래프 판 — 모달 안의 한 겹 밝은 판(라이트로 볼 때는 흰 판 그대로).
+.cmip .channel-insight-chart-modal__chart-single:not(.is-light) {
+  border: none;
+  border-radius: 18px;
+  background: $fill-1;
+}
+.cmip .channel-insight-chart-modal__chart-single.is-light {
+  border: none;
+  border-radius: 18px;
+}
+.cmip .index-line-chart:not(.is-light) {
+  --ilc-text: var(--glass-text);
+  --ilc-muted: var(--glass-text-3);
+  --ilc-surface: var(--glass-float);
+  --ilc-border: transparent;
+}
+.cmip .index-line-chart__tooltip {
+  border-radius: 14px;
+  box-shadow: none;
+}
+.cmip .channel-insight-chart-modal__metric-toggle-btn {
+  border: none;
+  border-radius: 999px;
+}
+
+// 엑셀 — 칩과 아래 버튼.
+.cmip .excel-export-modal__chip {
+  border: none;
+  border-radius: 999px;
+  background: $fill-1;
+
+  &.is-active,
+  &[aria-pressed='true'] {
+    background: $fill-3;
+    color: $text;
+  }
+}
+.cmip .excel-export-modal__btn {
+  border: none;
+  border-radius: 999px;
+}
+.cmip .excel-export-modal__ghost {
+  background: $fill-2;
+  color: $text;
+}
+.cmip .excel-export-modal__primary {
+  background: var(--glass-accent);
+  color: var(--glass-on-accent);
+  font-weight: 600;
+}

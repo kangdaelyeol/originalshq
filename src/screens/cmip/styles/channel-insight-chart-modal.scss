@@ -1,15 +1,5 @@
 @use './font-family.scss';
-
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-border: #30363d;
-$color-border-soft: #21262d;
-$color-surface: #161b22;
-$color-canvas-subtle: #1c2128;
-$color-accent: #4493f8;
-
-$radius: 6px;
-$radius-lg: 8px;
+@use './palette' as *;
 
 .channel-insight-chart-modal {
   position: fixed;
@@ -21,8 +11,6 @@ $radius-lg: 8px;
   padding: 24px;
   background: rgba(1, 4, 9, 0.65);
   animation: channel-insight-chart-modal-fade-in 0.15s ease;
-
-  
 
   &__panel {
     display: flex;

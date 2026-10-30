@@ -1,16 +1,7 @@
 @use './font-family.scss';
+@use './palette' as *;
 
-// 다크 팔레트 — 나머지 cmip 화면과 동일 톤.
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-border: #30363d;
-$color-border-soft: #21262d;
-$color-surface: #161b22;
-$color-canvas-subtle: #1c2128;
-$color-accent: #4493f8;
-
-$radius: 6px;
-$radius-lg: 8px;
+// 색은 _palette.scss(유리 테마 변수).
 
 .date-range-narrow {
   position: relative;

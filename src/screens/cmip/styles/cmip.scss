@@ -1,70 +1,23 @@
 @use './font-family.scss';
 
-// cmip 화면 셸 + 상단 탭. 자식 컴포넌트(ChannelInsight / ReportGenerator)는 각자 스타일을
-// 가지되 동일한 다크 팔레트를 공유한다.
-$color-bg: #0d1117;
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-border: #30363d;
-$color-accent: #4493f8;
-
-// cmip 화면이 마운트된 동안에만 문서 루트까지 다크로 칠한다 (오버스크롤 영역·짧은 콘텐츠
-// 아래로 흰 배경이 비치던 문제). 다른 라우트로 이동하면 :has가 풀려 자동 복구된다.
-html:has(.cmip),
-body:has(.cmip),
-#root:has(.cmip) {
-  background: #000000;
+// cmip 화면 셸 — 바탕·배경 빛·글자색은 glass_root(@/components/glass), 맨 위
+// 줄은 GlassHeader. 여기는 글꼴과 본문 여백만. 자식 화면(ChannelInsight 등)은
+// 각자 스타일을 갖고, 색은 _palette.scss(유리 테마 변수)를 같이 쓴다.
+.cmip-root {
+  width: 100%;
+  font-family: font-family.$font-pretendard;
+  // 어두운 바탕에서 밝은 글씨가 굵고 번져 보이는 현상 보정(서브픽셀 → grayscale).
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .cmip {
-  // 콘텐츠가 짧아도 뷰포트 전체를 다크로 채운다.
-  min-height: 100vh;
-  min-height: 100dvh;
   box-sizing: border-box;
-  padding: 24px 40px;
-  background: #000000;
-  color: $color-text;
-  font-family: font-family.$font-pretendard;
-  // 다크 배경에서 밝은 글씨가 굵고 번져 보이는 현상 보정 (서브픽셀 → grayscale)
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  display: block;
+  padding: 0 40px 40px;
 
-  // 모바일 — 가로 padding이 40px이면 좁은 화면에서 콘텐츠 영역이 그만큼
-  // 줄어들어(표·차트 등) 답답해 보인다. 세로는 그대로 두고 가로만 줄인다.
+  // 모바일 — 가로 여백이 40px이면 표·차트가 너무 좁아진다. 가로만 줄인다.
   @media (max-width: 640px) {
-    padding: 24px 16px;
-  }
-
-  &__tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid $color-border;
-  }
-
-  &__tab {
-    appearance: none;
-    margin-bottom: -1px;
-    border: none;
-    border-bottom: 2px solid transparent;
-    background: none;
-    padding: 10px 16px;
-    font: inherit;
-    font-size: 14px;
-    color: $color-muted;
-    cursor: pointer;
-    transition:
-      color 120ms ease,
-      border-color 120ms ease;
-
-    &:hover {
-      color: $color-text;
-    }
-
-    &.is-active {
-      color: $color-text;
-      font-weight: 500;
-      border-bottom-color: $color-accent;
-    }
+    padding: 0 16px 32px;
   }
 }

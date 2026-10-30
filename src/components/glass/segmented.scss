@@ -42,6 +42,13 @@ $trail: 0.06s;
     &:focus-visible {
       outline: 2px solid var(--glass-link);
     }
+    &:disabled {
+      cursor: default;
+      opacity: 0.55;
+    }
+    &:disabled:hover {
+      color: color-mix(in srgb, var(--glass-ink) 60%, transparent);
+    }
   }
 
   // 메뉴 줄 — 기간 선택 버튼(38px)과 같은 높이: 버튼 30 + 위아래 4.

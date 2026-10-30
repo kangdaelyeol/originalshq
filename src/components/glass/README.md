@@ -63,17 +63,17 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
 
 ## 부품
 
-| 부품          | 쓰는 곳                                                              | 넘기는 것                                                                            |
-| ------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `Segmented`   | 여럿 중 하나 — 탭, [그래프 \| 표], 정렬 기준. 고른 알약이 미끄러진다 | `options`, `value`, `onChange`, `label`, `role`(`tabs`/`buttons`), `size`(`sm`/`md`) |
-| `Select`      | 드롭다운(기본 `<select>` 대신) — 유리 목록이 펼쳐진다                | `options: SelectOption[]`, `value`, `onChange`, `label`                              |
-| `AutoHeight`  | 내용 높이가 바뀔 때(로딩 → 내용) 높이가 부드럽게 늘고 줄어든다       | `children`                                                                           |
-| `StatTile`    | 숫자 타일. 값이 길면 글자를 줄여 한 줄에                             | 아이콘(lucide), 이름, 값, 보조 줄, `to`/`onGo`(있으면 ↗ 버튼과 홈), `warn`           |
-| `TrendList`   | 줄마다 작은 추이 그래프 + 합계 + 막대 + 가장 큰 칸                   | `rows: TrendListRow[]`, `labels`, `columns`, 줄의 `detail`(눌러 펼칠 내용)           |
-| `StackedBars` | 맨 위 100% 요약 띠 + 줄마다 쌓은 막대                                | `segments`(종류·색), `rows`, `sum`. 줄에 `aside`·`detail`                            |
-| `Ring`        | 비율 하나(0~1)를 원으로                                              | `value`, `text`, `label`                                                             |
-| `GlassLine`   | 부드러운 선 그래프(면 채움, 마우스 올린 점 하나만)                   | 점·크기. 곡선은 `smoothPath`, 크기는 `useElementSize`                                |
-| `useDismiss`  | 펼친 것을 바깥 누름·Esc로 닫기                                       | `ref`, `open`, `onDismiss`                                                           |
+| 부품          | 쓰는 곳                                                              | 넘기는 것                                                                                                                     |
+| ------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `Segmented`   | 여럿 중 하나 — 탭, [그래프 \| 표], 정렬 기준. 고른 알약이 미끄러진다 | `options`, `value`(`null`이면 아무것도 안 켜짐), `onChange`, `label`, `role`(`tabs`/`buttons`), `size`(`sm`/`md`), `disabled` |
+| `Select`      | 드롭다운(기본 `<select>` 대신) — 유리 목록이 펼쳐진다                | `options: SelectOption[]`, `value`, `onChange`, `label`                                                                       |
+| `AutoHeight`  | 내용 높이가 바뀔 때(로딩 → 내용) 높이가 부드럽게 늘고 줄어든다       | `children`                                                                                                                    |
+| `StatTile`    | 숫자 타일. 값이 길면 글자를 줄여 한 줄에                             | 아이콘(lucide), 이름, 값, 보조 줄, `to`/`onGo`(있으면 ↗ 버튼과 홈), `warn`                                                    |
+| `TrendList`   | 줄마다 작은 추이 그래프 + 합계 + 막대 + 가장 큰 칸                   | `rows: TrendListRow[]`, `labels`, `columns`, 줄의 `detail`(눌러 펼칠 내용)                                                    |
+| `StackedBars` | 맨 위 100% 요약 띠 + 줄마다 쌓은 막대                                | `segments`(종류·색), `rows`, `sum`. 줄에 `aside`·`detail`                                                                     |
+| `Ring`        | 비율 하나(0~1)를 원으로                                              | `value`, `text`, `label`                                                                                                      |
+| `GlassLine`   | 부드러운 선 그래프(면 채움, 마우스 올린 점 하나만)                   | 점·크기. 곡선은 `smoothPath`, 크기는 `useElementSize`                                                                         |
+| `useDismiss`  | 펼친 것을 바깥 누름·Esc로 닫기                                       | `ref`, `open`, `onDismiss`                                                                                                    |
 
 예시는 xtool: `screens/xtool-lead-manager/components/` — `header.tsx`(GlassHeader),
 `monday-trend/`(StatTile·TrendList·StackedBars·Ring·Segmented),
@@ -159,6 +159,10 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
    `enter-children`.
 7. **글자·색**: 하드코딩된 색을 `$text`·`$text-2`·`$text-3`, `var(--glass-accent)`
    등으로. 밝은 테마에서도 읽히는지 Paper로 확인한다.
+
+cmip은 이 순서로 바꿨다 — 색은 `screens/cmip/styles/_palette.scss`(예전 파일마다
+적힌 다크 색을 테마 변수로), 모양은 `screens/cmip/styles/cmip-glass.scss`(기존
+클래스에 믹스인을 입히는 층).
 
 xtool은 화면 클래스에 맞춘 묶음을 `screens/xtool-lead-manager/styles/_xtool-glass.scss`
 (`nav`·`page`·`list-nav`·`list-table`·`detail-modal`·`confirm-modal`)에 두고,

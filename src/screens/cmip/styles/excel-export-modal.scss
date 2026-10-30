@@ -1,14 +1,5 @@
 @use './font-family.scss';
-
-$color-text: #e6edf3;
-$color-muted: #8b949e;
-$color-border: #30363d;
-$color-canvas-subtle: #1c2128;
-$color-surface: #161b22;
-$color-accent: #4493f8;
-
-$radius: 6px;
-$radius-lg: 8px;
+@use './palette' as *;
 
 .excel-export-modal {
   position: fixed;

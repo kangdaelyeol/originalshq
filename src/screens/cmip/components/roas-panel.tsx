@@ -16,9 +16,7 @@ import {
   type RoasMetrics,
   type RoasRow,
 } from '../view-model/use-roas-view-model'
-import {
-  useRoasTrendChartViewModel,
-} from '../view-model/use-roas-trend-chart-view-model'
+import { useRoasTrendChartViewModel } from '../view-model/use-roas-trend-chart-view-model'
 import { ChevronIcon, InfoIcon, SortArrows, type SortDir } from './icons'
 
 const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
@@ -500,11 +498,6 @@ function MetricValueCell(props: {
 // 좁으면 가장 높은 막대의 라벨이 플롯 밖(y<0)으로 잘려 나간다.
 const CHART_MARGIN = { top: 34, right: 12, bottom: 26, left: 46 }
 
-// 값·대비 라벨에 까는 halo(텍스트 뒤 배경색 stroke)용 — index-line-chart.tsx의
-// PALETTE.dark.surface와 같은 값(다크 테마 표면색)이다. CSS 변수가 아니라 SVG
-// stroke 속성에 리터럴로 넣어야 해서 여기 그대로 상수로 둔다.
-const CHART_SURFACE = '#161b22'
-
 /** y축 최댓값을 100 단위로 올림 — 150%면 200까지, 480%면 500까지처럼 눈금이
  * 딱 떨어지게 한다. ROAS가 전부 낮아도(예: 40%) 100% 기준선은 항상 보이도록
  * 최소 100은 보장한다. */
@@ -610,9 +603,6 @@ function RoasTrendChart({
                   x={cx}
                   y={barY - 20}
                   textAnchor="middle"
-                  stroke={CHART_SURFACE}
-                  strokeWidth={3}
-                  paintOrder="stroke"
                   className={`channel-insight__roas-chart-delta is-${delta.dir}`}
                 >
                   {DELTA_ARROW[delta.dir]} {delta.delta >= 0 ? '+' : '-'}
@@ -623,9 +613,6 @@ function RoasTrendChart({
                 x={cx}
                 y={barY - 6}
                 textAnchor="middle"
-                stroke={CHART_SURFACE}
-                strokeWidth={3}
-                paintOrder="stroke"
                 className="channel-insight__roas-chart-value"
               >
                 {row.metrics[metric].toFixed(1)}%
@@ -657,9 +644,6 @@ function RoasTrendChart({
           x={vbWidth - CHART_MARGIN.right}
           y={avgY - 6}
           textAnchor="end"
-          stroke={CHART_SURFACE}
-          strokeWidth={3}
-          paintOrder="stroke"
           className="channel-insight__roas-chart-avg-label"
         >
           {metricLabel} 평균 {average[metric].toFixed(1)}%
@@ -728,10 +712,7 @@ function useRoasTableSort(
  * useRoasTableSort와 같은 이유로 표 인스턴스별 독립 상태. 기본은 전부 표시.
  * fields 매개변수는 채널 인사이트의 FullListTable "컬럼 표시" 토글과 같은
  * 패턴을 그대로 쓴다(channel-insight.tsx). */
-function useFieldVisibility(
-  fields: readonly RoasField[],
-  storageKey: string,
-) {
+function useFieldVisibility(fields: readonly RoasField[], storageKey: string) {
   // 이 브라우저에 남겨 다음에 들어와도 그대로 — 저장은 "끈 지표"로 한다
   // (나중에 지표가 새로 생기면 기본으로 보이도록).
   const [hiddenKeys, setHiddenKeys] = usePersistentState<ReadonlySet<string>>(
@@ -742,9 +723,7 @@ function useFieldVisibility(
   )
   const visibleKeys = useMemo(
     () =>
-      new Set(
-        fields.filter((f) => !hiddenKeys.has(f.key)).map((f) => f.key),
-      ),
+      new Set(fields.filter((f) => !hiddenKeys.has(f.key)).map((f) => f.key)),
     [fields, hiddenKeys],
   )
   const toggle = (key: string) => {
@@ -941,9 +920,7 @@ function OnlineRevenueTable({
                             field={column.representative}
                             active={sort.key === column.representative.key}
                             dir={sort.dir}
-                            onSort={() =>
-                              toggleSort(column.representative.key)
-                            }
+                            onSort={() => toggleSort(column.representative.key)}
                           />
                           {column.members && (
                             <button

@@ -9,7 +9,8 @@ import type { ChannelKey } from '../channels'
 // 이미 워드마크(전체 글자 이미지)라 텍스트를 따로 안 그리므로 이 값이 쓰이지
 // 않는다.
 const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
-  meta: '#ffffff',
+  // Meta는 브랜드 색 대신 글자색 그대로 — 흰 글자는 밝은 테마에서 안 보인다.
+  meta: 'var(--glass-text)',
   google: '#4285f4',
   naver: '#03c75a',
 }

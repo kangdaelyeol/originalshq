@@ -94,7 +94,11 @@ export const useChannelInsightChartModalViewModel = (
   const [expanded, setExpanded] = useState(false)
   // 색이 같은 계열로 겹쳐 보일 때(채널별 명도 차이) 배경에 따라 가독성이 갈려서
   // 차트만 라이트로 바꿔 볼 수 있게 둔다 — 모달 나머지 크롬은 다크 유지.
-  const [chartTheme, setChartTheme] = useState<'dark' | 'light'>('dark')
+  // 처음엔 화면 테마의 밝기를 따른다(<html data-glass-scheme> — 라이트 테마면
+  // 흰 판). 모달 안 버튼으로 따로 바꿀 수 있다.
+  const [chartTheme, setChartTheme] = useState<'dark' | 'light'>(() =>
+    document.documentElement.dataset.glassScheme === 'light' ? 'light' : 'dark',
+  )
   // 집계 기준 / 지표 선택을 드롭다운 한 줄로 압축 — 차트가 쓸 세로 공간을 최대한
   // 남겨두기 위해서다. 한 번에 하나만 열린다.
   const [openMenu, setOpenMenu] = useState<MenuKey | null>(null)

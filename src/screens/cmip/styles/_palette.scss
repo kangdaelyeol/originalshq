@@ -1,0 +1,39 @@
+// cmip 색 — 예전엔 파일마다 같은 GitHub 다크 값(#e6edf3 등)을 따로 적었다.
+// 지금은 유리 테마 변수(@/components/glass, <html data-glass-theme>)를
+// 가리켜서, 테마를 바꾸면(라이트 포함) 유리 스타일이 덮지 않은 글자·선·표
+// 바탕도 따라 바뀐다. 모양(카드·버튼·표·모달)은 cmip-glass.scss가 유리로
+// 덮는다.
+//
+// 불투명해야 하는 것(위·옆에 붙어 있는 표 칸, 머리글)은 solid 단계를 쓴다 —
+// 밑으로 지나가는 칸 글자가 비치지 않게.
+
+$color-text: var(--glass-text);
+$color-muted: var(--glass-text-3);
+// 선 — 유리는 선을 거의 안 쓴다. 남은 곳(칸 구분 등)은 아주 옅게.
+$color-border: var(--glass-fill-2);
+$color-border-soft: var(--glass-fill-1);
+// 판 — 카드 안의 한 겹.
+$color-surface: var(--glass-fill-1);
+// 표 머리글·마우스 올린 줄·입력칸 — 불투명(위에 붙는 머리글 때문).
+$color-canvas-subtle: var(--glass-solid-2);
+// 옆에 붙는 첫 칸 — 평소엔 투명, 표를 옆·아래로 밀어 다른 칸이 밑으로 지나갈
+// 때만 불투명(xtool 표와 같다). 세기(--glass-sticky-x/y, 0~1)는 그 칸에 건
+// 스크롤 연동 애니메이션이 정한다(cmip-glass.scss) — 이 값은 쓰이는 칸에서
+// 계산된다. 스크롤 연동이 없는 브라우저는 cmip-glass.scss가 불투명으로 덮는다.
+$color-td-first: color-mix(
+  in srgb,
+  var(--glass-solid)
+    calc(max(var(--glass-sticky-x), var(--glass-sticky-y)) * 100%),
+  transparent
+);
+$color-bg: var(--glass-base);
+
+// 누르는 색(선택·초점·정렬 화살표).
+$color-accent: var(--glass-link);
+
+$color-error-bg: color-mix(in srgb, var(--glass-danger) 14%, transparent);
+$color-error-text: var(--glass-danger);
+$color-error-border: color-mix(in srgb, var(--glass-danger) 30%, transparent);
+
+$radius: 6px;
+$radius-lg: 8px;
