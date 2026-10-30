@@ -196,9 +196,15 @@ const aggregate = (
 }
 
 /**
- * 개인 KPI 전부를 계산한다. 모두 "그 기간에 일어난 일" 기준이다 — 예를 들어
- * 결제 전환율은 그 기간에 들어온 상담 수 대비 그 기간에 일어난 결제 수다
- * (퍼널 통계처럼 "그 기간에 들어온 고객이 나중에라도 결제했나"가 아니다).
+ * 개인 KPI 전부를 계산한다. 전환(방문체험 확정·결제)은 시작한 날 기준이다 —
+ * 상담은 접수일, 방문체험 결제 전환은 체험일. 예를 들어 10/10 접수 → 10/20
+ * 방문체험 확정이면 10/10이 든 칸에 접수 1·확정 1로 센다(확정·결제가 기간
+ * 뒤에 일어나도 센다). 그래서 어느 칸도 100%를 넘지 않는다. 대신 최근 접수분은
+ * 아직 전환될 시간이 없어 낮게 나온다 — 한 달은 지나야 거의 다 잡힌다.
+ * 매출은 돈이 들어온 날(결제일) 기준이다.
+ *
+ * 상담은 처리된 것만 센다 — 아직 "신규 상담 유입"인 상담은 뺀다(CS팀 인입
+ * 성과와 같다).
  */
 export const computeKpis = (
   facts: MondayKpiFacts,
@@ -208,7 +214,10 @@ export const computeKpis = (
   includeInactive: boolean,
 ): { periods: string[]; kpis: KpiResult[] } => {
   const periods = periodsBetween(unit, range)
-  const { consultations, visits, sales } = facts
+  const { visits, sales } = facts
+  const consultations = facts.consultations.filter(
+    ([, , , , isNew]) => isNew !== 1,
+  )
   const build = (
     meta: Omit<KpiResult, 'rows' | 'sum'>,
     events: KpiEvent[],
@@ -224,11 +233,31 @@ export const computeKpis = (
     ),
   })
 
-  const received = consultations.map(([assignee, receivedAt]) => ({
-    assignee,
-    date: receivedAt,
-    den: 1,
-  }))
+  // 접수일 칸에 — 분모는 상담 하나하나, 분자는 그중 전환된 것.
+  const byReceived = (
+    converted: (row: MondayKpiFacts['consultations'][number]) => boolean,
+    as: 'rate' | 'count',
+  ): KpiEvent[] =>
+    consultations.flatMap((row): KpiEvent[] => {
+      const [assignee, receivedAt] = row
+      const hit = converted(row)
+      if (as === 'count')
+        return hit ? [{ assignee, date: receivedAt, value: 1 }] : []
+      return [{ assignee, date: receivedAt, den: 1, num: hit ? 1 : 0 }]
+    })
+  const confirmed = ([
+    ,
+    ,
+    confirmedAt,
+  ]: MondayKpiFacts['consultations'][number]) => Boolean(confirmedAt)
+  const paid = ([, , , paidAt]: MondayKpiFacts['consultations'][number]) =>
+    Boolean(paidAt)
+  const directPaid = ([
+    ,
+    ,
+    confirmedAt,
+    paidAt,
+  ]: MondayKpiFacts['consultations'][number]) => Boolean(paidAt && !confirmedAt)
 
   return {
     periods,
@@ -238,95 +267,57 @@ export const computeKpis = (
           id: 'confirm-count',
           title: '방문체험 확정 건수',
           description:
-            '상담에서 방문체험이 확정된 건수 — 방문체험 확정일 기준.',
+            '그 기간에 접수된 상담 중 방문체험이 확정된 건수 — 접수일 기준, 확정은 지금까지.',
           format: 'count',
         },
-        consultations
-          .filter(([, , confirmedAt]) => confirmedAt)
-          .map(([assignee, , confirmedAt]) => ({
-            assignee,
-            date: confirmedAt,
-            value: 1,
-          })),
+        byReceived(confirmed, 'count'),
       ),
       build(
         {
           id: 'confirm-rate',
           title: '방문체험 확정율',
           description:
-            '그 기간에 들어온 상담 수 대비 그 기간에 확정된 방문체험 수(오기입 제외).',
+            '그 기간에 접수된 상담 중 방문체험이 확정된 비율 — 접수일 기준. 최근 접수분은 아직 확정 전이라 낮게 나온다(한 달은 지나야 정확).',
           format: 'percent',
         },
-        [
-          ...received,
-          ...consultations
-            .filter(([, , confirmedAt]) => confirmedAt)
-            .map(([assignee, , confirmedAt]) => ({
-              assignee,
-              date: confirmedAt,
-              num: 1,
-            })),
-        ],
+        byReceived(confirmed, 'rate'),
       ),
       build(
         {
           id: 'paid-rate',
           title: '결제 전환율 (인바운드)',
           description:
-            '그 기간에 들어온 상담 수 대비 그 기간에 결제된 상담 수 — 상담 담당자 기준.',
+            '그 기간에 접수된 상담 중 결제된 비율 — 접수일 기준, 상담 담당자 기준. 최근 접수분은 아직 결제 전이라 낮게 나온다(한 달은 지나야 정확).',
           format: 'percent',
         },
-        [
-          ...received,
-          ...consultations
-            .filter(([, , , paidAt]) => paidAt)
-            .map(([assignee, , , paidAt]) => ({
-              assignee,
-              date: paidAt,
-              num: 1,
-            })),
-        ],
+        byReceived(paid, 'rate'),
       ),
       build(
         {
           id: 'direct-paid',
           title: '리드 직접 결제 건수',
           description:
-            '방문체험 확정 없이 상담에서 바로 결제된 건수 — 결제일 기준.',
+            '그 기간에 접수된 상담 중 방문체험 확정 없이 바로 결제된 건수 — 접수일 기준.',
           format: 'count',
         },
-        consultations
-          .filter(([, , confirmedAt, paidAt]) => paidAt && !confirmedAt)
-          .map(([assignee, , , paidAt]) => ({
-            assignee,
-            date: paidAt,
-            value: 1,
-          })),
+        byReceived(directPaid, 'count'),
       ),
       build(
         {
           id: 'visit-paid-rate',
           title: '결제 전환율 (방문체험)',
           description:
-            '그 기간에 체험을 마친 방문 수 대비 그 기간에 결제된 방문 수 — 방문체험 담당자 기준.',
+            '그 기간에 체험을 마친 방문 중 결제된 비율 — 체험일 기준, 방문체험 담당자 기준. 최근 체험분은 아직 결제 전이라 낮게 나온다.',
           format: 'percent',
         },
-        [
-          ...visits
-            .filter(([, , completed]) => completed)
-            .map(([assignee, visitAt]) => ({
-              assignee,
-              date: visitAt,
-              den: 1,
-            })),
-          ...visits
-            .filter(([, , completed, paidAt]) => completed && paidAt)
-            .map(([assignee, , , paidAt]) => ({
-              assignee,
-              date: paidAt,
-              num: 1,
-            })),
-        ],
+        visits
+          .filter(([, , completed]) => completed)
+          .map(([assignee, visitAt, , paidAt]) => ({
+            assignee,
+            date: visitAt,
+            den: 1,
+            num: paidAt ? 1 : 0,
+          })),
       ),
       build(
         {

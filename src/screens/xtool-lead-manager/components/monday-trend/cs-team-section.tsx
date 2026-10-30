@@ -142,11 +142,7 @@ const ContributorList = ({
   if (items.length === 0)
     return <p className="cs_contrib_empty">해당하는 상담이 없습니다.</p>
   const main =
-    kind === 'confirm' || kind === 'visit'
-      ? 'confirmedAt'
-      : kind === 'paid' || kind === 'paidAt'
-        ? 'paidAt'
-        : 'receivedAt'
+    kind === 'visit' ? 'confirmedAt' : kind === 'paid' ? 'paidAt' : 'receivedAt'
   return (
     <ul className="cs_contrib">
       {items.map((each) => (
@@ -393,9 +389,9 @@ const MemberEditor = ({
 }
 
 /** 인입통계 맨 아래 — CS팀 담당자별 성과. 위 인입통계와 같은 기간·단위로
- * 본다: 인입 처리·구매 전환·방문체험 전환
- * 카드, 개인 KPI에서 가져온 방문체험 확정·결제 전환(건수와 비율을 한 표에),
- * 그리고 지금 기준 콜백 미처리. */
+ * 본다: 인입 처리·구매 전환·방문체험 전환 카드, 인입 처리 수 표, 방문체험
+ * 확정·결제 전환 표(건수와 비율을 한 표에 — 전부 접수일 기준이라 카드와
+ * 합계가 같다), 그리고 지금 기준 콜백 미처리. */
 export const CsTeamSection = ({
   csTeam,
   sorts,
@@ -456,9 +452,10 @@ export const CsTeamSection = ({
         <div>
           <h2>CS팀 인입 성과</h2>
           <p className="stats_desc">
-            위 인입통계와 같은 기간·단위로 봅니다. 카드는 그 기간에 접수된 상담
-            중 처리된 것 기준(오기입·신규 상담 유입 제외) · 결제·방문체험 확정은
-            지금까지 된 것까지 센다
+            위 인입통계와 같은 기간·단위로 봅니다. 카드·표 모두 그 기간에 접수된
+            상담 중 처리된 것 기준(오기입·신규 상담 유입 제외) · 방문체험
+            확정·결제는 접수한 날에 지금까지 된 것까지 센다 — 최근 접수분은 한
+            달은 지나야 정확
           </p>
         </div>
         <button
@@ -551,7 +548,7 @@ export const CsTeamSection = ({
                     rows={withContributors(
                       pairRows(each, labels, each.sortBy),
                       each.id,
-                      each.id === 'confirm-rate' ? 'confirm' : 'paidAt',
+                      each.id === 'confirm-rate' ? 'visit' : 'paid',
                     )}
                     labels={labels}
                     columns={{

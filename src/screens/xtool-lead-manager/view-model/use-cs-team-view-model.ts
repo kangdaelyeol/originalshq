@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import type { MondayKpiFacts } from '@/screens/xtool-lead-manager/entity'
 import {
+  buildCsConversionKpi,
   buildCsTeamStats,
   buildIntakeKpi,
   csContributors,
   type CsContributorKind,
-  computeKpis,
+  type CsConversionId,
   periodKeyOf,
+  periodsBetween,
   csCandidates,
   sortKpiPairRows,
   sortKpiRows,
@@ -34,20 +36,22 @@ const parseMembers = (stored: unknown): string[] | undefined =>
       ]
     : undefined
 
-/** 개인 KPI에서 가져오는 지표(같은 계산 그대로) — 비율 지표 하나가 분자
- * (건수)·분모(상담 수)를 다 갖고 있어서, 건수와 비율을 한 표에 같이 그린다.
- * 그래서 "방문체험 확정 건수"는 "방문체험 확정율"의 분자로 대신한다. */
-const CS_KPIS: Record<string, { title: string; description: string }> = {
-  'confirm-rate': {
-    title: '방문체험 확정',
-    description: '설정 기간동안 확정된 방문체험 수와 전체 상담수 대비 비율',
-  },
-  'paid-rate': {
-    title: '결제 전환',
-    description:
-      '설정 기간동안 결제된 상담 수(결제일 기준), 전체 상담수 대비 비율',
-  },
-}
+/** 전환 표 — 접수일 기준(buildCsConversionKpi). 비율 하나가 분자(전환 건수)·
+ * 분모(접수 상담 수)를 다 갖고 있어서, 건수와 비율을 한 표에 같이 그린다.
+ * 개인 KPI 탭의 같은 이름 지표는 "그 기간에 일어난 일" 기준이라 다르다. */
+const CS_KPIS: Record<CsConversionId, { title: string; description: string }> =
+  {
+    'confirm-rate': {
+      title: '방문체험 확정',
+      description:
+        '설정 기간에 접수된 상담 중 방문체험이 확정된 수와 비율 — 접수일 기준, 확정은 지금까지. 최근 접수분은 아직 확정 전이라 낮게 나온다(한 달은 지나야 정확).',
+    },
+    'paid-rate': {
+      title: '결제 전환',
+      description:
+        '설정 기간에 접수된 상담 중 결제된 수와 비율 — 접수일 기준, 결제는 지금까지. 최근 접수분은 아직 결제 전이라 낮게 나온다(한 달은 지나야 정확).',
+    },
+  }
 
 export type KpiPairSortBy = 'count' | 'rate'
 
@@ -140,19 +144,20 @@ export const useCsTeamViewModel = ({
     [facts, members, dates],
   )
 
-  // 개인 KPI와 같은 계산 — CS팀 담당자의 상담만 넣어서 합계도 CS팀 합이다.
+  // 인입 처리 수 + 전환 표(방문체험 확정·결제 전환) — 전부 접수일 기준이라
+  // 기간 합계가 위 카드(stats)와 같다. 전환은 기간 뒤에 일어난 것도 세야 해서
+  // 날짜를 자르지 않은 원본(facts)으로 센다.
   const kpi = useMemo(() => {
-    const { periods, kpis } = computeKpis(
-      {
-        consultations: inRangeFacts.consultations.filter(([assignee]) =>
-          memberSet.has(assignee),
-        ),
-        visits: [],
-        sales: [],
-      },
-      unit,
-      range,
-      false,
+    const periods = periodsBetween(unit, range)
+    const kpis = (Object.keys(CS_KPIS) as CsConversionId[]).map((id) =>
+      buildCsConversionKpi(
+        id,
+        facts.consultations,
+        members,
+        unit,
+        range,
+        dates,
+      ),
     )
     return {
       periods,
@@ -169,24 +174,22 @@ export const useCsTeamViewModel = ({
           rows: sortKpiRows(intake.rows, tableSorts['cs-kpi:intake'], periods),
         }
       })(),
-      kpis: kpis
-        .filter((each) => each.id in CS_KPIS)
-        .map((each) => {
-          const by = sortBy[each.id] ?? 'count'
-          return {
-            ...each,
-            ...CS_KPIS[each.id],
-            sortBy: by,
-            rows: sortKpiPairRows(
-              each.rows,
-              tableSorts[`cs-kpi:${each.id}`],
-              periods,
-              by,
-            ),
-          }
-        }),
+      kpis: kpis.map((each) => {
+        const by = sortBy[each.id] ?? 'count'
+        return {
+          ...each,
+          ...CS_KPIS[each.id as CsConversionId],
+          sortBy: by,
+          rows: sortKpiPairRows(
+            each.rows,
+            tableSorts[`cs-kpi:${each.id}`],
+            periods,
+            by,
+          ),
+        }
+      }),
     }
-  }, [inRangeFacts, members, memberSet, unit, range, tableSorts, sortBy])
+  }, [facts, inRangeFacts, members, unit, range, dates, tableSorts, sortBy])
 
   const neglect = useMemo(
     () => callbackNeglect.filter((row) => memberSet.has(row.assignee)),

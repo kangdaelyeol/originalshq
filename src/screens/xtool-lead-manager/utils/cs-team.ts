@@ -134,6 +134,79 @@ export const buildIntakeKpi = (
   }
 }
 
+/** 접수일 기준 전환 표 — 방문체험 확정 / 결제 전환. 담당자 × 기간. */
+export type CsConversionId = 'confirm-rate' | 'paid-rate'
+
+/** 방문체험 확정·결제 전환 표 — 담당자 × 기간, 접수일 기준(코호트). 그
+ * 기간에 접수돼 처리된 상담(신규 상담 유입·오기입 제외)이 분모, 그중
+ * 방문체험이 확정된(결제된) 것이 분자다. 확정·결제가 기간 뒤에 일어나도
+ * 접수한 칸에 센다 — 그래서 어느 칸도 100%를 넘지 않고, 기간 전체 합은 위
+ * 카드(buildCsTeamStats)의 방문체험 전환·구매 전환과 같다.
+ *
+ * 최근 접수분은 아직 전환될 시간이 없어 낮게 나온다 — 전환은 접수 뒤 한
+ * 달은 지나야 거의 다 잡힌다. 명단에 있는 사람만, 명단 순서대로(정렬은
+ * 표가 한다). */
+export const buildCsConversionKpi = (
+  id: CsConversionId,
+  consultations: MondayKpiFacts['consultations'],
+  members: readonly string[],
+  unit: KpiUnit,
+  range: KpiRange,
+  dates: { start: string; end: string },
+): KpiResult => {
+  const periods = periodsBetween(unit, range)
+  const index = new Map(periods.map((key, i) => [key, i]))
+  const blank = (): KpiCell => ({ value: 0, num: 0, den: 0 })
+  const rows = new Map(
+    members.map((name) => [
+      name,
+      { assignee: name, total: blank(), byPeriod: periods.map(blank) },
+    ]),
+  )
+  const sum = { total: blank(), byPeriod: periods.map(blank) }
+  const add = (cell: KpiCell, hit: boolean) => {
+    cell.den = (cell.den ?? 0) + 1
+    if (hit) cell.num = (cell.num ?? 0) + 1
+  }
+
+  for (const [
+    assignee,
+    receivedAt,
+    confirmedAt,
+    paidAt,
+    isNew,
+  ] of consultations) {
+    if (isNew === 1 || !receivedAt) continue
+    if (receivedAt < dates.start || receivedAt > dates.end) continue
+    const row = rows.get(assignee)
+    if (!row) continue
+    const at = index.get(periodKeyOf(receivedAt, unit))
+    if (at === undefined) continue
+    const hit = Boolean(id === 'confirm-rate' ? confirmedAt : paidAt)
+    add(row.total, hit)
+    add(row.byPeriod[at], hit)
+    add(sum.total, hit)
+    add(sum.byPeriod[at], hit)
+  }
+
+  const finish = (cell: KpiCell): KpiCell => ({
+    ...cell,
+    value: cell.den ? (cell.num ?? 0) / cell.den : 0,
+  })
+  return {
+    id,
+    title: '',
+    description: '',
+    format: 'percent',
+    rows: [...rows.values()].map((row) => ({
+      assignee: row.assignee,
+      total: finish(row.total),
+      byPeriod: row.byPeriod.map(finish),
+    })),
+    sum: { total: finish(sum.total), byPeriod: sum.byPeriod.map(finish) },
+  }
+}
+
 /** 숫자 하나를 이룬 상담 한 건 — "어떤 고객이 센 건인지" 펼쳐 볼 때. */
 export interface CsContributor {
   key: string
@@ -146,14 +219,11 @@ export interface CsContributor {
   paidAt: string
 }
 
-/** 펼쳐 볼 숫자의 종류 —
- *   intake  기간에 접수돼 처리된 상담(인입 처리 카드·인입 처리 수 표)
- *   paid    그중 결제된 것(구매 전환 카드 — 결제는 지금까지)
- *   visit   그중 방문체험이 확정된 것(방문체험 전환 카드)
- *   confirm 확정일이 기간 안인 상담(방문체험 확정 표의 건수)
- *   paidAt  결제일이 기간 안인 상담(결제 전환 표의 건수) */
-export type CsContributorKind =
-  'intake' | 'paid' | 'visit' | 'confirm' | 'paidAt'
+/** 펼쳐 볼 숫자의 종류 — 전부 접수일 기준(기간에 접수돼 처리된 상담):
+ *   intake  그 상담 전부(인입 처리 카드·인입 처리 수 표)
+ *   paid    그중 결제된 것(구매 전환 카드·결제 전환 표 — 결제는 지금까지)
+ *   visit   그중 방문체험이 확정된 것(방문체험 전환 카드·방문체험 확정 표) */
+export type CsContributorKind = 'intake' | 'paid' | 'visit'
 
 /** 한 담당자의 그 숫자를 이룬 상담들 — 최근 날짜 순. 고객명이 없는 예전
  * 데이터면 null(다음 Monday 동기화 뒤에 생긴다). */
@@ -185,11 +255,7 @@ export const csContributors = (
         ? cohort
         : kind === 'paid'
           ? cohort && Boolean(paidAt)
-          : kind === 'visit'
-            ? cohort && Boolean(confirmedAt)
-            : kind === 'confirm'
-              ? inRange(confirmedAt)
-              : inRange(paidAt)
+          : cohort && Boolean(confirmedAt)
     if (!hit) continue
     const board = facts.boards[boardId]
     out.push({
@@ -202,11 +268,6 @@ export const csContributors = (
       paidAt,
     })
   }
-  const dateOf = (each: CsContributor) =>
-    kind === 'confirm'
-      ? each.confirmedAt
-      : kind === 'paidAt' || kind === 'paid'
-        ? each.paidAt
-        : each.receivedAt
-  return out.sort((a, b) => dateOf(b).localeCompare(dateOf(a)))
+  // 접수일 기준 숫자라 접수가 최근인 순.
+  return out.sort((a, b) => b.receivedAt.localeCompare(a.receivedAt))
 }
