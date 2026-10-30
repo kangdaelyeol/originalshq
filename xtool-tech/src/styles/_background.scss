@@ -1,0 +1,44 @@
+// 화면 뒤 고정 배경. 유리 카드가 이 층들을 흐려서 비추기 때문에, 여기 색·빛이
+// 곧 "유리 느낌"의 재료다 — 너무 평평하면 유리도 평평해 보인다.
+.app-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--bg);
+
+  &__shards {
+    position: absolute;
+    inset: -1%;
+    background: url('/bg-shards.svg') center / cover no-repeat;
+  }
+
+  // 강조색 빛 번짐 — 왼쪽 위(로고 쪽)는 주황, 오른쪽 아래는 파랑. 유리에 은은한 색이 돈다.
+  &__glow {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(38% 42% at 10% 6%, rgba(239, 99, 66, 0.2), transparent 70%),
+      radial-gradient(42% 46% at 94% 92%, rgba(58, 154, 230, 0.16), transparent 72%),
+      radial-gradient(30% 34% at 62% 26%, rgba(255, 255, 255, 0.05), transparent 70%);
+    mix-blend-mode: screen;
+  }
+
+  // 대각선 빛줄기 — 샘플에서 카드 위를 비스듬히 가로지르는 반사광.
+  &__streaks {
+    position: absolute;
+    inset: -20%;
+    background:
+      linear-gradient(118deg, transparent 36%, rgba(255, 255, 255, 0.075) 43%, transparent 50%),
+      linear-gradient(118deg, transparent 57%, rgba(255, 255, 255, 0.05) 61%, transparent 66%),
+      linear-gradient(118deg, transparent 74%, rgba(255, 255, 255, 0.03) 77%, transparent 81%);
+    filter: blur(8px);
+  }
+
+  &__vignette {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(120% 95% at 50% 38%, transparent 52%, rgba(0, 0, 0, 0.6) 100%);
+  }
+}

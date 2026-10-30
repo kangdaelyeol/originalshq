@@ -1,0 +1,314 @@
+// ── 선 + 면 차트 ─────────────────────────────────────────────────────────────
+.area-chart {
+  position: relative;
+  width: 100%;
+  border-radius: 10px;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.6);
+  }
+}
+
+.area-chart__svg {
+  display: block;
+  overflow: visible;
+  touch-action: pan-y;
+}
+
+.area-chart__grid line {
+  stroke: rgba(255, 255, 255, 0.06);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.area-chart__grid text,
+.area-chart__x text {
+  fill: var(--text-4);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.area-chart__crosshair {
+  stroke: rgba(255, 255, 255, 0.24);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 132px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(14, 15, 18, 0.94);
+  box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.8);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chart-tooltip__label {
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-3);
+
+  strong {
+    color: var(--text-1);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  & + & {
+    margin-top: 4px;
+  }
+}
+
+.line-key {
+  flex: none;
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+}
+
+.chart-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 24px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font-size: 12px;
+  color: var(--text-2);
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  strong {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+}
+
+.chart-footer__aside {
+  font-size: 12px;
+  color: var(--text-3);
+
+  strong {
+    margin-left: 6px;
+    font-weight: 700;
+  }
+}
+
+// ── 도넛 ────────────────────────────────────────────────────────────────────
+.donut {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.donut__figure {
+  position: relative;
+}
+
+.donut__track {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.05);
+}
+
+.donut__arc {
+  cursor: pointer;
+  transition:
+    stroke-width 0.2s,
+    opacity 0.2s;
+
+  &.is-dimmed {
+    opacity: 0.35;
+  }
+}
+
+.donut__center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+
+  strong {
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  span {
+    margin-top: 3px;
+    font-size: 10.5px;
+    color: var(--text-3);
+  }
+}
+
+// ── 범례(도넛·비중 막대 공용) ────────────────────────────────────────────────
+.legend {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  outline: none;
+  transition: background 0.15s;
+
+  &.is-active,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+.legend__swatch {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+
+.legend__label {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-2);
+}
+
+.legend__value {
+  color: var(--text-1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.legend__count {
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+// ── 가로 막대(응답 지연) ─────────────────────────────────────────────────────
+.bars {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.bars__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.bars__label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.bars__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.bars__track {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bars__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  // 값 쪽 끝만 둥글게, 기준선 쪽은 각지게.
+  border-radius: 0 4px 4px 0;
+  transition:
+    width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.2s;
+}
+
+.bars__row:hover .bars__fill {
+  filter: brightness(1.15);
+}
+
+.bars__target {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+// ── 100% 비중 막대 ───────────────────────────────────────────────────────────
+.share {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.share__bar {
+  display: flex;
+  gap: 2px;
+  height: 12px;
+}
+
+.share__segment {
+  flex: 1 1 0;
+  min-width: 4px;
+  transition:
+    opacity 0.2s,
+    filter 0.2s;
+
+  &:first-child {
+    border-radius: 4px 0 0 4px;
+  }
+
+  &:last-child {
+    border-radius: 0 4px 4px 0;
+  }
+
+  &.is-dimmed {
+    opacity: 0.35;
+  }
+}
