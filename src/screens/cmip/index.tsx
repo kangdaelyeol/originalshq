@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { startGlassTransition, useGlassTheme } from '@/components/glass'
 import { ChannelInsight, Header } from './components'
+import { AdSettingsPanel } from './components/ad-settings'
 import { RESULT_TAB_LABEL } from './components/channel-insight/constants'
 import type { ResultTab } from './view-model/use-channel-insight-page-view-model'
 import './styles/cmip.scss'
@@ -14,7 +15,17 @@ import './styles/cmip-glass.scss'
 /** cmip 화면 — 유리(@/components/glass) 셸: 화면 뒤 배경 빛(glass_root), 맨 위
  * 줄(GlassHeader — 가운데 보기 단위 탭 + 테마 고르기). 보기 단위를 바꾸면 새
  * 보기가 흐릿하게 나타나고 맨 위 줄은 그대로 남는다. */
+// 맨 위 탭 — 보기 단위(인사이트 결과) + 광고 설정.
+type ScreenTab = ResultTab | 'adSettings'
+const SCREEN_TAB_LABEL: Record<ScreenTab, string> = {
+  ...RESULT_TAB_LABEL,
+  adSettings: '광고 설정',
+}
+
 export default function CmipScreen() {
+  const [tab, setTab] = useState<ScreenTab>('total')
+  // 광고 설정을 보는 동안에도 인사이트는 마지막 보기 그대로 붙여 둔다(숨김) —
+  // 돌아오면 다시 조회하지 않고 바로 보인다.
   const [resultTab, setResultTab] = useState<ResultTab>('total')
   // 테마 — 이 브라우저에 남긴다(<html data-glass-theme>, 바탕색은 그 테마).
   const [theme, setTheme] = useGlassTheme('cmip.theme')
@@ -22,14 +33,22 @@ export default function CmipScreen() {
   return (
     <div className="cmip-root glass_root">
       <Header
-        tabs={RESULT_TAB_LABEL}
-        tab={resultTab}
-        onSelectTab={(next) => startGlassTransition(() => setResultTab(next))}
+        tabs={SCREEN_TAB_LABEL}
+        tab={tab}
+        onSelectTab={(next) =>
+          startGlassTransition(() => {
+            setTab(next)
+            if (next !== 'adSettings') setResultTab(next)
+          })
+        }
         theme={theme}
         onSelectTheme={setTheme}
       />
       <main className="cmip glass_page">
-        <ChannelInsight resultTab={resultTab} />
+        <div hidden={tab === 'adSettings'}>
+          <ChannelInsight resultTab={resultTab} />
+        </div>
+        {tab === 'adSettings' && <AdSettingsPanel />}
       </main>
     </div>
   )

@@ -1,0 +1,585 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// "광고 설정" 탭(components/ad-settings) — 왼쪽 목록 · 오른쪽 편집. 유리
+// 원칙대로 테두리 없이 겹(fill)으로만.
+
+.ad-settings__inner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ad-settings__coverage {
+  margin-right: auto;
+  margin-left: 12px;
+  font-size: 12.5px;
+  color: $text-3;
+
+  b {
+    font-weight: 600;
+    color: $text;
+  }
+}
+.ad-settings__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.ad-settings__search {
+  flex: 1 1 220px;
+  max-width: 360px;
+  margin-left: auto;
+}
+.ad-settings__empty,
+.ad-settings__placeholder {
+  margin: 0;
+  padding: 28px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: $text-3;
+  text-align: center;
+}
+
+.ad-settings__body {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.25fr);
+  align-items: start;
+  gap: 14px;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+// 편집 칸은 스크롤하지 않는다(안의 드롭다운 목록이 잘리지 않게) — 대신
+// 목록이 제 높이 안에서 스크롤한다.
+.ad-settings__editor {
+  @include glass.inner;
+  padding: 18px 20px;
+}
+
+// 잠깐 떠 있다 사라지는 알림.
+.ad-settings__notice {
+  @include glass.float(14px);
+  position: fixed;
+  z-index: 20;
+  bottom: 28px;
+  left: 50%;
+  padding: 11px 18px;
+  font-size: 13px;
+  color: $text;
+  transform: translateX(-50%);
+  @include glass.pop-in(0.3s);
+}
+
+// ── 공용 입력·버튼·배지 ──────────────────────────────────────────────────
+
+.ad-input {
+  @include glass.field;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font: inherit;
+  font-size: 13px;
+  color: $text;
+
+  &::placeholder {
+    color: $text-3;
+  }
+  &.is-number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+textarea.ad-input {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.ad-button {
+  @include glass.pill-button;
+  height: 34px;
+  padding: 0 16px;
+  font: inherit;
+  font-size: 13px;
+  color: $text;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &.is-small {
+    height: 30px;
+    padding: 0 12px;
+    font-size: 12px;
+  }
+  &.is-active {
+    background: $fill-3;
+  }
+  &.is-primary {
+    @include glass.tint-button(var(--glass-link), 26%);
+  }
+  &.is-danger {
+    @include glass.tint-button(var(--glass-danger), 24%);
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.ad-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: $fill-2;
+  font-size: 11.5px;
+  color: $text-2;
+  white-space: nowrap;
+
+  // 캠페인 설정을 따르는 값 — 한 겹 옅게.
+  &.is-inherited {
+    background: $fill-1;
+    color: $text-3;
+  }
+  &.is-missing {
+    @include glass.tint(var(--glass-warn), 18%);
+  }
+  &.is-scheduled {
+    @include glass.tint(var(--glass-link), 20%);
+  }
+  &.is-current {
+    @include glass.tint(var(--glass-accent), 22%);
+  }
+}
+
+// ── 목록 ────────────────────────────────────────────────────────────────
+
+.ad-entity-list {
+  @include glass.inner;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: calc(100vh - 230px);
+  min-height: 360px;
+  overflow-y: auto;
+  padding: 6px;
+  overscroll-behavior: contain;
+}
+.ad-entity-group {
+  @include glass.enter(var(--glass-i, 0), 25ms, 0.45s);
+}
+.ad-entity {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-radius: 14px;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: $fill-1;
+  }
+  &.is-selected {
+    background: $fill-2;
+  }
+  &.is-adset {
+    padding-left: 22px;
+  }
+}
+.ad-entity__toggle,
+.ad-entity__toggle-space {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.ad-entity__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: $text-3;
+  cursor: pointer;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &.is-open svg {
+    transform: rotate(90deg);
+  }
+  &:disabled {
+    opacity: 0.3;
+    cursor: default;
+  }
+}
+.ad-entity__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding: 8px 10px 8px 2px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: $text;
+  cursor: pointer;
+}
+.ad-entity__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.3;
+
+  > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  svg {
+    flex: none;
+    width: 15px;
+    height: 15px;
+  }
+  .is-campaign & {
+    font-weight: 600;
+  }
+}
+.ad-entity__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+.ad-entity__count {
+  font-size: 11px;
+  color: $text-3;
+
+  &::before {
+    content: '광고셋 ';
+  }
+}
+.ad-entity__seen {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--glass-accent);
+
+  &.is-stale {
+    color: $text-3;
+  }
+}
+
+// ── 편집 ────────────────────────────────────────────────────────────────
+
+.ad-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.ad-editor__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  > svg {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 18px;
+  }
+}
+.ad-editor__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  line-height: 1.35;
+
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: $text;
+    word-break: break-all;
+  }
+}
+.ad-editor__level,
+.ad-editor__meta {
+  font-size: 11.5px;
+  color: $text-3;
+  word-break: break-all;
+}
+
+.ad-editor__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.ad-editor__date {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px 14px;
+
+  .ad-field {
+    width: 180px;
+  }
+}
+.ad-editor__date-note {
+  padding-bottom: 9px;
+  font-size: 12px;
+  color: $text-3;
+}
+.ad-editor__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+// 칸 안의 드롭다운은 칸 폭만큼.
+.ad-field,
+.ad-goal,
+.ad-set-form__creatives {
+  .glass_select {
+    width: 100%;
+  }
+  .glass_select_button {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+.ad-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+
+  &.is-wide {
+    grid-column: 1 / -1;
+  }
+}
+.ad-field__label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: $text-2;
+}
+.ad-field__hint {
+  font-size: 11px;
+  color: $text-3;
+}
+.ad-field__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .ad-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+.ad-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+// ── 변경 이력 ───────────────────────────────────────────────────────────
+
+.ad-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  h4 {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text;
+
+    span {
+      margin-left: 4px;
+      font-weight: 400;
+      color: $text-3;
+    }
+  }
+}
+.ad-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-history__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: $fill-1;
+
+  &.is-past {
+    opacity: 0.72;
+  }
+}
+.ad-history__when {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: $text-2;
+  font-variant-numeric: tabular-nums;
+}
+.ad-history__chips {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / -1;
+  gap: 5px;
+}
+.ad-history__memo {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $text-2;
+  white-space: pre-wrap;
+}
+.ad-history__actions {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  gap: 6px;
+}
+
+// ── 목표·소재 관리 ──────────────────────────────────────────────────────
+
+.ad-catalog {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  @include glass.enter(0, 0ms, 0.4s);
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.ad-catalog__card {
+  @include glass.inner;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: $text;
+  }
+}
+.ad-catalog__desc {
+  margin: 0;
+  font-size: 11.5px;
+  color: $text-3;
+}
+.ad-goal-list,
+.ad-set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-goal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px 110px auto;
+  align-items: center;
+  gap: 8px;
+
+  &.is-archived {
+    opacity: 0.5;
+  }
+}
+.ad-goal__key {
+  overflow: hidden;
+  font-size: 11px;
+  color: $text-3;
+  font-family: ui-monospace, monospace;
+  text-overflow: ellipsis;
+}
+.ad-set {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: $fill-1;
+}
+.ad-set__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.35;
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
+  }
+  span {
+    overflow: hidden;
+    font-size: 11.5px;
+    color: $text-3;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+.ad-set-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: $fill-1;
+}
+.ad-set-form__creatives {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 6px;
+  }
+}
+.ad-set-form__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ad-set-form__note {
+  flex: 1;
+  font-size: 11px;
+  color: $text-3;
+}
