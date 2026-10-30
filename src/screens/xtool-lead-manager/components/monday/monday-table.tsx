@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { AutoHeight, LoadingPanel } from '@/components/glass'
 import type { MondayCustomerListItem } from '@/screens/xtool-lead-manager/entity'
 import {
   formatMondayDate,
@@ -6,7 +7,6 @@ import {
   formatWon,
   mondayStatusTone,
 } from '@/screens/xtool-lead-manager/utils'
-import { LoadingNotice, SkeletonRows, type SkeletonCell } from '../skeleton'
 
 interface MondayRowProps {
   customer: MondayCustomerListItem
@@ -142,21 +142,6 @@ const MondayRow = memo(function MondayRow({
 
 /** Monday 통합 고객 표 — 한 줄이 번호 하나(고객 1명)다. 줄을 누르면 그
  * 고객의 전체 기록(상세 모달)이 열린다. */
-// 순번·전화번호·이름·상태·상담·방문체험·구매(두 줄)·설문·담당자·보드·최근 수정.
-const MONDAY_SKELETON: SkeletonCell[] = [
-  { width: 20 },
-  { width: 100 },
-  { width: 60 },
-  { width: 70 },
-  { width: 24 },
-  { width: 24 },
-  { width: 60, twoLine: true },
-  { width: 40 },
-  { width: 60 },
-  { width: 30 },
-  { width: 80 },
-]
-
 export const MondayTable = ({
   rows,
   startIndex,
@@ -166,51 +151,60 @@ export const MondayTable = ({
   rows: MondayCustomerListItem[]
   /** 이 페이지 첫 줄 앞에 있는 줄 수 — 순번은 startIndex + 1부터. */
   startIndex: number
-  /** 목록을 받는 중 — 몸통 자리에 스켈레톤을 그린다. */
+  /** 목록을 받는 중 — 표 자리에 로딩 판을 둔다. */
   loading: boolean
   onOpen: (phone: string) => void
 }) => {
   return (
     <div className="table_container" aria-busy={loading}>
-      {loading && <LoadingNotice label="Monday 고객 목록을 불러오는 중" />}
+      {/* 불러오는 동안은 로딩 판, 다 받으면 표 상자가 그 높이에서 자라고 줄이
+          차례로 떠오른다. */}
       <div className="table">
-        <div className="table_scroll">
-          <table className="lead_table monday_table">
-            <thead>
-              <tr>
-                <th className="col-monday-no">순번</th>
-                <th className="col-ph">전화번호</th>
-                <th className="col-monday-name">이름</th>
-                <th className="col-monday-status">최근 상담 상태</th>
-                <th className="col-monday-count">상담</th>
-                <th className="col-monday-count">방문체험</th>
-                <th className="col-monday-purchase">구매</th>
-                <th className="col-monday-etc">설문·샘플</th>
-                <th className="col-monday-assignee">담당자</th>
-                <th className="col-monday-boards">보드</th>
-                <th className="col-monday-updated">최근 수정</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && <SkeletonRows cells={MONDAY_SKELETON} rows={15} />}
-              {rows.map((customer, index) => (
-                <MondayRow
-                  key={customer.phone}
-                  customer={customer}
-                  no={startIndex + index + 1}
-                  onOpen={onOpen}
-                />
-              ))}
-              {!loading && rows.length === 0 && (
-                <tr>
-                  <td className="monday_no_rows" colSpan={11}>
-                    조건에 맞는 고객이 없습니다.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AutoHeight>
+          {loading ? (
+            <LoadingPanel
+              label="Monday 고객 목록을 불러오는 중"
+              minHeight={480}
+            />
+          ) : (
+            <div className="table_scroll">
+              <table className="lead_table monday_table">
+                <thead>
+                  <tr>
+                    <th className="col-monday-no">순번</th>
+                    <th className="col-ph">전화번호</th>
+                    <th className="col-monday-name">이름</th>
+                    <th className="col-monday-status">최근 상담 상태</th>
+                    <th className="col-monday-count">상담</th>
+                    <th className="col-monday-count">방문체험</th>
+                    <th className="col-monday-purchase">구매</th>
+                    <th className="col-monday-etc">설문·샘플</th>
+                    <th className="col-monday-assignee">담당자</th>
+                    <th className="col-monday-boards">보드</th>
+                    <th className="col-monday-updated">최근 수정</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((customer, index) => (
+                    <MondayRow
+                      key={customer.phone}
+                      customer={customer}
+                      no={startIndex + index + 1}
+                      onOpen={onOpen}
+                    />
+                  ))}
+                  {rows.length === 0 && (
+                    <tr>
+                      <td className="monday_no_rows" colSpan={11}>
+                        조건에 맞는 고객이 없습니다.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </AutoHeight>
       </div>
     </div>
   )

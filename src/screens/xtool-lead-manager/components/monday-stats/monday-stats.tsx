@@ -14,14 +14,19 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { Segmented, Select, StatTile } from '@/components/glass'
+import {
+  AutoHeight,
+  LoadingPanel,
+  Segmented,
+  Select,
+  StatTile,
+} from '@/components/glass'
 import { useRef } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import type {
   useMondayStatsViewModel,
   useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { StatsSkeleton } from './stats-skeleton'
 import {
   formatPhoneNumber,
   formatWon,
@@ -348,150 +353,157 @@ export const MondayStats = ({
       </div>
 
       <div className="xtool-main monday_stats funnel_main glass_theme">
-        <div className={`wrapper${status === 'ready' ? ' is-ready' : ''}`}>
-          {status === 'error' ? (
-            <div className="monday_error">
-              <p>Monday 고객 목록을 불러오지 못했습니다.</p>
-              <button type="button" onClick={onReload}>
-                다시 시도
-              </button>
-            </div>
-          ) : status === 'idle' || status === 'loading' ? (
-            <StatsSkeleton />
-          ) : (
-            <>
+        {/* 불러오는 동안은 로딩 판 하나, 다 받으면 화면이 그 높이에서 부드럽게
+            자라고(AutoHeight) 카드가 흐릿하게 떠오른다(is-ready). */}
+        <AutoHeight>
+          <div className={`wrapper${status === 'ready' ? ' is-ready' : ''}`}>
+            {status === 'error' ? (
+              <div className="monday_error">
+                <p>Monday 고객 목록을 불러오지 못했습니다.</p>
+                <button type="button" onClick={onReload}>
+                  다시 시도
+                </button>
+              </div>
+            ) : status === 'idle' || status === 'loading' ? (
               <section className="stats_card">
-                <h2>퍼널</h2>
-                <p className="stats_desc">
-                  유효 고객 중 각 단계까지 간 고객. 구매는 방문체험 없이도
-                  일어나므로 앞 단계의 부분집합이 아닙니다. {SCOPE_DESC[scope]}
-                </p>
-                <div className="stats_bars">
-                  {steps.map((step, index) => (
-                    <Bar
-                      key={step.label}
-                      order={index}
-                      label={step.label}
-                      share={step.rate}
-                      value={people(step.count)}
-                      note={percent(step.rate)}
-                    />
-                  ))}
-                </div>
-                {scope === 'all' && (
-                  <p className="stats_split">
-                    구매 고객 구성 — 오프라인만{' '}
-                    {people(stats.buyerSplit.offlineOnly)} · 온라인만{' '}
-                    {people(stats.buyerSplit.onlineOnly)} · 둘 다{' '}
-                    {people(stats.buyerSplit.both)}
-                  </p>
-                )}
+                <LoadingPanel label="퍼널 통계를 불러오는 중" minHeight={420} />
               </section>
-
-              <div className="stats_row">
+            ) : (
+              <>
                 <section className="stats_card">
-                  <h2>상담·방문체험 경로별 전환</h2>
+                  <h2>퍼널</h2>
                   <p className="stats_desc">
-                    상담은 상담 보드 기록이 있는 고객, 방문체험은 체험을 완료한
-                    고객 기준. 칸에 마우스를 올리면 모수가 보입니다.
+                    유효 고객 중 각 단계까지 간 고객. 구매는 방문체험 없이도
+                    일어나므로 앞 단계의 부분집합이 아닙니다.{' '}
+                    {SCOPE_DESC[scope]}
                   </p>
-                  <div className="stats_tiles">
-                    {paths.map((each) => (
-                      <div key={each.id} title={each.base}>
-                        <StatTile
-                          icon={PATH_ICONS[each.id] ?? Gauge}
-                          label={each.label}
-                          value={percent(each.rate)}
-                          sub={`${people(each.from)} 중 ${people(each.to)}`}
-                          onGo={
-                            each.to === 0
-                              ? undefined
-                              : () => togglePath(each.id)
-                          }
-                          linkLabel={`${each.label} 고객 자세히 보기`}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="stats_card">
-                  <h2>최초 인입 → 구매 소요 일수</h2>
-                  <p className="stats_desc">
-                    문의 기록이 있는 구매 고객 {people(stats.days.customers)}{' '}
-                    기준. 결제 기록만 있는 고객 제외.
-                  </p>
-                  <div className="stats_tiles">
-                    <StatTile
-                      icon={Timer}
-                      label="중앙값"
-                      value={days(stats.days.median)}
-                      sub="절반이 이 안에 구매"
-                    />
-                    <StatTile
-                      icon={CalendarClock}
-                      label="평균"
-                      value={days(stats.days.mean)}
-                      sub="오래 걸린 고객에 끌려 길어짐"
-                    />
-                  </div>
-                  <div className="stats_bars compact">
-                    {stats.days.buckets.map((bucket, index) => (
+                  <div className="stats_bars">
+                    {steps.map((step, index) => (
                       <Bar
-                        key={bucket.label}
+                        key={step.label}
                         order={index}
-                        label={bucket.label}
-                        share={bucket.rate}
-                        value={people(bucket.count)}
-                        note={percent(bucket.rate)}
+                        label={step.label}
+                        share={step.rate}
+                        value={people(step.count)}
+                        note={percent(step.rate)}
                       />
                     ))}
                   </div>
+                  {scope === 'all' && (
+                    <p className="stats_split">
+                      구매 고객 구성 — 오프라인만{' '}
+                      {people(stats.buyerSplit.offlineOnly)} · 온라인만{' '}
+                      {people(stats.buyerSplit.onlineOnly)} · 둘 다{' '}
+                      {people(stats.buyerSplit.both)}
+                    </p>
+                  )}
                 </section>
-              </div>
 
-              {openPath && (
-                <PathCustomersModal
-                  path={openPath}
-                  onClose={closePath}
-                  onOpenCustomer={onOpenCustomer}
-                />
-              )}
+                <div className="stats_row">
+                  <section className="stats_card">
+                    <h2>상담·방문체험 경로별 전환</h2>
+                    <p className="stats_desc">
+                      상담은 상담 보드 기록이 있는 고객, 방문체험은 체험을
+                      완료한 고객 기준. 칸에 마우스를 올리면 모수가 보입니다.
+                    </p>
+                    <div className="stats_tiles">
+                      {paths.map((each) => (
+                        <div key={each.id} title={each.base}>
+                          <StatTile
+                            icon={PATH_ICONS[each.id] ?? Gauge}
+                            label={each.label}
+                            value={percent(each.rate)}
+                            sub={`${people(each.from)} 중 ${people(each.to)}`}
+                            onGo={
+                              each.to === 0
+                                ? undefined
+                                : () => togglePath(each.id)
+                            }
+                            linkLabel={`${each.label} 고객 자세히 보기`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </section>
 
-              <section className="stats_card">
-                <h2>콜백 단계별 전환</h2>
-                <p className="stats_desc">
-                  단계를 건너뛰어 적은 경우(2단계부터, 1→3단계)는 날짜가 적힌
-                  가장 높은 단계까지 간 것으로 봅니다.
+                  <section className="stats_card">
+                    <h2>최초 인입 → 구매 소요 일수</h2>
+                    <p className="stats_desc">
+                      문의 기록이 있는 구매 고객 {people(stats.days.customers)}{' '}
+                      기준. 결제 기록만 있는 고객 제외.
+                    </p>
+                    <div className="stats_tiles">
+                      <StatTile
+                        icon={Timer}
+                        label="중앙값"
+                        value={days(stats.days.median)}
+                        sub="절반이 이 안에 구매"
+                      />
+                      <StatTile
+                        icon={CalendarClock}
+                        label="평균"
+                        value={days(stats.days.mean)}
+                        sub="오래 걸린 고객에 끌려 길어짐"
+                      />
+                    </div>
+                    <div className="stats_bars compact">
+                      {stats.days.buckets.map((bucket, index) => (
+                        <Bar
+                          key={bucket.label}
+                          order={index}
+                          label={bucket.label}
+                          share={bucket.rate}
+                          value={people(bucket.count)}
+                          note={percent(bucket.rate)}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                </div>
+
+                {openPath && (
+                  <PathCustomersModal
+                    path={openPath}
+                    onClose={closePath}
+                    onOpenCustomer={onOpenCustomer}
+                  />
+                )}
+
+                <section className="stats_card">
+                  <h2>콜백 단계별 전환</h2>
+                  <p className="stats_desc">
+                    단계를 건너뛰어 적은 경우(2단계부터, 1→3단계)는 날짜가 적힌
+                    가장 높은 단계까지 간 것으로 봅니다.
+                  </p>
+                  <RateTable
+                    head="최종 도달 단계"
+                    rows={callback}
+                    extra={{
+                      title: '이 단계 이상',
+                      cell: (_, index) => people(callback[index].reached),
+                    }}
+                  />
+                </section>
+
+                <section className="stats_card">
+                  <h2>유입 경로별 전환</h2>
+                  <p className="stats_desc">
+                    가장 이른 상담의 UTM source, 없으면 방문체험 보드의
+                    유입경로. 유효 고객 {people(valid)} 기준.
+                  </p>
+                  <RateTable head="유입 경로" rows={sources} />
+                </section>
+
+                <p className="stats_footnote">
+                  기간은 고객이 처음 기록에 나타난 달입니다. 최근 달의 고객은
+                  아직 구매까지 갈 시간이 없었을 수 있어 전환율이 낮게 보입니다.
+                  구매에는 오프라인 결제(Monday)와 온라인몰(Cafe24) 주문이 모두
+                  포함됩니다.
                 </p>
-                <RateTable
-                  head="최종 도달 단계"
-                  rows={callback}
-                  extra={{
-                    title: '이 단계 이상',
-                    cell: (_, index) => people(callback[index].reached),
-                  }}
-                />
-              </section>
-
-              <section className="stats_card">
-                <h2>유입 경로별 전환</h2>
-                <p className="stats_desc">
-                  가장 이른 상담의 UTM source, 없으면 방문체험 보드의 유입경로.
-                  유효 고객 {people(valid)} 기준.
-                </p>
-                <RateTable head="유입 경로" rows={sources} />
-              </section>
-
-              <p className="stats_footnote">
-                기간은 고객이 처음 기록에 나타난 달입니다. 최근 달의 고객은 아직
-                구매까지 갈 시간이 없었을 수 있어 전환율이 낮게 보입니다.
-                구매에는 오프라인 결제(Monday)와 온라인몰(Cafe24) 주문이 모두
-                포함됩니다.
-              </p>
-            </>
-          )}
-        </div>
+              </>
+            )}
+          </div>
+        </AutoHeight>
       </div>
     </>
   )

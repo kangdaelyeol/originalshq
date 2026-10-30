@@ -63,17 +63,18 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
 
 ## 부품
 
-| 부품          | 쓰는 곳                                                              | 넘기는 것                                                                                                                     |
-| ------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `Segmented`   | 여럿 중 하나 — 탭, [그래프 \| 표], 정렬 기준. 고른 알약이 미끄러진다 | `options`, `value`(`null`이면 아무것도 안 켜짐), `onChange`, `label`, `role`(`tabs`/`buttons`), `size`(`sm`/`md`), `disabled` |
-| `Select`      | 드롭다운(기본 `<select>` 대신) — 유리 목록이 펼쳐진다                | `options: SelectOption[]`, `value`, `onChange`, `label`                                                                       |
-| `AutoHeight`  | 내용 높이가 바뀔 때(로딩 → 내용) 높이가 부드럽게 늘고 줄어든다       | `children`                                                                                                                    |
-| `StatTile`    | 숫자 타일. 값이 길면 글자를 줄여 한 줄에                             | 아이콘(lucide), 이름, 값, 보조 줄, `to`/`onGo`(있으면 ↗ 버튼과 홈), `warn`                                                    |
-| `TrendList`   | 줄마다 작은 추이 그래프 + 합계 + 막대 + 가장 큰 칸                   | `rows: TrendListRow[]`, `labels`, `columns`, 줄의 `detail`(눌러 펼칠 내용)                                                    |
-| `StackedBars` | 맨 위 100% 요약 띠 + 줄마다 쌓은 막대                                | `segments`(종류·색), `rows`, `sum`. 줄에 `aside`·`detail`                                                                     |
-| `Ring`        | 비율 하나(0~1)를 원으로                                              | `value`, `text`, `label`                                                                                                      |
-| `GlassLine`   | 부드러운 선 그래프(면 채움, 마우스 올린 점 하나만)                   | 점·크기. 곡선은 `smoothPath`, 크기는 `useElementSize`                                                                         |
-| `useDismiss`  | 펼친 것을 바깥 누름·Esc로 닫기                                       | `ref`, `open`, `onDismiss`                                                                                                    |
+| 부품           | 쓰는 곳                                                                                 | 넘기는 것                                                                                                                     |
+| -------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `Segmented`    | 여럿 중 하나 — 탭, [그래프 \| 표], 정렬 기준. 고른 알약이 미끄러진다                    | `options`, `value`(`null`이면 아무것도 안 켜짐), `onChange`, `label`, `role`(`tabs`/`buttons`), `size`(`sm`/`md`), `disabled` |
+| `Select`       | 드롭다운(기본 `<select>` 대신) — 유리 목록이 펼쳐진다                                   | `options: SelectOption[]`, `value`, `onChange`, `label`                                                                       |
+| `AutoHeight`   | 내용 높이가 바뀔 때(로딩 → 내용) 높이가 부드럽게 늘고 줄어든다                          | `children`                                                                                                                    |
+| `LoadingPanel` | 섹션 하나가 불러오는 중 — 가운데 회전 로딩(`Spinner`, 막대 12개·애니메이션 하나) + 안내 | `label`, `minHeight`                                                                                                          |
+| `StatTile`     | 숫자 타일. 값이 길면 글자를 줄여 한 줄에                                                | 아이콘(lucide), 이름, 값, 보조 줄, `to`/`onGo`(있으면 ↗ 버튼과 홈), `warn`                                                    |
+| `TrendList`    | 줄마다 작은 추이 그래프 + 합계 + 막대 + 가장 큰 칸                                      | `rows: TrendListRow[]`, `labels`, `columns`, 줄의 `detail`(눌러 펼칠 내용)                                                    |
+| `StackedBars`  | 맨 위 100% 요약 띠 + 줄마다 쌓은 막대                                                   | `segments`(종류·색), `rows`, `sum`. 줄에 `aside`·`detail`                                                                     |
+| `Ring`         | 비율 하나(0~1)를 원으로                                                                 | `value`, `text`, `label`                                                                                                      |
+| `GlassLine`    | 부드러운 선 그래프(면 채움, 마우스 올린 점 하나만)                                      | 점·크기. 곡선은 `smoothPath`, 크기는 `useElementSize`                                                                         |
+| `useDismiss`   | 펼친 것을 바깥 누름·Esc로 닫기                                                          | `ref`, `open`, `onDismiss`                                                                                                    |
 
 예시는 xtool: `screens/xtool-lead-manager/components/` — `header.tsx`(GlassHeader),
 `monday-trend/`(StatTile·TrendList·StackedBars·Ring·Segmented),
@@ -97,7 +98,6 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
 | `sticky-table($table)`                  | 고정 칸(머리글·첫 칸·합계)이 있는 표 — 밑으로 칸이 지나갈 때만 바탕     |
 | `list-table($table, $hover, $round)`    | 눌러서 여는 줄이 있는 목록 표 — 불투명 머리글 띠, 한 줄 걸러 옅은 빛    |
 | `zebra-list($item)`                     | 표가 아닌 줄 목록                                                       |
-| `shimmer`                               | 스켈레톤 막대(빛 띠가 끊김 없이 흐른다)                                 |
 | `draw-in` / `fill-in` / `fade-in`       | 처음 그릴 때 — 선·쌓은 막대 / 막대 / 점·이름표                          |
 | `enter`, `enter-rows`, `enter-children` | 불러온 내용이 흐릿하게 떠오른다 — 하나 / 표의 줄 / 자식들 차례로        |
 | `date-range-picker`                     | `screens/cmip/components/date-range-picker` 겉옷 — 감싼 줄에 include    |
@@ -155,7 +155,9 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
    목록 표는 `glass.list-table`. 표는 `border-collapse: separate`.
 5. **모달**: 가림막 `glass.scrim`, 판 `glass.panel` + `glass.panel-in`, 닫기
    `glass.icon-button`, 입력칸 `glass.field`.
-6. **로딩**: 스켈레톤 막대에 `glass.shimmer`, 다 받은 내용에 `glass.enter`·
+6. **로딩**: 스켈레톤 대신 큰 섹션마다 `LoadingPanel` 하나 — 그 자리를
+   `AutoHeight`로 감싸면 다 받은 뒤 높이가 부드럽게 자란다. 다 받은 내용에
+   `glass_reveal` 클래스나 `glass.enter`·
    `enter-children`.
 7. **글자·색**: 하드코딩된 색을 `$text`·`$text-2`·`$text-3`, `var(--glass-accent)`
    등으로. 밝은 테마에서도 읽히는지 Paper로 확인한다.

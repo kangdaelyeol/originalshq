@@ -19,9 +19,8 @@ import {
   canSendMondayCapi,
   type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
-import { AutoHeight } from '@/components/glass'
+import { AutoHeight, LoadingPanel } from '@/components/glass'
 import { CloseIcon } from '../detail/icons'
-import { Bone, LoadingNotice } from '../skeleton'
 import '@/screens/xtool-lead-manager/styles/detail.scss'
 
 /** "라벨 값" 한 쌍 — 값이 없으면 아예 그리지 않아서, 보드마다 채워진 항목이
@@ -454,16 +453,7 @@ export const MondayDetail = ({
                 </p>
               )}
               {!failed && !customer && (
-                <div className="monday_detail_loading" aria-busy="true">
-                  <LoadingNotice label="기록을 불러오는 중" />
-                  {[0, 1].map((each) => (
-                    <div key={each} className="monday_detail_loading_card">
-                      <Bone width="38%" height={13} />
-                      <Bone width="86%" height={10} />
-                      <Bone width="64%" height={10} />
-                    </div>
-                  ))}
-                </div>
+                <LoadingPanel label="기록을 불러오는 중" minHeight={220} />
               )}
 
               {customer && (

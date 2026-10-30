@@ -4,14 +4,14 @@ import '@/screens/xtool-lead-manager/styles/monday-stats.scss'
 import '@/screens/xtool-lead-manager/styles/ga-tracking.scss'
 import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
 import { Fingerprint, Radar, RefreshCw, UserX, X } from 'lucide-react'
-import { Segmented, StatTile } from '@/components/glass'
+import {
+  AutoHeight,
+  LoadingPanel,
+  Segmented,
+  StatTile,
+} from '@/components/glass'
 import { useRef } from 'react'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
-import {
-  LoadingNotice,
-  SkeletonRows,
-  type SkeletonCell,
-} from '@/screens/xtool-lead-manager/components'
 import {
   eventSource,
   shortPath,
@@ -23,22 +23,6 @@ import type {
 } from '@/screens/xtool-lead-manager/view-model'
 
 type GaTrackingProps = ReturnType<typeof useGaTrackingViewModel>
-
-// 접수일·보드·이름·번호·상태·ClientId·이벤트·방문·첫 유입·기기·위치·마지막 활동.
-const TRACKING_SKELETON: SkeletonCell[] = [
-  { width: 80 },
-  { width: 90 },
-  { width: 50 },
-  { width: 90 },
-  { width: 50 },
-  { width: 80 },
-  { width: 24 },
-  { width: 24 },
-  { width: 90 },
-  { width: 50 },
-  { width: 60 },
-  { width: 90 },
-]
 
 const FILTER_LABEL: Record<GaTrackingFilter, string> = {
   misentry: '오기입만',
@@ -317,89 +301,91 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                     GA4 이벤트 수집에 실패했습니다 — {collectError}
                   </p>
                 )}
-                {status === 'ready' && rows.length === 0 ? (
-                  <p className="ga_tracking_empty">해당하는 상담이 없습니다.</p>
-                ) : (
-                  <div
-                    className="ga_tracking_scroll"
-                    aria-busy={status !== 'ready'}
-                  >
-                    {status !== 'ready' && (
-                      <LoadingNotice label="오기입 추적 데이터를 불러오는 중" />
-                    )}
-                    <table className="stats_table ga_tracking_table">
-                      <thead>
-                        <tr>
-                          <th>접수일</th>
-                          <th>보드</th>
-                          <th>이름</th>
-                          <th>입력한 번호</th>
-                          <th>상태</th>
-                          <th>GA ClientId</th>
-                          <th>이벤트</th>
-                          <th>방문</th>
-                          <th>첫 유입</th>
-                          <th>기기</th>
-                          <th>위치</th>
-                          <th>마지막 활동</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {status !== 'ready' && (
-                          <SkeletonRows cells={TRACKING_SKELETON} rows={12} />
-                        )}
-                        {rows.map((row) => {
-                          const { consultation } = row
-                          return (
-                            <tr
-                              key={consultation.itemId}
-                              className="ga_tracking_row"
-                              onClick={() =>
-                                actions.openRow(consultation.itemId)
-                              }
-                            >
-                              <td>{consultation.receivedAt ?? '-'}</td>
-                              <td>{consultation.boardName}</td>
-                              <td>
-                                {consultation.url ? (
-                                  <a
-                                    href={consultation.url}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {consultation.name}
-                                  </a>
-                                ) : (
-                                  consultation.name
-                                )}
-                              </td>
-                              <td>{consultation.phoneRaw ?? '-'}</td>
-                              <td
-                                className={
-                                  consultation.misentry
-                                    ? 'ga_tracking_misentry'
-                                    : undefined
+                {/* 불러오는 동안은 로딩 판, 다 받으면 그 높이에서 표가 자라며
+                    나타난다. */}
+                <AutoHeight>
+                  {status !== 'ready' ? (
+                    <LoadingPanel
+                      label="오기입 추적 데이터를 불러오는 중"
+                      minHeight={420}
+                    />
+                  ) : rows.length === 0 ? (
+                    <p className="ga_tracking_empty">
+                      해당하는 상담이 없습니다.
+                    </p>
+                  ) : (
+                    <div className="ga_tracking_scroll glass_reveal">
+                      <table className="stats_table ga_tracking_table">
+                        <thead>
+                          <tr>
+                            <th>접수일</th>
+                            <th>보드</th>
+                            <th>이름</th>
+                            <th>입력한 번호</th>
+                            <th>상태</th>
+                            <th>GA ClientId</th>
+                            <th>이벤트</th>
+                            <th>방문</th>
+                            <th>첫 유입</th>
+                            <th>기기</th>
+                            <th>위치</th>
+                            <th>마지막 활동</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((row) => {
+                            const { consultation } = row
+                            return (
+                              <tr
+                                key={consultation.itemId}
+                                className="ga_tracking_row"
+                                onClick={() =>
+                                  actions.openRow(consultation.itemId)
                                 }
                               >
-                                {consultation.status ?? '-'}
-                              </td>
-                              <td title={consultation.gaClientId}>
-                                {shortClientId(consultation.gaClientId)}
-                              </td>
-                              <td>{row.events.length}</td>
-                              <td>{row.sessionCount}</td>
-                              <td>{row.firstTouch ?? '-'}</td>
-                              <td>{row.device ?? '-'}</td>
-                              <td>{row.location ?? '-'}</td>
-                              <td>{formatTime(row.lastAt)}</td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                                <td>{consultation.receivedAt ?? '-'}</td>
+                                <td>{consultation.boardName}</td>
+                                <td>
+                                  {consultation.url ? (
+                                    <a
+                                      href={consultation.url}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {consultation.name}
+                                    </a>
+                                  ) : (
+                                    consultation.name
+                                  )}
+                                </td>
+                                <td>{consultation.phoneRaw ?? '-'}</td>
+                                <td
+                                  className={
+                                    consultation.misentry
+                                      ? 'ga_tracking_misentry'
+                                      : undefined
+                                  }
+                                >
+                                  {consultation.status ?? '-'}
+                                </td>
+                                <td title={consultation.gaClientId}>
+                                  {shortClientId(consultation.gaClientId)}
+                                </td>
+                                <td>{row.events.length}</td>
+                                <td>{row.sessionCount}</td>
+                                <td>{row.firstTouch ?? '-'}</td>
+                                <td>{row.device ?? '-'}</td>
+                                <td>{row.location ?? '-'}</td>
+                                <td>{formatTime(row.lastAt)}</td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </AutoHeight>
               </section>
             </>
           )}

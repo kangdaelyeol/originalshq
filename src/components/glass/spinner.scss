@@ -1,0 +1,55 @@
+@use './styles/tokens' as *;
+
+// 로딩(spinner.tsx) — 둥근 막대 12개. 시계 방향으로 갈수록 진해지고, 가장 진한
+// 막대 바로 앞(시계 방향)이 가장 옅다 — 상자를 시계 방향으로 30°씩 돌리면 진한
+// 머리가 도는 것처럼 보인다.
+.glass_spinner {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+  color: $text;
+  animation: glass_spin 1s steps(12) infinite;
+
+  > span {
+    position: absolute;
+    top: 0;
+    left: calc(50% - var(--size) * 0.045);
+    width: calc(var(--size) * 0.09);
+    height: calc(var(--size) * 0.28);
+    border-radius: 999px;
+    background: currentColor;
+    transform-origin: 50% calc(var(--size) / 2);
+    transform: rotate(calc(var(--i) * 30deg));
+    opacity: calc(0.1 + var(--i) * 0.9 / 11);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation-duration: 3s;
+  }
+}
+
+@keyframes glass_spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// 섹션 자리의 로딩 판 — 가운데 로딩 + 안내. 잠깐 늦게 나타난다(빠른 조회에서
+// 깜빡이지 않게).
+.glass_loading {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  animation: glass_fade 0.3s ease 0.15s backwards;
+}
+
+.glass_loading_label {
+  font-size: 12.5px;
+  color: $text-3;
+}

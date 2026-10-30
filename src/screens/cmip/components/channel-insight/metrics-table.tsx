@@ -1,7 +1,5 @@
 import { Fragment, type CSSProperties } from 'react'
-import {
-  useMetricsTableViewModel,
-} from '../../view-model/use-metrics-table-view-model'
+import { useMetricsTableViewModel } from '../../view-model/use-metrics-table-view-model'
 import { aggregateMetrics, type MetricsSummary } from '../../client'
 import {
   ACCOUNT_ONLY_METRIC_KEYS,
@@ -303,52 +301,6 @@ export function MetricsTable<T extends MetricsSummary>({
           </tbody>
         </table>
       </div>
-    </div>
-  )
-}
-
-/** 조회 중일 때 MetricsTable 자리에 대신 까는 스켈레톤 — 같은 컬럼 구성(토글 칸 +
- * 라벨 칸 + 지표 10개)을 그대로 갖춰서 로딩이 끝나는 순간 표가 옆으로 벌어지거나
- * 좁아지지 않게 하고, 행 수(rowCount)만 새로 조회 중인 기간에 맞춰 잡아 표
- * 세로 크기도 실제와 비슷하게 보이도록 한다. */
-export function TableSkeleton({
-  headLabel,
-  rowCount,
-}: {
-  headLabel: string
-  rowCount: number
-}) {
-  return (
-    <div className="channel-insight__table-wrap" aria-hidden>
-      <table className="channel-insight__table">
-        <thead>
-          <tr>
-            <th
-              className="channel-insight__table-toggle-head"
-              aria-hidden="true"
-            />
-            <th>{headLabel}</th>
-            {METRIC_FIELDS.map((f) => (
-              <th key={f.key}>{f.label}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {Array.from({ length: rowCount }, (_, i) => (
-            <tr key={i}>
-              <td className="channel-insight__table-toggle-cell" />
-              <td>
-                <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--cell" />
-              </td>
-              {METRIC_FIELDS.map((f) => (
-                <td key={f.key}>
-                  <span className="channel-insight__skeleton-bar channel-insight__skeleton-bar--cell" />
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   )
 }

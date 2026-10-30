@@ -11,6 +11,7 @@ export { startGlassTransition } from './transition'
 export { Segmented } from './segmented'
 export { Select, type SelectOption } from './select'
 export { AutoHeight } from './auto-height'
+export { Spinner, LoadingPanel } from './spinner'
 export { useDismiss } from './use-dismiss'
 
 // 숫자·그래프.

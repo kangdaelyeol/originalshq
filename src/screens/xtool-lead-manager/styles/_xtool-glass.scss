@@ -52,7 +52,7 @@ $register-purchase: #f762fe;
   }
 }
 
-// 본문 — 배경, 카드, 표, 스켈레톤, 카드 머리의 합계·알약.
+// 본문 — 배경, 카드, 표, 카드 머리의 합계·알약.
 @mixin page {
   // 배경은 비운다 — 화면 뒤 한 장(xtool-global.scss의 ambient-layer)이 비친다.
   background: transparent;
@@ -76,48 +76,6 @@ $register-purchase: #f762fe;
 
   .stats_desc {
     color: var(--glass-text-3);
-  }
-
-  // ── 스켈레톤(skeleton.tsx) ─────────────────────────────────────────────
-  // 회색 막대 대신 흰 빛이 옅게 깔린 유리 막대. 타일 자리도 실제 숫자 타일
-  // 모양(아이콘 상자 + 이름·값)으로.
-  .xtool_bone {
-    @include glass.shimmer;
-    border-radius: 999px;
-  }
-  // 그래프처럼 큰 덩어리는 알약이 아니라 둥근 판.
-  .xtool_skeleton_card > .xtool_bone {
-    border-radius: 12px;
-  }
-  .xtool_skeleton_card > .xtool_bone:first-child {
-    border-radius: 999px;
-  }
-
-  .xtool_skeleton_tile {
-    @include glass.inner;
-    display: grid;
-    grid-template-columns: 42px minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-content: start;
-    column-gap: 14px;
-    row-gap: 10px;
-    padding: 16px 18px;
-    min-height: 116px;
-    box-sizing: border-box;
-
-    // 아이콘 상자 자리.
-    &::before {
-      content: '';
-      grid-row: 1 / 3;
-      width: 42px;
-      height: 42px;
-      border-radius: 13px;
-      background: $fill-1;
-    }
-    .xtool_bone {
-      grid-column: 2;
-      align-self: center;
-    }
   }
 
   // ── 표 ────────────────────────────────────────────────────────────────
@@ -348,11 +306,6 @@ $register-purchase: #f762fe;
 
   .table .status_stack .latest {
     color: $text-3;
-  }
-  // 목록을 받는 동안의 표 스켈레톤 — 회색 막대 대신 유리 막대.
-  .table .xtool_bone {
-    @include glass.shimmer;
-    border-radius: 999px;
   }
 }
 

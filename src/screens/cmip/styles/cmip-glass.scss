@@ -426,13 +426,10 @@
 }
 
 // ── 불러오는 중 ─────────────────────────────────────────────────────────
-// 회색 막대 대신 빛 띠가 흐르는 유리 막대(xtool 스켈레톤과 같다).
-.cmip .channel-insight__skeleton-bar {
-  @include glass.shimmer;
-  border-radius: 999px;
-}
-.cmip .tab-skeleton .campaign-highlights__card {
-  background: $fill-1;
+// 섹션마다 로딩 판(LoadingPanel) 하나 — 다 받으면 섹션 몸통(AutoHeight)이 그
+// 높이에서 자라고, 새로 붙은 내용이 흐릿하게 떠오른다.
+.cmip .channel-insight__section-body > div > :not(.glass_loading) {
+  @include glass.enter;
 }
 
 // 다 받은 화면 — 탭 내용이 흐릿하게 떠올라 선명해진다.

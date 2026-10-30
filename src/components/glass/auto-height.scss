@@ -1,12 +1,14 @@
-// 높이를 따라 자라는 상자(auto-height.tsx).
-.glass_auto_height {
+// 높이를 따라 자라는 상자(auto-height.tsx) — 높이가 바뀌는 동안(is-animating)만
+// 높이를 옮겨 가며 넘치는 것을 자른다. 평소엔 높이 auto·넘침 허용.
+.glass_auto_height.is-animating {
   overflow: hidden;
   transition: height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 // 새로 나타나는 내용 — 높이가 자라는 동안 흐릿하고 투명하다가 선명해진다.
+// 채우기는 backwards(끝나면 흔적을 남기지 않는다 — _motion.scss 참고).
 .glass_reveal {
-  animation: glass_reveal_in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.18s both;
+  animation: glass_reveal_in 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.12s backwards;
 }
 
 @keyframes glass_reveal_in {
@@ -18,7 +20,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glass_auto_height {
+  .glass_auto_height.is-animating {
     transition: none;
   }
   .glass_reveal {

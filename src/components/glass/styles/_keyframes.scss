@@ -1,24 +1,6 @@
 // 애니메이션 — 믹스인(_motion.scss 등)과 부품 스타일이 이름으로 쓴다.
 // base.scss가 불러온다.
 
-// 빛 띠 — 그림 폭(200%)만큼 옮겨 처음과 같은 자리로(끊김 없는 반복).
-@keyframes glass_shimmer {
-  from {
-    background-position: 0% 0;
-  }
-  to {
-    background-position: -200% 0;
-  }
-}
-
-@keyframes glass_breathe {
-  from {
-    opacity: 0.75;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @keyframes glass_grow {
   from {
     transform: scaleX(0);

@@ -706,12 +706,6 @@ $trend-y-axis-width: 44px;
     @media (max-width: 640px) {
       flex-direction: column;
     }
-
-    &.is-loading span {
-      height: 84px;
-      border-radius: 8px;
-      background: variables.$color-surface-raised;
-    }
   }
 
   // 기기별 오늘 문의 — 이름·건수 줄 아래에 막대(가장 많은 기기 = 가득).

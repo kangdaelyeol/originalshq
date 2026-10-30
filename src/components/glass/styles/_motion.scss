@@ -1,40 +1,16 @@
 @use './tokens' as *;
 
-// 움직임 — 불러오는 중(shimmer), 처음 그릴 때(draw-in·fill-in·fade-in), 불러온
-// 내용이 떠오를 때(enter). 다 prefers-reduced-motion이면 끈다.
+// 움직임 — 처음 그릴 때(draw-in·fill-in·fade-in), 불러온 내용이 떠오를 때
+// (enter). 다 prefers-reduced-motion이면 끈다. 불러오는 중은 믹스인이 아니라
+// Spinner·LoadingPanel 부품(spinner.tsx).
 //
 // 채우기는 backwards — 늦게 시작하는 동안만 처음 모습을 붙들고, 끝나면 아무것도
 // 남기지 않는다. both로 끝 상태를 붙들면 filter·transform이 걸린 채로 남아
 // 그 안의 떠 있는 판(드롭다운 목록 등)이 뒤를 흐리지 못하고(흐림 경계가 된다),
 // 쌓임 순서도 바뀐다.
 
-// 불러오는 중 — 옅은 유리 위로 부드러운 빛 띠가 왼쪽에서 오른쪽으로 끝없이
-// 흐른다. 빛 띠 그림은 양 끝이 같은 색이고, 그림 한 장 폭(200%)만큼 정확히
-// 옮겨 다시 처음과 같은 자리가 되므로 0%↔100% 사이 끊김이 없다. 바탕은 아주
-// 천천히 숨 쉬듯 밝아졌다 어두워진다.
-@mixin shimmer {
-  background-color: var(--glass-fill-1);
-  background-image: linear-gradient(
-    100deg,
-    transparent 20%,
-    color-mix(in srgb, var(--glass-ink) 9%, transparent) 42%,
-    color-mix(in srgb, var(--glass-ink) 14%, transparent) 50%,
-    color-mix(in srgb, var(--glass-ink) 9%, transparent) 58%,
-    transparent 80%
-  );
-  background-size: 200% 100%;
-  background-repeat: repeat-x;
-  animation:
-    glass_shimmer 1.8s linear infinite,
-    glass_breathe 2.6s ease-in-out infinite alternate;
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-}
-
 // ── 처음 그릴 때의 움직임 ─────────────────────────────────────────────────
-// 화면에 처음 붙을 때(데이터를 다 받아 스켈레톤이 바뀔 때, 보기를 바꿀 때)
+// 화면에 처음 붙을 때(데이터를 다 받아 로딩 판이 바뀔 때, 보기를 바꿀 때)
 // 한 번만 돈다. 줄마다 --glass-i(순서)를 주면 그만큼 조금씩 늦게 시작한다.
 // 채우기는 backwards — 끝나면 clip-path·transform이 풀려 툴팁이 안 잘린다.
 $enter-ease: cubic-bezier(0.33, 1, 0.68, 1);

@@ -154,14 +154,6 @@
   }
 
   // ── 실시간 카드 ─────────────────────────────────────────────────────────
-  // 실시간 카드 로딩 — 실제 타일(아이콘 상자 + 이름·값 + 보조 줄) 높이에
-  // 맞춘 유리 자리. 빛이 지나가는 건 스켈레톤(glass-theme.scss)과 같다.
-  .live_inflow_tiles.is-loading span {
-    @include glass.inner;
-    @include glass.shimmer;
-    height: 116px;
-  }
-
   // 기기별 — 선 대신 한 겹 밝은 판에 담는다.
   .live_inflow_boards {
     padding: 14px 16px 16px;
