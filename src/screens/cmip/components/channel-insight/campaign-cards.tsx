@@ -9,7 +9,8 @@ import {
   type MetricKey,
 } from '../metric-fields'
 import { ChannelMark } from './channel-label'
-import { formatMD } from '../../utils'
+import { aggregateMetrics } from '../../client'
+import { trendSeriesOf } from '../../utils/trend-series'
 
 const FIELD = Object.fromEntries(
   METRIC_FIELDS.map((field) => [field.key, field]),
@@ -104,13 +105,16 @@ export function CampaignCards({
                 if (event.animationName === 'campaign-card-flash') onFlashEnd()
               }
             : undefined,
-          values,
           detail: {
             title: `${row.name} · ${field.label}`,
-            subtitle: periodLabel ? `${periodLabel} · 일별` : '일별',
+            subtitle: periodLabel,
             value: field.format(row.metrics[metricKey]),
-            labels: (row.trend ?? []).map((day) => formatMD(day.date)),
             format: field.format,
+            series: () =>
+              trendSeriesOf(
+                row.trend ?? [],
+                (group) => aggregateMetrics(group)[metricKey],
+              ),
           },
           content: (
             <>

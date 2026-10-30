@@ -35,6 +35,8 @@ export const Segmented = <T extends string>({
   size = 'sm',
   className,
   disabled = false,
+  disabledOptions,
+  optionTitles,
 }: {
   /** 버튼 이름 — 글자 또는 건수 등을 붙인 내용. */
   options: Record<T, ReactNode>
@@ -48,6 +50,10 @@ export const Segmented = <T extends string>({
   className?: string
   /** 조회 중 등 — 버튼을 누를 수 없게. */
   disabled?: boolean
+  /** 이 버튼들만 누를 수 없게(고를 거리가 없을 때 등). 이유는 optionTitles로. */
+  disabledOptions?: readonly T[]
+  /** 버튼마다 마우스를 올리면 보이는 설명. */
+  optionTitles?: Partial<Record<T, string>>
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const [thumb, setThumb] = useState<Thumb | null>(null)
@@ -120,7 +126,8 @@ export const Segmented = <T extends string>({
             ? { role: 'tab', 'aria-selected': each === value }
             : { 'aria-pressed': each === value })}
           className={each === value ? 'active' : ''}
-          disabled={disabled}
+          disabled={disabled || disabledOptions?.includes(each)}
+          title={optionTitles?.[each]}
           onClick={() => onChange(each)}
         >
           {options[each]}

@@ -16,8 +16,7 @@ export interface TrendTile {
   key: string
   /** 칸 안의 내용 — 부르는 쪽의 모양 그대로. */
   content: ReactNode
-  /** 날짜별 값(오래된 것부터) — 펼친 추이의 큰 그래프. */
-  values: readonly number[]
+  /** 펼친 추이 — 이름·값 표기와 보기들(일별·주별·월별). */
   detail: TrendDetailInfo
   /** 칸 요소의 클래스·스타일·data 속성(부르는 쪽 CSS가 모양을 정한다). */
   className?: string
@@ -258,7 +257,6 @@ export const TrendGrid = ({
         >
           {open.phase !== 'enter' && (
             <TrendDetailBody
-              values={openTile.values}
               info={openTile.detail}
               onClose={collapse}
               closeRef={closeRef}

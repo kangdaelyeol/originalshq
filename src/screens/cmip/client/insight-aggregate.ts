@@ -115,8 +115,7 @@ export function deriveMetrics(counts: RawCounts): MetricsSummary {
     // 오프라인+온라인 합계 — ROAS도 이 값을 분자로 쓴다. 채널별/출처별
     // 기여도는 offlineRevenue/onlineRevenue를 따로 보면 된다.
     totalRevenue: offlineRevenue + onlineRevenue,
-    roas:
-      spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
+    roas: spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     repeatRevenue,
     newCustomerRoas: newCustomerRoasOf(
       offlineRevenue + onlineRevenue,
@@ -192,10 +191,7 @@ export function sumMetricsWeighted(
     (s, e) => s + (e.metrics.repeatRevenue ?? 0),
     0,
   )
-  const adRevenue = entries.reduce(
-    (s, e) => s + (e.metrics.adRevenue ?? 0),
-    0,
-  )
+  const adRevenue = entries.reduce((s, e) => s + (e.metrics.adRevenue ?? 0), 0)
   const weightedFrequency = entries.reduce(
     (s, e) =>
       s + (e.hasFrequency ? e.metrics.frequency * e.metrics.impressions : 0),
@@ -214,8 +210,7 @@ export function sumMetricsWeighted(
     offlineRevenue,
     onlineRevenue,
     totalRevenue: offlineRevenue + onlineRevenue,
-    roas:
-      spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
+    roas: spend > 0 ? ((offlineRevenue + onlineRevenue) / spend) * 100 : 0,
     repeatRevenue,
     newCustomerRoas: newCustomerRoasOf(
       offlineRevenue + onlineRevenue,
@@ -335,8 +330,9 @@ export function metricsForDateSubset(
 }
 
 /** functions-cmip의 buildWeekRanges와 동일 — 조회 시작일부터 7일씩 자르고,
- * 전체 일수가 7의 배수가 아니면 그 나머지를 맨 앞 구간으로 먼저 둔다. */
-function buildWeekRanges(
+ * 전체 일수가 7의 배수가 아니면 그 나머지를 맨 앞 구간으로 먼저 둔다. 추이
+ * 자세히 보기의 주별(utils/trend-series.ts)도 같은 경계를 쓴다. */
+export function buildWeekRanges(
   startDate: ISODate,
   endDate: ISODate,
 ): { start: ISODate; end: ISODate }[] {

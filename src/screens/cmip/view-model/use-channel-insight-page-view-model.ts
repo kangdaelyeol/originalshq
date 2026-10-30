@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import {
   adsetKey,
@@ -161,8 +161,12 @@ export const useChannelInsightPageViewModel = (
   const clearAllMetrics = () => setMetricMode(new Map())
 
   const periodLabel = `${dateStart} ~ ${dateEnd}`
-  const canonicalDates =
-    combinedInsight?.series.combined.byDate.map((d) => d.date) ?? []
+  // 데이터가 바뀔 때만 새로 — 이 배열에 기대는 계산(목록 줄 등)이 매 렌더
+  // 다시 돌지 않게.
+  const canonicalDates = useMemo(
+    () => combinedInsight?.series.combined.byDate.map((d) => d.date) ?? [],
+    [combinedInsight],
+  )
   const metricKeyList = [...selectedMetricKeys]
 
   // 그래프 모달이 고를 수 있는 전체 후보 — 표에서 체크된 것만 보여주면 표에서

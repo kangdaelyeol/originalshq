@@ -9,7 +9,7 @@ import type {
 import { SingleSelectDropdown } from './single-select-dropdown'
 import { setOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { RoasAttribution } from './roas-attribution'
-import { Sparkline, TrendGrid } from '@/components/glass'
+import { Sparkline, TrendGrid, type TrendSeries } from '@/components/glass'
 import {
   computeRoasRows,
   RoasGrouping,
@@ -550,6 +550,10 @@ function RoasTrendChart({
   const ticks = [0, maxValue / 2, maxValue]
   const avgY = yOf(average[metric])
   const breakEvenY = yOf(100)
+  // 평균·손익분기 값은 y축(왼쪽 눈금 자리)에 적는다 — 그래프 안에 이름표를
+  // 두면 막대와 겹친다. 그 값과 너무 가까운 눈금 글자는 숨긴다.
+  const nearMarker = (y: number) =>
+    Math.abs(y - avgY) < 12 || Math.abs(y - breakEvenY) < 12
   const hovered = hover === null ? null : rows[hover]
 
   return (
@@ -596,15 +600,17 @@ function RoasTrendChart({
               y2={yOf(t)}
               className="channel-insight__roas-chart-grid"
             />
-            <text
-              x={CHART_MARGIN.left - 8}
-              y={yOf(t)}
-              textAnchor="end"
-              dominantBaseline="middle"
-              className="channel-insight__roas-chart-axis"
-            >
-              {Math.round(t)}%
-            </text>
+            {!nearMarker(yOf(t)) && (
+              <text
+                x={CHART_MARGIN.left - 8}
+                y={yOf(t)}
+                textAnchor="end"
+                dominantBaseline="middle"
+                className="channel-insight__roas-chart-axis"
+              >
+                {Math.round(t)}%
+              </text>
+            )}
           </g>
         ))}
 
@@ -616,13 +622,18 @@ function RoasTrendChart({
           y2={breakEvenY}
           className="channel-insight__roas-chart-breakeven"
         />
-        <text
-          x={CHART_MARGIN.left + 6}
-          y={breakEvenY - 6}
-          className="channel-insight__roas-chart-breakeven-label"
-        >
-          손익분기 100%
-        </text>
+        {/* 평균과 겹치면(차이 12px 안) 평균만 적는다. */}
+        {Math.abs(breakEvenY - avgY) >= 12 && (
+          <text
+            x={CHART_MARGIN.left - 8}
+            y={breakEvenY}
+            textAnchor="end"
+            dominantBaseline="middle"
+            className="channel-insight__roas-chart-breakeven-label"
+          >
+            100%
+          </text>
+        )}
 
         {rows.map((row, i) => {
           const value = row.metrics[metric]
@@ -699,14 +710,23 @@ function RoasTrendChart({
           className="channel-insight__roas-chart-avg-line"
         />
         <text
-          x={vbWidth - CHART_MARGIN.right}
-          y={avgY - 6}
+          x={CHART_MARGIN.left - 8}
+          y={avgY}
           textAnchor="end"
+          dominantBaseline="middle"
           className="channel-insight__roas-chart-avg-label"
         >
-          {metricLabel} 평균 {average[metric].toFixed(1)}%
+          {Math.round(average[metric])}%
         </text>
       </svg>
+
+      {/* 선 설명 — 그래프 위 오른쪽(막대와 겹치지 않게). 값은 y축에 같은 색으로. */}
+      <div className="channel-insight__roas-chart-legend" aria-hidden="true">
+        <span className="is-avg">
+          {metricLabel} 평균 {average[metric].toFixed(1)}%
+        </span>
+        <span className="is-breakeven">손익분기 100%</span>
+      </div>
 
       {hovered && hover !== null && (
         <div
@@ -1289,23 +1309,47 @@ export function RoasPanel({
   const [summaryOpen, setSummaryOpen] = useState(true)
   const [trendOpen, setTrendOpen] = useState(true)
 
+  // ROAS 요약 칸의 작은 추이 — 아래 표의 보기 단위와 무관하게 늘 일별(날짜마다
+  // 같은 계산). 칸을 누르면 이 묶음 안에서 커지며 자세히 보여 주고, 거기서
+  // 주별·월별(표의 주차별·월별과 같은 계산)로 바꿔 볼 수 있다. 데이터가 바뀔
+  // 때만 다시 계산한다(훅이라 아래 조기 return보다 먼저).
+  const groupedRows = useMemo(() => {
+    const rowsOf = (grouping: RoasGrouping) =>
+      computeRoasRows(
+        grouping,
+        combinedInsight,
+        offlineRevenue,
+        onlineRevenue,
+        repeatRevenue,
+        adRevenue,
+      )
+    return {
+      day: rowsOf(RoasGrouping.DATE),
+      week: rowsOf(RoasGrouping.WEEK),
+      month: rowsOf(RoasGrouping.MONTH),
+    }
+  }, [combinedInsight, offlineRevenue, onlineRevenue, repeatRevenue, adRevenue])
+  const daily = groupedRows.day
+  const periodLabel =
+    daily.length > 0 ? `${daily[0].key} ~ ${daily[daily.length - 1].key}` : ''
+  const seriesOf = (field: RoasField): TrendSeries[] =>
+    (
+      [
+        ['day', '일별', '일'],
+        ['week', '주별', '주'],
+        ['month', '월별', '월'],
+      ] as const
+    ).map(([key, label, unit]) => ({
+      key,
+      label,
+      unit,
+      labels: groupedRows[key].map((row) => row.label),
+      values: groupedRows[key].map((row) => field.getValue(row.metrics)),
+    }))
+
   if (!combinedInsight || !offlineRevenue || !onlineRevenue) {
     return <p className="channel-insight__result-empty">데이터 없음</p>
   }
-
-  // ROAS 요약 칸의 작은 추이 — 아래 표의 보기 단위와 무관하게 늘 일별(날짜마다
-  // 같은 계산). 칸을 누르면 이 묶음 안에서 커지며 자세히 보여 준다.
-  const daily = computeRoasRows(
-    RoasGrouping.DATE,
-    combinedInsight,
-    offlineRevenue,
-    onlineRevenue,
-    repeatRevenue,
-    adRevenue,
-  )
-  const dailyLabels = daily.map((row) => row.label)
-  const periodLabel =
-    daily.length > 0 ? `${daily[0].key} ~ ${daily[daily.length - 1].key}` : ''
 
   return (
     <div className="channel-insight__result">
@@ -1333,13 +1377,12 @@ export function RoasPanel({
                   key: f.key,
                   className: 'channel-insight__kpi',
                   style: { '--glass-i': index } as CSSProperties,
-                  values,
                   detail: {
                     title: f.label,
-                    subtitle: `${periodLabel} · 일별`,
+                    subtitle: periodLabel,
                     value: f.format(f.getValue(total)),
-                    labels: dailyLabels,
                     format: f.format,
+                    series: () => seriesOf(f),
                   },
                   content: (
                     <>

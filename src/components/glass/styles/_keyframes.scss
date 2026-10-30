@@ -97,3 +97,14 @@
     transform: translateY(-6px) scale(0.97);
   }
 }
+
+// 큰 덩어리(표 여러 개가 든 섹션 등)가 나타날 때 — glass_enter와 같은 움직임에
+// 흐림만 작게. 흐림은 넓이 × 반지름만큼 무거워서, 화면 높이를 넘는 덩어리에
+// 10px을 걸면 나타나는 동안 프레임이 밀린다.
+@keyframes glass_enter_large {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+    transform: translateY(8px);
+  }
+}

@@ -39,21 +39,20 @@ const MARGIN_BOTTOM = 44
 const MARGIN_LEFT = 84
 
 // 다크/라이트 2세트. 다크는 화면 유리 테마를 따른다(테마 변수 — SVG 속성에
-// var()를 그대로 쓴다): 글자 뒤 테두리·점 바탕은 불투명 판 색, 눈금은 옅은 겹,
-// 보조 글자는 글자 2단계. 라이트는 흰 판(모달의 Light Mode)용 고정 색.
+// var()를 그대로 쓴다): 눈금은 옅은 겹, 보조 글자는 글자 2단계. 라이트는 흰
+// 판(모달의 Light Mode)용 고정 색. 글자·점에 판 색 테두리(halo)는 두르지
+// 않는다 — 유리 판 위에서 어두운 테두리로 보인다.
 const PALETTE: Record<
   ChartTheme,
-  { surface: string; grid: string; muted: string; up: string; down: string }
+  { grid: string; muted: string; up: string; down: string }
 > = {
   dark: {
-    surface: 'var(--glass-solid)',
     grid: 'var(--glass-fill-2)',
     muted: 'var(--glass-text-2)',
     up: '#3fb950',
     down: '#ff7b72',
   },
   light: {
-    surface: '#ffffff',
     grid: '#eaeef2',
     muted: '#656d76',
     up: '#1a7f37',
@@ -209,13 +208,7 @@ export const IndexLineChart = ({
   theme = 'dark',
   compareMode = 'off',
 }: IndexLineChartProps) => {
-  const {
-    surface: SURFACE,
-    grid: GRID,
-    muted: MUTED,
-    up: UP,
-    down: DOWN,
-  } = PALETTE[theme]
+  const { grid: GRID, muted: MUTED, up: UP, down: DOWN } = PALETTE[theme]
   const DELTA_COLOR: Record<DeltaDir, string> = {
     up: UP,
     down: DOWN,
@@ -564,7 +557,7 @@ export const IndexLineChart = ({
                 return s.raw.map((v, i) => {
                   if (v == null) return null
                   const isHoverX = hover?.index === i
-                  // 작은 점 + 판 색 테두리. 마우스를 올린 날은 그 색이 옅게 번진다.
+                  // 작은 점(어두운 테두리 없이). 마우스를 올린 날은 그 색이 옅게 번진다.
                   return (
                     <g
                       key={`${s.key}-${i}`}
@@ -583,10 +576,8 @@ export const IndexLineChart = ({
                       <circle
                         cx={xCenter(i)}
                         cy={yIn(s.range, v)}
-                        r={isHoverX ? 5.5 : 4.2}
+                        r={isHoverX ? 5 : 3.6}
                         fill={s.color}
-                        stroke={SURFACE}
-                        strokeWidth={2.2}
                       />
                     </g>
                   )
@@ -614,10 +605,6 @@ export const IndexLineChart = ({
                       fontSize={11}
                       fontWeight={600}
                       fill={series.length > 1 ? s.color : MUTED}
-                      stroke={SURFACE}
-                      strokeWidth={3}
-                      strokeLinejoin="round"
-                      paintOrder="stroke"
                       opacity={dimmed ? DIM_OPACITY : 0.92}
                     >
                       {s.formatCompact(v)}
@@ -678,9 +665,6 @@ export const IndexLineChart = ({
                         fontSize={11}
                         fontWeight={700}
                         fill={DELTA_COLOR[dir]}
-                        stroke={SURFACE}
-                        strokeWidth={3}
-                        paintOrder="stroke"
                       >
                         {DELTA_ARROW[dir]}{' '}
                         {focused.formatCompact(Math.abs(deltaRaw))}

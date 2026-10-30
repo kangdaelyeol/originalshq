@@ -1,13 +1,14 @@
-import { AdminPage, BasePage, XtoolPage, CmipPage, DevPage } from '@/pages'
+// 페이지는 파일에서 바로 불러온다 — '@/pages' 묶음은 xtool·cmip·parke 페이지를
+// 전부 불러와서, 아래에서 따로(lazy) 받으려는 화면까지 첫 번들에 섞인다.
+import { AdminPage } from '@/pages/admin-page'
+import { BasePage } from '@/pages/base-page'
+import { DevPage } from '@/pages/dev-page'
 import { createBrowserRouter } from 'react-router-dom'
 import { Dev } from '@/screens/dev'
 import Cafe24Adjustments from '@/screens/cafe24-adjustments'
-import CmipScreen from '@/screens/cmip'
 import HomeScreen from '@/screens/home'
-import BatchLogScreen from '@/screens/log'
 import PrivacyScreen from '@/screens/privacy'
 import PrivacyDocScreen from '@/screens/privacy/doc'
-import XtoolLeadManager from '@/screens/xtool-lead-manager'
 
 export const router = createBrowserRouter([
   {
@@ -60,19 +61,42 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    // Lazy: xtool·cmip은 화면·스타일이 커서(유리 부품 포함) 그 주소로 들어올
+    // 때만 받는다 — 서로의 번들·다른 화면에 섞이지 않는다. 페이지와 화면은
+    // 동시에 받는다.
     path: '/xtool-lead-manager',
-    element: <XtoolPage />,
-    children: [{ index: true, element: <XtoolLeadManager /> }],
+    lazy: async () => ({
+      Component: (await import('@/pages/xtool-page')).XtoolPage,
+    }),
+    children: [
+      {
+        index: true,
+        lazy: async () => ({
+          Component: (await import('@/screens/xtool-lead-manager')).default,
+        }),
+      },
+    ],
   },
   {
     path: '/cmip',
-    element: <CmipPage />,
-    children: [{ index: true, element: <CmipScreen /> }],
+    lazy: async () => ({
+      Component: (await import('@/pages/cmip-page')).CmipPage,
+    }),
+    children: [
+      {
+        index: true,
+        lazy: async () => ({
+          Component: (await import('@/screens/cmip')).default,
+        }),
+      },
+    ],
   },
   {
     // 배치(예약 실행) 함수의 실행 기록 — functions-xtool·functions-cmip 공용.
     path: '/log',
-    element: <BatchLogScreen />,
+    lazy: async () => ({
+      Component: (await import('@/screens/log')).default,
+    }),
   },
   {
     path: '/dev',

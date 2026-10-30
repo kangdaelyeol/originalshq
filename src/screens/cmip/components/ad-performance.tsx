@@ -4,7 +4,7 @@ import type {
   AdPerformanceNode,
   AttributionRow,
 } from '../client'
-import { formatMD } from '../utils'
+import { trendSeriesOf } from '../utils/trend-series'
 import type { ISODate } from '../types'
 import { useAdPerformanceViewModel } from '../view-model/use-ad-performance-view-model'
 import { LoadingPanel, Sparkline, TrendGrid } from '@/components/glass'
@@ -23,6 +23,11 @@ const roasOf = (n: { revenue: number; spend: number }) =>
   n.spend > 0 ? (n.revenue / n.spend) * 100 : NaN
 const costPer = (spend: number, count: number) =>
   count > 0 ? won(spend / count) : '-'
+
+const sumOf = (
+  days: readonly AdPerformanceDay[],
+  key: 'spend' | 'leads' | 'buyers' | 'revenue',
+) => days.reduce((sum, day) => sum + day[key], 0)
 
 const LEVEL_LABEL = ['캠페인', '광고셋', '광고'] as const
 
@@ -145,13 +150,13 @@ export function AdPerformancePanel({
 
   const { total, campaigns, unmatched, unmatchedTotal, daily } = performance
   const allRevenue = total.revenue + unmatchedTotal.revenue
-  const dailyLabels = daily.map((day) => formatMD(day.date))
   const tiles: {
     key: string
     label: string
     value: string
     format: (value: number) => string
-    dayValue: (day: AdPerformanceDay) => number
+    /** 묶은 날들(하루·주·달)의 값 — 합계 지표는 더하고 ROAS는 합계로 나눈다. */
+    groupValue: (days: readonly AdPerformanceDay[]) => number
     /** 하루치를 무엇으로 세는지 — 크게 볼 때 부제. */
     basis: string
   }[] = [
@@ -160,7 +165,7 @@ export function AdPerformancePanel({
       label: '광고비',
       value: won(total.spend),
       format: won,
-      dayValue: (day) => day.spend,
+      groupValue: (days) => sumOf(days, 'spend'),
       basis: '그날 쓴 광고비',
     },
     {
@@ -168,7 +173,7 @@ export function AdPerformancePanel({
       label: '문의 고객',
       value: people(total.leads),
       format: people,
-      dayValue: (day) => day.leads,
+      groupValue: (days) => sumOf(days, 'leads'),
       basis: 'UTM 상담 접수일 기준',
     },
     {
@@ -176,7 +181,7 @@ export function AdPerformancePanel({
       label: '구매 고객',
       value: people(total.buyers),
       format: people,
-      dayValue: (day) => day.buyers,
+      groupValue: (days) => sumOf(days, 'buyers'),
       basis: '귀속 첫 구매 결제일 기준',
     },
     {
@@ -184,7 +189,7 @@ export function AdPerformancePanel({
       label: '귀속 매출',
       value: won(total.revenue),
       format: won,
-      dayValue: (day) => day.revenue,
+      groupValue: (days) => sumOf(days, 'revenue'),
       basis: '귀속 첫 구매 결제일 기준',
     },
     {
@@ -192,7 +197,10 @@ export function AdPerformancePanel({
       label: '광고 ROAS',
       value: pct(roasOf(total)),
       format: pct,
-      dayValue: (day) => (day.spend > 0 ? (day.revenue / day.spend) * 100 : 0),
+      groupValue: (days) => {
+        const spend = sumOf(days, 'spend')
+        return spend > 0 ? (sumOf(days, 'revenue') / spend) * 100 : 0
+      },
       basis: '그날 귀속 매출 ÷ 그날 광고비',
     },
   ]
@@ -209,18 +217,17 @@ export function AdPerformancePanel({
           className="channel-insight__summary-grid roas-attribution__tiles has-trend"
           style={{ '--cols': 5 } as CSSProperties}
           tiles={tiles.map((tile, index) => {
-            const values = daily.map(tile.dayValue)
+            const values = daily.map((day) => tile.groupValue([day]))
             return {
               key: tile.key,
               className: 'channel-insight__kpi',
               style: { '--glass-i': index } as CSSProperties,
-              values,
               detail: {
                 title: `Meta 광고 · ${tile.label}`,
-                subtitle: `${dateStart} ~ ${dateEnd} · 일별 · ${tile.basis}`,
+                subtitle: `${dateStart} ~ ${dateEnd} · ${tile.basis}`,
                 value: tile.value,
-                labels: dailyLabels,
                 format: tile.format,
+                series: () => trendSeriesOf(daily, tile.groupValue),
               },
               content: (
                 <>

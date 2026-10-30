@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useMemo, type ReactNode } from 'react'
 import { useUsageTracking } from '@/hooks'
 import { AutoHeight, LoadingPanel } from '@/components/glass'
 import { useChannelInsightViewModel } from '../../view-model/use-channel-insight-view-model'
@@ -129,13 +129,33 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
     resultTab,
   )
 
-  /** 조회 기간의 날짜마다 값(없는 날은 0) — 카드 보기의 작은 추이 그래프. */
-  const dailyOf = (byDate: readonly DateSummary[]): DateSummary[] => {
-    const byDay = new Map(byDate.map((day) => [day.date, day]))
-    return canonicalDates.map(
-      (date) => byDay.get(date) ?? { ...emptyMetrics(), date },
-    )
-  }
+  // 캠페인·광고셋 목록의 줄 — 데이터가 바뀔 때만 다시 만든다(매 렌더 새로
+  // 만들면 아래 표·카드의 정렬·찾기 계산이 매번 다시 돈다). trend는 조회
+  // 기간의 날짜마다 값(없는 날은 0) — 카드 보기의 작은 추이 그래프.
+  const campaignRows = useMemo(() => {
+    const dailyOf = (byDate: readonly DateSummary[]): DateSummary[] => {
+      const byDay = new Map(byDate.map((day) => [day.date, day]))
+      return canonicalDates.map(
+        (date) => byDay.get(date) ?? { ...emptyMetrics(), date },
+      )
+    }
+    return campaigns.map((c) => ({
+      key: c.campaignName,
+      selectKey: campaignKey(c.campaignName),
+      name: c.campaignName,
+      metrics: aggregateMetrics(c.combined.byDate),
+      resultType: c.resultType,
+      channels: channelsOf(c),
+      trend: dailyOf(c.combined.byDate),
+      children: c.adsets.map((a) => ({
+        key: `${c.campaignName}::${a.adsetName}`,
+        selectKey: adsetKey(c.campaignName, a.adsetName),
+        name: a.adsetName,
+        metrics: aggregateMetrics(a.combined.byDate),
+        channels: channelsOf(a),
+      })),
+    }))
+  }, [campaigns, canonicalDates])
 
   // 사용 분석(/log) — 지금 보고 있는 결과 탭(전체 요약·캠페인·광고셋·매체별
   // 테스트·ROAS).
@@ -265,22 +285,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
                         캠페인 · 광고셋
                       </h3>
                       <FullListTable
-                        rows={campaigns.map((c) => ({
-                          key: c.campaignName,
-                          selectKey: campaignKey(c.campaignName),
-                          name: c.campaignName,
-                          metrics: aggregateMetrics(c.combined.byDate),
-                          resultType: c.resultType,
-                          channels: channelsOf(c),
-                          trend: dailyOf(c.combined.byDate),
-                          children: c.adsets.map((a) => ({
-                            key: `${c.campaignName}::${a.adsetName}`,
-                            selectKey: adsetKey(c.campaignName, a.adsetName),
-                            name: a.adsetName,
-                            metrics: aggregateMetrics(a.combined.byDate),
-                            channels: channelsOf(a),
-                          })),
-                        }))}
+                        rows={campaignRows}
                         headLabel="캠페인 / 광고셋"
                         emptyLabel="캠페인 데이터 없음"
                         selected={selectedKeys}

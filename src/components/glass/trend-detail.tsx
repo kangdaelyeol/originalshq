@@ -3,24 +3,39 @@ import { useMemo, useState, type PointerEvent, type Ref } from 'react'
 import { X } from 'lucide-react'
 import { GlassLine } from './glass-line'
 import { smoothPath } from './smooth-path'
+import { Segmented } from './segmented'
 import { trendStats } from './trend-stats'
 import { useElementSize } from './use-element-size'
+
+/** 추이 한 벌 — 같은 지표를 일별·주별·월별 등으로 묶은 것. 비율 지표는
+ * 묶은 기간마다 합계로 다시 계산한 값을 넘긴다(날짜별 비율의 평균이 아니라). */
+export interface TrendSeries {
+  key: string
+  /** 버튼 이름("일별"). */
+  label: string
+  /** 한 칸의 단위 — "일 평균"의 "일". */
+  unit: string
+  /** 칸마다 이름(날짜·주·달) — values와 같은 길이. */
+  labels: readonly string[]
+  /** 칸마다 값(오래된 것부터). */
+  values: readonly number[]
+}
 
 /** 펼친 추이에 넘기는 것 — TrendGrid 칸의 detail. */
 export interface TrendDetailInfo {
   /** 지표 이름("광고비"). */
   title: string
-  /** 기간 등 부제("2026-10-23 ~ 10-29 · 일별"). */
+  /** 기간 등 부제("2026-10-23 ~ 10-29") — 뒤에 지금 보기(일별 등)가 붙는다. */
   subtitle?: string
   /** 머리에 크게 적을 값 — 칸에 적힌 기간 값 그대로(비율 지표는 합계로 나눈
    * 값이라 날짜별 평균과 다르다). 없으면 마지막 칸 값. */
   value?: string
-  /** 칸마다 이름(날짜 등) — values와 같은 길이. */
-  labels: readonly string[]
   /** 값 표기("1,234원", "3.85%"). */
   format: (value: number) => string
-  /** 한 칸의 단위 이름 — "일 평균"의 "일". 기본 '일'. */
-  unit?: string
+  /** 보기들(일별·주별·월별…) — 처음엔 첫 번째. 칸이 2개 미만인 보기는 고를
+   * 수 없게 둔다. 함수로 주면 펼칠 때만 계산한다(칸이 많으면 묶는 계산이
+   * 무거운데 펼쳐 보는 칸은 몇 개 안 된다). */
+  series: readonly TrendSeries[] | (() => readonly TrendSeries[])
 }
 
 // ── 펼친 추이의 내용 ──────────────────────────────────────────────────────
@@ -67,26 +82,38 @@ const tone = (value: number | null) =>
       : 'is-down'
 
 export function TrendDetailBody({
-  values: input,
   info,
   onClose,
   closeRef,
 }: {
-  values: readonly number[]
   info: TrendDetailInfo
   onClose: () => void
   closeRef?: Ref<HTMLButtonElement>
 }) {
-  const values = useMemo(
-    () => input.map((v) => (Number.isFinite(v) ? v : 0)),
-    [input],
+  const allSeries = useMemo(
+    () => (typeof info.series === 'function' ? info.series() : info.series),
+    [info],
   )
+  const [seriesKey, setSeriesKey] = useState(allSeries[0]?.key ?? '')
+  const active =
+    allSeries.find((each) => each.key === seriesKey) ?? allSeries[0]
+  const values = useMemo(
+    () => (active?.values ?? []).map((v) => (Number.isFinite(v) ? v : 0)),
+    [active],
+  )
+  const labels = active?.labels ?? []
   const stats = useMemo(() => trendStats(values), [values])
-  const { labels } = info
   // 칸 값은 그대로, 계산한 값(평균·추세 등)은 값들의 자릿수로 반올림해서.
   const decimals = useMemo(() => decimalsOf(values), [values])
   const format = (value: number) => info.format(Number(value.toFixed(decimals)))
-  const unit = info.unit ?? '일'
+  const unit = active?.unit ?? '일'
+  // 보기 고르기 — 칸이 2개 미만인 보기(7일 기간의 월별 등)는 누를 수 없다.
+  const seriesOptions = Object.fromEntries(
+    allSeries.map((each) => [each.key, each.label]),
+  )
+  const thin = allSeries
+    .filter((each) => each.values.length < 2)
+    .map((each) => each.key)
   const direction =
     stats.trendPct === null || Math.abs(stats.trendPct) < 3
       ? '보합'
@@ -99,7 +126,21 @@ export function TrendDetailBody({
       <header className="glass_trend_head">
         <div className="glass_trend_titles">
           <h2>{info.title}</h2>
-          {info.subtitle && <p>{info.subtitle}</p>}
+          <p>{[info.subtitle, active?.label].filter(Boolean).join(' · ')}</p>
+          {allSeries.length > 1 && (
+            <Segmented
+              className="glass_trend_views"
+              options={seriesOptions}
+              value={active?.key ?? null}
+              onChange={setSeriesKey}
+              label="묶는 단위"
+              role="buttons"
+              disabledOptions={thin}
+              optionTitles={Object.fromEntries(
+                thin.map((key) => [key, '조회 기간이 짧아 칸이 하나뿐입니다']),
+              )}
+            />
+          )}
         </div>
         <div className="glass_trend_headline">
           <strong>{info.value ?? format(stats.last)}</strong>
@@ -119,7 +160,9 @@ export function TrendDetailBody({
         </button>
       </header>
 
+      {/* 보기를 바꾸면 새로 붙여 다시 그린다(왼쪽 → 오른쪽). */}
       <TrendChart
+        key={active?.key}
         values={values}
         labels={labels}
         format={format}
@@ -130,7 +173,10 @@ export function TrendDetailBody({
         <div>
           <dt>{unit} 평균</dt>
           <dd>{format(stats.mean)}</dd>
-          <small>{stats.count}칸</small>
+          <small>
+            {stats.count}
+            {unit === '월' ? '개월' : unit}
+          </small>
         </div>
         <div>
           <dt>최고</dt>
@@ -300,7 +346,10 @@ function TrendChart({
               </g>
             ))}
             {labels.map((label, index) =>
-              index % step === 0 || index === labels.length - 1 ? (
+              // 마지막 칸은 늘 적고, 그 바로 앞에서 겹칠 만큼 가까운 칸은 건너뛴다.
+              index === labels.length - 1 ||
+              (index % step === 0 &&
+                labels.length - 1 - index >= step * 0.75) ? (
                 <text
                   key={index}
                   className="glass_trend_xlabel"
@@ -339,14 +388,6 @@ function TrendChart({
               y1={y(stats.mean)}
               y2={y(stats.mean)}
             />
-            <text
-              className="glass_trend_mark_label"
-              x={width - PAD.right}
-              y={y(stats.mean) - 6}
-              textAnchor="end"
-            >
-              평균 {format(stats.mean)}
-            </text>
             {values.length >= 2 && (
               <line
                 className="glass_trend_fit"
@@ -376,31 +417,13 @@ function TrendChart({
                   key={mark.kind}
                   className={`glass_trend_extreme is-${mark.kind}`}
                 >
-                  <circle cx={x(mark.index)} cy={y(mark.value)} r={5} />
-                  <text
-                    x={x(mark.index)}
-                    // 양 끝 칸은 안쪽으로 붙인다(판 밖으로 잘리지 않게).
-                    textAnchor={
-                      x(mark.index) < left + 70
-                        ? 'start'
-                        : x(mark.index) > width - PAD.right - 70
-                          ? 'end'
-                          : 'middle'
-                    }
-                    // 최고는 점 위, 최저는 점 아래 — 그래프 위·아래 끝에 닿으면
-                    // 반대쪽에(날짜 글자와 겹치지 않게).
-                    y={
-                      mark.kind === 'max'
-                        ? y(mark.value) - 12 < PAD.top - 4
-                          ? y(mark.value) + 20
-                          : y(mark.value) - 12
-                        : y(mark.value) + 20 > height - PAD.bottom - 4
-                          ? y(mark.value) - 12
-                          : y(mark.value) + 20
-                    }
-                  >
-                    {mark.kind === 'max' ? '최고' : '최저'} {format(mark.value)}
-                  </text>
+                  <circle
+                    className="glass_trend_glow"
+                    cx={x(mark.index)}
+                    cy={y(mark.value)}
+                    r={10}
+                  />
+                  <circle cx={x(mark.index)} cy={y(mark.value)} r={4.5} />
                 </g>
               ),
             )}
@@ -412,10 +435,52 @@ function TrendChart({
                   y1={PAD.top}
                   y2={height - PAD.bottom}
                 />
-                <circle cx={x(hover)} cy={y(values[hover])} r={5.5} />
+                <circle
+                  className="glass_trend_glow"
+                  cx={x(hover)}
+                  cy={y(values[hover])}
+                  r={11}
+                />
+                <circle cx={x(hover)} cy={y(values[hover])} r={5} />
               </g>
             )}
           </svg>
+
+          {/* 이름표 — 글자 테두리 대신 작은 유리 알약(평균은 선 오른쪽 끝, 최고는
+              점 위, 최저는 점 아래 — 끝에 닿으면 반대쪽·안쪽으로). */}
+          <span
+            className="glass_trend_pill is-mean"
+            style={{ left: width - PAD.right, top: y(stats.mean) }}
+          >
+            평균 {format(stats.mean)}
+          </span>
+          {[
+            { ...max, kind: 'max' as const },
+            { ...min, kind: 'min' as const },
+          ].map((mark) => {
+            if (span === 0 && mark.kind === 'min') return null
+            const cx = x(mark.index)
+            const cy = y(mark.value)
+            const below =
+              mark.kind === 'max'
+                ? cy - 30 < PAD.top - 8
+                : cy + 30 <= height - PAD.bottom
+            const align =
+              cx < left + 70
+                ? 'start'
+                : cx > width - PAD.right - 70
+                  ? 'end'
+                  : 'middle'
+            return (
+              <span
+                key={mark.kind}
+                className={`glass_trend_pill is-${mark.kind} is-${below ? 'below' : 'above'} is-${align}`}
+                style={{ left: cx, top: cy }}
+              >
+                {mark.kind === 'max' ? '최고' : '최저'} {format(mark.value)}
+              </span>
+            )
+          })}
 
           {hover !== null && (
             <div

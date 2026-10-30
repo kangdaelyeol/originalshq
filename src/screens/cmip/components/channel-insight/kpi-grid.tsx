@@ -1,8 +1,12 @@
 import { useMemo, type CSSProperties } from 'react'
 import { Sparkline, TrendGrid } from '@/components/glass'
-import type { DateSummary, MetricsSummary } from '../../client'
+import {
+  aggregateMetrics,
+  type DateSummary,
+  type MetricsSummary,
+} from '../../client'
 import { channelSafeFields, METRIC_FIELDS } from '../metric-fields'
-import { formatMD } from '../../utils'
+import { trendSeriesOf } from '../../utils/trend-series'
 
 export function KpiGrid({
   metrics,
@@ -46,7 +50,6 @@ export function KpiGrid({
     )
   }
 
-  const labels = days.map((day) => formatMD(day.date))
   return (
     <TrendGrid
       className="channel-insight__summary-grid has-trend"
@@ -57,13 +60,14 @@ export function KpiGrid({
           className: 'channel-insight__kpi',
           // 칸마다 추이 그래프가 조금씩 늦게 그려진다.
           style: { '--glass-i': index } as CSSProperties,
-          values,
           detail: {
             title: detailPrefix ? `${detailPrefix} · ${label}` : label,
-            subtitle: periodLabel ? `${periodLabel} · 일별` : '일별',
+            subtitle: periodLabel,
             value: format(metrics[key]),
-            labels,
             format,
+            // 주별·월별은 묶은 날들의 합계로 다시 계산(ROAS 등 비율도 맞게).
+            series: () =>
+              trendSeriesOf(days, (group) => aggregateMetrics(group)[key]),
           },
           content: (
             <>

@@ -49,9 +49,10 @@ $enter-stagger: 45ms;
 
 // 불러온 내용 — 처음 붙을 때 흐릿하게 떠올라 선명해진다(glass_enter). $order는
 // 차례(0부터)로, 그만큼 조금씩 늦게 시작한다.
-@mixin enter($order: 0, $step: 60ms, $duration: 0.55s) {
-  animation: glass_enter $duration cubic-bezier(0.22, 1, 0.36, 1)
-    calc(#{$order} * #{$step}) backwards;
+// $large: 화면보다 큰 덩어리(표가 든 섹션 등) — 흐림을 작게(glass_enter_large).
+@mixin enter($order: 0, $step: 60ms, $duration: 0.55s, $large: false) {
+  animation: if($large, glass_enter_large, glass_enter) $duration
+    cubic-bezier(0.22, 1, 0.36, 1) calc(#{$order} * #{$step}) backwards;
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;

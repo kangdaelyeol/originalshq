@@ -422,9 +422,11 @@
 
 // ── 불러오는 중 ─────────────────────────────────────────────────────────
 // 섹션마다 로딩 판(LoadingPanel) 하나 — 다 받으면 섹션 몸통(AutoHeight)이 그
-// 높이에서 자라고, 새로 붙은 내용이 흐릿하게 떠오른다.
+// 높이에서 자라고, 새로 붙은 내용(머리·표)이 흐릿하게 떠오른다. 섹션 껍데기는
+// 그대로 두고 안의 내용만 움직인다(껍데기까지 같이 떠오르면 흐림이 겹친다).
+// 표가 든 큰 덩어리라 흐림은 작게.
 .cmip .channel-insight__section-body > div > :not(.glass_loading) {
-  @include glass.enter;
+  @include glass.enter($large: true);
 }
 // 섹션 몸통 — 넓은 표가 섹션 폭을 밀어내지 않게(표 안에서만 가로 스크롤).
 .cmip .channel-insight__section-body,
@@ -438,10 +440,10 @@
   gap: 12px;
 }
 
-// 다 받은 화면 — 탭 내용이 흐릿하게 떠올라 선명해진다.
-.cmip .channel-insight__tab-content > *,
-.cmip .channel-insight__result > * {
-  @include glass.enter;
+// 다 받은 화면(전체 요약 밖의 탭) — 탭 내용이 흐릿하게 떠올라 선명해진다.
+// 전체 요약은 위 섹션 몸통이 맡는다.
+.cmip .channel-insight__tab-content > * {
+  @include glass.enter($large: true);
 }
 
 // ── 모달(그래프로 보기 · 엑셀 다운로드) ──────────────────────────────────

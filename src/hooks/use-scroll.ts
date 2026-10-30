@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
-import { throttle } from 'lodash'
+// 함수 하나씩 — 'lodash' 전체(CJS)를 부르면 라이브러리 통째로 첫 번들에 들어간다.
+import throttle from 'lodash/throttle'
 
 interface UseScrollProps {
   listener: () => void
