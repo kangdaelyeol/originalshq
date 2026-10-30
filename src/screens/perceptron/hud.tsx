@@ -1,24 +1,46 @@
 import { useEffect, useRef, useState } from 'react'
 import { FitCanvas } from './canvas'
-import { COLUMNS, GATE, LOOP } from './data'
-import { TIMELINES, useEngine, type Engine } from './engine'
+import { COLUMNS, GATE } from './data'
+import { useEngine, type Engine } from './engine'
+import { fmtTime, fmtTokens, fmtUsd, useModel } from './model'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 /** 8 201 처럼 — 천 단위를 띄어 쓴다. */
 const grouped = (n: number) =>
   Math.floor(n).toLocaleString('en-US').replace(/,/g, ' ')
 
-export function TopBar() {
+export function TopBar({
+  metricsOpen,
+  onToggleMetrics,
+}: {
+  metricsOpen: boolean
+  onToggleMetrics: () => void
+}) {
+  // 망 버전 — 편집을 저장할 때마다 하나씩 오른다(기본 목업은 v0).
+  const { version, savedAt } = useModel().meta
   return (
     <header className="pn-top">
       <b className="pn-top__brand">CMIP / PROMPT PERCEPTRON</b>
-      <span className="pn-top__ver">
-        <b>LAYER ONE</b> · mlp-0.1.0
+      <span
+        className="pn-top__ver"
+        title="망을 고쳐 저장할 때마다 버전이 오릅니다"
+      >
+        <b>LAYER ONE</b> · graph v{version} ·{' '}
+        {savedAt ? `${fmtTime(savedAt)} 저장` : '기본값'}
       </span>
       <span className="pn-top__flow">
         INPUT → FEATURE → HIDDEN → GATE → PROMPT
       </span>
       <span className="pn-top__who">xtool · creative-ai</span>
+      <button
+        type="button"
+        className={`pn-toggle${metricsOpen ? '' : ' is-closed'}`}
+        title="위 지표 줄 숨기기/보기 (H)"
+        aria-expanded={metricsOpen}
+        onClick={onToggleMetrics}
+      >
+        {metricsOpen ? '지표 숨기기' : '지표 보기'}
+      </button>
     </header>
   )
 }
@@ -96,7 +118,7 @@ function LatencyMetric({ engine }: { engine: Engine }) {
       ctx.clearRect(0, 0, w, h)
       ctx.lineWidth = 1.4
       ctx.lineJoin = 'round'
-      ctx.strokeStyle = LOOP[slot].color
+      ctx.strokeStyle = engine.model.graph.cases[slot].color
       ctx.beginPath()
       values.forEach((v, i) => {
         const x = (i / (values.length - 1)) * w
@@ -127,22 +149,49 @@ function LatencyMetric({ engine }: { engine: Engine }) {
   )
 }
 
-function CostMetric() {
+/** 이 프롬프트의 비용 — 입력(프롬프트 글 + 경로가 함께 보내는 영상 프레임·표)
+ * × 입력 단가 + 예상 응답 × 출력 단가. 보류면 Claude를 부르지 않아 $0. */
+function CostMetric({ engine }: { engine: Engine }) {
+  const model = useModel()
+  const slot = useEngine(engine, (s) => s.slot)
+  const { cost, hold } = model.cases[slot]
+  const max = Math.max(cost.inCost, cost.outCost) || 1
   return (
-    <div className="pn-metric pn-cost">
-      <div className="pn-metric__label">COST · 1 PROMPT</div>
-      <div className="pn-metric__value pn-cost__value">≈ $0.30</div>
-      <div className="pn-cost__rows">
-        <span>net</span>
-        <div className="pn-cost__net">
-          <i />
-          <em>$4 in · $20 out / M tok</em>
-        </div>
-        <span>claude</span>
-        <div className="pn-cost__llm">
-          <i />
-        </div>
+    <div
+      className="pn-metric pn-cost"
+      title={`단가 $${cost.price.in} 입력 · $${cost.price.out} 출력 / 100만 토큰 — PROMPT 칸에서 바꿀 수 있습니다`}
+    >
+      <div className="pn-metric__label">COST · THIS PROMPT</div>
+      <div className="pn-metric__value pn-cost__value">
+        {hold ? '$0.00' : `≈ ${fmtUsd(cost.total)}`}
       </div>
+      {hold ? (
+        <div className="pn-cost__hold">보류 — Claude를 부르지 않습니다</div>
+      ) : (
+        <div className="pn-cost__rows">
+          <span>in</span>
+          <div className="pn-cost__bar">
+            <span>
+              <i
+                className="is-in"
+                style={{ width: `${(cost.inCost / max) * 100}%` }}
+              />
+            </span>
+            <em>
+              {fmtTokens(cost.inTokens)} tok · {fmtUsd(cost.inCost)}
+            </em>
+          </div>
+          <span>out</span>
+          <div className="pn-cost__bar">
+            <span>
+              <i style={{ width: `${(cost.outCost / max) * 100}%` }} />
+            </span>
+            <em>
+              {fmtTokens(cost.outTokens)} tok · {fmtUsd(cost.outCost)}
+            </em>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -189,7 +238,7 @@ export function MetricRow({ engine }: { engine: Engine }) {
     <div className="pn-metrics">
       <SignalsMetric engine={engine} />
       <LatencyMetric engine={engine} />
-      <CostMetric />
+      <CostMetric engine={engine} />
       <ConfidenceMetric engine={engine} />
     </div>
   )
@@ -199,11 +248,14 @@ export function MetricRow({ engine }: { engine: Engine }) {
 
 /** 단계 버튼 — 빛 점이 있는 층만 채워지고, 지나간 층은 천천히 꺼진다. */
 function Stages({ engine }: { engine: Engine }) {
+  const model = useModel()
   const current = useEngine(engine, (s) =>
-    s.fading || s.stepOn === 0 ? -1 : TIMELINES[s.slot].steps[s.stepOn - 1].col,
+    s.fading || s.stepOn === 0
+      ? -1
+      : engine.model.cases[s.slot].timeline.steps[s.stepOn - 1].col,
   )
   const slot = useEngine(engine, (s) => s.slot)
-  const hold = LOOP[slot].confidence < GATE
+  const hold = model.cases[slot].hold
   return (
     <div className="pn-stages">
       {COLUMNS.map((c, i) => (
@@ -219,17 +271,17 @@ function Stages({ engine }: { engine: Engine }) {
 }
 
 export function CaseHeader({ engine }: { engine: Engine }) {
+  const model = useModel()
   const slot = useEngine(engine, (s) => s.slot)
   const count = useEngine(engine, (s) => (s.fading ? 0 : s.subtitleCount))
-  const c = LOOP[slot]
-  const hold = c.confidence < GATE
+  const { def: c, hold, subtitle } = model.cases[slot]
   return (
     <div className="pn-case">
       <span className="pn-case__pill">CASE {pad2(c.id)} / 12</span>
       <div className="pn-case__text">
         <h1 className="pn-case__title">{c.title}</h1>
         <p className="pn-case__sub">
-          {c.subtitle.slice(0, count).map((seg, i) => (
+          {subtitle.slice(0, count).map((seg, i) => (
             <span
               key={`${slot}:${i}`}
               className={

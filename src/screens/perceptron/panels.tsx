@@ -6,14 +6,9 @@ import {
   type ReactNode,
 } from 'react'
 import { FitCanvas } from './canvas'
-import { COLUMNS, GATE, LOOP, USE_CASES } from './data'
-import {
-  LOOP_LEN,
-  TIMELINES,
-  useEngine,
-  type Engine,
-  type Snapshot,
-} from './engine'
+import { COLUMNS, GATE, USE_CASES } from './data'
+import { useEngine, type Engine, type Snapshot } from './engine'
+import { fmtTime, fmtUsd, useModel, type Model } from './model'
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 
@@ -61,27 +56,49 @@ const KIND_COLOR: Record<string, string> = {
   Flag: '#cfe85e',
 }
 
-function ParallelPanel({ engine }: { engine: Engine }) {
+/** 이 입력에 대한 특징 질문의 답 — 막대는 신뢰도, 흰 눈금은 게이트(0.80).
+ * 경로가 지나는 질문(테두리)의 신뢰도로 게이트를 판정한다. 줄을 누르면 그 노드를
+ * 편집한다. */
+function ParallelPanel({
+  engine,
+  onSelect,
+}: {
+  engine: Engine
+  onSelect: (id: string) => void
+}) {
+  const model = useModel()
   const slot = useEngine(engine, (s) => s.slot)
   const asked = useEngine(engine, (s) => !s.fading && s.stepOn >= 2)
+  const { features, def } = model.cases[slot]
+  const answered = model.graph.layers[1].filter((n) => def.answers[n.id]).length
   return (
-    <Panel title="PARALLEL FEATURES" note="one input" className="pn-par">
-      {LOOP[slot].parallel.map((r) => (
-        <div
-          key={r.label}
-          className={`pn-par__row${asked && r.picked ? ' is-picked' : ''}`}
+    <Panel
+      title="PARALLEL FEATURES"
+      note={`${answered} / ${model.graph.layers[1].length} answered`}
+      className="pn-par"
+    >
+      {features.map((f) => (
+        <button
+          key={f.id}
+          type="button"
+          className={`pn-par__row${f.onPath ? ' is-path' : ''}${asked && f.onPath ? ' is-picked' : ''}`}
+          title={`${f.kind} · ${f.name} — ${f.answer ? `${f.answer} (${f.conf.toFixed(2)})` : '답 없음'} · 눌러서 편집`}
+          onClick={() => onSelect(f.id)}
         >
-          <span>{r.label}</span>
+          <span>{f.name}</span>
           <div
             className="pn-par__track"
             style={
-              { '--c': KIND_COLOR[r.label.split(' ')[0]] } as CSSProperties
+              {
+                '--c': KIND_COLOR[f.kind] ?? '#9d98b3',
+                '--gate': `${GATE * 100}%`,
+              } as CSSProperties
             }
           >
-            <i style={{ width: `${r.value * 100}%` }} />
+            {f.answer !== null && <i style={{ width: `${f.conf * 100}%` }} />}
           </div>
-          <em>{r.answer}</em>
-        </div>
+          <em>{f.answer ?? '—'}</em>
+        </button>
       ))}
       <p className="pn-panel__foot">typed answers · no LLM yet</p>
     </Panel>
@@ -192,11 +209,12 @@ function StreamPanel({ engine }: { engine: Engine }) {
 
 // ── 12가지 쓰임 ─────────────────────────────────────────────────────────
 
-const LOOP_COLOR = new Map(LOOP.map((c) => [c.id, c.color]))
-
+/** 도는 케이스는 눌러서 바로 그 케이스로 — 나머지는 아직 경로가 없다. */
 function UseCasesPanel({ engine }: { engine: Engine }) {
+  const model = useModel()
   const slot = useEngine(engine, (s) => s.slot)
-  const active = LOOP[slot].id
+  const cases = model.graph.cases
+  const active = cases[slot].id
   return (
     <Panel
       title="12 USE CASES"
@@ -206,11 +224,16 @@ function UseCasesPanel({ engine }: { engine: Engine }) {
       <div className="pn-uses__grid">
         {USE_CASES.map((name, i) => {
           const id = i + 1
-          const dot = LOOP_COLOR.get(id)
+          const index = cases.findIndex((c) => c.id === id)
+          const dot = cases[index]?.color
           return (
-            <div
+            <button
               key={name}
+              type="button"
+              disabled={index < 0}
+              title={index < 0 ? '아직 경로가 없는 쓰임' : `${name} 케이스로`}
               className={`pn-use${id === active ? ' is-active' : ''}${dot ? ' is-loop' : ''}`}
+              onClick={() => engine.jump(index)}
             >
               <b>{pad2(id)}</b>
               <span>{name}</span>
@@ -219,7 +242,7 @@ function UseCasesPanel({ engine }: { engine: Engine }) {
               ) : dot ? (
                 <i style={{ background: dot }} />
               ) : null}
-            </div>
+            </button>
           )
         })}
       </div>
@@ -231,7 +254,6 @@ function UseCasesPanel({ engine }: { engine: Engine }) {
 
 /** 초당 줄 수 — 출력 노드가 조립되기 시작하면 그 케이스의 프롬프트를 친다. */
 const LPS = 14
-const PROMPT_LINES = LOOP.map((c) => c.prompt.split('\n'))
 
 const lineClass = (line: string) =>
   line.startsWith('## ')
@@ -248,12 +270,13 @@ const lineClass = (line: string) =>
 const PROMPT_ROWS = 16
 
 function PromptPanel({ engine }: { engine: Engine }) {
+  const model = useModel()
   const [view, setView] = useState({ slot: -1, lines: 0, chars: 0 })
   useEffect(
     () =>
       engine.onFrame(({ slot, tau }) => {
-        const start = TIMELINES[slot].assembleStart
-        const all = PROMPT_LINES[slot]
+        const { timeline, prompt: all } = engine.model.cases[slot]
+        const start = timeline.assembleStart
         let lines = 0
         let chars = 0
         if (tau >= start) {
@@ -273,19 +296,24 @@ function PromptPanel({ engine }: { engine: Engine }) {
     [engine],
   )
   // 앞 케이스의 프롬프트 아래에 이번 프롬프트가 이어서 쳐진다.
+  const n = model.cases.length
   const rows =
     view.slot < 0
       ? []
       : [
-          ...PROMPT_LINES[(view.slot + LOOP.length - 1) % LOOP.length].map(
-            (line, i) => ({ key: `p${i}`, text: line, line }),
-          ),
-          { key: 'gap', text: '', line: '' },
-          ...PROMPT_LINES[view.slot].slice(0, view.lines).map((line, i) => ({
-            key: `c${i}`,
+          ...model.cases[(view.slot + n - 1) % n].prompt.map((line, i) => ({
+            key: `p${i}`,
+            text: line,
             line,
-            text: i === view.lines - 1 ? line.slice(0, view.chars) : line,
           })),
+          { key: 'gap', text: '', line: '' },
+          ...model.cases[view.slot].prompt
+            .slice(0, view.lines)
+            .map((line, i) => ({
+              key: `c${i}`,
+              line,
+              text: i === view.lines - 1 ? line.slice(0, view.chars) : line,
+            })),
         ].slice(-PROMPT_ROWS)
   return (
     <Panel title="prompt.md" note={`${LPS} l/s`} className="pn-code">
@@ -312,9 +340,10 @@ const LOG_COLOR: Record<string, string> = {
 }
 
 /** 지금 케이스에서 찍힌 줄 수 — 입력·질문·은닉 결과·게이트·출력 순. */
-const logCount = (s: Snapshot) => {
+const logCount = (model: Model, s: Snapshot) => {
   if (s.fading) return 5
-  if (s.stepOn >= TIMELINES[s.slot].steps.length && s.assembled > 0) return 5
+  if (s.stepOn >= model.cases[s.slot].timeline.steps.length && s.assembled > 0)
+    return 5
   if (s.verdict) return 4
   if (s.confPhase === 'final') return 3
   return Math.min(2, s.stepOn)
@@ -323,18 +352,20 @@ const logCount = (s: Snapshot) => {
 const LOG_ROWS = 7
 
 function LogPanel({ engine }: { engine: Engine }) {
+  const model = useModel()
   const slot = useEngine(engine, (s) => s.slot)
-  const count = useEngine(engine, logCount)
-  const before = (k: number) => (slot + LOOP.length - k) % LOOP.length
+  const count = useEngine(engine, (s) => logCount(engine.model, s))
+  const n = model.cases.length
+  const before = (k: number) => (slot + n - k) % n
   const rows = [before(2), before(1), slot]
     .flatMap((sl) =>
-      LOOP[sl].log
+      model.cases[sl].log
         .slice(0, sl === slot ? count : undefined)
         .map(([src, text], i) => ({
           key: `${sl}:${i}`,
           src,
           text,
-          warn: src === 'gate' && LOOP[sl].confidence < GATE,
+          warn: src === 'gate' && model.cases[sl].hold,
         })),
     )
     .slice(-LOG_ROWS)
@@ -375,25 +406,31 @@ const Segs = ({
   </div>
 )
 
+/** 이 케이스에서 누가 무엇을 했나 — 망(답한 특징 질문 + 인코더 + 게이트)은
+ * 공짜로 대부분을 정하고, Claude는 통과한 프롬프트로 한 번, 코드는 입력을
+ * 가져와 칸을 조립하고 저장한다. */
 function SplitPanel({ engine }: { engine: Engine }) {
-  // Claude는 마지막에 프롬프트 한 장만 — 그 전까지는 망이 다 정한다.
-  const written = useEngine(
-    engine,
-    (s) => s.assembled >= 8 && LOOP[s.slot].confidence >= GATE,
-  )
+  const model = useModel()
+  const slot = useEngine(engine, (s) => s.slot)
+  const { split, hold, cost } = model.cases[slot]
   return (
     <Panel title="THE SPLIT" note="who does what" className="pn-split">
-      <div className="pn-split__row">
-        <span>Claude writes</span>
-        <Segs on={written ? 3 : 0} color="#8f86ff" />
-      </div>
       <div className="pn-split__row is-strong">
         <span>net decides</span>
-        <Segs on={18} color="var(--pn-accent)" />
+        <Segs on={split.net} color="var(--pn-accent)" />
+        <b>{split.net} · $0</b>
+      </div>
+      <div className="pn-split__row">
+        <span>Claude writes</span>
+        <Segs on={split.claude} color="#8f86ff" />
+        <b>
+          {hold ? 'hold · $0' : `${split.claude} call · ${fmtUsd(cost.total)}`}
+        </b>
       </div>
       <div className="pn-split__row">
         <span>code acts</span>
-        <Segs on={13} color="#49dae4" />
+        <Segs on={split.code} color="#49dae4" />
+        <b>{split.code} steps</b>
       </div>
     </Panel>
   )
@@ -401,27 +438,35 @@ function SplitPanel({ engine }: { engine: Engine }) {
 
 // ── 가드레일 ────────────────────────────────────────────────────────────
 
-const PROMPT_COST = 0.3
+/** 이번 달 Claude 지출 한도($) — 목업. */
 const SPEND_CAP = 5
 
 function GuardPanel({ engine }: { engine: Engine }) {
-  // 이번 바퀴에서 다 만든 프롬프트 수(보류는 빼고).
+  const model = useModel()
+  // 이번 바퀴에서 다 만든 프롬프트(보류 빼고)와 그 비용의 합.
   const done = useEngine(engine, (s) => {
+    const { cases, graph } = engine.model
     let n = 0
-    for (let i = 0; i < s.slot; i++) if (LOOP[i].confidence >= GATE) n++
-    if (LOOP[s.slot].confidence >= GATE && s.assembled >= 8) n++
+    for (let i = 0; i < s.slot; i++) if (!cases[i].hold) n++
+    if (!cases[s.slot].hold && s.assembled >= graph.layers[4].length) n++
     return n
   })
-  const spend = done * PROMPT_COST
+  const slot = useEngine(engine, (s) => s.slot)
+  const spend = model.cases
+    .slice(0, slot + 1)
+    .filter((c) => !c.hold)
+    .slice(0, done)
+    .reduce((sum, c) => sum + c.cost.total, 0)
+  const { version, savedAt } = model.meta
   return (
     <Panel title="GUARDRAILS" note="always on" className="pn-guard">
       <div className="pn-guard__row">
         <span>spend cap</span>
         <div className="pn-guard__track">
-          <i style={{ width: `${(spend / SPEND_CAP) * 100}%` }} />
+          <i style={{ width: `${Math.min(1, spend / SPEND_CAP) * 100}%` }} />
         </div>
         <b>
-          ${spend.toFixed(2)} / {SPEND_CAP.toFixed(2)}
+          {fmtUsd(spend)} / {SPEND_CAP.toFixed(2)}
         </b>
       </div>
       <div className="pn-guard__row">
@@ -431,16 +476,23 @@ function GuardPanel({ engine }: { engine: Engine }) {
       </div>
       <p className="pn-guard__lock">
         <LockIcon />
-        never auto-publish · progress saved
+        never auto-publish ·{' '}
+        {savedAt ? `saved v${version} ${fmtTime(savedAt)}` : 'default graph'}
       </p>
     </Panel>
   )
 }
 
-export function Panels({ engine }: { engine: Engine }) {
+export function Panels({
+  engine,
+  onSelect,
+}: {
+  engine: Engine
+  onSelect: (id: string) => void
+}) {
   return (
     <section className="pn-panels">
-      <ParallelPanel engine={engine} />
+      <ParallelPanel engine={engine} onSelect={onSelect} />
       <StreamPanel engine={engine} />
       <UseCasesPanel engine={engine} />
       <PromptPanel engine={engine} />
@@ -451,24 +503,104 @@ export function Panels({ engine }: { engine: Engine }) {
   )
 }
 
-/** 맨 아래 — 반복 안의 위치를 보여 주는 눈금자와 한 줄 요약. */
-export function Footer({ engine }: { engine: Engine }) {
+const Icon = ({ d }: { d: string }) => (
+  <svg viewBox="0 0 16 16" aria-hidden="true">
+    <path d={d} fill="currentColor" />
+  </svg>
+)
+
+const ICON = {
+  prev: 'M3 3h2v10H3zM13 3v10L6 8z',
+  next: 'M11 3h2v10h-2zM3 3v10l7-5z',
+  play: 'M4 2.5v11L13.5 8z',
+  pause: 'M3.5 3h3v10h-3zM9.5 3h3v10h-3z',
+}
+
+/** 맨 아래 — 재생 조작, 반복 안의 위치를 보여 주는(누르거나 끌면 옮겨 가는)
+ * 눈금자, 한 줄 요약. */
+export function Footer({
+  engine,
+  panelsOpen,
+  onTogglePanels,
+}: {
+  engine: Engine
+  panelsOpen: boolean
+  onTogglePanels: () => void
+}) {
   const tickRef = useRef<HTMLElement>(null)
+  const playing = useEngine(engine, (s) => s.playing)
+  const slot = useEngine(engine, (s) => s.slot)
   useEffect(
     () =>
       engine.onFrame(({ t }) => {
         if (tickRef.current)
-          tickRef.current.style.left = `${(t / LOOP_LEN) * 100}%`
+          tickRef.current.style.left = `${(t / engine.loopLen) * 100}%`
       }),
     [engine],
   )
+  const seekAt = (el: HTMLElement, clientX: number) => {
+    const r = el.getBoundingClientRect()
+    const k = Math.min(0.999, Math.max(0, (clientX - r.left) / r.width))
+    engine.seek(k * engine.loopLen)
+  }
   return (
     <footer className="pn-foot">
-      <div className="pn-foot__scrub">
+      <div
+        className="pn-foot__scrub"
+        title="눌러서 그 시점으로"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          seekAt(e.currentTarget, e.clientX)
+        }}
+        onPointerMove={(e) => {
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            seekAt(e.currentTarget, e.clientX)
+        }}
+      >
         <i ref={tickRef} />
       </div>
-      <b>SIGNALS IN · NETWORK DECIDES · PROMPT OUT</b>
-      <span>metrics illustrative · mock data</span>
+      <div className="pn-foot__left">
+        <div className="pn-ctrl">
+          <button
+            type="button"
+            aria-label="이전 케이스"
+            onClick={() => engine.jump(slot - 1)}
+          >
+            <Icon d={ICON.prev} />
+          </button>
+          <button
+            type="button"
+            className="is-main"
+            aria-label={playing ? '멈춤' : '재생'}
+            onClick={() => engine.toggle()}
+          >
+            <Icon d={playing ? ICON.pause : ICON.play} />
+          </button>
+          <button
+            type="button"
+            aria-label="다음 케이스"
+            onClick={() => engine.jump(slot + 1)}
+          >
+            <Icon d={ICON.next} />
+          </button>
+        </div>
+        <button
+          type="button"
+          className={`pn-toggle${panelsOpen ? '' : ' is-closed'}`}
+          title="아래 패널 숨기기/보기 (P)"
+          aria-expanded={panelsOpen}
+          onClick={onTogglePanels}
+        >
+          {panelsOpen ? '패널 숨기기' : '패널 보기'}
+        </button>
+        <b className="pn-foot__slogan">
+          SIGNALS IN · NETWORK DECIDES · PROMPT OUT
+        </b>
+      </div>
+      <span className="pn-foot__hint">
+        노드를 눌러 편집 · Space 재생 · ←→ 케이스 · A/F 카메라 · H/P 지표·패널 ·
+        목업 데이터
+      </span>
     </footer>
   )
 }

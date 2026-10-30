@@ -51,6 +51,57 @@
   }
 }
 
+// 접히는 구역 — 높이를 grid 행(1fr ↔ 0fr)으로 바꿔 부드럽게 접는다. 접히면
+// .pn의 gap 하나만큼 위로 당겨 빈 줄이 남지 않게.
+.pn-fold {
+  display: grid;
+  flex: none;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 0.3s ease,
+    margin-top 0.3s ease,
+    opacity 0.25s ease;
+
+  &__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &.is-closed {
+    grid-template-rows: 0fr;
+    margin-top: u(-6);
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+// 접기 버튼 — 위 지표 줄(맨 위 줄)·아래 패널(맨 아래 줄). 접혀 있으면 채워서
+// 무언가 숨겨져 있다는 걸 보인다.
+.pn-toggle {
+  flex: none;
+  align-self: center;
+  height: max(18px, u(15));
+  padding: 0 max(8px, u(8));
+  border: 1px solid var(--accent-dim);
+  border-radius: u(3);
+  background: transparent;
+  color: var(--pn-accent);
+  font: inherit;
+  font-size: max(10px, u(7.5));
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--pn-accent) 12%, transparent);
+  }
+
+  &.is-closed {
+    background: var(--pn-accent);
+    color: rgba(14, 6, 12, 0.85);
+  }
+}
+
 // ── 맨 위 줄 ────────────────────────────────────────────────────────────
 
 .pn-top {
@@ -227,33 +278,42 @@
     }
   }
 
-  &__net {
+  // 입력·출력 비용 막대 — 둘 중 큰 쪽이 꽉 찬다. 옆에 토큰과 금액.
+  &__bar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: u(6);
 
-    i {
-      flex: none;
-      width: u(5);
+    > span {
+      flex: 1;
       height: u(6);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    i {
+      display: block;
+      min-width: 2px;
+      height: 100%;
       background: var(--pn-accent);
+
+      &.is-in {
+        background: #6a64b4;
+      }
     }
 
     em {
-      overflow: hidden;
-      font-style: normal;
+      flex: none;
       color: var(--ink-3);
+      font-style: normal;
       white-space: nowrap;
-      text-overflow: ellipsis;
     }
   }
 
-  &__llm i {
-    display: block;
-    width: 74%;
-    height: u(6);
-    background: #6a64b4;
+  &__hold {
+    margin-top: auto;
+    color: var(--warn);
+    font-size: u(7.5);
+    font-weight: 600;
   }
 }
 
@@ -455,6 +515,95 @@
   }
 }
 
+// 프리 모드 — 손으로 옮기는 카메라.
+.pn-net.is-free {
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.pn-net__hint {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  z-index: 4;
+  margin: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 99px;
+  background: rgba(12, 11, 16, 0.85);
+  color: var(--ink-2);
+  font-size: 11px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+// 카메라 모드 — 신경망 왼쪽 위. AUTO는 빛 점을 따라가고, FREE는 손으로
+// 옮기고 확대·축소한다(오른쪽엔 편집 패널이 뜨니 왼쪽에 둔다).
+.pn-cam {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 4;
+  display: flex;
+  gap: 6px;
+  font-size: 11px;
+  cursor: default;
+
+  &__group {
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 5px;
+    background: rgba(12, 11, 16, 0.85);
+    backdrop-filter: blur(6px);
+  }
+
+  button {
+    height: 26px;
+    padding: 0 10px;
+    border: 0;
+    background: transparent;
+    color: var(--ink-3);
+    font: inherit;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+
+    &:hover {
+      color: var(--ink);
+    }
+
+    &.is-on {
+      background: var(--pn-accent);
+      color: rgba(14, 6, 12, 0.85);
+    }
+  }
+
+  &__zoom {
+    button {
+      padding: 0 9px;
+      font-size: 13px;
+    }
+
+    span {
+      min-width: 44px;
+      color: var(--ink-2);
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+    }
+
+    .pn-cam__fit {
+      border-left: 1px solid rgba(255, 255, 255, 0.12);
+      font-size: 11px;
+    }
+  }
+}
+
 .pn-plane {
   position: absolute;
   top: 0;
@@ -535,10 +684,21 @@
   border: 1.5px solid rgba(255, 255, 255, 0.1);
   border-radius: 7px;
   background: rgba(15, 14, 21, 0.92);
+  cursor: pointer;
   transition:
     border-color 0.3s ease,
     background-color 0.3s ease,
     box-shadow 0.3s ease;
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--col) 60%, rgba(255, 255, 255, 0.2));
+  }
+
+  // 편집 중인 노드 — 기둥 색 테두리를 바깥에 한 겹 더.
+  &.is-selected {
+    outline: 3px solid var(--col);
+    outline-offset: 7px;
+  }
 
   &__title {
     display: flex;
@@ -646,6 +806,31 @@
   }
 }
 
+// 기둥 끝 "노드 추가" — 평면 안이라 크기는 평면 px.
+.pn-add {
+  position: absolute;
+  z-index: 1;
+  height: 44px;
+  border: 1.5px dashed color-mix(in srgb, var(--col) 45%, transparent);
+  border-radius: 7px;
+  background: transparent;
+  color: color-mix(in srgb, var(--col) 80%, #fff);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  opacity: 0.5;
+  transition:
+    opacity 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover {
+    background: color-mix(in srgb, var(--col) 10%, transparent);
+    opacity: 1;
+  }
+}
+
 .pn-out {
   position: absolute;
   z-index: 0;
@@ -747,13 +932,38 @@
 }
 
 .pn-par {
+  // 줄마다 누르면 그 특징 노드를 편집한다.
   &__row {
     display: grid;
-    grid-template-columns: u(40) minmax(0, 1fr) u(44);
+    grid-template-columns: u(70) minmax(0, 1fr) u(44);
     align-items: center;
     gap: u(8);
+    width: 100%;
     height: u(11.5);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
     font-size: u(8);
+    text-align: left;
+    cursor: pointer;
+
+    > span {
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    &:hover > span {
+      color: var(--ink);
+    }
+
+    // 이 케이스가 지나는 질문 — 이 답의 신뢰도로 게이트를 판정한다.
+    &.is-path > span {
+      color: var(--ink);
+      font-weight: 700;
+    }
 
     em {
       overflow: hidden;
@@ -776,6 +986,17 @@
     position: relative;
     height: u(4);
     background: rgba(255, 255, 255, 0.035);
+
+    // 게이트 눈금 — 막대가 이보다 짧으면 이 답으로는 보류된다.
+    &::before {
+      content: '';
+      position: absolute;
+      top: u(-2);
+      bottom: u(-2);
+      left: var(--gate);
+      width: 1px;
+      background: rgba(255, 255, 255, 0.35);
+    }
 
     i {
       position: absolute;
@@ -835,14 +1056,28 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
   min-width: 0;
   padding: 0 u(4);
   border: 1px solid var(--line);
   border-radius: u(2);
   background: rgba(255, 255, 255, 0.02);
+  color: var(--ink);
+  font-family: inherit;
   font-size: u(7.5);
   line-height: 1.15;
+  text-align: left;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  &.is-loop:not(.is-active):hover {
+    border-color: rgba(255, 255, 255, 0.28);
+  }
 
   b {
     color: var(--ink-3);
@@ -991,7 +1226,7 @@
 
 .pn-split__row {
   display: grid;
-  grid-template-columns: u(74) minmax(0, 1fr);
+  grid-template-columns: u(74) minmax(0, 1fr) u(92);
   align-items: center;
   gap: u(10);
   height: u(14);
@@ -999,6 +1234,13 @@
 
   &.is-strong span {
     font-weight: 700;
+  }
+
+  > b {
+    color: var(--ink-2);
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
   }
 }
 
@@ -1065,8 +1307,28 @@
     letter-spacing: 0.05em;
   }
 
-  span {
+  > span {
     color: var(--ink-3);
+  }
+
+  &__left {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: u(10);
+  }
+
+  &__hint {
+    min-width: 0;
+    margin-left: u(12);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 900px) {
+    &__slogan {
+      display: none;
+    }
   }
 
   &__scrub {
@@ -1075,6 +1337,16 @@
     right: 0;
     left: 0;
     height: u(5);
+    cursor: pointer;
+    touch-action: none;
+
+    // 누르기 쉽게 — 보이는 눈금보다 위아래로 넓게 잡는다.
+    &::before {
+      content: '';
+      position: absolute;
+      inset: u(-5) 0;
+    }
+
     background: repeating-linear-gradient(
       90deg,
       rgba(255, 255, 255, 0.12) 0 1px,
@@ -1089,6 +1361,364 @@
       background: var(--pn-accent);
       box-shadow: 0 0 u(6) var(--pn-accent);
     }
+  }
+}
+
+// 재생 조작 — 이전 케이스 · 재생/멈춤 · 다음 케이스.
+.pn-ctrl {
+  display: flex;
+  gap: u(4);
+
+  button {
+    display: grid;
+    place-items: center;
+    width: max(22px, u(20));
+    height: max(18px, u(16));
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: u(3);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ink-2);
+    cursor: pointer;
+
+    &:hover {
+      border-color: var(--accent-dim);
+      color: var(--ink);
+    }
+
+    &.is-main {
+      border-color: var(--accent-dim);
+      color: var(--pn-accent);
+    }
+  }
+
+  svg {
+    width: max(9px, u(8));
+    height: max(9px, u(8));
+  }
+}
+
+// ── 편집 패널 ───────────────────────────────────────────────────────────
+// 신경망 위쪽 끝부터 아래 패널까지 오른쪽을 덮는다(노트북 높이에서도 버튼이
+// 스크롤 밖으로 밀리지 않게). 실제로 쓰는 도구라 글자는 영상 단위보다 크게.
+
+.pn-insp {
+  position: absolute;
+  top: u(158);
+  right: u(8);
+  bottom: u(32);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  width: min(360px, 46%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--col);
+  border-radius: 6px;
+  background: rgba(13, 12, 18, 0.95);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--ink);
+  font-size: 12px;
+  line-height: 1.45;
+  backdrop-filter: blur(8px);
+  animation: pn-insp-in 0.18s ease-out both;
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+
+    span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    i {
+      width: 7px;
+      height: 7px;
+      background: var(--col);
+    }
+  }
+
+  &__close {
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--ink);
+    }
+  }
+
+  &__id {
+    padding: 0 12px 8px;
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+
+  &__body {
+    display: grid;
+    flex: 1;
+    align-content: start;
+    gap: 14px;
+    min-height: 0;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  &__field {
+    display: grid;
+    gap: 6px;
+  }
+
+  &__label {
+    color: var(--ink-3);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+  }
+
+  &__hint {
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 10.5px;
+
+    code {
+      color: var(--col);
+      font: inherit;
+    }
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    min-width: 0;
+    padding: 6px 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--ink);
+    font: inherit;
+    font-size: 12px;
+    outline: none;
+
+    &:focus {
+      border-color: var(--col);
+      background: rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  textarea {
+    min-height: 60px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  select {
+    cursor: pointer;
+  }
+
+  option {
+    background: #15141c;
+    color: var(--ink);
+  }
+
+  &__answer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    gap: 4px;
+
+    input:disabled {
+      opacity: 0.4;
+    }
+  }
+
+  &__kv {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) 26px 26px;
+    gap: 4px;
+  }
+
+  &__icon {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 12px;
+    cursor: pointer;
+
+    &.is-on {
+      border-color: var(--col);
+      color: var(--col);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.35;
+    }
+  }
+
+  &__inline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--ink-3);
+    font-size: 11px;
+
+    span {
+      flex: none;
+    }
+  }
+
+  &__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+
+    button {
+      padding: 3px 8px;
+      border: 1px solid color-mix(in srgb, var(--chip) 50%, transparent);
+      border-radius: 99px;
+      background: transparent;
+      color: var(--chip);
+      font: inherit;
+      font-size: 11px;
+      cursor: pointer;
+
+      &:hover {
+        background: color-mix(in srgb, var(--chip) 12%, transparent);
+      }
+    }
+  }
+
+  &__prompt {
+    max-height: 320px;
+    margin: 0;
+    padding: 10px;
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 11.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+
+  &__case {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+    border: 1px solid color-mix(in srgb, var(--case) 35%, transparent);
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--case) 5%, transparent);
+  }
+
+  &__case-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+
+    span {
+      color: var(--ink-3);
+    }
+
+    b {
+      color: var(--case);
+    }
+  }
+
+  &__onpath {
+    margin: 0;
+    color: var(--case);
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+
+  &__primary {
+    padding: 7px 10px;
+    border: 0;
+    border-radius: 4px;
+    background: var(--case);
+    color: rgba(12, 8, 14, 0.85);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover {
+      filter: brightness(1.08);
+    }
+  }
+
+  &__ghost {
+    justify-self: start;
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--ink-2);
+    font: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--ink);
+    }
+  }
+
+  &__foot {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  &__danger {
+    padding: 5px 10px;
+    border: 1px solid rgba(255, 77, 106, 0.4);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--warn);
+    font: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      background: rgba(255, 77, 106, 0.1);
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 0.35;
+    }
+  }
+}
+
+.pn.no-metrics .pn-insp {
+  top: u(74);
+}
+
+@keyframes pn-insp-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
   }
 }
 
