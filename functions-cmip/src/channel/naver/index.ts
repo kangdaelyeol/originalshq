@@ -17,6 +17,8 @@ import {
   summarizeTotal,
 } from './helper'
 import { NaverInsight } from './types'
+import * as logger from 'firebase-functions/logger'
+import { recordAdEntitiesSafely, sightingsFromNaver } from '../../ad-settings/entities'
 
 export type { NaverCredentials }
 
@@ -179,5 +181,8 @@ export const syncNaverInsightRows = async (
   credentials: NaverCredentials,
 ): Promise<{ upserted: number }> => {
   const rows = await fetchAllNaverInsightRows(dateStart, dateEnd, credentials)
-  return upsertNaverInsightRows(rows)
+  const result = await upsertNaverInsightRows(rows)
+  // 캠페인·광고그룹 목록(광고 설정 화면)도 같이 넓힌다.
+  await recordAdEntitiesSafely(sightingsFromNaver(rows), logger.warn)
+  return result
 }

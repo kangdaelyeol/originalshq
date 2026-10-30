@@ -4,12 +4,14 @@ import type { MetricKey } from '../metric-fields'
 // cmip 표 대신 보는 그래프들(기간별 성과, 광고 성과 효율)이 같이 쓰는 값.
 
 /** 채널 색 — 그래프에서 채널을 구분한다(범례·툴팁에 이름이 같이 붙는다).
- * Meta 파랑, Google 노랑, Naver 초록 — 각 브랜드 색 계열에서 어두운·밝은
+ * Meta 파랑, Google 노랑, Naver 초록, OpenAI 청록(Naver 초록과 겹치지 않게
+ * 푸른 쪽으로 옮김) — 각 브랜드 색 계열에서 어두운·밝은
  * 테마 둘 다 바탕과 구분되는 밝기로. */
 export const CHART_CHANNEL_COLOR: Record<ChannelKey, string> = {
   meta: '#4f8df9',
   google: '#f5a524',
   naver: '#2fbf71',
+  openai: '#22b8cf',
 }
 
 /** 축 눈금용 짧은 표기 — 1.2억, 3,400만, 그 아래는 그대로. */

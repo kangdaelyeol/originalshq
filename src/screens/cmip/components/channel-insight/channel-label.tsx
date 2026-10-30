@@ -13,6 +13,7 @@ const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
   meta: 'var(--glass-text)',
   google: '#4285f4',
   naver: '#03c75a',
+  openai: '#10a37f',
 }
 
 function MetaLogo() {
@@ -66,16 +67,38 @@ function NaverLogo() {
   )
 }
 
+// OpenAI는 쓸 만한 로고 파일이 없어, 브랜드 그린 원 위에 흰 "AI" 글자만 얹은
+// 단순 표식으로 대신한다. 워드마크가 아니라서 Meta처럼 옆에 이름을 붙인다.
+function OpenaiLogo() {
+  return (
+    <svg className="channel-insight__channel-logo" viewBox="0 0 24 24" aria-hidden>
+      <circle cx="12" cy="12" r="12" fill="#10a37f" />
+      <text
+        x="12"
+        y="16"
+        fill="#fff"
+        fontSize="10"
+        fontWeight="800"
+        textAnchor="middle"
+      >
+        AI
+      </text>
+    </svg>
+  )
+}
+
 const CHANNEL_LOGO: Record<ChannelKey, () => ReactElement> = {
   meta: MetaLogo,
   google: GoogleLogo,
   naver: NaverLogo,
+  openai: OpenaiLogo,
 }
 
 /** 채널 표시 하나 — 동그란 자리(카드 아바타 등)에 넣는 정사각형 표식. 구글·
  * 네이버 로고는 워드마크라 첫 글자 모양만 쓴다(구글 G, 네이버 N). */
 export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
   if (channelKey === 'meta') return <MetaLogo />
+  if (channelKey === 'openai') return <OpenaiLogo />
   if (channelKey === 'google')
     return (
       <svg
@@ -99,7 +122,7 @@ export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
   )
 }
 
-/** 채널 이름(Meta/Google/Naver)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별
+/** 채널 이름(Meta/Google/Naver/OpenAI)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별
  * 펼침 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일. Google/Naver는
  * 로고가 이미 워드마크(전체 글자)라 옆에 텍스트를 또 안 붙인다. */
 export function ChannelLabel({
@@ -116,7 +139,7 @@ export function ChannelLabel({
       style={{ color: CHANNEL_TEXT_COLOR[channelKey] }}
     >
       <Logo />
-      {channelKey === 'meta' && label}
+      {(channelKey === 'meta' || channelKey === 'openai') && label}
     </span>
   )
 }

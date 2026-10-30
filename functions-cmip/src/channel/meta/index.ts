@@ -9,6 +9,8 @@ import {
   summarizeTotal,
 } from './helper'
 import { DataSetInsight, MetaInsight } from './types'
+import * as logger from 'firebase-functions/logger'
+import { recordAdEntitiesSafely, sightingsFromMeta } from '../../ad-settings/entities'
 
 export const xTool_MAIN_ADS_ID = '763627086023164'
 export const xTool_SUB_ADS_ID = '1093841806220768'
@@ -139,7 +141,10 @@ export const syncMetaInsightRows = async (
   const taggedRows = rowsByAccount.flatMap((a) =>
     a.rows.map((row) => ({ ...row, adAccountId: a.adAccountId })),
   )
-  return upsertMetaInsightRows(taggedRows)
+  const result = await upsertMetaInsightRows(taggedRows)
+  // 캠페인·광고셋 목록(광고 설정 화면)도 같이 넓힌다.
+  await recordAdEntitiesSafely(sightingsFromMeta(taggedRows), logger.warn)
+  return result
 }
 
 /** 디버그 전용 — 실제 Graph API 원본 행을 눈으로 확인/대조하는 용도

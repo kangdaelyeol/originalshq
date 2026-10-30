@@ -28,6 +28,7 @@ interface UseExcelExportViewModelArgs {
     meta: MetricsSummary
     google: MetricsSummary
     naver: MetricsSummary
+    openai: MetricsSummary
   }
   series: ChannelSplitSeries
   campaigns: readonly ExportCampaign[]

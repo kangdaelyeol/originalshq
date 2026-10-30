@@ -247,6 +247,7 @@ export function writeTotalSheet(
     meta: MetricsSummary
     google: MetricsSummary
     naver: MetricsSummary
+    openai: MetricsSummary
   },
   series: ChannelSplitSeries,
   fields: readonly MetricField[],

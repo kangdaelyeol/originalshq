@@ -214,12 +214,14 @@ export const useChannelInsightPageViewModel = (
     meta: emptyMetrics(),
     google: emptyMetrics(),
     naver: emptyMetrics(),
+    openai: emptyMetrics(),
   }
   const excelSeries: ChannelSplitSeries = combinedInsight?.series ?? {
     combined: emptySeries(),
     meta: emptySeries(),
     google: emptySeries(),
     naver: emptySeries(),
+    openai: emptySeries(),
   }
   // 엑셀 모달을 열 때만 쓰는데 매 렌더 만들 필요는 없다 — 데이터가 바뀔 때만.
   const excelCampaigns: ExportCampaign[] = useMemo(() => {

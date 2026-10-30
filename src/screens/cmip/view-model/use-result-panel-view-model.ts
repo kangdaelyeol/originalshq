@@ -55,6 +55,7 @@ interface ResultSeries {
   meta: GroupedInsightSeries
   google: GroupedInsightSeries
   naver: GroupedInsightSeries
+  openai: GroupedInsightSeries
 }
 
 /** "전체 요약" 탭(ResultPanel) 전용 상태 — Summary 카드의 채널별 펼침, "기간별
@@ -84,6 +85,7 @@ export const useResultPanelViewModel = (
       meta: groupByMonth(series.meta.byDate),
       google: groupByMonth(series.google.byDate),
       naver: groupByMonth(series.naver.byDate),
+      openai: groupByMonth(series.openai.byDate),
     }),
     [series],
   )

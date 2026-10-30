@@ -10,6 +10,7 @@ export const CHANNEL_CHIP_COLOR: Record<ChannelKey, string> = {
   meta: '#1877f2',
   google: '#4285f4',
   naver: '#03c75a',
+  openai: '#10a37f',
 }
 
 /** 보기 단위(결과 탭) — 화면 맨 위 줄 가운데의 탭(screens/cmip/index.tsx). */

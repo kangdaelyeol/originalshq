@@ -20,6 +20,7 @@ interface ChannelBreakdown {
   meta: MetricsSummary
   google: MetricsSummary
   naver: MetricsSummary
+  openai: MetricsSummary
 }
 
 export function MetricsTable<T extends MetricsSummary>({

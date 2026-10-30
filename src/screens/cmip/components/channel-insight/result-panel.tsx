@@ -66,12 +66,14 @@ interface ResultPanelProps {
     meta: MetricsSummary
     google: MetricsSummary
     naver: MetricsSummary
+    openai: MetricsSummary
   }
   series: {
     combined: GroupedInsightSeries
     meta: GroupedInsightSeries
     google: GroupedInsightSeries
     naver: GroupedInsightSeries
+    openai: GroupedInsightSeries
   }
   /** 재조회 중(날짜 범위 변경 등)엔 이전 결과가 그대로 남아있는 동안에도 Summary/
    * 표 자리를 섹션마다 로딩 판으로 덮어서 "새로 불러오는 중"임을 보여준다. */
@@ -230,6 +232,7 @@ export function ResultPanel({
     meta: metricsForDateSubset(series.meta.byDate, match),
     google: metricsForDateSubset(series.google.byDate, match),
     naver: metricsForDateSubset(series.naver.byDate, match),
+    openai: metricsForDateSubset(series.openai.byDate, match),
   })
 
   // 그래프의 칸 — 지금 보기(일·요일·주·달)의 전체 줄에 같은 칸의 채널별 값을
@@ -514,6 +517,10 @@ export function ResultPanel({
                   ),
                   naver: metricsForDateSubset(
                     series.naver.byDate,
+                    (d) => d >= row.startDate && d <= row.endDate,
+                  ),
+                  openai: metricsForDateSubset(
+                    series.openai.byDate,
                     (d) => d >= row.startDate && d <= row.endDate,
                   ),
                 })}

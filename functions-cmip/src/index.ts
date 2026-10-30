@@ -61,6 +61,12 @@ import {
 } from './channel/naver'
 import { CUSTOMER_ID as NAVER_CUSTOMER_ID } from './channel/naver/constants'
 import {
+  getOpenaiInsightWithHistory,
+  debugFetchOpenaiConversions,
+  debugFetchOpenaiInsightRows,
+  syncOpenaiInsightRows,
+} from './channel/openai'
+import {
   getOfflineRevenue as fetchOfflineRevenue,
 } from './monday-crm'
 import {
@@ -78,6 +84,17 @@ import {
 } from './cafe24'
 import { addDays, todayISO } from './channel/utils'
 import { recordBatchRun } from './batch-log'
+import {
+  AdSettingsError,
+  backfillAdEntities as backfillAdEntitiesFromDb,
+  deleteCreativeSet,
+  deleteVersion,
+  getAdSettingsSnapshot,
+  saveCreativeSet,
+  saveGoal,
+  saveVersion,
+  validateSaveAdSettings,
+} from './ad-settings'
 
 const corsHandler = cors({ origin: true })
 
@@ -89,6 +106,7 @@ const googleClientSecret = defineSecret('GOOGLE_CLIENT_SECRET')
 const googleDeveloperToken = defineSecret('GOOGLE_DEVELOPER_TOKEN')
 const naverSecretKey = defineSecret('NAVER_SECRET_KEY')
 const naverAccessLicense = defineSecret('NAVER_ACCESS_LICENSE')
+const openaiAdsApiKey = defineSecret('OPENAI_ADS_API_KEY')
 const cafe24ClientId = defineSecret('CAFE24_CLIENT_ID')
 const cafe24SecretKey = defineSecret('CAFE24_SECRET_KEY')
 const cafe24MainId = 'hiswill00'
@@ -1409,6 +1427,191 @@ export const syncNaverInsightsScheduled = onSchedule(
 )
 
 /**
+ * OpenAI(ChatGPT) Ads 인사이트 조회 엔드포인트 — getNaverInsight와 같은 모양
+ * (total/byDate/byDayOfWeek/byGroupedWeek/byCampaign)을 반환한다. API 키 하나가
+ * 광고 계정 하나에 묶여 있어 dateStart/dateEnd만 받으면 된다.
+ */
+export const getOpenaiInsight = onRequest(
+  { secrets: [openaiAdsApiKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        res.status(405).send({ error: 'Method Not Allowed' })
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const openaiRes = await getOpenaiInsightWithHistory(dateStart, dateEnd, {
+          apiKey: openaiAdsApiKey.value(),
+        })
+        res.status(200).send(openaiRes)
+      } catch (err) {
+        sendError(
+          res,
+          500,
+          err instanceof Error ? err.message : 'OpenAI 인사이트 조회 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * 디버그 전용 — 가공까지 마친(집계는 안 된) 인사이트 행 배열을 그대로
+ * 반환한다(debugNaverInsightRowsRaw와 같은 목적 — Ads Manager 숫자와 대조).
+ */
+export const debugOpenaiInsightRowsRaw = onRequest(
+  { secrets: [openaiAdsApiKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        sendError(res, 405, 'Method Not Allowed')
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const raw = await debugFetchOpenaiInsightRows(dateStart, dateEnd, {
+          apiKey: openaiAdsApiKey.value(),
+        })
+        res.status(200).send(raw)
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+/** 디버그 전용(조회만) — OpenAI 전환 이벤트 설정·이벤트별 전환 건수
+ * (channel/openai/index.ts의 debugFetchOpenaiConversions 참고). */
+export const debugOpenaiConversions = onRequest(
+  { secrets: [openaiAdsApiKey] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        sendError(res, 405, 'Method Not Allowed')
+        return
+      }
+
+      const validationRes = validateGetInsightBody(req.query)
+      if (!validationRes.ok) {
+        sendError(res, 400, validationRes.error)
+        return
+      }
+      const { dateStart, dateEnd } = validationRes.data
+
+      try {
+        const raw = await debugFetchOpenaiConversions(dateStart, dateEnd, {
+          apiKey: openaiAdsApiKey.value(),
+        })
+        res.status(200).send(raw)
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
+// ────────────────────────────────
+// OpenAI 인사이트 — 동기화 + 조회. Naver와 같은 이유로 삭제 없이 upsert만
+// 한다(channel/openai/firestore.ts 참고).
+// ────────────────────────────────
+
+// 롤링 재동기화 기본 범위 — 전환이 하루 이상 늦게 확정되므로(공식 문서)
+// LIVE_WINDOW_DAYS(7일)보다 여유 있게 잡는다.
+const OPENAI_SYNC_WINDOW_DAYS = 14
+
+/**
+ * OpenAI 인사이트를 지정한 기간만큼 라이브로 가져와
+ * Firestore(openaiInsightDaily)에 upsert한다. body에 startDate/endDate를 안
+ * 주면 기본으로 "최근 14일"을 동기화한다.
+ */
+export const syncOpenaiInsights = onRequest(
+  { secrets: [openaiAdsApiKey], timeoutSeconds: 300 },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      const { startDate, endDate } = (request.body ?? {}) as {
+        startDate?: string
+        endDate?: string
+      }
+      const dateEnd = endDate || todayISO()
+      const dateStart = startDate || addDays(dateEnd, -OPENAI_SYNC_WINDOW_DAYS)
+
+      try {
+        const result = await syncOpenaiInsightRows(dateStart, dateEnd, {
+          apiKey: openaiAdsApiKey.value(),
+        })
+        response.status(200).send(result)
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : 'OpenAI 인사이트 동기화 실패',
+        )
+      }
+    })
+  },
+)
+
+/**
+ * OpenAI 인사이트를 매일 09·11·13·15·17·22시(KST) 최근 14일 롤링 재동기화한다 —
+ * syncNaverInsightsScheduled와 같은 패턴.
+ */
+export const syncOpenaiInsightsScheduled = onSchedule(
+  {
+    schedule: '0 9,11,13,15,17,22 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: [openaiAdsApiKey],
+    timeoutSeconds: 300,
+  },
+  async (event) => {
+    const dateEnd = todayISO()
+    const dateStart = addDays(dateEnd, -OPENAI_SYNC_WINDOW_DAYS)
+    try {
+      const result = await recordBatchRun(
+        db,
+        {
+          job: 'openai-insights',
+          codebase: 'cmip',
+          trigger: 'scheduled',
+          scheduledAt: event.scheduleTime,
+          params: { dateStart, dateEnd },
+        },
+        () =>
+          syncOpenaiInsightRows(dateStart, dateEnd, {
+            apiKey: openaiAdsApiKey.value(),
+          }),
+      )
+      logger.info('OpenAI 인사이트 자동 동기화 성공:', result)
+    } catch (err) {
+      logger.error(
+        'OpenAI 인사이트 자동 동기화 실패:',
+        err instanceof Error ? err.message : err,
+      )
+    }
+  },
+)
+
+/**
  * 오프라인 매출 조회 — Meta/Naver 인사이트(getMetaInsight/getNaverInsight)와
  * 같은 GET + dateStart/dateEnd 쿼리 방식. offlineSales 컬렉션은 functions-
  * xtool이 Monday 결제 보드를 동기화할 때마다 채운다(결제 보드 해석은 그쪽
@@ -1865,3 +2068,120 @@ export const deleteCafe24Adjustment = onRequest((request, response) => {
     }
   })
 })
+
+// ────────────────────────────────
+// 광고 설정 — 캠페인·광고셋마다 전환 목표·소비 설정 비용·소재 셋 등을 손으로
+// 등록한다(ad-settings/types.ts 주석 참고). 설정은 적용 시작일마다 한 장씩
+// 쌓여 바꾸기 전/후를 나눠 볼 수 있고, 앞날로 넣으면 그 날부터 적용(예약)된다.
+// ────────────────────────────────
+
+/** 목록·전환 목표·소재 셋·설정 기록 전부(GET). */
+export const getAdSettings = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'GET') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    try {
+      response.status(200).send(await getAdSettingsSnapshot())
+    } catch (err) {
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '광고 설정 조회 실패',
+      )
+    }
+  })
+})
+
+/** 저장·삭제(POST) — { action: saveVersion | deleteVersion | saveGoal |
+ * saveCreativeSet | deleteCreativeSet, ... }. */
+export const saveAdSettings = onRequest((request, response) => {
+  corsHandler(request, response, async () => {
+    if (request.method !== 'POST') {
+      sendError(response, 405, 'Method Not Allowed')
+      return
+    }
+    const validation = validateSaveAdSettings(request.body)
+    if (!validation.ok) {
+      sendError(response, 400, validation.error)
+      return
+    }
+    const req = validation.data
+    try {
+      switch (req.action) {
+        case 'saveVersion': {
+          const version = await saveVersion(req.version)
+          logger.info('광고 설정 저장:', version.id)
+          response.status(200).send({ version })
+          return
+        }
+        case 'deleteVersion': {
+          if (!(await deleteVersion(req.id))) {
+            sendError(response, 404, '설정 기록을 찾을 수 없습니다')
+            return
+          }
+          logger.info('광고 설정 삭제:', req.id)
+          response.status(200).send({ id: req.id, deleted: true })
+          return
+        }
+        case 'saveGoal': {
+          const goal = await saveGoal(req.key, req.goal)
+          logger.info('전환 목표 저장:', goal.key)
+          response.status(200).send({ goal })
+          return
+        }
+        case 'saveCreativeSet': {
+          const set = await saveCreativeSet(req.id, req.set)
+          logger.info('소재 셋 저장:', set.id)
+          response.status(200).send({ set })
+          return
+        }
+        case 'deleteCreativeSet': {
+          if (!(await deleteCreativeSet(req.id))) {
+            sendError(response, 404, '소재 셋을 찾을 수 없습니다')
+            return
+          }
+          logger.info('소재 셋 삭제:', req.id)
+          response.status(200).send({ id: req.id, deleted: true })
+          return
+        }
+      }
+    } catch (err) {
+      if (err instanceof AdSettingsError) {
+        sendError(response, err.status, err.message)
+        return
+      }
+      sendError(
+        response,
+        500,
+        err instanceof Error ? err.message : '광고 설정 저장 실패',
+      )
+    }
+  })
+})
+
+/** 이미 쌓인 일별 행 전부로 캠페인·광고셋 목록을 다시 만든다(POST) — 배포
+ * 직후 한 번(이 기능 전에 동기화된 기간), 그리고 목록이 어긋났을 때. */
+export const backfillAdEntities = onRequest(
+  { timeoutSeconds: 540, memory: '1GiB' },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      try {
+        const result = await backfillAdEntitiesFromDb()
+        logger.info('adEntities 다시 만들기:', result)
+        response.status(200).send(result)
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '목록 다시 만들기 실패',
+        )
+      }
+    })
+  },
+)

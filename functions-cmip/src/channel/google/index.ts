@@ -12,6 +12,12 @@ import {
   upsertGoogleCampaignInsightRows,
 } from './firestore'
 import { GoogleAdGroupInsightRow, GoogleCampaignInsightRow } from './types'
+import * as logger from 'firebase-functions/logger'
+import {
+  recordAdEntitiesSafely,
+  sightingsFromGoogleAdGroups,
+  sightingsFromGoogleCampaigns,
+} from '../../ad-settings/entities'
 
 // 지금 실제로 연동된 Google Ads 계정은 하나뿐이라(프론트
 // google-insight-client.ts의 GOOGLE_ADS_BRAND_ID 등과 동일한 값) 동기화
@@ -266,7 +272,10 @@ export async function syncGoogleCampaignInsightRows(
     refreshToken,
     loginCustomerId,
   )
-  return upsertGoogleCampaignInsightRows(rows)
+  const result = await upsertGoogleCampaignInsightRows(rows)
+  // 캠페인 목록(광고 설정 화면)도 같이 넓힌다.
+  await recordAdEntitiesSafely(sightingsFromGoogleCampaigns(rows), logger.warn)
+  return result
 }
 
 /** 수동/스케줄 동기화 공용(adGroup). */
@@ -291,7 +300,10 @@ export async function syncGoogleAdGroupInsightRows(
     refreshToken,
     loginCustomerId,
   )
-  return upsertGoogleAdGroupInsightRows(rows)
+  const result = await upsertGoogleAdGroupInsightRows(rows)
+  // 캠페인·광고그룹 목록(광고 설정 화면)도 같이 넓힌다.
+  await recordAdEntitiesSafely(sightingsFromGoogleAdGroups(rows), logger.warn)
+  return result
 }
 
 /** 디버그 전용 — 실제 Google Ads API 원본(가공은 됐지만 배치되지 않은) 행을
