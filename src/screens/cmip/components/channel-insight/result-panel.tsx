@@ -30,31 +30,21 @@ const PERIOD_VIEW_LABEL = Object.fromEntries(
   PERIOD_VIEWS.map((each) => [each.value, each.label]),
 ) as Record<PeriodView, string>
 /** 최초 조회 중(아직 combinedInsight 자체가 없어 ResultPanel이 렌더되지 않는
- * 시점)에 그 자리를 대신하는 틀 — ResultPanel과 같은 섹션(Summary·기간별 성과·
- * 비교분석)에 섹션마다 로딩 하나. */
-export function ResultLoading({ periodLabel }: { periodLabel: string }) {
+ * 시점)에 그 자리를 대신하는 틀 — ResultPanel과 같은 섹션 카드 세 장(Summary·
+ * 기간별 성과·비교분석)에 로딩만 하나씩(제목·버튼은 다 받은 뒤에 나타난다). */
+export function ResultLoading() {
   return (
     <div className="channel-insight__result">
       <section className="channel-insight__summary">
-        <div className="channel-insight__summary-head">
-          <span className="channel-insight__summary-label">Summary</span>
-          <span className="channel-insight__summary-period">{periodLabel}</span>
-        </div>
         <LoadingPanel label="요약을 불러오는 중" minHeight={SUMMARY_LOADING} />
       </section>
-
       <section className="channel-insight__section">
-        <h3 className="channel-insight__section-title">기간별 성과</h3>
         <LoadingPanel
           label="기간별 성과를 불러오는 중"
           minHeight={TABLE_LOADING}
         />
       </section>
-
       <section className="channel-insight__section">
-        <h3 className="channel-insight__section-title">
-          이전 일정 vs 지정 일정 비교분석
-        </h3>
         <LoadingPanel
           label="비교분석을 불러오는 중"
           minHeight={COMPARE_LOADING}
@@ -220,11 +210,9 @@ export function ResultPanel({
 
   return (
     <div className="channel-insight__result">
+      {/* 섹션마다 — 불러오는 동안은 카드에 로딩만, 다 받으면 제목·버튼까지
+          섹션 전체가 그 높이에서 자라며 나타난다(AutoHeight). */}
       <section className="channel-insight__summary">
-        <div className="channel-insight__summary-head">
-          <span className="channel-insight__summary-label">Summary</span>
-          <span className="channel-insight__summary-period">{periodLabel}</span>
-        </div>
         <AutoHeight className="channel-insight__section-body">
           {loading ? (
             <LoadingPanel
@@ -233,6 +221,12 @@ export function ResultPanel({
             />
           ) : (
             <div>
+              <div className="channel-insight__summary-head">
+                <span className="channel-insight__summary-label">Summary</span>
+                <span className="channel-insight__summary-period">
+                  {periodLabel}
+                </span>
+              </div>
               <KpiGrid metrics={total.combined} />
 
               {applicableChannels.length > 0 && (
@@ -278,95 +272,111 @@ export function ResultPanel({
           대비 표시·지표 컬럼·채널 필터를 따로 기억한다. MetricsTable은 보기가
           바뀌면 새로 그려 정렬·펼침이 섞이지 않게 한다(key). */}
       <section className="channel-insight__section">
-        <PeriodSectionHead
-          view={periodView}
-          onViewChange={setPeriodView}
-          active={compareOn[periodView]}
-          onToggle={() => toggleCompare(periodView)}
-        />
         <AutoHeight className="channel-insight__section-body">
           {loading ? (
             <LoadingPanel
               label="기간별 성과를 불러오는 중"
               minHeight={TABLE_LOADING}
             />
-          ) : periodView === 'byDate' ? (
-            <MetricsTable<DateSummary>
-              key="byDate"
-              rows={
-                channelFilter.byDate === 'all'
-                  ? series.combined.byDate
-                  : series[channelFilter.byDate].byDate
-              }
-              rowKey={(row) => row.date}
-              headLabel="날짜"
-              headValue={(row) => row.date}
-              channels={
-                channelFilter.byDate === 'all' ? applicableChannels : []
-              }
-              showCompare={compareOn.byDate}
-              visibleKeys={visibleMetrics.byDate}
-              onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
-              channelFilter={channelFilter.byDate}
-              onChannelFilterChange={(v) => setChannelFilterFor('byDate', v)}
-              getChannelBreakdown={(row) => breakdownOf((d) => d === row.date)}
-            />
-          ) : periodView === 'byDayOfWeek' ? (
-            <MetricsTable<DayOfWeekSummary>
-              key="byDayOfWeek"
-              labelDefaultDir="asc"
-              rows={
-                channelFilter.byDayOfWeek === 'all'
-                  ? series.combined.byDayOfWeek
-                  : series[channelFilter.byDayOfWeek].byDayOfWeek
-              }
-              rowKey={(row) => row.dayOfWeek}
-              headLabel="요일"
-              headValue={(row) => row.dayOfWeek}
-              channels={
-                channelFilter.byDayOfWeek === 'all' ? applicableChannels : []
-              }
-              showCompare={compareOn.byDayOfWeek}
-              visibleKeys={visibleMetrics.byDayOfWeek}
-              onToggleMetric={(key) => toggleMetricVisible('byDayOfWeek', key)}
-              channelFilter={channelFilter.byDayOfWeek}
-              onChannelFilterChange={(v) =>
-                setChannelFilterFor('byDayOfWeek', v)
-              }
-              getChannelBreakdown={(row) =>
-                breakdownOf((d) => weekdayLabelOf(d) === row.dayOfWeek)
-              }
-            />
           ) : (
-            // 주차별·월별 — 같은 모양(기간 이름 + 시작·끝 날짜)이라 한 표로.
-            <MetricsTable<WeekSummary>
-              key={periodView}
-              rows={
-                periodView === 'byGroupedWeek'
-                  ? channelFilter.byGroupedWeek === 'all'
-                    ? series.combined.byGroupedWeek
-                    : series[channelFilter.byGroupedWeek].byGroupedWeek
-                  : byMonth[
-                      channelFilter.byMonth === 'all'
-                        ? 'combined'
-                        : channelFilter.byMonth
-                    ]
-              }
-              rowKey={(row) => row.period}
-              headLabel={periodView === 'byMonth' ? '월' : '기간'}
-              headValue={(row) => row.period}
-              channels={
-                channelFilter[periodView] === 'all' ? applicableChannels : []
-              }
-              showCompare={compareOn[periodView]}
-              visibleKeys={visibleMetrics[periodView]}
-              onToggleMetric={(key) => toggleMetricVisible(periodView, key)}
-              channelFilter={channelFilter[periodView]}
-              onChannelFilterChange={(v) => setChannelFilterFor(periodView, v)}
-              getChannelBreakdown={(row) =>
-                breakdownOf((d) => d >= row.startDate && d <= row.endDate)
-              }
-            />
+            <div className="channel-insight__section-inner">
+              <PeriodSectionHead
+                view={periodView}
+                onViewChange={setPeriodView}
+                active={compareOn[periodView]}
+                onToggle={() => toggleCompare(periodView)}
+              />
+              {periodView === 'byDate' ? (
+                <MetricsTable<DateSummary>
+                  key="byDate"
+                  rows={
+                    channelFilter.byDate === 'all'
+                      ? series.combined.byDate
+                      : series[channelFilter.byDate].byDate
+                  }
+                  rowKey={(row) => row.date}
+                  headLabel="날짜"
+                  headValue={(row) => row.date}
+                  channels={
+                    channelFilter.byDate === 'all' ? applicableChannels : []
+                  }
+                  showCompare={compareOn.byDate}
+                  visibleKeys={visibleMetrics.byDate}
+                  onToggleMetric={(key) => toggleMetricVisible('byDate', key)}
+                  channelFilter={channelFilter.byDate}
+                  onChannelFilterChange={(v) =>
+                    setChannelFilterFor('byDate', v)
+                  }
+                  getChannelBreakdown={(row) =>
+                    breakdownOf((d) => d === row.date)
+                  }
+                />
+              ) : periodView === 'byDayOfWeek' ? (
+                <MetricsTable<DayOfWeekSummary>
+                  key="byDayOfWeek"
+                  labelDefaultDir="asc"
+                  rows={
+                    channelFilter.byDayOfWeek === 'all'
+                      ? series.combined.byDayOfWeek
+                      : series[channelFilter.byDayOfWeek].byDayOfWeek
+                  }
+                  rowKey={(row) => row.dayOfWeek}
+                  headLabel="요일"
+                  headValue={(row) => row.dayOfWeek}
+                  channels={
+                    channelFilter.byDayOfWeek === 'all'
+                      ? applicableChannels
+                      : []
+                  }
+                  showCompare={compareOn.byDayOfWeek}
+                  visibleKeys={visibleMetrics.byDayOfWeek}
+                  onToggleMetric={(key) =>
+                    toggleMetricVisible('byDayOfWeek', key)
+                  }
+                  channelFilter={channelFilter.byDayOfWeek}
+                  onChannelFilterChange={(v) =>
+                    setChannelFilterFor('byDayOfWeek', v)
+                  }
+                  getChannelBreakdown={(row) =>
+                    breakdownOf((d) => weekdayLabelOf(d) === row.dayOfWeek)
+                  }
+                />
+              ) : (
+                // 주차별·월별 — 같은 모양(기간 이름 + 시작·끝 날짜)이라 한 표로.
+                <MetricsTable<WeekSummary>
+                  key={periodView}
+                  rows={
+                    periodView === 'byGroupedWeek'
+                      ? channelFilter.byGroupedWeek === 'all'
+                        ? series.combined.byGroupedWeek
+                        : series[channelFilter.byGroupedWeek].byGroupedWeek
+                      : byMonth[
+                          channelFilter.byMonth === 'all'
+                            ? 'combined'
+                            : channelFilter.byMonth
+                        ]
+                  }
+                  rowKey={(row) => row.period}
+                  headLabel={periodView === 'byMonth' ? '월' : '기간'}
+                  headValue={(row) => row.period}
+                  channels={
+                    channelFilter[periodView] === 'all'
+                      ? applicableChannels
+                      : []
+                  }
+                  showCompare={compareOn[periodView]}
+                  visibleKeys={visibleMetrics[periodView]}
+                  onToggleMetric={(key) => toggleMetricVisible(periodView, key)}
+                  channelFilter={channelFilter[periodView]}
+                  onChannelFilterChange={(v) =>
+                    setChannelFilterFor(periodView, v)
+                  }
+                  getChannelBreakdown={(row) =>
+                    breakdownOf((d) => d >= row.startDate && d <= row.endDate)
+                  }
+                />
+              )}
+            </div>
           )}
         </AutoHeight>
       </section>
@@ -375,13 +385,6 @@ export function ResultPanel({
           bucketSize일씩 묶는다(자세한 규칙은 groupByCustomPeriod 주석 참고).
           위 세 표와 달리 구간 크기를 사용자가 직접 정한다. */}
       <section className="channel-insight__section">
-        <CustomPeriodSectionHead
-          title="이전 일정 vs 지정 일정 비교분석"
-          bucketSize={bucketSize}
-          onBucketSizeChange={setBucketSize}
-          active={compareOn.byCustomPeriod}
-          onToggle={() => toggleCompare('byCustomPeriod')}
-        />
         <AutoHeight className="channel-insight__section-body">
           {loading ? (
             <LoadingPanel
@@ -389,38 +392,49 @@ export function ResultPanel({
               minHeight={COMPARE_LOADING}
             />
           ) : (
-            <MetricsTable<WeekSummary>
-              rows={customPeriodRows}
-              rowKey={(row) => row.period}
-              headLabel="기간"
-              headValue={(row) => row.period}
-              channels={
-                channelFilter.byCustomPeriod === 'all' ? applicableChannels : []
-              }
-              showCompare={compareOn.byCustomPeriod}
-              visibleKeys={visibleMetrics.byCustomPeriod}
-              onToggleMetric={(key) =>
-                toggleMetricVisible('byCustomPeriod', key)
-              }
-              channelFilter={channelFilter.byCustomPeriod}
-              onChannelFilterChange={(v) =>
-                setChannelFilterFor('byCustomPeriod', v)
-              }
-              getChannelBreakdown={(row) => ({
-                meta: metricsForDateSubset(
-                  series.meta.byDate,
-                  (d) => d >= row.startDate && d <= row.endDate,
-                ),
-                google: metricsForDateSubset(
-                  series.google.byDate,
-                  (d) => d >= row.startDate && d <= row.endDate,
-                ),
-                naver: metricsForDateSubset(
-                  series.naver.byDate,
-                  (d) => d >= row.startDate && d <= row.endDate,
-                ),
-              })}
-            />
+            <div className="channel-insight__section-inner">
+              <CustomPeriodSectionHead
+                title="이전 일정 vs 지정 일정 비교분석"
+                bucketSize={bucketSize}
+                onBucketSizeChange={setBucketSize}
+                active={compareOn.byCustomPeriod}
+                onToggle={() => toggleCompare('byCustomPeriod')}
+              />
+              <MetricsTable<WeekSummary>
+                rows={customPeriodRows}
+                rowKey={(row) => row.period}
+                headLabel="기간"
+                headValue={(row) => row.period}
+                channels={
+                  channelFilter.byCustomPeriod === 'all'
+                    ? applicableChannels
+                    : []
+                }
+                showCompare={compareOn.byCustomPeriod}
+                visibleKeys={visibleMetrics.byCustomPeriod}
+                onToggleMetric={(key) =>
+                  toggleMetricVisible('byCustomPeriod', key)
+                }
+                channelFilter={channelFilter.byCustomPeriod}
+                onChannelFilterChange={(v) =>
+                  setChannelFilterFor('byCustomPeriod', v)
+                }
+                getChannelBreakdown={(row) => ({
+                  meta: metricsForDateSubset(
+                    series.meta.byDate,
+                    (d) => d >= row.startDate && d <= row.endDate,
+                  ),
+                  google: metricsForDateSubset(
+                    series.google.byDate,
+                    (d) => d >= row.startDate && d <= row.endDate,
+                  ),
+                  naver: metricsForDateSubset(
+                    series.naver.byDate,
+                    (d) => d >= row.startDate && d <= row.endDate,
+                  ),
+                })}
+              />
+            </div>
           )}
         </AutoHeight>
       </section>

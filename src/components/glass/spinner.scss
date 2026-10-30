@@ -36,7 +36,7 @@
   }
 }
 
-// 섹션 자리의 로딩 판 — 가운데 로딩 + 안내. 잠깐 늦게 나타난다(빠른 조회에서
+// 섹션 자리의 로딩 판 — 가운데 로딩 하나. 잠깐 늦게 나타난다(빠른 조회에서
 // 깜빡이지 않게).
 .glass_loading {
   box-sizing: border-box;
@@ -44,12 +44,6 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
   width: 100%;
   animation: glass_fade 0.3s ease 0.15s backwards;
-}
-
-.glass_loading_label {
-  font-size: 12.5px;
-  color: $text-3;
 }

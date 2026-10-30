@@ -280,109 +280,111 @@ export const GaTracking = ({ state, actions }: GaTrackingProps) => {
                   sub="Monday 동기화 직후 자동 · 당일 이벤트는 다음 날"
                 />
               </div>
+              {/* 불러오는 동안은 카드에 로딩만 → 다 받으면 제목·설명·표가 그
+                  높이에서 자라며 흐릿하게 떠오른다. */}
               <section className="stats_card">
-                <h2>GA4 이벤트로 본 문의자</h2>
-                <p className="stats_desc">
-                  상담 보드의 GA ClientId와 GA4 BigQuery의 사용자 id가 같은
-                  이벤트를 모았습니다. 줄을 누르면 그 사람의 이벤트가 시간순으로
-                  모달에 뜹니다. 이벤트는 Monday 동기화(매일
-                  09·11·13·15·17·22시) 직후 자동으로 수집되고, GA4 내보내기가
-                  일별이라 당일 이벤트는 다음 날 들어옵니다.
-                  {status !== 'ready'
-                    ? ''
-                    : collectedAt
-                      ? ` 마지막 수집 ${formatTime(collectedAt)}`
-                      : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
-                  {lastResult &&
-                    ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
-                </p>
-                {collectError && (
-                  <p className="ga_tracking_error">
-                    GA4 이벤트 수집에 실패했습니다 — {collectError}
-                  </p>
-                )}
-                {/* 불러오는 동안은 로딩 판, 다 받으면 그 높이에서 표가 자라며
-                    나타난다. */}
                 <AutoHeight>
                   {status !== 'ready' ? (
                     <LoadingPanel
                       label="오기입 추적 데이터를 불러오는 중"
                       minHeight={420}
                     />
-                  ) : rows.length === 0 ? (
-                    <p className="ga_tracking_empty">
-                      해당하는 상담이 없습니다.
-                    </p>
                   ) : (
-                    <div className="ga_tracking_scroll glass_reveal">
-                      <table className="stats_table ga_tracking_table">
-                        <thead>
-                          <tr>
-                            <th>접수일</th>
-                            <th>보드</th>
-                            <th>이름</th>
-                            <th>입력한 번호</th>
-                            <th>상태</th>
-                            <th>GA ClientId</th>
-                            <th>이벤트</th>
-                            <th>방문</th>
-                            <th>첫 유입</th>
-                            <th>기기</th>
-                            <th>위치</th>
-                            <th>마지막 활동</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rows.map((row) => {
-                            const { consultation } = row
-                            return (
-                              <tr
-                                key={consultation.itemId}
-                                className="ga_tracking_row"
-                                onClick={() =>
-                                  actions.openRow(consultation.itemId)
-                                }
-                              >
-                                <td>{consultation.receivedAt ?? '-'}</td>
-                                <td>{consultation.boardName}</td>
-                                <td>
-                                  {consultation.url ? (
-                                    <a
-                                      href={consultation.url}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {consultation.name}
-                                    </a>
-                                  ) : (
-                                    consultation.name
-                                  )}
-                                </td>
-                                <td>{consultation.phoneRaw ?? '-'}</td>
-                                <td
-                                  className={
-                                    consultation.misentry
-                                      ? 'ga_tracking_misentry'
-                                      : undefined
-                                  }
-                                >
-                                  {consultation.status ?? '-'}
-                                </td>
-                                <td title={consultation.gaClientId}>
-                                  {shortClientId(consultation.gaClientId)}
-                                </td>
-                                <td>{row.events.length}</td>
-                                <td>{row.sessionCount}</td>
-                                <td>{row.firstTouch ?? '-'}</td>
-                                <td>{row.device ?? '-'}</td>
-                                <td>{row.location ?? '-'}</td>
-                                <td>{formatTime(row.lastAt)}</td>
+                    <div className="glass_reveal">
+                      <h2>GA4 이벤트로 본 문의자</h2>
+                      <p className="stats_desc">
+                        상담 보드의 GA ClientId와 GA4 BigQuery의 사용자 id가
+                        같은 이벤트를 모았습니다. 줄을 누르면 그 사람의 이벤트가
+                        시간순으로 모달에 뜹니다. 이벤트는 Monday 동기화(매일
+                        09·11·13·15·17·22시) 직후 자동으로 수집되고, GA4
+                        내보내기가 일별이라 당일 이벤트는 다음 날 들어옵니다.
+                        {collectedAt
+                          ? ` 마지막 수집 ${formatTime(collectedAt)}`
+                          : ' 아직 수집한 적이 없습니다 — "지금 수집"을 눌러 주세요.'}
+                        {lastResult &&
+                          ` · 이번 수집에서 새 id ${lastResult.newClientIds}개, 갱신 ${lastResult.writtenDocs}명, 읽은 데이터 ${(lastResult.bytesProcessed / 1024 ** 2).toFixed(1)}MB`}
+                      </p>
+                      {collectError && (
+                        <p className="ga_tracking_error">
+                          GA4 이벤트 수집에 실패했습니다 — {collectError}
+                        </p>
+                      )}
+                      {rows.length === 0 ? (
+                        <p className="ga_tracking_empty">
+                          해당하는 상담이 없습니다.
+                        </p>
+                      ) : (
+                        <div className="ga_tracking_scroll">
+                          <table className="stats_table ga_tracking_table">
+                            <thead>
+                              <tr>
+                                <th>접수일</th>
+                                <th>보드</th>
+                                <th>이름</th>
+                                <th>입력한 번호</th>
+                                <th>상태</th>
+                                <th>GA ClientId</th>
+                                <th>이벤트</th>
+                                <th>방문</th>
+                                <th>첫 유입</th>
+                                <th>기기</th>
+                                <th>위치</th>
+                                <th>마지막 활동</th>
                               </tr>
-                            )
-                          })}
-                        </tbody>
-                      </table>
+                            </thead>
+                            <tbody>
+                              {rows.map((row) => {
+                                const { consultation } = row
+                                return (
+                                  <tr
+                                    key={consultation.itemId}
+                                    className="ga_tracking_row"
+                                    onClick={() =>
+                                      actions.openRow(consultation.itemId)
+                                    }
+                                  >
+                                    <td>{consultation.receivedAt ?? '-'}</td>
+                                    <td>{consultation.boardName}</td>
+                                    <td>
+                                      {consultation.url ? (
+                                        <a
+                                          href={consultation.url}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          {consultation.name}
+                                        </a>
+                                      ) : (
+                                        consultation.name
+                                      )}
+                                    </td>
+                                    <td>{consultation.phoneRaw ?? '-'}</td>
+                                    <td
+                                      className={
+                                        consultation.misentry
+                                          ? 'ga_tracking_misentry'
+                                          : undefined
+                                      }
+                                    >
+                                      {consultation.status ?? '-'}
+                                    </td>
+                                    <td title={consultation.gaClientId}>
+                                      {shortClientId(consultation.gaClientId)}
+                                    </td>
+                                    <td>{row.events.length}</td>
+                                    <td>{row.sessionCount}</td>
+                                    <td>{row.firstTouch ?? '-'}</td>
+                                    <td>{row.device ?? '-'}</td>
+                                    <td>{row.location ?? '-'}</td>
+                                    <td>{formatTime(row.lastAt)}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                 </AutoHeight>

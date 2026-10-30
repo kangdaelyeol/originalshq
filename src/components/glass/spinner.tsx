@@ -30,7 +30,8 @@ export const Spinner = ({
 )
 
 /**
- * 섹션 하나가 불러오는 중일 때 그 자리에 두는 판 — 가운데 Spinner와 짧은 안내.
+ * 섹션 하나가 불러오는 중일 때 그 자리에 두는 판 — 가운데 Spinner 하나(글자
+ * 안내는 화면에 쓰지 않고, label은 읽어 주는 이름으로만 쓴다).
  * 스켈레톤 대신 큰 섹션(표·카드·탭 내용)마다 하나씩 둔다. 다 받으면 AutoHeight로
  * 감싼 자리가 내용 높이로 부드럽게 자라고, 내용은 glass_reveal로 흐릿하게
  * 떠오른다.
@@ -42,6 +43,7 @@ export const LoadingPanel = ({
   minHeight = 200,
   className,
 }: {
+  /** 읽어 주는 이름(화면에는 안 보인다). */
   label?: string
   /** 자리 높이(px) — 내용이 올 자리를 대강 잡아 둔다. */
   minHeight?: number
@@ -53,8 +55,5 @@ export const LoadingPanel = ({
     aria-busy="true"
   >
     <Spinner label={label} />
-    <span className="glass_loading_label" aria-hidden="true">
-      {label}
-    </span>
   </div>
 )

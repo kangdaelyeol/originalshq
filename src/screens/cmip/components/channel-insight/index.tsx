@@ -213,7 +213,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
         {loading &&
           !combinedInsight &&
           (resultTab === 'total' ? (
-            <ResultLoading periodLabel={periodLabel} />
+            <ResultLoading />
           ) : (
             <TabContent>
               <TabLoading />

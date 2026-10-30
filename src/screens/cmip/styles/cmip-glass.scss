@@ -431,6 +431,17 @@
 .cmip .channel-insight__section-body > div > :not(.glass_loading) {
   @include glass.enter;
 }
+// 섹션 몸통 — 넓은 표가 섹션 폭을 밀어내지 않게(표 안에서만 가로 스크롤).
+.cmip .channel-insight__section-body,
+.cmip .channel-insight__section-inner {
+  min-width: 0;
+}
+// 머리(제목·버튼)와 표 — 섹션 카드의 세로 간격 그대로.
+.cmip .channel-insight__section-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 
 // 다 받은 화면 — 탭 내용이 흐릿하게 떠올라 선명해진다.
 .cmip .channel-insight__tab-content > *,
