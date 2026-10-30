@@ -68,13 +68,16 @@ const MARK_PITCH = 0.18
 
 const FONT_FAMILY = '"Pretendard Variable", Pretendard, "Arial Black", sans-serif'
 const FONT = `900 200px ${FONT_FAMILY}`
-// 부제 — 워드마크의 넓은 대문자 느낌에 맞춰 자간을 벌린 굵은 글꼴(작아져도 획이 남게 800).
-const SUBTITLE_FONT = `800 120px ${FONT_FAMILY}`
-const SUBTITLE_TRACKING = 0.36
+// 부제 — 워드마크의 넓은 대문자 느낌에 맞춰 자간을 벌린 글꼴. 카드 위에서는 글자 높이가 15~18px
+// 정도라, 너무 굵으면(800) M처럼 획이 많은 글자의 틈이 입자로 메워져 뭉개진다 — 700으로 틈을 살린다.
+const SUBTITLE_FONT = `700 120px ${FONT_FAMILY}`
+const SUBTITLE_TRACKING = 0.3
 // 부제 폭(로고 폭 대비)과 로고와의 간격(로고 폭 대비), 입자 몫(전체 대비).
-const SUBTITLE_WIDTH = 0.48
+const SUBTITLE_WIDTH = 0.6
 const SUBTITLE_GAP = 0.05
-const SUBTITLE_SHARE = 0.24
+const SUBTITLE_SHARE = 0.28
+// 부제 입자 크기 배수 — 작은 글자는 입자도 작아야 획이 서로 붙지 않는다.
+const SUBTITLE_PARTICLE = 0.72
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t
@@ -270,8 +273,9 @@ export class ParticleField {
       await fontsReady
       const sub = sampleText(subtitle, SUBTITLE_FONT, this.count - logoCount, LOGO_DEPTH, SUBTITLE_TRACKING)
       shape = stackShapes(logo, sub, SUBTITLE_WIDTH, SUBTITLE_GAP)
-      // 부제 입자는 먼지로 빠지지 않게 — 작은 글자라 입자가 줄면 바로 안 읽힌다.
+      // 부제 입자는 먼지로 빠지지 않게(작은 글자라 입자가 줄면 바로 안 읽힌다), 크기는 작게.
       this.dust.fill(0, logoCount)
+      for (let i = logoCount; i < this.count; i++) this.size[i] *= SUBTITLE_PARTICLE
     }
     if (this.destroyed) return
     this.text = shape.points
@@ -646,8 +650,8 @@ export class ParticleField {
 }
 
 /**
- * 로고 아래에 부제를 붙여 하나의 모양으로 합친다(폭 = 로고 폭 1 기준). 부제는 subWidth만큼
- * 줄여 가운데 맞추고, 두 덩어리 전체의 세로 가운데가 0이 되게 위아래로 민다.
+ * 로고 아래에 부제를 붙여 하나의 모양으로 합친다(폭 = 로고 폭 1 기준). 부제는 두께까지
+ * subWidth만큼 줄여 가운데 맞추고, 두 덩어리 전체의 세로 가운데가 0이 되게 위아래로 민다.
  */
 function stackShapes(logo: TextShape, sub: TextShape, subWidth: number, gap: number): TextShape {
   const logoN = logo.points.length / 3
@@ -663,7 +667,7 @@ function stackShapes(logo: TextShape, sub: TextShape, subWidth: number, gap: num
     const o = (logoN + i) * 3
     points[o] = sub.points[i * 3] * subWidth
     points[o + 1] = sub.points[i * 3 + 1] * subWidth + subShift
-    points[o + 2] = sub.points[i * 3 + 2]
+    points[o + 2] = sub.points[i * 3 + 2] * subWidth
   }
   const accent = new Uint8Array(logoN + subN)
   if (logo.accent) accent.set(logo.accent)

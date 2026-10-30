@@ -197,6 +197,13 @@
   flex-direction: column;
   min-width: 0;
 
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   strong {
     font-size: 13px;
     font-weight: 600;
@@ -206,6 +213,11 @@
     font-size: 11px;
     color: var(--text-3);
   }
+}
+
+// 관리자면 관리 화면 버튼이 로그아웃 앞에 붙는다 — 둘을 붙여 오른쪽에.
+.sidebar__logout + .sidebar__logout {
+  margin-left: -8px;
 }
 
 .sidebar__logout {

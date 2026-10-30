@@ -1,13 +1,18 @@
-import { LogOut } from 'lucide-react'
+import { LogOut, ShieldCheck } from 'lucide-react'
 import { Link, NavLink } from 'react-router-dom'
-import { CURRENT_USER } from '../../data/team'
+import { signOutXtool } from '@/xtool-auth/auth-actions'
+import type { XtoolMember } from '@/xtool-auth/members'
+import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { cx } from '../../lib/cx'
 import { NAV_SECTIONS } from '../../nav'
-import { XT_BASE, xtPath } from '../../paths'
+import { XT_BASE } from '../../paths'
 import { BrandMark } from '../brand/brand-mark'
 import { Avatar } from '../ui/avatar'
 
-export function Sidebar() {
+// 관리자 화면(구성원 등록·권한) — 팀 페이지 밖, 모든 팀이 같이 쓴다.
+const ADMIN_PATH = '/admin/xtool'
+
+export function Sidebar({ member }: { member: XtoolMember }) {
   return (
     <aside className="glass sidebar">
       <div className="sidebar__brand">
@@ -41,14 +46,21 @@ export function Sidebar() {
       ))}
 
       <div className="sidebar__footer">
-        <Avatar initials={CURRENT_USER.initials} color={CURRENT_USER.color} ink={CURRENT_USER.ink} size="md" />
-        <div className="sidebar__user">
-          <strong>{CURRENT_USER.name}</strong>
-          <span>{CURRENT_USER.role}</span>
+        {/* 강조색 판 위 강조색 글자색 — 설정을 따라간다. */}
+        <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" size="md" />
+        <div className="sidebar__user" title={member.email}>
+          <strong>{member.name || member.email}</strong>
+          <span>{member.isAdmin ? '관리자' : member.email}</span>
         </div>
-        <Link to={xtPath('/login')} className="sidebar__logout" aria-label="로그아웃" title="로그아웃">
+        {member.isAdmin && (
+          <Link to={ADMIN_PATH} className="sidebar__logout" aria-label="구성원 관리" title="구성원 관리">
+            <ShieldCheck size={15} aria-hidden />
+          </Link>
+        )}
+        {/* 로그아웃하면 화면 잠금(AppLayout)이 로그인 화면으로 보낸다. */}
+        <button type="button" className="sidebar__logout" onClick={() => void signOutXtool()} aria-label="로그아웃" title="로그아웃">
           <LogOut size={15} aria-hidden />
-        </Link>
+        </button>
       </div>
     </aside>
   )
