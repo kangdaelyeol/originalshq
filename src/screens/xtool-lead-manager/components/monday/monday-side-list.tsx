@@ -5,7 +5,7 @@ import { formatMondayPhone } from '@/screens/xtool-lead-manager/utils'
 
 // 줄 높이(고정) — 보이는 줄만 그리려고 위치를 높이로 계산한다(styles/monday.scss의
 // .monday_side_list 줄 높이와 같아야 한다).
-const ROW_HEIGHT = 34
+const ROW_HEIGHT = 36
 // 보이는 범위 위아래로 더 그려 둘 줄 수 — 빠르게 스크롤해도 빈칸이 안 보이게.
 const OVERSCAN = 10
 

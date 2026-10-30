@@ -649,11 +649,15 @@
   .monday_side_list {
     height: 80vh;
   }
-  // 줄 높이 고정 — 보이는 줄만 그리는 계산(ROW_HEIGHT)과 같아야 한다.
+  // 줄 높이 고정 — 보이는 줄만 그리는 계산(ROW_HEIGHT 36px)과 같아야 한다.
+  // 위아래 여백 11px + 글자 줄 14px로, 글자가 줄 가운데에 온다.
   .monday_side_list .detail_side_list_table tbody td {
-    height: 34px;
-    padding-top: 0;
-    padding-bottom: 0;
+    box-sizing: border-box;
+    height: 36px;
+    padding-top: 11px;
+    padding-bottom: 11px;
+    line-height: 14px;
+    vertical-align: middle;
   }
   .monday_side_list_spacer {
     cursor: default;
