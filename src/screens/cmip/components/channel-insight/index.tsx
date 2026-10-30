@@ -1,8 +1,6 @@
 import { Suspense, lazy, useEffect, type ReactNode } from 'react'
 import { useUsageTracking } from '@/hooks'
-import {
-  useChannelInsightViewModel,
-} from '../../view-model/use-channel-insight-view-model'
+import { useChannelInsightViewModel } from '../../view-model/use-channel-insight-view-model'
 import {
   useChannelInsightPageViewModel,
   type ResultTab,
@@ -41,14 +39,6 @@ const ExcelExportModal = lazy(() =>
   })),
 )
 
-const RESULT_TABS: readonly { key: ResultTab; label: string }[] = [
-  { key: 'total', label: '전체 요약' },
-  { key: 'campaignAdset', label: '캠페인·광고셋' },
-  { key: 'periodTest', label: '매체별 테스트' },
-  { key: 'roas', label: 'ROAS' },
-  { key: 'adPerformance', label: '광고 성과' },
-]
-
 /** 캠페인·광고셋/매체별 테스트/ROAS/광고 성과 탭의 내용 틀 — 섹션 사이 세로
  * 간격만 준다. 재조회 중에는 각 탭이 이 안에 자기 모양의 스켈레톤
  * (tab-skeletons.tsx)을 대신 그린다 — combinedInsight는 재조회가 끝나야 새
@@ -57,7 +47,10 @@ function TabContent({ children }: { children: ReactNode }) {
   return <div className="channel-insight__tab-content">{children}</div>
 }
 
-export const ChannelInsight = () => {
+/** 인사이트 조회 — 보기 단위(전체 요약·캠페인·광고셋·매체별 테스트·ROAS·광고
+ * 성과)는 화면 맨 위 줄의 탭이 고르고(screens/cmip/index.tsx), 여기는 조회
+ * 줄(그래프·엑셀 | 기간)과 그 보기의 내용을 그린다. */
+export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
   const {
     dateStart,
     setDateStart,
@@ -85,7 +78,6 @@ export const ChannelInsight = () => {
 
   const {
     chartOpen,
-    resultTab,
     selectedKeys,
     selectedGroups,
     expandedCampaigns,
@@ -107,7 +99,6 @@ export const ChannelInsight = () => {
     excelSeries,
     excelCampaigns,
     setChartOpen,
-    setResultTab,
     toggleSelected,
     toggleExpandedCampaign,
     setHighlightLevel,
@@ -119,7 +110,12 @@ export const ChannelInsight = () => {
     setShowUnit,
     setPivotView,
     setExcelExportOpen,
-  } = useChannelInsightPageViewModel(combinedInsight, dateStart, dateEnd)
+  } = useChannelInsightPageViewModel(
+    combinedInsight,
+    dateStart,
+    dateEnd,
+    resultTab,
+  )
 
   // 사용 분석(/log) — 지금 보고 있는 결과 탭(전체 요약·캠페인·광고셋·매체별
   // 테스트·ROAS).
@@ -129,24 +125,17 @@ export const ChannelInsight = () => {
 
   return (
     <div className="channel-insight">
-      {/* combinedInsight 유무와 무관하게 항상 보인다 — DateRangePicker가 이
-          안에 있어서, 최초 조회 실패 등으로 combinedInsight가 끝내 안 생겨도
-          날짜를 다시 골라 재조회할 방법이 사라지지 않는다. 보기 단위(select)와
-          "그래프로 보기"는 원래대로 데이터가 있을 때만 보인다. */}
+      {/* 조회 줄 — combinedInsight 유무와 무관하게 항상 보인다. DateRangePicker가
+          이 안에 있어서, 최초 조회 실패 등으로 combinedInsight가 끝내 안 생겨도
+          날짜를 다시 골라 재조회할 방법이 사라지지 않는다. "그래프로 보기"·
+          "엑셀 다운로드"는 원래대로 데이터가 있을 때만 보인다. */}
       <div
         className="channel-insight__result-tabs"
         role="group"
-        aria-label="보기 단위"
+        aria-label="조회"
       >
         {combinedInsight && (
           <>
-            <SingleSelectDropdown<ResultTab>
-              options={RESULT_TABS.map((t) => ({ value: t.key, label: t.label }))}
-              value={resultTab}
-              onChange={setResultTab}
-              ariaLabel="보기 단위"
-            />
-
             <button
               type="button"
               className="channel-insight__btn channel-insight__ghost"
@@ -171,7 +160,7 @@ export const ChannelInsight = () => {
           </>
         )}
 
-        {/* 이 row 맨 오른쪽에 고정(margin-left: auto) — 보기 단위 select/그래프
+        {/* 이 row 맨 오른쪽에 고정(margin-left: auto) — 그래프·엑셀
             버튼이 있든 없든 항상 오른쪽 끝에 붙는다. */}
         <div className="channel-insight__query-row">
           {/* 단위를 누르면 그 단위의 기본 기간으로 바로 조회한다. */}
@@ -226,7 +215,6 @@ export const ChannelInsight = () => {
 
       {combinedInsight && (
         <>
-
           {resultTab === 'total' && (
             <ResultPanel
               periodLabel={periodLabel}

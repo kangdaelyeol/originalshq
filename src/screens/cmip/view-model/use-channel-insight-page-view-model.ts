@@ -27,18 +27,18 @@ export type ResultTab =
  * 날짜/요일/주차 중 무엇으로 묶을지. */
 export type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
 
-
 /** ChannelInsight 페이지 전용 상태 — useChannelInsightViewModel(날짜 범위/조회)과는
- * 별개로, 탭 전환·캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
+ * 별개로, 캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
  * 모달/엑셀 모달 열림 여부, 그리고 이들로부터 파생되는 값(선택된 캠페인,
  * 그래프 모달 후보 그룹, 엑셀로 넘길 데이터 등)까지 계산해서 돌려준다. */
 export const useChannelInsightPageViewModel = (
   combinedInsight: CombinedInsight | null,
   dateStart: ISODate,
   dateEnd: ISODate,
+  /** 보기 단위 — 화면 맨 위 줄의 탭이라 화면(screens/cmip)이 들고 있다. */
+  resultTab: ResultTab,
 ) => {
   const [chartOpen, setChartOpen] = useState(false)
-  const [resultTab, setResultTab] = useState<ResultTab>('total')
 
   // 캠페인·광고셋 탭: 목록 표에서 체크한 캠페인·광고셋(campaignKey/adsetKey) —
   // 교차표와 그래프가 이 선택을 그대로 쓴다.
@@ -206,7 +206,6 @@ export const useChannelInsightPageViewModel = (
   return {
     // 진행 상태
     chartOpen,
-    resultTab,
     selectedKeys,
     selectedGroups,
     expandedCampaigns,
@@ -229,7 +228,6 @@ export const useChannelInsightPageViewModel = (
     excelCampaigns,
     // 액션
     setChartOpen,
-    setResultTab,
     toggleSelected,
     toggleExpandedCampaign,
     setHighlightLevel,

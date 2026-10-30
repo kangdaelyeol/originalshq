@@ -1,5 +1,6 @@
 import type {
   PivotView,
+  ResultTab,
 } from '../../view-model/use-channel-insight-page-view-model'
 import type { ChannelKey } from '../channels'
 
@@ -11,7 +12,19 @@ export const CHANNEL_CHIP_COLOR: Record<ChannelKey, string> = {
   naver: '#03c75a',
 }
 
-export const PIVOT_VIEW_OPTIONS: readonly { value: PivotView; label: string }[] = [
+/** 보기 단위(결과 탭) — 화면 맨 위 줄 가운데의 탭(screens/cmip/index.tsx). */
+export const RESULT_TAB_LABEL: Record<ResultTab, string> = {
+  total: '전체 요약',
+  campaignAdset: '캠페인·광고셋',
+  periodTest: '매체별 테스트',
+  roas: 'ROAS',
+  adPerformance: '광고 성과',
+}
+
+export const PIVOT_VIEW_OPTIONS: readonly {
+  value: PivotView
+  label: string
+}[] = [
   { value: 'byDate', label: '날짜별' },
   { value: 'byDayOfWeek', label: '요일별' },
   { value: 'byGroupedWeek', label: '주차별' },

@@ -6,9 +6,10 @@ import {
   type GlassThemeId,
 } from '@/components/glass'
 
-/** 화면 맨 위 줄 — 왼쪽 로고·이름, 가운데 최상위 탭(유리 알약 — 바꾸면 알약이
- * 미끄러져 간다), 오른쪽 테마 고르기. 틀(위에 붙음·배경 빛·세 칸)은
- * GlassHeader가 그린다. 어느 탭이 열려 있는지는 부모(screens/cmip)가 넘겨준다. */
+/** 화면 맨 위 줄 — 왼쪽 로고·이름, 가운데 보기 단위 탭(전체 요약·캠페인·광고셋
+ * …, 유리 알약 — 바꾸면 알약이 미끄러져 간다), 오른쪽 테마 고르기. 틀(위에
+ * 붙음·배경 빛·세 칸)은 GlassHeader가 그린다. 어느 탭이 열려 있는지는
+ * 부모(screens/cmip)가 넘겨준다. */
 export const Header = <T extends string>({
   tabs,
   tab,
@@ -41,12 +42,12 @@ export const Header = <T extends string>({
       </div>
     }
     center={
-      <nav aria-label="cmip">
+      <nav className="cmip-header__tabs" aria-label="보기 단위">
         <Segmented
           options={tabs}
           value={tab}
           onChange={onSelectTab}
-          label="cmip"
+          label="보기 단위"
           size="md"
         />
       </nav>
