@@ -1,0 +1,14 @@
+@use './styles/mixins' as glass;
+
+// 작은 추이 그래프(sparkline.tsx) — 상자 크기는 부르는 쪽이 바꾼다. 처음 붙을 때
+// 왼쪽에서 오른쪽으로 그려진다.
+.glass_sparkline {
+  position: relative;
+  flex: none;
+  width: 80px;
+  height: 34px;
+
+  .glass_line {
+    @include glass.draw-in(0.8s, 0.15s);
+  }
+}

@@ -74,6 +74,7 @@ const [theme, setTheme] = useGlassTheme('cmip.theme')
 | `StackedBars`  | 맨 위 100% 요약 띠 + 줄마다 쌓은 막대                                            | `segments`(종류·색), `rows`, `sum`. 줄에 `aside`·`detail`                                                                     |
 | `Ring`         | 비율 하나(0~1)를 원으로                                                          | `value`, `text`, `label`                                                                                                      |
 | `GlassLine`    | 부드러운 선 그래프(면 채움, 마우스 올린 점 하나만)                               | 점·크기. 곡선은 `smoothPath`, 크기는 `useElementSize`                                                                         |
+| `Sparkline`    | 카드·타일 안의 작은 추이 그래프(축 없이 모양만, 처음 붙을 때 그려진다)           | `values`(오래된 것부터), `className`(크기)                                                                                    |
 | `useDismiss`   | 펼친 것을 바깥 누름·Esc로 닫기                                                   | `ref`, `open`, `onDismiss`                                                                                                    |
 
 예시는 xtool: `screens/xtool-lead-manager/components/` — `header.tsx`(GlassHeader),

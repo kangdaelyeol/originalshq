@@ -1,9 +1,19 @@
-import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useId, type PointerEvent as ReactPointerEvent } from 'react'
+import { smoothPath } from '@/components/glass'
 import { useIndexLineChartViewModel } from '../view-model/use-index-line-chart-view-model'
-import type { IndexSeries, ChartTheme, CompareMode } from './index-line-chart-types'
+import type {
+  IndexSeries,
+  ChartTheme,
+  CompareMode,
+} from './index-line-chart-types'
 import '../styles/index-line-chart.scss'
 
-export type { IndexSeriesType, IndexSeries, ChartTheme, CompareMode } from './index-line-chart-types'
+export type {
+  IndexSeriesType,
+  IndexSeries,
+  ChartTheme,
+  CompareMode,
+} from './index-line-chart-types'
 
 interface IndexLineChartProps {
   categories: readonly string[]
@@ -24,16 +34,17 @@ const MARGIN_BOTTOM = 44
 // 라벨이 플롯 밖(x<0)으로 잘려 나간다 — 그 경우까지 안 잘리도록 더 넉넉히 둔다.
 const MARGIN_LEFT = 84
 
-// 다크/라이트 2세트 — 둘 다 기존 다크(GitHub Dimmed)와 짝을 이루는 GitHub Light
-// 톤이라 나머지 UI(모달 등)의 다크 팔레트와 위화감이 없다.
+// 다크/라이트 2세트. 다크는 화면 유리 테마를 따른다(테마 변수 — SVG 속성에
+// var()를 그대로 쓴다): 글자 뒤 테두리·점 바탕은 불투명 판 색, 눈금은 옅은 겹,
+// 보조 글자는 글자 2단계. 라이트는 흰 판(모달의 Light Mode)용 고정 색.
 const PALETTE: Record<
   ChartTheme,
   { surface: string; grid: string; muted: string; up: string; down: string }
 > = {
   dark: {
-    surface: '#161b22',
-    grid: '#21262d',
-    muted: '#d0d5dc',
+    surface: 'var(--glass-solid)',
+    grid: 'var(--glass-fill-2)',
+    muted: 'var(--glass-text-2)',
     up: '#3fb950',
     down: '#ff7b72',
   },
@@ -121,22 +132,54 @@ function minMaxIndices(raw: readonly (number | null)[]): {
 }
 
 /** null(빠진 값) 구간을 건너뛰며 이어진 구간마다 별도 서브패스를 그리는 라인 path. */
+/** 값이 이어지는 구간들(빈 값에서 끊긴다) — 구간마다 점(px) 목록. */
+function lineSegments(
+  values: readonly (number | null)[],
+  xAt: (i: number) => number,
+  yAt: (v: number) => number,
+): [number, number][][] {
+  const segments: [number, number][][] = []
+  let current: [number, number][] | null = null
+  values.forEach((v, i) => {
+    if (v == null) {
+      current = null
+      return
+    }
+    if (!current) {
+      current = []
+      segments.push(current)
+    }
+    current.push([xAt(i), yAt(v)])
+  })
+  return segments
+}
+
+/** 부드러운 곡선(값을 넘어 튀지 않는 보간 — smoothPath). 빈 값에서 끊긴다. */
 function buildLinePath(
   values: readonly (number | null)[],
   xAt: (i: number) => number,
   yAt: (v: number) => number,
 ): string {
-  const parts: string[] = []
-  let drawing = false
-  values.forEach((v, i) => {
-    if (v == null) {
-      drawing = false
-      return
-    }
-    parts.push(`${drawing ? 'L' : 'M'}${xAt(i)},${yAt(v)}`)
-    drawing = true
-  })
-  return parts.join(' ')
+  return lineSegments(values, xAt, yAt)
+    .map((points) => smoothPath(points))
+    .join(' ')
+}
+
+/** 선 아래로 옅어지는 면 — 구간마다 선을 따라가 바닥(yBottom)에서 닫는다. */
+function buildAreaPath(
+  values: readonly (number | null)[],
+  xAt: (i: number) => number,
+  yAt: (v: number) => number,
+  yBottom: number,
+): string {
+  return lineSegments(values, xAt, yAt)
+    .filter((points) => points.length > 1)
+    .map((points) => {
+      const first = points[0]
+      const last = points[points.length - 1]
+      return `${smoothPath(points)} L${last[0]},${yBottom} L${first[0]},${yBottom} Z`
+    })
+    .join(' ')
 }
 
 export const IndexLineChart = ({
@@ -159,6 +202,8 @@ export const IndexLineChart = ({
     flat: MUTED,
   }
 
+  // 면 그라데이션 id — 모달에 그래프가 여럿 떠도 겹치지 않게.
+  const areaId = `ilc-area-${useId().replace(/[^\w-]/g, '')}`
   const {
     hover,
     setHover,
@@ -402,23 +447,62 @@ export const IndexLineChart = ({
                 })
               })}
 
-              {/* 선 — 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다 */}
-              {lineSeries.map((s) => {
-                const isFocused = focused?.key === s.key
-                const dimmed = focused != null && !isFocused
-                return (
-                  <path
-                    key={s.key}
-                    d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
-                    fill="none"
-                    stroke={s.color}
-                    strokeWidth={isFocused ? 3 : 2}
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
-                    opacity={dimmed ? DIM_OPACITY : 1}
-                  />
-                )
-              })}
+              {/* 선 — 부드러운 곡선, 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다.
+                지표가 하나면 그 아래로 옅어지는 면을 깐다(여럿이면 겹쳐 지저분해져
+                선만). 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다. */}
+              <g className="index-line-chart__lines">
+                {lineSeries.length === 1 &&
+                  lineSeries.map((s) => (
+                    <g key={`area-${s.key}`}>
+                      <defs>
+                        <linearGradient
+                          id={`${areaId}-${s.key}`}
+                          x1="0"
+                          y1="0"
+                          x2="0"
+                          y2="1"
+                        >
+                          <stop
+                            offset="0%"
+                            stopColor={s.color}
+                            stopOpacity={0.26}
+                          />
+                          <stop
+                            offset="100%"
+                            stopColor={s.color}
+                            stopOpacity={0}
+                          />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d={buildAreaPath(
+                          s.raw,
+                          xCenter,
+                          (v) => yIn(s.range, v),
+                          vbHeight - MARGIN_BOTTOM,
+                        )}
+                        fill={`url(#${areaId}-${s.key})`}
+                        stroke="none"
+                      />
+                    </g>
+                  ))}
+                {lineSeries.map((s) => {
+                  const isFocused = focused?.key === s.key
+                  const dimmed = focused != null && !isFocused
+                  return (
+                    <path
+                      key={s.key}
+                      d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
+                      fill="none"
+                      stroke={s.color}
+                      strokeWidth={isFocused ? 3.2 : 2.4}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                      opacity={dimmed ? DIM_OPACITY : 1}
+                    />
+                  )
+                })}
+              </g>
 
               {/* 마커 — 꺾은선만 */}
               {lineSeries.map((s) => {
@@ -516,12 +600,9 @@ export const IndexLineChart = ({
                     const y = yIn(focused.range, v)
                     const cx = isBar ? barCenterX(focused.key, i) : xCenter(i)
                     // 값 라벨(above면 y-9/-5, below면 y+16)과 안 겹치도록 한 칸 더 띄운다.
-                    const above = isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
-                    const labelY = above
-                      ? isBar
-                        ? y - 18
-                        : y - 22
-                      : y + 29
+                    const above =
+                      isBar || (si % 2 === 0 && y - 12 >= MARGIN_TOP)
+                    const labelY = above ? (isBar ? y - 18 : y - 22) : y + 29
 
                     return (
                       <text
@@ -536,7 +617,8 @@ export const IndexLineChart = ({
                         strokeWidth={3}
                         paintOrder="stroke"
                       >
-                        {DELTA_ARROW[dir]} {focused.formatCompact(Math.abs(deltaRaw))}
+                        {DELTA_ARROW[dir]}{' '}
+                        {focused.formatCompact(Math.abs(deltaRaw))}
                         {deltaPct != null &&
                           ` (${deltaRaw >= 0 ? '+' : '-'}${Math.abs(deltaPct).toFixed(1)}%)`}
                       </text>

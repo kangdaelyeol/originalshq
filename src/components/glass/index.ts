@@ -24,5 +24,6 @@ export {
   type TrendListRow,
 } from './trend-list'
 export { GlassLine } from './glass-line'
+export { Sparkline } from './sparkline'
 export { smoothPath } from './smooth-path'
 export { useElementSize } from './use-element-size'

@@ -498,7 +498,8 @@
 .cmip .channel-insight-chart-modal__chart-single:not(.is-light) {
   border: none;
   border-radius: 18px;
-  background: $fill-1;
+  // 거의 불투명 — 뒤 화면이 비치면 선·숫자가 흐려 보인다.
+  background: color-mix(in srgb, var(--glass-solid) 82%, transparent);
 }
 .cmip .channel-insight-chart-modal__chart-single.is-light {
   border: none;
@@ -514,9 +515,47 @@
   border-radius: 14px;
   box-shadow: none;
 }
+.cmip .channel-insight-chart-modal__metric-row-toggle {
+  @include glass.pill-group;
+  padding: 3px;
+  overflow: visible;
+}
 .cmip .channel-insight-chart-modal__metric-toggle-btn {
+  height: 24px;
+  padding: 0 10px;
   border: none;
   border-radius: 999px;
+  background: none;
+  color: $text-3;
+
+  & + & {
+    border-left: none;
+  }
+  &:hover:not(.is-active) {
+    color: $text;
+  }
+  &.is-active {
+    background: $fill-3;
+    color: $text;
+  }
+  // 켠 지표(꺾은선·막대) — 그 지표 색을 옅게.
+  &.is-colorable.is-active {
+    background: color-mix(in srgb, var(--chip-color) 34%, transparent);
+  }
+}
+.cmip .channel-insight-chart-modal__metric-menu-actions {
+  border-top: none;
+}
+.cmip .channel-insight-chart-modal__metric-menu-action {
+  border: none;
+  border-radius: 999px;
+  background: $fill-2;
+  color: $text-2;
+
+  &:hover:not(:disabled) {
+    background: $fill-3;
+    color: $text;
+  }
 }
 
 // 엑셀 — 칩과 아래 버튼.
@@ -543,4 +582,270 @@
   background: var(--glass-accent);
   color: var(--glass-on-accent);
   font-weight: 600;
+}
+
+// ── 캠페인·광고셋 목록 — 위 줄(채널 필터 | 찾기·정렬·보기) ────────────────
+.cmip .channel-insight__full-list-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.cmip .channel-insight__full-list-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.cmip .channel-insight__full-list-search {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  svg {
+    position: absolute;
+    left: 12px;
+    width: 15px;
+    height: 15px;
+    color: $text-3;
+    pointer-events: none;
+  }
+  input {
+    @include glass.field;
+    box-sizing: border-box;
+    width: 220px;
+    height: 34px;
+    padding: 0 14px 0 34px;
+    border-radius: 999px;
+    color: $text;
+    font: inherit;
+    font-size: 12.5px;
+
+    &::placeholder {
+      color: $text-3;
+    }
+    &::-webkit-search-cancel-button {
+      filter: grayscale(1);
+    }
+  }
+}
+
+// ── 캠페인 카드(campaign-cards.tsx) ─────────────────────────────────────
+// 카드 하나 = 캠페인 하나: [표식 · 이름 · 체크] / [지표 값 · 작은 추이] /
+// [다른 지표 칩]. 누르면 비교 표에 넣고 뺀다 — 넣은 카드는 누르는 색을 옅게.
+.cmip .campaign-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cmip .campaign-card {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  height: 100%;
+  padding: 14px 16px 12px;
+  border-radius: $radius-inner;
+  background: $fill-1;
+  color: $text;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: $fill-2;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+    outline-offset: 2px;
+  }
+  &.is-selected {
+    background: color-mix(in srgb, var(--glass-link) 14%, var(--glass-fill-1));
+  }
+  // 위 요약에서 누른 캠페인 — 누르는 색이 한 번 차올랐다 빠진다.
+  &.is-flash {
+    animation: campaign-card-flash 1.4s ease-out;
+  }
+}
+
+.cmip .campaign-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.cmip .campaign-card__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: $fill-2;
+
+  img,
+  svg,
+  .channel-insight__channel-mark {
+    width: 17px;
+    height: 17px;
+  }
+}
+.cmip .channel-insight__channel-mark--naver {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: #03c75a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+}
+.cmip .campaign-card__titles {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cmip .campaign-card__name {
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cmip .campaign-card__sub {
+  overflow: hidden;
+  font-size: 11.5px;
+  color: $text-3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+// 비교 표에 넣었는지 — 넣으면 누르는 색 동그라미에 체크.
+.cmip .campaign-card__check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: $fill-2;
+  color: transparent;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+}
+.cmip .campaign-card.is-selected .campaign-card__check {
+  background: var(--glass-link);
+  color: var(--glass-on-link);
+}
+
+.cmip .campaign-card__body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cmip .campaign-card__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.cmip .campaign-card__label {
+  font-size: 11.5px;
+  color: $text-3;
+}
+.cmip .campaign-card__value {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cmip .campaign-card__spark {
+  width: 96px;
+  height: 38px;
+}
+
+.cmip .campaign-card__foot {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+}
+.cmip .campaign-card__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: $fill-2;
+  font-size: 11.5px;
+  color: $text-2;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+
+  // 첫 칩 — 앞에 데이터색 점.
+  &.has-dot::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--glass-accent);
+  }
+}
+
+@keyframes campaign-card-flash {
+  20% {
+    background-color: color-mix(in srgb, var(--glass-link) 32%, transparent);
+  }
+}
+
+// ── Summary 칸의 작은 추이 그래프(kpi-grid.tsx) ─────────────────────────
+// 값 옆에 그 지표의 날짜별 추이 — 칸을 넓혀 값과 그래프를 한 줄에.
+.cmip .channel-insight__summary-grid.has-trend {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  @media (max-width: 640px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+// 칸 묶음과 "자세히 보기" 사이.
+.cmip .channel-insight__summary-toggle {
+  margin-top: 4px;
+}
+.cmip .channel-insight__kpi-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+.cmip .channel-insight__kpi-spark {
+  width: 76px;
+  height: 30px;
+}
+
+// ── 그래프 모달의 선 그래프(index-line-chart.tsx) ────────────────────────
+// 선·면이 처음 그릴 때 왼쪽에서 오른쪽으로 드러난다(xtool 인입 그래프와 같다).
+.cmip .index-line-chart__lines {
+  @include glass.draw-in(0.9s);
 }

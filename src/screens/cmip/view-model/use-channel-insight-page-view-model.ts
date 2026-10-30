@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import {
   adsetKey,
   buildCampaignHighlights,
@@ -19,6 +20,9 @@ import type {
   SeriesKind,
 } from './use-channel-insight-chart-modal-view-model'
 import type { ISODate } from '../types'
+
+/** 캠페인·광고셋 목록 보기 — 카드 / 표. */
+export type FullListView = 'card' | 'table'
 
 export type ResultTab =
   'total' | 'campaignAdset' | 'periodTest' | 'roas' | 'adPerformance'
@@ -92,6 +96,13 @@ export const useChannelInsightPageViewModel = (
   const [highlightLevel, setHighlightLevel] =
     useState<CampaignHighlightLevel>('adset')
   const [flashKey, setFlashKey] = useState<string | null>(null)
+  // 캠페인·광고셋 목록 보기 — 카드(캠페인만, 작은 추이 그래프) / 표(광고셋까지).
+  // 이 브라우저에 남긴다.
+  const [listView, setListView] = usePersistentState<FullListView>(
+    'cmip.fullList.view',
+    'card',
+    oneOf<FullListView>(['card', 'table']),
+  )
   const campaignHighlights = buildCampaignHighlights(campaigns, highlightLevel)
 
   /** 요약 카드의 한 줄을 누름 — 광고셋이면 그 캠페인을 펼치고, 그 줄을 체크해
@@ -99,6 +110,8 @@ export const useChannelInsightPageViewModel = (
   const focusHighlight = (row: CampaignHighlightRow) => {
     if (row.adsetName !== null) {
       setExpandedCampaigns((prev) => new Set(prev).add(row.campaignName))
+      // 광고셋은 표에만 있다 — 카드 보기면 표로 바꿔 그 줄을 보여 준다.
+      setListView('table')
     }
     setSelectedKeys((prev) => new Set(prev).add(row.selectKey))
     setFlashKey(row.selectKey)
@@ -212,6 +225,7 @@ export const useChannelInsightPageViewModel = (
     campaignHighlights,
     highlightLevel,
     flashKey,
+    listView,
     metricMode,
     selectedMetricKeys,
     showUnit,
@@ -233,6 +247,7 @@ export const useChannelInsightPageViewModel = (
     setHighlightLevel,
     focusHighlight,
     clearFlash,
+    setListView,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,

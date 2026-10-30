@@ -72,6 +72,33 @@ const CHANNEL_LOGO: Record<ChannelKey, () => ReactElement> = {
   naver: NaverLogo,
 }
 
+/** 채널 표시 하나 — 동그란 자리(카드 아바타 등)에 넣는 정사각형 표식. 구글·
+ * 네이버 로고는 워드마크라 첫 글자 모양만 쓴다(구글 G, 네이버 N). */
+export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
+  if (channelKey === 'meta') return <MetaLogo />
+  if (channelKey === 'google')
+    return (
+      <svg
+        className="channel-insight__channel-mark"
+        viewBox="0 0 68 70"
+        aria-hidden
+      >
+        <path
+          fill="#4285F4"
+          d="M35.29 41.41V32H67c.31 1.64.47 3.58.47 5.68 0 7.06-1.93 15.79-8.15 22.01-6.05 6.3-13.78 9.66-24.02 9.66C16.32 69.35.36 53.89.36 34.91.36 15.93 16.32.47 35.3.47c10.5 0 17.98 4.12 23.6 9.49l-6.64 6.64c-4.03-3.78-9.49-6.72-16.97-6.72-13.86 0-24.7 11.17-24.7 25.03 0 13.86 10.84 25.03 24.7 25.03 8.99 0 14.11-3.61 17.39-6.89 2.66-2.66 4.41-6.46 5.1-11.65l-22.49.01z"
+        />
+      </svg>
+    )
+  return (
+    <span
+      className="channel-insight__channel-mark channel-insight__channel-mark--naver"
+      aria-hidden
+    >
+      N
+    </span>
+  )
+}
+
 /** 채널 이름(Meta/Google/Naver)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별
  * 펼침 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일. Google/Naver는
  * 로고가 이미 워드마크(전체 글자)라 옆에 텍스트를 또 안 붙인다. */

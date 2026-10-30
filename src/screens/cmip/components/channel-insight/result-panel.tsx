@@ -227,7 +227,10 @@ export function ResultPanel({
                   {periodLabel}
                 </span>
               </div>
-              <KpiGrid metrics={total.combined} />
+              <KpiGrid
+                metrics={total.combined}
+                trend={series.combined.byDate}
+              />
 
               {applicableChannels.length > 0 && (
                 <>
@@ -256,7 +259,11 @@ export function ResultPanel({
                               label={channel.label}
                             />
                           </span>
-                          <KpiGrid metrics={total[channel.key]} channelScoped />
+                          <KpiGrid
+                            metrics={total[channel.key]}
+                            channelScoped
+                            trend={series[channel.key].byDate}
+                          />
                         </div>
                       ))}
                     </div>

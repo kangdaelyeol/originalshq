@@ -1,4 +1,7 @@
 import { Fragment, type CSSProperties } from 'react'
+import { Search } from 'lucide-react'
+import { Segmented } from '@/components/glass'
+import type { FullListView } from '../../view-model/use-channel-insight-page-view-model'
 import {
   useFullListTableViewModel,
   type FullListRow,
@@ -13,6 +16,18 @@ import { CHANNEL_CHIP_COLOR } from './constants'
 import { ChannelLabel } from './channel-label'
 import { InfoIcon, SortArrows } from '../icons'
 import { SortableMetricHeader } from './metric-header'
+import { CampaignCards } from './campaign-cards'
+
+const VIEW_LABEL: Record<FullListView, string> = { card: '카드', table: '표' }
+
+// 카드 보기의 정렬 — 큰 값·추이 그래프도 이 지표(이름 정렬이면 Spend).
+const CARD_SORT = {
+  spend: 'Spend',
+  conversions: '전환',
+  cpa: 'CPA',
+  name: '이름',
+} as const
+type CardSortKey = keyof typeof CARD_SORT
 
 /** 목록 표의 한 줄 — 캠페인(level 0, 펼치기 버튼)이나 그 아래 광고셋(level 1). */
 function FullListTableRow({
@@ -136,6 +151,8 @@ export function FullListTable({
   onToggleExpanded,
   flashKey,
   onFlashEnd,
+  view,
+  onViewChange,
 }: {
   rows: readonly FullListRow[]
   headLabel: string
@@ -148,15 +165,21 @@ export function FullListTable({
   /** 위 요약 카드에서 누른 줄 — 잠깐 반짝인다. */
   flashKey: string | null
   onFlashEnd: () => void
+  /** 카드(캠페인만, 작은 추이 그래프) / 표(광고셋까지, 지표 칸). */
+  view: FullListView
+  onViewChange: (view: FullListView) => void
 }) {
   const {
     sort,
+    query,
     channelFilter,
     visibleKeys,
     showResultType,
     hasResultType,
     sortedRows,
     setChannelFilter,
+    setQuery,
+    chooseSort,
     toggleColumn,
     setShowResultType,
     toggleSort,
@@ -166,158 +189,211 @@ export function FullListTable({
   const listFields = channelSafeFields(METRIC_FIELDS)
   const visibleFields = listFields.filter((f) => visibleKeys.has(f.key))
 
+  const cardSort = sort.key in CARD_SORT ? (sort.key as CardSortKey) : null
+
   return (
     <div className="channel-insight__full-list">
-      <div
-        className="channel-insight__full-list-channel-filter"
-        role="group"
-        aria-label="채널 필터"
-      >
-        <button
-          type="button"
-          className={`channel-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
-          aria-pressed={channelFilter === 'all'}
-          onClick={() => setChannelFilter('all')}
+      {/* 위 줄 — 왼쪽 채널 필터, 오른쪽 이름 찾기·(카드) 정렬·보기. */}
+      <div className="channel-insight__full-list-bar">
+        <div
+          className="channel-insight__full-list-channel-filter"
+          role="group"
+          aria-label="채널 필터"
         >
-          전체
-        </button>
-        {CHANNELS.map((c) => (
           <button
-            key={c.key}
             type="button"
-            className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
-            style={
-              { '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties
-            }
-            aria-pressed={channelFilter === c.key}
-            onClick={() => setChannelFilter(c.key)}
+            className={`channel-insight__full-list-toggle-btn${channelFilter === 'all' ? ' is-active' : ''}`}
+            aria-pressed={channelFilter === 'all'}
+            onClick={() => setChannelFilter('all')}
           >
-            {c.label}
+            전체
           </button>
-        ))}
+          {CHANNELS.map((c) => (
+            <button
+              key={c.key}
+              type="button"
+              className={`channel-insight__full-list-toggle-btn${channelFilter === c.key ? ' is-active' : ''}`}
+              style={
+                { '--chip-color': CHANNEL_CHIP_COLOR[c.key] } as CSSProperties
+              }
+              aria-pressed={channelFilter === c.key}
+              onClick={() => setChannelFilter(c.key)}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="channel-insight__full-list-tools">
+          <label className="channel-insight__full-list-search">
+            <Search strokeWidth={1.8} aria-hidden />
+            <input
+              type="search"
+              value={query}
+              placeholder="캠페인 · 광고셋 이름"
+              aria-label="캠페인 · 광고셋 이름으로 찾기"
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          {view === 'card' && (
+            <Segmented
+              options={CARD_SORT}
+              value={cardSort}
+              onChange={chooseSort}
+              label="정렬"
+              role="buttons"
+            />
+          )}
+          <Segmented
+            options={VIEW_LABEL}
+            value={view}
+            onChange={onViewChange}
+            label="목록 보기"
+          />
+        </div>
       </div>
 
-      <div
-        className="channel-insight__full-list-toggles"
-        role="group"
-        aria-label="컬럼 표시"
-      >
-        {listFields.map((f) => {
-          const active = visibleKeys.has(f.key)
-          return (
-            <button
-              key={f.key}
-              type="button"
-              className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
-              style={{ '--chip-color': f.color } as CSSProperties}
-              aria-pressed={active}
-              onClick={() => toggleColumn(f.key)}
-            >
-              {f.label}
-            </button>
-          )
-        })}
-        {hasResultType && (
-          <span className="channel-insight__full-list-toggle-item">
-            <button
-              type="button"
-              className={`channel-insight__full-list-toggle-btn${showResultType ? ' is-active' : ''}`}
-              aria-pressed={showResultType}
-              onClick={() => setShowResultType((v) => !v)}
-            >
-              전환 목표
-            </button>
-            {/* 토글 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이 토글까지
-                같이 눌러버린다(SortableMetricHeader와 같은 이유). */}
-            <span className="channel-insight__info" tabIndex={0}>
-              <InfoIcon />
-              <span className="channel-insight__info-tooltip" role="tooltip">
-                전환 목표(결과 유형)는 Meta 캠페인에만 표시됩니다 — Meta Ads
-                Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온 값으로,
-                Google/Naver 캠페인엔 대응 개념이 없어 표시되지 않습니다.
-              </span>
-            </span>
-          </span>
-        )}
-      </div>
-
-      <div className="channel-insight__table-wrap">
-        <table className="channel-insight__table channel-insight__table--full-list">
-          <thead>
-            <tr>
-              <th>
+      {view === 'card' ? (
+        <CampaignCards
+          rows={sortedRows}
+          metricKey={sort.key === 'name' ? 'spend' : sort.key}
+          selected={selected}
+          onToggleSelect={onToggleSelect}
+          flashKey={flashKey}
+          onFlashEnd={onFlashEnd}
+          emptyLabel={emptyLabel}
+        />
+      ) : (
+        <>
+          <div
+            className="channel-insight__full-list-toggles"
+            role="group"
+            aria-label="컬럼 표시"
+          >
+            {listFields.map((f) => {
+              const active = visibleKeys.has(f.key)
+              return (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`channel-insight__full-list-toggle-btn${active ? ' is-active' : ''}`}
+                  style={{ '--chip-color': f.color } as CSSProperties}
+                  aria-pressed={active}
+                  onClick={() => toggleColumn(f.key)}
+                >
+                  {f.label}
+                </button>
+              )
+            })}
+            {hasResultType && (
+              <span className="channel-insight__full-list-toggle-item">
                 <button
                   type="button"
-                  className="channel-insight__sort-head"
-                  onClick={() => toggleSort('name')}
+                  className={`channel-insight__full-list-toggle-btn${showResultType ? ' is-active' : ''}`}
+                  aria-pressed={showResultType}
+                  onClick={() => setShowResultType((v) => !v)}
                 >
-                  {headLabel}
-                  <SortArrows active={sort.key === 'name'} dir={sort.dir} />
+                  전환 목표
                 </button>
-              </th>
-              <th>Channel</th>
-              {visibleFields.map((f) => (
-                <th key={f.key}>
-                  <SortableMetricHeader
-                    field={f}
-                    active={sort.key === f.key}
-                    dir={sort.dir}
-                    onSort={() => toggleSort(f.key)}
-                  />
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.length === 0 ? (
-              <tr>
-                <td className="empty-label" colSpan={visibleFields.length + 2}>
-                  {emptyLabel}
-                </td>
-              </tr>
-            ) : (
-              sortedRows.map((row) => {
-                const open = expanded.has(row.key)
-                const children = row.children ?? []
-                return (
-                  <Fragment key={row.key}>
-                    <FullListTableRow
-                      row={row}
-                      level={0}
-                      checked={selected.has(row.selectKey)}
-                      onToggleSelect={onToggleSelect}
-                      open={open}
-                      onToggleOpen={
-                        children.length > 0
-                          ? () => onToggleExpanded(row.key)
-                          : undefined
-                      }
-                      showResultType={showResultType}
-                      visibleFields={visibleFields}
-                      flashing={flashKey === row.selectKey}
-                      onFlashEnd={onFlashEnd}
-                    />
-                    {open &&
-                      children.map((child) => (
+                {/* 토글 버튼 밖에 별도로 둔다 — 버튼 안에 넣으면 "?" 클릭이 토글까지
+                같이 눌러버린다(SortableMetricHeader와 같은 이유). */}
+                <span className="channel-insight__info" tabIndex={0}>
+                  <InfoIcon />
+                  <span
+                    className="channel-insight__info-tooltip"
+                    role="tooltip"
+                  >
+                    전환 목표(결과 유형)는 Meta 캠페인에만 표시됩니다 — Meta Ads
+                    Manager의 "결과" 컬럼이 세는 액션 종류를 그대로 가져온
+                    값으로, Google/Naver 캠페인엔 대응 개념이 없어 표시되지
+                    않습니다.
+                  </span>
+                </span>
+              </span>
+            )}
+          </div>
+
+          <div className="channel-insight__table-wrap">
+            <table className="channel-insight__table channel-insight__table--full-list">
+              <thead>
+                <tr>
+                  <th>
+                    <button
+                      type="button"
+                      className="channel-insight__sort-head"
+                      onClick={() => toggleSort('name')}
+                    >
+                      {headLabel}
+                      <SortArrows active={sort.key === 'name'} dir={sort.dir} />
+                    </button>
+                  </th>
+                  <th>Channel</th>
+                  {visibleFields.map((f) => (
+                    <th key={f.key}>
+                      <SortableMetricHeader
+                        field={f}
+                        active={sort.key === f.key}
+                        dir={sort.dir}
+                        onSort={() => toggleSort(f.key)}
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {sortedRows.length === 0 ? (
+                  <tr>
+                    <td
+                      className="empty-label"
+                      colSpan={visibleFields.length + 2}
+                    >
+                      {emptyLabel}
+                    </td>
+                  </tr>
+                ) : (
+                  sortedRows.map((row) => {
+                    const open = expanded.has(row.key)
+                    const children = row.children ?? []
+                    return (
+                      <Fragment key={row.key}>
                         <FullListTableRow
-                          key={child.key}
-                          row={child}
-                          level={1}
-                          checked={selected.has(child.selectKey)}
+                          row={row}
+                          level={0}
+                          checked={selected.has(row.selectKey)}
                           onToggleSelect={onToggleSelect}
+                          open={open}
+                          onToggleOpen={
+                            children.length > 0
+                              ? () => onToggleExpanded(row.key)
+                              : undefined
+                          }
                           showResultType={showResultType}
                           visibleFields={visibleFields}
-                          flashing={flashKey === child.selectKey}
+                          flashing={flashKey === row.selectKey}
                           onFlashEnd={onFlashEnd}
                         />
-                      ))}
-                  </Fragment>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
+                        {open &&
+                          children.map((child) => (
+                            <FullListTableRow
+                              key={child.key}
+                              row={child}
+                              level={1}
+                              checked={selected.has(child.selectKey)}
+                              onToggleSelect={onToggleSelect}
+                              showResultType={showResultType}
+                              visibleFields={visibleFields}
+                              flashing={flashKey === child.selectKey}
+                              onFlashEnd={onFlashEnd}
+                            />
+                          ))}
+                      </Fragment>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }

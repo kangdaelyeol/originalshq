@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { MetricsSummary } from '../client'
+import type { DateSummary, MetricsSummary } from '../client'
 import {
   channelSafeFields,
   METRIC_FIELDS,
@@ -30,6 +30,8 @@ export interface FullListRow {
   channels: readonly ChannelKey[]
   /** 캠페인 줄 아래에 펼쳐지는 광고셋 줄 — 광고셋 줄에는 없다. */
   children?: readonly FullListRow[]
+  /** 날짜별 값(오래된 것부터) — 카드 보기의 작은 추이 그래프. */
+  trend?: readonly DateSummary[]
 }
 
 /** 캠페인·광고셋 탭의 목록 표(FullListTable) 전용 상태 — 채널 필터, 컬럼
@@ -66,13 +68,29 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
       )
   }, [rows, channelFilter])
 
+  // 이름 찾기 — 캠페인 이름이 맞으면 그 광고셋 전부, 아니면 이름이 맞는
+  // 광고셋이 있는 캠페인만(그 광고셋만) 남긴다. 대소문자 무시.
+  const [query, setQuery] = useState('')
+  const searchedRows = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return filteredRows
+    const hit = (r: FullListRow) => r.name.toLowerCase().includes(q)
+    return filteredRows.flatMap((r) => {
+      if (hit(r)) return [r]
+      const children = (r.children ?? []).filter(hit)
+      return children.length > 0 ? [{ ...r, children }] : []
+    })
+  }, [filteredRows, query])
+
   // 컬럼 표시 여부 — 기본은 전부 표시. 지표 칸만 껐다 켰다 할 수 있고
   // 이름/채널 칸은 항상 보인다. 오프라인/온라인/총 매출·ROAS는 캠페인/adset
   // 단위에 귀속시킬 방법이 없어 항상 0이라(channelSafeFields) 애초에 토글
   // 대상에도 안 넣는다 — channel-insight.tsx의 FullListTable이 컬럼 목록
   // 자체를 이 필드들 뺀 걸로만 그린다.
   // 저장은 "끈 컬럼"으로 한다 — 나중에 지표가 새로 생기면 기본으로 보이도록.
-  const [hiddenKeys, setHiddenKeys] = usePersistentState<ReadonlySet<MetricKey>>(
+  const [hiddenKeys, setHiddenKeys] = usePersistentState<
+    ReadonlySet<MetricKey>
+  >(
     'cmip.fullList.hiddenColumns',
     () => new Set(),
     setOf(LIST_KEYS),
@@ -100,6 +118,11 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
   )
   const hasResultType = filteredRows.some((r) => r.resultType)
 
+  /** 정렬 기준을 바로 고른다(카드 보기의 정렬 버튼) — 이름·CPA는 작은 값부터,
+   * 나머지 지표는 큰 값부터. */
+  const chooseSort = (key: FullListSortKey) =>
+    setSort({ key, dir: key === 'name' || key === 'cpa' ? 'asc' : 'desc' })
+
   const toggleSort = (key: FullListSortKey) => {
     setSort((prev) =>
       prev.key === key
@@ -118,14 +141,15 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
         if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
         return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
       })
-    return sortRows(filteredRows).map((r) =>
+    return sortRows(searchedRows).map((r) =>
       r.children ? { ...r, children: sortRows(r.children) } : r,
     )
-  }, [filteredRows, sort])
+  }, [searchedRows, sort])
 
   return {
     // 진행 상태
     sort,
+    query,
     channelFilter,
     visibleKeys,
     showResultType,
@@ -133,6 +157,8 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
     sortedRows,
     // 액션
     setChannelFilter,
+    setQuery,
+    chooseSort,
     toggleColumn,
     setShowResultType,
     toggleSort,

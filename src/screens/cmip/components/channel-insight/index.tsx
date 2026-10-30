@@ -8,7 +8,13 @@ import {
   type PivotView,
 } from '../../view-model/use-channel-insight-page-view-model'
 import { SingleSelectDropdown } from '../single-select-dropdown'
-import { adsetKey, aggregateMetrics, campaignKey } from '../../client'
+import {
+  adsetKey,
+  aggregateMetrics,
+  campaignKey,
+  emptyMetrics,
+  type DateSummary,
+} from '../../client'
 import { METRIC_FIELDS, type MetricKey } from '../metric-fields'
 import { channelsOf } from '../channels'
 import { DateRangePicker } from '../date-range-picker'
@@ -88,6 +94,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
     campaignHighlights,
     highlightLevel,
     flashKey,
+    listView,
     metricMode,
     selectedMetricKeys,
     showUnit,
@@ -108,6 +115,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
     setHighlightLevel,
     focusHighlight,
     clearFlash,
+    setListView,
     toggleMetric,
     setMetricModeFor,
     clearAllMetrics,
@@ -120,6 +128,14 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
     dateEnd,
     resultTab,
   )
+
+  /** 조회 기간의 날짜마다 값(없는 날은 0) — 카드 보기의 작은 추이 그래프. */
+  const dailyOf = (byDate: readonly DateSummary[]): DateSummary[] => {
+    const byDay = new Map(byDate.map((day) => [day.date, day]))
+    return canonicalDates.map(
+      (date) => byDay.get(date) ?? { ...emptyMetrics(), date },
+    )
+  }
 
   // 사용 분석(/log) — 지금 보고 있는 결과 탭(전체 요약·캠페인·광고셋·매체별
   // 테스트·ROAS).
@@ -256,6 +272,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
                           metrics: aggregateMetrics(c.combined.byDate),
                           resultType: c.resultType,
                           channels: channelsOf(c),
+                          trend: dailyOf(c.combined.byDate),
                           children: c.adsets.map((a) => ({
                             key: `${c.campaignName}::${a.adsetName}`,
                             selectKey: adsetKey(c.campaignName, a.adsetName),
@@ -272,6 +289,8 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
                         onToggleExpanded={toggleExpandedCampaign}
                         flashKey={flashKey}
                         onFlashEnd={clearFlash}
+                        view={listView}
+                        onViewChange={setListView}
                       />
                     </section>
                     <PivotSummary
