@@ -1,6 +1,7 @@
 /**
  * 캠페인·광고셋 탭 맨 위의 요약 카드(순수 함수) — 캠페인 또는 광고셋 단위로
- * 조회 기간 합계를 내서, 지표마다 양쪽 끝 TOP 5를 고른다(8개).
+ * 조회 기간 합계를 내서, 지표마다 양쪽 끝 TOP 5와 분포(매긴 값 전부·중앙값)를
+ * 낸다.
  *
  *   · 광고비 — 광고비를 쓴 광고셋 중 많은 순 / 적은 순, 전체 대비 비중.
  *   · 문의 단가 — 전환 목표가 문의인 Meta 광고셋 중 문의 3건 이상, 낮은 순 /
@@ -35,23 +36,27 @@ export interface CampaignHighlightRow {
   /** 이름 아래 작은 줄 — 광고셋이면 소속 캠페인, 캠페인이면 광고셋 수. */
   name: string
   sub: string
+  /** 매긴 값(막대 길이) — value는 그 값을 단위까지 붙여 쓴 것. */
+  amount: number
   value: string
   note: string
 }
 
-export type CampaignHighlightKey =
-  | 'spendHigh'
-  | 'spendLow'
-  | 'cpaLow'
-  | 'cpaHigh'
-  | 'cpcLow'
-  | 'cpcHigh'
-  | 'cpmLow'
-  | 'cpmHigh'
+/** 요약의 지표 네 개 — 광고비, 문의 단가, CPC, CPM. */
+export type CampaignHighlightMetric = 'spend' | 'cpa' | 'cpc' | 'cpm'
+
+/** 한 지표로 매긴 결과 — 양쪽 끝 TOP 5와, 분포를 그릴 매긴 값 전부. */
+export interface CampaignHighlightGroup {
+  low: CampaignHighlightRow[]
+  high: CampaignHighlightRow[]
+  /** 매긴 값 전부(작은 순) — 분포 띠. */
+  values: number[]
+  median: number
+}
 
 export type CampaignHighlights = Record<
-  CampaignHighlightKey,
-  CampaignHighlightRow[]
+  CampaignHighlightMetric,
+  CampaignHighlightGroup
 >
 
 const LIMIT = 5
@@ -86,7 +91,7 @@ const rankBoth = (
   include: (a: EntityFacts) => boolean,
   valueOf: (a: EntityFacts) => number,
   format: (a: EntityFacts, value: number) => { value: string; note: string },
-): { low: CampaignHighlightRow[]; high: CampaignHighlightRow[] } => {
+): CampaignHighlightGroup => {
   const ranked = adsets
     .filter(include)
     .map((a) => ({ a, value: valueOf(a) }))
@@ -97,11 +102,20 @@ const rankBoth = (
     adsetName: a.adsetName,
     name: a.name,
     sub: a.sub,
+    amount: value,
     ...format(a, value),
   })
+  const values = ranked.map((r) => r.value)
+  const mid = values.length >> 1
   return {
     low: ranked.slice(0, LIMIT).map(toRow),
     high: ranked.slice(-LIMIT).reverse().map(toRow),
+    values,
+    median: values.length
+      ? values.length % 2
+        ? values[mid]
+        : (values[mid - 1] + values[mid]) / 2
+      : 0,
   }
 }
 
@@ -169,14 +183,5 @@ export function buildCampaignHighlights(
     }),
   )
 
-  return {
-    spendHigh: spend.high,
-    spendLow: spend.low,
-    cpaLow: cpa.low,
-    cpaHigh: cpa.high,
-    cpcLow: cpc.low,
-    cpcHigh: cpc.high,
-    cpmLow: cpm.low,
-    cpmHigh: cpm.high,
-  }
+  return { spend, cpa, cpc, cpm }
 }

@@ -111,7 +111,7 @@ const MetricRow = ({
         <span className="period-metric__basis">기간 전체</span>
         <dl className="period-metric__stats">
           <div>
-            <dt>칸 평균</dt>
+            <dt>평균</dt>
             <dd>{Number.isFinite(mean) ? field.format(mean) : '-'}</dd>
           </div>
           <div>

@@ -398,28 +398,6 @@
   }
 }
 
-// ── 캠페인·광고셋 요약(campaign-highlights.tsx) ─────────────────────────
-.cmip .campaign-highlights__card {
-  @include glass.inner;
-  padding: 12px 16px 14px;
-}
-.cmip .campaign-highlights__list li {
-  border-top: none;
-  padding: 5px 0;
-}
-// 순위 — 작은 동그라미.
-.cmip .campaign-highlights__rank {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: $fill-2;
-  font-size: 11px;
-  line-height: 20px;
-}
-.cmip .campaign-highlights__who:hover .campaign-highlights__name {
-  color: var(--glass-link);
-}
-
 // ── 불러오는 중 ─────────────────────────────────────────────────────────
 // 섹션마다 로딩 판(LoadingPanel) 하나 — 다 받으면 섹션 몸통(AutoHeight)이 그
 // 높이에서 자라고, 새로 붙은 내용(머리·표)이 흐릿하게 떠오른다. 섹션 껍데기는

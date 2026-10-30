@@ -1,0 +1,205 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// 캠페인·광고셋 탭 맨 위 요약(campaign-highlights.tsx) — 지표마다 타일 하나:
+// [제목 · 순서 고르기] / 분포 띠 / TOP 5 막대. 글자는 이름과 값만 남기고
+// 나머지(소속 캠페인 등)는 마우스를 올리면.
+
+.campaign-highlights__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+
+  @media (max-width: 960px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.hl-tile {
+  @include glass.inner;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px 16px 12px;
+  @include glass.enter(var(--glass-i, 0), 60ms);
+}
+
+.hl-tile__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hl-tile__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.35;
+
+  h4 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: $text;
+  }
+  span {
+    font-size: 11.5px;
+    color: $text-3;
+  }
+}
+.hl-tile__empty {
+  margin: 0;
+  padding: 24px 0;
+  font-size: 12.5px;
+  color: $text-3;
+  text-align: center;
+}
+
+// ── 분포 띠 ──────────────────────────────────────────────────────────────
+
+.hl-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.hl-strip__plot {
+  position: relative;
+  height: 26px;
+  margin: 0 5px;
+  border-radius: 999px;
+  background: $fill-1;
+
+  i {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    margin: -3px 0 0 -3px;
+    border-radius: 50%;
+    background: $text-3;
+    opacity: 0.55;
+
+    &.is-shown {
+      top: 50%;
+      width: 9px;
+      height: 9px;
+      margin: -4.5px 0 0 -4.5px;
+      background: var(--glass-accent);
+      opacity: 1;
+      @include glass.pop-in(0.35s);
+    }
+  }
+}
+.hl-strip__median {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: $text-2;
+}
+.hl-strip__scale {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10.5px;
+  color: $text-3;
+  font-variant-numeric: tabular-nums;
+
+  b {
+    font-weight: 600;
+    color: $text-2;
+  }
+}
+
+// ── TOP 5 ────────────────────────────────────────────────────────────────
+
+.hl-tile__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 한 줄: [이름 | 막대 | 값 | 비중·건수] — 칸 폭을 정해 줄마다 같은 자리에.
+.hl-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(48px, 26%) 84px 84px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font: inherit;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background: $fill-1;
+
+    .hl-row__name {
+      color: var(--glass-link);
+    }
+  }
+  &:focus-visible {
+    outline: none;
+    background: $fill-2;
+  }
+}
+.hl-row__name {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: $text;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  transition: color 0.2s ease;
+}
+.hl-row__value {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.hl-row__track {
+  height: 5px;
+  border-radius: 999px;
+  background: $track;
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--glass-accent);
+    transform-origin: 0 50%;
+    animation: hl-grow 0.6s cubic-bezier(0.33, 1, 0.68, 1)
+      calc(var(--glass-i, 0) * 40ms + 0.1s) backwards;
+  }
+}
+.hl-row__note {
+  font-size: 10.5px;
+  color: $text-3;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@keyframes hl-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hl-row__track i {
+    animation: none;
+  }
+}
