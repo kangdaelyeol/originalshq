@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 824 824">
-  <!-- assets/symbols/xtool-start-icon.png 그대로 — 녹색 둥근 판 위 짙은 X -->
-  <rect width="824" height="824" rx="190" fill="#00c767" />
-  <g transform="translate(142 210)" fill="#1a1a1e" stroke="#1a1a1e" stroke-width="6" stroke-linejoin="round">
-    <polygon points="0,0 140,0 233,92 162,163" />
-    <polygon points="0,400 399,0 538,0 342,200 538,400 399,400 270,273 140,400" />
-  </g>
-</svg>

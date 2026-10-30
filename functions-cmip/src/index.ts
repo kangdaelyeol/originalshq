@@ -37,6 +37,7 @@ import {
   syncMetaInsightRows,
 } from './channel/meta'
 import { readMetaAdInsights, syncMetaAdRows } from './channel/meta/ads'
+import { debugFetchMetaCreatives } from './channel/meta/creatives'
 import { validateGetInsightBody } from './util'
 import {
   exchangeAndSaveGoogleTokens,
@@ -676,6 +677,25 @@ export const syncMetaAdInsights = onRequest(
 /** "광고 성과" 탭 — [dateStart, dateEnd]의 광고 단위 광고비와 광고 →
  * 광고셋 → 캠페인 연결. 저장된 값만 읽는다(예약 동기화가 최근 14일을 하루
  * 6번 다시 받는다). */
+/** 디버그 전용(조회만) — Meta 광고 소재 영상을 Graph API로 받아올 수 있는지
+ * (channel/meta/creatives.ts 참고). 소재 분석(AI)에 쓸 영상의 출처를 정하려고. */
+export const debugMetaCreatives = onRequest(
+  { secrets: [metaAdsId] },
+  (req, res) => {
+    corsHandler(req, res, async () => {
+      if (req.method !== 'GET') {
+        sendError(res, 405, 'Method Not Allowed')
+        return
+      }
+      try {
+        res.status(200).send(await debugFetchMetaCreatives(metaAdsId.value()))
+      } catch (err) {
+        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+      }
+    })
+  },
+)
+
 export const getMetaAdInsights = onRequest(
   { memory: '512MiB' },
   (req, res) => {

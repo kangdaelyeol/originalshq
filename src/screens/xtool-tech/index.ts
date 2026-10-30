@@ -1,0 +1,10 @@
+// originalshq 라우터(src/router/index.tsx)가 /xtool-tech 아래에서 lazy로 받아 가는 것들.
+export { AppLayout } from './components/layout/app-layout'
+export { AnalyticsPage } from './pages/analytics-page'
+export { DeployStationPage } from './pages/deploy-station-page'
+export { LoginPage } from './pages/login-page'
+export { OverviewPage } from './pages/overview-page'
+export { SecurityPage, TasksPage } from './pages/placeholder-pages'
+export { SettingsPage } from './pages/settings-page'
+export { TeamPage } from './pages/team-page'
+export { XtoolTechRoot } from './root'

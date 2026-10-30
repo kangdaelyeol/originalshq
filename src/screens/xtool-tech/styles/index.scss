@@ -1,0 +1,16 @@
+@use 'sass:meta';
+
+// base는 자기 안에서 이미 .xtool-tech로 범위를 정한다. 나머지는 이 화면의 루트 아래로만
+// 들어가게 load-css로 감싼다 — originalshq의 다른 화면(cmip·리드 매니저 등)과 클래스 이름이
+// 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
+@use 'base';
+
+.xtool-tech {
+  @include meta.load-css('background');
+  @include meta.load-css('layout');
+  @include meta.load-css('components');
+  @include meta.load-css('charts');
+  @include meta.load-css('login');
+  @include meta.load-css('notifications');
+  @include meta.load-css('settings');
+}

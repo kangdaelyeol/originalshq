@@ -3,12 +3,17 @@
 import { AdminPage } from '@/pages/admin-page'
 import { BasePage } from '@/pages/base-page'
 import { DevPage } from '@/pages/dev-page'
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Dev } from '@/screens/dev'
 import Cafe24Adjustments from '@/screens/cafe24-adjustments'
 import HomeScreen from '@/screens/home'
 import PrivacyScreen from '@/screens/privacy'
 import PrivacyDocScreen from '@/screens/privacy/doc'
+
+// xtool-tech(사내 기술팀 보드) 화면 하나를 lazy로 — 모든 페이지가 같은 묶음 하나에서 나온다.
+const xtoolTech =
+  (name: keyof typeof import('@/screens/xtool-tech')) =>
+  async () => ({ Component: (await import('@/screens/xtool-tech'))[name] })
 
 export const router = createBrowserRouter([
   {
@@ -88,6 +93,29 @@ export const router = createBrowserRouter([
         lazy: async () => ({
           Component: (await import('@/screens/cmip')).default,
         }),
+      },
+    ],
+  },
+  {
+    // Lazy: 사내 기술팀 보드 — 유리 화면·입자 인트로·motion 의존성이 커서 이 주소로 들어올
+    // 때만 받는다. 스타일은 화면 루트(.xtool-tech) 아래로만 적용된다.
+    path: '/xtool-tech',
+    lazy: xtoolTech('XtoolTechRoot'),
+    children: [
+      // 로그인은 사이드바·상단바 없이 화면 전체를 쓴다.
+      { path: 'login', lazy: xtoolTech('LoginPage') },
+      {
+        lazy: xtoolTech('AppLayout'),
+        children: [
+          { index: true, lazy: xtoolTech('OverviewPage') },
+          { path: 'analytics', lazy: xtoolTech('AnalyticsPage') },
+          { path: 'deploy', lazy: xtoolTech('DeployStationPage') },
+          { path: 'team', lazy: xtoolTech('TeamPage') },
+          { path: 'settings', lazy: xtoolTech('SettingsPage') },
+          { path: 'tasks', lazy: xtoolTech('TasksPage') },
+          { path: 'security', lazy: xtoolTech('SecurityPage') },
+          { path: '*', element: <Navigate to="/xtool-tech" replace /> },
+        ],
       },
     ],
   },
