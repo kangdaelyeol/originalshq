@@ -1,4 +1,4 @@
-import { fibonacciSphere, sampleText } from './shapes'
+import { fibonacciSphere, sampleImage, sampleText, type TextShape } from './shapes'
 
 // ────────────────────────────────────────────────────────────────────────
 // 입자 인트로 — 샘플 영상(particle-animation.mp4)의 흐름을 그대로 따른다.
@@ -26,7 +26,10 @@ export interface ParticleFieldOptions {
   canvas: HTMLCanvasElement
   /** 인트로가 끝난 뒤 글자가 자리 잡을 상자(카드 위) — 매 프레임 위치를 읽어 따라간다. */
   slot: HTMLElement
-  text: string
+  /** 입자가 모일 로고 이미지(투명 배경 PNG) — 녹색 픽셀은 강조색 입자가 된다. */
+  logoUrl: string
+  /** 이미지를 못 불러올 때 대신 글꼴로 쓸 글자 */
+  fallbackText: string
   reducedMotion: boolean
   /** 글자가 카드 위로 옮겨 가기 시작할 때(= 카드를 보여 줄 때) 한 번 부른다. */
   onSettle: () => void
@@ -44,8 +47,11 @@ const REPEL_FORCE = 5.5
 const DUST_RATIO = 0.45
 // 글자 기본 방향(라디안) — 왼쪽이 앞으로 나온 비스듬한 3D.
 const BASE_YAW = -0.36
-// 글자 두께(글자 폭 대비) — 돌렸을 때 옆면이 보여 입체감이 난다.
+// 글자 두께(글자 폭 대비) — 돌렸을 때 옆면이 보여 입체감이 난다. 로고는 가늘고 길어서 얇게.
 const TEXT_DEPTH = 0.07
+const LOGO_DEPTH = 0.035
+// 로고 녹색 입자 — 브랜드 녹색(#00C767)보다 한 톤 밝게: 어두운 배경에서 겹쳐 빛날 때 같은 녹색으로 읽힌다.
+const ACCENT_PARTICLE = '#1fe07f'
 // 등장 회전 시작 각도 — 옆으로 돌아가 있던 글자가 정면 쪽으로 돈다.
 const ENTRY_YAW = 1.05
 const ENTRY_PITCH = 0.32
@@ -84,6 +90,14 @@ export class ParticleField {
   private size: Float32Array = new Float32Array(0)
   private alpha: Float32Array = new Float32Array(0)
   private dust: Uint8Array = new Uint8Array(0)
+  // 강조색 입자(로고 X) 표시와, 지금 얼마나 물들었는지(0 흰색 → 1 녹색).
+  private tint: Uint8Array = new Uint8Array(0)
+  private mix: Float32Array = new Float32Array(0)
+  // 그릴 값(화면 x·y·크기·불투명도) — 흰색·녹색 두 번에 나눠 그리려고 모아 둔다.
+  private screenX: Float32Array = new Float32Array(0)
+  private screenY: Float32Array = new Float32Array(0)
+  private screenR: Float32Array = new Float32Array(0)
+  private screenA: Float32Array = new Float32Array(0)
 
   private phase: Phase = 'sphere'
   private phaseStart = 0
@@ -113,7 +127,7 @@ export class ParticleField {
     this.resize()
     this.allocate()
     window.addEventListener('resize', this.onResize)
-    void this.loadText()
+    void this.loadShape()
 
     if (this.opts.reducedMotion) {
       // 동작 줄이기 — 인트로 없이 글자만 정지 화면으로 그린다(창 크기·스크롤이 바뀔 때만 다시).
@@ -183,6 +197,12 @@ export class ParticleField {
     this.size = new Float32Array(n)
     this.alpha = new Float32Array(n)
     this.dust = new Uint8Array(n)
+    this.tint = new Uint8Array(n)
+    this.mix = new Float32Array(n)
+    this.screenX = new Float32Array(n)
+    this.screenY = new Float32Array(n)
+    this.screenR = new Float32Array(n)
+    this.screenA = new Float32Array(n)
     this.fillScatter()
 
     const radius = this.sphereRadius()
@@ -209,17 +229,23 @@ export class ParticleField {
     }
   }
 
-  private async loadText(): Promise<void> {
-    // 글꼴이 늦게 오면 기본 글꼴로라도 — 1.5초 넘게 기다리지 않는다.
+  private async loadShape(): Promise<void> {
+    let shape: TextShape
     try {
-      await Promise.race([document.fonts.load(FONT), wait(1500)])
+      shape = await sampleImage(this.opts.logoUrl, this.count, LOGO_DEPTH)
     } catch {
-      /* 글꼴 로딩 실패 — 대체 글꼴로 그린다 */
+      // 로고 이미지를 못 불러오면 글꼴로 — 글꼴이 늦으면 1.5초만 기다리고 대체 글꼴로 그린다.
+      try {
+        await Promise.race([document.fonts.load(FONT), wait(1500)])
+      } catch {
+        /* 대체 글꼴로 그린다 */
+      }
+      shape = sampleText(this.opts.fallbackText, FONT, this.count, TEXT_DEPTH)
     }
     if (this.destroyed) return
-    const shape = sampleText(this.opts.text, FONT, this.count, TEXT_DEPTH)
     this.text = shape.points
-    this.textHeight = Math.max(0.1, shape.height)
+    this.textHeight = Math.max(0.05, shape.height)
+    if (shape.accent) this.tint = shape.accent
     if (this.opts.reducedMotion) {
       this.settled = true
       this.phase = 'idle'
@@ -426,7 +452,6 @@ export class ParticleField {
     ctx.clearRect(0, 0, this.width, this.height)
     // 겹칠수록 밝아진다 — 샘플처럼 촘촘한 가장자리·이음매가 빛나 보인다.
     ctx.globalCompositeOperation = 'lighter'
-    ctx.fillStyle = '#fff'
 
     for (let i = 0; i < this.count; i++) {
       const o = i * 3
@@ -514,17 +539,47 @@ export class ParticleField {
       this.pos[o + 2] = nz
 
       this.alpha[i] += (targetAlpha - this.alpha[i]) * Math.min(1, 0.08 * f)
-      if (FOCAL + nz < 60) continue
+      // 로고의 녹색 X에서 뽑힌 입자는 글자로 모였을 때만 녹색으로 물든다(흩어지면 다시 흰색).
+      const tinted = this.tint[i] === 1 && !isDust && usesText && phase !== 'scatter' ? 1 : 0
+      this.mix[i] += (tinted - this.mix[i]) * Math.min(1, 0.06 * f)
+
+      if (FOCAL + nz < 60) {
+        this.screenA[i] = 0
+        continue
+      }
       s = FOCAL / (FOCAL + nz)
       const depthFade = 1 - clamp01((nz + 300) / 1500) * 0.65
-      const a = this.alpha[i] * depthFade
+      this.screenX[i] = halfW + x * s
+      this.screenY[i] = halfH + y * s
+      this.screenR[i] = Math.max(0.7, this.size[i] * s * (isDust ? 0.9 : textSize))
+      this.screenA[i] = this.alpha[i] * depthFade
+    }
+    this.drawParticles()
+    this.raf = requestAnimationFrame(this.frame)
+  }
+
+  /** 흰색 → 녹색 두 번에 나눠 그린다 — 입자마다 fillStyle을 바꾸면 느려서. 물드는 중인 입자는
+   * 두 번 모두 그려(불투명도를 나눠) 흰색에서 녹색으로 자연스럽게 넘어간다. */
+  private drawParticles(): void {
+    const ctx = this.ctx
+    ctx.fillStyle = '#fff'
+    for (let i = 0; i < this.count; i++) {
+      const a = this.screenA[i] * (1 - this.mix[i])
       if (a < 0.02) continue
-      const r = Math.max(0.7, this.size[i] * s * (isDust ? 0.9 : textSize))
+      const r = this.screenR[i]
       ctx.globalAlpha = Math.min(1, a)
-      ctx.fillRect(halfW + x * s - r / 2, halfH + y * s - r / 2, r, r)
+      ctx.fillRect(this.screenX[i] - r / 2, this.screenY[i] - r / 2, r, r)
+    }
+    ctx.fillStyle = ACCENT_PARTICLE
+    for (let i = 0; i < this.count; i++) {
+      if (this.tint[i] !== 1) continue
+      const a = this.screenA[i] * this.mix[i]
+      if (a < 0.02) continue
+      const r = this.screenR[i]
+      ctx.globalAlpha = Math.min(1, a)
+      ctx.fillRect(this.screenX[i] - r / 2, this.screenY[i] - r / 2, r, r)
     }
     ctx.globalAlpha = 1
-    this.raf = requestAnimationFrame(this.frame)
   }
 
   /** 동작 줄이기용 — 글자를 제자리에 바로 그린다. */
@@ -539,10 +594,7 @@ export class ParticleField {
     const sy = Math.sin(place.yaw)
     ctx.clearRect(0, 0, this.width, this.height)
     ctx.globalCompositeOperation = 'lighter'
-    ctx.fillStyle = '#fff'
-    ctx.globalAlpha = 0.85
     for (let i = 0; i < this.count; i++) {
-      if (this.dust[i]) continue
       const o = i * 3
       const mx = text[o] * place.scale
       const mz = text[o + 2] * place.scale
@@ -550,9 +602,12 @@ export class ParticleField {
       const s = FOCAL / (FOCAL + z)
       const x = place.x + mx * cy + mz * sy
       const y = place.y + text[o + 1] * place.scale
-      const r = Math.max(0.7, this.size[i] * s * 0.75)
-      ctx.fillRect(halfW + x * s - r / 2, halfH + y * s - r / 2, r, r)
+      this.screenX[i] = halfW + x * s
+      this.screenY[i] = halfH + y * s
+      this.screenR[i] = Math.max(0.7, this.size[i] * s * 0.75)
+      this.screenA[i] = this.dust[i] ? 0 : 0.85
+      this.mix[i] = this.tint[i]
     }
-    ctx.globalAlpha = 1
+    this.drawParticles()
   }
 }

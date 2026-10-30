@@ -12,10 +12,14 @@
   --text-4: rgba(255, 255, 255, 0.45);
   --line: rgba(255, 255, 255, 0.065);
 
-  // 강조색 — 로고·주요 버튼·활성 메뉴 아이콘(샘플의 주황빛 빨강).
-  --accent: #ef6342;
-  --accent-hi: #f57d5b;
-  --accent-lo: #dc4529;
+  // 강조색 — xTool 앱 아이콘의 녹색(assets/xtool-start-icon.png, #00C767).
+  // 로고·주요 버튼·활성 메뉴 아이콘. 반투명이 필요하면 rgba(var(--accent-rgb), 0.x).
+  --accent: #00c767;
+  --accent-hi: #2fe08a;
+  --accent-lo: #00a856;
+  --accent-rgb: 0, 199, 103;
+  // 녹색 위 글자·아이콘 — 흰 글씨는 녹색 위 대비가 2.3:1이라, 앱 아이콘처럼 짙은 색을 쓴다.
+  --accent-ink: #07160e;
 
   // 상태 색 — 의미가 있을 때만(배지·경고).
   --good: #4ade80;
@@ -85,7 +89,7 @@ p {
 }
 
 ::selection {
-  background: rgba(239, 99, 66, 0.35);
+  background: rgba(var(--accent-rgb), 0.35);
 }
 
 // 어두운 유리 위에 어울리는 얇은 스크롤바.

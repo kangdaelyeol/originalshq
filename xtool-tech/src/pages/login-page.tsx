@@ -1,8 +1,10 @@
-import { ArrowRight, ChevronsRight, CircleCheck, Info, Lock, Mail, User, Zap } from 'lucide-react'
+import { ArrowRight, ChevronsRight, CircleCheck, Info, Lock, Mail, User } from 'lucide-react'
 import { useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
+import xtoolLogoUrl from '../../assets/xtool-logo-text.png'
+import { BrandMark } from '../components/brand/brand-mark'
 import { AppBackground } from '../components/layout/app-background'
 import { GithubMark, GoogleMark } from '../components/login/brand-marks'
 import { LoginCard } from '../components/login/login-card'
@@ -40,14 +42,16 @@ export function LoginPage() {
   const [loginError, setLoginError] = useState<string | null>(null)
   const [mismatch, setMismatch] = useState(false)
 
-  // 입자 인트로 — 'xTool'이 카드 위 자리(hero)로 옮겨 가기 시작하면 카드를 보여 준다.
+  // 입자 인트로 — xTool 워드마크(assets/xtool-logo-text.png)가 카드 위 자리(hero)로 옮겨 가기
+  // 시작하면 카드를 보여 준다.
   const [introDone, setIntroDone] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const heroRef = useRef<HTMLButtonElement>(null)
   const particles = useParticleField({
     canvasRef,
     slotRef: heroRef,
-    text: 'xTool',
+    logoUrl: xtoolLogoUrl,
+    fallbackText: 'xTool',
     reducedMotion: Boolean(reduceMotion),
     onSettle: () => setIntroDone(true),
   })
@@ -148,9 +152,7 @@ export function LoginPage() {
       <canvas ref={canvasRef} className="login__particles" aria-hidden />
 
       <header className="login__brand">
-        <span className="brand-mark" aria-hidden>
-          <Zap size={18} strokeWidth={2.4} fill="currentColor" />
-        </span>
+        <BrandMark />
         <div className="login__brand-text">
           <strong>xtool tech</strong>
           <span>TECH BOARD</span>

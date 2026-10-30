@@ -1,8 +1,9 @@
 import { motion, type MotionValue } from 'motion/react'
-import { X, Zap } from 'lucide-react'
+import { X } from 'lucide-react'
 import { useId, useMemo, type ReactNode, type RefObject } from 'react'
 import type { ElementSize } from '../../lib/use-element-size'
 import { cx } from '../../lib/cx'
+import { XMark } from '../brand/brand-mark'
 import { cardPath, PIECE, PIECE_PATH } from './shape'
 
 interface LoginCardProps {
@@ -87,8 +88,9 @@ export function LoginCard({ scope, glassRef, size, tilt, pieces, shakeX, busy, r
       <span className="login-ring login-ring--ok" aria-hidden />
       <span className="login-ring login-ring--ok" aria-hidden />
       <span className="login-ring login-ring--fail" aria-hidden />
+      {/* 두 조각이 녹색 판으로 합쳐지면 그 위에 X — 앱 아이콘이 완성되는 순간. */}
       <span className="login-logo login-logo--ok" aria-hidden>
-        <Zap size={24} strokeWidth={2.2} fill="currentColor" />
+        <XMark />
       </span>
       <span className="login-logo login-logo--fail" aria-hidden>
         <X size={26} strokeWidth={3} />

@@ -78,11 +78,17 @@
   width: 40px;
   height: 40px;
   border-radius: 11px;
-  color: #fff;
-  background: linear-gradient(145deg, var(--accent-hi), var(--accent-lo));
+  color: var(--accent-ink);
+  // 앱 아이콘(assets/xtool-start-icon.png)처럼 녹색 판 위 짙은 X.
+  background: linear-gradient(145deg, var(--accent-hi), var(--accent) 55%, var(--accent-lo));
   box-shadow:
-    0 8px 22px -6px rgba(239, 99, 66, 0.7),
+    0 8px 22px -6px rgba(var(--accent-rgb), 0.7),
     inset 0 1px 0 rgba(255, 255, 255, 0.32);
+}
+
+.brand-mark__x {
+  width: 24px;
+  height: auto;
 }
 
 .sidebar__brand-text {
@@ -288,18 +294,6 @@
   }
 }
 
-.icon-button__dot {
-  position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--good);
-  box-shadow:
-    0 0 0 2px rgba(20, 21, 24, 0.95),
-    0 0 8px rgba(74, 222, 128, 0.8);
-}
 
 // ── 반응형 ──────────────────────────────────────────────────────────────────
 // 좁아지면 사이드바를 아이콘 줄로 접는다(글자는 title 툴팁으로).

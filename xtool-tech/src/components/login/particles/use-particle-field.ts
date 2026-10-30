@@ -4,13 +4,21 @@ import { ParticleField } from './particle-field'
 interface UseParticleFieldOptions {
   canvasRef: RefObject<HTMLCanvasElement | null>
   slotRef: RefObject<HTMLElement | null>
-  text: string
+  logoUrl: string
+  fallbackText: string
   reducedMotion: boolean
   onSettle: () => void
 }
 
 /** 입자 엔진을 화면에 붙였다 뗀다 — 건너뛰기·다시 모으기만 바깥에 내준다. */
-export function useParticleField({ canvasRef, slotRef, text, reducedMotion, onSettle }: UseParticleFieldOptions) {
+export function useParticleField({
+  canvasRef,
+  slotRef,
+  logoUrl,
+  fallbackText,
+  reducedMotion,
+  onSettle,
+}: UseParticleFieldOptions) {
   const engineRef = useRef<ParticleField | null>(null)
   // 엔진은 한 번만 만들고, 콜백이 바뀌어도 다시 만들지 않게 최신 것만 ref로 넘긴다.
   const onSettleRef = useRef(onSettle)
@@ -25,7 +33,8 @@ export function useParticleField({ canvasRef, slotRef, text, reducedMotion, onSe
     const engine = new ParticleField({
       canvas,
       slot,
-      text,
+      logoUrl,
+      fallbackText,
       reducedMotion,
       onSettle: () => onSettleRef.current(),
     })
@@ -35,7 +44,7 @@ export function useParticleField({ canvasRef, slotRef, text, reducedMotion, onSe
       engine.destroy()
       engineRef.current = null
     }
-  }, [canvasRef, slotRef, text, reducedMotion])
+  }, [canvasRef, slotRef, logoUrl, fallbackText, reducedMotion])
 
   const skip = useCallback(() => engineRef.current?.skip(), [])
   const replay = useCallback(() => engineRef.current?.replay(), [])

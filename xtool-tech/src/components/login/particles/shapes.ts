@@ -20,6 +20,65 @@ export interface TextShape {
   points: Float32Array
   /** 글자 높이(폭 = 1 기준) — 자리 상자의 높이에도 맞춰 크기를 정할 때 쓴다. */
   height: number
+  /** 점마다 1이면 강조색(로고의 녹색 X에서 뽑힌 점), 0이면 흰색. */
+  accent?: Uint8Array
+}
+
+/**
+ * 로고 이미지(투명 배경 PNG)의 칠해진 픽셀에서 점을 뽑는다 — 글꼴로 흉내 내지 않고 실제
+ * 워드마크 모양 그대로. 녹색 픽셀에서 뽑힌 점은 accent로 표시해 강조색으로 그린다.
+ */
+export async function sampleImage(url: string, count: number, depth: number): Promise<TextShape> {
+  const img = new Image()
+  img.src = url
+  await img.decode()
+
+  // 원본이 작아서(600×76) 두 배로 키워 촘촘하게 뽑는다.
+  const scale = 2
+  const width = img.naturalWidth * scale
+  const height = img.naturalHeight * scale
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  if (!ctx) throw new Error('canvas 2d를 쓸 수 없어요')
+  ctx.drawImage(img, 0, 0, width, height)
+
+  const data = ctx.getImageData(0, 0, width, height).data
+  const points: number[] = []
+  const green: number[] = []
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      const p = (y * width + x) * 4
+      if (data[p + 3] < 140) continue
+      points.push(x, y)
+      green.push(data[p + 1] > 120 && data[p] < 90 ? 1 : 0)
+      if (x < minX) minX = x
+      if (x > maxX) maxX = x
+      if (y < minY) minY = y
+      if (y > maxY) maxY = y
+    }
+  }
+  if (points.length === 0) throw new Error('로고 이미지에 칠해진 픽셀이 없어요')
+
+  const span = Math.max(1, maxX - minX)
+  const cx = (minX + maxX) / 2
+  const cy = (minY + maxY) / 2
+  const total = points.length / 2
+  const out = new Float32Array(count * 3)
+  const accent = new Uint8Array(count)
+  for (let i = 0; i < count; i++) {
+    const j = Math.floor(Math.random() * total)
+    out[i * 3] = (points[j * 2] + Math.random() * 2 - 1 - cx) / span
+    out[i * 3 + 1] = (points[j * 2 + 1] + Math.random() * 2 - 1 - cy) / span
+    out[i * 3 + 2] = (Math.random() - 0.5) * depth
+    accent[i] = green[j]
+  }
+  return { points: out, height: (maxY - minY) / span, accent }
 }
 
 /**
