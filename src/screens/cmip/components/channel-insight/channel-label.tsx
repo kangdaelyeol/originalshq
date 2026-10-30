@@ -17,10 +17,10 @@ const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
   openai: 'var(--glass-text)',
 }
 
-function MetaLogo() {
-  return (
-    <img className="channel-insight__channel-logo" src={metaIconPng} alt="" />
-  )
+function MetaLogo({
+  className = 'channel-insight__channel-logo',
+}: { className?: string } = {}) {
+  return <img className={className} src={metaIconPng} alt="" />
 }
 
 // 작은 "G" 아이콘 대신 실제 구글 워드마크(전체 로고) 전체를 쓴다 — 그 자체로
@@ -95,7 +95,10 @@ const CHANNEL_LOGO: Record<ChannelKey, () => ReactElement> = {
 /** 채널 표시 하나 — 동그란 자리(카드 아바타 등)에 넣는 정사각형 표식. 구글·
  * 네이버 로고는 워드마크라 첫 글자 모양만 쓴다(구글 G, 네이버 N). */
 export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
-  if (channelKey === 'meta') return <MetaLogo />
+  if (channelKey === 'meta')
+    return (
+      <MetaLogo className="channel-insight__channel-mark channel-insight__channel-mark--meta" />
+    )
   if (channelKey === 'openai')
     return <OpenaiLogo className="channel-insight__channel-mark" />
   if (channelKey === 'google')
@@ -124,6 +127,17 @@ export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
         d="M3 2.5h4.6l4.9 7.2V2.5H17v15h-4.6L7.5 10.3v7.2H3z"
       />
     </svg>
+  )
+}
+
+/** 채널 표식을 정사각 유리 칸에 — 칸이 놓인 줄의 높이에 꽉 맞춰(가로도 같게)
+ * 크게 보인다. 로고마다 여백이 달라도 칸 안 같은 비율로 들어가 크기·자리가
+ * 같아 보인다(목록 줄·편집 머리 등). */
+export function ChannelTile({ channelKey }: { channelKey: ChannelKey }) {
+  return (
+    <span className="channel-insight__channel-tile">
+      <ChannelMark channelKey={channelKey} />
+    </span>
   )
 }
 

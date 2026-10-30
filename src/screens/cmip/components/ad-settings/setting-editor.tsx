@@ -18,7 +18,7 @@ import {
   type SaveAdSettingsRequest,
 } from '../../client'
 import { addDays } from '../../utils'
-import { ChannelMark } from '../channel-insight/channel-label'
+import { ChannelTile } from '../channel-insight/channel-label'
 import {
   BUDGET_PERIOD_LABEL,
   FUNNEL_LABEL,
@@ -224,7 +224,7 @@ export function SettingEditor({
   return (
     <div className="ad-editor">
       <header className="ad-editor__head">
-        <ChannelMark channelKey={entity.channel} />
+        <ChannelTile channelKey={entity.channel} />
         <div className="ad-editor__titles">
           <span className="ad-editor__level">
             {isAdset ? '광고셋' : '캠페인'}

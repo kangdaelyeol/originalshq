@@ -672,6 +672,35 @@
     height: 17px;
   }
 }
+// 채널 표식 — 어느 채널이든 같은 정사각 상자에 담는다(Meta 그림은 위아래
+// 여백이 있는 정사각 PNG라, 상자를 맞춰야 다른 표식과 같은 자리·크기로 보인다).
+.cmip .channel-insight__channel-mark {
+  display: block;
+  flex: none;
+  object-fit: contain;
+}
+// 채널 칸(ChannelTile) — 정사각 유리 칸, 표식은 그 안 가운데 같은 비율로.
+// 크기(--tile-size)는 놓인 곳이 그 줄 높이로 정한다(줄 높이를 따라 늘게 하면
+// 칸이 넓어지며 글자를 밀어 줄이 다시 높아져서, 높이를 정해 두고 맞춘다).
+.cmip .channel-insight__channel-tile {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--tile-size, 40px);
+  height: var(--tile-size, 40px);
+  border-radius: 28%;
+  background: $fill-2;
+
+  .channel-insight__channel-mark {
+    width: 56%;
+    height: 56%;
+  }
+  // Meta 그림은 납작한 ∞라 같은 상자면 작아 보여서 조금 크게.
+  .channel-insight__channel-mark--meta {
+    width: 68%;
+    height: 68%;
+  }
+}
 .cmip .campaign-card__titles {
   display: flex;
   flex: 1;

@@ -5,6 +5,13 @@
 // 효율(ad-efficiency.tsx). 유리 원칙대로: 선 없이 옅은 눈금, 글자 테두리
 // 없이, 마우스 위치는 떠 있는 유리 판.
 
+// 그래프 한 덩어리 — 캔버스와 범례 사이를 띄운다.
+.insight-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 // 증감 색 — 표의 대비 표시(channel-insight.scss __metric-delta)와 같다.
 $delta-up: #3fb950;
 $delta-down: #ff7b72;

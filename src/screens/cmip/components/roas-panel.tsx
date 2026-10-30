@@ -1,4 +1,9 @@
-import { useId, useMemo, useState, type CSSProperties } from 'react'
+import {
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import type {
   Cafe24RevenueSummary,
   CombinedInsight,
@@ -7,9 +12,24 @@ import type {
   AttributionRow,
 } from '../client'
 import { SingleSelectDropdown } from './single-select-dropdown'
-import { setOf, usePersistentState } from '@/hooks/use-persistent-state'
+import { oneOf, setOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { RoasAttribution } from './roas-attribution'
-import { Sparkline, TrendGrid, type TrendSeries } from '@/components/glass'
+import {
+  Segmented,
+  Sparkline,
+  TrendGrid,
+  type TrendSeries,
+} from '@/components/glass'
+import {
+  DisplayToggle,
+  PeriodStackChart,
+  RatioChips,
+  RoasTrendChart,
+  Waterfall,
+  type StackGroup,
+  type WaterfallStep,
+} from './roas-charts'
+import { useDisplayMode } from '../view-model/use-display-mode'
 import {
   computeRoasRows,
   RoasGrouping,
@@ -18,7 +38,6 @@ import {
   type RoasMetrics,
   type RoasRow,
 } from '../view-model/use-roas-view-model'
-import { useRoasTrendChartViewModel } from '../view-model/use-roas-trend-chart-view-model'
 import { ChevronIcon, InfoIcon, SortArrows, type SortDir } from './icons'
 
 const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
@@ -27,6 +46,196 @@ const GROUPING_OPTIONS: readonly { value: RoasGrouping; label: string }[] = [
   { value: RoasGrouping.WEEK, label: '주차별' },
   { value: RoasGrouping.MONTH, label: '월별' },
 ]
+
+const GROUPING_LABEL = Object.fromEntries(
+  GROUPING_OPTIONS.map((o) => [o.value, o.label]),
+) as Record<RoasGrouping, string>
+
+type RevenueSplit = 'newRepeat' | 'channel'
+const REVENUE_SPLIT_LABEL: Record<RevenueSplit, string> = {
+  newRepeat: '신규 · 재구매',
+  channel: '오프라인 · 온라인',
+}
+
+// 그래프 색 — 광고비는 중립, 매출은 데이터색(신규·오프라인)과 그 옅은 색·링크색.
+const COLOR = {
+  spend: 'color-mix(in srgb, var(--glass-text) 36%, transparent)',
+  main: 'var(--glass-accent)',
+  sub: 'color-mix(in srgb, var(--glass-accent) 42%, transparent)',
+  online: 'var(--glass-link)',
+  minus: 'color-mix(in srgb, var(--glass-danger) 55%, transparent)',
+  interest: 'color-mix(in srgb, var(--glass-warn) 70%, transparent)',
+}
+
+/** 기간별 [광고비] [매출] 막대 묶음 — 매출은 신규·재구매 또는 오프라인·온라인으로
+ * 쌓는다. 재구매를 모르면(NaN) 매출을 한 덩어리로. */
+const revenueGroups = (
+  rows: readonly RoasRow[],
+  split: RevenueSplit,
+): StackGroup[] => {
+  const values = (get: (m: RoasMetrics) => number) =>
+    rows.map((row) => finite(get(row.metrics)))
+  const knowsRepeat = rows.every((row) =>
+    Number.isFinite(row.metrics.repeatRevenue),
+  )
+  return [
+    {
+      key: 'spend',
+      label: '광고비',
+      series: [
+        {
+          key: 'spend',
+          label: '광고비',
+          color: COLOR.spend,
+          values: values((m) => m.spend),
+        },
+      ],
+    },
+    {
+      key: 'revenue',
+      label: '매출',
+      series:
+        split === 'channel'
+          ? [
+              {
+                key: 'offline',
+                label: '오프라인 매출',
+                color: COLOR.main,
+                values: values((m) => m.offlineRevenue),
+              },
+              {
+                key: 'online',
+                label: '온라인 매출',
+                color: COLOR.online,
+                values: values((m) => m.onlineRevenue),
+              },
+            ]
+          : knowsRepeat
+            ? [
+                {
+                  key: 'new',
+                  label: '신규 고객 매출',
+                  color: COLOR.main,
+                  values: values((m) => m.newCustomerRevenue),
+                },
+                {
+                  key: 'repeat',
+                  label: '재구매 매출',
+                  color: COLOR.sub,
+                  values: values((m) => m.repeatRevenue),
+                },
+              ]
+            : [
+                {
+                  key: 'total',
+                  label: '총 매출',
+                  color: COLOR.main,
+                  values: values((m) => m.totalRevenue),
+                },
+              ],
+    },
+  ]
+}
+
+/** ROAS 추이 그래프의 재료 — 신규 고객 ROAS를 그리고, 재구매 금액을 모르면
+ * 광고비 대비 매출로 대신한다. */
+const trendChartProps = (rows: readonly RoasRow[], average: RoasMetrics) => {
+  const metric = Number.isFinite(average.newCustomerRoas)
+    ? 'newCustomerRoas'
+    : 'roas'
+  return {
+    label: metric === 'newCustomerRoas' ? '신규 고객 ROAS' : '광고비 대비 매출',
+    average: average[metric],
+    points: rows.map((row) => ({
+      key: row.key,
+      label: row.label,
+      value: row.metrics[metric],
+      spend: row.metrics.spend,
+      revenue: row.metrics.totalRevenue,
+    })),
+  }
+}
+
+/** 카페24 온라인 매출의 계산 과정 — 총 주문 금액에서 할인·환불·배송비·적립금이
+ * 빠져 ROAS용 매출이 된다. 중간 합계는 실제 값으로 다시 맞추고, 앞 단계로
+ * 설명되지 않는 차이가 있으면 "기타 조정"으로 드러낸다. */
+const onlineWaterfall = (m: RoasMetrics): WaterfallStep[] => {
+  const refund = m.onlineRefundAmount + m.onlineUnrecordedRefundAmount
+  const points = m.onlinePointsSpent - m.onlinePointsRefunded
+  const steps: WaterfallStep[] = [
+    {
+      key: 'gross',
+      label: '총 주문 금액',
+      kind: 'total',
+      value: m.onlineGrossPayment,
+      note: '배송비·적립금 포함, 상품할인·환불 반영 전(쿠폰은 이미 빠짐). 카페24 통계의 총결제액',
+    },
+    {
+      key: 'item',
+      label: '상품할인',
+      kind: 'minus',
+      value: m.onlineItemDiscount,
+    },
+    {
+      key: 'refund',
+      label: '환불',
+      kind: 'minus',
+      value: refund,
+      note: `스마트스토어·네이버페이 환불 ${won(m.onlineUnrecordedRefundAmount)} 포함`,
+    },
+  ]
+  const afterRefund = m.onlineGrossPayment - m.onlineItemDiscount - refund
+  if (Math.abs(afterRefund - m.onlineRevenueCafe24) >= 1) {
+    const diff = m.onlineRevenueCafe24 - afterRefund
+    steps.push({
+      key: 'adj1',
+      label: '기타 조정',
+      kind: diff < 0 ? 'minus' : 'plus',
+      value: Math.abs(diff),
+    })
+  }
+  steps.push(
+    {
+      key: 'cafe24',
+      label: '최종 카페24 매출액',
+      kind: 'total',
+      value: m.onlineRevenueCafe24,
+      note: '할인·환불(스마트스토어 포함)을 뺀 순매출. 배송비·적립금 포함',
+    },
+    {
+      key: 'ship',
+      label: '배송비',
+      kind: 'minus',
+      value: m.onlineShippingFee,
+      note: '택배사로 나가는 실비라 ROAS에서 뺍니다',
+    },
+    {
+      key: 'points',
+      label: '적립금 사용',
+      kind: 'minus',
+      value: points,
+      note: '이미 쌓인 포인트를 쓴 것이라 새 매출이 아닙니다(순 사용액)',
+    },
+  )
+  const afterPoints = m.onlineRevenueCafe24 - m.onlineShippingFee - points
+  if (Math.abs(afterPoints - m.onlineRevenue) >= 1) {
+    const diff = m.onlineRevenue - afterPoints
+    steps.push({
+      key: 'adj2',
+      label: '기타 조정',
+      kind: diff < 0 ? 'minus' : 'plus',
+      value: Math.abs(diff),
+    })
+  }
+  steps.push({
+    key: 'roas',
+    label: '매출액 (ROAS용)',
+    kind: 'total',
+    value: m.onlineRevenue,
+    note: 'ROAS 계산에 쓰는 온라인 매출',
+  })
+  return steps
+}
 
 const num2 = (v: number): string =>
   v.toLocaleString(undefined, {
@@ -37,6 +246,10 @@ const num2 = (v: number): string =>
 const won = (v: number): string =>
   Number.isFinite(v) ? `${Math.round(v).toLocaleString()}원` : '-'
 const pct2 = (v: number): string => (Number.isFinite(v) ? `${num2(v)}%` : '-')
+/** a ÷ b(퍼센트) — b가 0이면 0, 둘 중 모르는 값(NaN)이 있으면 NaN. */
+const ratio = (a: number, b: number): number =>
+  !Number.isFinite(a) || !Number.isFinite(b) ? NaN : b > 0 ? (a / b) * 100 : 0
+const finite = (v: number) => (Number.isFinite(v) ? v : 0)
 
 interface RoasField {
   /** React key용 — RoasMetrics의 실제 필드일 수도(예: 'roas'), 여러 필드를
@@ -126,6 +339,31 @@ const ROAS_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.offlineRevenue,
     format: won,
     formatCompact: won,
+  },
+  // 분석용 비율 — 위 금액들에서 바로 나오는 값이라 기간마다 같은 식으로 계산한다.
+  {
+    key: 'spendRatio',
+    label: '매출 대비 광고비',
+    getValue: (m) => ratio(m.spend, m.totalRevenue),
+    format: pct2,
+    formatCompact: pct2,
+    note: '광고비 ÷ 총 매출. 매출 100원을 내는 데 광고비를 몇 원 썼는지(광고비 대비 매출의 역수) — 마진율보다 높으면 광고가 이익을 깎고 있다는 뜻입니다.',
+  },
+  {
+    key: 'repeatShare',
+    label: '재구매 비중',
+    getValue: (m) => ratio(m.repeatRevenue, m.totalRevenue),
+    format: pct2,
+    formatCompact: pct2,
+    note: '재구매 매출 ÷ 총 매출. 높을수록 광고 없이도 돌아오는 매출이 많고, 광고비 대비 매출이 광고 성과보다 부풀려져 보입니다.',
+  },
+  {
+    key: 'onlineShare',
+    label: '온라인 매출 비중',
+    getValue: (m) => ratio(m.onlineRevenue, m.totalRevenue),
+    format: pct2,
+    formatCompact: pct2,
+    note: '온라인 매출(카페24) ÷ 총 매출.',
   },
 ]
 
@@ -490,280 +728,6 @@ function MetricValueCell(props: {
   )
 }
 
-// ------------------------------------------------------------------ ROAS 추이 시각화
-// viewBox를 고정 논리 크기로 두고 preserveAspectRatio="none"으로 컨테이너에
-// 맞춰 늘리면, 실제 렌더 비율이 그 논리 크기의 가로세로 비율과 달라 좌표계
-// 전체가 가로/세로로 다르게 늘어난다(폰트·선이 옆으로 퍼져 보임) — 그래서
-// index-line-chart.tsx와 같은 방식(useRoasTrendChartViewModel)으로 실제 렌더
-// 픽셀 크기를 측정해 viewBox로 그대로 쓴다(1 유닛 = 1px). top을 다른 여백보다
-// 넉넉히 둔 건 막대마다 지푯값+대비 두 줄 라벨이 막대 위에 쌓이기 때문 —
-// 좁으면 가장 높은 막대의 라벨이 플롯 밖(y<0)으로 잘려 나간다.
-const CHART_MARGIN = { top: 34, right: 12, bottom: 26, left: 46 }
-
-/** y축 최댓값을 100 단위로 올림 — 150%면 200까지, 480%면 500까지처럼 눈금이
- * 딱 떨어지게 한다. ROAS가 전부 낮아도(예: 40%) 100% 기준선은 항상 보이도록
- * 최소 100은 보장한다. */
-function roundUpToHundred(value: number): number {
-  return Math.max(100, Math.ceil(value / 100) * 100)
-}
-
-/** "기간별 추이" 표 바로 아래에 두는 ROAS 막대 그래프 — 표의 숫자를 한눈에
- * 훑어볼 수 있게 한다(지표 여러 개를 겹쳐 보는 상세 그래프는 그래프로 보기
- * 모달의 IndexLineChart).
- *
- * 유리 막대 — 위 끝이 둥글고 위에서 아래로 옅어지는 그라데이션. ROAS 100%(광고비
- * 만큼 매출이 났는지)를 손익분기 기준선으로 긋고, 그 아래 막대는 위험색으로.
- * 처음 붙을 때 바닥에서 차례로 자라 오른다. 막대마다 값과 바로 앞 막대 대비
- * 증감(퍼센트 포인트 — 표의 MetricValueCell과 같은 computeDelta)을 적고,
- * 마우스를 올리면 그날 값·직전 대비·평균 대비를 떠 있는 유리 판으로 보여 준다.
- * 평균 점선은 표의 "평균" 행(useRoasViewModel의 average)과 같은 값이다. */
-function RoasTrendChart({
-  rows,
-  average,
-}: {
-  rows: readonly RoasRow[]
-  average: RoasMetrics
-}) {
-  const { ref, vbWidth, vbHeight } = useRoasTrendChartViewModel()
-  const [hover, setHover] = useState<number | null>(null)
-  const gradientId = `roas-bar-${useId().replace(/[^\w-]/g, '')}`
-  // 그래프는 신규 고객 ROAS를 그린다 — 재구매 금액을 못 불러왔으면 광고비 대비
-  // 매출로 대신한다(평균 옆에 어느 지표인지 적는다).
-  const metric = Number.isFinite(average.newCustomerRoas)
-    ? 'newCustomerRoas'
-    : 'roas'
-  const metricLabel =
-    metric === 'newCustomerRoas' ? '신규 고객 ROAS' : '광고비 대비 매출'
-  const n = rows.length
-  const plotW = vbWidth - CHART_MARGIN.left - CHART_MARGIN.right
-  const plotH = vbHeight - CHART_MARGIN.top - CHART_MARGIN.bottom
-  const plotBottom = CHART_MARGIN.top + plotH
-  const maxValue = roundUpToHundred(
-    Math.max(100, average[metric], ...rows.map((r) => r.metrics[metric])) *
-      1.25,
-  )
-  const bandW = plotW / n
-  const barW = Math.min(bandW * 0.56, 34)
-  const yOf = (v: number) => plotBottom - (v / maxValue) * plotH
-  const xOf = (i: number) => CHART_MARGIN.left + bandW * i + (bandW - barW) / 2
-  const labelStride = Math.max(1, Math.ceil(n / 8))
-  const ticks = [0, maxValue / 2, maxValue]
-  const avgY = yOf(average[metric])
-  const breakEvenY = yOf(100)
-  // 평균·손익분기 값은 y축(왼쪽 눈금 자리)에 적는다 — 그래프 안에 이름표를
-  // 두면 막대와 겹친다. 그 값과 너무 가까운 눈금 글자는 숨긴다.
-  const nearMarker = (y: number) =>
-    Math.abs(y - avgY) < 12 || Math.abs(y - breakEvenY) < 12
-  const hovered = hover === null ? null : rows[hover]
-
-  return (
-    <div
-      className="channel-insight__roas-chart"
-      ref={ref}
-      onPointerLeave={() => setHover(null)}
-    >
-      <svg
-        className="channel-insight__roas-chart-svg"
-        viewBox={`0 0 ${vbWidth} ${vbHeight}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`기간별 ${metricLabel} 추이 그래프`}
-      >
-        <defs>
-          {(['good', 'bad'] as const).map((tone) => (
-            <linearGradient
-              key={tone}
-              id={`${gradientId}-${tone}`}
-              x1="0"
-              y1="0"
-              x2="0"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                className={`channel-insight__roas-stop-top is-${tone}`}
-              />
-              <stop
-                offset="100%"
-                className={`channel-insight__roas-stop-bottom is-${tone}`}
-              />
-            </linearGradient>
-          ))}
-        </defs>
-
-        {ticks.map((t) => (
-          <g key={t}>
-            <line
-              x1={CHART_MARGIN.left}
-              x2={vbWidth - CHART_MARGIN.right}
-              y1={yOf(t)}
-              y2={yOf(t)}
-              className="channel-insight__roas-chart-grid"
-            />
-            {!nearMarker(yOf(t)) && (
-              <text
-                x={CHART_MARGIN.left - 8}
-                y={yOf(t)}
-                textAnchor="end"
-                dominantBaseline="middle"
-                className="channel-insight__roas-chart-axis"
-              >
-                {Math.round(t)}%
-              </text>
-            )}
-          </g>
-        ))}
-
-        {/* 손익분기 — ROAS 100%(광고비만큼 매출). */}
-        <line
-          x1={CHART_MARGIN.left}
-          x2={vbWidth - CHART_MARGIN.right}
-          y1={breakEvenY}
-          y2={breakEvenY}
-          className="channel-insight__roas-chart-breakeven"
-        />
-        {/* 평균과 겹치면(차이 12px 안) 평균만 적는다. */}
-        {Math.abs(breakEvenY - avgY) >= 12 && (
-          <text
-            x={CHART_MARGIN.left - 8}
-            y={breakEvenY}
-            textAnchor="end"
-            dominantBaseline="middle"
-            className="channel-insight__roas-chart-breakeven-label"
-          >
-            100%
-          </text>
-        )}
-
-        {rows.map((row, i) => {
-          const value = row.metrics[metric]
-          const barY = yOf(value)
-          const h = Math.max(0, plotBottom - barY)
-          const prevRow = i > 0 ? rows[i - 1] : null
-          const delta = prevRow
-            ? computeDelta(value, prevRow.metrics[metric])
-            : null
-          const cx = xOf(i) + barW / 2
-          const r = Math.min(7, barW / 2, h)
-          const tone = value < 100 ? 'bad' : 'good'
-          return (
-            <g key={row.key}>
-              {h > 0 && (
-                <path
-                  d={`M${xOf(i)},${plotBottom} L${xOf(i)},${barY + r} Q${xOf(i)},${barY} ${xOf(i) + r},${barY} L${xOf(i) + barW - r},${barY} Q${xOf(i) + barW},${barY} ${xOf(i) + barW},${barY + r} L${xOf(i) + barW},${plotBottom} Z`}
-                  fill={`url(#${gradientId}-${tone})`}
-                  className={`channel-insight__roas-chart-bar${
-                    hover === i ? ' is-hover' : ''
-                  }`}
-                  style={{ '--glass-i': Math.min(i, 20) } as CSSProperties}
-                />
-              )}
-              {delta && (
-                <text
-                  x={cx}
-                  y={barY - 20}
-                  textAnchor="middle"
-                  className={`channel-insight__roas-chart-delta is-${delta.dir}`}
-                >
-                  {DELTA_ARROW[delta.dir]} {delta.delta >= 0 ? '+' : '-'}
-                  {Math.abs(delta.delta).toFixed(1)}%p
-                </text>
-              )}
-              <text
-                x={cx}
-                y={barY - 6}
-                textAnchor="middle"
-                className="channel-insight__roas-chart-value"
-              >
-                {value.toFixed(1)}%
-              </text>
-              {(i % labelStride === 0 || i === n - 1) && (
-                <text
-                  x={cx}
-                  y={vbHeight - 8}
-                  textAnchor="middle"
-                  className="channel-insight__roas-chart-axis"
-                >
-                  {row.label}
-                </text>
-              )}
-              {/* 마우스 자리 — 칸 전체(막대보다 넓게). */}
-              <rect
-                x={CHART_MARGIN.left + bandW * i}
-                y={CHART_MARGIN.top}
-                width={bandW}
-                height={plotH}
-                fill="transparent"
-                onPointerEnter={() => setHover(i)}
-              />
-            </g>
-          )
-        })}
-
-        {/* 평균 점선 — 표의 "평균" 행과 같은 값. 막대보다 먼저 그리면 막대에
-            가려지므로 맨 뒤(막대 다음)에 그린다. */}
-        <line
-          x1={CHART_MARGIN.left}
-          x2={vbWidth - CHART_MARGIN.right}
-          y1={avgY}
-          y2={avgY}
-          className="channel-insight__roas-chart-avg-line"
-        />
-        <text
-          x={CHART_MARGIN.left - 8}
-          y={avgY}
-          textAnchor="end"
-          dominantBaseline="middle"
-          className="channel-insight__roas-chart-avg-label"
-        >
-          {Math.round(average[metric])}%
-        </text>
-      </svg>
-
-      {/* 선 설명 — 그래프 위 오른쪽(막대와 겹치지 않게). 값은 y축에 같은 색으로. */}
-      <div className="channel-insight__roas-chart-legend" aria-hidden="true">
-        <span className="is-avg">
-          {metricLabel} 평균 {average[metric].toFixed(1)}%
-        </span>
-        <span className="is-breakeven">손익분기 100%</span>
-      </div>
-
-      {hovered && hover !== null && (
-        <div
-          className="channel-insight__roas-chart-tip"
-          style={{
-            left: Math.min(Math.max(xOf(hover) + barW / 2, 90), vbWidth - 90),
-            top: Math.max(yOf(hovered.metrics[metric]) - 30, 4),
-          }}
-        >
-          <span>{hovered.label}</span>
-          <strong>
-            {metricLabel} {hovered.metrics[metric].toFixed(1)}%
-          </strong>
-          {hover > 0 && (
-            <small>
-              직전 대비{' '}
-              {(() => {
-                const d = computeDelta(
-                  hovered.metrics[metric],
-                  rows[hover - 1].metrics[metric],
-                )
-                return `${DELTA_ARROW[d.dir]} ${d.delta >= 0 ? '+' : '-'}${Math.abs(d.delta).toFixed(1)}%p`
-              })()}
-            </small>
-          )}
-          <small>
-            평균 대비{' '}
-            {(hovered.metrics[metric] - average[metric] >= 0 ? '+' : '-') +
-              Math.abs(hovered.metrics[metric] - average[metric]).toFixed(1)}
-            %p
-          </small>
-        </div>
-      )}
-    </div>
-  )
-}
-
 /** "기간" 컬럼용 정렬 키 — RoasField.key와 겹치지 않는 별도 문자열이라 굳이
  * 유니온으로 안 좁히고 필드 key와 같은 string 타입을 그대로 쓴다. */
 const PERIOD_SORT_KEY = 'period'
@@ -895,8 +859,11 @@ function OnlineRevenueTable({
   average,
   grouping,
   onGroupingChange,
+  visual,
 }: {
   title: string
+  /** 그래프 보기 — 있으면 머리에 [그래프 | 표]. */
+  visual?: ReactNode
   rows: readonly RoasRow[]
   total: RoasMetrics
   average: RoasMetrics
@@ -920,6 +887,7 @@ function OnlineRevenueTable({
     visibleKeys.has(c.representative.key),
   )
   const [open, setOpen] = useState(true)
+  const [display, setDisplay] = useDisplayMode('cmip.roas.online.display')
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const toggleExpanded = (key: string) => {
     setExpanded((prev) => {
@@ -992,10 +960,12 @@ function OnlineRevenueTable({
             onChange={onGroupingChange}
             ariaLabel={`${title} 보기 단위`}
           />
+          {visual && <DisplayToggle value={display} onChange={setDisplay} />}
         </div>
       </div>
 
-      {open && (
+      {open && visual && display === 'chart' && visual}
+      {open && (!visual || display === 'table') && (
         <>
           <FieldVisibilityToggles
             fields={representatives}
@@ -1103,10 +1073,13 @@ function RoasSubTable({
   average,
   grouping,
   onGroupingChange,
+  visual,
 }: {
   title: string
-  /** 지표 표시 설정을 이 브라우저에 남길 이름. */
+  /** 지표 표시 설정을 이 브라우저에 남길 이름(그래프/표 고른 것도 이 이름 뒤에). */
   storageKey: string
+  /** 그래프 보기 — 있으면 머리에 [그래프 | 표]. */
+  visual?: ReactNode
   fields: readonly RoasField[]
   rows: readonly RoasRow[]
   total: RoasMetrics
@@ -1126,6 +1099,7 @@ function RoasSubTable({
     visibleFields,
   } = useFieldVisibility(fields, storageKey)
   const [open, setOpen] = useState(true)
+  const [display, setDisplay] = useDisplayMode(`${storageKey}.display`)
 
   return (
     <section className="channel-insight__section">
@@ -1145,10 +1119,12 @@ function RoasSubTable({
             onChange={onGroupingChange}
             ariaLabel={`${title} 보기 단위`}
           />
+          {visual && <DisplayToggle value={display} onChange={setDisplay} />}
         </div>
       </div>
 
-      {open && (
+      {open && visual && display === 'chart' && visual}
+      {open && (!visual || display === 'table') && (
         <>
           <FieldVisibilityToggles
             fields={fields}
@@ -1308,6 +1284,15 @@ export function RoasPanel({
   // 갖고 있다(이 두 상태와 독립적으로 동작).
   const [summaryOpen, setSummaryOpen] = useState(true)
   const [trendOpen, setTrendOpen] = useState(true)
+  const [trendDisplay, setTrendDisplay] = useDisplayMode(
+    'cmip.roas.trend.display',
+  )
+  // 기간별 매출 막대를 무엇으로 나눌지 — 신규·재구매 / 오프라인·온라인.
+  const [revenueSplit, setRevenueSplit] = usePersistentState<RevenueSplit>(
+    'cmip.roas.trend.revenueSplit',
+    'newRepeat',
+    oneOf<RevenueSplit>(['newRepeat', 'channel']),
+  )
 
   // ROAS 요약 칸의 작은 추이 — 아래 표의 보기 단위와 무관하게 늘 일별(날짜마다
   // 같은 계산). 칸을 누르면 이 묶음 안에서 커지며 자세히 보여 주고, 거기서
@@ -1433,22 +1418,18 @@ export function RoasPanel({
           바꾸면 세 표 전부 한 번에 같은 보기 단위로 맞춰지고, 그 아래 각 표
           section-head에도 자기만의 보기 단위 컨트롤이 따로 있어서 개별로도
           바꿀 수 있다. */}
-      <section className="channel-insight__section">
-        <div className="channel-insight__section-head">
-          <h3 className="channel-insight__section-title">전체 보기 단위</h3>
-          <div className="channel-insight__section-head-actions">
-            <span className="channel-insight__section-head-hint">
-              아래 세 표 모두 적용
-            </span>
-            <SingleSelectDropdown<RoasGrouping>
-              options={GROUPING_OPTIONS}
-              value={globalGrouping}
-              onChange={setGroupingForAll}
-              ariaLabel="전체 보기 단위"
-            />
-          </div>
-        </div>
-      </section>
+      <div className="roas-toolbar">
+        <span>보기 단위</span>
+        <Segmented
+          options={GROUPING_LABEL}
+          value={globalGrouping}
+          onChange={setGroupingForAll}
+          label="전체 보기 단위"
+        />
+        <small>
+          아래 세 섹션에 한 번에 적용 — 섹션마다 따로 바꿀 수도 있습니다
+        </small>
+      </div>
 
       <section className="channel-insight__section">
         <div className="channel-insight__section-head">
@@ -1467,10 +1448,40 @@ export function RoasPanel({
               onChange={(g) => setGroupingFor(RoasTable.TREND, g)}
               ariaLabel="기간별 추이 보기 단위"
             />
+            <DisplayToggle value={trendDisplay} onChange={setTrendDisplay} />
           </div>
         </div>
 
-        {trendOpen && (
+        {trendOpen && trendDisplay === 'chart' && (
+          <div className="roas-visual">
+            {rows.length === 0 ? (
+              <p className="channel-insight__result-empty">데이터 없음</p>
+            ) : (
+              <>
+                <RoasTrendChart {...trendChartProps(rows, average)} />
+                <div className="roas-visual__head">
+                  <span>광고비와 매출</span>
+                  <Segmented
+                    options={REVENUE_SPLIT_LABEL}
+                    value={revenueSplit}
+                    onChange={setRevenueSplit}
+                    label="매출 나누기"
+                    role="buttons"
+                  />
+                </div>
+                <PeriodStackChart
+                  labels={rows.map((row) => row.label)}
+                  groups={revenueGroups(rows, revenueSplit)}
+                  rightAxis="spend"
+                  note={(i) =>
+                    `광고비 대비 매출 ${pct2(rows[i].metrics.roas)} · 매출 대비 광고비 ${pct2(ratio(rows[i].metrics.spend, rows[i].metrics.totalRevenue))}`
+                  }
+                />
+              </>
+            )}
+          </div>
+        )}
+        {trendOpen && trendDisplay === 'table' && (
           <>
             <FieldVisibilityToggles
               fields={ROAS_FIELDS}
@@ -1549,8 +1560,6 @@ export function RoasPanel({
                     </tbody>
                   </table>
                 </div>
-
-                <RoasTrendChart rows={rows} average={average} />
               </>
             )}
           </>
@@ -1566,6 +1575,76 @@ export function RoasPanel({
         average={offline.average}
         grouping={groupings[RoasTable.OFFLINE]}
         onGroupingChange={(g) => setGroupingFor(RoasTable.OFFLINE, g)}
+        visual={
+          <div className="roas-visual">
+            <RatioChips
+              items={[
+                {
+                  key: 'gross',
+                  label: '오프라인 총매출',
+                  value: won(total.offlineRevenue + total.installmentInterest),
+                },
+                {
+                  key: 'net',
+                  label: '오프라인 매출',
+                  value: won(total.offlineRevenue),
+                },
+                {
+                  key: 'share',
+                  label: '총 매출 중 오프라인',
+                  value: pct2(ratio(total.offlineRevenue, total.totalRevenue)),
+                },
+                {
+                  key: 'interest',
+                  label: '할부이자 비율',
+                  value: pct2(
+                    ratio(
+                      total.installmentInterest,
+                      total.offlineRevenue + total.installmentInterest,
+                    ),
+                  ),
+                  note: '오프라인 총매출 중 카드사로 나가는 장기 할부 이자',
+                },
+                {
+                  key: 'deferred',
+                  label: '미수금(분할 잔금)',
+                  value: won(Math.abs(total.deferredBalance)),
+                  note: '계약은 했지만 아직 받지 않은 분할 잔금 — 오프라인 매출에서 빠져 있습니다',
+                  tone: total.deferredBalance !== 0 ? 'warn' : undefined,
+                },
+              ]}
+            />
+            {offline.rows.length > 0 && (
+              <PeriodStackChart
+                labels={offline.rows.map((row) => row.label)}
+                groups={[
+                  {
+                    key: 'offline',
+                    label: '오프라인 총매출',
+                    series: [
+                      {
+                        key: 'net',
+                        label: '오프라인 매출',
+                        color: COLOR.main,
+                        values: offline.rows.map(
+                          (row) => row.metrics.offlineRevenue,
+                        ),
+                      },
+                      {
+                        key: 'interest',
+                        label: '할부이자',
+                        color: COLOR.interest,
+                        values: offline.rows.map(
+                          (row) => row.metrics.installmentInterest,
+                        ),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            )}
+          </div>
+        }
       />
 
       <OnlineRevenueTable
@@ -1575,6 +1654,114 @@ export function RoasPanel({
         average={online.average}
         grouping={groupings[RoasTable.ONLINE]}
         onGroupingChange={(g) => setGroupingFor(RoasTable.ONLINE, g)}
+        visual={
+          <div className="roas-visual">
+            <RatioChips
+              items={[
+                {
+                  key: 'roas',
+                  label: '매출액(ROAS용)',
+                  value: won(total.onlineRevenue),
+                },
+                {
+                  key: 'discount',
+                  label: '할인율',
+                  value: pct2(
+                    ratio(
+                      total.onlineItemDiscount + total.onlineCouponDiscount,
+                      total.onlineGrossPayment -
+                        total.onlineShippingFee +
+                        total.onlineCouponDiscount,
+                    ),
+                  ),
+                  note: '(상품할인 + 쿠폰할인) ÷ 상품 구매금액',
+                },
+                {
+                  key: 'refund',
+                  label: '환불률',
+                  value: pct2(
+                    ratio(
+                      total.onlineRefundAmount +
+                        total.onlineUnrecordedRefundAmount,
+                      total.onlineGrossPayment,
+                    ),
+                  ),
+                  note: '총 환불액 ÷ 총 주문 금액',
+                  tone:
+                    ratio(
+                      total.onlineRefundAmount +
+                        total.onlineUnrecordedRefundAmount,
+                      total.onlineGrossPayment,
+                    ) >= 10
+                      ? 'warn'
+                      : undefined,
+                },
+                {
+                  key: 'smart',
+                  label: '환불 중 스마트스토어',
+                  value: pct2(
+                    ratio(
+                      total.onlineUnrecordedRefundAmount,
+                      total.onlineRefundAmount +
+                        total.onlineUnrecordedRefundAmount,
+                    ),
+                  ),
+                  note: '카페24 통계에 안 잡히는 환불의 몫',
+                },
+                {
+                  key: 'leak',
+                  label: 'ROAS에서 빠진 몫',
+                  value: pct2(
+                    ratio(
+                      total.onlineGrossPayment - total.onlineRevenue,
+                      total.onlineGrossPayment,
+                    ),
+                  ),
+                  note: '(총 주문 금액 - ROAS용 매출) ÷ 총 주문 금액 — 할인·환불·배송비·적립금',
+                },
+              ]}
+            />
+            <Waterfall steps={onlineWaterfall(total)} />
+            {online.rows.length > 0 && (
+              <PeriodStackChart
+                labels={online.rows.map((row) => row.label)}
+                height={220}
+                groups={[
+                  {
+                    key: 'revenue',
+                    label: '매출액(ROAS용)',
+                    series: [
+                      {
+                        key: 'revenue',
+                        label: '매출액(ROAS용)',
+                        color: COLOR.online,
+                        values: online.rows.map(
+                          (row) => row.metrics.onlineRevenue,
+                        ),
+                      },
+                    ],
+                  },
+                  {
+                    key: 'refund',
+                    label: '환불',
+                    series: [
+                      {
+                        key: 'refund',
+                        label: '환불',
+                        color: COLOR.minus,
+                        values: online.rows.map(
+                          (row) =>
+                            row.metrics.onlineRefundAmount +
+                            row.metrics.onlineUnrecordedRefundAmount,
+                        ),
+                      },
+                    ],
+                  },
+                ]}
+              />
+            )}
+          </div>
+        }
       />
     </div>
   )

@@ -7,7 +7,7 @@ import {
   type ConversionGoal,
 } from '../../client'
 import type { AdSettingsTreeNode } from '../../view-model/use-ad-settings-view-model'
-import { ChannelMark } from '../channel-insight/channel-label'
+import { ChannelTile } from '../channel-insight/channel-label'
 import { addDays } from '../../utils'
 import { formatBudget, shortDate } from './labels'
 
@@ -75,27 +75,31 @@ const Row = ({
         onClick={() => onSelect(entity.key)}
         title={`${entity.name}\nID ${entity.platformId}\n${entity.firstSeenDate} ~ ${entity.lastSeenDate}`}
       >
-        <span className="ad-entity__name">
-          {entity.level === 'campaign' && (
-            <ChannelMark channelKey={entity.channel} />
-          )}
-          <span>{entity.name}</span>
-        </span>
-        <span className="ad-entity__badges">
-          {goal ? (
-            <span className={`ad-badge${inherited ? ' is-inherited' : ''}`}>
-              {goal.label}
+        {entity.level === 'campaign' && (
+          <ChannelTile channelKey={entity.channel} />
+        )}
+        <span className="ad-entity__text">
+          <span className="ad-entity__name">
+            <span>{entity.name}</span>
+          </span>
+          <span className="ad-entity__badges">
+            {goal ? (
+              <span className={`ad-badge${inherited ? ' is-inherited' : ''}`}>
+                {goal.label}
+              </span>
+            ) : (
+              <span className="ad-badge is-missing">목표 없음</span>
+            )}
+            {setting.budget && (
+              <span className="ad-badge">{formatBudget(setting.budget)}</span>
+            )}
+            {scheduled && <span className="ad-badge is-scheduled">예약</span>}
+            {toggle && <span className="ad-entity__count">{toggle.count}</span>}
+            <span className={`ad-entity__seen${stale ? ' is-stale' : ''}`}>
+              {stale
+                ? `${shortDate(entity.lastSeenDate, today)}까지`
+                : '운영 중'}
             </span>
-          ) : (
-            <span className="ad-badge is-missing">목표 없음</span>
-          )}
-          {setting.budget && (
-            <span className="ad-badge">{formatBudget(setting.budget)}</span>
-          )}
-          {scheduled && <span className="ad-badge is-scheduled">예약</span>}
-          {toggle && <span className="ad-entity__count">{toggle.count}</span>}
-          <span className={`ad-entity__seen${stale ? ' is-stale' : ''}`}>
-            {stale ? `${shortDate(entity.lastSeenDate, today)}까지` : '운영 중'}
           </span>
         </span>
       </button>

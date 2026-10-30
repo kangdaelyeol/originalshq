@@ -1,0 +1,552 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// ROAS 탭 그래프(roas-charts.tsx) — 범위 띠, 유입 경로 띠, 기간별 쌓은 막대,
+// 폭포, 비율 칸. 공통 모양(눈금·유리 판·범례)은 insight-charts.scss.
+
+// ── 범위 띠 ─────────────────────────────────────────────────────────────
+
+.roas-gauge {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 58px 18px 8px;
+  border-radius: $radius-inner;
+  background: $fill-1;
+}
+.roas-gauge__track {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: $track;
+}
+.roas-gauge__band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--glass-accent) 55%, transparent);
+  transform-origin: 0 50%;
+  animation: roas-grow-x 0.8s cubic-bezier(0.33, 1, 0.68, 1) 0.1s backwards;
+}
+.roas-gauge__breakeven {
+  position: absolute;
+  top: -8px;
+  bottom: -8px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--glass-danger);
+
+  em {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 50%;
+    font-size: 10.5px;
+    font-style: normal;
+    color: var(--glass-danger);
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+}
+.roas-gauge__mark {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.25;
+  white-space: nowrap;
+  transform: translateX(-50%);
+
+  b {
+    font-size: 17px;
+    font-weight: 700;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  small {
+    font-size: 10.5px;
+    color: $text-3;
+  }
+  // 바늘 — 띠까지 내려오는 짧은 금.
+  &::after {
+    content: '';
+    width: 2px;
+    height: 10px;
+    margin-top: 2px;
+    border-radius: 1px;
+    background: $text-2;
+  }
+}
+.roas-gauge__scale {
+  position: relative;
+  height: 28px;
+  margin-top: 16px;
+
+  span {
+    position: absolute;
+    font-size: 10.5px;
+    color: $text-3;
+    transform: translateX(-50%);
+    font-variant-numeric: tabular-nums;
+
+    &:first-child {
+      transform: none;
+    }
+    &:last-child {
+      transform: translateX(-100%);
+    }
+  }
+}
+
+// ── 유입 경로 ───────────────────────────────────────────────────────────
+
+.roas-mix {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.roas-mix__bar {
+  display: flex;
+  gap: 2px;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: $track;
+
+  span {
+    height: 100%;
+    transform-origin: 0 50%;
+    animation: roas-grow-x 0.7s cubic-bezier(0.33, 1, 0.68, 1)
+      calc(var(--glass-i, 0) * 60ms) backwards;
+  }
+}
+.roas-mix__legend {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 6px 14px;
+
+  > span {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: 2px 7px;
+    font-size: 12px;
+    color: $text-2;
+  }
+  i {
+    align-self: center;
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+  }
+  b {
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  small {
+    grid-column: 2 / -1;
+    font-size: 11px;
+    color: $text-3;
+  }
+}
+.roas-mix__roas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: $radius-inner;
+  background: $fill-1;
+}
+.roas-mix__roas-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: $text-2;
+}
+.roas-mix__roas-row {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) 76px;
+  align-items: center;
+  gap: 2px 12px;
+
+  b {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+
+    &.is-low {
+      color: var(--glass-danger);
+    }
+  }
+  small {
+    grid-column: 2 / -1;
+    font-size: 11px;
+    color: $text-3;
+  }
+}
+.roas-mix__roas-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: $text;
+
+  i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+}
+.roas-mix__roas-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: $track;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--glass-accent);
+    transform-origin: 0 50%;
+    animation: roas-grow-x 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.15s backwards;
+
+    &.is-low {
+      background: color-mix(in srgb, var(--glass-danger) 70%, transparent);
+    }
+  }
+  // 100% 금.
+  em {
+    position: absolute;
+    top: -3px;
+    bottom: -3px;
+    width: 2px;
+    margin-left: -1px;
+    border-radius: 1px;
+    background: var(--glass-danger);
+  }
+}
+
+// ── 기간별 쌓은 막대 ────────────────────────────────────────────────────
+
+.roas-stack__tip-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  & + & {
+    margin-top: 4px;
+  }
+}
+
+// ── 폭포 ────────────────────────────────────────────────────────────────
+
+.roas-waterfall__canvas {
+  cursor: default;
+}
+.roas-waterfall__base {
+  stroke: $fill-3;
+  stroke-width: 1;
+}
+.roas-waterfall__step {
+  transform-box: fill-box;
+
+  .roas-waterfall__bar {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: insight-bar-grow 0.6s cubic-bezier(0.33, 1, 0.68, 1)
+      calc(var(--glass-i, 0) * 70ms) backwards;
+  }
+  &.is-total .roas-waterfall__bar {
+    fill: var(--glass-accent);
+    opacity: 0.85;
+  }
+  &.is-minus .roas-waterfall__bar {
+    fill: color-mix(in srgb, var(--glass-danger) 55%, transparent);
+    transform-origin: 50% 0;
+  }
+  &.is-plus .roas-waterfall__bar {
+    fill: color-mix(in srgb, var(--glass-link) 60%, transparent);
+  }
+  &:hover .roas-waterfall__bar {
+    opacity: 1;
+  }
+}
+.roas-waterfall__link {
+  stroke: $text-3;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.roas-waterfall__value {
+  font-size: 11px;
+  font-weight: 600;
+  fill: $text-2;
+  font-variant-numeric: tabular-nums;
+}
+.roas-waterfall__label {
+  font-size: 11px;
+}
+
+// ── 비율 칸 ─────────────────────────────────────────────────────────────
+
+.roas-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.roas-chip {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+  padding: 9px 14px;
+  border-radius: 14px;
+  background: $fill-1;
+  line-height: 1.3;
+
+  small {
+    font-size: 11px;
+    color: $text-3;
+  }
+  b {
+    font-size: 15px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  &.is-warn b {
+    color: var(--glass-warn);
+  }
+}
+
+// 그래프 섹션 안의 여러 판 사이.
+.roas-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  @include glass.enter(0, 0ms, 0.45s);
+}
+
+@keyframes roas-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roas-gauge__band,
+  .roas-mix__bar span,
+  .roas-mix__roas-track i,
+  .roas-waterfall__bar,
+  .roas-trend__pill {
+    animation: none;
+  }
+}
+
+// 전체 보기 단위 — 섹션 카드 대신 얇은 줄 하나.
+.roas-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 2px 6px;
+
+  > span {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-2;
+  }
+  small {
+    font-size: 11.5px;
+    color: $text-3;
+  }
+}
+// 그래프 판 위의 작은 제목 + 고르기.
+.roas-visual__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+
+  > span {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text-2;
+  }
+}
+
+// 코호트 칸 — ROAS를 손익분기(100%) 기준으로 칠한다(위면 데이터색, 아래면 위험색,
+// 멀수록 진하게 — --heat 0~1).
+.roas-cohort-cell {
+  border-radius: 10px;
+  background: color-mix(
+    in srgb,
+    var(--heat-color) calc(var(--heat, 0) * 24%),
+    transparent
+  );
+}
+.roas-payback {
+  display: inline-flex;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  white-space: nowrap;
+
+  &.is-done {
+    @include glass.tint(var(--glass-accent), 22%);
+  }
+  &.is-pending {
+    background: $fill-2;
+    color: $text-3;
+  }
+  &.is-miss {
+    @include glass.tint(var(--glass-danger), 18%);
+  }
+}
+
+// ── ROAS 추이 ───────────────────────────────────────────────────────────
+
+// 증감 — 표의 대비 표시와 같은 색(오름 초록·내림 빨강·같음 회색).
+.roas-delta {
+  font-size: 11px;
+  font-weight: 600;
+  color: $text-3;
+  font-variant-numeric: tabular-nums;
+
+  &.is-up {
+    color: #3fb950;
+  }
+  &.is-down {
+    color: #ff7b72;
+  }
+}
+
+.roas-trend__legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px 16px;
+  font-size: 11.5px;
+  color: $text-3;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &::before {
+      content: '';
+      width: 16px;
+      border-top: 1.5px dashed $text-3;
+    }
+  }
+  .is-avg {
+    font-weight: 600;
+    color: $text-2;
+  }
+  .is-breakeven::before {
+    border-top-style: dotted;
+    border-color: var(--glass-danger);
+  }
+}
+
+// 막대·면 — 위(값)에서 아래로 옅어지는 데이터색, 100% 아래 막대는 위험색.
+.roas-trend__stop-top {
+  stop-color: var(--glass-accent);
+  stop-opacity: 0.9;
+
+  &.is-bad {
+    stop-color: var(--glass-danger);
+    stop-opacity: 0.8;
+  }
+}
+.roas-trend__stop-bottom {
+  stop-color: var(--glass-accent);
+  stop-opacity: 0.12;
+
+  &.is-bad {
+    stop-color: var(--glass-danger);
+    stop-opacity: 0.12;
+  }
+}
+.roas-trend__area {
+  opacity: 0.55;
+  @include glass.fill-in(0.8s, 0.2s);
+}
+.roas-trend__line {
+  fill: none;
+  stroke: var(--glass-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  @include glass.draw-in(1s);
+}
+.roas-trend__breakeven {
+  stroke: var(--glass-danger);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  opacity: 0.7;
+}
+// y축에 적는 평균·손익분기 값 — 눈금 글자와 같은 크기, 색으로만 구분.
+.roas-trend__axis-mark {
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+
+  &.is-avg {
+    fill: $text-2;
+  }
+  &.is-breakeven {
+    fill: var(--glass-danger);
+  }
+}
+
+// 값 알약 — 그림 위 글자를 유리 판에 얹는다(글자 테두리 없이).
+.roas-trend__pill {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--glass-float) 72%, transparent);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  @include glass.enter(var(--glass-i, 0), 25ms, 0.45s);
+
+  b {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  .roas-delta {
+    font-size: 10px;
+  }
+}
+
+// 오른쪽 축(광고비) 눈금과 범례 표시.
+.roas-stack__right-tick {
+  font-size: 11px;
+  fill: $text-3;
+  font-variant-numeric: tabular-nums;
+}
+.roas-stack__axis-note {
+  margin-left: 2px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: $fill-2;
+  font-size: 10.5px;
+  color: $text-3;
+}
