@@ -49,11 +49,25 @@
 
 // ── 내비 ────────────────────────────────────────────────────────────────
 .lead_manager_nav.monday_nav {
-  // 리드 탭보다 줄에 놓인 것이 많다 — 간격을 줄이고, 건수·쪽 표시가 두 줄로
-  // 꺾이지 않게 한다.
+  // 두 줄 — 위는 분류(고객 수가 붙어 길다), 아래는 검색·정렬·쪽 넘기기.
   .inner {
+    flex-direction: column;
+    align-items: stretch;
     gap: 12px;
   }
+  // 분류가 화면보다 넓으면(좁은 창) 줄 안에서 가로로 민다.
+  .monday_nav_categories {
+    display: flex;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .monday_nav_tools {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  // 건수·쪽 표시가 두 줄로 꺾이지 않게.
   .pagination_bar {
     flex-shrink: 0;
 
@@ -83,29 +97,6 @@
       &::placeholder {
         color: variables.$color-text-faint;
       }
-    }
-  }
-
-  // 번호 확인 필요 — 경고지만 급한 오류는 아니라 호박색으로.
-  .monday_missing_btn {
-    all: unset;
-    box-sizing: border-box;
-    height: 34px;
-    padding: 0 12px;
-    border: 1px solid rgba(210, 153, 34, 0.45);
-    border-radius: 6px;
-    background-color: rgba(210, 153, 34, 0.1);
-    color: #d29922;
-    font-size: 12.5px;
-    font-weight: 500;
-    white-space: nowrap;
-    cursor: pointer;
-
-    &:hover {
-      background-color: rgba(210, 153, 34, 0.18);
-    }
-    &:focus-visible {
-      outline: 2px solid #d29922;
     }
   }
 }
@@ -644,7 +635,34 @@
 // 세 칸(고객 목록 · 리드 상세 · Monday)이 다 들어가지 않는 좁은 화면에서는
 // 고객 목록을 접는다 — 상세와 Monday 패널이 이 모달의 본론이다.
 @media (max-width: 1260px) {
-  .lead_manager_detail_modal .detail_layout .detail_side_list {
+  .lead_manager_detail_modal
+    .detail_layout
+    .detail_side_list:not(.monday_side_list) {
+    display: none;
+  }
+}
+
+// ── Monday 고객 상세의 왼쪽 고객 목록(monday-side-list.tsx) ────────────────
+// 목록 높이를 정해 두면 상세 판도 같은 높이로 늘어난다(리드 상세처럼 두 판의
+// 높이가 같다) — 고객을 바꿔도 판 크기가 출렁이지 않는다.
+.lead_manager_detail_modal .monday_detail_layout {
+  .monday_side_list {
+    height: 80vh;
+  }
+  // 줄 높이 고정 — 보이는 줄만 그리는 계산(ROW_HEIGHT)과 같아야 한다.
+  .monday_side_list .detail_side_list_table tbody td {
+    height: 34px;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+  .monday_side_list_spacer {
+    cursor: default;
+  }
+}
+
+// 두 칸(목록·상세)이 다 들어가지 않으면 목록을 접는다.
+@media (max-width: 1080px) {
+  .lead_manager_detail_modal .monday_detail_layout .monday_side_list {
     display: none;
   }
 }

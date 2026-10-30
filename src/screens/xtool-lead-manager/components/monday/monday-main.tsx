@@ -1,11 +1,22 @@
 import '@/screens/xtool-lead-manager/styles/main.scss'
 import '@/screens/xtool-lead-manager/styles/monday.scss'
 import '@/screens/xtool-lead-manager/styles/monday-glass.scss'
-import { CircleDollarSign, ShoppingBag, Users, Wallet } from 'lucide-react'
+import {
+  CircleDollarSign,
+  ShoppingBag,
+  TriangleAlert,
+  Users,
+  Wallet,
+} from 'lucide-react'
 import { StatTile } from '@/components/glass'
-import type { useMondayViewModel } from '@/screens/xtool-lead-manager/view-model'
+import type {
+  useMondayCapiViewModel,
+  useMondayViewModel,
+} from '@/screens/xtool-lead-manager/view-model'
 import { formatWon } from '@/screens/xtool-lead-manager/utils'
+import { MondayCapiModal } from './monday-capi-modal'
 import { MondayDetail } from './monday-detail'
+import { MondaySideList } from './monday-side-list'
 import { MondayHighlights } from './monday-highlights'
 import { MondayReviewPanel } from './monday-review-panel'
 import { MondayTable } from './monday-table'
@@ -13,14 +24,18 @@ import { MondayTable } from './monday-table'
 type MondayMainProps = Pick<
   ReturnType<typeof useMondayViewModel>,
   'state' | 'actions'
->
+> & {
+  /** 상담·구매 기록의 CAPI 전송 확인 모달. */
+  capi: ReturnType<typeof useMondayCapiViewModel>
+}
 
 /** Monday 고객 탭의 본문 — 표와, 그 위에 뜨는 두 모달(고객 상세 / 확인 필요
  * 목록). */
-export const MondayMain = ({ state, actions }: MondayMainProps) => {
+export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
   const {
     status,
     rows,
+    filteredRows,
     detailSummary,
     detail,
     detailFailed,
@@ -33,9 +48,20 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
     overview,
     category,
   } = state
-  const { openDetail, closeDetail, closeMissing, reload, changeCategory } =
-    actions
+  const {
+    openDetail,
+    closeDetail,
+    openMissing,
+    closeMissing,
+    reload,
+    changeCategory,
+  } = actions
   const ready = status === 'ready'
+  // 확인 필요 — 자동으로 정리하지 못한 기록(monday-review-panel.tsx의 세 묶음).
+  const duplicateCount = paymentIssues.filter(
+    (issue) => issue.type === 'duplicate-consultation',
+  ).length
+  const reviewCount = missingItems.length + paymentIssues.length
   const percent = (part: number, whole: number) =>
     whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
@@ -96,6 +122,15 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
                 }
                 linkLabel="잔금 있는 고객만 보기"
               />
+              <StatTile
+                icon={TriangleAlert}
+                label="확인 필요"
+                value={ready ? `${reviewCount.toLocaleString('ko-KR')}건` : '-'}
+                warn={ready && reviewCount > 0}
+                sub={`결제 ${paymentIssues.length - duplicateCount} · 중복 ${duplicateCount} · 번호 ${missingItems.length}`}
+                onGo={reviewCount > 0 ? openMissing : undefined}
+                linkLabel="확인 필요 목록 열기"
+              />
             </div>
             <MondayTable
               rows={rows}
@@ -115,8 +150,18 @@ export const MondayMain = ({ state, actions }: MondayMainProps) => {
           customer={detail}
           failed={detailFailed}
           onClose={closeDetail}
+          onSendCapi={(source) => detail && capi.actions.open(detail, source)}
+          sideList={
+            <MondaySideList
+              customers={filteredRows}
+              activePhone={detailSummary.phone}
+              onSelect={openDetail}
+              keysEnabled={!capi.state.source}
+            />
+          }
         />
       )}
+      {capi.state.source && <MondayCapiModal capi={capi} />}
       {missingOpen && (
         <MondayReviewPanel
           missingItems={missingItems}

@@ -1,0 +1,305 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// Monday 기록 → Meta CAPI 전송(monday-capi-modal.tsx) — 기록 머리의 버튼과 확인
+// 모달. 모양은 전부 유리 라이브러리(@/components/glass) 믹스인.
+
+// 기록 머리의 "CAPI 전송" — 누르는 색을 옅게 깐 작은 알약. 오른쪽 끝(Monday
+// 링크 앞)에 붙는다.
+.lead_manager_detail_modal .detail_form.monday_detail .monday_record_head {
+  .monday_capi_btn {
+    @include glass.tint-button(var(--glass-link), 16%);
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    margin-left: auto;
+    padding: 0 11px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+      outline-offset: 2px;
+    }
+  }
+  .monday_capi_btn + .monday_link {
+    margin-left: 0;
+  }
+}
+
+// ── 확인 모달 ──────────────────────────────────────────────────────────
+// 상세 모달(10)·확인 모달(20) 위.
+.monday_capi_backdrop {
+  @include glass.scrim;
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.monday_capi {
+  @include glass.panel;
+  @include glass.panel-in;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: calc(100vh - 40px);
+  color: $text;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.monday_capi_head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 14px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+
+    span {
+      margin-left: 6px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      background: $fill-2;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: $text-2;
+      vertical-align: 2px;
+    }
+  }
+  p {
+    margin: 4px 0 0;
+    color: $text-3;
+  }
+}
+
+.monday_capi_close {
+  @include glass.icon-button;
+  flex-shrink: 0;
+  cursor: pointer;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+// 보낼 곳 — 같은 번호의 리드(있으면 그 리드 + 고르기), 안내, 중복 주의.
+.monday_capi_target {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 24px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: $fill-1;
+
+  p {
+    margin: 0;
+    color: $text-2;
+  }
+  .is-warn {
+    color: var(--glass-warn);
+  }
+}
+
+.monday_capi_match {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  strong {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  span {
+    color: $text-3;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// 폼 — 스크롤되는 가운데 몸통.
+.monday_capi_body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 24px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--glass-ink) 18%, transparent)
+    transparent;
+}
+
+.monday_capi_label {
+  margin: 16px 0 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: $text-3;
+}
+
+.monday_capi_grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.monday_capi_row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+
+  > label {
+    font-size: 12px;
+    color: $text-2;
+  }
+}
+
+.monday_capi_control {
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 12px;
+  color: $text;
+  font: inherit;
+  @include glass.field;
+}
+
+select.monday_capi_control {
+  @include glass.select-arrow;
+}
+
+.monday_capi_check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 8px;
+  color: $text-2;
+  cursor: pointer;
+
+  input {
+    @include glass.check;
+  }
+}
+
+.monday_capi_error {
+  margin: 8px 24px 0;
+  color: var(--glass-danger);
+}
+
+// 아래 버튼 — 취소 / 전송(데이터색).
+.monday_capi_actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 24px 20px;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 40px;
+    padding: 0 18px;
+    border: none;
+    border-radius: 999px;
+    background: $fill-2;
+    color: $text;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+    &:hover:not(:disabled) {
+      background: $fill-3;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+      outline-offset: 2px;
+    }
+  }
+  .is-primary {
+    background: var(--glass-accent);
+    color: var(--glass-on-accent);
+    font-weight: 600;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--glass-accent) 86%, var(--glass-ink));
+    }
+  }
+}
+
+// 보낸 결과 — 성공은 데이터색, 실패는 위험색 아이콘.
+.monday_capi_result {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 24px 0;
+  text-align: center;
+
+  > svg {
+    width: 34px;
+    height: 34px;
+    color: var(--glass-accent);
+  }
+  &.is-error > svg {
+    color: var(--glass-danger);
+  }
+  strong {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  p {
+    margin: 0;
+    color: $text-2;
+  }
+  code {
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: $fill-2;
+    color: $text-3;
+    font-size: 11.5px;
+  }
+  .monday_capi_actions {
+    align-self: stretch;
+    justify-content: center;
+    padding-top: 10px;
+  }
+}

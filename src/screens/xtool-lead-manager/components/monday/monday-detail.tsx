@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Send } from 'lucide-react'
 import type {
   MondayConsultation,
   MondayCustomer,
@@ -15,6 +16,8 @@ import {
   formatMondayPhone,
   formatWon,
   mondayStatusTone,
+  canSendMondayCapi,
+  type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
 import { AutoHeight } from '@/components/glass'
 import { CloseIcon } from '../detail/icons'
@@ -31,18 +34,21 @@ const Field = ({ label, value }: { label: string; value: ReactNode }) =>
     </div>
   ) : null
 
-/** 기록 한 건의 틀 — 머리(날짜·보드·상태·Monday 링크)와 본문. */
+/** 기록 한 건의 틀 — 머리(날짜·보드·상태·CAPI 전송·Monday 링크)와 본문. */
 const RecordCard = ({
   date,
   boardName,
   status,
   url,
+  action,
   children,
 }: {
   date: string | null
   boardName: string
   status: string | null
   url: string | null
+  /** 머리 오른쪽 버튼(CAPI 전송). */
+  action?: ReactNode
   children: ReactNode
 }) => (
   <article className="monday_record">
@@ -54,6 +60,7 @@ const RecordCard = ({
           {status}
         </span>
       )}
+      {action}
       {url && (
         <a className="monday_link" href={url} target="_blank" rel="noreferrer">
           Monday에서 열기
@@ -63,6 +70,26 @@ const RecordCard = ({
     {children}
   </article>
 )
+
+/** 상담·구매 기록을 Meta CAPI로 보내고 리드 탭으로 옮기는 버튼 — 누르면 확인
+ * 모달(monday-capi-modal.tsx)이 뜬다. 오기입 상담·취소된 결제에는 없다. */
+const CapiButton = ({
+  source,
+  onSend,
+}: {
+  source: MondayCapiSource
+  onSend?: (source: MondayCapiSource) => void
+}) =>
+  onSend && canSendMondayCapi(source) ? (
+    <button
+      type="button"
+      className="monday_capi_btn"
+      onClick={() => onSend(source)}
+    >
+      <Send strokeWidth={1.8} aria-hidden="true" />
+      CAPI 전송
+    </button>
+  ) : null
 
 const Section = ({
   title,
@@ -82,12 +109,24 @@ const Section = ({
     </section>
   ) : null
 
-const ConsultationCard = ({ record }: { record: MondayConsultation }) => (
+const ConsultationCard = ({
+  record,
+  onSendCapi,
+}: {
+  record: MondayConsultation
+  onSendCapi?: (source: MondayCapiSource) => void
+}) => (
   <RecordCard
     date={record.receivedAt}
     boardName={record.boardName}
     status={record.status}
     url={record.url}
+    action={
+      <CapiButton
+        source={{ kind: 'consultation', record }}
+        onSend={onSendCapi}
+      />
+    }
   >
     <dl className="monday_fields">
       <Field label="담당자" value={record.assignee} />
@@ -188,12 +227,21 @@ const LineTable = ({ lines }: { lines: MondayPurchaseLine[] }) =>
     </table>
   ) : null
 
-const PurchaseCard = ({ record }: { record: MondayPurchase }) => (
+const PurchaseCard = ({
+  record,
+  onSendCapi,
+}: {
+  record: MondayPurchase
+  onSendCapi?: (source: MondayCapiSource) => void
+}) => (
   <RecordCard
     date={record.paidAt}
     boardName={record.boardName}
     status={record.status}
     url={record.url}
+    action={
+      <CapiButton source={{ kind: 'purchase', record }} onSend={onSendCapi} />
+    }
   >
     <dl className="monday_fields">
       <Field
@@ -327,6 +375,9 @@ const SampleTestCard = ({ record }: { record: MondaySampleTest }) => (
  * Monday 고객 상세 — 한 번호로 묶인 기록 전부를 종류별(상담/방문체험/구매/
  * 납부 내역/만족도 조사/샘플테스트)로, 각각 최근 것부터 보여준다. 읽기 전용이다:
  * 원본이 Monday라서 고칠 것은 각 기록의 "Monday에서 열기"로 가서 고친다.
+ * 상담·구매 기록은 "CAPI 전송"으로 Meta에 보내며 리드 탭으로 옮길 수 있다
+ * (onSendCapi — 확인 모달은 부모가 띄운다). 왼쪽에는 고객 목록(sideList)을
+ * 두어 다른 고객으로 바로 넘어간다.
  *
  * 머리(이름·번호)는 목록에서 이미 아는 값(summary)으로 바로 그리고, 기록은
  * 받아오는 대로(customer) 채운다.
@@ -336,134 +387,157 @@ export const MondayDetail = ({
   customer,
   failed,
   onClose,
+  onSendCapi,
+  sideList,
 }: {
   summary: MondayCustomerListItem
   customer: MondayCustomer | null
   failed: boolean
   onClose: () => void
+  onSendCapi?: (source: MondayCapiSource) => void
+  /** 왼쪽 고객 목록(monday-side-list.tsx). */
+  sideList?: ReactNode
 }) => {
   const [primaryName, ...otherNames] = summary.names
 
   return (
     <div className="lead_manager_detail_modal" onClick={onClose}>
       <div
-        className="detail_form monday_detail"
-        role="dialog"
-        aria-modal="true"
+        className="detail_layout monday_detail_layout"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="header">
-          <div className="header_title">
-            <span className="customer_name">{primaryName ?? '이름 없음'}</span>
-            <span className="monday_phone">
-              {formatMondayPhone(summary.phone)}
-            </span>
+        {sideList}
+        <div
+          className="detail_form monday_detail"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="header">
+            <div className="header_title">
+              <span className="customer_name">
+                {primaryName ?? '이름 없음'}
+              </span>
+              <span className="monday_phone">
+                {formatMondayPhone(summary.phone)}
+              </span>
+            </div>
+            <button className="close_btn" onClick={onClose} aria-label="닫기">
+              <CloseIcon />
+            </button>
           </div>
-          <button className="close_btn" onClick={onClose} aria-label="닫기">
-            <CloseIcon />
-          </button>
-        </div>
 
-        <div className="body">
-          <section className="section">
-            <dl className="monday_fields">
-              <Field label="다른 이름" value={otherNames.join(', ')} />
-              <Field
-                label="다른 번호"
-                value={summary.otherPhones.map(formatMondayPhone).join(', ')}
-              />
-              <Field label="이메일" value={summary.emails.join(', ')} />
-              <Field
-                label="담당자"
-                value={summary.summary.assignees.join(', ')}
-              />
-              <Field
-                label="보드"
-                value={summary.summary.boardNames.join(', ')}
-              />
-            </dl>
-          </section>
+          <div className="body">
+            <section className="section">
+              <dl className="monday_fields">
+                <Field label="다른 이름" value={otherNames.join(', ')} />
+                <Field
+                  label="다른 번호"
+                  value={summary.otherPhones.map(formatMondayPhone).join(', ')}
+                />
+                <Field label="이메일" value={summary.emails.join(', ')} />
+                <Field
+                  label="담당자"
+                  value={summary.summary.assignees.join(', ')}
+                />
+                <Field
+                  label="보드"
+                  value={summary.summary.boardNames.join(', ')}
+                />
+              </dl>
+            </section>
 
-          {/* 불러오는 자리 → 다 받은 기록: 높이가 자라고 기록이 선명해진다. */}
-          <AutoHeight>
-            {failed && (
-              <p className="monday_detail_message">
-                기록을 불러오지 못했습니다. 창을 닫고 다시 열어 주세요.
-              </p>
-            )}
-            {!failed && !customer && (
-              <div className="monday_detail_loading" aria-busy="true">
-                <LoadingNotice label="기록을 불러오는 중" />
-                {[0, 1].map((each) => (
-                  <div key={each} className="monday_detail_loading_card">
-                    <Bone width="38%" height={13} />
-                    <Bone width="86%" height={10} />
-                    <Bone width="64%" height={10} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {customer && (
-              <div className="glass_reveal">
-                <Section title="상담" count={customer.consultations.length}>
-                  {customer.consultations.map((record) => (
-                    <ConsultationCard key={record.itemId} record={record} />
+            {/* 불러오는 자리 → 다 받은 기록: 높이가 자라고 기록이 선명해진다. */}
+            <AutoHeight>
+              {failed && (
+                <p className="monday_detail_message">
+                  기록을 불러오지 못했습니다. 창을 닫고 다시 열어 주세요.
+                </p>
+              )}
+              {!failed && !customer && (
+                <div className="monday_detail_loading" aria-busy="true">
+                  <LoadingNotice label="기록을 불러오는 중" />
+                  {[0, 1].map((each) => (
+                    <div key={each} className="monday_detail_loading_card">
+                      <Bone width="38%" height={13} />
+                      <Bone width="86%" height={10} />
+                      <Bone width="64%" height={10} />
+                    </div>
                   ))}
-                </Section>
-                <Section title="방문체험" count={customer.visits.length}>
-                  {customer.visits.map((record) => (
-                    <VisitCard key={record.itemId} record={record} />
-                  ))}
-                </Section>
-                {customer.issues.length > 0 && (
-                  <ul className="monday_issues">
-                    {customer.issues.map((issue) => (
-                      <li key={`${issue.itemId}-${issue.type}`}>
-                        <span>
-                          {formatMondayDate(issue.date)} · {issue.message}
-                        </span>
-                        {issue.url && (
-                          <a
-                            className="monday_link"
-                            href={issue.url}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Monday에서 열기
-                          </a>
-                        )}
-                      </li>
+                </div>
+              )}
+
+              {customer && (
+                <div className="glass_reveal">
+                  <Section title="상담" count={customer.consultations.length}>
+                    {customer.consultations.map((record) => (
+                      <ConsultationCard
+                        key={record.itemId}
+                        record={record}
+                        onSendCapi={onSendCapi}
+                      />
                     ))}
-                  </ul>
-                )}
-                <Section title="구매" count={customer.purchases.length}>
-                  <MoneySummary customer={customer} />
-                  {customer.purchases.map((record) => (
-                    <PurchaseCard key={record.itemId} record={record} />
-                  ))}
-                </Section>
-                <Section title="납부 내역" count={customer.payments.length}>
-                  {customer.purchases.length === 0 && (
-                    <MoneySummary customer={customer} />
+                  </Section>
+                  <Section title="방문체험" count={customer.visits.length}>
+                    {customer.visits.map((record) => (
+                      <VisitCard key={record.itemId} record={record} />
+                    ))}
+                  </Section>
+                  {customer.issues.length > 0 && (
+                    <ul className="monday_issues">
+                      {customer.issues.map((issue) => (
+                        <li key={`${issue.itemId}-${issue.type}`}>
+                          <span>
+                            {formatMondayDate(issue.date)} · {issue.message}
+                          </span>
+                          {issue.url && (
+                            <a
+                              className="monday_link"
+                              href={issue.url}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
+                              Monday에서 열기
+                            </a>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   )}
-                  {customer.payments.map((record) => (
-                    <PaymentCard key={record.itemId} record={record} />
-                  ))}
-                </Section>
-                <Section title="만족도 조사" count={customer.surveys.length}>
-                  {customer.surveys.map((record) => (
-                    <SurveyCard key={record.itemId} record={record} />
-                  ))}
-                </Section>
-                <Section title="샘플테스트" count={customer.sampleTests.length}>
-                  {customer.sampleTests.map((record) => (
-                    <SampleTestCard key={record.itemId} record={record} />
-                  ))}
-                </Section>
-              </div>
-            )}
-          </AutoHeight>
+                  <Section title="구매" count={customer.purchases.length}>
+                    <MoneySummary customer={customer} />
+                    {customer.purchases.map((record) => (
+                      <PurchaseCard
+                        key={record.itemId}
+                        record={record}
+                        onSendCapi={onSendCapi}
+                      />
+                    ))}
+                  </Section>
+                  <Section title="납부 내역" count={customer.payments.length}>
+                    {customer.purchases.length === 0 && (
+                      <MoneySummary customer={customer} />
+                    )}
+                    {customer.payments.map((record) => (
+                      <PaymentCard key={record.itemId} record={record} />
+                    ))}
+                  </Section>
+                  <Section title="만족도 조사" count={customer.surveys.length}>
+                    {customer.surveys.map((record) => (
+                      <SurveyCard key={record.itemId} record={record} />
+                    ))}
+                  </Section>
+                  <Section
+                    title="샘플테스트"
+                    count={customer.sampleTests.length}
+                  >
+                    {customer.sampleTests.map((record) => (
+                      <SampleTestCard key={record.itemId} record={record} />
+                    ))}
+                  </Section>
+                </div>
+              )}
+            </AutoHeight>
+          </div>
         </div>
       </div>
     </div>

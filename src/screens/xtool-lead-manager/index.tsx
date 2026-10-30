@@ -17,6 +17,7 @@ import {
   useLiveInflowViewModel,
   useMainViewModel,
   useMondayStatsViewModel,
+  useMondayCapiViewModel,
   useMondayTrendViewModel,
   useMondayViewModel,
   usePageTabViewModel,
@@ -45,6 +46,10 @@ const XtoolLeadManagerScreen = () => {
   // 고객 목록은 Monday 고객 탭과 퍼널 통계 탭이 쓴다(통계 탭은 따로 받는
   // 날짜별 집계만 쓴다).
   const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
+  // Monday 고객 상세의 상담·구매 → Meta CAPI 전송 + 리드 탭으로 옮기기.
+  const mondayCapi = useMondayCapiViewModel({
+    fetchLeads: main.actions.fetchLeads,
+  })
   const trend = useMondayTrendViewModel(tab === 'trend')
   // 인입통계 맨 아래 CS팀 인입 성과 — 위 인입통계와 같은 기간·단위로. 명단은
   // 각자 브라우저에, 숫자는 통계 탭이 받아 둔 데이터로.
@@ -116,7 +121,11 @@ const XtoolLeadManagerScreen = () => {
     return (
       <>
         <MondayNav state={monday.state} actions={monday.actions} />
-        <MondayMain state={monday.state} actions={monday.actions} />
+        <MondayMain
+          state={monday.state}
+          actions={monday.actions}
+          capi={mondayCapi}
+        />
       </>
     )
   }

@@ -10,13 +10,6 @@
 .lead_manager_nav.monday_nav.glass_theme {
   @include theme.list-nav;
 
-  // 놓인 것이 많아 좁은 화면에서는 다음 줄로 넘긴다(쪽 넘기기가 화면 밖으로
-  // 밀려나지 않게).
-  .inner {
-    flex-wrap: wrap;
-    row-gap: 10px;
-  }
-
   .search-container,
   .search-container .search-input {
     width: 220px;
@@ -51,20 +44,6 @@
   .glass_segmented button.active .monday_category_label .count {
     color: $text-2;
   }
-
-  // 확인 필요 — 주의색 반투명 알약.
-  .monday_missing_btn {
-    height: 38px;
-    padding: 0 16px;
-    border: none;
-    border-radius: 999px;
-    background-color: color-mix(in srgb, var(--glass-warn) 18%, transparent);
-    color: var(--glass-warn);
-
-    &:hover {
-      background-color: color-mix(in srgb, var(--glass-warn) 28%, transparent);
-    }
-  }
 }
 
 // ── 본문 ────────────────────────────────────────────────────────────────
@@ -78,13 +57,16 @@
     padding-bottom: 40px;
   }
 
-  // 숫자 타일 — 표 위 한 줄.
+  // 숫자 타일 — 표 위 한 줄(다섯). 좁으면 세 칸·두 칸으로.
   .monday_tiles {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 12px;
 
-    @media (max-width: 1000px) {
+    @media (max-width: 1100px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (max-width: 760px) {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }

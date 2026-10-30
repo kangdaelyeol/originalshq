@@ -3,6 +3,7 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
@@ -54,6 +55,9 @@ export const useMondayViewModel = (active: boolean) => {
   const [detailPhone, setDetailPhone] = useState<string | null>(null)
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
   const [detailFailed, setDetailFailed] = useState(false)
+  // 상세를 연 동안 받아 둔 고객 — 왼쪽 목록에서 방향키로 오가며 다시 볼 때
+  // 바로 보이게. 상세를 닫으면 비운다(다시 열 땐 새로 받는다).
+  const detailCache = useRef(new Map<string, MondayCustomer>())
   const [missingOpen, setMissingOpen] = useState(false)
   // 요약 카드의 "이번 달"·경과 일수 기준일 — 탭을 연 날로 고정한다.
   const [today] = useState(todayInKorea)
@@ -122,15 +126,22 @@ export const useMondayViewModel = (active: boolean) => {
 
   const openDetail = useCallback(async (phone: string) => {
     setDetailPhone(phone)
-    setDetail(null)
     setDetailFailed(false)
+    const cached = detailCache.current.get(phone)
+    setDetail(cached ?? null)
+    if (cached) return
 
     const res = await mondayClient.getCustomer(phone)
     if (!res.ok) {
       console.error('Monday 고객 상세 실패:', res.error)
-      setDetailFailed(true)
+      // 받아오는 사이 다른 고객으로 넘어갔으면 그 고객의 실패가 아니다.
+      setDetailPhone((current) => {
+        if (current === phone) setDetailFailed(true)
+        return current
+      })
       return
     }
+    detailCache.current.set(phone, res.data.customer)
     // 받아오는 사이 다른 고객을 눌렀으면 늦게 온 응답은 버린다.
     setDetailPhone((current) => {
       if (current === phone) setDetail(res.data.customer)
@@ -139,6 +150,7 @@ export const useMondayViewModel = (active: boolean) => {
   }, [])
 
   const closeDetail = useCallback(() => {
+    detailCache.current.clear()
     setDetailPhone(null)
     setDetail(null)
     setDetailFailed(false)
@@ -174,6 +186,8 @@ export const useMondayViewModel = (active: boolean) => {
       /** 걸러내지 않은 전체 고객 — 퍼널 통계가 쓴다. */
       customers,
       rows: pagination.pagedItems,
+      /** 검색·분류·정렬이 걸린 전체(페이지 나누기 전) — 상세 왼쪽 목록이 쓴다. */
+      filteredRows: filtered,
       totalCustomers: customers.length,
       search,
       category,

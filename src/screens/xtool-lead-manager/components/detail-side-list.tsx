@@ -1,11 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { formatPhoneNumber } from '@/screens/xtool-lead-manager/utils'
 import type { Lead } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import { SideListSortField } from '@/screens/xtool-lead-manager/view-model/detail'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
-
-const FOCUSABLE_TAGS = new Set(['INPUT', 'TEXTAREA', 'SELECT'])
+import { useSideListKeys } from '@/screens/xtool-lead-manager/hooks/use-side-list-keys'
 
 /** 상세 모달 왼쪽의 고객 목록 — 지금 검색/정렬/기기 필터가 걸린 전체 고객
  * (메인 표와 같은 데이터, 페이지네이션 전)을 전화번호/고객명/비고만 간략히
@@ -31,31 +30,9 @@ export const DetailSideList = ({
 }) => {
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // 상세 폼 안의 입력창(고객명 수정, 기기 선택 등)에 포커스가 있을 때
-  // 방향키를 누르면 그건 그 입력창에서 커서 이동 등으로 써야 하는 키라
-  // 가로채지 않는다.
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
-      const target = e.target as HTMLElement | null
-      if (target && FOCUSABLE_TAGS.has(target.tagName)) return
-
-      const currentIndex = leads.findIndex((l) => l.id === activeLeadId)
-      if (currentIndex === -1) return
-
-      const nextIndex =
-        e.key === 'ArrowUp'
-          ? Math.max(0, currentIndex - 1)
-          : Math.min(leads.length - 1, currentIndex + 1)
-
-      if (nextIndex === currentIndex) return
-      e.preventDefault()
-      onSelect(leads[nextIndex].id)
-    }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [leads, activeLeadId, onSelect])
+  // 위/아래 방향키로 이전/다음 고객 — Monday 고객 상세와 같은 동작.
+  const ids = useMemo(() => leads.map((lead) => lead.id), [leads])
+  useSideListKeys(ids, activeLeadId, onSelect)
 
   // 방향키로 넘어간 행이 스크롤 영역 밖에 있으면 안 보이니 시야 안으로 끌어온다.
   useEffect(() => {
