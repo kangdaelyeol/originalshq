@@ -242,7 +242,9 @@ const MetricCard = ({
       </div>
       <ul className="cs_metric_rows">
         {rows.map((each) => {
-          const key = `${metric.key}:${each.name}`
+          // 아래 추이 카드(withContributors)와 같은 이름(intake)을 써도 따로
+          // 펼쳐지게 앞에 summary를 붙인다.
+          const key = `summary:${metric.key}:${each.name}`
           const open = openRows.has(key)
           return (
             <Fragment key={each.name}>
@@ -425,7 +427,7 @@ export const CsTeamSection = ({
     kind: CsContributorKind,
   ): TrendListRow[] =>
     rows.map((row) => {
-      const key = `${card}:${row.key}`
+      const key = `trend:${card}:${row.key}`
       const open = state.openRows.has(key)
       return {
         ...row,

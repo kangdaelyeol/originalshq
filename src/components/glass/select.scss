@@ -1,4 +1,5 @@
 @use './styles/tokens' as *;
+@use './styles/mixins' as glass;
 
 // 유리 드롭다운(select.tsx) — 알약 버튼 + 아래로 펼쳐지는 유리 목록.
 .glass_select {
@@ -60,15 +61,12 @@
   padding: 6px;
   overflow-y: auto;
   list-style: none;
-  border-radius: 18px;
-  background: $float-bg;
-  -webkit-backdrop-filter: $float-blur;
-  backdrop-filter: $float-blur;
   transform-origin: top center;
-  animation: glass_select_in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
   scrollbar-width: thin;
   scrollbar-color: var(--glass-fill-3) transparent;
   outline: none;
+  @include glass.float;
+  @include glass.pop-in(0.28s);
 }
 
 .glass_select_option {
@@ -98,15 +96,7 @@
   }
 }
 
-@keyframes glass_select_in {
-  from {
-    opacity: 0;
-    transform: translateY(-6px) scale(0.97);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .glass_select_list,
   .glass_select_option {
     animation: none;
   }

@@ -1,17 +1,10 @@
 @use '../screens/xtool-lead-manager/styles/variables.scss';
-@use '../components/glass/styles/mixins' as glass;
 
-// global — 바탕은 테마의 바탕색(테마 고르기는 헤더, 변수는 components/glass).
-body:has(.xtool-lead-manager) {
-  background-color: var(--glass-base, #000);
-}
-
-.xtool-lead-manager {
-  // 화면 뒤 배경 빛 한 장(::before) — 이 상자 안에서만 뒤에 깔리도록 쌓임을 가둔다.
-  isolation: isolate;
-  background-color: var(--glass-base, #000);
+// global — 바탕·배경 빛·글자색은 glass_root(components/glass), 테마 고르기는
+// 헤더.
+.xtool-lead-manager.glass_root {
   width: 100vw;
-  min-height: 100vh;
+  // 다크에서는 예전 화면 글자(흰색보다 한 톤 낮게) 그대로.
   color: #d5d8df;
   font-family: variables.$font-sans;
 }
@@ -34,7 +27,7 @@ body:has(.xtool-lead-manager) {
   --xt-read-complete: #0f766e;
   --xt-purchase-complete: #a21caf;
 
-  .xtool-lead-manager {
+  .xtool-lead-manager.glass_root {
     color: var(--glass-text);
   }
 
@@ -42,61 +35,5 @@ body:has(.xtool-lead-manager) {
   // 회전으로 초록은 그대로).
   .xtool-logo {
     filter: invert(1) hue-rotate(180deg);
-  }
-}
-
-// ── 탭을 바꿀 때 — 지금 화면이 흐려지는 위로 새 화면이 선명해지며 덮는다 ──
-// usePageTabViewModel이 View Transitions API로 바꾼다(지원하지 않는 브라우저는
-// 바로 바뀐다). 헤더는 따로 떼어(view-transition-name) 그대로 두고 탭 알약만
-// 미끄러진다.
-//
-// 지금 화면은 끝까지 불투명하게 남기고, 새 화면을 그 위에서
-// 나타나게 한다 — 둘을 같이 투명하게 하면(교차 페이드) 그 사이로 맨 아래
-// 검정이 비친다. 겹치는 방식도 기본(plus-lighter 더하기) 대신 그냥 덮기로.
-.xtool-header {
-  view-transition-name: xtool-header;
-}
-
-.xtool-lead-manager::before {
-  @include glass.ambient-layer;
-}
-
-// 전환 동안 맨 아래 바닥 — 혹시 비치더라도 테마 바탕색.
-::view-transition {
-  background-color: var(--glass-base, #000);
-}
-
-::view-transition-old(root),
-::view-transition-new(root) {
-  mix-blend-mode: normal;
-}
-// 지금 화면은 그대로 두고(움직이지 않아 비용 없음), 새 화면만 그 위에서
-// 나타난다. 화면 전체 크기를 흐리는 건 무거워서 흐림은 작게(8px).
-::view-transition-old(root) {
-  animation: none;
-}
-::view-transition-new(root) {
-  animation: xtool-page-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-::view-transition-old(xtool-header),
-::view-transition-new(xtool-header) {
-  animation: none;
-}
-::view-transition-old(xtool-header) {
-  display: none;
-}
-
-// 새 화면 — 흐릿하고 투명한 채 위에서 나타나 선명해진다(자리는 그대로).
-@keyframes xtool-page-in {
-  from {
-    opacity: 0;
-    filter: blur(8px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) {
-    animation: none;
   }
 }

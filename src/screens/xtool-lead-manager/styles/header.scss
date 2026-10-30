@@ -1,31 +1,11 @@
 @use '../../../components/glass/styles/tokens' as *;
-@use '../../../components/glass/styles/mixins' as glass;
 @use './variables.scss';
 
-// 맨 위 줄 — 아래 메뉴 줄(lead_manager_nav)과 같은 배경 빛(ambient)을 깔아
-// 경계 없이 이어지고, 선은 긋지 않는다. [로고 | 가운데 탭 알약 | 회사 로고].
+// 맨 위 줄 — 틀(위에 붙음·배경 빛·[로고 | 탭 | 오른쪽])은 GlassHeader가 그리고,
+// 여기는 xtool 로고·이름과 회사 로고만.
 .xtool-header {
-  @include glass.ambient;
-  width: 100%;
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 2;
-
-  .wrapper {
-    box-sizing: border-box;
-    width: 100%;
-    margin: 0 auto;
-    padding: 0 20px;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    height: 60px;
-  }
-
   // 로고 — 바탕 없이.
   .title-box {
-    justify-self: start;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -41,25 +21,6 @@
   }
   .xtool-logo {
     height: 26px;
-  }
-
-  // 가운데 탭 — Segmented(유리 알약, 고른 탭으로 미끄러진다).
-  .page-tabs {
-    justify-self: center;
-    border-radius: 999px;
-
-    .glass_segmented button {
-      padding: 0 16px;
-      font-size: 13.5px;
-      font-weight: 500;
-    }
-  }
-
-  .header-right {
-    justify-self: end;
-    display: flex;
-    align-items: center;
-    gap: 14px;
   }
 
   // 회사 로고 — 바탕 없이.

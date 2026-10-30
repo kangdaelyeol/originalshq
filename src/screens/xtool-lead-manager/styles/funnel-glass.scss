@@ -144,43 +144,20 @@
   // ── 경로별 고객 목록 모달(퍼널) ─────────────────────────────────────────
   .stats_path_modal,
   .ga_tracking_modal {
-    background-color: var(--glass-scrim);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
-    backdrop-filter: blur(10px) saturate(120%);
+    @include glass.scrim;
   }
   .stats_path_dialog,
   .ga_tracking_dialog {
-    border: none;
-    border-radius: $radius-card;
-    background: linear-gradient(
-      160deg,
-      var(--glass-panel-top),
-      var(--glass-panel-bottom)
-    );
-    box-shadow: none;
-    -webkit-backdrop-filter: blur(28px) saturate(150%);
-    backdrop-filter: blur(28px) saturate(150%);
+    @include glass.panel;
+    @include glass.panel-in;
   }
   .stats_path_close,
   .ga_tracking_close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    border: none;
-    border-radius: 999px;
-    background-color: $fill-2;
-    color: $text-2;
+    @include glass.icon-button;
 
     svg {
       width: 16px;
       height: 16px;
-    }
-    &:hover {
-      background-color: $fill-3;
-      color: $text;
     }
   }
   // 모달 안 표의 머리글은 스크롤해도 붙어 있다 — 밑이 비치지 않게 불투명.

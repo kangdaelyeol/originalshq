@@ -22,41 +22,12 @@ $register-purchase: #f762fe;
 // 선택자를 화면 클래스까지 길게 쓰는 건 기존 화면 스타일(.xtool-main.monday_stats
 // .stats_card 등)보다 우선하기 위해서다.
 
-// 내비 줄 — 기간 선택 버튼과 팝오버(알약 메뉴는 Segmented가 스스로 그린다).
-// 테두리 없이 배경 겹으로만: 팝오버 판 → 그 위 칸·버튼(한 겹 밝게) → 고른 것.
+// 내비 줄 — 기간 선택(glass.date-range-picker), 켜고 끄는 단추(알약 메뉴는
+// Segmented가 스스로 그린다).
 @mixin nav {
   @include glass.ambient;
+  @include glass.date-range-picker;
   border-bottom: none;
-
-  .date-range-picker__trigger {
-    @include glass.pill-button;
-    height: 38px;
-    padding: 0 16px;
-  }
-
-  // 기간 선택(cmip 부품)의 글자색은 cmip 다크 값으로 고정돼 있다 — 테마
-  // 글자 단계로 바꾼다(밝은 테마에서도 읽히게).
-  .date-range-picker,
-  .date-range-picker__trigger,
-  .date-range-picker__preset-item,
-  .date-range-picker__cell,
-  .date-range-picker__month-select,
-  .date-range-picker__range-inputs input[type='date'],
-  .date-range-picker__cancel {
-    color: $text;
-  }
-  .date-range-picker__trigger-icon,
-  .date-range-picker__trigger-chevron,
-  .date-range-picker__nav-btn,
-  .date-range-picker__range-inputs {
-    color: $text-3;
-  }
-  .date-range-picker__cell:disabled {
-    color: $text-3;
-  }
-  .date-range-picker__month-select option {
-    background: var(--glass-solid-2);
-  }
 
   .stats_nav_label {
     color: $text-3;
@@ -73,128 +44,11 @@ $register-purchase: #f762fe;
       color: $text;
     }
     .stats_toggle_switch {
-      background-color: $fill-3;
+      @include glass.switch-off;
     }
     &.on .stats_toggle_switch {
-      background-color: var(--glass-accent);
-
-      &::after {
-        background-color: var(--glass-on-accent);
-      }
+      @include glass.switch-on;
     }
-  }
-
-  // 기간 팝오버 — 아래 본문 위에 뜨는 유리 판. 카드보다 진하게(뒤 표·그래프
-  // 글자가 비치면 달력 숫자가 안 읽힌다) + 흐림을 세게.
-  .date-range-picker__popover {
-    top: calc(100% + 10px);
-    border: none;
-    border-radius: 24px;
-    background: var(--glass-panel-top);
-    box-shadow: none;
-    -webkit-backdrop-filter: blur(32px) saturate(160%);
-    backdrop-filter: blur(32px) saturate(160%);
-    color-scheme: var(--glass-scheme);
-  }
-
-  // 프리셋 목록 — 선 대신 한 겹 옅은 판으로 달력과 나눈다.
-  .date-range-picker__presets {
-    margin: 8px;
-    padding: 8px;
-    border: none;
-    border-radius: 18px;
-    background: $fill-1;
-  }
-
-  .date-range-picker__preset-item {
-    border-radius: 999px;
-    padding: 7px 12px;
-
-    &:hover {
-      background: $fill-1;
-    }
-    // 고른 항목 — 메뉴 줄의 알약과 같은 밝은 알약.
-    &:has(input:checked) {
-      background: $fill-3;
-      color: var(--glass-text);
-    }
-    input[type='radio'] {
-      accent-color: var(--glass-accent);
-    }
-  }
-
-  .date-range-picker__calendar {
-    padding: 16px 18px;
-  }
-
-  .date-range-picker__nav-btn {
-    width: 28px;
-    height: 28px;
-    border: none;
-    border-radius: 999px;
-    background: $fill-2;
-
-    &:hover {
-      background: $fill-3;
-    }
-  }
-
-  .date-range-picker__month-select,
-  .date-range-picker__range-inputs input[type='date'] {
-    @include glass.field;
-    border-radius: 10px;
-  }
-
-  .date-range-picker__weekdays span {
-    color: color-mix(in srgb, var(--glass-ink) 55%, transparent);
-  }
-
-  // 기간 띠·시작/끝 — 데이터 색(라임). 라임 위 글자는 어둡게. 오늘은 옅은
-  // 라임 바탕(테두리 고리 대신).
-  .date-range-picker__cell.is-in-range::before {
-    background: color-mix(in srgb, var(--glass-accent) 16%, transparent);
-  }
-  .date-range-picker__cell:hover:not(:disabled):not(.is-start):not(.is-end)
-    .date-range-picker__cell-num {
-    background: $fill-2;
-  }
-  .date-range-picker__cell.is-start .date-range-picker__cell-num,
-  .date-range-picker__cell.is-end .date-range-picker__cell-num {
-    background: var(--glass-accent);
-    color: var(--glass-on-accent);
-  }
-  .date-range-picker__cell.is-today .date-range-picker__cell-num {
-    box-shadow: none;
-    background: color-mix(in srgb, var(--glass-accent) 22%, transparent);
-    color: var(--glass-accent);
-  }
-  .date-range-picker__cell.is-today.is-start .date-range-picker__cell-num,
-  .date-range-picker__cell.is-today.is-end .date-range-picker__cell-num {
-    background: var(--glass-accent);
-    color: var(--glass-on-accent);
-  }
-
-  .date-range-picker__range-inputs {
-    border-top: none;
-  }
-
-  .date-range-picker__cancel,
-  .date-range-picker__apply {
-    border: none;
-    border-radius: 999px;
-    padding: 9px 18px;
-  }
-  .date-range-picker__cancel {
-    background: $fill-2;
-
-    &:hover {
-      background: $fill-3;
-    }
-  }
-  .date-range-picker__apply {
-    background: var(--glass-accent);
-    color: var(--glass-on-accent);
-    font-weight: 600;
   }
 }
 
@@ -205,13 +59,8 @@ $register-purchase: #f762fe;
 
   // 다 받은 화면(wrapper.is-ready) — 스켈레톤이 있던 자리에 카드가 위에서부터
   // 차례로 흐릿하게 떠올라 선명해진다.
-  .wrapper.is-ready > * {
-    @include glass.enter(6);
-  }
-  @for $i from 1 through 6 {
-    .wrapper.is-ready > :nth-child(#{$i}) {
-      animation-delay: ($i - 1) * 70ms;
-    }
+  .wrapper.is-ready {
+    @include glass.enter-children(6, 70ms);
   }
 
   .stats_card {
@@ -311,15 +160,8 @@ $register-purchase: #f762fe;
     background-image: none;
   }
   // 방치 기록 줄 — 선 대신 한 줄 걸러 옅은 흰빛.
-  .neglect_items li {
-    padding-right: 10px;
-    padding-left: 10px;
-    border-bottom: none;
-    border-radius: 10px;
-
-    &:nth-child(even) {
-      background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
-    }
+  .neglect_items {
+    @include glass.zebra-list;
   }
   .neglect_items a {
     color: var(--glass-link);
@@ -331,28 +173,7 @@ $register-purchase: #f762fe;
     gap: 8px;
 
     button {
-      box-sizing: border-box;
-      height: 34px;
-      padding: 0 16px;
-      border: none;
-      border-radius: 999px;
-      background: $fill-1;
-      color: $text-2;
-      transition:
-        background-color 0.2s,
-        color 0.2s;
-
-      &:hover {
-        background: $fill-2;
-        color: $text;
-      }
-      &.active {
-        background: $fill-3;
-        color: $text;
-      }
-      &:focus-visible {
-        outline: 2px solid var(--glass-link);
-      }
+      @include glass.chip;
     }
   }
 
@@ -483,13 +304,8 @@ $register-purchase: #f762fe;
     }
   }
   .device_filter_menu {
+    @include glass.float;
     padding: 8px;
-    border: none;
-    border-radius: 18px;
-    background: $float-bg;
-    box-shadow: none;
-    -webkit-backdrop-filter: $float-blur;
-    backdrop-filter: $float-blur;
   }
   .device_filter_item {
     border-radius: 10px;
@@ -498,7 +314,7 @@ $register-purchase: #f762fe;
       background-color: $fill-1;
     }
     input {
-      accent-color: var(--glass-accent);
+      @include glass.check;
     }
   }
 
@@ -506,17 +322,7 @@ $register-purchase: #f762fe;
     color: $text-3;
   }
   .pagination_bar .page_nav .page_nav_btn {
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 999px;
-    background: $fill-2;
-    color: $text-2;
-
-    &:hover:not(:disabled) {
-      background: $fill-3;
-      color: $text;
-    }
+    @include glass.icon-button;
   }
 }
 
@@ -532,47 +338,14 @@ $register-purchase: #f762fe;
     // 머리글의 z-index가 이 표 안에서만 비교되게 가둔다.
     isolation: isolate;
   }
-  .table .lead_table {
-    th,
-    td {
-      border: none;
-    }
-    thead th {
-      z-index: 1;
-      background-color: var(--glass-solid-2);
-      color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
-      font-weight: 600;
-    }
-    thead th:first-child {
-      border-top-left-radius: 14px;
-      border-bottom-left-radius: 14px;
-    }
-    thead th:last-child {
-      border-top-right-radius: 14px;
-      border-bottom-right-radius: 14px;
-    }
-    tbody td {
-      background-color: transparent;
-    }
-    tbody tr:nth-child(even) td {
-      background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
-    }
-    tbody tr td:first-child {
-      border-top-left-radius: 12px;
-      border-bottom-left-radius: 12px;
-    }
-    tbody tr td:last-child {
-      border-top-right-radius: 12px;
-      border-bottom-right-radius: 12px;
-    }
+  @include glass.list-table('.table .lead_table', 'tbody tr.row-clickable');
+  .table .lead_table thead th {
+    z-index: 1;
   }
   // 받은 줄 — 스켈레톤 줄 자리에 위에서부터 차례로 떠오른다(쪽을 넘겨 새로
   // 그려질 때도).
   @include glass.enter-rows('.table tbody tr.row-clickable');
 
-  .table tbody tr.row-clickable:hover td {
-    background-color: $fill-2;
-  }
   .table .status_stack .latest {
     color: $text-3;
   }
@@ -588,10 +361,7 @@ $register-purchase: #f762fe;
 @mixin detail-modal {
   // 가림막 — 뒤 화면을 살짝 흐리고 어둡게. 열릴 때 흐림이 차오른다.
   .lead_manager_detail_modal {
-    background-color: var(--glass-scrim);
-    -webkit-backdrop-filter: $scrim-blur;
-    backdrop-filter: $scrim-blur;
-    animation: glass_scrim_in 0.35s ease both;
+    @include glass.scrim;
   }
 
   // 판 — 투명한 유리(뒤가 비친다) + 센 흐림. 테두리·그림자 없이, 위쪽에 아주
@@ -599,19 +369,8 @@ $register-purchase: #f762fe;
   .lead_manager_detail_modal .detail_form,
   .lead_manager_detail_modal .detail_side_list,
   .lead_manager_detail_modal .detail_monday_panel {
-    border: none;
-    border-radius: $radius-card;
-    background:
-      radial-gradient(
-        120% 60% at 20% 0%,
-        color-mix(in srgb, var(--glass-ink) 7%, transparent),
-        transparent 60%
-      ),
-      $panel-bg;
-    box-shadow: none;
-    -webkit-backdrop-filter: $panel-blur;
-    backdrop-filter: $panel-blur;
-    animation: glass_panel_in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+    @include glass.panel;
+    @include glass.panel-in;
   }
   .lead_manager_detail_modal .detail_side_list {
     animation-delay: 0.04s;
@@ -620,30 +379,12 @@ $register-purchase: #f762fe;
     animation-delay: 0.08s;
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .lead_manager_detail_modal,
-    .lead_manager_detail_modal .detail_form,
-    .lead_manager_detail_modal .detail_side_list,
-    .lead_manager_detail_modal .detail_monday_panel {
-      animation: none;
-    }
-  }
-
   .lead_manager_detail_modal .detail_form {
     .header {
       border-bottom: none;
     }
     .header .close_btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 999px;
-      background: $fill-2;
-      color: $text-2;
-
-      &:hover {
-        background: $fill-3;
-        color: $text;
-      }
+      @include glass.icon-button;
     }
     .body .section {
       border-bottom: none;
@@ -738,32 +479,10 @@ $register-purchase: #f762fe;
       font-weight: 600;
     }
     .footer .btn.register.consultation {
-      background-color: color-mix(
-        in srgb,
-        $register-consultation 24%,
-        transparent
-      );
-      color: color-mix(in srgb, $register-consultation 55%, var(--glass-ink));
-
-      &:hover {
-        background-color: color-mix(
-          in srgb,
-          $register-consultation 36%,
-          transparent
-        );
-      }
+      @include glass.tint-button($register-consultation, 24%);
     }
     .footer .btn.register.purchase {
-      background-color: color-mix(in srgb, $register-purchase 22%, transparent);
-      color: color-mix(in srgb, $register-purchase 55%, var(--glass-ink));
-
-      &:hover {
-        background-color: color-mix(
-          in srgb,
-          $register-purchase 34%,
-          transparent
-        );
-      }
+      @include glass.tint-button($register-purchase, 22%);
     }
     .footer .btn.delete {
       background-color: transparent;
@@ -793,20 +512,11 @@ $register-purchase: #f762fe;
     .detail_side_list_head {
       border-bottom: none;
     }
+    @include glass.list-table('.detail_side_list_table', $round: false);
     .detail_side_list_table {
-      th,
-      td {
-        border-bottom: none;
-      }
       thead th {
-        background-color: var(--glass-solid-2);
         color: $text-3;
-      }
-      tbody tr:nth-child(even) td {
-        background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
-      }
-      tbody tr:hover td {
-        background-color: $fill-2;
+        font-weight: inherit;
       }
       tbody tr.active td {
         background-color: color-mix(
@@ -861,21 +571,10 @@ $register-purchase: #f762fe;
 // 확인 모달(confirm-modal.tsx — 삭제·상담 등록·구매 등록 확인).
 @mixin confirm-modal {
   .lead_manager_confirm_modal {
-    background-color: var(--glass-scrim);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
-    backdrop-filter: blur(10px) saturate(120%);
+    @include glass.scrim;
   }
   .lead_manager_confirm_modal .confirm_form {
-    border: none;
-    border-radius: $radius-card;
-    background: linear-gradient(
-      160deg,
-      var(--glass-panel-top),
-      var(--glass-panel-bottom)
-    );
-    box-shadow: none;
-    -webkit-backdrop-filter: blur(28px) saturate(150%);
-    backdrop-filter: blur(28px) saturate(150%);
+    @include glass.panel;
 
     .lead_summary {
       border: none;
@@ -906,7 +605,7 @@ $register-purchase: #f762fe;
       color: $text-3;
     }
     .register_form .test_toggle input[type='checkbox'] {
-      accent-color: var(--glass-accent);
+      @include glass.check;
     }
 
     // 확인 버튼·아이콘 — 꽉 찬 색 대신 그 색을 옅게 깐 유리 + 그 색의 글자.
@@ -922,17 +621,10 @@ $register-purchase: #f762fe;
         )
     {
       &.#{$variant} .icon_wrap {
-        background-color: color-mix(in srgb, $color 20%, transparent);
-        color: color-mix(in srgb, $color 60%, var(--glass-ink));
+        @include glass.tint($color);
       }
       &.#{$variant} .actions .btn.confirm {
-        background-color: color-mix(in srgb, $color 26%, transparent);
-        color: color-mix(in srgb, $color 55%, var(--glass-ink));
-
-        &:hover:not(:disabled) {
-          filter: none;
-          background-color: color-mix(in srgb, $color 38%, transparent);
-        }
+        @include glass.tint-button($color, 26%);
       }
     }
     .actions .spinner {

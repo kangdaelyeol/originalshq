@@ -81,20 +81,9 @@
   // 흐리게 비친다). 위쪽에 옅은 빛 결, 테두리·그림자 없음. 나타날 때 흐릿하게
   // 살짝 커지며 선명해진다.
   .inflow_tooltip {
+    @include glass.panel(18px, 10%);
     min-width: 190px;
     padding: 12px 14px;
-    border: none;
-    border-radius: 18px;
-    background:
-      radial-gradient(
-        120% 70% at 15% 0%,
-        color-mix(in srgb, var(--glass-ink) 10%, transparent),
-        transparent 60%
-      ),
-      $panel-bg;
-    box-shadow: none;
-    -webkit-backdrop-filter: $panel-blur;
-    backdrop-filter: $panel-blur;
     animation: inflow-tip-in 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
 
     strong {
@@ -289,31 +278,15 @@
   }
 
   .cs_editor_backdrop {
-    background: var(--glass-scrim);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
-    backdrop-filter: blur(10px) saturate(120%);
-    animation: glass_fade 0.25s ease both;
+    @include glass.scrim;
   }
 
   .cs_editor {
+    @include glass.panel;
+    @include glass.panel-in;
     box-sizing: border-box;
     width: min(560px, 100%);
     padding: 24px 26px 22px;
-    border: none;
-    border-radius: $radius-card;
-    background: linear-gradient(
-      160deg,
-      var(--glass-panel-top),
-      var(--glass-panel-bottom)
-    );
-    box-shadow: none;
-    -webkit-backdrop-filter: blur(28px) saturate(150%);
-    backdrop-filter: blur(28px) saturate(150%);
-    animation: cs-editor-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
-
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
 
     // 목록이 길 때의 스크롤 막대도 유리 톤으로.
     scrollbar-width: thin;
@@ -328,13 +301,7 @@
   }
 
   .cs_editor_close {
-    box-sizing: border-box;
-    width: 34px;
-    height: 34px;
-    border: none;
-    border-radius: 999px;
-    background: $fill-2;
-    color: $text-2;
+    @include glass.icon-button;
     transition:
       background-color 0.15s,
       color 0.15s;
@@ -342,13 +309,6 @@
     svg {
       width: 16px;
       height: 16px;
-    }
-    &:hover {
-      background: $fill-3;
-      color: $text;
-    }
-    &:focus-visible {
-      outline: 2px solid var(--glass-link);
     }
   }
 
@@ -472,13 +432,6 @@
     .cs_editor_backdrop {
       animation: none;
     }
-  }
-}
-
-@keyframes cs-editor-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
   }
 }
 

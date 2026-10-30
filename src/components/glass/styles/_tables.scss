@@ -1,0 +1,171 @@
+@use './tokens' as *;
+
+// 표 — 선 없이 배경으로만. 칸은 투명, 한 줄 걸러 옅은 빛(zebra), 머리글은 한
+// 겹 밝은 띠. 표는 border-collapse: separate(sticky 칸 사이 1px 틈이 안 생긴다).
+
+// 스크롤하는 표 상자 안의 표를 유리 위에 — 칸은 투명, 선 없음. 줄은 한 줄
+// 걸러 옅은 흰빛(zebra), 머리글·합계 줄은 한 겹 밝게 — 다 배경 그림
+// (background-image)이라 아래 고정 칸 바탕색 위에 겹친다.
+// 붙어 있는(sticky) 칸(머리글 줄·첫 칸·합계 줄)은 평소엔 투명이고, 그 밑으로
+// 다른 칸이 지나갈 때만 불투명 바탕을 깐다:
+//   머리글 = 세로로 조금이라도 내렸을 때, 첫 칸 = 가로로 밀었을 때,
+//   합계 = 아래에 아직 줄이 남았을 때, 모서리 칸 = 둘 중 하나라도.
+// 표 상자의 스크롤 위치로 --glass-sticky-x/y(0~1, base.scss)를 움직여(스크롤
+// 연동 애니메이션) 큰 값만큼 칠한다. 그 방향으로 넘치지 않으면 0(투명).
+// 칸을 sticky로 만드는 것 자체는 부르는 쪽이 한다.
+@mixin sticky-table($table: 'table') {
+  $stuck: var(--glass-solid);
+
+  $tint: linear-gradient(
+    color-mix(in srgb, var(--glass-ink) 3%, transparent),
+    color-mix(in srgb, var(--glass-ink) 3%, transparent)
+  );
+  $tint-strong: linear-gradient($fill-1, $fill-1);
+
+  #{$table} th,
+  #{$table} td {
+    background-color: transparent;
+    border: none;
+    box-shadow: none;
+  }
+  #{$table} tbody tr:nth-child(even) td {
+    background-image: $tint;
+  }
+  #{$table} thead th {
+    background-image: $tint-strong;
+    color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
+    font-weight: 600;
+  }
+  #{$table} tfoot td {
+    background-image: $tint-strong;
+  }
+  // 머리글·합계 줄 양 끝을 둥글게 — 띠처럼.
+  #{$table} thead th:first-child,
+  #{$table} tfoot tr:first-child td:first-child {
+    border-top-left-radius: 12px;
+  }
+  #{$table} thead th:last-child,
+  #{$table} tfoot tr:first-child td:last-child {
+    border-top-right-radius: 12px;
+  }
+  #{$table} thead th:first-child,
+  #{$table} tfoot tr:last-child td:first-child {
+    border-bottom-left-radius: 12px;
+  }
+  #{$table} thead th:last-child,
+  #{$table} tfoot tr:last-child td:last-child {
+    border-bottom-right-radius: 12px;
+  }
+  #{$table} thead th,
+  #{$table} th:first-child,
+  #{$table} td:first-child,
+  #{$table} tfoot td {
+    background-color: color-mix(
+      in srgb,
+      var(--glass-solid)
+        calc(max(var(--glass-sticky-x), var(--glass-sticky-y)) * 100%),
+      transparent
+    );
+  }
+  #{$table} thead th {
+    animation: glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: 0 8px;
+  }
+  #{$table} tbody td:first-child {
+    animation: glass_sticky_x_on linear both;
+    animation-timeline: scroll(nearest inline);
+    animation-range: 0 8px;
+  }
+  #{$table} tfoot td {
+    animation: glass_sticky_y_off linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: calc(100% - 8px) 100%;
+  }
+  #{$table} thead th:first-child {
+    animation:
+      glass_sticky_x_on linear both,
+      glass_sticky_y_on linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest block);
+    animation-range:
+      0 8px,
+      0 8px;
+  }
+  #{$table} tfoot td:first-child {
+    animation:
+      glass_sticky_x_on linear both,
+      glass_sticky_y_off linear both;
+    animation-timeline: scroll(nearest inline), scroll(nearest block);
+    animation-range:
+      0 8px,
+      calc(100% - 8px) 100%;
+  }
+
+  // 스크롤 연동 애니메이션이 없는 브라우저(Firefox 등) — 늘 바탕을 깐다.
+  @supports not (animation-timeline: scroll()) {
+    #{$table} thead th,
+    #{$table} th:first-child,
+    #{$table} td:first-child,
+    #{$table} tfoot td {
+      background-color: $stuck;
+    }
+  }
+}
+
+// 목록 표(눌러서 여는 줄이 있는 표 — 리드 목록 등) — 머리글은 불투명 띠(밑으로
+// 줄이 지나가도 안 비친다), 한 줄 걸러 옅은 빛, 마우스를 올린 줄($hover)은 한
+// 겹 밝게. $round면 머리글·줄 양 끝을 둥글게(띠처럼).
+@mixin list-table($table: 'table', $hover: 'tbody tr', $round: true) {
+  #{$table} {
+    th,
+    td {
+      border: none;
+    }
+    thead th {
+      background-color: var(--glass-solid-2);
+      color: color-mix(in srgb, var(--glass-ink) 90%, transparent);
+      font-weight: 600;
+    }
+    tbody td {
+      background-color: transparent;
+    }
+    tbody tr:nth-child(even) td {
+      background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
+    }
+    #{$hover}:hover td {
+      background-color: $fill-2;
+    }
+  }
+  @if $round {
+    #{$table} thead th:first-child {
+      border-top-left-radius: 14px;
+      border-bottom-left-radius: 14px;
+    }
+    #{$table} thead th:last-child {
+      border-top-right-radius: 14px;
+      border-bottom-right-radius: 14px;
+    }
+    #{$table} tbody tr td:first-child {
+      border-top-left-radius: 12px;
+      border-bottom-left-radius: 12px;
+    }
+    #{$table} tbody tr td:last-child {
+      border-top-right-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+  }
+}
+
+// 표가 아닌 목록(ul/dl 줄) — 선 대신 한 줄 걸러 옅은 빛, 줄 양 끝 둥글게.
+@mixin zebra-list($item: 'li') {
+  #{$item} {
+    padding-right: 10px;
+    padding-left: 10px;
+    border: none;
+    border-radius: 10px;
+
+    &:nth-child(even) {
+      background: color-mix(in srgb, var(--glass-ink) 3.5%, transparent);
+    }
+  }
+}

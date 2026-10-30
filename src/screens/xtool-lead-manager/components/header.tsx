@@ -1,5 +1,10 @@
 import '@/screens/xtool-lead-manager/styles/header.scss'
-import { Segmented, ThemePicker, type GlassThemeId } from '@/components/glass'
+import {
+  GlassHeader,
+  Segmented,
+  ThemePicker,
+  type GlassThemeId,
+} from '@/components/glass'
 import {
   PAGE_TABS,
   type PageTab,
@@ -25,8 +30,9 @@ export const Header = ({
   onSelectTheme: (theme: GlassThemeId) => void
 }) => {
   return (
-    <div className="xtool-header">
-      <div className="wrapper">
+    <GlassHeader
+      className="xtool-header"
+      start={
         <div className="title-box">
           <img
             src="https://www.xtool.co.kr/web/upload/goodymall/kr/main/LOGO_1.png"
@@ -35,7 +41,9 @@ export const Header = ({
           />
           <span className="title">Lead manager</span>
         </div>
-        <nav className="page-tabs" aria-label="화면">
+      }
+      center={
+        <nav aria-label="화면">
           <Segmented
             options={TAB_LABEL}
             value={tab}
@@ -44,7 +52,9 @@ export const Header = ({
             size="md"
           />
         </nav>
-        <div className="header-right">
+      }
+      end={
+        <>
           <ThemePicker value={theme} onChange={onSelectTheme} />
           <div className="enterprise-logo-badge">
             <img
@@ -53,8 +63,8 @@ export const Header = ({
               className="enterprise-logo"
             />
           </div>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   )
 }

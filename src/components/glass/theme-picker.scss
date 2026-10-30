@@ -1,4 +1,5 @@
 @use './styles/tokens' as *;
+@use './styles/mixins' as glass;
 
 // 테마 고르기(theme-picker.tsx) — 접힌 알약 + 아래로 펼쳐지는 유리 판(다크·라이트
 // 두 줄).
@@ -60,18 +61,9 @@ $ease: cubic-bezier(0.22, 1, 0.36, 1);
   flex-direction: column;
   gap: 12px;
   padding: 14px;
-  border-radius: 22px;
-  background:
-    radial-gradient(
-      120% 70% at 15% 0%,
-      color-mix(in srgb, var(--glass-ink) 9%, transparent),
-      transparent 60%
-    ),
-    $panel-bg;
-  -webkit-backdrop-filter: $panel-blur;
-  backdrop-filter: $panel-blur;
   transform-origin: top right;
-  animation: glass_theme_panel_in 0.32s $ease both;
+  @include glass.panel(22px, 9%);
+  @include glass.pop-in(0.32s);
 }
 
 .glass_theme_group {
@@ -155,13 +147,6 @@ $ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 }
 
-@keyframes glass_theme_panel_in {
-  from {
-    opacity: 0;
-    filter: blur(8px);
-    transform: translateY(-6px) scale(0.96);
-  }
-}
 @keyframes glass_theme_option_in {
   from {
     opacity: 0;
@@ -170,7 +155,6 @@ $ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glass_theme_panel,
   .glass_theme_option {
     animation: none;
   }

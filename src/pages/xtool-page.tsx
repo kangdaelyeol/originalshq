@@ -10,7 +10,7 @@ export const XtoolPage = () => {
   const [theme, setTheme] = useGlassTheme('xtool.theme')
 
   return (
-    <div className="xtool-lead-manager">
+    <div className="xtool-lead-manager glass_root">
       <Header
         tab={state.tab}
         onSelectTab={actions.selectTab}

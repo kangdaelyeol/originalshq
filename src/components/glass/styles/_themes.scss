@@ -1,0 +1,226 @@
+// 테마(색 변수) — base.scss가 불러온다. 목록·견본색은 ../themes.ts.
+
+// ── 테마 ───────────────────────────────────────────────────────────────
+// 테마 = 바탕(base) + 데이터색(accent) + 누르는 색(link). 나머지(배경 빛, 글자,
+// 겹 단계, 판·툴팁·고정 칸 색)는 거기서 계산하거나 다크/라이트 공통 값을
+// 쓴다. 부품·화면 스타일은 전부 이 변수만 쓰고 색 숫자를 직접 적지 않는다.
+// 테마는 <html data-glass-theme="…">로 고른다(없으면 lime). 목록·이름은
+// themes.ts.
+//
+// 바뀌지 않는 뜻의 색 — 주의(warn)·위험(danger)은 테마마다 밝기만 맞춘다.
+// 그래서 데이터색은 노랑·빨강 계열을 피한다.
+
+// 다크 공통.
+:root,
+[data-glass-theme] {
+  --glass-scheme: dark;
+  --glass-base: #050606;
+  --glass-accent: #d4f25c;
+  --glass-on-accent: #141a05;
+  --glass-link: #6ee7e0;
+  // 누르는 색 위 글자(체크 표시 등).
+  --glass-on-link: color-mix(in srgb, var(--glass-link) 18%, black);
+  --glass-warn: #f5c84c;
+  --glass-danger: #e5534b;
+
+  // 글자·겹의 바탕이 되는 색 — 다크는 흰빛을 겹친다.
+  --glass-ink: #fff;
+  --glass-text: #fff;
+  --glass-text-2: rgba(255, 255, 255, 0.75);
+  --glass-text-3: rgba(255, 255, 255, 0.55);
+
+  --glass-fill-1: rgba(255, 255, 255, 0.06);
+  --glass-fill-2: rgba(255, 255, 255, 0.1);
+  --glass-fill-3: rgba(255, 255, 255, 0.18);
+  --glass-hover: rgba(255, 255, 255, 0.045);
+  --glass-track: rgba(255, 255, 255, 0.07);
+
+  // 카드(반투명) · 모달 판(진한 유리) · 툴팁(거의 불투명) · 모달 뒤 가림막 ·
+  // 안쪽으로 들어간 판.
+  --glass-card-top: rgba(255, 255, 255, 0.095);
+  --glass-card-bottom: rgba(255, 255, 255, 0.045);
+  // 모달 판 — 뒤(흐린 화면)가 비치는 투명한 유리. 흐림을 세게 줘서 글자는
+  // 읽히고, 뒤의 색·형태는 번져 보인다.
+  --glass-panel-top: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--glass-base) 72%, white) 52%,
+    transparent
+  );
+  --glass-panel-bottom: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--glass-base) 86%, white) 60%,
+    transparent
+  );
+  --glass-float: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--glass-base) 85%, white) 94%,
+    transparent
+  );
+  --glass-scrim: color-mix(in srgb, var(--glass-base) 34%, transparent);
+  --glass-sunken: rgba(0, 0, 0, 0.16);
+  // 불투명 — 스크롤해도 붙어 있는 표 칸(밑이 비치면 글자가 겹친다).
+  --glass-solid: color-mix(in srgb, var(--glass-base) 93%, white);
+  --glass-solid-2: color-mix(in srgb, var(--glass-base) 83%, white);
+
+  // 배경 빛 — 위 가운데 데이터색, 왼쪽 누르는 색, 오른쪽 아래 둘을 섞은 색,
+  // 오른쪽 가장자리 데이터색 조금.
+  --glass-glow-1: color-mix(in srgb, var(--glass-accent) 30%, transparent);
+  --glass-glow-2: color-mix(in srgb, var(--glass-link) 20%, transparent);
+  --glass-glow-3: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--glass-accent) 50%, var(--glass-link)) 22%,
+    transparent
+  );
+  --glass-glow-4: color-mix(in srgb, var(--glass-accent) 12%, transparent);
+}
+
+// Lime — 처음 만든 배색(배경 빛은 올리브·청록·자주·호박 그대로).
+[data-glass-theme='lime'] {
+  --glass-glow-1: rgba(178, 206, 74, 0.32);
+  --glass-glow-2: rgba(64, 190, 178, 0.2);
+  --glass-glow-3: rgba(168, 104, 138, 0.26);
+  --glass-glow-4: rgba(206, 146, 70, 0.15);
+}
+:root:not([data-glass-theme]) {
+  --glass-glow-1: rgba(178, 206, 74, 0.32);
+  --glass-glow-2: rgba(64, 190, 178, 0.2);
+  --glass-glow-3: rgba(168, 104, 138, 0.26);
+  --glass-glow-4: rgba(206, 146, 70, 0.15);
+}
+
+// Ember — 샘플 영상의 따뜻한 복숭아·크림.
+[data-glass-theme='ember'] {
+  --glass-base: #0d0907;
+  --glass-accent: #f5a37c;
+  --glass-on-accent: #2a1309;
+  --glass-link: #f3e3c8;
+  --glass-glow-1: rgba(214, 140, 96, 0.3);
+  --glass-glow-2: rgba(150, 120, 90, 0.22);
+  --glass-glow-3: rgba(120, 80, 60, 0.3);
+  --glass-glow-4: rgba(230, 170, 110, 0.14);
+}
+
+// Aurora — 남색 위 민트·라벤더.
+[data-glass-theme='aurora'] {
+  --glass-base: #070a14;
+  --glass-accent: #5eead4;
+  --glass-on-accent: #04201c;
+  --glass-link: #a78bfa;
+}
+
+// Ocean — 짙은 청록 위 하늘·민트.
+[data-glass-theme='ocean'] {
+  --glass-base: #04100f;
+  --glass-accent: #7dd3fc;
+  --glass-on-accent: #062033;
+  --glass-link: #86efac;
+}
+
+// Orchid — 자주 위 핑크·하늘.
+[data-glass-theme='orchid'] {
+  --glass-base: #0c0710;
+  --glass-accent: #f0abfc;
+  --glass-on-accent: #2a0a2e;
+  --glass-link: #93c5fd;
+}
+
+// ── 라이트 공통 — 밝은 유리. 흰 판을 겹치고, 겹 단계·글자는 짙은 색으로
+// 뒤집는다. <html data-glass-scheme="light">(themes.ts의 scheme)일 때. 테마별
+// 블록이 이 뒤에 와서 바탕·강조색만 바꾼다.
+[data-glass-scheme='light'] {
+  --glass-scheme: light;
+  --glass-on-accent: #ffffff;
+  --glass-on-link: #ffffff;
+  --glass-warn: #b45309;
+  --glass-danger: #dc2626;
+
+  --glass-ink: #0f1720;
+  --glass-text: #0f1720;
+  --glass-text-2: rgba(15, 23, 32, 0.72);
+  --glass-text-3: rgba(15, 23, 32, 0.52);
+
+  --glass-fill-1: rgba(15, 23, 32, 0.045);
+  --glass-fill-2: rgba(15, 23, 32, 0.075);
+  --glass-fill-3: rgba(15, 23, 32, 0.13);
+  --glass-hover: rgba(15, 23, 32, 0.04);
+  --glass-track: rgba(15, 23, 32, 0.08);
+
+  --glass-card-top: rgba(255, 255, 255, 0.72);
+  --glass-card-bottom: rgba(255, 255, 255, 0.48);
+  --glass-panel-top: rgba(255, 255, 255, 0.62);
+  --glass-panel-bottom: rgba(255, 255, 255, 0.5);
+  --glass-float: rgba(255, 255, 255, 0.95);
+  --glass-scrim: color-mix(in srgb, var(--glass-base) 40%, transparent);
+  --glass-sunken: rgba(15, 23, 32, 0.035);
+  --glass-solid: color-mix(in srgb, var(--glass-base) 30%, white);
+  --glass-solid-2: color-mix(in srgb, var(--glass-base) 70%, white);
+
+  --glass-glow-1: color-mix(in srgb, var(--glass-accent) 22%, transparent);
+  --glass-glow-2: color-mix(in srgb, var(--glass-link) 20%, transparent);
+  --glass-glow-3: color-mix(
+    in srgb,
+    color-mix(in srgb, var(--glass-accent) 50%, var(--glass-link)) 18%,
+    transparent
+  );
+  --glass-glow-4: color-mix(in srgb, var(--glass-accent) 12%, transparent);
+}
+
+// ── 다크 추가 ──────────────────────────────────────────────────────────
+// Graphite — 무채색 유리. 은빛 데이터, 하늘색 누르는 색.
+[data-glass-theme='graphite'] {
+  --glass-base: #09090b;
+  --glass-accent: #e4e4e7;
+  --glass-on-accent: #18181b;
+  --glass-link: #93c5fd;
+  --glass-glow-1: rgba(228, 228, 231, 0.12);
+  --glass-glow-2: rgba(147, 197, 253, 0.12);
+  --glass-glow-3: rgba(161, 161, 170, 0.14);
+  --glass-glow-4: rgba(228, 228, 231, 0.06);
+}
+
+// Nebula — 짙은 보라 위 라벤더·핑크.
+[data-glass-theme='nebula'] {
+  --glass-base: #0b0714;
+  --glass-accent: #c4b5fd;
+  --glass-on-accent: #1e1240;
+  --glass-link: #f9a8d4;
+}
+
+// Forest — 짙은 숲색 위 비취·얼음 하늘.
+[data-glass-theme='forest'] {
+  --glass-base: #050d08;
+  --glass-accent: #8fe3b0;
+  --glass-on-accent: #06210f;
+  --glass-link: #bae6fd;
+}
+
+// ── 라이트 ─────────────────────────────────────────────────────────────
+// Daylight — 회청 바탕, 보라·짙은 청록(분홍·하늘 빛).
+[data-glass-theme='daylight'] {
+  --glass-base: #e8ecf2;
+  --glass-accent: #7c3aed;
+  --glass-link: #0f766e;
+  --glass-glow-3: rgba(244, 170, 200, 0.3);
+  --glass-glow-4: rgba(125, 211, 252, 0.25);
+}
+
+// Paper — 거의 흰 종이, 파랑·자홍.
+[data-glass-theme='paper'] {
+  --glass-base: #f1f2f4;
+  --glass-accent: #2563eb;
+  --glass-link: #c026d3;
+}
+
+// Mint — 옅은 민트 바탕, 에메랄드·남색.
+[data-glass-theme='mint'] {
+  --glass-base: #e7f3ee;
+  --glass-accent: #059669;
+  --glass-link: #4f46e5;
+}
+
+// Blush — 옅은 분홍 바탕, 짙은 청록·장미.
+[data-glass-theme='blush'] {
+  --glass-base: #f5eaee;
+  --glass-accent: #0e7490;
+  --glass-link: #be185d;
+}

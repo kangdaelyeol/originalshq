@@ -1,3 +1,6 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
 // 색상/스케일 토큰 — 예전엔 흰 배경 라이트 테마였는데(화면 전체가 검정 톤인데
 // 이 모달만 튀었다), 나머지 xtool-lead-manager 화면과 같은 블랙 팔레트로 맞춘다.
 $color-overlay: rgba(0, 0, 0, 0.72);
@@ -195,23 +198,16 @@ select.control {
 // ── 유리 테마(리드 탭 본문이 glass_theme일 때) ──────────────────────────
 // 테두리·그림자 없이 배경 겹으로만: 진한 유리 판 → 입력칸(한 겹 밝게).
 :global(.glass_theme) {
+  // 가림막 — glass.scrim과 같은 색·흐림(이 파일은 CSS 모듈이라 애니메이션
+  // 이름이 바뀌어 믹스인의 등장 애니메이션은 빼고).
   .overlay {
     background-color: var(--glass-scrim);
-    -webkit-backdrop-filter: blur(10px) saturate(120%);
-    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: $scrim-blur;
+    backdrop-filter: $scrim-blur;
   }
 
   .panel {
-    border: none;
-    border-radius: 26px;
-    background: linear-gradient(
-      160deg,
-      var(--glass-panel-top),
-      var(--glass-panel-bottom)
-    );
-    box-shadow: none;
-    -webkit-backdrop-filter: blur(28px) saturate(150%);
-    backdrop-filter: blur(28px) saturate(150%);
+    @include glass.panel;
     scrollbar-color: color-mix(in srgb, var(--glass-ink) 18%, transparent)
       transparent;
     color: var(--glass-text);

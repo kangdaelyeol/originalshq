@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { flushSync } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
+import { startGlassTransition } from '@/components/glass'
 
 export type PageTab = 'leads' | 'monday' | 'stats' | 'trend' | 'tracking'
 
@@ -23,17 +23,10 @@ export const usePageTabViewModel = () => {
 
   const selectTab = useCallback(
     (next: PageTab) => {
-      const go = () => setSearchParams(next === 'leads' ? {} : { tab: next })
-      // 화면 전환 — 지원하는 브라우저는 흐려지며 넘어간다(pages/xtool-global.scss).
-      // 새 화면을 그 자리에서 그려야 해서 flushSync로 바로 반영한다.
-      const reduced = window.matchMedia(
-        '(prefers-reduced-motion: reduce)',
-      ).matches
-      if (!document.startViewTransition || reduced) {
-        go()
-        return
-      }
-      document.startViewTransition(() => flushSync(go))
+      // 화면 전환 — 새 화면이 흐릿하게 나타나며 선명해진다(헤더는 그대로).
+      startGlassTransition(() =>
+        setSearchParams(next === 'leads' ? {} : { tab: next }),
+      )
     },
     [setSearchParams],
   )
