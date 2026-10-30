@@ -7,6 +7,10 @@ import {
 } from '../client'
 import type { ISODate } from '../types'
 import { AD_ATTRIBUTION_DAYS } from '../client'
+import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
+import type { EfficiencySort } from '../components/ad-efficiency'
+
+export type AdPerformanceDisplay = 'chart' | 'table'
 
 // 탭을 오갈 때마다 다시 받지 않도록 조회 구간별로 들고 있는다(새로고침하면
 // 사라진다).
@@ -37,6 +41,18 @@ export const useAdPerformanceViewModel = (
   })
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [showUnmatched, setShowUnmatched] = useState(false)
+  // 캠페인 줄을 그래프(효율 막대)로 볼지 표로 볼지, 그래프의 정렬 — 이
+  // 브라우저에 남는다. 그래프가 기본(표는 정확한 값이 필요할 때).
+  const [display, setDisplay] = usePersistentState<AdPerformanceDisplay>(
+    'cmip.adPerformance.display',
+    'chart',
+    oneOf<AdPerformanceDisplay>(['chart', 'table']),
+  )
+  const [sort, setSort] = usePersistentState<EfficiencySort>(
+    'cmip.adPerformance.sort',
+    'spend',
+    oneOf<EfficiencySort>(['spend', 'roas', 'revenue']),
+  )
 
   useEffect(() => {
     if (loaded?.key === key) return
@@ -94,5 +110,9 @@ export const useAdPerformanceViewModel = (
     toggle,
     showUnmatched,
     setShowUnmatched,
+    display,
+    setDisplay,
+    sort,
+    setSort,
   } as const
 }

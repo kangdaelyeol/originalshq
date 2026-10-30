@@ -6,8 +6,17 @@ import type {
 } from '../client'
 import { trendSeriesOf } from '../utils/trend-series'
 import type { ISODate } from '../types'
-import { useAdPerformanceViewModel } from '../view-model/use-ad-performance-view-model'
-import { LoadingPanel, Sparkline, TrendGrid } from '@/components/glass'
+import {
+  useAdPerformanceViewModel,
+  type AdPerformanceDisplay,
+} from '../view-model/use-ad-performance-view-model'
+import {
+  LoadingPanel,
+  Segmented,
+  Sparkline,
+  TrendGrid,
+} from '@/components/glass'
+import { AdEfficiency, type EfficiencySort } from './ad-efficiency'
 
 const won = (v: number): string => `${Math.round(v).toLocaleString()}원`
 /** 사람 수 — 같은 이름의 광고가 여럿이라 나눠 가진 경우만 소수 한 자리. */
@@ -30,6 +39,16 @@ const sumOf = (
 ) => days.reduce((sum, day) => sum + day[key], 0)
 
 const LEVEL_LABEL = ['캠페인', '광고셋', '광고'] as const
+
+const DISPLAY_LABEL: Record<AdPerformanceDisplay, string> = {
+  chart: '그래프',
+  table: '표',
+}
+const SORT_LABEL: Record<EfficiencySort, string> = {
+  spend: '광고비',
+  roas: 'ROAS',
+  revenue: '매출',
+}
 
 const MetricCells = ({ node }: { node: AdPerformanceNode }) => (
   <>
@@ -127,6 +146,10 @@ export function AdPerformancePanel({
     toggle,
     showUnmatched,
     setShowUnmatched,
+    display,
+    setDisplay,
+    sort,
+    setSort,
   } = useAdPerformanceViewModel(attribution, dateStart, dateEnd)
 
   if (attributionMissing || status === 'error') {
@@ -257,39 +280,69 @@ export function AdPerformancePanel({
           수가 소수일 수 있습니다)
           <br />* 최근 문의는 아직 90일이 지나지 않아 구매가 덜 잡혀 있습니다
         </p>
-        <div className="channel-insight__table-wrap">
-          <table className="channel-insight__table channel-insight__table--roas ad-performance__table">
-            <thead>
-              <tr>
-                <th>캠페인 / 광고셋 / 광고</th>
-                <th>광고비</th>
-                <th>문의</th>
-                <th>문의당 비용</th>
-                <th>구매</th>
-                <th>구매 전환율</th>
-                <th>귀속 매출</th>
-                <th>ROAS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((campaign) => (
-                <NodeRows
-                  key={campaign.id}
-                  node={campaign}
-                  level={0}
-                  expanded={expanded}
-                  toggle={toggle}
-                />
-              ))}
-              <tr className="roas-attribution__subtotal">
-                <td className="ad-performance__name">합계</td>
-                <MetricCells
-                  node={{ id: 'total', name: '합계', children: [], ...total }}
-                />
-              </tr>
-            </tbody>
-          </table>
+        <div className="channel-insight__section-head ad-performance__list-head">
+          <h4 className="ad-performance__list-title">캠페인별</h4>
+          <div className="channel-insight__section-head-actions">
+            {display === 'chart' && (
+              <Segmented
+                options={SORT_LABEL}
+                value={sort}
+                onChange={setSort}
+                label="정렬"
+                role="buttons"
+              />
+            )}
+            <Segmented
+              options={DISPLAY_LABEL}
+              value={display}
+              onChange={setDisplay}
+              label="그래프 / 표"
+            />
+          </div>
         </div>
+        {display === 'chart' ? (
+          <AdEfficiency
+            campaigns={campaigns}
+            total={total}
+            sort={sort}
+            expanded={expanded}
+            toggle={toggle}
+          />
+        ) : (
+          <div className="channel-insight__table-wrap">
+            <table className="channel-insight__table channel-insight__table--roas ad-performance__table">
+              <thead>
+                <tr>
+                  <th>캠페인 / 광고셋 / 광고</th>
+                  <th>광고비</th>
+                  <th>문의</th>
+                  <th>문의당 비용</th>
+                  <th>구매</th>
+                  <th>구매 전환율</th>
+                  <th>귀속 매출</th>
+                  <th>ROAS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campaigns.map((campaign) => (
+                  <NodeRows
+                    key={campaign.id}
+                    node={campaign}
+                    level={0}
+                    expanded={expanded}
+                    toggle={toggle}
+                  />
+                ))}
+                <tr className="roas-attribution__subtotal">
+                  <td className="ad-performance__name">합계</td>
+                  <MetricCells
+                    node={{ id: 'total', name: '합계', children: [], ...total }}
+                  />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="channel-insight__section">

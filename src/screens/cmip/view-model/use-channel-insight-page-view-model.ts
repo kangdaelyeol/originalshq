@@ -9,6 +9,7 @@ import {
   type CampaignHighlightLevel,
   type CampaignHighlightRow,
   type ChannelSplitSeries,
+  type CombinedCampaign,
   type CombinedInsight,
 } from '../client'
 import type { MetricKey } from '../components/metric-fields'
@@ -35,6 +36,8 @@ export type PivotView = 'byDate' | 'byDayOfWeek' | 'byGroupedWeek'
  * 별개로, 캠페인/adset 다중 선택·지표 선택(표+그래프 공유)·그래프
  * 모달/엑셀 모달 열림 여부, 그리고 이들로부터 파생되는 값(선택된 캠페인,
  * 그래프 모달 후보 그룹, 엑셀로 넘길 데이터 등)까지 계산해서 돌려준다. */
+const NO_CAMPAIGNS: CombinedCampaign[] = []
+
 export const useChannelInsightPageViewModel = (
   combinedInsight: CombinedInsight | null,
   dateStart: ISODate,
@@ -61,7 +64,8 @@ export const useChannelInsightPageViewModel = (
   // 캠페인/adset 교차표의 행 축(날짜/요일/주차) — 기본은 날짜별.
   const [pivotView, setPivotView] = useState<PivotView>('byDate')
 
-  const campaigns = combinedInsight?.byCampaign ?? []
+  // 빈 배열도 늘 같은 것 — 아래 계산(useMemo)이 매 렌더 다시 돌지 않게.
+  const campaigns = combinedInsight?.byCampaign ?? NO_CAMPAIGNS
 
   // 캠페인 목록 자체가 바뀌면(재조회 등) 선택을 첫 캠페인 하나로 리셋한다 —
   // 같은 목록 안에서 사용자가 전부 해제한 것(빈 선택)은 그대로 존중한다. 렌더 중
@@ -103,7 +107,11 @@ export const useChannelInsightPageViewModel = (
     'card',
     oneOf<FullListView>(['card', 'table']),
   )
-  const campaignHighlights = buildCampaignHighlights(campaigns, highlightLevel)
+  // 캠페인·광고셋마다 날짜를 다시 합산해서 무겁다 — 데이터·단위가 바뀔 때만.
+  const campaignHighlights = useMemo(
+    () => buildCampaignHighlights(campaigns, highlightLevel),
+    [campaigns, highlightLevel],
+  )
 
   /** 요약 카드의 한 줄을 누름 — 광고셋이면 그 캠페인을 펼치고, 그 줄을 체크해
    * 비교 표에 넣고, 목록 표에서 반짝이게 한다. */
@@ -129,14 +137,18 @@ export const useChannelInsightPageViewModel = (
 
   // 그래프·교차표 후보 — 캠페인과 그 광고셋을 목록 순서대로. 광고셋 라벨에는
   // 소속 캠페인을 붙인다(이름이 같은 광고셋이 있어서).
-  const selectableGroups: ChartGroup[] = campaigns.flatMap((c) => [
-    { key: campaignKey(c.campaignName), label: c.campaignName, series: c },
-    ...c.adsets.map((a) => ({
-      key: adsetKey(c.campaignName, a.adsetName),
-      label: `${a.adsetName} (${c.campaignName})`,
-      series: a,
-    })),
-  ])
+  const selectableGroups: ChartGroup[] = useMemo(
+    () =>
+      campaigns.flatMap((c) => [
+        { key: campaignKey(c.campaignName), label: c.campaignName, series: c },
+        ...c.adsets.map((a) => ({
+          key: adsetKey(c.campaignName, a.adsetName),
+          label: `${a.adsetName} (${c.campaignName})`,
+          series: a,
+        })),
+      ]),
+    [campaigns],
+  )
   const selectedGroups = selectableGroups.filter((g) => selectedKeys.has(g.key))
 
   // 표의 체크박스는 켬/끔만 다룬다 — 새로 켤 때는 그래프 쪽 기본값과 맞춰
@@ -193,11 +205,6 @@ export const useChannelInsightPageViewModel = (
   // ------------------------------------------------------------------ 엑셀 다운로드
   const [excelExportOpen, setExcelExportOpen] = useState(false)
 
-  const channelLabelsOf = (entity: ChannelSplitSeries): string =>
-    channelsOf(entity)
-      .map((k) => CHANNELS.find((c) => c.key === k)?.label ?? k)
-      .join(', ')
-
   // 채널 필터 등 화면 토글 상태와 무관하게 항상 전체 데이터를 담는다(엑셀에서
   // 뭘 뺄지는 모달의 지표/시트 선택만으로 고른다). combined.byDate/byDayOfWeek/
   // byGroupedWeek는 이미 각 캠페인/adset(ChannelSplitSeries 모양)이 갖고 있어
@@ -214,11 +221,21 @@ export const useChannelInsightPageViewModel = (
     google: emptySeries(),
     naver: emptySeries(),
   }
-  const excelCampaigns: ExportCampaign[] = campaigns.map((c) => ({
-    ...c,
-    channelLabel: channelLabelsOf(c),
-    adsets: c.adsets.map((a) => ({ ...a, channelLabel: channelLabelsOf(a) })),
-  }))
+  // 엑셀 모달을 열 때만 쓰는데 매 렌더 만들 필요는 없다 — 데이터가 바뀔 때만.
+  const excelCampaigns: ExportCampaign[] = useMemo(() => {
+    const channelLabelsOf = (entity: ChannelSplitSeries): string =>
+      channelsOf(entity)
+        .map((k) => CHANNELS.find((c) => c.key === k)?.label ?? k)
+        .join(', ')
+    return campaigns.map((c) => ({
+      ...c,
+      channelLabel: channelLabelsOf(c),
+      adsets: c.adsets.map((a) => ({
+        ...a,
+        channelLabel: channelLabelsOf(a),
+      })),
+    }))
+  }, [campaigns])
 
   return {
     // 진행 상태

@@ -1,0 +1,630 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// cmip 표 대신 보는 그래프들 — 기간별 성과(period-chart.tsx), 광고 성과
+// 효율(ad-efficiency.tsx). 유리 원칙대로: 선 없이 옅은 눈금, 글자 테두리
+// 없이, 마우스 위치는 떠 있는 유리 판.
+
+// 증감 색 — 표의 대비 표시(channel-insight.scss __metric-delta)와 같다.
+$delta-up: #3fb950;
+$delta-down: #ff7b72;
+
+.insight-chart__canvas {
+  position: relative;
+  height: 300px;
+  border-radius: 18px;
+  background: $fill-1;
+  cursor: crosshair;
+
+  > svg {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+}
+
+.insight-chart__grid {
+  line {
+    stroke: $fill-2;
+    stroke-width: 1;
+  }
+  text {
+    font-size: 11px;
+    fill: $text-3;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.insight-chart__xlabel {
+  font-size: 11px;
+  fill: $text-3;
+}
+
+.insight-chart__hover-band {
+  fill: $fill-1;
+}
+
+// 막대 — 처음 붙을 때 바닥에서 차례로 자라 오른다.
+.insight-chart__bar,
+.insight-chart__stack {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: insight-bar-grow 0.7s cubic-bezier(0.33, 1, 0.68, 1)
+    calc(var(--glass-i, 0) * 25ms) backwards;
+}
+.insight-chart__bar.is-total {
+  fill: var(--glass-accent);
+  opacity: 0.85;
+}
+
+// 비율 지표 — 채널 선은 가늘게, 전체는 굵은 유리 선.
+.insight-chart__channel-line {
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.85;
+  @include glass.draw-in(0.9s, 0.1s);
+}
+// 전체 선은 글자색 — 강조색이 테마마다 달라(Paper는 파랑) 채널 색과 겹칠 수
+// 있어서, 채널 선들 위의 "전체"는 중립색으로 구분한다.
+.insight-chart__line {
+  --glass-line: var(--glass-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  .glass_line {
+    @include glass.draw-in(0.9s);
+  }
+}
+.insight-chart__dots {
+  pointer-events: none;
+}
+.insight-chart__dot {
+  fill: var(--glass-text);
+}
+
+.insight-chart__mean {
+  stroke: $text-3;
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+}
+
+// 마우스를 올린 칸 — 떠 있는 유리 판.
+.insight-chart__tip {
+  @include glass.float(14px);
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 170px;
+  padding: 10px 12px;
+  pointer-events: none;
+  font-size: 12px;
+  color: $text-2;
+  white-space: nowrap;
+  animation: glass_fade 0.15s ease;
+
+  strong {
+    font-size: 13.5px;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  small {
+    font-size: 11px;
+    color: $text-3;
+  }
+}
+.insight-chart__tip-label {
+  font-size: 11.5px;
+  color: $text-3;
+}
+.insight-chart__tip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+
+  i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  b {
+    margin-left: auto;
+    padding-left: 14px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.insight-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    background: $fill-1;
+    font-size: 12px;
+    color: $text-2;
+  }
+  i {
+    width: 9px;
+    height: 9px;
+    border-radius: 3px;
+
+    &.is-total {
+      background: var(--glass-accent);
+    }
+  }
+  .is-mean {
+    margin-left: auto;
+    color: $text-3;
+
+    &::before {
+      content: '';
+      width: 14px;
+      border-top: 1.5px dashed $text-3;
+    }
+  }
+}
+
+// 대비 표시 — 날짜 아래 앞 칸 대비 %, 유리 판의 앞 칸 대비 줄.
+.insight-chart__xdelta {
+  font-size: 10.5px;
+  fill: $text-3;
+  font-variant-numeric: tabular-nums;
+
+  &.is-up {
+    fill: $delta-up;
+  }
+  &.is-down {
+    fill: $delta-down;
+  }
+}
+.insight-chart__tip-delta {
+  font-size: 12px;
+  color: $text-3;
+  font-variant-numeric: tabular-nums;
+
+  &.is-up {
+    color: $delta-up;
+  }
+  &.is-down {
+    color: $delta-down;
+  }
+}
+
+// ── 기간별 성과 · 그래프 보기(period-metric-rows.tsx) ─────────────────────
+// 지표마다 한 줄: [기간 값·칸 통계 | 그래프 | 채널별].
+
+.period-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  > .insight-chart__legend {
+    align-items: center;
+
+    i.is-total {
+      background: $text;
+    }
+  }
+}
+.period-metrics .period-metrics__compare-hint {
+  gap: 5px;
+
+  em {
+    font-style: normal;
+  }
+}
+
+.period-metric {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) 210px;
+  gap: 18px;
+  padding: 14px 16px;
+  border-radius: $radius-inner;
+  background: $fill-1;
+  // 화면 밖 줄은 그리지 않는다(16줄 × 그래프).
+  content-visibility: auto;
+  contain-intrinsic-size: auto 236px;
+  @include glass.enter(var(--glass-i, 0), 45ms, 0.5s);
+
+  .insight-chart__canvas {
+    height: 208px;
+    background: $fill-1;
+  }
+}
+
+.period-metric__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.35;
+}
+.period-metric__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: $text-2;
+}
+.period-metric__value {
+  margin-top: 2px;
+  line-height: 1.2;
+  font-size: 22px;
+  font-weight: 700;
+  color: $text;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.period-metric__basis {
+  font-size: 11px;
+  color: $text-3;
+}
+.period-metric__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+  margin: 12px 0 0;
+
+  div {
+    min-width: 0;
+  }
+  dt {
+    font-size: 11px;
+    color: $text-3;
+  }
+  dd {
+    margin: 1px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  small {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 400;
+    color: $text-3;
+  }
+}
+.period-metric__compare {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin-top: auto;
+  padding-top: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.period-metric__compare-label {
+  font-size: 11px;
+  color: $text-3;
+}
+.period-metric__moves {
+  display: flex;
+  flex-basis: 100%;
+  gap: 8px;
+}
+
+.period-metric__side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  line-height: 1.35;
+}
+.period-metric__side-title {
+  font-size: 11.5px;
+  color: $text-3;
+}
+.period-metric__side-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $text-2;
+}
+.period-metric__channel {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 4px 8px;
+
+  b {
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.period-metric__channel-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: $text-2;
+
+  i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  em {
+    font-style: normal;
+    color: $text-3;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.period-metric__channel-delta {
+  grid-column: 1 / -1;
+  min-height: 1em;
+  font-variant-numeric: tabular-nums;
+}
+.period-metric__channel-track {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 999px;
+  background: $track;
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: 0 50%;
+    animation: insight-bar-grow-x 0.7s cubic-bezier(0.33, 1, 0.68, 1) 0.15s
+      backwards;
+  }
+}
+
+@media (max-width: 1100px) {
+  .period-metric {
+    grid-template-columns: 1fr;
+    contain-intrinsic-size: auto 520px;
+  }
+  .period-metric__stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+// ── 광고 성과 · 캠페인 효율(ad-efficiency.tsx) ───────────────────────────
+
+.ad-performance__list-head {
+  margin-top: 6px;
+}
+.ad-performance__list-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: $text;
+}
+
+.ad-efficiency {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ad-efficiency__legend {
+  @extend .insight-chart__legend;
+  align-items: center;
+
+  i.is-spend {
+    background: $text-3;
+  }
+  i.is-revenue {
+    background: var(--glass-accent);
+  }
+  small {
+    margin-left: auto;
+    font-size: 11.5px;
+    color: $text-3;
+  }
+}
+
+// 줄마다 칸 폭이 같게 — 줄들이 바깥 격자의 칸(subgrid)을 같이 쓴다.
+.ad-efficiency__rows {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(200px, 1.6fr) auto;
+  column-gap: 16px;
+  row-gap: 2px;
+  padding: 6px;
+  border-radius: $radius-inner;
+  background: $fill-1;
+}
+
+.ad-efficiency__row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  align-items: center;
+  min-height: 46px;
+  padding: 3px 12px 3px 0;
+  border-radius: $radius-row;
+  transition: background-color 0.2s ease;
+  @include glass.enter(var(--glass-i, 0), 30ms, 0.45s);
+
+  &:hover {
+    background: $fill-1;
+  }
+  &.is-level-1,
+  &.is-level-2 {
+    min-height: 40px;
+  }
+}
+
+.ad-efficiency__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: $text;
+  cursor: pointer;
+
+  &:disabled {
+    cursor: default;
+  }
+  &:focus-visible {
+    outline: none;
+    color: var(--glass-link);
+  }
+}
+.ad-efficiency__caret {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: $text-3;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+
+  &.is-open {
+    transform: rotate(90deg);
+  }
+}
+.ad-efficiency__level {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: $fill-2;
+  font-size: 10.5px;
+  color: $text-3;
+}
+.ad-efficiency__text {
+  overflow: hidden;
+  font-size: 13px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  .is-level-1 &,
+  .is-level-2 & {
+    color: $text-2;
+  }
+}
+
+.ad-efficiency__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ad-efficiency__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ad-efficiency__track {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: $track;
+  overflow: hidden;
+
+  i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    transform-origin: 0 50%;
+    animation: insight-bar-grow-x 0.7s cubic-bezier(0.33, 1, 0.68, 1)
+      calc(var(--glass-i, 0) * 30ms + 0.1s) backwards;
+  }
+  .is-spend & i {
+    background: $text-3;
+  }
+  .is-revenue & i {
+    background: var(--glass-accent);
+  }
+}
+.ad-efficiency__share {
+  flex: none;
+  width: 44px;
+  font-size: 11.5px;
+  color: $text-2;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+// 문의 · 구매 · ROAS · (구매 없음) — 칸 폭을 정해 줄마다 같은 자리에.
+.ad-efficiency__stats {
+  display: grid;
+  grid-template-columns: 86px 76px 106px 68px;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: $text-3;
+  white-space: nowrap;
+
+  > span {
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: $fill-1;
+    text-align: center;
+  }
+  b {
+    margin-left: 2px;
+    font-weight: 600;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.ad-efficiency__roas {
+  font-weight: 600;
+  color: $text;
+  font-variant-numeric: tabular-nums;
+
+  &.is-low {
+    background: color-mix(in srgb, var(--glass-danger) 16%, transparent);
+    color: var(--glass-danger);
+  }
+}
+.ad-efficiency__stats .ad-efficiency__warn {
+  background: color-mix(in srgb, var(--glass-danger) 16%, transparent);
+  color: var(--glass-danger);
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .ad-efficiency__rows {
+    grid-template-columns: 1fr;
+  }
+  .ad-efficiency__row {
+    row-gap: 8px;
+    padding: 10px 12px;
+  }
+  .ad-efficiency__stats {
+    display: flex;
+    flex-wrap: wrap;
+  }
+}
+
+@keyframes insight-bar-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes insight-bar-grow {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .insight-chart__bar,
+  .insight-chart__stack,
+  .ad-efficiency__track i,
+  .period-metric__channel-track i {
+    animation: none;
+  }
+}

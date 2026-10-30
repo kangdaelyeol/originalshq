@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import {
   PERIOD_VIEWS,
   useResultPanelViewModel,
+  type PeriodDisplay,
   type PeriodView,
 } from '../../view-model/use-result-panel-view-model'
 import {
@@ -12,12 +14,15 @@ import {
   type MetricsSummary,
   type WeekSummary,
 } from '../../client'
-import { CHANNELS } from '../channels'
+import { CHANNELS, type ChannelKey } from '../channels'
 import type { ISODate } from '../../types'
+import { formatMD } from '../../utils'
 import { ChannelLabel } from './channel-label'
 import { ChevronIcon } from '../icons'
 import { KpiGrid } from './kpi-grid'
 import { AutoHeight, LoadingPanel, Segmented } from '@/components/glass'
+import type { PeriodPoint } from './period-chart'
+import { PeriodMetricRows } from './period-metric-rows'
 import { MetricsTable } from './metrics-table'
 
 // 섹션마다 로딩 판 높이(px) — 다 받은 내용의 대강의 높이.
@@ -78,16 +83,25 @@ interface ResultPanelProps {
 
 /** "기간별 성과" 섹션 머리 — 제목, 보기 버튼(일별/주차별/월별/요일별), "대비
  * 표시" 토글을 한 줄에. */
+const DISPLAY_LABEL: Record<PeriodDisplay, string> = {
+  chart: '그래프',
+  table: '표',
+}
+/** 기간별 성과 머리 — 제목 · 기간 단위 | 대비 표시 · [그래프 | 표]. */
 function PeriodSectionHead({
   view,
   onViewChange,
   active,
   onToggle,
+  display,
+  onDisplayChange,
 }: {
   view: PeriodView
   onViewChange: (view: PeriodView) => void
   active: boolean
   onToggle: () => void
+  display: PeriodDisplay
+  onDisplayChange: (display: PeriodDisplay) => void
 }) {
   return (
     <div className="channel-insight__section-head">
@@ -99,14 +113,22 @@ function PeriodSectionHead({
         onChange={onViewChange}
         label="보기"
       />
-      <button
-        type="button"
-        className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
-        aria-pressed={active}
-        onClick={onToggle}
-      >
-        대비 표시
-      </button>
+      <div className="channel-insight__section-head-actions">
+        <button
+          type="button"
+          className={`channel-insight__compare-toggle${active ? ' is-active' : ''}`}
+          aria-pressed={active}
+          onClick={onToggle}
+        >
+          대비 표시
+        </button>
+        <Segmented
+          options={DISPLAY_LABEL}
+          value={display}
+          onChange={onDisplayChange}
+          label="그래프 / 표"
+        />
+      </div>
     </div>
   )
 }
@@ -180,6 +202,7 @@ export function ResultPanel({
   const {
     showChannelTotal,
     periodView,
+    periodDisplay,
     byMonth,
     compareOn,
     visibleMetrics,
@@ -188,6 +211,7 @@ export function ResultPanel({
     customPeriodRows,
     setShowChannelTotal,
     setPeriodView,
+    setPeriodDisplay,
     toggleCompare,
     toggleMetricVisible,
     setChannelFilterFor,
@@ -207,6 +231,45 @@ export function ResultPanel({
     google: metricsForDateSubset(series.google.byDate, match),
     naver: metricsForDateSubset(series.naver.byDate, match),
   })
+
+  // 그래프의 칸 — 지금 보기(일·요일·주·달)의 전체 줄에 같은 칸의 채널별 값을
+  // 붙인다(채널 줄은 같은 이름의 칸으로 찾는다).
+  const periodPoints = useMemo((): PeriodPoint[] => {
+    type Row = { key: string; label: string; metrics: MetricsSummary }
+    const rowsOf = (channel: 'combined' | ChannelKey): Row[] => {
+      if (periodView === 'byDate')
+        return series[channel].byDate.map((r) => ({
+          key: r.date,
+          label: formatMD(r.date),
+          metrics: r,
+        }))
+      if (periodView === 'byDayOfWeek')
+        return series[channel].byDayOfWeek.map((r) => ({
+          key: r.dayOfWeek,
+          label: r.dayOfWeek,
+          metrics: r,
+        }))
+      const weeks =
+        periodView === 'byGroupedWeek'
+          ? series[channel].byGroupedWeek
+          : byMonth[channel]
+      return weeks.map((r) => ({ key: r.period, label: r.period, metrics: r }))
+    }
+    const channelRows = Object.fromEntries(
+      CHANNELS.map((c) => [
+        c.key,
+        new Map(rowsOf(c.key).map((row) => [row.key, row.metrics])),
+      ]),
+    ) as Record<ChannelKey, Map<string, MetricsSummary>>
+    return rowsOf('combined').map((row) => ({
+      key: row.key,
+      label: row.label,
+      combined: row.metrics,
+      channels: Object.fromEntries(
+        CHANNELS.map((c) => [c.key, channelRows[c.key].get(row.key)]),
+      ),
+    }))
+  }, [series, byMonth, periodView])
 
   return (
     <div className="channel-insight__result">
@@ -295,8 +358,19 @@ export function ResultPanel({
                 onViewChange={setPeriodView}
                 active={compareOn[periodView]}
                 onToggle={() => toggleCompare(periodView)}
+                display={periodDisplay}
+                onDisplayChange={setPeriodDisplay}
               />
-              {periodView === 'byDate' ? (
+              {periodDisplay === 'chart' ? (
+                <PeriodMetricRows
+                  // 보기를 바꾸면 새로 붙여 다시 그린다.
+                  key={periodView}
+                  points={periodPoints}
+                  channels={applicableChannels}
+                  total={total}
+                  showCompare={compareOn[periodView]}
+                />
+              ) : periodView === 'byDate' ? (
                 <MetricsTable<DateSummary>
                   key="byDate"
                   rows={

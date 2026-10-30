@@ -23,6 +23,9 @@ type ResultTable =
   | 'byCustomPeriod'
 
 /** "기간별 성과" 섹션의 보기 — 버튼 순서대로. */
+/** 기간별 성과 보기 — 그래프 / 표. */
+export type PeriodDisplay = 'chart' | 'table'
+
 export type PeriodView = 'byDate' | 'byGroupedWeek' | 'byMonth' | 'byDayOfWeek'
 
 export const PERIOD_VIEWS: readonly { value: PeriodView; label: string }[] = [
@@ -173,10 +176,19 @@ export const useResultPanelViewModel = (
     [customPeriodSource, dateStart, dateEnd, bucketSize],
   )
 
+  // "기간별 성과"를 그래프로 볼지 표로 볼지 — 이 브라우저에 남는다. 그래프가
+  // 기본(표는 정확한 값이 필요할 때).
+  const [periodDisplay, setPeriodDisplay] = usePersistentState<PeriodDisplay>(
+    'cmip.resultPanel.periodDisplay',
+    'chart',
+    oneOf<PeriodDisplay>(['chart', 'table']),
+  )
+
   return {
     // 진행 상태
     showChannelTotal,
     periodView,
+    periodDisplay,
     byMonth,
     compareOn,
     visibleMetrics,
@@ -186,6 +198,7 @@ export const useResultPanelViewModel = (
     // 액션
     setShowChannelTotal,
     setPeriodView,
+    setPeriodDisplay,
     toggleCompare,
     toggleMetricVisible,
     setChannelFilterFor,
