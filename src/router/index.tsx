@@ -39,6 +39,14 @@ export const router = createBrowserRouter([
         }),
       },
       { path: 'cafe24', element: <Cafe24Adjustments /> },
+      {
+        // Lazy: xtool 팀 페이지(기술팀 — 앞으로 영업팀·콜백팀) 구성원·권한 관리. Firebase SDK와
+        // xtool-tech 유리 부품을 쓴다.
+        path: 'xtool',
+        lazy: async () => ({
+          Component: (await import('@/screens/xtool-admin')).default,
+        }),
+      },
     ],
   },
   {
@@ -118,6 +126,14 @@ export const router = createBrowserRouter([
         ],
       },
     ],
+  },
+  {
+    // Lazy: 프롬프트 퍼셉트론 — 신호가 층을 지나 프롬프트 한 장이 되는 연출
+    // 화면(목업). 캔버스·3D 평면이 커서 이 주소로 들어올 때만 받는다.
+    path: '/perceptron',
+    lazy: async () => ({
+      Component: (await import('@/screens/perceptron')).default,
+    }),
   },
   {
     // 배치(예약 실행) 함수의 실행 기록 — functions-xtool·functions-cmip 공용.

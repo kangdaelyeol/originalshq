@@ -1,0 +1,1123 @@
+// 프롬프트 퍼셉트론 — 화면 단위 --u 는 영상(720×900) 기준 1px. 화면이 크면
+// 1.4배까지 커지고, 가운데 신경망이 남는 높이를 다 쓴다. 신경망 평면 안
+// (.pn-plane)은 평면 좌표(px) 그대로 — 카메라 배율이 크기를 정한다.
+
+@function u($n) {
+  @return calc(#{$n} * var(--u));
+}
+
+// 케이스가 바뀌면 강조색이 부드럽게 넘어간다.
+@property --pn-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ec5069;
+}
+
+.pn {
+  --u: clamp(1px, min(100vw / 720, 100vh / 900), 1.4px);
+  --bg: #0c0b10;
+  --line: rgba(255, 255, 255, 0.075);
+  --ink: #fbfbfd;
+  --ink-2: #b9b8c4;
+  --ink-3: #6d6b7b;
+  --ink-4: #3a3944;
+  --warn: #ff4d6a;
+  --lime: #cfe85e;
+  --cyan: #49dae4;
+  --yellow: #e9c24a;
+  --accent-dim: color-mix(in srgb, var(--pn-accent) 45%, transparent);
+
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: u(6);
+  padding: u(4) u(8) 0;
+  overflow: hidden auto;
+  background: var(--bg);
+  color: var(--ink);
+  font-family:
+    'JetBrains Mono', 'Pretendard Variable', Pretendard, ui-monospace, Menlo,
+    monospace;
+  font-size: u(9);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+  transition: --pn-accent 0.8s ease;
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+// ── 맨 위 줄 ────────────────────────────────────────────────────────────
+
+.pn-top {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: u(26);
+  height: u(18);
+  padding-top: u(2);
+  white-space: nowrap;
+  font-size: u(8.5);
+  letter-spacing: 0.02em;
+
+  &__brand {
+    font-size: u(10.5);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+  }
+
+  &__ver {
+    color: var(--pn-accent);
+
+    b {
+      font-weight: 700;
+    }
+  }
+
+  &__flow {
+    flex: 1;
+    text-align: center;
+    color: var(--ink-3);
+  }
+
+  &__who {
+    color: var(--pn-accent);
+    font-weight: 600;
+  }
+}
+
+// ── 지표 4칸 ────────────────────────────────────────────────────────────
+
+.pn-metrics {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: u(6);
+}
+
+.pn-metric {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: u(78);
+  padding: u(7) u(10) u(6);
+
+  // 칸 높이가 고정이라 빈 막대가 눌려 사라지지 않게.
+  > * {
+    flex: none;
+  }
+  border: 1px solid var(--line);
+  border-top: u(2) solid var(--pn-accent);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.012)
+  );
+
+  &__label {
+    font-size: u(7.5);
+    letter-spacing: 0.07em;
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  &__value {
+    display: flex;
+    align-items: baseline;
+    gap: u(4);
+    margin-top: u(3);
+    font-size: u(27);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+
+    b {
+      font-weight: 800;
+    }
+
+    small {
+      font-size: u(12);
+      font-weight: 700;
+    }
+  }
+
+  &__foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto;
+    font-size: u(7.5);
+    color: var(--ink-3);
+    white-space: nowrap;
+
+    b {
+      color: var(--ink);
+      font-weight: 700;
+    }
+  }
+}
+
+.pn-squares {
+  display: grid;
+  grid-template-columns: repeat(32, minmax(0, 1fr));
+  gap: u(2);
+  margin-top: u(8);
+
+  i {
+    height: u(5);
+    background: rgba(255, 255, 255, 0.07);
+
+    &.is-on {
+      background: var(--pn-accent);
+    }
+
+    &.is-head {
+      background: var(--ink);
+    }
+  }
+}
+
+.pn-lat {
+  &__spark {
+    position: absolute;
+    top: u(20);
+    right: u(10);
+    width: 40%;
+    height: u(30);
+  }
+
+  &__track {
+    position: relative;
+    width: 55%;
+    height: u(3);
+    margin-top: u(8);
+    background: rgba(255, 255, 255, 0.08);
+
+    i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 30%;
+      width: 22%;
+      background: var(--pn-accent);
+    }
+  }
+}
+
+.pn-cost {
+  &__value {
+    color: var(--pn-accent);
+    text-shadow: 0 0 u(14) var(--accent-dim);
+  }
+
+  &__rows {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: u(3) u(7);
+    margin-top: auto;
+    font-size: u(7.5);
+
+    > span {
+      font-weight: 700;
+    }
+  }
+
+  &__net {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: u(6);
+
+    i {
+      flex: none;
+      width: u(5);
+      height: u(6);
+      background: var(--pn-accent);
+    }
+
+    em {
+      overflow: hidden;
+      font-style: normal;
+      color: var(--ink-3);
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  }
+
+  &__llm i {
+    display: block;
+    width: 74%;
+    height: u(6);
+    background: #6a64b4;
+  }
+}
+
+.pn-conf {
+  &__num {
+    color: var(--ink-3);
+  }
+
+  &.is-count &__num {
+    color: #f2c14e;
+  }
+
+  &.is-pass &__num {
+    color: var(--lime);
+    text-shadow: 0 0 u(12) rgba(207, 232, 94, 0.35);
+  }
+
+  &.is-hold &__num {
+    color: var(--warn);
+    text-shadow: 0 0 u(12) rgba(255, 77, 106, 0.35);
+  }
+
+  &__badge {
+    align-self: center;
+    margin-left: u(16);
+    padding: u(5) u(14);
+    border-radius: u(3);
+    background: var(--lime);
+    color: #141709;
+    font-size: u(8.5);
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    animation: pn-pop 0.25s ease-out both;
+  }
+
+  &.is-hold &__badge {
+    background: var(--warn);
+    color: #2a0710;
+  }
+
+  &__bar {
+    position: relative;
+    height: u(4);
+    margin-top: u(8);
+    background: rgba(255, 255, 255, 0.08);
+
+    i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background: var(--lime);
+    }
+
+    em {
+      position: absolute;
+      top: u(-3);
+      bottom: u(-3);
+      width: u(2);
+      background: #fff;
+    }
+  }
+
+  &.is-count &__bar i {
+    background: #f2c14e;
+  }
+
+  &.is-hold &__bar i {
+    background: var(--warn);
+  }
+}
+
+// ── 케이스 머리 ─────────────────────────────────────────────────────────
+
+.pn-case {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-rows: u(26) u(16);
+  align-items: center;
+  column-gap: u(12);
+
+  &__pill {
+    flex: none;
+    padding: u(6) u(11);
+    border-radius: u(4);
+    background: var(--pn-accent);
+    color: rgba(14, 6, 12, 0.82);
+    font-size: u(9);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    box-shadow: 0 0 u(16) var(--accent-dim);
+  }
+
+  // 부제는 제목 아래 줄 — 오른쪽 단계 버튼 밑까지 쓴다.
+  &__text {
+    display: contents;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: u(21);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+
+  &__sub {
+    grid-column: 2 / 4;
+    grid-row: 2;
+    align-self: start;
+    min-height: 1.4em;
+    margin: 0;
+    overflow: hidden;
+    font-size: u(9.5);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+
+    span {
+      display: inline-block;
+      animation: pn-type 0.3s steps(12) both;
+    }
+
+    em {
+      margin: 0 u(6);
+      font-style: normal;
+      color: var(--ink-3);
+    }
+
+    .is-strong {
+      font-weight: 700;
+    }
+
+    .is-warn {
+      color: var(--warn);
+      font-weight: 700;
+    }
+  }
+}
+
+.pn-stages {
+  display: flex;
+  flex: none;
+  gap: u(6);
+}
+
+.pn-stage {
+  min-width: u(40);
+  padding: u(5) u(8);
+  border: 1px solid color-mix(in srgb, var(--pn-accent) 70%, transparent);
+  border-radius: u(3);
+  color: var(--ink);
+  font-size: u(7);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-align: center;
+  transition:
+    background-color 0.9s ease,
+    color 0.9s ease,
+    box-shadow 0.9s ease;
+
+  &.is-on,
+  &.is-warn {
+    transition-duration: 0.15s;
+  }
+
+  &.is-on {
+    background: var(--pn-accent);
+    color: rgba(14, 6, 12, 0.78);
+    box-shadow: 0 0 u(12) var(--accent-dim);
+  }
+
+  &.is-warn {
+    border-color: var(--warn);
+    background: var(--warn);
+    color: #2a0710;
+  }
+}
+
+// ── 신경망 ──────────────────────────────────────────────────────────────
+
+.pn-net {
+  position: relative;
+  flex: 1 1 0;
+  min-height: u(300);
+  margin: 0 u(-8);
+  overflow: hidden;
+
+  // 아래 패널로 넘어가는 곳만 살짝 어둡게.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 12%;
+    background: linear-gradient(180deg, transparent, var(--bg));
+    pointer-events: none;
+  }
+}
+
+.pn-plane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  font-size: 12px;
+}
+
+// 바닥 격자 — 반 기둥(165px)·한 줄(134px)마다 옅은 선(geometry.ts의 간격과
+// 맞춘다). 평면 밖으로 이어지다 흐려진다(카메라가 크게 돌 때 가장자리가
+// 끊겨 보이지 않게).
+.pn-grid {
+  position: absolute;
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-position:
+    115px 0,
+    0 21px;
+  background-size:
+    165px 100%,
+    100% 134px;
+  mask-image: radial-gradient(closest-side, #000 72%, transparent);
+  pointer-events: none;
+}
+
+.pn-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+
+  // 빛 점·빛기둥은 카드 위에서 더해지는 빛으로.
+  &--fx {
+    z-index: 3;
+    mix-blend-mode: screen;
+  }
+}
+
+.pn-colhead {
+  position: absolute;
+  z-index: 1;
+  padding-bottom: 12px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+
+  span {
+    margin-right: 10px;
+    color: var(--col);
+    font-size: 12px;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      var(--col),
+      color-mix(in srgb, var(--col) 35%, transparent)
+    );
+  }
+}
+
+.pn-card {
+  --hl: var(--pn-accent);
+
+  position: absolute;
+  z-index: 1;
+  padding: 10px 14px 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  background: rgba(15, 14, 21, 0.92);
+  transition:
+    border-color 0.3s ease,
+    background-color 0.3s ease,
+    box-shadow 0.3s ease;
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    overflow: hidden;
+    font-size: 15.5px;
+    font-weight: 700;
+    line-height: 20px;
+    white-space: nowrap;
+
+    i {
+      flex: none;
+      width: 7px;
+      height: 7px;
+      background: var(--col);
+    }
+  }
+
+  &__rows {
+    display: grid;
+    margin-top: 5px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+    line-height: 13.5px;
+
+    span {
+      color: #4f4e5b;
+    }
+
+    b {
+      overflow: hidden;
+      color: #e6e5ec;
+      font-weight: 600;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .is-accent {
+      color: var(--col);
+    }
+  }
+
+  &__bar {
+    position: absolute;
+    bottom: 12px;
+    left: var(--bar);
+    width: 17%;
+    height: 3px;
+    background: var(--col);
+    transition: opacity 0.2s;
+  }
+
+  &__result {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    left: 6px;
+    height: 19px;
+    padding: 0 8px;
+    overflow: hidden;
+    border-radius: 3px;
+    color: rgba(12, 8, 14, 0.82);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 19px;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  &.has-result &__result {
+    background: color-mix(in srgb, var(--hl) 85%, transparent);
+    opacity: 1;
+  }
+
+  &.has-result &__bar {
+    opacity: 0;
+  }
+
+  &.is-warn {
+    --hl: var(--warn);
+  }
+
+  &.is-on,
+  &.is-warn {
+    border-color: var(--hl);
+    background: color-mix(in srgb, var(--hl) 15%, rgba(15, 14, 21, 0.94));
+    box-shadow:
+      0 0 0 2.5px var(--hl),
+      0 0 20px color-mix(in srgb, var(--hl) 75%, transparent),
+      0 0 56px color-mix(in srgb, var(--hl) 34%, transparent),
+      inset 0 0 22px color-mix(in srgb, var(--hl) 28%, transparent);
+  }
+
+  // 조립된 프롬프트 칸 — 지나간 경로보다 한참 옅게(테두리만).
+  &.is-built {
+    border-color: color-mix(in srgb, var(--pn-accent) 38%, transparent);
+    background: color-mix(in srgb, var(--pn-accent) 4%, rgba(15, 14, 21, 0.94));
+  }
+}
+
+.pn-out {
+  position: absolute;
+  z-index: 0;
+  border: 1.5px dashed rgba(207, 232, 94, 0.16);
+  border-radius: 12px;
+  transition:
+    border-color 0.35s ease,
+    box-shadow 0.35s ease;
+
+  &.is-on {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--pn-accent) 70%, transparent);
+    box-shadow: 0 0 24px color-mix(in srgb, var(--pn-accent) 22%, transparent);
+  }
+
+  &.is-warn {
+    border-color: rgba(255, 77, 106, 0.45);
+  }
+}
+
+// ── 아래 패널 ───────────────────────────────────────────────────────────
+
+.pn-panels {
+  display: grid;
+  flex: none;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  grid-template-rows: u(116) u(66);
+  gap: u(6);
+
+  > :nth-child(-n + 4) {
+    grid-column: span 5;
+  }
+
+  > :nth-child(5) {
+    grid-column: span 8;
+  }
+
+  > :nth-child(n + 6) {
+    grid-column: span 6;
+  }
+}
+
+.pn-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: u(7) u(10);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.026),
+    rgba(255, 255, 255, 0.01)
+  );
+
+  &__head {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: u(6);
+    font-size: u(7.5);
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+
+    b {
+      display: flex;
+      align-items: center;
+      gap: u(6);
+      font-weight: 700;
+
+      i {
+        width: u(4);
+        height: u(4);
+        background: var(--pn-accent);
+      }
+    }
+
+    span {
+      color: var(--pn-accent);
+      font-weight: 600;
+    }
+  }
+
+  &__body {
+    position: relative;
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  &__foot {
+    margin: auto 0 0;
+    color: var(--pn-accent);
+    font-size: u(7.5);
+    white-space: nowrap;
+  }
+}
+
+.pn-par {
+  &__row {
+    display: grid;
+    grid-template-columns: u(40) minmax(0, 1fr) u(44);
+    align-items: center;
+    gap: u(8);
+    height: u(11.5);
+    font-size: u(8);
+
+    em {
+      overflow: hidden;
+      color: var(--ink-4);
+      font-style: normal;
+      white-space: nowrap;
+      transition: color 0.3s;
+    }
+
+    &.is-picked em {
+      color: var(--ink);
+    }
+
+    &.is-picked i {
+      background: color-mix(in srgb, var(--c) 45%, #fff);
+    }
+  }
+
+  &__track {
+    position: relative;
+    height: u(4);
+    background: rgba(255, 255, 255, 0.035);
+
+    i {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      background: var(--c);
+      transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+
+      &::after {
+        content: '';
+        position: absolute;
+        top: u(-2.5);
+        right: u(-1);
+        bottom: u(-2.5);
+        width: u(2);
+        background: #fff;
+      }
+    }
+  }
+}
+
+.pn-stream {
+  &__canvas {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+  }
+
+  &__legend {
+    display: flex;
+    gap: u(10);
+    margin-top: u(4);
+    font-size: u(7.5);
+    white-space: nowrap;
+
+    b {
+      font-weight: 600;
+    }
+
+    span {
+      margin-left: auto;
+      color: var(--ink-3);
+    }
+  }
+}
+
+.pn-uses__grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+  gap: u(3);
+}
+
+.pn-use {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 u(4);
+  border: 1px solid var(--line);
+  border-radius: u(2);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: u(7.5);
+  line-height: 1.15;
+
+  b {
+    color: var(--ink-3);
+    font-size: u(6.5);
+    font-weight: 600;
+  }
+
+  span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  &.is-loop b {
+    color: var(--ink);
+    font-weight: 800;
+  }
+
+  > i {
+    position: absolute;
+    top: u(5);
+    right: u(5);
+    width: u(4);
+    height: u(4);
+    border-radius: 1px;
+  }
+
+  svg {
+    position: absolute;
+    top: u(4);
+    right: u(5);
+    width: u(8);
+    height: u(8);
+    color: rgba(14, 6, 12, 0.7);
+  }
+
+  &.is-active {
+    border-color: transparent;
+    background: var(--pn-accent);
+    box-shadow: 0 0 u(12) var(--accent-dim);
+
+    b,
+    span {
+      color: rgba(14, 6, 12, 0.85);
+    }
+  }
+}
+
+.pn-code {
+  &__lines {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    font-size: u(7.8);
+    line-height: u(10.6);
+    white-space: pre;
+
+    // 넘치면 위가 잘리게 — 줄이 눌려 겹치지 않게 줄어들지 않는다.
+    div {
+      flex: none;
+      overflow: hidden;
+      color: var(--ink-2);
+    }
+
+    .is-h1 {
+      color: var(--pn-accent);
+      font-weight: 700;
+    }
+
+    .is-h2 {
+      color: var(--cyan);
+      font-weight: 700;
+    }
+
+    .is-li {
+      color: var(--ink);
+    }
+
+    .is-json {
+      color: var(--yellow);
+    }
+  }
+
+  &__cursor {
+    display: inline-block;
+    width: u(5);
+    height: u(8.5);
+    margin-left: u(1);
+    vertical-align: u(-1);
+    background: var(--pn-accent);
+    animation: pn-blink 0.9s steps(1) infinite;
+  }
+}
+
+.pn-log__lines {
+  position: absolute;
+  inset: u(-4) 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  font-size: u(7.5);
+  line-height: u(8.6);
+
+  > div {
+    display: grid;
+    flex: none;
+    grid-template-columns: u(34) minmax(0, 1fr);
+    gap: u(8);
+    white-space: nowrap;
+    animation: pn-line-in 0.35s ease-out both;
+  }
+
+  span {
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .is-warn p {
+    color: var(--warn);
+  }
+}
+
+.pn-segs {
+  display: grid;
+  grid-template-columns: repeat(var(--n), minmax(0, 1fr));
+  gap: u(2);
+
+  i {
+    height: u(7);
+    background: color-mix(in srgb, var(--c) 22%, transparent);
+
+    &.is-on {
+      background: var(--c);
+    }
+  }
+}
+
+.pn-split__row {
+  display: grid;
+  grid-template-columns: u(74) minmax(0, 1fr);
+  align-items: center;
+  gap: u(10);
+  height: u(14);
+  font-size: u(8);
+
+  &.is-strong span {
+    font-weight: 700;
+  }
+}
+
+.pn-guard {
+  &__row {
+    display: grid;
+    grid-template-columns: u(56) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: u(10);
+    height: u(14);
+    font-size: u(8);
+
+    b {
+      font-weight: 700;
+    }
+  }
+
+  &__track {
+    height: u(6);
+    background: rgba(255, 255, 255, 0.05);
+
+    i {
+      display: block;
+      min-width: u(5);
+      height: 100%;
+      background: var(--lime);
+      transition: width 0.5s ease;
+    }
+  }
+
+  &__lock {
+    display: flex;
+    align-items: center;
+    gap: u(6);
+    margin: auto 0 0;
+    color: var(--yellow);
+    font-size: u(8);
+    font-weight: 600;
+    white-space: nowrap;
+
+    svg {
+      flex: none;
+      width: u(9);
+      height: u(9);
+    }
+  }
+}
+
+// ── 맨 아래 ─────────────────────────────────────────────────────────────
+
+.pn-foot {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: u(28);
+  padding-top: u(6);
+  font-size: u(8.5);
+  white-space: nowrap;
+
+  b {
+    font-weight: 800;
+    letter-spacing: 0.05em;
+  }
+
+  span {
+    color: var(--ink-3);
+  }
+
+  &__scrub {
+    position: absolute;
+    top: u(1);
+    right: 0;
+    left: 0;
+    height: u(5);
+    background: repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.12) 0 1px,
+      transparent 1px u(6)
+    );
+
+    i {
+      position: absolute;
+      top: u(-2);
+      bottom: u(-2);
+      width: u(2);
+      background: var(--pn-accent);
+      box-shadow: 0 0 u(6) var(--pn-accent);
+    }
+  }
+}
+
+@keyframes pn-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes pn-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes pn-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5em);
+  }
+}
+
+@keyframes pn-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
