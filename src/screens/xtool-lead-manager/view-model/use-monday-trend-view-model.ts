@@ -44,11 +44,12 @@ import { defaultRangeOf } from '@/screens/cmip/utils'
 const defaultRange = (unit: InflowUnit = 'day') => defaultRangeOf(unit)
 
 /** 통계 탭의 소주제. */
-export type TrendSection = 'inflow' | 'sales' | 'kpi' | 'tech'
+export type TrendSection = 'inflow' | 'sales' | 'team' | 'kpi' | 'tech'
 
 export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
-  inflow: '인입통계',
-  sales: '판매통계',
+  inflow: '인입 통계',
+  sales: '판매 통계',
+  team: '영업 통계',
   tech: '기술 통계',
   kpi: '개인 KPI',
 }

@@ -1,6 +1,6 @@
 @use '../../../components/glass/styles/tokens' as *;
 
-// 통계 탭 기술 통계(tech-section.tsx) — 왕 카드·담당자 막대·펼친 목록은 인입통계
+// 통계 탭 기술 통계(tech-section.tsx)·영업 통계(sales-team-section.tsx) — 왕 카드·담당자 막대·펼친 목록은 인입통계
 // CS팀 카드의 모양(.cs_team, .cs_metric_*, .cs_contrib — monday-trend.scss,
 // monday-inflow-glass.scss)을 그대로 쓰고, 여기에는 이 소주제에만 있는 것만.
 .xtool-main.monday_trend.glass_theme .tech_stats {
@@ -227,5 +227,23 @@
     margin: 10px 0 0;
     color: $text-3;
     font-size: 12px;
+  }
+
+  // ── 영업통계 표 ────────────────────────────────────────────────────────
+  .tech_products {
+    max-width: 260px;
+    overflow: hidden;
+    color: $text-2;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tech_tag {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: $fill-2;
+    color: $text-2;
+    font-size: 11px;
   }
 }

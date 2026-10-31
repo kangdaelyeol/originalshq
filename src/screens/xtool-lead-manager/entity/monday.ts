@@ -433,9 +433,21 @@ export interface MondayKpiFacts {
   ][]
   /** 방문체험: [주 담당자, 방문일, 체험 완료(1/0), 결제일] */
   visits: [string, string, number, string][]
-  /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자] */
-  sales: [string, string, number, string][]
-  /** 상담 줄의 보드 id → 이름·Monday 주소 앞부분(…/boards/{id}). 예전
+  /** 오프라인 결제: [담당자들(쉼표), 결제일, 구매 금액, 방문체험 담당자,
+   *  item id, 고객명, 보드 id, 품목(쉼표), 재구매(1/0)] — 뒤의 다섯은
+   *  영업통계가 쓰고, 예전 데이터엔 없다. */
+  sales: [
+    string,
+    string,
+    number,
+    string,
+    string?,
+    string?,
+    string?,
+    string?,
+    number?,
+  ][]
+  /** 상담·결제 줄의 보드 id → 이름·Monday 주소 앞부분(…/boards/{id}). 예전
    * 데이터엔 없다. */
   boards?: Record<string, { name: string; url: string | null }>
 }

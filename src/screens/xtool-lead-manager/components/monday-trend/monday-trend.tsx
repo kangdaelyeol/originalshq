@@ -10,6 +10,7 @@ import {
   type useLiveInflowViewModel,
   type InflowView,
   type useMondayTrendViewModel,
+  type useSalesTeamViewModel,
   type useTechStatsViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
@@ -40,6 +41,7 @@ import { CsTeamSection } from './cs-team-section'
 import { KpiControls, KpiSection } from './kpi-section'
 import { PipelineSection } from './pipeline-section'
 import { SalesSection } from './sales-section'
+import { SalesTeamSection } from './sales-team-section'
 import { TechSection } from './tech-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
@@ -50,6 +52,8 @@ type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
   /** 기술 통계(useTechStatsViewModel) — 따로 받는 데이터라 불러오는 상태도
    * 따로다. */
   tech: ReturnType<typeof useTechStatsViewModel>
+  /** 영업 통계(useSalesTeamViewModel) — 개인 KPI 재료로 만든다. */
+  salesTeam: ReturnType<typeof useSalesTeamViewModel>
 }
 
 const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
@@ -81,6 +85,7 @@ export const MondayTrend = ({
   live,
   csTeam,
   tech,
+  salesTeam,
 }: MondayTrendProps) => {
   const {
     status,
@@ -256,6 +261,12 @@ export const MondayTrend = ({
                 onToggleNeglect={toggleExpanded}
                 views={cardViews}
                 onView={changeCardView}
+              />
+            ) : section === 'team' ? (
+              <SalesTeamSection
+                team={salesTeam}
+                unit={unit}
+                drawKey={drawKey}
               />
             ) : section === 'sales' ? (
               <SalesSection

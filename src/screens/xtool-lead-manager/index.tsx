@@ -21,6 +21,7 @@ import {
   useMondayTrendViewModel,
   useMondayViewModel,
   usePageTabViewModel,
+  useSalesTeamViewModel,
   useTechStatsViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 
@@ -66,6 +67,13 @@ const XtoolLeadManagerScreen = () => {
     tab === 'trend' && trend.state.section === 'inflow',
     trend.state.syncedAt,
   )
+  // 영업 통계 — 통계 탭이 받아 둔 개인 KPI 재료(오프라인 결제)로, 기간·단위는
+  // 통계 탭의 공용 값.
+  const salesTeam = useSalesTeamViewModel(
+    trend.state.kpiFacts,
+    trend.state.range,
+    trend.state.unit,
+  )
   // 기술 통계 — 기술지원팀 기록. 그 소주제를 처음 열 때 받고, 기간·단위는
   // 통계 탭의 공용 값을 쓴다.
   const tech = useTechStatsViewModel(
@@ -108,6 +116,7 @@ const XtoolLeadManagerScreen = () => {
         live={live.state}
         csTeam={csTeam}
         tech={tech}
+        salesTeam={salesTeam}
       />
     )
   }

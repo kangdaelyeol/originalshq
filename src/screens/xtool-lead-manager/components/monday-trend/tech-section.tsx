@@ -1,9 +1,8 @@
 import '@/screens/xtool-lead-manager/styles/tech-stats.scss'
-import { Fragment, type CSSProperties } from 'react'
+import type { CSSProperties } from 'react'
 import {
   Clock,
   Coins,
-  Crown,
   MessageSquare,
   Truck,
   Unlink,
@@ -33,6 +32,7 @@ import {
 } from '@/screens/xtool-lead-manager/utils'
 import { BoardTrendList } from './board-trend-list'
 import { InflowChart } from './inflow-chart'
+import { KingCard } from './king-card'
 
 type Tech = ReturnType<typeof useTechStatsViewModel>
 type King = Tech['state']['kings']['week'][number]
@@ -92,9 +92,8 @@ const KingFacts = ({
   </ul>
 )
 
-/** 왕 카드 하나 — 1위를 크게, 아래에 담당자 순위(막대·건수). 줄을 누르면 센
- * 기록이 펼쳐진다. */
-const KingCard = ({
+/** 기술팀 왕 카드 하나 — 공용 왕 카드(king-card.tsx)에 건수로. */
+const TechKingCard = ({
   king,
   span,
   openRows,
@@ -104,97 +103,32 @@ const KingCard = ({
   span: 'week' | 'month'
   openRows: ReadonlySet<string>
   onToggle: (key: string) => void
-}) => {
-  const [top] = king.rows
-  const max = Math.max(1, ...king.rows.map((row) => row.count))
-  return (
-    <section className="stats_card cs_metric tech_king">
-      <h2>
-        {SPAN_LABEL[span]} {king.def.title}
-        <span className="tech_king_board">
-          {TECH_BOARD_LABEL[king.def.kind]}
-        </span>
-      </h2>
-      <p className="stats_desc">{king.def.desc}</p>
-
-      <div className="tech_king_top">
-        <span className="tech_king_crown" aria-hidden="true">
-          <Crown strokeWidth={1.8} />
-        </span>
-        {top ? (
-          <div className="tech_king_who">
-            <strong>{top.name}</strong>
-            <span>
-              {count(top.count)} · 팀 합계 {count(king.total)}
-            </span>
-          </div>
-        ) : (
-          <div className="tech_king_who">
-            <strong className="is-empty">아직 없습니다</strong>
-            <span>
-              {formatDayShort(king.period.start)}~
-              {formatDayShort(king.period.end)}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {king.rows.length > 0 && (
-        <ul className="cs_metric_rows">
-          {king.rows.map((row) => {
-            const key = `${span}:${king.def.id}:${row.name}`
-            const open = openRows.has(key)
-            return (
-              <Fragment key={row.name}>
-                <li
-                  className={`cs_metric_row${open ? ' is-open' : ''}`}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={open}
-                  onClick={() => onToggle(key)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault()
-                      onToggle(key)
-                    }
-                  }}
-                >
-                  <span className="cs_metric_name">
-                    <span className="cs_metric_caret" aria-hidden="true">
-                      {open ? '▾' : '▸'}
-                    </span>
-                    {row.name}
-                  </span>
-                  <span className="cs_metric_bar" aria-hidden="true">
-                    <span style={{ width: `${(row.count / max) * 100}%` }} />
-                  </span>
-                  <span className="cs_metric_value">{count(row.count)}</span>
-                </li>
-                {open && (
-                  <li className="cs_metric_detail">
-                    <KingFacts row={row} dateLabel={king.def.dateLabel} />
-                  </li>
-                )}
-              </Fragment>
-            )
-          })}
-        </ul>
-      )}
-
-      <p className="tech_king_note">
-        {king.unassigned > 0 && (
-          <span>담당자 없음 {count(king.unassigned)}</span>
-        )}
-        <span>
-          {PREVIOUS_LABEL[span]} 1위{' '}
-          {king.previousTop
-            ? `${king.previousTop.name} ${count(king.previousTop.count)}`
-            : '없음'}
-        </span>
-      </p>
-    </section>
-  )
-}
+}) => (
+  <KingCard
+    title={`${SPAN_LABEL[span]} ${king.def.title}`}
+    badge={TECH_BOARD_LABEL[king.def.kind]}
+    desc={king.def.desc}
+    rows={king.rows.map((row) => ({
+      name: row.name,
+      value: row.count,
+      valueText: count(row.count),
+      detail: <KingFacts row={row} dateLabel={king.def.dateLabel} />,
+    }))}
+    totalText={count(king.total)}
+    emptyText={`${formatDayShort(king.period.start)}~${formatDayShort(king.period.end)}`}
+    notes={[
+      ...(king.unassigned > 0 ? [`담당자 없음 ${count(king.unassigned)}`] : []),
+      `${PREVIOUS_LABEL[span]} 1위 ${
+        king.previousTop
+          ? `${king.previousTop.name} ${count(king.previousTop.count)}`
+          : '없음'
+      }`,
+    ]}
+    openKey={`${span}:${king.def.id}`}
+    openRows={openRows}
+    onToggle={onToggle}
+  />
+)
 
 /** 값 하나로 센 막대 목록(기기·문의 종류 등) — 많은 순으로 상위 8개. */
 const BreakdownCard = ({ breakdown }: { breakdown: TechBreakdown }) => {
@@ -325,7 +259,7 @@ export const TechSection = ({
         {(['week', 'month'] as const).map((span) => (
           <div key={span} className="cs_team_row">
             {kings[span].map((king) => (
-              <KingCard
+              <TechKingCard
                 key={king.def.id}
                 king={king}
                 span={span}
