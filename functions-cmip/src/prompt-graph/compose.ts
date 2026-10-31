@@ -87,6 +87,19 @@ export interface Cost {
   price: { in: number; out: number }
 }
 
+/** 실제 소재로 만들 때 노드 하나에 넣는 값 — 서버가 Meta·CMIP에서 모은다. */
+export interface NodeInput {
+  /** 카드 결과 띠 대신 쓸 한 줄. */
+  result?: string
+  /** 조각의 {이름} 자리에 넣을 값 — 이름은 카드 값 줄의 이름과 같다. */
+  vars?: Record<string, string>
+  /** 함께 보내는 입력 토큰(영상 프레임 등) — 노드에 적어 둔 어림값 대신. */
+  tokens?: number
+}
+
+/** 노드 id별 실제 입력. 없으면(목업) 조각의 {이름}은 카드 값으로 채운다. */
+export type ComposeInputs = Record<string, NodeInput>
+
 /** 케이스 하나를 망에 통과시킨 결과. */
 export interface Composed {
   /** 경로가 지나는 특징 질문의 답 신뢰도(답이 없으면 케이스 기본값). */
@@ -97,6 +110,8 @@ export interface Composed {
   /** 프롬프트(줄 단위). */
   prompt: string[]
   cost: Cost
+  /** 실제 입력으로 만들 때 값이 없어 '—'로 둔 자리("노드.이름"). */
+  missing: string[]
 }
 
 /** '→ 결과 먼저  0.97' → '결과 먼저 0.97'. */
@@ -144,6 +159,26 @@ export const priceOf = (head?: NodeDef) => {
 export const textTokens = (lines: string[]) =>
   Math.round(lines.join('\n').length / 1.6)
 
+/** 조각의 자리 채우기 — {result}는 결과 한 줄, {이름}은 실제 입력의 값(없으면
+ * 카드 값 줄). 실제 입력을 받은 노드는 카드 값(목업)을 쓰지 않고 '—'로 둔다 —
+ * 실제 프롬프트에 목업 숫자가 섞이지 않게. */
+const fill = (
+  n: NodeDef,
+  result: string,
+  input: NodeInput | undefined,
+  missing: string[],
+) =>
+  n.prompt.replace(/\{([^{}\n]{1,40})\}/g, (whole, key: string) => {
+    if (key === 'result') return plain(result)
+    const v = input
+      ? input.vars && input.vars[key]
+      : (n.rows.find(([k]) => k === key) || [])[1]
+    if (v !== undefined) return v
+    if (!input) return whole
+    missing.push(`${n.id}.${key}`)
+    return '—'
+  })
+
 /** 프롬프트 한 장 — 출력 노드의 칸 순서대로, 칸마다 [이 케이스만의 줄, 칸의
  * 기본 줄, 경로 노드 중 이 칸으로 오는 조각]을 모은다. 빈 칸은 건너뛴다. */
 const compose = (
@@ -152,6 +187,8 @@ const compose = (
   path: NodeDef[],
   results: Record<string, string>,
   hold: boolean,
+  inputs: ComposeInputs | undefined,
+  missing: string[],
 ) => {
   const head = layers[4][0]
   const sections = layers[4].slice(1)
@@ -163,7 +200,7 @@ const compose = (
       .concat(
         path
           .filter((n) => n.feeds === s.id)
-          .map((n) => n.prompt.split('{result}').join(plain(results[n.id]))),
+          .map((n) => fill(n, results[n.id], inputs && inputs[n.id], missing)),
       )
       .filter((p): p is string => !!p && p.trim() !== '')
     if (parts.length) out.push(s.title, ...parts.join('\n').split('\n'))
@@ -172,9 +209,14 @@ const compose = (
 }
 
 /** 케이스 하나를 망에 통과시킨다 — 경로의 특징 답으로 게이트를 판정하고,
- * 프롬프트를 조합하고, 비용을 셈한다. 경로의 노드가 망에 없으면 던진다
+ * 프롬프트를 조합하고, 비용을 셈한다. inputs를 주면 실제 소재의 값으로(결과
+ * 띠·조각의 자리·함께 보내는 토큰). 경로의 노드가 망에 없으면 던진다
  * (checkGraph를 통과한 망이면 없다). */
-export const composeCase = (graph: Graph, c: CaseDef): Composed => {
+export const composeCase = (
+  graph: Graph,
+  c: CaseDef,
+  inputs?: ComposeInputs,
+): Composed => {
   const byId: Record<string, NodeDef> = {}
   for (const layer of graph.layers) for (const n of layer) byId[n.id] = n
   const path = c.path.map((id) => {
@@ -188,17 +230,29 @@ export const composeCase = (graph: Graph, c: CaseDef): Composed => {
   const results: Record<string, string> = {}
   for (const n of path.slice(0, 3)) {
     const a = c.answers[n.id]
-    results[n.id] = c.results[n.id] || (a ? answerResult(a) : fallbackResult(n))
+    const real = inputs && inputs[n.id] && inputs[n.id].result
+    results[n.id] =
+      real || c.results[n.id] || (a ? answerResult(a) : fallbackResult(n))
   }
   const verdict = `${confidence.toFixed(2)} ${hold ? '<' : '≥'} ${GATE.toFixed(2)}`
   results[path[3].id] = `${verdict}   ${hold ? 'hold' : 'pass'}`
-  const prompt = compose(graph.layers, c, path.slice(0, 4), results, hold)
+  const missing: string[] = []
+  const prompt = compose(
+    graph.layers,
+    c,
+    path.slice(0, 4),
+    results,
+    hold,
+    inputs,
+    missing,
+  )
 
   const price = priceOf(graph.layers[4][0])
   const text = textTokens(prompt)
-  const attached = path
-    .slice(0, 4)
-    .reduce((sum, n) => sum + Math.max(0, n.tokens || 0), 0)
+  const attached = path.slice(0, 4).reduce((sum, n) => {
+    const real = inputs && inputs[n.id] && inputs[n.id].tokens
+    return sum + Math.max(0, real !== undefined ? real : n.tokens || 0)
+  }, 0)
   const inTokens = text + attached
   const inCost = (inTokens / 1e6) * price.in
   const outCost = (c.outTokens / 1e6) * price.out
@@ -215,7 +269,7 @@ export const composeCase = (graph: Graph, c: CaseDef): Composed => {
   results[HEAD_ID] = hold
     ? '→ hold · human review'
     : `→ ${fmtTokens(inTokens)} tok · ${fmtUsd(cost.total)}`
-  return { confidence, hold, results, prompt, cost }
+  return { confidence, hold, results, prompt, cost, missing }
 }
 
 // ── 검사 ────────────────────────────────────────────────────────────────

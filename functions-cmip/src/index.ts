@@ -67,9 +67,7 @@ import {
   debugFetchOpenaiInsightRows,
   syncOpenaiInsightRows,
 } from './channel/openai'
-import {
-  getOfflineRevenue as fetchOfflineRevenue,
-} from './monday-crm'
+import { getOfflineRevenue as fetchOfflineRevenue } from './monday-crm'
 import {
   buildCafe24AuthUrl,
   checkCafe24AuthStatus,
@@ -99,6 +97,8 @@ import {
   saveVersion,
   validateSaveAdSettings,
 } from './ad-settings'
+import { gatherAdInputs } from './creative-analysis'
+import { listMetaAdsForAnalysis } from './channel/meta/creatives'
 import {
   PromptGraphError,
   checkGraph,
@@ -706,28 +706,25 @@ export const debugMetaCreatives = onRequest(
   },
 )
 
-export const getMetaAdInsights = onRequest(
-  { memory: '512MiB' },
-  (req, res) => {
-    corsHandler(req, res, async () => {
-      if (req.method !== 'GET') {
-        res.status(405).send({ error: 'Method Not Allowed' })
-        return
-      }
-      const validationRes = validateGetInsightBody(req.query)
-      if (!validationRes.ok) {
-        sendError(res, 400, validationRes.error)
-        return
-      }
-      const { dateStart, dateEnd } = validationRes.data
-      try {
-        res.status(200).send(await readMetaAdInsights(dateStart, dateEnd))
-      } catch (err) {
-        sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
-      }
-    })
-  },
-)
+export const getMetaAdInsights = onRequest({ memory: '512MiB' }, (req, res) => {
+  corsHandler(req, res, async () => {
+    if (req.method !== 'GET') {
+      res.status(405).send({ error: 'Method Not Allowed' })
+      return
+    }
+    const validationRes = validateGetInsightBody(req.query)
+    if (!validationRes.ok) {
+      sendError(res, 400, validationRes.error)
+      return
+    }
+    const { dateStart, dateEnd } = validationRes.data
+    try {
+      res.status(200).send(await readMetaAdInsights(dateStart, dateEnd))
+    } catch (err) {
+      sendError(res, 500, err instanceof Error ? err.message : '서버 오류')
+    }
+  })
+})
 
 /**
  * Google Ads OAuth 2.0 콜백 엔드포인트
@@ -1483,9 +1480,13 @@ export const getOpenaiInsight = onRequest(
       const { dateStart, dateEnd } = validationRes.data
 
       try {
-        const openaiRes = await getOpenaiInsightWithHistory(dateStart, dateEnd, {
-          apiKey: openaiAdsApiKey.value(),
-        })
+        const openaiRes = await getOpenaiInsightWithHistory(
+          dateStart,
+          dateEnd,
+          {
+            apiKey: openaiAdsApiKey.value(),
+          },
+        )
         res.status(200).send(openaiRes)
       } catch (err) {
         sendError(
@@ -2336,47 +2337,99 @@ export const savePromptGraph = onRequest((request, response) => {
 /** 프롬프트 미리보기(POST) — Claude를 부르지 않고, 망으로 케이스마다 프롬프트·
  * 게이트 판정·비용만 만든다. { graph }를 주면 그 망(화면에서 아직 저장 전인
  * 것)으로, 아니면 { source: 'published'(기본) | 'draft' }의 저장된 망으로.
- * { caseIds }로 케이스를 고를 수 있다. */
-export const previewPrompt = onRequest((request, response) => {
-  corsHandler(request, response, async () => {
-    if (request.method !== 'POST') {
-      sendError(response, 405, 'Method Not Allowed')
-      return
-    }
-    const body = (request.body ?? {}) as Record<string, unknown>
-    try {
-      let graph: Graph
-      let version: number | null = null
-      if (body.graph !== undefined) {
-        const error = checkGraph(body.graph)
-        if (error) {
-          sendError(response, 400, error)
-          return
-        }
-        graph = body.graph as Graph
-      } else {
-        const source = body.source === 'draft' ? 'draft' : 'published'
-        const loaded = await loadPromptGraph(source)
-        if (!loaded) {
-          sendError(
-            response,
-            404,
-            source === 'draft' ? '저장된 망이 없습니다' : '게시한 망이 없습니다',
-          )
-          return
-        }
-        graph = loaded.graph
-        version = loaded.version
+ * { caseIds }로 케이스를 고를 수 있다. { adId }(Meta 광고 ID)를 주면 그 광고의
+ * 실제 입력(영상·문구·타겟팅·14일 성과·광고 설정·테스트)으로 만든다. */
+export const previewPrompt = onRequest(
+  { secrets: [metaAdsId] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'POST') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
       }
-      const ids = Array.isArray(body.caseIds)
-        ? body.caseIds.filter((id): id is number => typeof id === 'number')
-        : null
-      const cases = graph.cases
-        .filter((c) => !ids || ids.indexOf(c.id) >= 0)
-        .map((c) => ({ id: c.id, title: c.title, ...composeCase(graph, c) }))
-      response.status(200).send({ version, cases })
-    } catch (err) {
-      sendPromptGraphError(response, err, '프롬프트 미리보기 실패')
-    }
-  })
-})
+      const body = (request.body ?? {}) as Record<string, unknown>
+      try {
+        let graph: Graph
+        let version: number | null = null
+        if (body.graph !== undefined) {
+          const error = checkGraph(body.graph)
+          if (error) {
+            sendError(response, 400, error)
+            return
+          }
+          graph = body.graph as Graph
+        } else {
+          const source = body.source === 'draft' ? 'draft' : 'published'
+          const loaded = await loadPromptGraph(source)
+          if (!loaded) {
+            sendError(
+              response,
+              404,
+              source === 'draft'
+                ? '저장된 망이 없습니다'
+                : '게시한 망이 없습니다',
+            )
+            return
+          }
+          graph = loaded.graph
+          version = loaded.version
+        }
+        let gathered: Awaited<ReturnType<typeof gatherAdInputs>> | null = null
+        if (body.adId !== undefined) {
+          if (typeof body.adId !== 'string' || !/^\d{5,25}$/.test(body.adId)) {
+            sendError(response, 400, 'adId는 Meta 광고 ID(숫자)여야 합니다')
+            return
+          }
+          gathered = await gatherAdInputs(body.adId, metaAdsId.value())
+        }
+        const ids = Array.isArray(body.caseIds)
+          ? body.caseIds.filter((id): id is number => typeof id === 'number')
+          : null
+        const cases = graph.cases
+          .filter((c) => !ids || ids.indexOf(c.id) >= 0)
+          .map((c) => ({
+            id: c.id,
+            title: c.title,
+            ...composeCase(graph, c, gathered?.inputs),
+          }))
+        response.status(200).send({
+          version,
+          cases,
+          ...(gathered
+            ? {
+                ad: gathered.ad,
+                inputs: gathered.inputs,
+                notes: gathered.notes,
+              }
+            : {}),
+        })
+      } catch (err) {
+        sendPromptGraphError(response, err, '프롬프트 미리보기 실패')
+      }
+    })
+  },
+)
+
+/** 소재 분석에 고를 광고 목록(GET) — 집행 중인 Meta 광고(계정마다 최대 50개). */
+export const listAnalyzableAds = onRequest(
+  { secrets: [metaAdsId] },
+  (request, response) => {
+    corsHandler(request, response, async () => {
+      if (request.method !== 'GET') {
+        sendError(response, 405, 'Method Not Allowed')
+        return
+      }
+      try {
+        response
+          .status(200)
+          .send({ ads: await listMetaAdsForAnalysis(metaAdsId.value()) })
+      } catch (err) {
+        sendError(
+          response,
+          500,
+          err instanceof Error ? err.message : '광고 목록 조회 실패',
+        )
+      }
+    })
+  },
+)
