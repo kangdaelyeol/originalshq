@@ -2,6 +2,7 @@ import { FieldValue, Firestore } from 'firebase-admin/firestore'
 import { Cafe24Order } from './cafe24'
 import {
   MondayBoard,
+  MondayBoardKind,
   MondayCustomer,
   MondayCustomerListItem,
   MondayCustomerRebuildResult,
@@ -14,6 +15,7 @@ import {
   MondayFollowUp,
   MondayKpiFacts,
   MondayItem,
+  MondayTechFact,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
   MondayPaymentIssueItem,
@@ -172,11 +174,22 @@ export async function getCustomer(
   return doc.exists ? (doc.data() as MondayCustomer) : null
 }
 
+// 번호가 없는 게 정상인 보드 — 기타업무는 내부 업무가 대부분이라 고객 일일
+// 때만 상세내용에 번호를 적는다. 결측 목록에 넣으면 고칠 게 아닌 건만 쌓인다.
+const PHONE_OPTIONAL_KINDS: ReadonlySet<MondayBoardKind> = new Set([
+  'techTask',
+])
+
 /** 유효한 번호가 없어 통합에서 빠진 item들 — 동기화 때 phone을 null로 저장해
  * 둔 문서다. */
 export async function listMissingPhoneItems(
   db: Firestore,
 ): Promise<MondayMissingPhoneItem[]> {
+  const optionalBoardIds = new Set(
+    (await listBoards(db))
+      .filter((board) => PHONE_OPTIONAL_KINDS.has(board.kind))
+      .map((board) => board.id),
+  )
   const snapshot = await db
     .collection(ITEMS_COLLECTION)
     .where('phone', '==', null)
@@ -190,7 +203,9 @@ export async function listMissingPhoneItems(
       'updatedAt',
     )
     .get()
-  return snapshot.docs.map((doc) => doc.data() as MondayMissingPhoneItem)
+  return snapshot.docs
+    .map((doc) => doc.data() as MondayMissingPhoneItem)
+    .filter((item) => !optionalBoardIds.has(item.boardId))
 }
 
 /** 확인이 필요한 결제 기록 전부 — 그런 기록이 있는 고객만 읽어서(대부분의
@@ -335,6 +350,28 @@ export async function getKpiFacts(
     boards: data?.boards ?? {},
     syncedAt: data?.syncedAt ?? null,
   }
+}
+
+const TECH_FACTS_DOC = 'techFacts'
+
+/** 기술 통계 재료를 문서 하나에 저장한다(기술지원팀 기록 천 건 남짓, 수백 KB). */
+export async function saveTechFacts(
+  db: Firestore,
+  facts: MondayTechFact[],
+): Promise<void> {
+  await db
+    .collection(STATS_COLLECTION)
+    .doc(TECH_FACTS_DOC)
+    .set({ facts, syncedAt: Date.now() })
+}
+
+export async function getTechFacts(
+  db: Firestore,
+): Promise<{ facts: MondayTechFact[]; syncedAt: number | null }> {
+  const doc = await db.collection(STATS_COLLECTION).doc(TECH_FACTS_DOC).get()
+  const data = doc.data() as
+    { facts: MondayTechFact[]; syncedAt: number } | undefined
+  return { facts: data?.facts ?? [], syncedAt: data?.syncedAt ?? null }
 }
 
 const DAILY_REPEAT_REVENUE_DOC = 'dailyRepeatRevenue'

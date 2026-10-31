@@ -33,7 +33,7 @@ const DEFERRED_PRODUCTS = new Set(['계약금', '분할납부'])
 // 장기 할부 이자("12개월 장기 할부 이자" 등) — 고객이 카드사에 내는 이자.
 const INTEREST_PATTERN = /장기\s*할부\s*이자/
 
-const subitemText = (
+export const subitemText = (
   subitem: MondaySubitem,
   pattern: RegExp,
 ): string | null => {
@@ -46,7 +46,7 @@ const subitemText = (
   return null
 }
 
-const subitemNumber = (
+export const subitemNumber = (
   subitem: MondaySubitem,
   pattern: RegExp,
 ): number | null => {

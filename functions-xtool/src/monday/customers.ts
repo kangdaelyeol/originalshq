@@ -21,6 +21,13 @@ import {
 import { checked, cleanName, koreaDate, pick, source, squash } from './fields'
 import { extractMondayPhones, isMobilePhone } from './helper'
 import { buildPurchaseRecords } from './purchases'
+import {
+  isTechDone,
+  toFieldService,
+  toRepair,
+  toTechInquiry,
+  toTechTask,
+} from './tech'
 
 /** 보드의 컬럼 제목으로 그 보드가 어떤 기록을 담는지 추정한다. 위에서부터
  * 먼저 맞는 것으로 정한다 — 방문체험 보드에도 "상담 진행 상태"가 있어서
@@ -29,6 +36,13 @@ export const detectBoardKind = (columns: MondayColumn[]): MondayBoardKind => {
   const has = (pattern: RegExp) =>
     columns.some((column) => pattern.test(squash(column.title)))
 
+  // 기술지원팀 보드 — 다른 보드에 없는 컬럼이라 먼저 본다.
+  if (has(/^출장종류$/)) return 'fieldService'
+  if (has(/^수리진행상태$/)) return 'repair'
+  if (has(/^문의종류$/) && has(/^해결방안$/)) return 'techInquiry'
+  // 자료정리 보드도 요청일·완료일·상세내용이 있어서, "요청"(맡긴 사람)과
+  // 마감일까지 있어야 기타업무로 본다.
+  if (has(/^요청$/) && has(/^마감일$/)) return 'techTask'
   if (has(/^결제상태$|^결제수단$/)) return 'purchase'
   if (has(/^방문체험일자$|^체험상태$/)) return 'visit'
   if (columns.some((column) => column.type === 'rating')) return 'survey'
@@ -209,6 +223,23 @@ const buildCustomer = (
     (record) => record.requestedAt,
   )
 
+  const fieldServices = newestFirst(
+    of('fieldService').map(toFieldService),
+    (record) => record.visitAt ?? record.receivedAt,
+  )
+  const repairs = newestFirst(
+    of('repair').map(toRepair),
+    (record) => record.receivedAt,
+  )
+  const techInquiries = newestFirst(
+    of('techInquiry').map(toTechInquiry),
+    (record) => record.receivedAt,
+  )
+  const techTasks = newestFirst(
+    of('techTask').map(toTechTask),
+    (record) => record.requestedAt,
+  )
+
   const activePurchases = purchases.filter((purchase) => !purchase.cancelled)
   const onlineActive = activePurchases.filter((p) => p.origin === 'online')
 
@@ -266,7 +297,11 @@ const buildCustomer = (
       consultations.every((record) => record.status === '오기입') &&
       visits.length === 0 &&
       activePurchases.length === 0 &&
-      sampleTests.length === 0,
+      sampleTests.length === 0 &&
+      fieldServices.length === 0 &&
+      repairs.length === 0 &&
+      techInquiries.length === 0 &&
+      techTasks.length === 0,
     // 유입 경로 — 가장 이른 상담의 UTM source, 없으면 방문체험의 유입경로.
     source:
       oldestFirst.find((record) => record.utmSource)?.utmSource ??
@@ -302,6 +337,10 @@ const buildCustomer = (
     issues,
     surveys,
     sampleTests,
+    fieldServices,
+    repairs,
+    techInquiries,
+    techTasks,
     summary: {
       consultationCount: consultations.length,
       visitCount: visits.length,
@@ -309,6 +348,17 @@ const buildCustomer = (
       purchaseCount: activePurchases.length,
       surveyCount: surveys.length,
       sampleTestCount: sampleTests.length,
+      fieldServiceCount: fieldServices.length,
+      repairCount: repairs.length,
+      techInquiryCount: techInquiries.length,
+      techTaskCount: techTasks.length,
+      latestFieldServiceAt:
+        fieldServices[0]?.visitAt ?? fieldServices[0]?.receivedAt ?? null,
+      latestRepairAt: repairs[0]?.receivedAt ?? null,
+      latestTechInquiryAt: techInquiries[0]?.receivedAt ?? null,
+      openRepairCount: repairs.filter((r) => !isTechDone(r)).length,
+      openTechInquiryCount: techInquiries.filter((r) => !isTechDone(r)).length,
+      repairAmount: repairs.reduce((sum, record) => sum + record.amount, 0),
       latestConsultationStatus: consultations[0]?.status ?? null,
       latestConsultationAt: consultations[0]?.receivedAt ?? null,
       latestVisitAt: visits[0]?.visitAt ?? null,
@@ -329,6 +379,10 @@ const buildCustomer = (
           ...payments,
           ...surveys,
           ...sampleTests,
+          ...fieldServices,
+          ...repairs,
+          ...techInquiries,
+          ...techTasks,
         ]
           .flatMap((record) => (record.assignee ?? '').split(','))
           .map((assignee) => assignee.trim())

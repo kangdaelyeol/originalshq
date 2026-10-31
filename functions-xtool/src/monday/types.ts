@@ -134,6 +134,10 @@ export type MondayBoardKind =
   | 'purchase' // 오프라인 결제 보드
   | 'survey' // 방문체험 후 만족도 조사
   | 'sampleTest' // 샘플테스트
+  | 'fieldService' // 기술지원팀 출장업무(설치·점검 방문)
+  | 'repair' // 기술지원팀 AS(수리)
+  | 'techInquiry' // 기술지원팀 아톡문의(기기 오작동·사용법 문의)
+  | 'techTask' // 기술지원팀 기타업무(샘플 테스트·회수품 점검 등 그 밖의 일)
   | 'other'
 
 /** 통합 고객 1명 — mondayCustomers/{phone}. 여러 보드에 흩어진 같은 번호의
@@ -158,6 +162,12 @@ export interface MondayCustomer {
   issues: MondayPaymentIssue[]
   surveys: MondaySurvey[]
   sampleTests: MondaySampleTest[]
+  /** 기술지원팀 기록 — 출장(설치·점검 방문)·AS(수리)·기술 문의. 구매 뒤의
+   * 이력이라 퍼널(최초 인입·첫 문의)에는 넣지 않는다. */
+  fieldServices: MondayFieldService[]
+  repairs: MondayRepair[]
+  techInquiries: MondayTechInquiry[]
+  techTasks: MondayTechTask[]
   /** 목록 화면용 요약 — 목록은 이 필드까지만 읽고(기록 배열은 안 읽음),
    * 한 고객을 열 때 문서 전체를 읽는다. */
   summary: MondayCustomerSummary
@@ -178,6 +188,19 @@ export interface MondayCustomerSummary {
   purchaseCount: number
   surveyCount: number
   sampleTestCount: number
+  fieldServiceCount: number
+  repairCount: number
+  techInquiryCount: number
+  techTaskCount: number
+  /** 가장 최근 출장 방문일·AS 접수일·기술 문의 접수일. */
+  latestFieldServiceAt: string | null
+  latestRepairAt: string | null
+  latestTechInquiryAt: string | null
+  /** 아직 끝나지 않은 AS·기술 문의 건수(그룹이 완료가 아닌 것). */
+  openRepairCount: number
+  openTechInquiryCount: number
+  /** AS 부품·공임 청구액 합계. */
+  repairAmount: number
   /** 취소되지 않은 구매(계약) 건수 — purchaseCount가 이 뜻이다. */
   /** 가장 최근 상담의 진행 상태와 접수일. */
   latestConsultationStatus: string | null
@@ -424,6 +447,126 @@ export interface MondaySampleTest extends MondayRecordSource {
   material: string | null
   address: string | null
   assignee: string | null
+}
+
+/** 출장 1건(출장업무 보드) — 설치·점검을 위해 고객을 찾아간 기록. */
+export interface MondayFieldService extends MondayRecordSource {
+  /** 보드의 그룹(신규 출장 건 → 일정 조율 → 일정 확정 → 완료). */
+  stage: string | null
+  status: string | null
+  /** 출장 종류(방문 설치 등) — 여러 개일 수 있어 쉼표로 이어진 그대로. */
+  type: string | null
+  receivedAt: string | null
+  visitAt: string | null
+  region: string | null
+  address: string | null
+  assignee: string | null
+  notes: string | null
+  /** 설치 품목 — 하위 아이템(품명·수량). */
+  items: Array<{ name: string; quantity: number | null; note: string | null }>
+}
+
+/** AS 1건(AS 보드) — 기기를 받아 수리한 기록. */
+export interface MondayRepair extends MondayRecordSource {
+  /** 보드의 그룹(접수 → 진행중 → 보류 → 발송 대기 → 완료). */
+  stage: string | null
+  status: string | null
+  device: string | null
+  serialNumber: string | null
+  symptom: string | null
+  result: string | null
+  address: string | null
+  assignee: string | null
+  receivedAt: string | null
+  completedAt: string | null
+  /** 청구한 부품·공임 — 하위 아이템. */
+  parts: Array<{
+    name: string
+    part: string | null
+    sku: string | null
+    price: number | null
+    quantity: number | null
+    total: number
+  }>
+  /** parts의 합계. */
+  amount: number
+}
+
+/** 기술 문의 1건(아톡문의 보드) — 기기 오작동·사용법 상담. */
+export interface MondayTechInquiry extends MondayRecordSource {
+  /** 보드의 그룹(신규 접수 → 1차 안내 → 상담 진행중 → 장기 상담 → 완료). */
+  stage: string | null
+  status: string | null
+  /** 기기 계열(F 시리즈 등)과 고객이 적은 기기 이름. */
+  deviceSeries: string | null
+  device: string | null
+  /** 문의 종류(기기 오작동 문의·사용 방법 문의 등). */
+  type: string | null
+  content: string | null
+  resolution: string | null
+  assignee: string | null
+  receivedAt: string | null
+}
+
+/** 기타업무 1건(기타업무 보드) — 출장·AS·문의 말고 고객 일로 한 작업(샘플
+ * 테스트, 회수품 점검 등). 내부 업무가 대부분이라 상세내용에 번호가 적힌
+ * 건만 고객에 붙는다. */
+export interface MondayTechTask extends MondayRecordSource {
+  /** 보드의 그룹(진행전 → 현재 진행중 → 막힘 → 완료). */
+  stage: string | null
+  status: string | null
+  /** 일을 맡긴 사람. */
+  requester: string | null
+  assignee: string | null
+  requestedAt: string | null
+  startedAt: string | null
+  dueAt: string | null
+  completedAt: string | null
+  details: string | null
+}
+
+/** 기술지원팀 보드 종류. */
+export type MondayTechKind =
+  'fieldService' | 'repair' | 'techInquiry' | 'techTask'
+
+/** 기술 통계(통계 탭)의 재료 1줄 — 기술지원팀 기록 하나. 번호가 없어 고객에
+ * 묶이지 못한 기록도 들어간다(일한 것은 일한 것이라). 날짜는 YYYY-MM-DD(한국
+ * 시간), 없으면 ''. 기간·담당자별로 묶는 것은 화면이 한다(tech.ts의
+ * buildTechFacts). */
+export interface MondayTechFact {
+  kind: MondayTechKind
+  itemId: string
+  boardName: string
+  name: string
+  url: string | null
+  /** 담당자 — 둘 이상이면 각자의 실적으로 센다. */
+  assignees: string[]
+  /** 보드의 그룹(단계)과 상태값. */
+  stage: string | null
+  status: string | null
+  /** 아직 첫 단계(신규 출장 건·새로 인입된 건·신규 접수 문의·진행전) — 손대기 전. */
+  isNew: boolean
+  /** 끝난 건(그룹 이름에 "완료"). */
+  done: boolean
+  /** 접수일(기타업무는 요청일). */
+  receivedAt: string
+  /** 끝난 날 — 출장은 방문일, AS·기타업무는 완료일. 끝났는데 그 날짜가 비어
+   * 있으면 Monday 마지막 수정일로 대신하고 doneAtGuessed를 켠다. 기술 문의는
+   * 끝난 날을 적는 칸이 없어 늘 마지막 수정일이다. */
+  doneAt: string
+  doneAtGuessed: boolean
+  /** 출장 방문 일정(출장만). */
+  visitAt: string
+  /** AS 기기 / 문의 기기(계열 · 이름). */
+  device: string | null
+  /** 출장 종류 / 문의 종류. */
+  type: string | null
+  /** 출장 지역. */
+  region: string | null
+  /** AS 부품·공임 청구액. */
+  amount: number
+  /** 유효한 번호가 있어 통합 고객에 묶였는지. */
+  linked: boolean
 }
 
 /** rebuildCustomers의 결과. */

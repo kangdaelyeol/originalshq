@@ -5,6 +5,7 @@ import { readGaTracking, saveGaSyncError, syncGaEvents } from '../ga-sync'
 import { recordBatchRun } from '../batch-log'
 import {
   deleteBoard,
+  fetchItemUpdates,
   getAttributionRows,
   getCustomer,
   getDailyInflow,
@@ -12,10 +13,13 @@ import {
   getFollowUps,
   getDailyRepeatRevenue,
   getKpiFacts,
+  getTechFacts,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
   listPaymentIssues,
+  listWorkspaceBoards,
+  listWorkspaces,
   previewBoard,
   rebuildCustomers,
   rebuildCustomersSafely,
@@ -88,6 +92,61 @@ export const previewMondayBoard = onRequest(
         samples,
       )
       response.status(200).send(preview)
+    },
+  ),
+)
+
+// ────────────────────────────────
+// listMondayWorkspaceBoards — 워크스페이스의 보드 전부를 Monday에서 바로 읽어
+// 보여준다(DB에 안 씀). 등록 여부와 상관없이 본다.
+//   GET                       → 워크스페이스 목록
+//   GET ?workspace=기술팀&samples=3 → 이름에 '기술팀'이 들어간 워크스페이스의
+//                               보드·컬럼·그룹·item 수·예시 item
+//   workspaceId=123 으로 id를 직접 줘도 된다. samples 기본 3, 최대 20.
+// ────────────────────────────────
+export const listMondayWorkspaceBoards = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: 120 },
+  endpoint(
+    {
+      name: 'listMondayWorkspaceBoards',
+      method: 'GET',
+      onError: (error, response) => {
+        response.status(502).send({
+          error: error instanceof Error ? error.message : String(error),
+        })
+      },
+    },
+    async ({ request, response }) => {
+      const apiKey = mondayApiKey.value()
+      const workspaces = await listWorkspaces(apiKey)
+      const id = String(request.query.workspaceId ?? '').trim()
+      const name = String(request.query.workspace ?? '').trim()
+      if (!id && !name) {
+        response.status(200).send({ workspaces })
+        return
+      }
+
+      const matched = workspaces.filter((w) =>
+        id ? String(w.id) === id : w.name.includes(name),
+      )
+      if (matched.length !== 1) {
+        response.status(matched.length ? 409 : 404).send({
+          error: matched.length
+            ? '워크스페이스가 여러 개 맞습니다 — workspaceId로 골라 주세요'
+            : '맞는 워크스페이스가 없습니다',
+          workspaces: matched.length ? matched : workspaces,
+        })
+        return
+      }
+
+      const samples = Math.min(
+        Math.max(Number(request.query.samples ?? 3) || 0, 0),
+        20,
+      )
+      const boards = await listWorkspaceBoards(apiKey, matched[0].id, samples)
+      response
+        .status(200)
+        .send({ workspace: matched[0], boards, count: boards.length })
     },
   ),
 )
@@ -306,6 +365,55 @@ export const getMondayKpiFacts = onRequest(
     { name: 'getMondayKpiFacts', method: 'GET' },
     async ({ response }) => {
       response.status(200).send(await getKpiFacts(db))
+    },
+  ),
+)
+
+// ────────────────────────────────
+// getMondayItemUpdates — item 하나의 메모(업데이트)·댓글·첨부 파일과 파일
+// 컬럼의 파일을 Monday에서 바로 읽는다(DB에 안 씀). 파일 주소는 한 시간쯤 뒤
+// 만료되어, 화면이 기록을 열 때마다 부른다.
+//   GET ?itemId=2883488878
+// ────────────────────────────────
+export const getMondayItemUpdates = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: 60 },
+  endpoint(
+    {
+      name: 'getMondayItemUpdates',
+      method: 'GET',
+      onError: (error, response) => {
+        response.status(502).send({
+          error: error instanceof Error ? error.message : String(error),
+        })
+      },
+    },
+    async ({ request, response }) => {
+      const itemId = String(request.query.itemId ?? '').trim()
+      if (!/^\d+$/.test(itemId)) {
+        response.status(400).send({ error: 'itemId는 숫자여야 합니다' })
+        return
+      }
+      const updates = await fetchItemUpdates(mondayApiKey.value(), itemId)
+      if (!updates) {
+        response
+          .status(404)
+          .send({ error: 'Monday에서 찾을 수 없는 기록입니다' })
+        return
+      }
+      response.status(200).send(updates)
+    },
+  ),
+)
+
+// ────────────────────────────────
+// getMondayTechFacts — 기술 통계 재료(통계 탭 기술 통계). 기술지원팀 기록 한
+// 건이 한 줄이고, 기간·담당자별 집계는 화면이 한다.
+// ────────────────────────────────
+export const getMondayTechFacts = onRequest(
+  endpoint(
+    { name: 'getMondayTechFacts', method: 'GET' },
+    async ({ response }) => {
+      response.status(200).send(await getTechFacts(db))
     },
   ),
 )

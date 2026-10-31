@@ -8,6 +8,7 @@ export {
   getDailySales,
   getFollowUps,
   getKpiFacts,
+  getTechFacts,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -25,4 +26,9 @@ export type {
   MondayCustomer,
   MondayItem,
   MondaySyncSummary,
+  MondayTechFact,
 } from './types'
+export { listWorkspaceBoards, listWorkspaces } from './workspace'
+export type { MondayWorkspace, MondayWorkspaceBoard } from './workspace'
+export { fetchItemUpdates } from './updates'
+export type { MondayAsset, MondayItemUpdates, MondayUpdate } from './updates'

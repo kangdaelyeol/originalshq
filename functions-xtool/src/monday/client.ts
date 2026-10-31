@@ -56,7 +56,7 @@ interface ItemsPage {
 /** GraphQL POST 호출 하나 — Monday API 호출부가 전부 이 함수를 거친다.
  * REST와 달리 실패가 HTTP status가 아니라 body의 errors로도 올 수 있어
  * 둘 다 확인한다. */
-async function fetchMonday<T>(
+export async function fetchMonday<T>(
   apiKey: string,
   query: string,
   variables: Record<string, unknown>,

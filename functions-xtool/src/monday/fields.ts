@@ -31,8 +31,8 @@ export const checked = (item: MondayItem, pattern: RegExp): boolean =>
 export const cleanName = (name: string): string =>
   name
     .replace(/(?:\+?82[\s.-]*)?0?\d{1,2}[\s.-]*\d{3,4}[\s.-]*\d{4}/g, ' ')
-    .replace(/[\s/,·|-]+$/g, '')
-    .replace(/^[\s/,·|-]+/g, '')
+    .replace(/[\s/,·|:-]+$/g, '')
+    .replace(/^[\s/,·|:-]+/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 

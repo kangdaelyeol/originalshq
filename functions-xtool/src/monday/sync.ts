@@ -18,9 +18,11 @@ import {
   saveDailySales,
   saveFollowUps,
   saveKpiFacts,
+  saveTechFacts,
   updateBoard,
 } from './firestore'
 import { buildMondayItems, detectPhoneColumnId } from './helper'
+import { buildTechFacts } from './tech'
 import { buildFollowUps } from './followups'
 import { buildKpiFacts } from './kpi'
 import { buildDailySales, buildOfflineSaleLines } from './purchases'
@@ -37,9 +39,10 @@ import {
 } from './types'
 
 /** 하위 아이템까지 받아야 하는 보드인지 — 결제 보드는 금액이 품목 줄(하위
- * 아이템)에만 있다. */
+ * 아이템)에만 있고, 출장은 설치 품목이, AS는 부품·공임 청구가 하위 아이템에
+ * 있다. */
 const needsSubitems = (columns: MondayColumn[]): boolean =>
-  detectBoardKind(columns) === 'purchase'
+  ['purchase', 'fieldService', 'repair'].includes(detectBoardKind(columns))
 
 /** 보드 하나를 Monday에서 읽어, 저장될 모양 그대로 돌려준다 — DB에는 아무것도
  * 쓰지 않는다. 보드를 등록하기 전에 컬럼 id가 맞는지, 값이 비어 오는 컬럼은
@@ -183,6 +186,8 @@ export async function rebuildCustomers(
   await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).
   await saveKpiFacts(db, buildKpiFacts(items, kindByBoardId))
+  // 기술 통계 재료(출장·AS·기술 문의·기타업무 — 번호 없는 기록 포함).
+  await saveTechFacts(db, buildTechFacts(items, kindByBoardId))
   return {
     customerCount: customers.length,
     ...counts,
