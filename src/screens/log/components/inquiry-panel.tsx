@@ -22,6 +22,7 @@ import {
 } from '../view-model/use-inquiry-log-view-model'
 import { useToast } from '../view-model/use-toast'
 import { DeviceSelect } from './device-select'
+import { InquiryFlow } from './flow-graphs'
 import { ToastStack } from './toast'
 
 const MONDAY_ITEM_URL = (boardId: string, itemId: string) =>
@@ -439,6 +440,17 @@ export function InquiryPanel() {
                 : '-'}
           </strong>
         </div>
+      </section>
+
+      <section className="batch-log__card log-flow">
+        <header className="log-flow__head">
+          <b>
+            <i aria-hidden="true" />
+            INTAKE FLOW
+          </b>
+          <span>웹 폼 → 접수 함수 → Monday 보드 · 접수 안내 문자</span>
+        </header>
+        <InquiryFlow summary={summary} deviceCounts={deviceCounts} />
       </section>
 
       <section className="batch-log__card">

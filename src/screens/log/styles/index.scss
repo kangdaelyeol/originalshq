@@ -1,194 +1,339 @@
-@use '../../xtool-lead-manager/styles/variables.scss' as v;
+// /log — 프롬프트 퍼셉트론(/perceptron)과 같은 모양: 검은 바탕, 고정폭 글꼴,
+// 얇은 선 카드, 탭마다 바뀌는 강조색(--log-accent, index.tsx), 빛 점이 흐르는
+// 노드 그래프(signal-graph.tsx).
 
-// 상태 색 — 신호 역할만 한다(글자·기호를 항상 같이 쓴다). 어두운 바탕
-// (#0d1117)에서 서로 구분되는 GitHub 다크 계열 신호색.
-$status-success: #3fb950;
-$status-partial: #d29922;
-$status-failed: #f85149;
-$status-timeout: #db6d28;
-$status-running: v.$color-accent;
+// 탭을 바꾸면 강조색이 부드럽게 넘어간다.
+@property --log-accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #49dae4;
+}
+
+// 상태 색 — 신호 역할만 한다(글자·기호를 항상 같이 쓴다). 탭 강조색(청록·보라·
+// 분홍)과 겹치지 않게 고른다.
+$ok: #5fd38d;
+$warn: #e9c24a;
+$fail: #ff4d6a;
+$timeout: #ff9a4d;
+$run: #7aa7ff;
+
+$bg: #0c0b10;
+$line: rgba(255, 255, 255, 0.075);
+$line-2: rgba(255, 255, 255, 0.14);
+$ink: #fbfbfd;
+$ink-2: #b9b8c4;
+$ink-3: #6d6b7b;
+$ink-4: #3a3944;
+$panel: linear-gradient(
+  180deg,
+  rgba(255, 255, 255, 0.03),
+  rgba(255, 255, 255, 0.011)
+);
+$mono:
+  'JetBrains Mono', 'Pretendard Variable', Pretendard, ui-monospace, Menlo,
+  monospace;
+
+$accent: var(--log-accent);
+$accent-dim: color-mix(in srgb, var(--log-accent) 45%, transparent);
+$accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
+
+// 작은 강조 네모 — 카드 이름 앞.
+@mixin square($size: 5px) {
+  display: inline-block;
+  flex: none;
+  width: $size;
+  height: $size;
+  background: $accent;
+}
+
+// 테두리 버튼 — 퍼셉트론의 접기 버튼(.pn-toggle)과 같은 모양.
+@mixin line-button {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid $accent-dim;
+  border-radius: 3px;
+  background: transparent;
+  color: $accent;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
+
+  &:hover:not(:disabled) {
+    background: $accent-soft;
+  }
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+  &:focus-visible {
+    outline: 1px solid $accent;
+    outline-offset: 2px;
+  }
+}
+
+// 입력칸 — 어두운 바탕에 얇은 선, 초점이면 강조색.
+@mixin field {
+  box-sizing: border-box;
+  border: 1px solid $line-2;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.025);
+  color: $ink;
+  font: inherit;
+  font-size: 12.5px;
+
+  &::placeholder {
+    color: $ink-4;
+  }
+  &:focus {
+    outline: none;
+    border-color: $accent;
+  }
+}
 
 .batch-log {
+  position: relative;
   min-height: 100vh;
-  padding: 40px 24px 80px;
-  background: v.$color-bg;
-  color: v.$color-text;
-  font-family: v.$font-sans;
+  padding: 0 28px;
+  overflow-x: hidden;
+  background:
+    radial-gradient(
+      1100px 420px at 50% -120px,
+      color-mix(in srgb, var(--log-accent) 13%, transparent),
+      transparent 70%
+    ),
+    $bg;
+  color: $ink;
+  font-family: $mono;
+  font-size: 12.5px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  transition: --log-accent 0.8s ease;
 
   &,
   * {
     box-sizing: border-box;
   }
 
-  > * {
-    max-width: 1280px;
-    margin-left: auto;
-    margin-right: auto;
+  // 바닥 격자 — 퍼셉트론 신경망 평면처럼 옅게, 위에서 아래로 흐려진다.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+      linear-gradient($line 1px, transparent 1px),
+      linear-gradient(90deg, $line 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(180deg, #000, transparent 640px);
+    pointer-events: none;
   }
 
-  h1 {
-    margin: 0 0 6px;
-    font-size: 22px;
-    font-weight: 600;
+  > * {
+    position: relative;
+    z-index: 1;
+    max-width: 1320px;
+    margin-right: auto;
+    margin-left: auto;
   }
 
   h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin: 0;
-    font-size: 15px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
   }
 
   h3 {
     margin: 18px 0 8px;
-    font-size: 13px;
+    color: $ink-3;
+    font-size: 11px;
     font-weight: 600;
-    color: v.$color-text-muted;
+    letter-spacing: 0.08em;
+  }
+
+  a {
+    color: $accent;
   }
 
   &__muted {
     margin: 0;
-    font-size: 12.5px;
+    color: $ink-3;
+    font-size: 11.5px;
     font-weight: 400;
-    color: v.$color-text-muted;
+    letter-spacing: 0;
   }
 
   &__mono {
-    font-family: v.$font-mono;
-    font-size: 12px;
+    font-family: $mono;
+    font-variant-numeric: tabular-nums;
   }
 
   &__warn {
     margin: 10px 0 0;
-    font-size: 12.5px;
-    color: $status-partial;
+    color: $warn;
+    font-size: 12px;
   }
 
-  // ── 머리 ──────────────────────────────────────────────────────────────
+  // ── 탭 머리 ───────────────────────────────────────────────────────────
   &__header {
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 24px;
+    margin: 30px auto 18px;
+  }
+
+  // .batch-log h2보다 앞서도록 h2를 붙여 쓴다.
+  h2#{&}__title {
+    margin: 0 0 6px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+
+    &::before {
+      content: '//';
+      margin-right: 10px;
+      color: $accent;
+      font-weight: 700;
+    }
+  }
+
+  &__card-desc {
+    margin: 4px 0 14px;
   }
 
   &__controls {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: 8px;
   }
 
+  // 고르기 묶음 — 퍼셉트론 카메라 모드(AUTO/FREE) 버튼과 같은 모양.
   &__segmented {
-    display: flex;
-    gap: 4px;
-    padding: 3px;
-    border: 1px solid v.$color-border;
-    border-radius: 8px;
-    background: v.$color-surface;
+    display: inline-flex;
+    padding: 2px;
+    border: 1px solid $line-2;
+    border-radius: 3px;
 
     button {
-      all: unset;
-      height: 28px;
+      height: 26px;
       padding: 0 12px;
-      border-radius: 6px;
-      font-size: 13px;
-      line-height: 28px;
-      color: v.$color-text-muted;
+      border: none;
+      border-radius: 2px;
+      background: transparent;
+      color: $ink-3;
+      font: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
       cursor: pointer;
+      transition:
+        background-color 0.15s,
+        color 0.15s;
 
       &:hover {
-        color: v.$color-text;
+        color: $ink;
       }
       &.is-active {
-        background: v.$color-surface-raised;
-        color: v.$color-text;
+        background: $accent;
+        color: rgba(10, 8, 14, 0.9);
       }
       &:focus-visible {
-        outline: 2px solid v.$color-accent;
+        outline: 1px solid $accent;
       }
     }
   }
 
   &__refresh {
-    all: unset;
-    height: 36px;
-    padding: 0 14px;
-    border: 1px solid v.$color-border;
-    border-radius: 8px;
-    font-size: 13px;
-    line-height: 36px;
-    color: v.$color-text;
-    cursor: pointer;
+    @include line-button;
 
-    &:hover {
-      background: v.$color-surface-raised;
-    }
-    &:focus-visible {
-      outline: 2px solid v.$color-accent;
-    }
-    // 켜진 상태(예: 문자 설정 패널이 열려 있음).
     &.is-active {
-      border-color: v.$color-accent;
-      background: rgba(v.$color-accent, 0.16);
-      color: v.$color-accent;
-    }
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
+      background: $accent;
+      color: rgba(10, 8, 14, 0.9);
     }
   }
 
+  // ── 카드 ─────────────────────────────────────────────────────────────
   &__card {
-    margin-bottom: 16px;
-    padding: 20px;
-    background: v.$color-surface;
-    border: 1px solid v.$color-border-soft;
-    border-radius: 10px;
+    margin-bottom: 14px;
+    padding: 16px 18px;
+    border: 1px solid $line;
+    border-radius: 3px;
+    background: $panel;
+
+    > h2::before {
+      @include square;
+      content: '';
+    }
   }
 
   &__error {
-    color: $status-failed;
-    font-size: 13px;
+    color: $fail;
+    font-size: 12px;
+    white-space: normal;
   }
 
-  // ── 기간 요약 ─────────────────────────────────────────────────────────
+  // ── 숫자 줄 — 퍼셉트론 지표 칸(.pn-metric)처럼 위에 강조색 선 ────────
   &__totals {
     display: grid;
     grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 12px;
+    gap: 8px;
     margin-bottom: 14px;
+
+    @media (max-width: 1000px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 
     > div {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      padding: 14px 16px;
-      background: v.$color-surface;
-      border: 1px solid v.$color-border-soft;
-      border-radius: 10px;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 86px;
+      padding: 10px 14px 12px;
+      border: 1px solid $line;
+      border-top: 2px solid $accent;
+      background: $panel;
     }
 
     span {
-      font-size: 12px;
-      color: v.$color-text-muted;
+      color: $ink-3;
+      font-size: 10.5px;
+      letter-spacing: 0.08em;
+      white-space: nowrap;
     }
 
     strong {
-      font-size: 22px;
-      font-weight: 700;
+      font-size: 28px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
 
       &.is-small {
         font-size: 14px;
-        font-weight: 600;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1.3;
+        white-space: normal;
       }
       &.is-partial {
-        color: $status-partial;
+        color: $warn;
       }
       &.is-failed,
       &.is-missing {
-        color: $status-failed;
+        color: $fail;
+        text-shadow: 0 0 14px color-mix(in srgb, #{$fail} 45%, transparent);
       }
     }
   }
@@ -197,46 +342,50 @@ $status-running: v.$color-accent;
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
-  // ── 상태 배지 ─────────────────────────────────────────────────────────
+  // 상태 배지 — 기호 + 이름, 얇은 테두리.
   &__badge {
     display: inline-flex;
     align-items: center;
     gap: 5px;
-    height: 24px;
-    padding: 0 9px;
+    height: 20px;
+    padding: 0 7px;
     border: 1px solid currentColor;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 500;
+    border-radius: 2px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
     white-space: nowrap;
-    color: v.$color-text-muted;
 
     &.is-success {
-      color: $status-success;
+      color: $ok;
     }
     &.is-partial {
-      color: $status-partial;
+      color: $warn;
     }
     &.is-failed {
-      color: $status-failed;
+      color: $fail;
     }
     &.is-timeout {
-      color: $status-timeout;
+      color: $timeout;
     }
     &.is-running {
-      color: $status-running;
+      color: $run;
+
+      span {
+        animation: log-blink 1.1s ease-in-out infinite;
+      }
     }
     &.is-missing {
-      color: $status-failed;
       border-style: dashed;
+      color: $fail;
     }
-    &.is-no-data,
-    &.is-pending {
-      color: v.$color-text-faint;
-      border-style: dotted;
+    &.is-pending,
+    &.is-no-data {
+      color: $ink-3;
+      border-color: $ink-4;
     }
   }
 
@@ -244,12 +393,16 @@ $status-running: v.$color-accent;
   &__jobs {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 14px;
 
     .batch-log__card {
       margin-bottom: 0;
     }
+  }
+
+  &__job {
+    border-top: 2px solid $accent-dim;
   }
 
   &__job-head {
@@ -265,15 +418,14 @@ $status-running: v.$color-accent;
   }
 
   &__codebase {
-    margin-left: 8px;
     padding: 1px 6px;
-    border-radius: 4px;
-    background: v.$color-surface-raised;
-    font-family: v.$font-mono;
-    font-size: 11px;
-    font-weight: 400;
-    color: v.$color-text-muted;
-    vertical-align: 2px;
+    border: 1px solid $line-2;
+    border-radius: 2px;
+    color: $ink-2;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
 
   &__facts {
@@ -285,16 +437,15 @@ $status-running: v.$color-accent;
     div {
       min-width: 0;
     }
-
     dt {
-      margin-bottom: 2px;
-      font-size: 11.5px;
-      color: v.$color-text-muted;
+      color: $ink-3;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
     }
-
     dd {
-      margin: 0;
-      font-size: 13px;
+      margin: 3px 0 0;
+      color: $ink;
+      font-size: 12px;
       font-variant-numeric: tabular-nums;
       overflow-wrap: anywhere;
     }
@@ -303,120 +454,119 @@ $status-running: v.$color-accent;
   &__summary {
     margin: 12px 0 0;
     padding: 8px 10px;
-    border-radius: 6px;
-    background: v.$color-surface-raised;
-    font-size: 12.5px;
-    color: v.$color-text-muted;
-    white-space: nowrap;
     overflow: hidden;
+    border-left: 2px solid $accent-dim;
+    background: rgba(255, 255, 255, 0.02);
+    color: $ink-2;
+    font-size: 11.5px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 
     strong {
-      color: $status-partial;
-      font-weight: 600;
+      color: $warn;
     }
   }
 
-  // 예약 시각별 칸 — 줄 = 날짜, 칸 = 시각.
+  // 예약 시각 칸 — 퍼셉트론 지표의 작은 네모(.pn-squares)처럼.
   &__grid {
     width: 100%;
     margin-top: 14px;
     border-collapse: separate;
-    border-spacing: 4px;
+    border-spacing: 3px;
     table-layout: fixed;
 
     th {
-      font-size: 11.5px;
+      color: $ink-3;
+      font-size: 10px;
       font-weight: 500;
-      color: v.$color-text-muted;
+      letter-spacing: 0.04em;
       text-align: center;
     }
-
     // table-layout: fixed는 첫 줄(머리글)로 열 너비를 정해서, 날짜 열 너비는
     // 머리글 칸에도 같이 줘야 한다.
     th:first-child {
       width: 76px;
     }
-
     th[scope='row'] {
-      line-height: 24px;
+      color: $ink-2;
+      line-height: 22px;
       text-align: left;
       vertical-align: middle;
       white-space: nowrap;
     }
-
     td {
-      height: 24px;
+      height: 22px;
       padding: 0;
       vertical-align: middle;
     }
   }
 
-  // block + 고정 line-height — 기호가 없는(빈) 칸도 같은 높이가 되게 한다
-  // (flex로 두면 빈 칸이 글자 기준선에 맞춰 줄 높이가 들쭉날쭉했다).
+  // block + 고정 line-height — 기호가 없는(빈) 칸도 같은 높이가 되게 한다.
   &__slot {
     all: unset;
     box-sizing: border-box;
     display: block;
     width: 100%;
-    height: 24px;
-    line-height: 24px;
+    height: 22px;
+    border-radius: 2px;
+    color: rgba(10, 8, 14, 0.85);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 22px;
     text-align: center;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 700;
-    color: #0d1117;
 
+    // 성공은 가장 흔한 칸이라 옅게 — 문제 칸(실패·누락)이 눈에 띄게.
     &.is-success {
-      background: $status-success;
+      background: color-mix(in srgb, #{$ok} 62%, transparent);
     }
     &.is-partial {
-      background: $status-partial;
+      background: $warn;
     }
     &.is-failed {
-      background: $status-failed;
+      background: $fail;
+      box-shadow: 0 0 12px color-mix(in srgb, #{$fail} 50%, transparent);
     }
     &.is-timeout {
-      background: $status-timeout;
+      background: $timeout;
     }
     &.is-running {
-      background: $status-running;
+      background: $run;
+      animation: log-blink 1.1s ease-in-out infinite;
     }
-    // 실행 기록이 없는 칸은 채우지 않고 테두리만 — "누락"은 빨간 점선으로
-    // 눈에 띄게, 예정·기록 전은 옅게.
+    // 실행 기록이 없는 칸은 채우지 않고 테두리만 — "누락"은 빨간 점선으로.
     &.is-missing {
-      border: 1px dashed $status-failed;
-      line-height: 22px;
-      color: $status-failed;
+      border: 1px dashed $fail;
+      color: $fail;
+      line-height: 20px;
     }
     &.is-pending {
-      background: v.$color-surface-raised;
+      background: rgba(255, 255, 255, 0.05);
     }
     &.is-no-data {
-      border: 1px dotted v.$color-border;
+      border: 1px dotted $ink-4;
     }
 
     &:is(button) {
       cursor: pointer;
 
       &:hover {
-        filter: brightness(1.15);
+        filter: brightness(1.2);
       }
       &:focus-visible {
-        outline: 2px solid v.$color-text;
+        outline: 1px solid $ink;
         outline-offset: 1px;
       }
     }
   }
 
-  // ── 실행 내역 표 ──────────────────────────────────────────────────────
+  // ── 표 ───────────────────────────────────────────────────────────────
   &__table-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
   &__filters {
@@ -424,44 +574,50 @@ $status-running: v.$color-accent;
     gap: 8px;
 
     select {
-      @include v.select-control;
+      @include field;
+      height: 30px;
+      padding: 0 8px;
     }
   }
 
   &__empty {
     margin: 0;
     padding: 28px 0;
+    color: $ink-3;
     text-align: center;
-    font-size: 13px;
-    color: v.$color-text-muted;
   }
 
   &__table-scroll {
     overflow-x: auto;
+    scrollbar-color: $ink-4 transparent;
+    scrollbar-width: thin;
   }
 
   &__table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 13px;
+    font-size: 12px;
 
     th {
       padding: 8px 10px;
-      border-bottom: 1px solid v.$color-border;
-      font-size: 12px;
-      font-weight: 500;
-      color: v.$color-text-muted;
+      border-bottom: 1px solid $line-2;
+      color: $ink-3;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
       text-align: left;
       white-space: nowrap;
     }
-
     td {
       padding: 9px 10px;
-      border-bottom: 1px solid v.$color-border-soft;
+      border-bottom: 1px solid $line;
+      color: $ink-2;
       vertical-align: middle;
       white-space: nowrap;
     }
-
+    tbody tr:hover > td {
+      background: rgba(255, 255, 255, 0.022);
+    }
     .is-num {
       text-align: right;
       font-variant-numeric: tabular-nums;
@@ -471,64 +627,54 @@ $status-running: v.$color-accent;
   &__row {
     cursor: pointer;
 
-    &:hover,
-    &.is-open {
-      background: v.$color-surface-raised;
+    td:first-child {
+      box-shadow: inset 2px 0 0 transparent;
+      transition: box-shadow 0.15s;
+    }
+    &.is-open > td {
+      background: $accent-soft !important;
+      color: $ink;
+    }
+    &.is-open td:first-child,
+    &:hover td:first-child {
+      box-shadow: inset 2px 0 0 $accent;
     }
   }
 
   &__caret {
     display: inline-block;
     width: 14px;
-    color: v.$color-text-muted;
+    color: $accent;
   }
 
   &__result {
     max-width: 520px;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: v.$color-text-muted;
 
     strong {
-      color: $status-partial;
-      font-weight: 600;
+      color: $warn;
     }
   }
 
   &__more {
-    all: unset;
+    @include line-button;
     display: block;
-    width: 100%;
-    margin-top: 12px;
-    padding: 10px 0;
-    border: 1px solid v.$color-border;
-    border-radius: 8px;
-    font-size: 13px;
-    text-align: center;
-    color: v.$color-text-muted;
-    cursor: pointer;
-
-    &:hover {
-      color: v.$color-text;
-      background: v.$color-surface-raised;
-    }
-    &:focus-visible {
-      outline: 2px solid v.$color-accent;
-    }
+    margin: 12px auto 0;
   }
 
   &__detail-row > td {
-    padding: 0;
-    background: v.$color-bg;
-    white-space: normal;
+    padding: 0 !important;
+    background: rgba(0, 0, 0, 0.25) !important;
+    white-space: normal !important;
   }
 
   &__detail {
-    padding: 16px 18px 20px;
-    border-left: 2px solid v.$color-accent;
+    padding: 14px 16px 16px;
+    border-left: 2px solid $accent;
 
-    .batch-log__facts {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+    .batch-log__table td {
+      color: $ink-2;
     }
   }
 
@@ -537,98 +683,27 @@ $status-running: v.$color-accent;
     margin: 0;
     padding: 12px 14px;
     overflow: auto;
-    border: 1px solid v.$color-border-soft;
-    border-radius: 6px;
-    background: v.$color-surface;
-    font-family: v.$font-mono;
-    font-size: 12px;
+    border: 1px solid $line;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.4);
+    color: $ink-2;
+    font-family: $mono;
+    font-size: 11.5px;
     line-height: 1.55;
     white-space: pre-wrap;
-    overflow-wrap: anywhere;
+    word-break: break-word;
 
     &.is-error {
-      border-color: rgba(248, 81, 73, 0.4);
-      color: #ffa198;
+      border-color: color-mix(in srgb, #{$fail} 40%, transparent);
+      color: color-mix(in srgb, #{$fail} 70%, #{$ink});
     }
   }
 
-  // ── 좁은 화면 ─────────────────────────────────────────────────────────
-  @media (max-width: 900px) {
-    &__totals {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-    &__detail .batch-log__facts {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 560px) {
-    padding: 24px 16px 60px;
-
-    &__totals {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-    &__jobs {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    &__facts,
-    &__detail .batch-log__facts {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    &__grid th:first-child {
-      width: 70px;
-      font-size: 11px;
-    }
-  }
-}
-
-// ── /log 상단 탭(배치 로그 · 사용 분석) ─────────────────────────────────
-.batch-log {
-  &__tabs {
-    display: flex;
-    gap: 4px;
-    margin-bottom: 24px;
-    border-bottom: 1px solid v.$color-border-soft;
-
-    button {
-      all: unset;
-      padding: 10px 14px;
-      margin-bottom: -1px;
-      border-bottom: 2px solid transparent;
-      font-size: 14px;
-      font-weight: 500;
-      color: v.$color-text-muted;
-      cursor: pointer;
-
-      &:hover {
-        color: v.$color-text;
-      }
-      &.is-active {
-        color: v.$color-text;
-        border-bottom-color: v.$color-accent;
-      }
-      &:focus-visible {
-        outline: 2px solid v.$color-accent;
-      }
-    }
-  }
-
-  &__title {
-    margin: 0 0 6px;
-    font-size: 20px;
-    font-weight: 600;
-  }
-
-  &__card-desc {
-    margin: 4px 0 12px;
-  }
-
-  // 날짜별 · 탭 이동 흐름을 나란히.
   &__columns {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-    margin-bottom: 16px;
+    gap: 10px;
+    margin-bottom: 14px;
 
     .batch-log__card {
       margin-bottom: 0;
@@ -642,10 +717,326 @@ $status-running: v.$color-accent;
   &__flows {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px 14px;
+    gap: 6px;
     margin: 0;
-    font-size: 12.5px;
-    color: v.$color-text-muted;
+
+    span {
+      padding: 3px 8px;
+      border: 1px solid $line-2;
+      border-radius: 2px;
+      color: $ink-2;
+      font-size: 11px;
+    }
+  }
+}
+
+// ── 맨 위 줄 — 퍼셉트론 .pn-top ─────────────────────────────────────────
+.log-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 58px;
+  border-bottom: 1px solid $line;
+  white-space: nowrap;
+
+  &__brand {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+
+    i {
+      margin: 0 6px;
+      color: $accent;
+      font-style: normal;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: 4px;
+
+    button {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 58px;
+      padding: 0 16px;
+      border: none;
+      background: transparent;
+      color: $ink-3;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s;
+
+      small {
+        color: $ink-4;
+        font-size: 10px;
+        font-weight: 700;
+        transition: color 0.15s;
+      }
+
+      // 고른 탭 — 아래에 그 탭의 색 선이 빛난다.
+      &::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        bottom: -1px;
+        left: 12px;
+        height: 2px;
+        background: var(--tab-accent);
+        box-shadow: 0 0 10px var(--tab-accent);
+        opacity: 0;
+        transform: scaleX(0.4);
+        transition:
+          opacity 0.2s,
+          transform 0.25s ease;
+      }
+
+      &:hover {
+        color: $ink;
+      }
+      &.is-active {
+        color: $ink;
+
+        small {
+          color: var(--tab-accent);
+        }
+        &::after {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      &:focus-visible {
+        outline: 1px solid var(--tab-accent);
+        outline-offset: -6px;
+      }
+    }
+  }
+
+  &__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: $ink-3;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+
+    i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: $accent;
+      box-shadow: 0 0 8px $accent;
+      animation: log-blink 1.6s ease-in-out infinite;
+    }
+    b {
+      color: $ink;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  @media (max-width: 760px) {
+    &__live {
+      display: none;
+    }
+  }
+}
+
+.log-main {
+  padding-bottom: 40px;
+}
+
+// ── 맨 아래 줄 — 퍼셉트론 .pn-foot ──────────────────────────────────────
+.log-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0 24px;
+  border-top: 1px solid $line;
+  color: $ink-3;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+
+  b {
+    color: $ink;
+    font-weight: 800;
+  }
+}
+
+// ── 흐름 그림 카드 — 퍼셉트론 아래 패널(.pn-panel)의 머리 ─────────────
+.log-flow {
+  padding: 12px 14px 8px;
+  overflow: hidden;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-bottom: 4px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+
+    b {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 800;
+
+      i {
+        @include square;
+      }
+    }
+    span {
+      color: $accent;
+      letter-spacing: 0.02em;
+    }
+  }
+}
+
+// ── 신호 그래프(signal-graph.tsx) ──────────────────────────────────────
+.sig-graph {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: $mono;
+
+  .sig-dot {
+    fill: rgba(255, 255, 255, 0.07);
+  }
+}
+
+.sig-edge {
+  --tone: #{$ink-4};
+
+  &.is-ok {
+    --tone: #{$ok};
+  }
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  &.is-accent {
+    --tone: var(--log-accent);
+  }
+
+  &__line {
+    fill: none;
+    stroke: color-mix(in srgb, var(--tone) 55%, transparent);
+
+    &.is-dashed {
+      stroke-dasharray: 4 5;
+    }
+  }
+  &.is-idle .sig-edge__line {
+    stroke: rgba(255, 255, 255, 0.13);
+  }
+  &.is-fail .sig-edge__line {
+    stroke-dasharray: 5 4;
+    animation: log-dash 1.2s linear infinite;
+  }
+
+  &__label {
+    fill: $ink-2;
+    font-size: 10px;
+    font-weight: 700;
+    paint-order: stroke;
+    stroke: $bg;
+    stroke-width: 4px;
+  }
+}
+
+.sig-pulse {
+  fill: var(--tone);
+}
+.sig-edge.is-idle .sig-pulse {
+  fill: $ink;
+}
+
+.sig-node {
+  --tone: #{$ink-3};
+
+  &.is-ok {
+    --tone: #{$ok};
+  }
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  &.is-accent {
+    --tone: var(--log-accent);
+  }
+
+  &__box {
+    fill: #14131a;
+    stroke: rgba(255, 255, 255, 0.1);
+    transition: stroke 0.15s;
+  }
+  &__bar {
+    fill: var(--tone);
+  }
+  &__lamp {
+    fill: var(--tone);
+  }
+  &.is-fail .sig-node__lamp,
+  &.is-run .sig-node__lamp {
+    animation: log-blink 1.1s ease-in-out infinite;
+  }
+  &.is-idle .sig-node__lamp {
+    fill: $ink-4;
+  }
+  &__label {
+    fill: $ink;
+    font-size: 11.5px;
+    font-weight: 700;
+  }
+  &__sub {
+    fill: $ink-3;
+    font-size: 9.5px;
+  }
+  &__tag {
+    fill: var(--tone);
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+  &.is-idle .sig-node__tag {
+    fill: $ink-2;
+  }
+  &.is-fail .sig-node__box {
+    fill: color-mix(in srgb, #{$fail} 9%, #14131a);
+  }
+
+  &.is-clickable {
+    cursor: pointer;
+    outline: none;
+
+    &:hover .sig-node__box,
+    &:focus-visible .sig-node__box {
+      stroke: $accent-dim;
+    }
+  }
+  &.is-active .sig-node__box {
+    fill: color-mix(in srgb, var(--log-accent) 14%, #14131a);
+    stroke: $accent;
+    stroke-width: 1.5;
   }
 }
 
@@ -655,7 +1046,8 @@ $status-running: v.$color-accent;
     display: grid;
     grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
     gap: 16px;
-    padding: 6px 4px;
+    padding: 14px 16px 16px;
+    border-left: 2px solid $accent;
     white-space: normal;
 
     @media (max-width: 900px) {
@@ -666,21 +1058,21 @@ $status-running: v.$color-accent;
   &__facts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 16px;
+    gap: 10px 16px;
     margin: 0;
 
     div {
       min-width: 0;
     }
-
     dt {
-      font-size: 11.5px;
-      color: v.$color-text-muted;
+      color: $ink-3;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
     }
-
     dd {
-      margin: 2px 0 0;
-      font-size: 12.5px;
+      margin: 3px 0 0;
+      color: $ink;
+      font-size: 12px;
       overflow-wrap: anywhere;
     }
   }
@@ -688,51 +1080,54 @@ $status-running: v.$color-accent;
   &__steps {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
   }
 
   &__step {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 6px;
+    gap: 7px;
     padding: 12px 14px;
-    border: 1px solid v.$color-border-soft;
-    border-radius: 8px;
+    border: 1px solid $line;
+    border-top: 2px solid $accent-dim;
+    background: $panel;
 
     h3 {
       display: flex;
       align-items: center;
       gap: 8px;
       margin: 0;
-      font-size: 13px;
-      font-weight: 600;
+      color: $ink;
+      font-size: 12px;
+      letter-spacing: 0.02em;
     }
-
     a {
-      font-size: 12.5px;
-      color: v.$color-accent;
+      font-size: 12px;
     }
   }
 
   &__sms {
     margin: 0;
-    font-size: 12.5px;
-    line-height: 1.5;
-    color: v.$color-text-muted;
+    padding: 8px 10px;
+    border-left: 2px solid $line-2;
+    color: $ink-2;
+    font-size: 12px;
+    line-height: 1.55;
     white-space: pre-wrap;
   }
 
   &__attempts {
     margin: 0;
-    font-size: 12px;
-    color: v.$color-text-muted;
+    color: $ink-3;
+    font-size: 11.5px;
   }
 
   &__settings {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    border-top: 2px solid $accent;
 
     h2 {
       margin: 0;
@@ -743,47 +1138,41 @@ $status-running: v.$color-accent;
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
+    font-size: 12.5px;
     cursor: pointer;
+
+    input {
+      accent-color: var(--log-accent);
+    }
   }
 
   &__field {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    font-size: 12px;
-    color: v.$color-text-muted;
+    color: $ink-3;
+    font-size: 11px;
 
     input,
     textarea {
-      box-sizing: border-box;
+      @include field;
       width: 100%;
       max-width: 640px;
       padding: 8px 10px;
-      border: 1px solid v.$color-border;
-      border-radius: 6px;
-      background: v.$color-surface-raised;
-      color: v.$color-text;
-      font: inherit;
-      font-size: 13px;
     }
-
     input {
       max-width: 240px;
     }
-
     // 장문 제목은 한글 20자까지 들어가게 조금 넓게.
     input:not([inputmode='numeric']) {
       max-width: 360px;
     }
-
     [aria-invalid='true'] {
-      border-color: $status-failed;
+      border-color: $fail;
     }
-
     textarea {
       resize: vertical;
-      line-height: 1.5;
+      line-height: 1.55;
     }
   }
 
@@ -794,15 +1183,17 @@ $status-running: v.$color-accent;
     max-width: 640px;
     margin: 0;
     padding: 10px 12px;
-    border: 1px dashed v.$color-border;
-    border-radius: 6px;
-    font-size: 13px;
-    line-height: 1.5;
+    border: 1px dashed $line-2;
+    border-radius: 3px;
+    color: $ink;
+    font-size: 12.5px;
+    line-height: 1.55;
     white-space: pre-wrap;
 
     span {
-      font-size: 11.5px;
-      color: v.$color-text-muted;
+      color: $accent;
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
     }
   }
 
@@ -811,10 +1202,8 @@ $status-running: v.$color-accent;
     align-items: center;
     gap: 12px;
   }
-}
 
-// 문의 접수 표 위 도구 줄 — 검색 · 기기 필터 · 건수 · 선택 삭제.
-.inquiry-log {
+  // 표 위 도구 줄 — 검색 · 기기 필터 · 건수 · 선택 삭제.
   &__toolbar {
     display: flex;
     flex-wrap: wrap;
@@ -831,37 +1220,21 @@ $status-running: v.$color-accent;
     svg {
       position: absolute;
       left: 10px;
-      width: 16px;
-      height: 16px;
-      color: v.$color-text-muted;
+      width: 15px;
+      height: 15px;
+      color: $ink-3;
       pointer-events: none;
     }
-
     input {
-      box-sizing: border-box;
+      @include field;
       width: 260px;
-      height: 36px;
-      padding: 0 12px 0 34px;
-      border: 1px solid v.$color-border;
-      border-radius: 6px;
-      background: v.$color-surface-raised;
-      color: v.$color-text;
-      font: inherit;
-      font-size: 13px;
-
-      &::placeholder {
-        color: v.$color-text-faint;
-      }
-
-      &:focus {
-        outline: none;
-        border-color: v.$color-accent;
-      }
+      height: 32px;
+      padding: 0 12px 0 32px;
     }
   }
 
   &__count {
-    font-size: 12.5px;
+    font-size: 11.5px;
   }
 
   &__bulk {
@@ -869,138 +1242,68 @@ $status-running: v.$color-accent;
     align-items: center;
     gap: 10px;
     margin-left: auto;
-    font-size: 13px;
+    font-size: 12px;
   }
 
   &__delete {
-    height: 32px;
-    padding: 0 14px;
-    border: 1px solid $status-failed;
-    border-radius: 6px;
-    background: transparent;
-    color: $status-failed;
-    font: inherit;
-    font-size: 13px;
-    cursor: pointer;
+    @include line-button;
+    border-color: color-mix(in srgb, #{$fail} 55%, transparent);
+    color: $fail;
 
     &:hover:not(:disabled) {
-      background: color-mix(in srgb, #{$status-failed} 12%, transparent);
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: default;
+      background: color-mix(in srgb, #{$fail} 12%, transparent);
     }
   }
 
   &__check-cell {
     width: 28px;
-    padding-right: 0 !important;
   }
 
-  // 체크박스 — 화면 배색에 맞춰 직접 그린다(cmip 목록 표와 같은 모양).
   &__check {
-    appearance: none;
-    position: relative;
-    display: block;
-    width: 15px;
-    height: 15px;
+    width: 14px;
+    height: 14px;
     margin: 0;
-    border: 1px solid v.$color-border;
-    border-radius: 3px;
-    background: v.$color-surface-raised;
+    accent-color: var(--log-accent);
     cursor: pointer;
-
-    &::after {
-      content: '';
-      position: absolute;
-      left: 4px;
-      top: 1px;
-      width: 4px;
-      height: 8px;
-      border: solid #fff;
-      border-width: 0 2px 2px 0;
-      transform: rotate(45deg) scale(0);
-      transition: transform 0.12s ease;
-    }
-
-    &:hover {
-      border-color: v.$color-text-muted;
-    }
-
-    &:checked,
-    &:indeterminate {
-      border-color: v.$color-accent;
-      background: v.$color-accent;
-    }
-
-    &:checked::after {
-      transform: rotate(45deg) scale(1);
-    }
-
-    // 일부만 선택 — 가운데 가로줄.
-    &:indeterminate::after {
-      left: 3px;
-      top: 6px;
-      width: 7px;
-      height: 0;
-      border-width: 0 0 2px 0;
-      transform: none;
-    }
-
-    &:focus-visible {
-      outline: 2px solid v.$color-accent;
-      outline-offset: 2px;
-    }
   }
 }
 
-// 기기 필터 드롭다운(device-select.tsx).
+// ── 기기 고르기(device-select.tsx) ──────────────────────────────────────
 .inquiry-device {
   position: relative;
 
   &__button {
+    @include field;
     display: flex;
     align-items: center;
     gap: 8px;
-    box-sizing: border-box;
-    height: 36px;
+    height: 32px;
     min-width: 160px;
-    padding: 0 12px;
-    border: 1px solid v.$color-border;
-    border-radius: 6px;
-    background: v.$color-surface-raised;
-    color: v.$color-text-muted;
-    font: inherit;
-    font-size: 13px;
+    padding: 0 10px;
+    color: $ink-2;
     cursor: pointer;
 
     span {
       flex: 1;
       text-align: left;
     }
-
     svg {
-      width: 14px;
-      height: 14px;
+      width: 13px;
+      height: 13px;
       transition: transform 0.15s ease;
     }
-
     &:hover {
-      border-color: v.$color-text-muted;
+      border-color: $ink-3;
     }
-
     &.is-open svg {
       transform: rotate(180deg);
     }
-
     &.is-active {
-      border-color: v.$color-accent;
-      color: v.$color-accent;
+      border-color: $accent;
+      color: $accent;
     }
-
     &:focus-visible {
-      outline: 2px solid v.$color-accent;
+      outline: 1px solid $accent;
       outline-offset: 2px;
     }
   }
@@ -1012,12 +1315,12 @@ $status-running: v.$color-accent;
     z-index: 20;
     min-width: 200px;
     margin: 0;
-    padding: 6px;
+    padding: 4px;
     list-style: none;
-    background: v.$color-surface-raised;
-    border: 1px solid v.$color-border;
-    border-radius: 8px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    border: 1px solid $line-2;
+    border-radius: 3px;
+    background: #15141b;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6);
   }
 
   &__option {
@@ -1025,32 +1328,29 @@ $status-running: v.$color-accent;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 8px 10px;
-    border-radius: 5px;
-    font-size: 13px;
-    color: v.$color-text;
+    padding: 7px 10px;
+    border-radius: 2px;
+    color: $ink-2;
+    font-size: 12px;
     cursor: pointer;
 
     &.is-active {
-      background: rgba(255, 255, 255, 0.06);
+      background: rgba(255, 255, 255, 0.05);
+      color: $ink;
     }
-
     &.is-selected {
-      color: v.$color-accent;
-      font-weight: 600;
+      color: $accent;
     }
   }
 
   &__count {
-    font-size: 12px;
-    font-weight: 400;
-    color: v.$color-text-muted;
+    color: $ink-3;
+    font-size: 11px;
     font-variant-numeric: tabular-nums;
   }
 }
 
-// 화면 아래 가운데 알림 — 리드 관리자 토스트와 같은 모양(어두운 알약 +
-// 상태 점). 점 색만으로 구분하지 않도록 문구에 결과를 쓴다.
+// ── 토스트(toast.tsx) ─────────────────────────────────────────────────
 .log-toast {
   position: fixed;
   bottom: 24px;
@@ -1062,38 +1362,41 @@ $status-running: v.$color-accent;
   gap: 8px;
   width: max-content;
   max-width: calc(100vw - 32px);
+  font-family: $mono;
   transform: translateX(-50%);
   pointer-events: none;
 
   &__item {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    border: 1px solid v.$color-border;
-    border-radius: 8px;
-    background: #181819;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    color: v.$color-text;
-    font-size: 14px;
+    gap: 9px;
+    padding: 11px 16px;
+    border: 1px solid $line-2;
+    border-radius: 3px;
+    background: #15141b;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: $ink;
+    font-size: 12.5px;
     animation: log-toast-in 0.18s ease-out;
 
     &.is-info .log-toast__dot {
-      background: v.$color-accent;
-      animation: log-toast-pulse 1s ease-in-out infinite;
+      background: $run;
+      animation: log-blink 1s ease-in-out infinite;
     }
     &.is-success .log-toast__dot {
-      background: $status-success;
+      background: $ok;
+      box-shadow: 0 0 8px $ok;
     }
     &.is-error .log-toast__dot {
-      background: $status-failed;
+      background: $fail;
+      box-shadow: 0 0 8px $fail;
     }
   }
 
   &__dot {
     flex-shrink: 0;
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
   }
 }
@@ -1105,15 +1408,31 @@ $status-running: v.$color-accent;
   }
 }
 
-@keyframes log-toast-pulse {
+@keyframes log-blink {
   50% {
-    opacity: 0.35;
+    opacity: 0.3;
+  }
+}
+
+@keyframes log-dash {
+  to {
+    stroke-dashoffset: -18;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .batch-log,
   .log-toast__item,
-  .log-toast__item.is-info .log-toast__dot {
-    animation: none;
+  .log-toast__item.is-info .log-toast__dot,
+  .log-top__live i,
+  .batch-log__badge.is-running span,
+  .batch-log__slot.is-running,
+  .sig-node__lamp,
+  .sig-edge__line {
+    transition: none;
+    animation: none !important;
+  }
+  .sig-pulse {
+    display: none;
   }
 }

@@ -12,6 +12,7 @@ import {
   useUsageViewModel,
   type UsageAppFilter,
 } from '../view-model/use-usage-view-model'
+import { UsageFlow } from './flow-graphs'
 
 const APP_OPTIONS: readonly { id: UsageAppFilter; label: string }[] = [
   { id: 'all', label: '전체' },
@@ -160,6 +161,24 @@ export function UsagePanel() {
         </section>
       ) : (
         <>
+          <section className="batch-log__card log-flow">
+            <header className="log-flow__head">
+              <b>
+                <i aria-hidden="true" />
+                NAVIGATION
+              </b>
+              <span>
+                사용 시간 상위 탭 · 선 굵기는 이동 횟수 · 숫자는 이동 횟수
+              </span>
+            </header>
+            <UsageFlow
+              byView={byView}
+              flows={flows}
+              entries={entries}
+              showApp={showApp}
+            />
+          </section>
+
           <section className="batch-log__card">
             <h2>탭별 사용량</h2>
             <p className="batch-log__muted batch-log__card-desc">

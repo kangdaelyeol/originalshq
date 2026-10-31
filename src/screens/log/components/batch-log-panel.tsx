@@ -1,6 +1,7 @@
 import { PERIOD_OPTIONS } from '../constants'
 import { formatAgo, formatDateTime, type SlotState } from '../utils/batch-run'
 import { useBatchLogViewModel } from '../view-model/use-batch-log-view-model'
+import { BatchFlow } from './flow-graphs'
 import { JobCard } from './job-card'
 import { RunTable } from './run-table'
 import { StatusBadge } from './status-badge'
@@ -108,6 +109,26 @@ export function BatchLogPanel() {
                 : '-'}
           </strong>
         </div>
+      </section>
+
+      <section className="batch-log__card log-flow">
+        <header className="log-flow__head">
+          <b>
+            <i aria-hidden="true" />
+            PIPELINE
+          </b>
+          <span>
+            {state.jobFilter === 'all'
+              ? '작업을 누르면 아래 실행 내역을 그 작업만 보여 줍니다'
+              : '같은 작업을 다시 누르면 전체로 돌아갑니다'}
+          </span>
+        </header>
+        <BatchFlow
+          state={state}
+          onSelectJob={(id) =>
+            actions.changeJobFilter(state.jobFilter === id ? 'all' : id)
+          }
+        />
       </section>
 
       <div className="batch-log__legend" aria-label="상태 범례">
