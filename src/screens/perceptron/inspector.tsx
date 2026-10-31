@@ -4,11 +4,18 @@ import {
   GATE,
   HEAD_ID,
   type Answer,
+  type Graph,
   type NodeDef,
   type NodeRow,
 } from './data'
 import { useEngine, type Engine } from './engine'
-import { previewPrompt } from './graph-client'
+import {
+  listAnalyzableAds,
+  previewAdPrompt,
+  previewPrompt,
+  type AdListItem,
+  type AdPreviewResult,
+} from './graph-client'
 import {
   editNode,
   fallbackResult,
@@ -39,6 +46,117 @@ const Field = ({
     {hint && <p className="pn-insp__hint">{hint}</p>}
   </div>
 )
+
+/**
+ * 실제 소재로 만들어 보기 — 집행 중인 Meta 광고를 하나 골라, 지금 케이스의
+ * 경로로 그 광고의 실제 값(영상·문구·타겟팅·14일 성과·광고 설정·테스트)을 넣은
+ * 프롬프트를 서버에서 만든다. Claude는 부르지 않는다.
+ */
+function AdPreview({ graph, caseId }: { graph: Graph; caseId: number }) {
+  const [ads, setAds] = useState<AdListItem[] | null>(null)
+  const [adId, setAdId] = useState('')
+  const [busy, setBusy] = useState<'list' | 'preview' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [result, setResult] = useState<AdPreviewResult | null>(null)
+
+  const loadAds = async () => {
+    setBusy('list')
+    setError(null)
+    try {
+      const { ads } = await listAnalyzableAds()
+      // 영상 소재부터.
+      const sorted = [...ads].sort(
+        (a, b) => Number(b.hasVideo) - Number(a.hasVideo),
+      )
+      setAds(sorted)
+      setAdId(sorted[0]?.adId ?? '')
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : '광고 목록을 받지 못했습니다',
+      )
+    }
+    setBusy(null)
+  }
+
+  const run = async () => {
+    if (!adId) return
+    setBusy('preview')
+    setError(null)
+    try {
+      setResult(await previewAdPrompt(graph, adId, [caseId]))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '미리보기에 실패했습니다')
+    }
+    setBusy(null)
+  }
+
+  const got = result?.cases[0]
+  return (
+    <div className="pn-insp__ad">
+      {ads === null ? (
+        <button
+          type="button"
+          className="pn-insp__ghost"
+          disabled={busy !== null}
+          onClick={() => void loadAds()}
+        >
+          {busy === 'list' ? '광고 불러오는 중…' : '집행 중인 광고 불러오기'}
+        </button>
+      ) : (
+        <div className="pn-insp__row">
+          <select value={adId} onChange={(e) => setAdId(e.target.value)}>
+            {ads.map((a) => (
+              <option key={a.adId} value={a.adId}>
+                {a.hasVideo ? '[영상] ' : '[이미지] '}
+                {a.adName} · {a.adsetName}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="pn-insp__primary"
+            disabled={!adId || busy !== null}
+            onClick={() => void run()}
+          >
+            {busy === 'preview' ? '만드는 중…' : '이 소재로 만들기'}
+          </button>
+        </div>
+      )}
+      {error && <p className="pn-insp__server is-error">{error}</p>}
+      {result && got && (
+        <>
+          <div className="pn-insp__adhead">
+            {result.ad.thumbnailUrl && (
+              <img src={result.ad.thumbnailUrl} alt="" loading="lazy" />
+            )}
+            <div>
+              <b>{result.ad.name}</b>
+              <span>
+                {result.ad.hasVideo
+                  ? `영상 · 프레임 ${result.ad.frameTimes.length}장`
+                  : '이미지'}{' '}
+                · 입력 {fmtTokens(got.cost.inTokens)} tok · 응답 ≈{' '}
+                {fmtTokens(got.cost.outTokens)} tok ·{' '}
+                {got.hold ? '보류 $0' : fmtUsd(got.cost.total)}
+              </span>
+            </div>
+          </div>
+          {got.missing.length > 0 && (
+            <p className="pn-insp__server is-diff">
+              값이 없어 '—'로 둔 자리: {got.missing.join(', ')}
+            </p>
+          )}
+          {result.notes.map((n) => (
+            <p key={n} className="pn-insp__hint">
+              · {n}
+            </p>
+          ))}
+          <pre className="pn-insp__prompt">{got.prompt.join('\n')}</pre>
+        </>
+      )}
+    </div>
+  )
+}
 
 /** 카드에 보이는 값 줄은 3줄까지(카드 높이). */
 const MAX_CARD_ROWS = 3
@@ -341,6 +459,15 @@ export function Inspector({
                 {server.text}
               </p>
             )}
+          </Field>
+        )}
+
+        {isHead && (
+          <Field
+            label="실제 소재로 만들어 보기"
+            hint="집행 중인 Meta 광고 하나의 실제 값(영상·문구·타겟팅·14일 성과·광고 설정·테스트)이 입력 노드 조각의 {이름} 자리에 들어갑니다 — Claude는 부르지 않습니다"
+          >
+            <AdPreview graph={model.graph} caseId={c.id} />
           </Field>
         )}
 

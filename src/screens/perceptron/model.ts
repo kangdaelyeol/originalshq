@@ -361,18 +361,34 @@ interface Cache {
 const defaults = (): Graph =>
   structuredClone({ layers: DEFAULT_LAYERS, cases: DEFAULT_CASES })
 
-/** 예전 망 — 나중에 생긴 값(입력 토큰·특징 답·응답 토큰)은 기본값으로 채운다. */
+/** 입력 노드의 예전 기본 조각(고정 문구) — 손대지 않았으면 새 기본 조각(실제
+ * 소재 값이 들어가는 {이름} 자리 틀)으로 바꾼다. */
+const OLD_INPUT_PROMPTS: Record<string, string> = {
+  'in:video': '- 소재: F2U 듀얼레이저 영상 · 15.1s · 9:16 · 프레임 34장',
+  'in:setting': '- 광고셋: 목표 문의 · 일 예산 50,000원 · 소재 세트 F2U 영상 B',
+  'in:perf': '- 성과 14일: CPA 48,352원 · CTR 1.49% · CVR 0.75%',
+  'in:test': '- 매체별 테스트: 구간 A가 CPA −11.8%',
+  'in:landing': '- 랜딩: 무료 상담 오퍼 · CTA "상담 신청" · 로딩 2.1s',
+  'in:audience': '- 오디언스: broad · 기존 고객 제외 · KR',
+  'in:brand': '- 브랜드: 친근·전문 톤 · "최저가" 금지 · 로고는 3초 안',
+  'in:library': '- 소재 라이브러리: 37개 · 컨셉 12개 · 중복 4개',
+}
+
+/** 예전 망 — 나중에 생긴 값(입력 토큰·특징 답·응답 토큰)은 기본값으로 채우고,
+ * 손대지 않은 입력 조각은 새 틀로 바꾼다. */
 const migrate = (g: Graph): Graph => {
-  const tokens = new Map(
-    DEFAULT_LAYERS.flat().map((n) => [n.id, n.tokens] as const),
-  )
+  const base = new Map(DEFAULT_LAYERS.flat().map((n) => [n.id, n] as const))
   return {
     layers: g.layers.map((l) =>
-      l.map((n) =>
-        n.tokens === undefined && tokens.get(n.id) !== undefined
-          ? { ...n, tokens: tokens.get(n.id) }
-          : n,
-      ),
+      l.map((n) => {
+        const d = base.get(n.id)
+        let next = n
+        if (n.tokens === undefined && d?.tokens !== undefined)
+          next = { ...next, tokens: d.tokens }
+        if (d && OLD_INPUT_PROMPTS[n.id] === n.prompt)
+          next = { ...next, prompt: d.prompt }
+        return next
+      }),
     ),
     cases: g.cases.map((c, i) => ({
       ...c,
@@ -488,15 +504,18 @@ export class GraphStore {
         return
       }
       if (draft && graph) {
+        // 받은 망을 새 구조로 옮겼으면(예전 고정 조각 → 틀 등) 그대로 다시 저장한다.
+        const changed = JSON.stringify(graph) !== JSON.stringify(draft.graph)
         this.model = buildModel(graph, this.model, {
           version: draft.version,
           savedAt: draft.savedAt,
           published: state.published,
-          status: 'synced',
+          status: changed ? 'pending' : 'synced',
           error: null,
         })
-        writeCache({ graph, version: draft.version })
+        writeCache({ graph, version: draft.version, dirty: changed })
         this.emit()
+        if (changed) this.schedule(0)
         return
       }
       this.setMeta({

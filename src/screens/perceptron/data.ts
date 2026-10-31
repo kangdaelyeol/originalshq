@@ -67,7 +67,7 @@ const BASE_LAYERS: Layers = [
         ['ratio', '9:16'],
       ],
       'out:context',
-      '- 소재: F2U 듀얼레이저 영상 · 15.1s · 9:16 · 프레임 34장',
+      '- 소재: {name} · 길이 {length} · {ratio} · 프레임 {frames}장\n- 광고 문구: {copy}',
     ),
     n(
       'in:setting',
@@ -78,7 +78,7 @@ const BASE_LAYERS: Layers = [
         ['set', 'F2U 영상 B'],
       ],
       'out:context',
-      '- 광고셋: 목표 문의 · 일 예산 50,000원 · 소재 세트 F2U 영상 B',
+      '- 광고셋: 목표 {goal} · 예산 {budget} · 소재 세트 {set}',
     ),
     n(
       'in:perf',
@@ -89,7 +89,7 @@ const BASE_LAYERS: Layers = [
         ['CVR', '0.75 %'],
       ],
       'out:context',
-      '- 성과 14일: CPA 48,352원 · CTR 1.49% · CVR 0.75%',
+      '- 성과 14일: CPA {CPA}원 · CTR {CTR} · CVR {CVR}',
     ),
     n(
       'in:test',
@@ -100,7 +100,7 @@ const BASE_LAYERS: Layers = [
         ['delta', '−11.8 %'],
       ],
       'out:context',
-      '- 매체별 테스트: 구간 A가 CPA −11.8%',
+      '- 매체별 테스트: 구간 {segments}개 · 우세 {winner} · 차이 {delta}',
     ),
     n(
       'in:landing',
@@ -111,7 +111,7 @@ const BASE_LAYERS: Layers = [
         ['load', '2.1 s'],
       ],
       'out:context',
-      '- 랜딩: 무료 상담 오퍼 · CTA "상담 신청" · 로딩 2.1s',
+      '- 랜딩: 오퍼 "{offer}" · CTA "{cta}" · 링크 {link}',
     ),
     n(
       'in:audience',
@@ -122,7 +122,7 @@ const BASE_LAYERS: Layers = [
         ['geo', 'KR'],
       ],
       'out:context',
-      '- 오디언스: broad · 기존 고객 제외 · KR',
+      '- 오디언스: {mode} · 제외 {exclude} · {geo}',
     ),
     n(
       'in:brand',
@@ -133,7 +133,7 @@ const BASE_LAYERS: Layers = [
         ['logo', '≤ 3 s'],
       ],
       'out:constraints',
-      '- 브랜드: 친근·전문 톤 · "최저가" 금지 · 로고는 3초 안',
+      '- 브랜드: 톤 {tone} · 금지 "{banned}" · 로고 {logo}',
     ),
     n(
       'in:library',
@@ -144,7 +144,7 @@ const BASE_LAYERS: Layers = [
         ['dupes', '4'],
       ],
       'out:context',
-      '- 소재 라이브러리: 37개 · 컨셉 12개 · 중복 4개',
+      '- 소재 라이브러리: {total}개 · 컨셉 {concepts}개 · 중복 {dupes}개',
     ),
   ],
   // 02 은닉층 1 — 정해진 형식의 질문(특징)
