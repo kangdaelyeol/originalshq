@@ -183,3 +183,44 @@ export const sameDayRecordCount = (
     (record) => toDatetimeLocalValue(record.at).slice(0, 10) === day,
   ).length
 }
+
+/** 보낼 곳 리드의 기록 한 줄 — 모달에서 그 리드에 무엇이 있는지 간략히 보여준다. */
+export interface LeadRecordRow {
+  key: string
+  kind: MondayCapiKind
+  /** YYYY-MM-DD HH:mm(한국 시간). */
+  at: string
+  device: string
+  /** 구매만. */
+  price: number | null
+  /** 지금 보내려는 것과 같은 종류·같은 날 — 중복 전송 후보. */
+  sameDay: boolean
+}
+
+/** 리드의 상담·구매를 최근 것부터 — 보내려는 시각(at)과 같은 날·같은 종류는
+ * 표시해 둔다(sameDayRecordCount와 같은 기준). at이 NaN이면 표시하지 않는다. */
+export const leadRecordRows = (
+  lead: Lead,
+  kind: MondayCapiKind,
+  at: number,
+): LeadRecordRow[] => {
+  const day = Number.isNaN(at) ? null : toDatetimeLocalValue(at).slice(0, 10)
+  const row = (
+    recordKind: MondayCapiKind,
+    record: { id: string; at: number; device: string; price?: number },
+  ): LeadRecordRow => {
+    const local = toDatetimeLocalValue(record.at)
+    return {
+      key: `${recordKind}:${record.id}`,
+      kind: recordKind,
+      at: local.replace('T', ' ').slice(0, 16),
+      device: record.device,
+      price: record.price ?? null,
+      sameDay: recordKind === kind && local.slice(0, 10) === day,
+    }
+  }
+  return [
+    ...(lead.consultations ?? []).map((record) => row('consultation', record)),
+    ...(lead.purchases ?? []).map((record) => row('purchase', record)),
+  ].sort((a, b) => b.at.localeCompare(a.at))
+}

@@ -8,6 +8,7 @@ import { leadClient } from '@/screens/xtool-lead-manager/client'
 import {
   buildMondayCapiForm,
   findLeadByPhone,
+  leadRecordRows,
   sameDayRecordCount,
   type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
@@ -94,6 +95,9 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
     match && source && !Number.isNaN(formAt)
       ? sameDayRecordCount(match, source.kind, formAt)
       : 0
+  // 그 리드에 이미 있는 상담·구매 — 모달에서 간략히 보여준다.
+  const matchRecords =
+    match && source ? leadRecordRows(match, source.kind, formAt) : []
 
   const send = async () => {
     if (!source || sending) return
@@ -181,6 +185,7 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
       target,
       useExisting,
       sameDay,
+      matchRecords,
       sending,
       error,
       result,

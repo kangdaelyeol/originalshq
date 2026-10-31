@@ -21,6 +21,9 @@ type MondayCapi = ReturnType<typeof useMondayCapiViewModel>
 const META_EVENT = { consultation: 'Contact', purchase: 'Purchase' } as const
 
 // 조사 — 상담을/구매를, 상담이/구매가.
+// 보낼 곳 리드의 기록 — 최근 것부터 이만큼만, 나머지는 "외 n건".
+const RECORD_PREVIEW = 5
+
 const OBJECT = { consultation: '상담을', purchase: '구매를' } as const
 const SUBJECT = { consultation: '상담이', purchase: '구매가' } as const
 
@@ -87,6 +90,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
     target,
     useExisting,
     sameDay,
+    matchRecords,
     sending,
     error,
     result,
@@ -215,6 +219,31 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
                       label="보낼 곳"
                     />
                   </div>
+                  {matchRecords.length > 0 && (
+                    <ul className="monday_capi_records">
+                      {matchRecords.slice(0, RECORD_PREVIEW).map((record) => (
+                        <li
+                          key={record.key}
+                          className={record.sameDay ? 'is-same-day' : undefined}
+                        >
+                          <span className={`kind is-${record.kind}`}>
+                            {MONDAY_CAPI_KIND_LABEL[record.kind]}
+                          </span>
+                          <span className="at">{record.at}</span>
+                          <span className="device">{record.device}</span>
+                          <span className="price">
+                            {record.price !== null && formatWon(record.price)}
+                            {record.sameDay && ' · 같은 날'}
+                          </span>
+                        </li>
+                      ))}
+                      {matchRecords.length > RECORD_PREVIEW && (
+                        <li className="more">
+                          외 {matchRecords.length - RECORD_PREVIEW}건
+                        </li>
+                      )}
+                    </ul>
+                  )}
                   <p>
                     {useExisting
                       ? `리드 탭에 같은 번호의 리드가 있어 그 리드에 ${OBJECT[source.kind]} 더합니다. CAPI의 고객 정보(이름·이메일·fbc 등)는 그 리드에 저장된 값으로 보냅니다.`
