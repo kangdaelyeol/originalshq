@@ -1,0 +1,181 @@
+@use '../../../components/glass/styles/tokens' as *;
+
+// Monday 고객 상세 — 기록 카드 맨 아래의 "메모·파일"(monday-detail.tsx의
+// RecordUpdates). Monday 업데이트 창의 글·댓글과 첨부 파일.
+.monday_detail .monday_updates {
+  margin-top: 10px;
+}
+
+.monday_detail .monday_updates_toggle {
+  all: unset;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  color: var(--glass-link);
+  font-size: 12.5px;
+  cursor: pointer;
+
+  &:hover {
+    background: $hover-bg;
+  }
+  &:focus-visible {
+    outline: 2px solid var(--glass-link);
+  }
+
+  .count {
+    padding: 0 7px;
+    border-radius: 999px;
+    background: $fill-2;
+    color: $text-2;
+    font-size: 11.5px;
+  }
+}
+
+.monday_detail .monday_updates_body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.monday_detail .monday_updates_empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 2px;
+  color: $text-3;
+  font-size: 12.5px;
+}
+
+.monday_detail .monday_updates_retry {
+  all: unset;
+  color: var(--glass-link);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.monday_detail .monday_update {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--glass-sunken);
+}
+
+.monday_detail .monday_update_head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: $text-3;
+  font-size: 12px;
+
+  strong {
+    color: $text;
+    font-weight: 600;
+  }
+}
+
+.monday_detail .monday_update_text {
+  margin: 6px 0 0;
+  color: $text;
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.monday_detail .monday_update_replies {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0 0 0 12px;
+  list-style: none;
+  box-shadow: inset 2px 0 0 $fill-2;
+}
+
+// 첨부 — 이미지는 작은 정사각 미리보기, 영상은 카드 폭에 맞춰 재생기, 나머지는
+// 확장자·이름·크기 한 줄.
+.monday_detail .monday_assets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.monday_detail .monday_asset {
+  &.is-image {
+    display: block;
+    width: 96px;
+    height: 96px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: $fill-1;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  &.is-video {
+    width: 100%;
+    max-width: 420px;
+    margin: 0;
+
+    video {
+      display: block;
+      width: 100%;
+      max-height: 280px;
+      border-radius: 10px;
+      background: #000;
+    }
+    figcaption {
+      margin-top: 4px;
+      color: $text-3;
+      font-size: 12px;
+
+      a {
+        color: var(--glass-link);
+        text-decoration: none;
+      }
+    }
+  }
+
+  &.is-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: $fill-1;
+    color: $text;
+    font-size: 12.5px;
+    text-decoration: none;
+
+    &:hover {
+      background: $hover-bg;
+    }
+    .ext {
+      padding: 1px 6px;
+      border-radius: 6px;
+      background: $fill-2;
+      color: $text-2;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    .name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .size {
+      color: $text-3;
+    }
+  }
+}

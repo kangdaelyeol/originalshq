@@ -7,6 +7,19 @@ export interface MondayCustomerSummary {
   purchaseCount: number
   surveyCount: number
   sampleTestCount: number
+  /** 기술지원팀 기록 — 출장·AS·기술 문의·기타업무. */
+  fieldServiceCount: number
+  repairCount: number
+  techInquiryCount: number
+  techTaskCount: number
+  latestFieldServiceAt: string | null
+  latestRepairAt: string | null
+  latestTechInquiryAt: string | null
+  /** 아직 끝나지 않은 AS·기술 문의 건수. */
+  openRepairCount: number
+  openTechInquiryCount: number
+  /** AS 부품·공임 청구액 합계. */
+  repairAmount: number
   latestConsultationStatus: string | null
   latestConsultationAt: string | null
   latestVisitAt: string | null
@@ -223,6 +236,72 @@ export interface MondaySampleTest extends MondayRecordSource {
   assignee: string | null
 }
 
+/** 출장 1건(기술지원팀 출장업무 보드) — 설치·점검 방문. */
+export interface MondayFieldService extends MondayRecordSource {
+  /** 보드의 그룹(신규 출장 건 → 일정 조율 → 일정 확정 → 완료). */
+  stage: string | null
+  status: string | null
+  type: string | null
+  receivedAt: string | null
+  visitAt: string | null
+  region: string | null
+  address: string | null
+  assignee: string | null
+  notes: string | null
+  /** 설치 품목. */
+  items: Array<{ name: string; quantity: number | null; note: string | null }>
+}
+
+/** AS 1건(기술지원팀 AS 보드) — 수리. */
+export interface MondayRepair extends MondayRecordSource {
+  stage: string | null
+  status: string | null
+  device: string | null
+  serialNumber: string | null
+  symptom: string | null
+  result: string | null
+  address: string | null
+  assignee: string | null
+  receivedAt: string | null
+  completedAt: string | null
+  /** 청구한 부품·공임. */
+  parts: Array<{
+    name: string
+    part: string | null
+    sku: string | null
+    price: number | null
+    quantity: number | null
+    total: number
+  }>
+  amount: number
+}
+
+/** 기술 문의 1건(기술지원팀 아톡문의 보드). */
+export interface MondayTechInquiry extends MondayRecordSource {
+  stage: string | null
+  status: string | null
+  deviceSeries: string | null
+  device: string | null
+  type: string | null
+  content: string | null
+  resolution: string | null
+  assignee: string | null
+  receivedAt: string | null
+}
+
+/** 기타업무 1건(기술지원팀 기타업무 보드) — 상세내용에 번호가 적힌 건만. */
+export interface MondayTechTask extends MondayRecordSource {
+  stage: string | null
+  status: string | null
+  requester: string | null
+  assignee: string | null
+  requestedAt: string | null
+  startedAt: string | null
+  dueAt: string | null
+  completedAt: string | null
+  details: string | null
+}
+
 /** 고객 1명의 전체 기록 — 상세 모달을 열 때 따로 받아온다. */
 export interface MondayCustomer extends MondayCustomerListItem {
   consultations: MondayConsultation[]
@@ -232,8 +311,47 @@ export interface MondayCustomer extends MondayCustomerListItem {
   issues: MondayPaymentIssue[]
   surveys: MondaySurvey[]
   sampleTests: MondaySampleTest[]
+  fieldServices: MondayFieldService[]
+  repairs: MondayRepair[]
+  techInquiries: MondayTechInquiry[]
+  techTasks: MondayTechTask[]
   itemCount: number
   boardIds: string[]
+}
+
+/** 기술지원팀 보드 종류. */
+export type MondayTechKind =
+  'fieldService' | 'repair' | 'techInquiry' | 'techTask'
+
+/** 기술 통계의 재료 1줄 — 기술지원팀 기록 하나(functions-xtool
+ * monday/tech.ts의 buildTechFacts). 번호가 없어 고객에 묶이지 못한 기록도
+ * 들어 있다. 날짜는 YYYY-MM-DD, 없으면 ''. */
+export interface MondayTechFact {
+  kind: MondayTechKind
+  itemId: string
+  boardName: string
+  name: string
+  url: string | null
+  /** 둘 이상이면 각자의 실적으로 센다. */
+  assignees: string[]
+  stage: string | null
+  status: string | null
+  /** 아직 첫 단계(신규 출장 건·새로 인입된 건·신규 접수 문의·진행전). */
+  isNew: boolean
+  done: boolean
+  /** 접수일(기타업무는 요청일). */
+  receivedAt: string
+  /** 끝난 날 — 출장은 방문일, AS·기타업무는 완료일. 비어 있으면 마지막
+   * 수정일로 대신하고 doneAtGuessed가 켜진다(기술 문의는 늘). */
+  doneAt: string
+  doneAtGuessed: boolean
+  visitAt: string
+  device: string | null
+  type: string | null
+  region: string | null
+  amount: number
+  /** 유효한 번호가 있어 통합 고객에 묶였는지. */
+  linked: boolean
 }
 
 /** 유효한 번호가 없어 통합에서 빠진 기록 — Monday에서 번호를 고쳐야 한다. */
@@ -386,4 +504,38 @@ export interface MondayGaTracking {
   /** 마지막 수집 뒤에 실패한 적이 있으면 그 이유. */
   lastError: string | null
   fetchedAt: number
+}
+
+/** Monday 첨부 파일 하나 — 주소는 한 시간쯤 뒤 만료된다(그래서 열 때마다 새로
+ * 받는다). */
+export interface MondayAsset {
+  id: string
+  name: string
+  /** 소문자 확장자(jpg, mp4…). */
+  extension: string | null
+  size: number | null
+  url: string | null
+  thumbnail: string | null
+}
+
+export interface MondayUpdateReply {
+  id: string
+  author: string | null
+  createdAt: string | null
+  text: string
+}
+
+/** Monday 기록의 업데이트(이름 칸을 누르면 열리는 메모) 하나. */
+export interface MondayUpdate extends MondayUpdateReply {
+  assets: MondayAsset[]
+  replies: MondayUpdateReply[]
+}
+
+/** 기록 하나의 메모·파일 — functions-xtool getMondayItemUpdates. */
+export interface MondayItemUpdates {
+  itemId: string
+  name: string
+  updates: MondayUpdate[]
+  /** 파일 컬럼(증상 자료·기기 사진 등)에 올린 파일. */
+  files: MondayAsset[]
 }

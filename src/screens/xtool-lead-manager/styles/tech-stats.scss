@@ -1,0 +1,231 @@
+@use '../../../components/glass/styles/tokens' as *;
+
+// 통계 탭 기술 통계(tech-section.tsx) — 왕 카드·담당자 막대·펼친 목록은 인입통계
+// CS팀 카드의 모양(.cs_team, .cs_metric_*, .cs_contrib — monday-trend.scss,
+// monday-inflow-glass.scss)을 그대로 쓰고, 여기에는 이 소주제에만 있는 것만.
+.xtool-main.monday_trend.glass_theme .tech_stats {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+
+  .cs_team {
+    gap: 16px;
+  }
+
+  // ── 왕 카드 ───────────────────────────────────────────────────────────
+  .tech_king {
+    display: flex;
+    flex-direction: column;
+
+    h2 {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+  }
+  .tech_king_board {
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: $fill-2;
+    color: $text-2;
+    font-size: 11.5px;
+    font-weight: 500;
+  }
+
+  // 1위 — 왕관과 이름을 크게.
+  .tech_king_top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 12px 0 14px;
+  }
+  .tech_king_crown {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--glass-warn) 22%, transparent);
+    color: var(--glass-warn);
+
+    svg {
+      width: 22px;
+      height: 22px;
+    }
+  }
+  .tech_king_who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    strong {
+      overflow: hidden;
+      color: $text;
+      font-size: 20px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      &.is-empty {
+        color: $text-3;
+        font-size: 16px;
+      }
+    }
+    span {
+      color: $text-3;
+      font-size: 12px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .tech_king_note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin: auto 0 0;
+    padding-top: 12px;
+    color: $text-3;
+    font-size: 12px;
+  }
+
+  // ── 기간 요약 ─────────────────────────────────────────────────────────
+  .tech_tiles {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin-bottom: 26px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .tech_note {
+    margin: 14px 0 0;
+    color: $text-3;
+    font-size: 12px;
+  }
+
+  .tech_empty {
+    margin: 12px 0 4px;
+    color: $text-3;
+    font-size: 13px;
+  }
+
+  // ── 표 ────────────────────────────────────────────────────────────────
+  .tech_assignee_table,
+  .tech_stale_table {
+    margin-top: 12px;
+
+    tr.is-muted td {
+      color: $text-3;
+    }
+    td:first-child,
+    th:first-child {
+      text-align: left;
+    }
+  }
+  .tech_stale_table td:nth-child(2),
+  .tech_stale_table th:nth-child(2) {
+    text-align: left;
+  }
+  .tech_stale_table td:nth-child(2) {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // ── 지금 진행 현황 ─────────────────────────────────────────────────────
+  .tech_stale_aside {
+    color: var(--glass-warn);
+  }
+  .tech_stale {
+    margin-top: 24px;
+
+    h3 {
+      margin: 0;
+      color: $text;
+      font-size: 14px;
+      font-weight: 600;
+    }
+  }
+  .tech_more_btn {
+    all: unset;
+    margin-top: 10px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: $fill-1;
+    color: var(--glass-link);
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:hover {
+      background: $hover-bg;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+    }
+  }
+
+  // ── 들어온 일의 내용 ───────────────────────────────────────────────────
+  .tech_breakdowns {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+  }
+  .tech_breakdown_total {
+    margin-left: 4px;
+    color: $text-3;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .tech_bar_rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr) 52px;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+
+      &.is-muted .tech_bar_name {
+        color: $text-3;
+      }
+    }
+  }
+  .tech_bar_name {
+    overflow: hidden;
+    color: $text;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .tech_bar_track {
+    height: 8px;
+    border-radius: 4px;
+    background: $track;
+    overflow: hidden;
+
+    span {
+      display: block;
+      height: 100%;
+      border-radius: 4px;
+      background: var(--glass-accent);
+    }
+  }
+  .tech_bar_value {
+    color: $text;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+  }
+  .tech_more {
+    margin: 10px 0 0;
+    color: $text-3;
+    font-size: 12px;
+  }
+}

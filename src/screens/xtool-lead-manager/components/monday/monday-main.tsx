@@ -150,6 +150,8 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
           customer={detail}
           failed={detailFailed}
           onClose={closeDetail}
+          itemUpdates={state.itemUpdates}
+          onLoadUpdates={actions.loadItemUpdates}
           onSendCapi={(source) => detail && capi.actions.open(detail, source)}
           sideList={
             <MondaySideList

@@ -10,6 +10,7 @@ import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import type {
   MondayCustomer,
   MondayCustomerListItem,
+  MondayItemUpdates,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
 } from '@/screens/xtool-lead-manager/entity'
@@ -25,12 +26,23 @@ import {
   type MondaySort,
 } from '@/screens/xtool-lead-manager/utils'
 
+/** 받아 둔 메모·파일을 다시 받지 않고 쓰는 시간 — Monday 파일 주소가 한 시간쯤
+ * 뒤 만료되므로 그보다 짧게. */
+const UPDATES_FRESH_MS = 45 * 60 * 1000
+
+/** 기록 하나의 메모·파일 받기 상태. */
+export type ItemUpdatesState =
+  | { status: 'loading'; at: number }
+  | { status: 'ready'; at: number; data: MondayItemUpdates }
+  | { status: 'error'; at: number; error: string }
+
 const CATEGORIES: MondayCategory[] = [
   'all',
   'consultation',
   'visit',
   'purchase',
   'online',
+  'tech',
   'balance',
   'multiple',
 ]
@@ -58,6 +70,15 @@ export const useMondayViewModel = (active: boolean) => {
   // 상세를 연 동안 받아 둔 고객 — 왼쪽 목록에서 방향키로 오가며 다시 볼 때
   // 바로 보이게. 상세를 닫으면 비운다(다시 열 땐 새로 받는다).
   const detailCache = useRef(new Map<string, MondayCustomer>())
+  // 상세에서 펼친 기록의 메모·파일 — itemId별. 파일 주소가 한 시간쯤 뒤
+  // 만료되어, 상세를 닫으면 비우고 오래된 것은 다시 받는다.
+  const [itemUpdates, setItemUpdates] = useState<
+    Record<string, ItemUpdatesState>
+  >({})
+  const itemUpdatesRef = useRef(itemUpdates)
+  useEffect(() => {
+    itemUpdatesRef.current = itemUpdates
+  }, [itemUpdates])
   const [missingOpen, setMissingOpen] = useState(false)
   // 요약 카드의 "이번 달"·경과 일수 기준일 — 탭을 연 날로 고정한다.
   const [today] = useState(todayInKorea)
@@ -149,7 +170,37 @@ export const useMondayViewModel = (active: boolean) => {
     })
   }, [])
 
+  /** 기록 하나의 메모·파일을 받는다 — 이미 받았고 아직 주소가 살아 있으면
+   * 그대로 둔다. */
+  const loadItemUpdates = useCallback(async (itemId: string, force = false) => {
+    const current = itemUpdatesRef.current[itemId]
+    if (
+      !force &&
+      current !== undefined &&
+      current.status !== 'error' &&
+      Date.now() - current.at < UPDATES_FRESH_MS
+    )
+      return
+    setItemUpdates((prev) => ({
+      ...prev,
+      [itemId]: { status: 'loading', at: Date.now() },
+    }))
+    const res = await mondayClient.getItemUpdates(itemId)
+    setItemUpdates((prev) =>
+      // 받는 사이 상세를 닫았으면(비워졌으면) 버린다.
+      prev[itemId] === undefined
+        ? prev
+        : {
+            ...prev,
+            [itemId]: res.ok
+              ? { status: 'ready', at: Date.now(), data: res.data }
+              : { status: 'error', at: Date.now(), error: res.error },
+          },
+    )
+  }, [])
+
   const closeDetail = useCallback(() => {
+    setItemUpdates({})
     detailCache.current.clear()
     setDetailPhone(null)
     setDetail(null)
@@ -205,6 +256,7 @@ export const useMondayViewModel = (active: boolean) => {
       missingItems,
       paymentIssues,
       missingOpen,
+      itemUpdates,
     },
     actions: {
       reload: load,
@@ -216,6 +268,7 @@ export const useMondayViewModel = (active: boolean) => {
       goToNextPage: pagination.goToNextPage,
       openDetail,
       closeDetail,
+      loadItemUpdates,
       openMissing,
       closeMissing,
     },

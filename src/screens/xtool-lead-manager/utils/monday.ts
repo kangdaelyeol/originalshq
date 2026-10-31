@@ -24,6 +24,7 @@ export type MondayCategory =
   | 'visit'
   | 'purchase'
   | 'online'
+  | 'tech'
   | 'balance'
   | 'multiple'
 
@@ -33,8 +34,21 @@ export const MONDAY_CATEGORY_LABEL: Record<MondayCategory, string> = {
   visit: '방문체험',
   purchase: '구매',
   online: '온라인 구매',
+  tech: '기술 문의',
   balance: '잔금 있음',
   multiple: '기록 2건 이상',
+}
+
+/** 기술지원팀 기록(출장·AS·기술 문의·기타업무) 수 — 예전에 저장된 고객
+ * 문서에는 이 값들이 없다. */
+export const techRecordCount = (customer: MondayCustomerListItem): number => {
+  const { summary } = customer
+  return (
+    (summary.fieldServiceCount ?? 0) +
+    (summary.repairCount ?? 0) +
+    (summary.techInquiryCount ?? 0) +
+    (summary.techTaskCount ?? 0)
+  )
 }
 
 export const recordCount = (customer: MondayCustomerListItem): number => {
@@ -44,7 +58,8 @@ export const recordCount = (customer: MondayCustomerListItem): number => {
     summary.visitCount +
     summary.purchaseCount +
     summary.surveyCount +
-    summary.sampleTestCount
+    summary.sampleTestCount +
+    techRecordCount(customer)
   )
 }
 
@@ -61,6 +76,8 @@ export const matchesMondayCategory = (
       return customer.summary.purchaseCount > 0
     case 'online':
       return customer.summary.onlinePurchaseCount > 0
+    case 'tech':
+      return techRecordCount(customer) > 0
     case 'balance':
       return customer.summary.balanceAmount > 0
     case 'multiple':

@@ -6,9 +6,11 @@ import type {
   MondayFollowUp,
   GaSyncResult,
   MondayGaTracking,
+  MondayItemUpdates,
   MondayKpiFacts,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
+  MondayTechFact,
 } from '../entity'
 import { request, type ClientResponse } from './request'
 
@@ -63,6 +65,18 @@ export const mondayClient = {
     get<MondayKpiFacts & { syncedAt: number | null }>(
       'getMondayKpiFacts',
       '개인 KPI를 불러오지 못했습니다',
+    ),
+  /** 기록 하나의 메모·댓글·첨부 파일 — Monday에서 바로 읽는다. */
+  getItemUpdates: (itemId: string) =>
+    get<MondayItemUpdates>(
+      `getMondayItemUpdates?itemId=${encodeURIComponent(itemId)}`,
+      '메모·파일을 불러오지 못했습니다',
+    ),
+  /** 기술 통계 재료 — 기술지원팀 기록(출장·AS·기술 문의·기타업무) 전부. */
+  getTechFacts: () =>
+    get<{ facts: MondayTechFact[]; syncedAt: number | null }>(
+      'getMondayTechFacts',
+      '기술 통계를 불러오지 못했습니다',
     ),
   /** 오기입 추적 — GA ClientId가 적힌 상담과 그 GA4 이벤트. */
   getGaTracking: () =>

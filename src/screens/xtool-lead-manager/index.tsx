@@ -21,6 +21,7 @@ import {
   useMondayTrendViewModel,
   useMondayViewModel,
   usePageTabViewModel,
+  useTechStatsViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 
 // view-model 훅은 전부 여기서만 부르고, 결과를 컴포넌트로 내려보낸다 — 훅이
@@ -65,6 +66,13 @@ const XtoolLeadManagerScreen = () => {
     tab === 'trend' && trend.state.section === 'inflow',
     trend.state.syncedAt,
   )
+  // 기술 통계 — 기술지원팀 기록. 그 소주제를 처음 열 때 받고, 기간·단위는
+  // 통계 탭의 공용 값을 쓴다.
+  const tech = useTechStatsViewModel(
+    tab === 'trend' && trend.state.section === 'tech',
+    trend.state.range,
+    trend.state.unit,
+  )
   // 오기입 추적 — BigQuery를 부르는 조회라 그 탭을 처음 열 때만 받는다.
   const gaTracking = useGaTrackingViewModel(tab === 'tracking')
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
@@ -99,6 +107,7 @@ const XtoolLeadManagerScreen = () => {
         actions={trend.actions}
         live={live.state}
         csTeam={csTeam}
+        tech={tech}
       />
     )
   }

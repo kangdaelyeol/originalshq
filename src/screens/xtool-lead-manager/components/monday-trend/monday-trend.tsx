@@ -10,6 +10,7 @@ import {
   type useLiveInflowViewModel,
   type InflowView,
   type useMondayTrendViewModel,
+  type useTechStatsViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { SortButton } from '@/screens/xtool-lead-manager/components'
 import {
@@ -39,12 +40,16 @@ import { CsTeamSection } from './cs-team-section'
 import { KpiControls, KpiSection } from './kpi-section'
 import { PipelineSection } from './pipeline-section'
 import { SalesSection } from './sales-section'
+import { TechSection } from './tech-section'
 
 type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
   /** 인입통계 맨 위 "오늘 웹 문의 · 실시간"(useLiveInflowViewModel). */
   live: ReturnType<typeof useLiveInflowViewModel>['state']
   /** 인입통계 맨 아래 CS팀 인입 성과(useCsTeamViewModel). */
   csTeam: ReturnType<typeof useCsTeamViewModel>
+  /** 기술 통계(useTechStatsViewModel) — 따로 받는 데이터라 불러오는 상태도
+   * 따로다. */
+  tech: ReturnType<typeof useTechStatsViewModel>
 }
 
 const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
@@ -75,6 +80,7 @@ export const MondayTrend = ({
   actions,
   live,
   csTeam,
+  tech,
 }: MondayTrendProps) => {
   const {
     status,
@@ -212,8 +218,13 @@ export const MondayTrend = ({
             _xtool-glass.scss page). 소주제를 바꿀 때는 자라지 않게 새로
             붙인다(key). */}
         <AutoHeight key={section}>
-          <div className={`wrapper${status === 'ready' ? ' is-ready' : ''}`}>
-            {status === 'error' ? (
+          <div
+            className={`wrapper${(section === 'tech' ? tech.state.status : status) === 'ready' ? ' is-ready' : ''}`}
+          >
+            {/* 기술 통계는 따로 받는 데이터라 불러오는 상태도 스스로 그린다. */}
+            {section === 'tech' ? (
+              <TechSection tech={tech} unit={unit} drawKey={drawKey} />
+            ) : status === 'error' ? (
               <div className="monday_error">
                 <p>통계를 불러오지 못했습니다.</p>
                 <button type="button" onClick={reload}>
