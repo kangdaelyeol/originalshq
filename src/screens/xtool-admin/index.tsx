@@ -1,13 +1,17 @@
 import { motion, MotionConfig } from 'motion/react'
+import { useState } from 'react'
 import { useXtoolSession } from '@/xtool-auth/use-xtool-session'
 import { AppBackground } from '@/screens/xtool-tech/components/layout/app-background'
+import { SegmentedControl } from '@/screens/xtool-tech/components/ui/segmented-control'
 import { pageStagger } from '@/screens/xtool-tech/lib/motion'
 import { SettingsProvider } from '@/screens/xtool-tech/settings/settings-provider'
 import '@/screens/xtool-tech/styles/index.scss'
 import { AdminHeader } from './admin-header'
 import { AdminSignIn } from './admin-sign-in'
+import { EditLogCard } from './edit-log-card'
 import { MemberForm } from './member-form'
 import { MembersTable } from './members-table'
+import { TechSyncCard } from './tech-sync-card'
 import './admin.scss'
 
 /**
@@ -25,8 +29,17 @@ export default function XtoolAdminRoot() {
   )
 }
 
+type Tab = 'members' | 'monday' | 'logs'
+
+const TABS = [
+  { value: 'members' as const, label: '구성원' },
+  { value: 'monday' as const, label: 'Monday 연동' },
+  { value: 'logs' as const, label: '수정 기록' },
+]
+
 function AdminScreen() {
   const session = useXtoolSession('admin')
+  const [tab, setTab] = useState<Tab>('members')
 
   if (session.status === 'loading') return null
   if (session.status !== 'ready') return <AdminSignIn session={session} />
@@ -34,9 +47,18 @@ function AdminScreen() {
   return (
     <div className="admin">
       <AdminHeader member={session.member} />
-      <motion.main className="admin__main" variants={pageStagger} initial="hidden" animate="show">
-        <MemberForm adminEmail={session.member.email} />
-        <MembersTable selfEmail={session.member.email} />
+      <div className="admin__tabs">
+        <SegmentedControl ariaLabel="관리 화면" options={TABS} value={tab} onChange={setTab} />
+      </div>
+      <motion.main key={tab} className="admin__main" variants={pageStagger} initial="hidden" animate="show">
+        {tab === 'members' && (
+          <>
+            <MemberForm adminEmail={session.member.email} />
+            <MembersTable selfEmail={session.member.email} />
+          </>
+        )}
+        {tab === 'monday' && <TechSyncCard />}
+        {tab === 'logs' && <EditLogCard />}
       </motion.main>
     </div>
   )

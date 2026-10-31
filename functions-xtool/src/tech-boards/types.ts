@@ -1,12 +1,29 @@
-// 기술지원팀 전용 보드(고객 통합과 무관) — tech 페이지(/xtool-tech)만 읽는다.
+import {
+  MondayFieldService,
+  MondayRepair,
+  MondayTechInquiry,
+  MondayTechTask,
+} from '../monday/types'
+
+// 기술지원팀 보드 — tech 페이지(/xtool-tech)가 Firestore에서 직접(규칙으로 기술팀만)
+// 읽고, 수정은 함수가 Monday에 대신 써 준다. Monday가 원본이고 우리 DB는
+// 캐시(+ 수정 기록)다. 들어오는 변경은 Monday webhook과 정기 동기화로 받는다.
 
 /** 보드 이름표 — 보드 이름은 바뀔 수 있어 코드에서는 이 값으로 부른다. */
 export type TechBoardKey =
+  | 'fieldService'
+  | 'repair'
+  | 'techInquiry'
+  | 'techTask'
   | 'records'
   | 'asRequests'
   | 'parts'
   | 'rentals'
   | 'serials'
+
+/** 업무 보드 기록 — 고객 통합과 같은 변환(monday/tech.ts)에 연락처를 더한 것.
+ * phone은 숫자만(010…), 없으면 null. */
+export type WithPhone<T> = T & { phone: string | null }
 
 /** 공통 — Monday item 하나에서 온 기록. */
 export interface TechRecordBase {
@@ -99,29 +116,129 @@ export interface TechSerial extends TechRecordBase {
 }
 
 export interface TechBoardRecords {
-  records: TechDocTask[]
-  asRequests: TechAsRequest[]
-  parts: TechPart[]
-  rentals: TechRental[]
-  serials: TechSerial[]
+  fieldService: WithPhone<MondayFieldService>
+  repair: WithPhone<MondayRepair>
+  techInquiry: WithPhone<MondayTechInquiry>
+  techTask: WithPhone<MondayTechTask>
+  records: TechDocTask
+  asRequests: TechAsRequest
+  parts: TechPart
+  rentals: TechRental
+  serials: TechSerial
 }
 
-export interface TechBoardSyncResult {
+/** 보드 컬럼 — 화면의 편집 칸을 그리는 재료. */
+export interface TechColumn {
+  id: string
+  title: string
+  /** Monday 컬럼 타입(text, status, date, people …) */
+  type: string
+  /** tech 페이지에서 고칠 수 있는지 — 미러·연결·파일·버튼 등은 false. */
+  writable: boolean
+  /** 상태·드롭다운의 고를 수 있는 값(Monday 설정 순서) */
+  options?: string[]
+}
+
+export interface TechGroup {
+  id: string
+  title: string
+}
+
+export interface TechSyncResult {
   ok: boolean
   /** 동기화를 마친 시각(ms) */
   at: number
   count: number
+  /** 바뀌어서 다시 쓴 item 수(나머지는 그대로라 건너뜀) */
+  written?: number
+  deleted?: number
   error?: string
 }
 
-/** techBoards/{key} 문서 하나 — 보드 하나의 기록 전부. */
-export interface TechBoardDoc<K extends TechBoardKey = TechBoardKey> {
-  key: K
+/** techBoardMeta/{key} — 보드 이름·컬럼·그룹·동기화 상태. */
+export interface TechBoardMeta {
+  key: TechBoardKey
   boardId: string
-  /** Monday 보드 이름(마지막 동기화 때) */
   name: string
-  records: TechBoardRecords[K]
-  /** 마지막으로 기록을 저장한 시각(ms) — 실패한 동기화는 바꾸지 않는다. */
+  columns: TechColumn[]
+  groups: TechGroup[]
+  /** 마지막으로 전체 동기화에 성공한 시각(ms) */
   syncedAt: number | null
-  lastSync: TechBoardSyncResult | null
+  lastSync: TechSyncResult | null
+  /** 우리가 만든 Monday webhook — 다시 설정할 때 지우고 새로 만든다. */
+  webhooks?: { ids: string[]; at: number; errors: string[] }
+}
+
+/** Monday에 적힌 값 그대로 — text는 화면용 글자(한국 시간), value는 원본 JSON. */
+export interface TechCellValue {
+  text: string
+  value: string | null
+}
+
+/** techItems/{itemId} — Monday item 하나. */
+export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
+  itemId: string
+  boardKey: K
+  boardId: string
+  name: string
+  groupId: string | null
+  /** 화면이 쓰는 정리된 기록 */
+  record: TechBoardRecords[K]
+  /** 컬럼 id → 값 — 편집 칸의 처음 값 */
+  values: Record<string, TechCellValue>
+  createdAt: string | null
+  updatedAt: string | null
+  /** 우리가 이 문서를 마지막으로 쓴 시각(ms) */
+  syncedAt: number
+  /** 내용이 바뀌었는지 가리는 값 — 같으면 다시 쓰지 않는다. */
+  hash: string
+}
+
+/** techMeta/mondayUsers — 담당자 칸에 고를 수 있는 Monday 사용자. */
+export interface TechMondayUser {
+  id: string
+  name: string
+  email: string
+  enabled: boolean
+}
+
+/** 화면이 보내는 칸 값 — 컬럼 타입마다 모양이 다르다(빈 값은 지우기). */
+export type TechEditValue =
+  | string
+  | string[]
+  | boolean
+  | { date: string; time?: string | null }
+  | { url: string; text?: string }
+  | null
+
+export interface TechEditInput {
+  boardKey: TechBoardKey
+  /** 수정할 item — 새로 만들 때는 없다. */
+  itemId?: string
+  name?: string
+  groupId?: string
+  /** 컬럼 id → 새 값 */
+  columns?: Record<string, TechEditValue>
+}
+
+export interface TechChange {
+  field: string
+  title: string
+  before: string | null
+  after: string | null
+}
+
+/** techEditLogs/{auto} — 누가 무엇을 바꿨는지(Monday 활동 로그에는 API 키 주인만
+ * 남아서, 실제로 바꾼 사람은 여기에만 남는다). */
+export interface TechEditLog {
+  at: number
+  action: 'update' | 'create'
+  boardKey: TechBoardKey
+  boardName: string
+  itemId: string | null
+  itemName: string
+  by: { email: string; name: string; uid: string }
+  changes: TechChange[]
+  ok: boolean
+  error?: string
 }

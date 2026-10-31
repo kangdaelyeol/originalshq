@@ -1,4 +1,4 @@
-import { Bell, Plus, Search } from 'lucide-react'
+import { Bell, Plus } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { usePeriod } from '../../context/period-context'
@@ -59,10 +59,6 @@ export function Topbar() {
 
   return (
     <header className="glass topbar">
-      <label className="search">
-        <Search size={15} aria-hidden />
-        <input type="search" placeholder="서비스, 커밋, 이슈 번호 검색…" aria-label="검색" />
-      </label>
       <div className="topbar__controls">
         <SegmentedControl ariaLabel="조회 기간" options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
         <button

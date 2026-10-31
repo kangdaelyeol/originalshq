@@ -62,6 +62,32 @@ service cloud.firestore {
       allow delete: if isXtoolAdmin() && memberId != signedInEmail();
     }
 
+    // ── 기술지원팀 보드(tech 페이지) ─────────────────────────────────────────
+    // Monday 캐시(techItems·techBoardMeta·techMeta)와 수정 기록(techEditLogs). 쓰기는
+    // 함수(관리자 SDK)만 한다 — 화면은 읽기만.
+    function isXtoolTeamMember(team) {
+      let path = /databases/$(database)/documents/xtoolMembers/$(signedInEmail());
+      return emailVerified() && signedInEmail() != '' && exists(path)
+        && get(path).data.status == 'active'
+        && (get(path).data.isAdmin == true || get(path).data.teams.get(team, false) == true);
+    }
+
+    match /techItems/{itemId} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
+    match /techBoardMeta/{boardKey} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
+    match /techMeta/{docId} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
+    match /techEditLogs/{logId} {
+      allow read: if isXtoolAdmin();
+    }
+
     // This rule allows anyone with your Firestore database reference to view, edit,
     // and delete all data in your Firestore database. It is useful for getting
     // started, but it is configured to expire after 30 days because it

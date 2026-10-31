@@ -1,3 +1,5 @@
+import type { BarListItem } from './bar-list'
+
 type Point = readonly [number, number]
 
 const r1 = (n: number): number => Math.round(n * 10) / 10
@@ -45,4 +47,14 @@ export function niceTicks(max: number, count = 4, integer = false): number[] {
   if (integer) step = Math.max(1, Math.ceil(step))
   const steps = Math.ceil(max / step - 1e-9)
   return Array.from({ length: steps + 1 }, (_, i) => Number((i * step).toPrecision(12)))
+}
+
+/** 값 목록 → 항목별 개수(빈 값은 "미지정"). */
+export function countBy(values: readonly (string | null | undefined)[], blank = '미지정'): BarListItem[] {
+  const counts = new Map<string, number>()
+  for (const value of values) {
+    const label = value?.trim() || blank
+    counts.set(label, (counts.get(label) ?? 0) + 1)
+  }
+  return [...counts].map(([label, value]) => ({ key: label, label, value }))
 }

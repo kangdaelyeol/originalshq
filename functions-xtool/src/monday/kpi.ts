@@ -37,9 +37,12 @@ const paidDateOf = (item: MondayItem): string | null =>
  *   visits — 방문체험 보드의 방문:
  *     [주 담당자, 방문일, 체험 완료 여부(1/0), 결제일('')]
  *   sales — 오프라인 결제(계약 기준, 취소 제외):
- *     [담당자들(쉼표로 이음), 결제일, 구매 금액, 방문체험 담당자('')]
+ *     [담당자들(쉼표로 이음), 결제일, 구매 금액, 방문체험 담당자(''),
+ *      item id, 고객명, 보드 id, 품목(쉼표로 이음), 재구매(1/0)]
  *     방문체험 담당자는 같은 번호의 고객이 결제일 이전에 마지막으로 체험을
  *     마친 방문의 담당자다 — 방문체험이 이끈 매출을 그 담당자에게 돌린다.
+ *     재구매는 같은 번호로 그보다 이른 날 오프라인 결제가 있던 건이다(같은
+ *     날 여러 건은 모두 신규). 뒤의 다섯은 영업통계가 쓴다.
  */
 export const buildKpiFacts = (
   items: MondayItem[],
@@ -97,24 +100,58 @@ export const buildKpiFacts = (
     }
   }
 
-  const sales: MondayKpiFacts['sales'] = []
+  // 결제 건 — 번호별 첫 결제일(재구매를 가리는 데 쓴다)도 같이 모은다.
+  const paid: {
+    item: MondayItem
+    paidAt: string
+    amount: number
+    products: string[]
+    phone: string | null
+  }[] = []
+  const firstPaidByPhone = new Map<string, string>()
   for (const item of of('purchase')) {
     const [purchase] = buildPurchaseRecords([item]).purchases
     if (!purchase || purchase.cancelled || purchase.amount <= 0) continue
     const paidAt = koreaDate(purchase.paidAt)
     if (!paidAt) continue
-
     const phone = phoneOf(item)
+    if (phone) {
+      const first = firstPaidByPhone.get(phone)
+      if (!first || paidAt < first) firstPaidByPhone.set(phone, paidAt)
+    }
+    paid.push({
+      item,
+      paidAt,
+      amount: purchase.amount,
+      products: purchase.lines
+        .filter((line) => line.kind === 'product' && line.total > 0)
+        .map((line) => line.product ?? line.name),
+      phone,
+    })
+  }
+
+  const sales: MondayKpiFacts['sales'] = []
+  for (const { item, paidAt, amount, products, phone } of paid) {
     const visit = (phone ? (completedVisitsByPhone.get(phone) ?? []) : [])
       .filter((each) => each.at <= paidAt)
       .sort((a, b) => b.at.localeCompare(a.at))[0]
+    const first = phone ? firstPaidByPhone.get(phone) : undefined
 
     sales.push([
       assigneesOf(item).join(','),
       paidAt,
-      purchase.amount,
+      amount,
       visit?.assignee ?? '',
+      item.id,
+      item.name,
+      item.boardId,
+      [...new Set(products)].join(','),
+      first !== undefined && first < paidAt ? 1 : 0,
     ])
+    boards[item.boardId] ??= {
+      name: item.boardName,
+      url: item.url?.replace(/\/pulses\/[^/]+$/, '') ?? null,
+    }
   }
 
   return { consultations, visits, sales, boards }

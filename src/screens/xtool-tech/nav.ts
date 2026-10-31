@@ -1,13 +1,19 @@
 import {
+  ClipboardList,
+  FileText,
   KeyRound,
   LayoutGrid,
   ListTodo,
+  MessageCircle,
   Rocket,
   Settings,
   TrendingUp,
+  Truck,
   Users,
+  Wrench,
   type LucideIcon,
 } from 'lucide-react'
+import { BOARD_TABS, type TechBoardKey } from './data/tech-boards'
 import { xtPath } from './paths'
 
 export interface NavItem {
@@ -22,11 +28,21 @@ export interface NavSection {
   items: NavItem[]
 }
 
+const BOARD_ICONS: Record<TechBoardKey, LucideIcon> = {
+  fieldService: Truck,
+  repair: Wrench,
+  records: FileText,
+  techInquiry: MessageCircle,
+  techTask: ClipboardList,
+}
+
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     label: '메뉴',
     items: [
       { to: xtPath(), label: '개요', icon: LayoutGrid },
+      // 기술지원팀 Monday 보드 — 개요 바로 아래, BOARD_TABS 순서대로.
+      ...BOARD_TABS.map((tab) => ({ to: xtPath(`/boards/${tab.slug}`), label: tab.label, icon: BOARD_ICONS[tab.key] })),
       { to: xtPath('/analytics'), label: '분석', icon: TrendingUp, badge: 'Live' },
       { to: xtPath('/deploy'), label: '배포 스테이션', icon: Rocket },
       { to: xtPath('/team'), label: '팀원 & 권한', icon: Users },

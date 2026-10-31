@@ -7,6 +7,7 @@ import {
   type Auth,
 } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore'
+import { getFunctions, type Functions } from 'firebase/functions'
 import { XTOOL_FIREBASE_CONFIG } from './firebase-config'
 
 // 다른 화면(parke 등)이 다른 Firebase 프로젝트를 써도 섞이지 않게 이름 붙인 앱으로 만든다.
@@ -44,6 +45,8 @@ export const isXtoolFirebaseConfigured =
 interface XtoolFirebase {
   auth: Auth
   db: Firestore
+  /** functions-xtool의 호출 함수(onCall) — 로그인 토큰이 저절로 실려 간다. */
+  functions: Functions
 }
 
 let instance: XtoolFirebase | null = null
@@ -59,6 +62,7 @@ export function xtoolFirebase(): XtoolFirebase {
     : initializeApp(useEmulator ? EMULATOR_CONFIG : XTOOL_FIREBASE_CONFIG, APP_NAME)
   const auth = getAuth(app)
   const db = getFirestore(app, DATABASE_ID)
+  const functions = getFunctions(app, 'us-central1')
   if (useEmulator) {
     connectAuthEmulator(auth, `http://127.0.0.1:${EMULATOR_PORTS.auth}`, { disableWarnings: true })
     connectFirestoreEmulator(db, '127.0.0.1', EMULATOR_PORTS.firestore)
@@ -71,7 +75,7 @@ export function xtoolFirebase(): XtoolFirebase {
         ),
     })
   }
-  instance = { auth, db }
+  instance = { auth, db, functions }
   return instance
 }
 

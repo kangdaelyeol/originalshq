@@ -116,6 +116,8 @@ export const router = createBrowserRouter([
         lazy: xtoolTech('AppLayout'),
         children: [
           { index: true, lazy: xtoolTech('OverviewPage') },
+          // 기술지원팀 Monday 보드(출장업무·AS·자료정리·아톡문의·기타업무) — 사이드바 메뉴에서 온다
+          { path: 'boards/:board', lazy: xtoolTech('BoardPage') },
           { path: 'analytics', lazy: xtoolTech('AnalyticsPage') },
           { path: 'deploy', lazy: xtoolTech('DeployStationPage') },
           { path: 'team', lazy: xtoolTech('TeamPage') },

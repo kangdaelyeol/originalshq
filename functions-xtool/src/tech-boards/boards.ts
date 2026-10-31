@@ -1,4 +1,10 @@
 import { checked, koreaDate, pick } from '../monday/fields'
+import {
+  toFieldService,
+  toRepair,
+  toTechInquiry,
+  toTechTask,
+} from '../monday/tech'
 import { MondayItem } from '../monday/types'
 import {
   TechAsRequest,
@@ -9,18 +15,39 @@ import {
   TechRecordBase,
   TechRental,
   TechSerial,
+  WithPhone,
 } from './types'
 
-// 기술지원팀 워크스페이스에서 고객 통합(mondayBoards·mondayItems)과 따로 읽는
-// 보드들. 출장·AS·아톡문의·기타업무는 이미 고객 통합 쪽에서 읽어
-// stats/techFacts로 쓰고, 담당자별 개인 보드는 원본의 미러라 읽지 않는다.
-// 보드 id는 Monday에서 보드를 새로 만들지 않는 한 바뀌지 않는다.
-export const TECH_BOARDS: readonly { key: TechBoardKey; boardId: string }[] = [
-  { key: 'records', boardId: '5025392066' }, // 자료정리 2026
-  { key: 'asRequests', boardId: '5028018471' }, // AS 신청서
-  { key: 'parts', boardId: '5027178208' }, // 부품 마스터 보드
-  { key: 'rentals', boardId: '5025726650' }, // 대여품 관리
-  { key: 'serials', boardId: '5025519829' }, // 엑스툴 SN 관리
+export interface TechBoardSource {
+  key: TechBoardKey
+  boardId: string
+  /** 하위 아이템까지 받을지 — 출장(설치 품목)·AS(청구 부품)만. */
+  subitems?: boolean
+  /** 연락처 칸 — 'name'이면 item 이름에서, 생략하면 제목으로 추정, null이면
+   * 읽지 않는다. 고객 통합의 보드 등록값과 같게 둔다. */
+  phoneColumnId?: string | null
+}
+
+// 기술지원팀 워크스페이스에서 tech 페이지가 읽는 보드. 담당자별 개인 보드는
+// 원본의 미러라 읽지 않는다. 보드 id는 Monday에서 보드를 새로 만들지 않는 한
+// 바뀌지 않는다 — 해가 바뀌어 "출장업무 2027" 같은 보드가 생기면 여기를 고친다.
+export const TECH_BOARDS: readonly TechBoardSource[] = [
+  // 업무 보드 — 고객 통합(mondayBoards)에도 등록돼 있지만 따로 읽는다.
+  {
+    key: 'fieldService',
+    boardId: '5025392073', // 출장업무 2026
+    subitems: true,
+    phoneColumnId: 'name',
+  },
+  { key: 'repair', boardId: '5028075613', subitems: true }, // AS 2026
+  { key: 'techInquiry', boardId: '5030892209' }, // 아톡문의
+  { key: 'techTask', boardId: '5025392115', phoneColumnId: null }, // 기타업무
+  // tech 페이지 전용 — 고객 통합과 무관.
+  { key: 'records', boardId: '5025392066', phoneColumnId: null }, // 자료정리
+  { key: 'asRequests', boardId: '5028018471', phoneColumnId: null }, // AS 신청서
+  { key: 'parts', boardId: '5027178208', phoneColumnId: null }, // 부품 마스터
+  { key: 'rentals', boardId: '5025726650', phoneColumnId: null }, // 대여품 관리
+  { key: 'serials', boardId: '5025519829', phoneColumnId: null }, // SN 관리
 ]
 
 const base = (item: MondayItem): TechRecordBase => ({
@@ -121,17 +148,36 @@ export const toSerial = (item: MondayItem): TechSerial => ({
   hasPhoto: fileCount(pick(item, /사진$/)) > 0,
 })
 
-/** 보드 이름표별 변환 — item 전부를 그 보드의 기록 모양으로. */
-export const convertTechBoard = <K extends TechBoardKey>(
-  key: K,
-  items: MondayItem[],
-): TechBoardRecords[K] => {
-  const convert = {
-    records: toDocTask,
-    asRequests: toAsRequest,
-    parts: toPart,
-    rentals: toRental,
-    serials: toSerial,
-  }[key] as (item: MondayItem) => TechBoardRecords[K][number]
-  return items.map(convert) as TechBoardRecords[K]
+/** 업무 보드 기록에 연락처(대표 번호)를 붙인다. */
+const withPhone =
+  <T>(convert: (item: MondayItem) => T) =>
+  (item: MondayItem): WithPhone<T> => ({ ...convert(item), phone: item.phone })
+
+const CONVERTERS: {
+  [K in TechBoardKey]: (item: MondayItem) => TechBoardRecords[K]
+} = {
+  fieldService: withPhone(toFieldService),
+  repair: withPhone(toRepair),
+  techInquiry: withPhone(toTechInquiry),
+  techTask: withPhone(toTechTask),
+  records: toDocTask,
+  asRequests: toAsRequest,
+  parts: toPart,
+  rentals: toRental,
+  serials: toSerial,
 }
+
+/** 보드 이름표별 변환 — item 하나를 그 보드의 기록 모양으로. */
+export const convertTechItem = <K extends TechBoardKey>(
+  key: K,
+  item: MondayItem,
+): TechBoardRecords[K] => CONVERTERS[key](item)
+
+export const findTechBoard = (
+  match: { key?: string; boardId?: string },
+): TechBoardSource | undefined =>
+  TECH_BOARDS.find(
+    (board) =>
+      (match.key === undefined || board.key === match.key) &&
+      (match.boardId === undefined || board.boardId === match.boardId),
+  )

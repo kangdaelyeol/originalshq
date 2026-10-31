@@ -296,3 +296,142 @@
     }
   }
 }
+
+.xtool-tech {
+  .admin__tabs {
+    display: flex;
+  }
+
+  .sync-cell {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+  }
+
+  .sync-cell__error {
+    max-width: 360px;
+    font-size: 11.5px;
+    color: var(--crit);
+  }
+
+  // ── 수정 기록 ───────────────────────────────────────────────────────────
+  .log-filters {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .log-select {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(0, 0, 0, 0.24);
+    font-size: 12.5px;
+    color: var(--text-1);
+
+    option {
+      background: #1b1c1f;
+    }
+  }
+
+  .log-empty {
+    padding: 28px 0;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-3);
+  }
+
+  .log-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .log-row {
+    padding: 12px 4px;
+    border-bottom: 1px solid var(--line);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  .log-row__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+
+    strong {
+      color: var(--text-1);
+    }
+  }
+
+  .log-row__time {
+    min-width: 110px;
+    font-size: 12px;
+    color: var(--text-4);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .log-row__verb {
+    color: var(--text-2);
+
+    b {
+      color: var(--text-1);
+      font-weight: 600;
+    }
+  }
+
+  .log-row__changes {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 8px 0 0 118px;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 12.5px;
+      color: var(--text-3);
+    }
+  }
+
+  .log-row__field {
+    min-width: 90px;
+    color: var(--text-4);
+  }
+
+  .log-row__before {
+    color: var(--text-3);
+    text-decoration: line-through;
+    text-decoration-color: rgba(255, 255, 255, 0.25);
+  }
+
+  .log-row__after {
+    color: var(--accent-hi);
+  }
+
+  .log-row__error {
+    margin: 6px 0 0 118px;
+    font-size: 12px;
+    color: var(--crit);
+  }
+
+  @media (max-width: 720px) {
+    .log-row__changes,
+    .log-row__error {
+      margin-left: 0;
+    }
+  }
+}
