@@ -1,6 +1,6 @@
 @use '../../../components/glass/styles/tokens' as *;
 
-// Monday 고객 상세 — 기록 카드 맨 아래의 "메모·파일"(monday-detail.tsx의
+// Monday 고객 상세 — 기록 종류 토글과, 기록 카드 맨 아래의 "메모·파일"(monday-detail.tsx의
 // RecordUpdates). Monday 업데이트 창의 글·댓글과 첨부 파일.
 .monday_detail .monday_updates {
   margin-top: 10px;
@@ -177,5 +177,29 @@
     .size {
       color: $text-3;
     }
+  }
+}
+
+// 기록 종류 토글(monday-detail.tsx의 RecordTabs) — 분류 탭(monday_nav)과 같은
+// 이름 + 건수 모양.
+.monday_detail .monday_record_tabs {
+  margin-bottom: 4px;
+
+  .glass_segmented {
+    flex-wrap: wrap;
+  }
+  .monday_category_label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+
+    .count {
+      color: $text-3;
+      font-size: 11.5px;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  .glass_segmented button.active .monday_category_label .count {
+    color: $text-2;
   }
 }

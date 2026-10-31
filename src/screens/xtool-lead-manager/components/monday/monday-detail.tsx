@@ -25,7 +25,13 @@ import {
   canSendMondayCapi,
   type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
-import { AutoHeight, LoadingPanel, Spinner } from '@/components/glass'
+import {
+  AutoHeight,
+  LoadingPanel,
+  Segmented,
+  Spinner,
+} from '@/components/glass'
+import { useArrowTabs } from '@/screens/xtool-lead-manager/hooks/use-arrow-tabs'
 import type { ItemUpdatesState } from '@/screens/xtool-lead-manager/view-model'
 import '@/screens/xtool-lead-manager/styles/monday-updates.scss'
 import { CloseIcon } from '../detail/icons'
@@ -274,13 +280,16 @@ const CapiButton = ({
 const Section = ({
   title,
   count,
+  show = true,
   children,
 }: {
   title: string
   count: number
+  /** 위 토글에서 고른 종류가 아니면 false. */
+  show?: boolean
   children: ReactNode
 }) =>
-  count > 0 ? (
+  show && count > 0 ? (
     <section className="section">
       <h3 className="section_title">
         {title} <span className="monday_section_count">{count}</span>
@@ -698,6 +707,91 @@ const TechTaskCard = ({ record }: { record: MondayTechTask }) => (
   </RecordCard>
 )
 
+/** 기록 종류 토글 — 고른 종류의 섹션만 보인다. 납부 내역은 구매와 같이 본다. */
+type RecordTab =
+  | 'all'
+  | 'consultation'
+  | 'visit'
+  | 'purchase'
+  | 'survey'
+  | 'sampleTest'
+  | 'fieldService'
+  | 'repair'
+  | 'techInquiry'
+  | 'techTask'
+
+const RECORD_TAB_LABEL: Record<RecordTab, string> = {
+  all: '전체',
+  consultation: '상담',
+  visit: '방문체험',
+  purchase: '구매',
+  survey: '만족도',
+  sampleTest: '샘플테스트',
+  fieldService: '출장',
+  repair: 'AS',
+  techInquiry: '기술 문의',
+  techTask: '기타업무',
+}
+
+const recordCounts = (
+  customer: MondayCustomer,
+): Record<Exclude<RecordTab, 'all'>, number> => ({
+  consultation: customer.consultations.length,
+  visit: customer.visits.length,
+  purchase: customer.purchases.length + customer.payments.length,
+  survey: customer.surveys.length,
+  sampleTest: customer.sampleTests.length,
+  fieldService: customer.fieldServices.length,
+  repair: customer.repairs.length,
+  techInquiry: customer.techInquiries.length,
+  techTask: customer.techTasks.length,
+})
+
+/** 기록 종류 토글 — 기록이 있는 종류만 버튼으로(전체 + 그 종류들). 좌/우
+ * 방향키로 옮긴다. 다른 고객으로 넘어가 고른 종류가 없으면 전체로 보인다. */
+const RecordTabs = ({
+  customer,
+  tab,
+  onChange,
+  keysEnabled,
+}: {
+  customer: MondayCustomer
+  tab: RecordTab
+  onChange: (next: RecordTab) => void
+  keysEnabled: boolean
+}) => {
+  const counts = recordCounts(customer)
+  const tabs: RecordTab[] = [
+    'all',
+    ...(Object.keys(counts) as Exclude<RecordTab, 'all'>[]).filter(
+      (key) => counts[key] > 0,
+    ),
+  ]
+  useArrowTabs(tabs, tab, onChange, keysEnabled)
+  // 기록이 한 종류뿐이면 고를 게 없다.
+  if (tabs.length <= 2) return null
+  const options = Object.fromEntries(
+    tabs.map((key) => [
+      key,
+      <span key={key} className="monday_category_label">
+        {RECORD_TAB_LABEL[key]}
+        {key !== 'all' && <span className="count">{counts[key]}</span>}
+      </span>,
+    ]),
+  ) as Record<RecordTab, ReactNode>
+  return (
+    <div className="monday_record_tabs">
+      <Segmented
+        options={options}
+        value={tab}
+        onChange={onChange}
+        label="기록 종류"
+        size="md"
+      />
+    </div>
+  )
+}
+
 /**
  * Monday 고객 상세 — 한 번호로 묶인 기록 전부를 종류별(상담/방문체험/구매/
  * 납부 내역/만족도 조사/샘플테스트, 기술지원팀의 출장/AS/기술 문의/기타업무)로, 각각 최근 것부터 보여준다. 읽기 전용이다:
@@ -718,6 +812,7 @@ export const MondayDetail = ({
   sideList,
   itemUpdates,
   onLoadUpdates,
+  keysEnabled = true,
 }: {
   summary: MondayCustomerListItem
   customer: MondayCustomer | null
@@ -729,7 +824,18 @@ export const MondayDetail = ({
   /** 기록별 메모·파일(받아 둔 것)과 받는 함수. */
   itemUpdates?: Record<string, ItemUpdatesState>
   onLoadUpdates?: (itemId: string, force?: boolean) => void
+  /** 위에 다른 모달(CAPI 전송)이 떠 있으면 false — 방향키를 듣지 않는다. */
+  keysEnabled?: boolean
 }) => {
+  const [pickedTab, setPickedTab] = useState<RecordTab>('all')
+  // 다른 고객으로 넘어가 고른 종류의 기록이 없으면 전체로 본다(고른 값은
+  // 남겨 두어, 그 종류가 있는 고객으로 오면 다시 그 종류만).
+  const tab: RecordTab =
+    customer && pickedTab !== 'all' && recordCounts(customer)[pickedTab] === 0
+      ? 'all'
+      : pickedTab
+  const show = (kind: Exclude<RecordTab, 'all'>) =>
+    tab === 'all' || tab === kind
   const [primaryName, ...otherNames] = summary.names
 
   return (
@@ -800,7 +906,17 @@ export const MondayDetail = ({
 
                 {customer && (
                   <div className="glass_reveal">
-                    <Section title="상담" count={customer.consultations.length}>
+                    <RecordTabs
+                      customer={customer}
+                      tab={tab}
+                      onChange={setPickedTab}
+                      keysEnabled={keysEnabled}
+                    />
+                    <Section
+                      title="상담"
+                      show={show('consultation')}
+                      count={customer.consultations.length}
+                    >
                       {customer.consultations.map((record) => (
                         <ConsultationCard
                           key={record.itemId}
@@ -809,33 +925,42 @@ export const MondayDetail = ({
                         />
                       ))}
                     </Section>
-                    <Section title="방문체험" count={customer.visits.length}>
+                    <Section
+                      title="방문체험"
+                      show={show('visit')}
+                      count={customer.visits.length}
+                    >
                       {customer.visits.map((record) => (
                         <VisitCard key={record.itemId} record={record} />
                       ))}
                     </Section>
-                    {customer.issues.length > 0 && (
-                      <ul className="monday_issues">
-                        {customer.issues.map((issue) => (
-                          <li key={`${issue.itemId}-${issue.type}`}>
-                            <span>
-                              {formatMondayDate(issue.date)} · {issue.message}
-                            </span>
-                            {issue.url && (
-                              <a
-                                className="monday_link"
-                                href={issue.url}
-                                target="_blank"
-                                rel="noreferrer"
-                              >
-                                Monday에서 열기
-                              </a>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <Section title="구매" count={customer.purchases.length}>
+                    {customer.issues.length > 0 &&
+                      (show('consultation') || show('purchase')) && (
+                        <ul className="monday_issues">
+                          {customer.issues.map((issue) => (
+                            <li key={`${issue.itemId}-${issue.type}`}>
+                              <span>
+                                {formatMondayDate(issue.date)} · {issue.message}
+                              </span>
+                              {issue.url && (
+                                <a
+                                  className="monday_link"
+                                  href={issue.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                >
+                                  Monday에서 열기
+                                </a>
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    <Section
+                      title="구매"
+                      show={show('purchase')}
+                      count={customer.purchases.length}
+                    >
                       <MoneySummary customer={customer} />
                       {customer.purchases.map((record) => (
                         <PurchaseCard
@@ -845,7 +970,11 @@ export const MondayDetail = ({
                         />
                       ))}
                     </Section>
-                    <Section title="납부 내역" count={customer.payments.length}>
+                    <Section
+                      title="납부 내역"
+                      show={show('purchase')}
+                      count={customer.payments.length}
+                    >
                       {customer.purchases.length === 0 && (
                         <MoneySummary customer={customer} />
                       )}
@@ -855,6 +984,7 @@ export const MondayDetail = ({
                     </Section>
                     <Section
                       title="만족도 조사"
+                      show={show('survey')}
                       count={customer.surveys.length}
                     >
                       {customer.surveys.map((record) => (
@@ -863,31 +993,45 @@ export const MondayDetail = ({
                     </Section>
                     <Section
                       title="샘플테스트"
+                      show={show('sampleTest')}
                       count={customer.sampleTests.length}
                     >
                       {customer.sampleTests.map((record) => (
                         <SampleTestCard key={record.itemId} record={record} />
                       ))}
                     </Section>
-                    <Section title="출장" count={customer.fieldServices.length}>
+                    <Section
+                      title="출장"
+                      show={show('fieldService')}
+                      count={customer.fieldServices.length}
+                    >
                       {customer.fieldServices.map((record) => (
                         <FieldServiceCard key={record.itemId} record={record} />
                       ))}
                     </Section>
-                    <Section title="AS" count={customer.repairs.length}>
+                    <Section
+                      title="AS"
+                      show={show('repair')}
+                      count={customer.repairs.length}
+                    >
                       {customer.repairs.map((record) => (
                         <RepairCard key={record.itemId} record={record} />
                       ))}
                     </Section>
                     <Section
                       title="기술 문의"
+                      show={show('techInquiry')}
                       count={customer.techInquiries.length}
                     >
                       {customer.techInquiries.map((record) => (
                         <TechInquiryCard key={record.itemId} record={record} />
                       ))}
                     </Section>
-                    <Section title="기타업무" count={customer.techTasks.length}>
+                    <Section
+                      title="기타업무"
+                      show={show('techTask')}
+                      count={customer.techTasks.length}
+                    >
                       {customer.techTasks.map((record) => (
                         <TechTaskCard key={record.itemId} record={record} />
                       ))}
