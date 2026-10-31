@@ -1,8 +1,9 @@
 import { PERIOD_OPTIONS } from '../constants'
 import { formatAgo, formatDateTime, type SlotState } from '../utils/batch-run'
 import { useBatchLogViewModel } from '../view-model/use-batch-log-view-model'
+import { useEffect, useState } from 'react'
 import { BatchFlow } from './flow-graphs'
-import { JobCard } from './job-card'
+import { JobInspector } from './job-inspector'
 import { RunTable } from './run-table'
 import { StatusBadge } from './status-badge'
 
@@ -25,7 +26,42 @@ const LEGEND: SlotState[] = [
 export function BatchLogPanel() {
   const viewModel = useBatchLogViewModel()
   const { state, actions } = viewModel
-  const { days, status, error, fetchedAt, now, jobs, totals } = state
+  const { days, status, error, fetchedAt, now, jobs, totals, jobFilter } = state
+
+  // 고른 노드(작업) — 실행 내역의 작업 거르기와 같은 값이다.
+  const selectedIndex = jobs.findIndex((view) => view.job.id === jobFilter)
+  const selected = selectedIndex === -1 ? null : jobs[selectedIndex]
+  // 닫을 때 패널이 접히는 동안에도 내용이 남아 있게, 마지막으로 연 작업을 둔다.
+  const [shown, setShown] = useState(selected)
+  if (selected && selected !== shown) setShown(selected)
+  const closeJob = () => actions.changeJobFilter('all')
+  const stepJob = (step: -1 | 1) => {
+    const from = selectedIndex === -1 ? 0 : selectedIndex
+    actions.changeJobFilter(
+      jobs[(from + step + jobs.length) % jobs.length].job.id,
+    )
+  }
+
+  // 패널이 열려 있으면 ←/→로 다른 작업, Esc로 닫기(입력칸·고르기 상자 안에서는
+  // 그 칸의 키로 둔다).
+  useEffect(() => {
+    if (!selected) return
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null
+      if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+        return
+      if (event.key === 'Escape') actions.changeJobFilter('all')
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        event.preventDefault()
+        const step = event.key === 'ArrowLeft' ? -1 : 1
+        actions.changeJobFilter(
+          jobs[(selectedIndex + step + jobs.length) % jobs.length].job.id,
+        )
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [selected, selectedIndex, jobs, actions])
 
   return (
     <>
@@ -118,33 +154,40 @@ export function BatchLogPanel() {
             PIPELINE
           </b>
           <span>
-            {state.jobFilter === 'all'
-              ? '작업을 누르면 아래 실행 내역을 그 작업만 보여 줍니다'
-              : '같은 작업을 다시 누르면 전체로 돌아갑니다'}
+            {selected
+              ? '← → 다른 작업 · Esc 닫기 · 칸·점을 누르면 그 실행을 펼칩니다'
+              : '노드를 누르면 작업 상세가 열리고, 아래 실행 내역도 그 작업만 보여 줍니다'}
           </span>
         </header>
         <BatchFlow
           state={state}
           onSelectJob={(id) =>
-            actions.changeJobFilter(state.jobFilter === id ? 'all' : id)
+            actions.changeJobFilter(jobFilter === id ? 'all' : id)
           }
         />
+        {/* 노드를 누르면 그래프 아래로 펼쳐지는 작업 상세. 작업을 바꾸면
+            새로 붙여 처음부터 다시 켜지게(key). */}
+        <div className={`log-insp-fold${selected ? '' : ' is-closed'}`}>
+          <div className="log-insp-fold__inner">
+            {shown && (
+              <JobInspector
+                key={shown.job.id}
+                view={shown}
+                index={jobs.findIndex((view) => view.job.id === shown.job.id)}
+                total={jobs.length}
+                now={now}
+                onOpenRun={actions.openRun}
+                onStep={stepJob}
+                onClose={closeJob}
+              />
+            )}
+          </div>
+        </div>
       </section>
 
       <div className="batch-log__legend" aria-label="상태 범례">
         {LEGEND.map((state) => (
           <StatusBadge key={state} state={state} />
-        ))}
-      </div>
-
-      <div className="batch-log__jobs">
-        {jobs.map((view) => (
-          <JobCard
-            key={view.job.id}
-            view={view}
-            now={now}
-            onOpenRun={actions.openRun}
-          />
         ))}
       </div>
 

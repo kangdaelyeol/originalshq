@@ -19,6 +19,9 @@ const MAX_GRID_DAYS = 7
  * 배치 실행 로그 화면(/log) — batchRuns 기록을 받아 와 작업별 현황(카드)과
  * 실행 목록(표)으로 나눈다. 화면을 켜 두면 1분마다 다시 받아 온다.
  */
+// 작업 상세 패널의 소요 시간 추이에 쓰는 최근 실행 수.
+const HISTORY_SIZE = 36
+
 export const useBatchLogViewModel = () => {
   const [days, setDays] = useState(7)
   const [runs, setRuns] = useState<BatchRun[]>([])
@@ -95,6 +98,11 @@ export const useBatchLogViewModel = () => {
           job,
           latest,
           latestStatus: latest ? displayStatus(latest, now) : null,
+          // 최근 실행 — 오래된 것부터(상세 패널의 소요 시간 추이).
+          history: jobRuns
+            .slice(0, HISTORY_SIZE)
+            .reverse()
+            .map((run) => ({ run, state: displayStatus(run, now) })),
           counts: countStatuses(jobRuns, now),
           missing,
           grid,

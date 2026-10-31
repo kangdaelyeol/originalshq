@@ -107,6 +107,7 @@ export const SignalGraph = ({
   nodes,
   edges,
   label,
+  focus = null,
 }: {
   width: number
   height: number
@@ -114,7 +115,19 @@ export const SignalGraph = ({
   edges: SignalEdge[]
   /** 읽어 주는 이름 — "배치 파이프라인" 등. */
   label: string
+  /** 고른 노드 — 그 노드와 바로 이어진 노드·선만 밝게 두고 나머지는 흐리게. */
+  focus?: string | null
 }) => {
+  const linked = new Set<string>(focus ? [focus] : [])
+  if (focus) {
+    for (const edge of edges) {
+      if (edge.from === focus) linked.add(edge.to)
+      if (edge.to === focus) linked.add(edge.from)
+    }
+  }
+  const dimNode = (id: string) => focus !== null && !linked.has(id)
+  const dimEdge = (edge: SignalEdge) =>
+    focus !== null && edge.from !== focus && edge.to !== focus
   const boxes = new Map<string, Box>(
     nodes.map((node) => [
       node.id,
@@ -130,7 +143,7 @@ export const SignalGraph = ({
 
   return (
     <svg
-      className="sig-graph"
+      className={`sig-graph${focus ? ' has-focus' : ''}`}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={label}
@@ -163,7 +176,7 @@ export const SignalGraph = ({
         return (
           <g
             key={`${edge.from}>${edge.to}`}
-            className={`sig-edge is-${edge.tone}`}
+            className={`sig-edge is-${edge.tone}${dimEdge(edge) ? ' is-dim' : ''}`}
           >
             <path
               d={d}
@@ -210,7 +223,7 @@ export const SignalGraph = ({
         return (
           <g
             key={node.id}
-            className={`sig-node is-${node.tone}${node.active ? ' is-active' : ''}${node.onClick ? ' is-clickable' : ''}`}
+            className={`sig-node is-${node.tone}${node.active ? ' is-active' : ''}${node.onClick ? ' is-clickable' : ''}${dimNode(node.id) ? ' is-dim' : ''}`}
             transform={`translate(${left},${top})`}
             role={node.onClick ? 'button' : undefined}
             tabIndex={node.onClick ? 0 : undefined}
@@ -228,6 +241,16 @@ export const SignalGraph = ({
               height={box.h}
               rx="3"
             />
+            {node.active && (
+              <rect
+                className="sig-node__ring"
+                x="-5"
+                y="-5"
+                width={box.w + 10}
+                height={box.h + 10}
+                rx="6"
+              />
+            )}
             <rect className="sig-node__bar" width={box.w} height="2" rx="1" />
             <circle
               className="sig-node__lamp"

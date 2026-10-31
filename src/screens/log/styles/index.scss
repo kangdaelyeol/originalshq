@@ -389,34 +389,6 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     }
   }
 
-  // ── 작업 카드 ─────────────────────────────────────────────────────────
-  &__jobs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
-    gap: 10px;
-    margin-bottom: 14px;
-
-    .batch-log__card {
-      margin-bottom: 0;
-    }
-  }
-
-  &__job {
-    border-top: 2px solid $accent-dim;
-  }
-
-  &__job-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
-
-    h2 {
-      margin-bottom: 4px;
-    }
-  }
-
   &__codebase {
     padding: 1px 6px;
     border: 1px solid $line-2;
@@ -1040,6 +1012,355 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
+// 고른 노드 — 이어진 노드·선만 밝게, 나머지는 흐리게. 고른 노드는 테두리가
+// 숨 쉬듯 빛난다.
+.sig-node,
+.sig-edge {
+  transition: opacity 0.35s ease;
+}
+.sig-node.is-dim {
+  opacity: 0.28;
+}
+.sig-edge.is-dim {
+  opacity: 0.12;
+}
+.sig-node__ring {
+  fill: none;
+  stroke: var(--log-accent);
+  stroke-width: 1;
+  animation: log-ring 1.8s ease-in-out infinite;
+}
+
+// ── 작업 상세(job-inspector.tsx) — 노드를 누르면 그래프 아래로 펼쳐진다 ──
+// 높이를 grid 행(0fr ↔ 1fr)으로 바꿔 부드럽게 펼치고 접는다(퍼셉트론 .pn-fold).
+.log-insp-fold {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin: 6px -14px -8px;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s ease;
+
+  &__inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  &.is-closed {
+    grid-template-rows: 0fr;
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+.log-insp {
+  --state: var(--log-accent);
+  position: relative;
+  padding: 18px 20px 20px;
+  border-top: 1px solid $accent-dim;
+  background:
+    linear-gradient(180deg, $accent-soft, transparent 140px),
+    rgba(0, 0, 0, 0.28);
+
+  &.is-success {
+    --state: #{$ok};
+  }
+  &.is-partial {
+    --state: #{$warn};
+  }
+  &.is-failed,
+  &.is-missing {
+    --state: #{$fail};
+  }
+  &.is-timeout {
+    --state: #{$timeout};
+  }
+  &.is-running {
+    --state: #{$run};
+  }
+
+  // 열릴 때 위에서 아래로 한 번 훑고 지나가는 빛 줄.
+  &::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    left: 0;
+    top: 0;
+    height: 2px;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      var(--log-accent) 30%,
+      #fff 50%,
+      var(--log-accent) 70%,
+      transparent
+    );
+    box-shadow: 0 0 18px var(--log-accent);
+    opacity: 0;
+    animation: log-scan 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) 0.05s;
+    pointer-events: none;
+  }
+
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    animation: log-rise 0.4s ease both;
+
+    h2 {
+      margin: 4px 0;
+      font-size: 18px;
+      font-weight: 800;
+    }
+  }
+
+  &__id {
+    color: $accent;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+
+    i {
+      margin: 0 4px;
+      color: $ink-4;
+      font-style: normal;
+    }
+  }
+
+  &__tools {
+    display: flex;
+    flex: none;
+    gap: 6px;
+
+    button {
+      @include line-button;
+      height: 28px;
+      padding: 0 10px;
+    }
+  }
+
+  &__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1.25fr);
+    gap: 10px;
+
+    @media (max-width: 1100px) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+      > :last-child {
+        grid-column: 1 / -1;
+      }
+    }
+    @media (max-width: 720px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  // 칸 셋 — 왼쪽부터 차례로 떠오른다(--i).
+  &__cell {
+    min-width: 0;
+    padding: 12px 14px 14px;
+    border: 1px solid $line;
+    background: $panel;
+    animation: log-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(0.12s + var(--i) * 0.09s);
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin: 0 0 10px;
+      color: $ink-3;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+
+      &::before {
+        @include square(4px);
+        content: '';
+      }
+    }
+    h3 + * {
+      margin-top: 0;
+    }
+    * + h3 {
+      margin-top: 16px;
+    }
+
+    .batch-log__grid {
+      margin-top: 0;
+    }
+  }
+
+  // 판독 — 지금 상태를 크게, 상태 색으로 빛나게.
+  &__state {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+
+    strong {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      color: var(--state);
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      text-shadow: 0 0 22px color-mix(in srgb, var(--state) 45%, transparent);
+    }
+    span {
+      color: $ink-3;
+      font-size: 11px;
+    }
+  }
+
+  &__rate {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    strong {
+      font-size: 34px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+
+      small {
+        margin-left: 2px;
+        color: $ink-3;
+        font-size: 16px;
+      }
+    }
+    span {
+      color: $ink-3;
+      font-size: 11px;
+    }
+    em {
+      font-style: normal;
+    }
+  }
+
+  // 최근 실행 하나에 한 칸 — 퍼셉트론 지표의 작은 네모(.pn-squares).
+  &__squares {
+    display: grid;
+    grid-template-columns: repeat(36, minmax(0, 1fr));
+    gap: 2px;
+    margin-top: 10px;
+
+    i {
+      height: 7px;
+      background: rgba(255, 255, 255, 0.07);
+      animation: log-pop 0.3s ease both;
+      animation-delay: 0.3s;
+
+      &.is-success {
+        background: color-mix(in srgb, #{$ok} 70%, transparent);
+      }
+      &.is-partial {
+        background: $warn;
+      }
+      &.is-failed,
+      &.is-timeout {
+        background: $fail;
+        box-shadow: 0 0 8px $fail;
+      }
+      &.is-running {
+        background: $run;
+      }
+    }
+  }
+
+  &__spark {
+    margin: 0;
+
+    svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      overflow: visible;
+    }
+    figcaption {
+      display: flex;
+      gap: 12px;
+      margin-top: 6px;
+      color: $ink-3;
+      font-size: 10.5px;
+
+      b {
+        color: $ink;
+      }
+    }
+  }
+  &__spark-top {
+    stop-color: var(--log-accent);
+    stop-opacity: 0.32;
+  }
+  &__spark-bottom {
+    stop-color: var(--log-accent);
+    stop-opacity: 0;
+  }
+  &__spark-area {
+    fill: url(#log-spark-fill);
+    animation: log-fade 0.8s ease 0.35s both;
+  }
+  &__spark-line {
+    fill: none;
+    stroke: var(--log-accent);
+    stroke-width: 1.5;
+    stroke-linejoin: round;
+    stroke-dasharray: 1200;
+    stroke-dashoffset: 1200;
+    animation: log-draw 1.2s cubic-bezier(0.3, 0.6, 0.3, 1) 0.3s forwards;
+  }
+  &__spark-avg {
+    stroke: $ink-4;
+    stroke-dasharray: 3 4;
+  }
+  &__spark-dot {
+    fill: $ok;
+    stroke: $bg;
+    stroke-width: 1.5;
+    cursor: pointer;
+    animation: log-fade 0.4s ease 1s both;
+
+    &.is-partial {
+      fill: $warn;
+    }
+    &.is-failed,
+    &.is-timeout {
+      fill: $fail;
+    }
+    &.is-running {
+      fill: $run;
+    }
+    &:hover {
+      stroke: $ink;
+    }
+  }
+
+  &__empty {
+    margin: 0;
+    color: $ink-3;
+    font-size: 11.5px;
+  }
+
+  // 함수 이름처럼 긴 값은 한 줄을 다 쓴다.
+  &__wide {
+    grid-column: 1 / -1;
+  }
+
+  // 예약 시각 칸이 위에서부터 차례로 켜진다.
+  .batch-log__slot {
+    animation: log-pop 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(0.3s + var(--i) * 0.012s);
+  }
+}
+
 // ── 문의 접수 탭(inquiry-panel.tsx) ────────────────────────────────────
 .inquiry-log {
   &__detail {
@@ -1414,6 +1735,52 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
+@keyframes log-ring {
+  50% {
+    stroke-opacity: 0.25;
+  }
+}
+
+@keyframes log-scan {
+  0% {
+    top: 0;
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes log-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes log-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes log-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes log-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
 @keyframes log-dash {
   to {
     stroke-dashoffset: -18;
@@ -1428,9 +1795,17 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   .batch-log__badge.is-running span,
   .batch-log__slot.is-running,
   .sig-node__lamp,
-  .sig-edge__line {
+  .sig-edge__line,
+  .sig-node__ring,
+  .log-insp,
+  .log-insp *,
+  .log-insp::before,
+  .log-insp-fold {
     transition: none;
     animation: none !important;
+  }
+  .log-insp__spark-line {
+    stroke-dashoffset: 0;
   }
   .sig-pulse {
     display: none;

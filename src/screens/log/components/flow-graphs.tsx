@@ -151,6 +151,7 @@ export const BatchFlow = ({
       nodes={nodes}
       edges={edges}
       label="배치 파이프라인 — 스케줄러에서 작업, 저장소까지"
+      focus={jobFilter === 'all' ? null : jobFilter}
     />
   )
 }
