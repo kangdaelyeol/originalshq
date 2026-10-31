@@ -4,7 +4,20 @@ import type { TechCellValue, TechColumn, TechEditValue } from './tech-boards'
 // 보낼 값(TechEditValue). 날짜 시간은 Monday에 UTC로 저장돼 있어 한국 시간으로 바꿔 보여 주고,
 // 보낼 때는 한국 시간 그대로 보낸다(함수가 UTC로 바꾼다).
 
-export type EditState = string | string[] | boolean | { date: string; time: string } | { url: string; text: string }
+/** 주소 칸 — 좌표까지 있어야 Monday에 써진다(주소 검색으로 고른 값). */
+export interface LocationState {
+  address: string
+  lat: string
+  lng: string
+}
+
+export type EditState =
+  | string
+  | string[]
+  | boolean
+  | { date: string; time: string }
+  | { url: string; text: string }
+  | LocationState
 
 const parse = (value: string | null): Record<string, unknown> | null => {
   if (!value) return null
@@ -34,6 +47,8 @@ export function emptyState(column: TechColumn): EditState {
       return { date: '', time: '' }
     case 'link':
       return { url: '', text: '' }
+    case 'location':
+      return { address: '', lat: '', lng: '' }
     default:
       return ''
   }
@@ -60,6 +75,12 @@ export function initialState(column: TechColumn, cell: TechCellValue | undefined
     }
     case 'link':
       return { url: String(json?.url ?? ''), text: String(json?.text ?? '') }
+    case 'location':
+      return {
+        address: String(json?.address ?? cell.text ?? ''),
+        lat: json?.lat != null ? String(json.lat) : '',
+        lng: json?.lng != null ? String(json.lng) : '',
+      }
     case 'phone':
       return String(json?.phone ?? cell.text ?? '')
     case 'email':
@@ -84,6 +105,10 @@ export function toEditValue(column: TechColumn, state: EditState): TechEditValue
     case 'link': {
       const { url, text } = state as { url: string; text: string }
       return url ? { url, text } : null
+    }
+    case 'location': {
+      const { address, lat, lng } = state as LocationState
+      return lat && lng ? { address, lat, lng } : null
     }
     case 'status':
       return (state as string) || null

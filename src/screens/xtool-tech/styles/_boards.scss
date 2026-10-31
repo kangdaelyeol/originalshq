@@ -749,3 +749,91 @@
     border-color: rgba(var(--accent-rgb), 0.45);
   }
 }
+
+// ── 주소 검색 칸 ─────────────────────────────────────────────────────────────
+.address-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.address-input__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-1);
+
+  svg {
+    color: var(--accent);
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--warn);
+  }
+
+  &--empty {
+    color: var(--text-4);
+  }
+}
+
+.address-input__search {
+  display: flex;
+  gap: 8px;
+
+  .field__input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.address-input__results {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 10px;
+  @include well;
+
+  li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      background: rgba(255, 255, 255, 0.05);
+      outline: none;
+    }
+
+    strong {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    span,
+    small {
+      font-size: 11.5px;
+      color: var(--text-3);
+    }
+  }
+}
+
+.address-input__none {
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}

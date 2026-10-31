@@ -1,9 +1,11 @@
 import { FirebaseError } from 'firebase/app'
-import { Lock, Save, X } from 'lucide-react'
+import { Lock, MapPin, Save, Search, X } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import {
   createTechItem,
+  searchAddress,
   updateTechItem,
+  type AddressResult,
   type TechBoardKey,
   type TechBoardMeta,
   type TechColumn,
@@ -12,7 +14,14 @@ import {
   type TechMondayUser,
 } from '../../data/tech-boards'
 import { useMondayUsers } from '../../data/tech-boards-store'
-import { emptyState, initialState, sameState, toEditValue, type EditState } from '../../data/tech-edit'
+import {
+  emptyState,
+  initialState,
+  sameState,
+  toEditValue,
+  type EditState,
+  type LocationState,
+} from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
 import { Button } from '../ui/button'
 import { DrawerShell } from './drawer-shell'
@@ -310,6 +319,8 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
         </div>
       )
     }
+    case 'location':
+      return <LocationInput id={id} value={value as LocationState} onChange={onChange} />
     case 'link': {
       const link = value as { url: string; text: string }
       return (
@@ -379,6 +390,88 @@ function ChipPicker({ id, options, selected, onChange, searchable, empty = '고�
             )
           })}
         </div>
+      )}
+    </div>
+  )
+}
+
+/** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다). */
+function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<AddressResult[] | null>(null)
+  const [searching, setSearching] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const search = async () => {
+    if (query.trim().length < 2) {
+      setError('두 글자 이상 적어 주세요.')
+      return
+    }
+    setSearching(true)
+    setError(null)
+    try {
+      setResults(await searchAddress(query))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '주소를 찾지 못했어요.')
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  return (
+    <div className="address-input">
+      {value.address ? (
+        <p className="address-input__current">
+          <MapPin size={14} aria-hidden />
+          <span>{value.address}</span>
+          {!value.lat && <small>(좌표 없음 — 다시 검색해 고르면 정확해져요)</small>}
+          <button type="button" className="text-link" onClick={() => onChange({ address: '', lat: '', lng: '' })}>
+            지우기
+          </button>
+        </p>
+      ) : (
+        <p className="address-input__current address-input__current--empty">주소 없음</p>
+      )}
+      <div className="address-input__search">
+        <input
+          id={id}
+          className="field__input"
+          placeholder="도로명·지번 주소나 장소 이름"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            // 편집 폼 전체가 저장되지 않게 — 엔터는 주소 검색.
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void search()
+            }
+          }}
+        />
+        <Button variant="ghost" icon={Search} onClick={() => void search()} disabled={searching}>
+          {searching ? '찾는 중…' : '검색'}
+        </Button>
+      </div>
+      {error && <p className="editor__error">{error}</p>}
+      {results && (
+        <ul className="address-input__results">
+          {results.length === 0 && <li className="address-input__none">검색 결과가 없어요.</li>}
+          {results.map((r) => (
+            <li key={`${r.lat},${r.lng},${r.label}`}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange({ address: r.address, lat: r.lat, lng: r.lng })
+                  setResults(null)
+                  setQuery('')
+                }}
+              >
+                <strong>{r.label}</strong>
+                {r.label !== r.address && <span>{r.address}</span>}
+                {r.jibun && <small>지번 {r.jibun}</small>}
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   )

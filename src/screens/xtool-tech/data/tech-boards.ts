@@ -182,6 +182,7 @@ export type TechEditValue =
   | boolean
   | { date: string; time?: string | null }
   | { url: string; text?: string }
+  | { lat: string; lng: string; address: string }
   | null
 
 export interface TechEditInput {
@@ -195,6 +196,23 @@ export interface TechEditInput {
 /** item 고치기 — Monday에 쓰고 캐시를 맞춘다(화면은 실시간 구독으로 따라온다). */
 export const updateTechItem = (input: TechEditInput) =>
   httpsCallable<TechEditInput, { itemId: string | null }>(xtoolFirebase().functions, 'techUpdateItem')(input)
+
+export interface AddressResult {
+  label: string
+  address: string
+  jibun: string | null
+  lat: string
+  lng: string
+}
+
+/** 주소 검색(카카오) — Monday 주소 칸은 좌표가 있어야 써진다. */
+export const searchAddress = async (query: string) =>
+  (
+    await httpsCallable<{ query: string }, { results: AddressResult[] }>(
+      xtoolFirebase().functions,
+      'techSearchAddress',
+    )({ query })
+  ).data.results
 
 /** 새 item 만들기 */
 export const createTechItem = (input: TechEditInput) =>

@@ -209,6 +209,7 @@ export type TechEditValue =
   | boolean
   | { date: string; time?: string | null }
   | { url: string; text?: string }
+  | { lat: string; lng: string; address: string }
   | null
 
 export interface TechEditInput {

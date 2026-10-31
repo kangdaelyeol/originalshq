@@ -3,9 +3,9 @@ import { TechColumn, TechEditValue } from './types'
 import { TechRawColumn } from './monday-api'
 
 // 컬럼 타입별 쓰기 — 화면이 보낸 값(TechEditValue)을 Monday가 받는 column_values
-// 모양으로 바꾼다. 여기 없는 타입(미러·연결·파일·버튼·주소 등)은 읽기만 한다.
-// 주소(location)는 위도·경도가 있어야 써져서, 주소 검색(지오코딩)을 붙일 때까지
-// 읽기만 한다.
+// 모양으로 바꾼다. 여기 없는 타입(미러·연결·파일·버튼 등)은 읽기만 한다. 주소
+// (location)는 위도·경도가 있어야 써져서, 화면이 주소 검색(address.ts)으로 고른
+// 좌표를 함께 보낸다.
 
 const WRITABLE_TYPES = new Set([
   'text',
@@ -19,6 +19,7 @@ const WRITABLE_TYPES = new Set([
   'phone',
   'email',
   'link',
+  'location',
 ])
 
 /** 상태·드롭다운 라벨 — 설정 JSON에서 화면에 보이는 순서대로. */
@@ -163,6 +164,17 @@ export function toColumnValue(
       if (typeof value !== 'object' || Array.isArray(value)) return fail()
       if (!('url' in value) || !/^https?:\/\//.test(value.url)) return fail()
       return { url: value.url, text: value.text || value.url }
+    case 'location': {
+      if (isEmpty) return null
+      if (typeof value !== 'object' || Array.isArray(value)) return fail()
+      if (!('lat' in value) || !('lng' in value)) return fail()
+      const lat = Number(value.lat)
+      const lng = Number(value.lng)
+      if (!(lat > -90 && lat < 90) || !(lng >= -180 && lng <= 180)) {
+        return fail()
+      }
+      return { lat: String(lat), lng: String(lng), address: value.address }
+    }
     default:
       return fail()
   }

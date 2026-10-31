@@ -5,6 +5,7 @@ import {
   onCall,
   onRequest,
 } from 'firebase-functions/https'
+import { defineSecret } from 'firebase-functions/params'
 import { onSchedule } from 'firebase-functions/scheduler'
 import { recordBatchRun } from '../batch-log'
 import {
@@ -13,6 +14,7 @@ import {
   getMember,
   handleWebhookEvent,
   MondayWebhookEvent,
+  searchAddress,
   setupTechWebhooks,
   syncTechBoards,
   TechBoardsSyncSummary,
@@ -26,6 +28,10 @@ import { db, mondayApiKey } from '../app'
 // techBoardMeta)는 캐시다. 화면은 캐시를 규칙으로 직접 읽고(기술팀만), 고칠 때는
 // 아래 함수가 Monday에 대신 쓴 뒤 캐시를 맞추고 수정 기록(techEditLogs)을 남긴다.
 // 들어오는 변경은 Monday webhook(몇 초)과 정기 동기화(하루 여섯 번, 보조)로 받는다.
+
+// 카카오 로컬 API(주소 검색) — 카카오 개발자 콘솔 > 내 애플리케이션 > 앱 키의
+// REST API 키. `firebase functions:secrets:set KAKAO_REST_API_KEY`로 넣는다.
+const kakaoApiKey = defineSecret('KAKAO_REST_API_KEY')
 
 // 보드 아홉 개, 합쳐 천 건 남짓 — 보통 1분 안에 끝난다.
 const TECH_SYNC_TIMEOUT_SECONDS = 300
@@ -111,6 +117,27 @@ export const techCreateItem = onCall(
       return { itemId: doc?.itemId ?? null }
     } catch (error) {
       throw toHttpsError(error)
+    }
+  },
+)
+
+// ────────────────────────────────
+// techSearchAddress — 주소 검색(Monday 주소 칸에 쓸 좌표 찾기). 기술팀만.
+// ────────────────────────────────
+export const techSearchAddress = onCall(
+  { secrets: [kakaoApiKey], timeoutSeconds: 20 },
+  async (request: CallableRequest<{ query?: string }>) => {
+    await requireMember(request)
+    try {
+      const results = await searchAddress(
+        kakaoApiKey.value(),
+        String(request.data?.query ?? ''),
+      )
+      return { results }
+    } catch (error) {
+      if (error instanceof TechEditError) throw toHttpsError(error)
+      logger.error('주소 검색 실패:', error)
+      throw new HttpsError('internal', '주소를 찾지 못했어요. 잠시 후 다시 해 주세요')
     }
   },
 )
