@@ -77,7 +77,7 @@ const TextRow = ({
 
 /**
  * Monday 기록 → Meta CAPI 전송 확인 모달. 기록으로 미리 채운 폼을 고쳐서
- * "전송"을 눌러야 실제로 보낸다. 리드 탭에 같은 번호의 리드가 있으면 그
+ * "전송"을 눌러야 실제로 보낸다. cmip 관리 탭에 같은 번호의 리드가 있으면 그
  * 리드에 더하고(고객 정보는 그 리드 것으로 보낸다), 없으면 새 리드를 만든다.
  */
 export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
@@ -145,7 +145,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
                 <CheckCircle2 strokeWidth={1.8} aria-hidden="true" />
                 <strong>Meta {event} 전송 완료</strong>
                 <p>
-                  {result.created ? '새 리드' : '리드 탭의'}{' '}
+                  {result.created ? '새 리드' : 'cmip 관리 탭의'}{' '}
                   {result.lead.fn || formatMondayPhone(result.lead.ph)}에{' '}
                   {kindLabel} 1건을 더했습니다.
                 </p>
@@ -166,7 +166,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
                 <p>{result.message}</p>
                 {result.leadCreated && (
                   <p>
-                    같은 고객을 다시 만들지 말고, 리드 탭에서 그 리드의{' '}
+                    같은 고객을 다시 만들지 말고, cmip 관리 탭에서 그 리드의{' '}
                     {kindLabel} 등록을 다시 시도해 주세요.
                   </p>
                 )}
@@ -184,10 +184,10 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
           </div>
         ) : (
           <>
-            {/* 보낼 곳 — 리드 탭에 같은 번호가 있는지. */}
+            {/* 보낼 곳 — cmip 관리 탭에 같은 번호가 있는지. */}
             <div className="monday_capi_target">
               {leadsStatus === 'loading' && (
-                <p>리드 탭에서 같은 번호를 찾는 중…</p>
+                <p>cmip 관리 탭에서 같은 번호를 찾는 중…</p>
               )}
               {leadsStatus === 'error' && (
                 <p className="is-warn">
@@ -197,7 +197,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
               )}
               {leadsStatus === 'ready' && !match && (
                 <p>
-                  리드 탭에 같은 번호가 없어 새 리드를 만들고{' '}
+                  cmip 관리 탭에 같은 번호가 없어 새 리드를 만들고{' '}
                   {OBJECT[source.kind]} 등록합니다.
                 </p>
               )}
@@ -246,7 +246,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
                   )}
                   <p>
                     {useExisting
-                      ? `리드 탭에 같은 번호의 리드가 있어 그 리드에 ${OBJECT[source.kind]} 더합니다. CAPI의 고객 정보(이름·이메일·fbc 등)는 그 리드에 저장된 값으로 보냅니다.`
+                      ? `cmip 관리 탭에 같은 번호의 리드가 있어 그 리드에 ${OBJECT[source.kind]} 더합니다. CAPI의 고객 정보(이름·이메일·fbc 등)는 그 리드에 저장된 값으로 보냅니다.`
                       : '같은 번호의 리드가 있지만 새 리드를 하나 더 만듭니다.'}
                   </p>
                   {useExisting && sameDay > 0 && (
