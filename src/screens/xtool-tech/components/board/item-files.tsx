@@ -1,8 +1,9 @@
-import { FileText, Film, Image as ImageIcon, LoaderCircle, Trash2, Upload } from 'lucide-react'
+import { FileText, Film, Image as ImageIcon, ImageOff, LoaderCircle, Trash2, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
 import { checkFile, fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink, type TechFileRef } from '../../data/tech-files'
 import { clearFilesInBackground, uploadInBackground } from '../../data/tech-save-queue'
+import { ImageViewer, type ViewerImage } from './image-viewer'
 
 const VIDEO = /\.(mp4|mov|m4v|webm|avi|mkv)$/i
 
@@ -16,8 +17,10 @@ const fileColumnsOf = (meta: TechBoardMeta, item: TechItemDoc) =>
     .map((c) => ({ column: c, files: filesOf(item.values[c.id]?.value) }))
 
 /**
- * 상세 패널의 파일 — 사진은 썸네일, 나머지는 이름 목록. 누르면 Monday 임시 주소(1시간)로 연다.
+ * 상세 패널의 파일 — 사진은 썸네일(누르면 크게 보기), 나머지는 이름 목록(누르면 새 탭).
  * 주소는 패널을 열 때 한 번에 받는다(썸네일은 상세 패널에서만 — 목록 표에서는 받지 않는다).
+ * Monday의 url_thumbnail은 Monday에 로그인해야 열리는 주소라 쓰지 않고, 썸네일도 임시
+ * 공개 주소(원본)를 줄여서 보여 준다.
  */
 export function ItemFiles({ meta, item }: { meta: TechBoardMeta; item: TechItemDoc }) {
   const groups = fileColumnsOf(meta, item).filter((g) => g.files.length > 0)
@@ -28,6 +31,9 @@ export function ItemFiles({ meta, item }: { meta: TechBoardMeta; item: TechItemD
     links: null,
     error: null,
   })
+  const [viewing, setViewing] = useState<number | null>(null)
+  // 썸네일을 못 그린 사진(HEIC 등 브라우저가 모르는 형식)
+  const [broken, setBroken] = useState<ReadonlySet<string>>(new Set())
 
   useEffect(() => {
     if (assetIds.length === 0) return
@@ -45,6 +51,13 @@ export function ItemFiles({ meta, item }: { meta: TechBoardMeta; item: TechItemD
   if (groups.length === 0) return null
   const links = state.key === key ? state.links : null
   const error = state.key === key ? state.error : null
+  // 크게 보기로 넘겨 볼 사진 — 칸이 여러 개여도 한 줄로 이어서 넘긴다.
+  const viewerImages: ViewerImage[] = groups.flatMap((g) =>
+    g.files.flatMap((f) => {
+      const url = f.isImage ? links?.get(f.assetId)?.url : null
+      return url ? [{ key: f.assetId, name: f.name, url }] : []
+    }),
+  )
 
   return (
     <>
@@ -61,21 +74,32 @@ export function ItemFiles({ meta, item }: { meta: TechBoardMeta; item: TechItemD
                 {images.map((f) => {
                   const link = links?.get(f.assetId)
                   return (
-                    <a
+                    <button
                       key={f.assetId}
+                      type="button"
                       className="file-thumb"
-                      href={link?.url ?? undefined}
-                      target="_blank"
-                      rel="noreferrer"
                       title={f.name}
-                      aria-disabled={!link?.url}
+                      aria-label={`${f.name} 크게 보기`}
+                      disabled={!link?.url}
+                      onClick={() => setViewing(viewerImages.findIndex((v) => v.key === f.assetId))}
                     >
-                      {link?.thumbnail || link?.url ? (
-                        <img src={link.thumbnail ?? link.url ?? ''} alt={f.name} loading="lazy" />
+                      {link?.url && !broken.has(f.assetId) ? (
+                        <img
+                          src={link.url}
+                          alt={f.name}
+                          loading="lazy"
+                          decoding="async"
+                          onError={() => setBroken((prev) => new Set(prev).add(f.assetId))}
+                        />
+                      ) : link?.url ? (
+                        <span className="file-thumb__fallback">
+                          <ImageOff size={16} aria-hidden />
+                          {f.name.split('.').pop()?.toUpperCase()}
+                        </span>
                       ) : (
                         <LoaderCircle size={16} className={error ? undefined : 'is-spinning'} aria-hidden />
                       )}
-                    </a>
+                    </button>
                   )
                 })}
               </div>
@@ -106,6 +130,7 @@ export function ItemFiles({ meta, item }: { meta: TechBoardMeta; item: TechItemD
           </section>
         )
       })}
+      <ImageViewer images={viewerImages} index={viewing} onChange={setViewing} onClose={() => setViewing(null)} />
     </>
   )
 }
