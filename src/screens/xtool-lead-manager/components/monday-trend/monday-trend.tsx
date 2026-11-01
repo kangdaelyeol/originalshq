@@ -267,6 +267,16 @@ export const MondayTrend = ({
                 team={salesTeam}
                 unit={unit}
                 drawKey={drawKey}
+                neglect={{
+                  rows: neglect.sales,
+                  today: neglect.today,
+                  expanded: neglect.expanded,
+                  onToggle: toggleExpanded,
+                  sort: tableSorts['neglect:sales'],
+                  onSort: (key) => toggleTableSort('neglect:sales', key),
+                  view: cardViews['neglect:sales'] ?? 'chart',
+                  onView: (next) => changeCardView('neglect:sales', next),
+                }}
               />
             ) : section === 'sales' ? (
               <SalesSection

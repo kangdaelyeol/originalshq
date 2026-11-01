@@ -65,7 +65,8 @@ export type PipelineView = 'chart' | 'table'
 const PIPELINE_VIEWS: readonly PipelineView[] = ['chart', 'table']
 
 /** 판매통계·개인 KPI 카드의 보기 — 그래프 / 표. 개인 KPI·방치 카드는 지표
- * id(방치는 neglect:callback·neglect:visit)마다 따로, 없으면 그래프. */
+ * id(방치는 neglect:callback·neglect:visit·neglect:sales)마다 따로, 없으면
+ * 그래프. */
 export type CardView = 'chart' | 'table'
 const parseCardViews = (
   stored: unknown,
@@ -274,6 +275,13 @@ export const useMondayTrendViewModel = (active: boolean) => {
           (row) => includeInactive || !isInactiveAssignee(row.assignee),
         ),
         tableSorts['neglect:visit'],
+      ),
+      // 체험 후 영업 미처리 — 영업통계 맨 아래.
+      sales: sortNeglectRows(
+        neglectByAssignee(followUps, 'sales', today).filter(
+          (row) => includeInactive || !isInactiveAssignee(row.assignee),
+        ),
+        tableSorts['neglect:sales'],
       ),
     }
   }, [followUps, tableSorts, includeInactive])

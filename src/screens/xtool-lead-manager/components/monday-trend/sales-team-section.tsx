@@ -15,6 +15,7 @@ import {
 import { BoardTrendList } from './board-trend-list'
 import { InflowChart } from './inflow-chart'
 import { KingCard } from './king-card'
+import { SalesNeglect } from './neglect-section'
 
 type SalesTeam = ReturnType<typeof useSalesTeamViewModel>
 type King = SalesTeam['state']['kings']['week'][number]
@@ -110,6 +111,8 @@ const SalesKingCard = ({
  *   · 영업왕: 이번 주(일~토)·이번 달의 매출왕·계약왕·체험매출왕. 기간 선택과
  *     무관하다.
  *   · 기간 요약·추이·담당자별·큰 결제: 위에서 고른 기간과 단위.
+ *   · 체험 후 영업 미처리: 기간과 무관한 오늘 기준(인입통계의 콜백 미처리와
+ *     같은 모양).
  *
  * 담당자가 여럿인 결제는 각자에게 전액을 더한다(개인 KPI와 같은 기준) — 팀
  * 합계만 실제 매출이다. 온라인(Cafe24) 주문은 담당자가 없어 빠진다.
@@ -118,10 +121,13 @@ export const SalesTeamSection = ({
   team,
   unit,
   drawKey,
+  neglect,
 }: {
   team: SalesTeam
   unit: InflowUnit
   drawKey: string
+  /** 체험 후 영업 미처리 표 — 통계 탭의 방치 현황에서. */
+  neglect: Parameters<typeof SalesNeglect>[0]
 }) => {
   const { state, actions } = team
   const {
@@ -367,6 +373,14 @@ export const SalesTeamSection = ({
           </div>
         )}
       </section>
+      {/* 체험 후 영업 미처리 — 오늘 기준. */}
+      <SalesNeglect {...neglect} />
+      {neglect.rows.length === 0 && (
+        <p className="stats_footnote">
+          체험을 마치고 결제·미전환을 기다리는 고객 가운데 기한을 넘긴 건이
+          없습니다(서버 배포 뒤 첫 Monday 동기화부터 집계).
+        </p>
+      )}
     </div>
   )
 }

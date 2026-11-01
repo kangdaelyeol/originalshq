@@ -394,8 +394,10 @@ export interface MondayDailySale {
 /** 아직 끝나지 않은 상담·방문체험 기록 하나 — 통계 탭의 "방치 현황". dueAt이
  * 오늘보다 지났으면 방치다. */
 export interface MondayFollowUp {
-  /** callback은 상담 보드, visit은 방문체험 보드의 기록. */
-  kind: 'callback' | 'visit'
+  /** callback은 상담 보드, visit은 방문체험 보드의 체험 전 기록, sales는
+   * 방문체험 보드에서 체험을 마치고 결제·미전환을 아직 정하지 않은 기록(영업
+   * 후속 — 영업통계). sales는 11/2 서버 배포 뒤 동기화부터 생긴다. */
+  kind: 'callback' | 'visit' | 'sales'
   itemId: string
   boardName: string
   name: string

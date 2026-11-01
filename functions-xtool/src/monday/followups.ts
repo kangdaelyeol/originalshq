@@ -13,6 +13,9 @@ const DEFAULT_FOLLOW_UP_DAYS = 7
 // 일이 끝난 것이라 방치로 보지 않는다. 그 밖(일정 연기, 체험 취소, 방문 대기)은
 // 다시 일정을 잡거나 연락해야 해서 대상이다.
 const VISIT_DONE = /체험\s*완료|노쇼/
+// 체험을 마친 고객은 영업 후속 연락(결제·미전환을 정할 때까지)의 대상이다 —
+// 방문체험 보드의 콜백n단계·상담 마감일·보류 칸으로 관리한다(kind 'sales').
+const VISIT_COMPLETED = /체험\s*완료/
 
 // 응대를 마친 고객을 옮겨 두는 그룹 — 방문체험 보드는 여기 있으면 상태 칸이
 // 아직 남아 있어도 방치가 아니다. 상담 보드(콜백)는 그룹이 아니라 상태와
@@ -73,6 +76,9 @@ const primaryAssignee = (item: MondayItem): string | null =>
  *     아닌 것) 가운데 방문체험이 확정되지 않은 것. 그룹은 보지 않는다.
  *   · 방문체험 — 방문체험 보드의 진행 중 기록 가운데 체험 완료·노쇼가 아니고
  *     완료 그룹(DONE_GROUPS)에 있지 않은 것.
+ *   · 영업 후속(sales) — 방문체험 보드에서 체험 완료인데 결제일·미전환일이
+ *     비어 있는 것(상담 진행 상태가 결제·미전환·오기입이면 이미 빠진다).
+ *     통계 탭 영업통계의 "체험 후 영업 미처리"가 쓴다.
  *   · 보류(보류 상태이거나 "보류" 그룹)는 onHold로 표시만 하고, 화면이 방치와
  *     따로 센다.
  */
@@ -103,17 +109,26 @@ export const buildFollowUps = (
 
     let visitStatus: string | null = null
     let firstDate: string | null
+    let followUpKind: MondayFollowUp['kind'] = 'callback'
     if (kind === 'visit') {
       visitStatus = pick(item, /^체험상태$/)
-      if (visitStatus && VISIT_DONE.test(visitStatus)) continue
       firstDate = pick(item, /^방문체험일자$/)
+      followUpKind = 'visit'
+      if (visitStatus && VISIT_COMPLETED.test(visitStatus)) {
+        if (pick(item, /^결제일$/) !== null || pick(item, /^미전환일$/) !== null) {
+          continue
+        }
+        followUpKind = 'sales'
+      } else if (visitStatus && VISIT_DONE.test(visitStatus)) {
+        continue
+      }
     } else {
       firstDate = pick(item, /^접수일$/)
     }
 
     const lastTouchAt = lastTouchOf(item, firstDate ?? item.createdAt)
     followUps.push({
-      kind: kind === 'visit' ? 'visit' : 'callback',
+      kind: followUpKind,
       itemId: item.id,
       boardName: item.boardName,
       name: item.name,

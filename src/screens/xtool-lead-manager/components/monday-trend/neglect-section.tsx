@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import type { MondayFollowUp } from '@/screens/xtool-lead-manager/entity'
 import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-model'
 import type { NeglectRow, TableSort } from '@/screens/xtool-lead-manager/utils'
 import { SortableTh } from './sortable-th'
@@ -86,7 +87,7 @@ const NeglectTable = ({
   view = 'table',
   onView,
 }: {
-  kind: 'callback' | 'visit'
+  kind: MondayFollowUp['kind']
   title: string
   description: string
   rows: NeglectRow[]
@@ -292,6 +293,43 @@ export const CallbackNeglect = ({
     kind="callback"
     title="콜백 미처리"
     description={CALLBACK_DESCRIPTION(today)}
+    rows={rows}
+    expanded={expanded}
+    onToggle={onToggle}
+    sort={sort}
+    onSort={onSort}
+    view={view}
+    onView={onView}
+  />
+)
+
+const SALES_DESCRIPTION = (today: string) =>
+  `기간 선택과 무관(${today} 기준 전체 데이터). 방문체험 보드에서 체험을 마쳤는데 결제·미전환이 아직 정해지지 않은 고객 가운데, 다음 연락 기한(상담 마감일, 없으면 방문일·콜백 진행일 중 마지막 날 + 7일)을 넘긴 건. 보류는 보류 칸에 따로 셉니다.`
+
+/** 체험 후 영업 미처리 — 영업통계 맨 아래. 표 모양은 콜백 미처리와 같다. */
+export const SalesNeglect = ({
+  rows,
+  today,
+  expanded,
+  onToggle,
+  sort,
+  onSort,
+  view,
+  onView,
+}: {
+  rows: NeglectRow[]
+  today: string
+  expanded: ReadonlySet<string>
+  onToggle: (key: string) => void
+  sort: TableSort | undefined
+  onSort: (key: string) => void
+  view: NeglectView
+  onView: (next: NeglectView) => void
+}) => (
+  <NeglectTable
+    kind="sales"
+    title="체험 후 영업 미처리"
+    description={SALES_DESCRIPTION(today)}
     rows={rows}
     expanded={expanded}
     onToggle={onToggle}
