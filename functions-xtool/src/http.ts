@@ -5,6 +5,7 @@ import type { Response } from 'express'
 import * as logger from 'firebase-functions/logger'
 import type { Request } from 'firebase-functions/https'
 import { db } from './app'
+import { traceRun } from './cost-trace'
 import { ValidationResponse } from './types'
 
 const corsHandler = cors({ origin: true })
@@ -43,33 +44,57 @@ export const endpoint =
       data: T
     }) => Promise<void>,
   ) =>
-    (request: Request, response: Response): void => {
-      corsHandler(request, response, async () => {
-        try {
-          const methods = ([] as Method[]).concat(options.method)
-          if (!methods.includes(request.method as Method)) {
-            response.status(405).send({ error: 'Method Not Allowed' })
-            return
-          }
-
-          let data = undefined as T
-          if (options.validate) {
-            const validationRes = options.validate(request.body)
-            if (!validationRes.ok) {
-              response.status(400).send({ error: validationRes.error })
+  (request: Request, response: Response): void =>
+    // 호출마다 비용 추적(cost-trace.ts) — 핸들러가 끝나면 로그 한 줄. CORS
+    // 사전 요청(OPTIONS)처럼 핸들러까지 오지 않고 끝난 응답은 응답이 끝날 때.
+    traceRun(
+      { fn: options.name, trigger: 'http', method: request.method },
+      (trace) => {
+        const endTrace = (error?: unknown) =>
+          trace.end({
+            status: response.statusCode,
+            responseBytes: Number(response.getHeader('content-length') ?? 0),
+            error,
+          })
+        let entered = false
+        response.on('finish', () => {
+          if (!entered) endTrace()
+        })
+        corsHandler(request, response, async () => {
+          entered = true
+          let failure: unknown
+          try {
+            const methods = ([] as Method[]).concat(options.method)
+            if (!methods.includes(request.method as Method)) {
+              response.status(405).send({ error: 'Method Not Allowed' })
               return
             }
-            data = validationRes.data
-          }
 
-          await run({ request, response, data })
-        } catch (error) {
-          logger.error(options.logLabel ?? `${options.name} 처리 실패:`, error)
-          if (options.onError) await options.onError(error, response)
-          else response.status(500).send({ error: '서버 오류' })
-        }
-      })
-    }
+            let data = undefined as T
+            if (options.validate) {
+              const validationRes = options.validate(request.body)
+              if (!validationRes.ok) {
+                response.status(400).send({ error: validationRes.error })
+                return
+              }
+              data = validationRes.data
+            }
+
+            await run({ request, response, data })
+          } catch (error) {
+            failure = error
+            logger.error(
+              options.logLabel ?? `${options.name} 처리 실패:`,
+              error,
+            )
+            if (options.onError) await options.onError(error, response)
+            else response.status(500).send({ error: '서버 오류' })
+          } finally {
+            endTrace(failure)
+          }
+        })
+      },
+    )
 
 /** 리드 문서를 찾는다 — 없으면 404 { error: 'lead not found' }를 보내고
  * null을 돌려준다(호출부는 그대로 return). */

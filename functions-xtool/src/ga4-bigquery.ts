@@ -1,4 +1,5 @@
 import { BigQuery } from '@google-cloud/bigquery'
+import { addBigQueryBytes } from './cost-trace'
 
 // GA4 → BigQuery 내보내기 — GA4 속성이 이 데이터세트에 하루 한 테이블
 // (events_YYYYMMDD)씩 쌓는다. 스트리밍 내보내기를 켜 두면 오늘 이벤트는
@@ -120,10 +121,10 @@ export async function fetchGa4Events(
     country: (row.country as string | null) ?? null,
     city: (row.city as string | null) ?? null,
   }))
-  return {
-    events,
-    bytesProcessed: Number(
-      metadata.statistics?.query?.totalBytesProcessed ?? 0,
-    ),
-  }
+  const bytesProcessed = Number(
+    metadata.statistics?.query?.totalBytesProcessed ?? 0,
+  )
+  // 비용 추적 — BigQuery는 fetch를 거치지 않아 직접 알린다(cost-trace.ts).
+  addBigQueryBytes(bytesProcessed)
+  return { events, bytesProcessed }
 }

@@ -1,0 +1,275 @@
+import { BigQuery } from '@google-cloud/bigquery'
+import { addBigQueryBytes } from './cost-trace'
+
+// API 비용 분석(/log "비용 분석" 탭) — cost-trace.ts가 남긴 호출별 로그를
+// BigQuery(xtool-63b29.ops_logs)에서 함수별·날짜별로 집계한다. 로그 싱크
+// (api-cost-to-bigquery)가 만든 테이블이라 필드 이름이 소문자로 바뀌어 있지만
+// BigQuery 열 이름은 대소문자를 가리지 않는다. 숫자는 FLOAT로 들어와 정수로
+// 바꿔 쓴다. 금액 계산(단가)은 화면이 한다 — 단가를 바꿔도 다시 배포하지 않게.
+
+const TABLE = '`xtool-63b29.ops_logs.run_googleapis_com_stdout`'
+const LOCATION = 'asia-northeast3'
+// 실수로 큰 범위를 읽지 않게 — 넘으면 BigQuery가 쿼리를 거절한다.
+const MAX_BYTES_BILLED = 2 * 1024 ** 3
+
+/** 함수 하나의 기간 합계. */
+export interface ApiCostByFn {
+  fn: string
+  trigger: string
+  calls: number
+  errors: number
+  coldStarts: number
+  avgMs: number
+  p95Ms: number
+  maxMs: number
+  reads: number
+  writes: number
+  deletes: number
+  /** 한 번에 가장 많이 읽은 수. */
+  maxReads: number
+  responseBytes: number
+  /** 메모리 × 실행 시간(GiB·초) — 실행 비용의 재료. */
+  gibSeconds: number
+  /** 실행 시간 합(초) — vCPU 비용의 재료. */
+  seconds: number
+  externalCalls: number
+  bigqueryBytes: number
+  memoryMb: number
+}
+
+/** 날짜(KST) × 함수 하나. */
+export interface ApiCostByDay {
+  date: string
+  fn: string
+  calls: number
+  reads: number
+  writes: number
+  deletes: number
+  gibSeconds: number
+  seconds: number
+}
+
+/** 호출 하나 — 비싼(많이 읽은·오래 걸린) 호출 목록. */
+export interface ApiCostCall {
+  at: number
+  fn: string
+  method: string
+  status: number
+  durationMs: number
+  reads: number
+  writes: number
+  deletes: number
+  responseBytes: number
+  external: string
+  coldStart: boolean
+}
+
+export interface ApiCostReport {
+  days: number
+  byFn: ApiCostByFn[]
+  byDay: ApiCostByDay[]
+  /** 읽기가 많은 순 / 오래 걸린 순 상위 호출. */
+  topReads: ApiCostCall[]
+  topSlow: ApiCostCall[]
+  /** 함수별 외부 호출 — 호스트 → 횟수. */
+  external: Record<string, Record<string, number>>
+  /** 이 보고서를 만들며 BigQuery가 처리한 바이트. */
+  bytesProcessed: number
+  fetchedAt: number
+}
+
+const WHERE = `
+  WHERE timestamp >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @days DAY)
+    AND jsonPayload.kind = 'api-cost'
+`
+
+const BY_FN = `
+  SELECT
+    jsonPayload.fn AS fn,
+    ANY_VALUE(jsonPayload.trigger) AS trigger,
+    COUNT(*) AS calls,
+    COUNTIF(NOT jsonPayload.ok) AS errors,
+    COUNTIF(jsonPayload.coldStart) AS coldStarts,
+    AVG(jsonPayload.durationMs) AS avgMs,
+    APPROX_QUANTILES(jsonPayload.durationMs, 100)[OFFSET(95)] AS p95Ms,
+    MAX(jsonPayload.durationMs) AS maxMs,
+    SUM(jsonPayload.reads) AS reads,
+    SUM(jsonPayload.writes) AS writes,
+    SUM(jsonPayload.deletes) AS deletes,
+    MAX(jsonPayload.reads) AS maxReads,
+    SUM(jsonPayload.responseBytes) AS responseBytes,
+    SUM(jsonPayload.memoryMb / 1024 * jsonPayload.durationMs / 1000)
+      AS gibSeconds,
+    SUM(jsonPayload.durationMs / 1000) AS seconds,
+    SUM(jsonPayload.externalCalls) AS externalCalls,
+    SUM(jsonPayload.bigqueryBytes) AS bigqueryBytes,
+    MAX(jsonPayload.memoryMb) AS memoryMb
+  FROM ${TABLE}
+  ${WHERE}
+  GROUP BY fn
+`
+
+const BY_DAY = `
+  SELECT
+    FORMAT_TIMESTAMP('%Y-%m-%d', timestamp, 'Asia/Seoul') AS date,
+    jsonPayload.fn AS fn,
+    COUNT(*) AS calls,
+    SUM(jsonPayload.reads) AS reads,
+    SUM(jsonPayload.writes) AS writes,
+    SUM(jsonPayload.deletes) AS deletes,
+    SUM(jsonPayload.memoryMb / 1024 * jsonPayload.durationMs / 1000)
+      AS gibSeconds,
+    SUM(jsonPayload.durationMs / 1000) AS seconds
+  FROM ${TABLE}
+  ${WHERE}
+  GROUP BY date, fn
+`
+
+const CALL_FIELDS = `
+  UNIX_MILLIS(timestamp) AS at,
+  jsonPayload.fn AS fn,
+  jsonPayload.method AS method,
+  jsonPayload.status AS status,
+  jsonPayload.durationMs AS durationMs,
+  jsonPayload.reads AS reads,
+  jsonPayload.writes AS writes,
+  jsonPayload.deletes AS deletes,
+  jsonPayload.responseBytes AS responseBytes,
+  jsonPayload.external AS external,
+  jsonPayload.coldStart AS coldStart
+`
+
+const topCalls = (order: 'reads' | 'durationMs') => `
+  SELECT ${CALL_FIELDS}
+  FROM ${TABLE}
+  ${WHERE}
+  ORDER BY jsonPayload.${order} DESC
+  LIMIT 30
+`
+
+const EXTERNAL = `
+  SELECT
+    jsonPayload.fn AS fn,
+    jsonPayload.external AS external,
+    COUNT(*) AS calls
+  FROM ${TABLE}
+  ${WHERE}
+    AND jsonPayload.externalCalls > 0
+  GROUP BY fn, external
+`
+
+const num = (value: unknown) => {
+  const n = Number(value ?? 0)
+  return Number.isFinite(n) ? n : 0
+}
+const int = (value: unknown) => Math.round(num(value))
+
+const toCall = (row: Record<string, unknown>): ApiCostCall => ({
+  at: int(row.at),
+  fn: String(row.fn ?? ''),
+  method: String(row.method ?? ''),
+  status: int(row.status),
+  durationMs: int(row.durationMs),
+  reads: int(row.reads),
+  writes: int(row.writes),
+  deletes: int(row.deletes),
+  responseBytes: int(row.responseBytes),
+  external: String(row.external ?? ''),
+  coldStart: row.coldStart === true,
+})
+
+/** 쿼리 하나 — 결과 행과 처리한 바이트. */
+const run = async (
+  bigquery: BigQuery,
+  query: string,
+  days: number,
+): Promise<{ rows: Record<string, unknown>[]; bytes: number }> => {
+  const [job] = await bigquery.createQueryJob({
+    query,
+    location: LOCATION,
+    params: { days },
+    maximumBytesBilled: String(MAX_BYTES_BILLED),
+  })
+  const [rows] = await job.getQueryResults()
+  const [metadata] = await job.getMetadata()
+  return {
+    rows: rows as Record<string, unknown>[],
+    bytes: num(metadata.statistics?.query?.totalBytesProcessed),
+  }
+}
+
+/** 최근 days일의 API 비용 보고서 — 쿼리 다섯 개를 같이 돌린다. */
+export async function buildApiCostReport(days: number): Promise<ApiCostReport> {
+  const bigquery = new BigQuery()
+  const [fnRes, dayRes, readsRes, slowRes, extRes] = await Promise.all([
+    run(bigquery, BY_FN, days),
+    run(bigquery, BY_DAY, days),
+    run(bigquery, topCalls('reads'), days),
+    run(bigquery, topCalls('durationMs'), days),
+    run(bigquery, EXTERNAL, days),
+  ])
+
+  const external: ApiCostReport['external'] = {}
+  for (const row of extRes.rows) {
+    const fn = String(row.fn ?? '')
+    let hosts: Record<string, unknown> = {}
+    try {
+      hosts = JSON.parse(String(row.external ?? '{}'))
+    } catch {
+      continue
+    }
+    const target = (external[fn] ??= {})
+    for (const [host, count] of Object.entries(hosts)) {
+      target[host] = (target[host] ?? 0) + num(count) * int(row.calls)
+    }
+  }
+
+  const bytesProcessed = [fnRes, dayRes, readsRes, slowRes, extRes].reduce(
+    (sum, each) => sum + each.bytes,
+    0,
+  )
+  addBigQueryBytes(bytesProcessed)
+
+  return {
+    days,
+    byFn: fnRes.rows
+      .map((row) => ({
+        fn: String(row.fn ?? ''),
+        trigger: String(row.trigger ?? ''),
+        calls: int(row.calls),
+        errors: int(row.errors),
+        coldStarts: int(row.coldStarts),
+        avgMs: int(row.avgMs),
+        p95Ms: int(row.p95Ms),
+        maxMs: int(row.maxMs),
+        reads: int(row.reads),
+        writes: int(row.writes),
+        deletes: int(row.deletes),
+        maxReads: int(row.maxReads),
+        responseBytes: int(row.responseBytes),
+        gibSeconds: num(row.gibSeconds),
+        seconds: num(row.seconds),
+        externalCalls: int(row.externalCalls),
+        bigqueryBytes: int(row.bigqueryBytes),
+        memoryMb: int(row.memoryMb),
+      }))
+      .sort((a, b) => b.reads - a.reads),
+    byDay: dayRes.rows
+      .map((row) => ({
+        date: String(row.date ?? ''),
+        fn: String(row.fn ?? ''),
+        calls: int(row.calls),
+        reads: int(row.reads),
+        writes: int(row.writes),
+        deletes: int(row.deletes),
+        gibSeconds: num(row.gibSeconds),
+        seconds: num(row.seconds),
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date)),
+    topReads: readsRes.rows.map(toCall),
+    topSlow: slowRes.rows.map(toCall),
+    external,
+    bytesProcessed,
+    fetchedAt: Date.now(),
+  }
+}

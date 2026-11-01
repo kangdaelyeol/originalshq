@@ -1,4 +1,10 @@
 import { INQUIRY_DEVICES } from '../client/inquiry-client'
+import {
+  COST_RESOURCES,
+  formatUsd,
+  type CostPart,
+  type FnCost,
+} from '../utils/api-cost'
 import { MAX_FLOW_VIEWS as MAX_VIEWS, SCHEDULE_HOURS } from '../constants'
 import {
   formatAgo,
@@ -382,6 +388,111 @@ export const UsageFlow = ({
       }))}
       edges={edges}
       label="탭 이동 흐름 — 접속에서 처음 본 탭, 탭에서 탭으로"
+      focus={selected}
+    />
+  )
+}
+
+// ── 비용 분석 ────────────────────────────────────────────────────────────
+
+const TRIGGER_LABEL: Record<string, string> = {
+  http: 'HTTP',
+  callable: 'CALLABLE',
+  schedule: 'SCHEDULE',
+}
+
+/** 비용 지도 — 호출 방식 → 함수(비싼 순 MAX_VIEWS개) → 자원. 선 굵기는 그
+ * 함수가 그 자원에 쓴 금액. 노드를 누르면 오른쪽 상세 패널. */
+export const CostFlow = ({
+  fns,
+  selected,
+  onSelect,
+}: {
+  fns: FnCost[]
+  selected: string | null
+  onSelect: (nodeId: string) => void
+}) => {
+  const top = fns.slice(0, MAX_VIEWS)
+  const rowY = (index: number, count: number, height: number) =>
+    count === 1 ? height / 2 : 34 + (index * (height - 68)) / (count - 1)
+  const height = Math.max(300, 34 + Math.max(0, top.length - 1) * 54 + 34)
+  const triggers = [...new Set(top.map((each) => each.trigger))]
+  const total = fns.reduce((sum, each) => sum + each.cost, 0)
+  const partTotal = (part: CostPart) =>
+    fns.reduce((sum, each) => sum + each.parts[part], 0)
+  const maxPart = Math.max(
+    1e-12,
+    ...top.flatMap((each) => Object.values(each.parts)),
+  )
+
+  const nodes: SignalNode[] = [
+    ...triggers.map((trigger, index) => ({
+      id: `trigger:${trigger}`,
+      x: 92,
+      y: rowY(index, triggers.length, height),
+      label: TRIGGER_LABEL[trigger] ?? trigger,
+      sub: `${fns.filter((each) => each.trigger === trigger).length}개 함수`,
+      tone: 'accent' as const,
+      width: 150,
+    })),
+    ...top.map((each, index) => ({
+      id: `fn:${each.fn}`,
+      x: 430,
+      y: rowY(index, top.length, height),
+      label: each.fn,
+      sub: `${formatUsd(each.cost)} · ${(each.share * 100).toFixed(1)}%`,
+      tag: `${each.calls}회`,
+      tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
+      width: 250,
+    })),
+    ...COST_RESOURCES.map((resource, index) => {
+      const cost = partTotal(resource.id)
+      return {
+        id: `res:${resource.id}`,
+        x: 860,
+        y: rowY(index, COST_RESOURCES.length, height),
+        label: resource.label,
+        sub: `${formatUsd(cost)} · ${total ? ((cost / total) * 100).toFixed(0) : 0}%`,
+        tone: 'idle' as const,
+        width: 200,
+      }
+    }),
+  ]
+  const edges: SignalEdge[] = [
+    ...top.map((each) => ({
+      from: `trigger:${each.trigger}`,
+      to: `fn:${each.fn}`,
+      tone: 'accent' as const,
+      flow: true,
+      weight: 1 + each.share * 3,
+    })),
+    ...top.flatMap((each) =>
+      COST_RESOURCES.filter((resource) => each.parts[resource.id] > 0).map(
+        (resource) => {
+          const ratio = each.parts[resource.id] / maxPart
+          return {
+            from: `fn:${each.fn}`,
+            to: `res:${resource.id}`,
+            tone: (ratio > 0.3 ? 'accent' : 'idle') as SignalTone,
+            flow: ratio > 0.1,
+            weight: 1 + ratio * 3,
+          }
+        },
+      ),
+    ),
+  ]
+
+  return (
+    <SignalGraph
+      width={1000}
+      height={height}
+      nodes={nodes.map((node) => ({
+        ...node,
+        active: node.id === selected,
+        onClick: () => onSelect(node.id),
+      }))}
+      edges={edges}
+      label="비용 지도 — 호출 방식에서 함수, 함수가 돈을 쓰는 자원까지"
       focus={selected}
     />
   )

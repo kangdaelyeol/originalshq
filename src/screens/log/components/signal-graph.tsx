@@ -1,4 +1,4 @@
-import { useEffect, useRef, type KeyboardEvent } from 'react'
+import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 
 /** 노드·선의 상태 색 — 성공·주의·실패·실행 중·대기·탭 강조색. */
 export type SignalTone = 'ok' | 'warn' | 'fail' | 'run' | 'idle' | 'accent'
@@ -65,6 +65,8 @@ const edgePath = (a: Box, b: Box, route: SignalEdge['route'] = 'auto') => {
     const end = { x: b.x + b.w / 2, y: b.y + (b.y > a.y ? -6 : 6) }
     const bulge = 26 + Math.abs(end.y - start.y) * 0.42 + (b.y < a.y ? 18 : 0)
     return {
+      start,
+      end,
       d: `M${start.x},${start.y} C${start.x + bulge},${start.y} ${end.x + bulge},${end.y} ${end.x},${end.y}`,
       center: { x: start.x + bulge * 0.76, y: (start.y + end.y) / 2 + 4 },
     }
@@ -75,6 +77,8 @@ const edgePath = (a: Box, b: Box, route: SignalEdge['route'] = 'auto') => {
     const end = { x: b.x - b.w / 2, y: b.y }
     const mid = (end.x - start.x) / 2
     return {
+      start,
+      end,
       d: `M${start.x},${start.y} C${start.x + mid},${start.y} ${end.x - mid},${end.y} ${end.x},${end.y}`,
       center: { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 },
     }
@@ -90,6 +94,8 @@ const edgePath = (a: Box, b: Box, route: SignalEdge['route'] = 'auto') => {
   const cx = mx - (dy / length) * bend
   const cy = my + (dx / length) * bend
   return {
+    start,
+    end,
     d: `M${start.x},${start.y} Q${cx},${cy} ${end.x},${end.y}`,
     center: { x: (mx + cx) / 2, y: (my + cy) / 2 },
   }
@@ -140,6 +146,8 @@ export const SignalGraph = ({
     }
   }, [])
 
+  // 선마다 그라데이션 id — 한 화면에 그림이 여럿이어도 겹치지 않게.
+  const gradientPrefix = useId().replace(/:/g, '')
   const linked = new Set<string>(focus ? [focus] : [])
   if (focus) {
     for (const edge of edges) {
@@ -187,34 +195,68 @@ export const SignalGraph = ({
         const a = boxes.get(edge.from)
         const b = boxes.get(edge.to)
         if (!a || !b) return null
-        const { d } = edgePath(a, b, edge.route)
+        const { d, start, end } = edgePath(a, b, edge.route)
         const weight = Math.max(1, Math.min(4, edge.weight ?? 1))
+        const gradientId = `${gradientPrefix}-edge-${index}`
+        const duration = `${2.6 + (index % 4) * 0.35}s`
+        const delay = `-${(index * 0.41) % 2.6}s`
         return (
           <g
             key={`${edge.from}>${edge.to}`}
             className={`sig-edge is-${edge.tone}${dimEdge(edge) ? ' is-dim' : ''}`}
+            style={{ animationDelay: `${(index % 12) * 0.04}s` }}
           >
+            {/* 출발 → 도착 방향의 그라데이션 — 양끝은 옅고 가운데가 진하다
+                (퍼셉트론 선처럼 노드 가까이에서 스며든다). 색은 이 g의
+                --tone을 물려받는다. */}
+            <linearGradient
+              id={gradientId}
+              gradientUnits="userSpaceOnUse"
+              x1={start.x}
+              y1={start.y}
+              x2={end.x}
+              y2={end.y}
+            >
+              <stop offset="0" className="sig-edge__stop is-end" />
+              <stop offset="0.5" className="sig-edge__stop is-mid" />
+              <stop offset="1" className="sig-edge__stop is-end" />
+            </linearGradient>
+            {/* 넓고 옅은 빛 번짐 — 흐림 필터 없이 굵은 반투명 선으로. */}
             <path
               d={d}
+              className="sig-edge__glow"
+              stroke={`url(#${gradientId})`}
+              style={{ strokeWidth: 4 + weight * 2.4 }}
+            />
+            <path
+              d={d}
+              pathLength={100}
               className={`sig-edge__line${edge.dashed ? ' is-dashed' : ''}`}
+              stroke={`url(#${gradientId})`}
               style={{ strokeWidth: 0.9 + weight * 0.55 }}
             />
-            {/* 빛 점 — 선을 따라 흐르는 둥근 점선(CSS stroke-dashoffset).
-                SVG의 animateMotion은 매 프레임 레이아웃을 다시 계산해 무겁다.
-                pathLength를 100으로 두어 선 길이와 상관없이 점 두 개. */}
+            {/* 빛 점 — 혜성처럼 꼬리(길고 옅은 꼬리 + 짧고 밝은 꼬리)를 달고
+                흐른다. 꼬리 끝이 늘 점에 닿도록 셋의 시작 위치를 맞췄다. 모두 CSS
+                stroke-dashoffset(SVG animateMotion은 매 프레임 레이아웃을 다시
+                계산해 무겁다). pathLength 100이라 선 길이와 상관없이 둘씩. */}
             {edge.flow &&
-              (['sig-flow__halo', 'sig-flow'] as const).map((className) => (
+              (
+                [
+                  ['sig-flow__trail', 1.2],
+                  ['sig-flow__tail', 1.5],
+                  ['sig-flow__halo', 5],
+                  ['sig-flow', 2],
+                ] as const
+              ).map(([className, scale]) => (
                 <path
                   key={className}
                   d={d}
                   pathLength={100}
                   className={className}
                   style={{
-                    strokeWidth:
-                      (1.8 + weight * 0.35) *
-                      (className === 'sig-flow' ? 2 : 5),
-                    animationDuration: `${2.6 + (index % 4) * 0.35}s`,
-                    animationDelay: `-${(index * 0.41) % 2.6}s`,
+                    strokeWidth: (1.8 + weight * 0.35) * scale,
+                    animationDuration: duration,
+                    animationDelay: delay,
                   }}
                 />
               ))}

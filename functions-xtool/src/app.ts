@@ -6,10 +6,13 @@ import { setGlobalOptions } from 'firebase-functions'
 import { initializeApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { defineSecret } from 'firebase-functions/params'
+import { installCostCounters } from './cost-trace'
 
 initializeApp()
 
 export const db = getFirestore('xtool-read')
+// API 비용 추적 — Firestore 읽기·쓰기와 외부 호출을 요청별로 센다(cost-trace.ts).
+installCostCounters(db)
 setGlobalOptions({ maxInstances: 10 })
 
 export const metaPixelId = defineSecret('META_PIXEL_ID')

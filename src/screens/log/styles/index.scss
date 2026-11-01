@@ -884,6 +884,29 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
+// ── 비용 분석(cost-panel.tsx) ──────────────────────────────────────────
+.log-cost__bar-cell {
+  width: 30%;
+}
+.log-cost__bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: $accent;
+  }
+}
+.log-cost__note p {
+  margin-top: 8px;
+  line-height: 1.65;
+}
+
 // ── 신호 그래프(signal-graph.tsx) ──────────────────────────────────────
 .sig-graph {
   display: block;
@@ -897,7 +920,9 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 }
 
 .sig-edge {
-  --tone: #{$ink-4};
+  --tone: #{$ink-2};
+  // 선 하나가 처음 그려질 때 살짝 늦게 떠오른다(순서는 g의 animationDelay).
+  animation: log-fade 0.6s ease both;
 
   &.is-ok {
     --tone: #{$ok};
@@ -915,19 +940,52 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     --tone: var(--log-accent);
   }
 
-  &__line {
-    fill: none;
-    stroke: color-mix(in srgb, var(--tone) 55%, transparent);
+  // 그라데이션 — 양끝은 옅게(노드에 스며든다), 가운데는 진하게. 대기(idle)
+  // 선은 전체를 더 옅게.
+  &__stop {
+    stop-color: var(--tone);
 
-    &.is-dashed {
-      stroke-dasharray: 4 5;
+    &.is-end {
+      stop-opacity: 0.12;
+    }
+    &.is-mid {
+      stop-opacity: 0.78;
     }
   }
-  &.is-idle .sig-edge__line {
-    stroke: rgba(255, 255, 255, 0.13);
+  &.is-idle .sig-edge__stop {
+    &.is-end {
+      stop-opacity: 0.05;
+    }
+    &.is-mid {
+      stop-opacity: 0.3;
+    }
+  }
+
+  // 넓고 옅은 빛 번짐.
+  &__glow {
+    fill: none;
+    opacity: 0.16;
+    stroke-linecap: round;
+  }
+  &.is-idle .sig-edge__glow {
+    opacity: 0.05;
+  }
+
+  // 선 — 처음 그려질 때 출발점에서 도착점으로 그어진다(pathLength 100).
+  &__line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: sig-draw 0.9s cubic-bezier(0.3, 0.6, 0.2, 1) both;
+    animation-delay: inherit;
+
+    &.is-dashed {
+      stroke-dasharray: 1.4 1.8;
+      animation: log-fade 0.6s ease both;
+    }
   }
   &.is-fail .sig-edge__line {
-    stroke-dasharray: 5 4;
+    stroke-dasharray: 2 1.6;
     animation: log-dash 1.2s linear infinite;
   }
 }
@@ -978,19 +1036,37 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
-// 빛 점 — 선을 따라 흐르는 둥근 점선. 길이 0인 점선 + 둥근 끝 = 점, 바깥의
-// 넓고 옅은 점선이 빛 번짐.
+// 빛 점 — 혜성. 길이 0인 점선 + 둥근 끝 = 머리, 그 뒤로 짧고 밝은 꼬리와
+// 길고 옅은 꼬리. pathLength 100에 50마다 하나씩(선마다 둘). 꼬리 끝이 머리에
+// 닿도록 셋의 시작 위치(stroke-dashoffset)를 꼬리 길이만큼 어긋나게 둔다.
 .sig-flow,
-.sig-flow__halo {
+.sig-flow__halo,
+.sig-flow__tail,
+.sig-flow__trail {
   fill: none;
   stroke: var(--tone);
   stroke-linecap: round;
-  stroke-dasharray: 0 50;
-  animation: sig-flow linear infinite;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
   pointer-events: none;
 }
+.sig-flow,
 .sig-flow__halo {
-  opacity: 0.18;
+  stroke-dasharray: 0 50;
+  animation-name: sig-flow-head;
+}
+.sig-flow__halo {
+  opacity: 0.2;
+}
+.sig-flow__tail {
+  opacity: 0.45;
+  stroke-dasharray: 6 44;
+  animation-name: sig-flow-tail;
+}
+.sig-flow__trail {
+  opacity: 0.14;
+  stroke-dasharray: 12 38;
+  animation-name: sig-flow-trail;
 }
 .sig-edge.is-idle :is(.sig-flow, .sig-flow__halo) {
   stroke: $ink;
@@ -1977,9 +2053,39 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
-@keyframes sig-flow {
+@keyframes sig-flow-head {
+  from {
+    stroke-dashoffset: -6;
+  }
+  to {
+    stroke-dashoffset: -106;
+  }
+}
+
+@keyframes sig-flow-tail {
+  from {
+    stroke-dashoffset: 0;
+  }
   to {
     stroke-dashoffset: -100;
+  }
+}
+
+@keyframes sig-flow-trail {
+  from {
+    stroke-dashoffset: 6;
+  }
+  to {
+    stroke-dashoffset: -94;
+  }
+}
+
+@keyframes sig-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
   }
 }
 
@@ -2021,7 +2127,13 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     stroke-dashoffset: 0;
   }
   .sig-flow,
-  .sig-flow__halo {
+  .sig-flow__halo,
+  .sig-flow__tail,
+  .sig-flow__trail {
     display: none;
+  }
+  .sig-edge,
+  .sig-edge__line {
+    stroke-dashoffset: 0;
   }
 }

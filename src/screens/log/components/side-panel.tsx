@@ -183,7 +183,8 @@ export const PanelBars = ({
   onPick?: (key: string) => void
 }) => {
   if (rows.length === 0) return <p className="log-insp__empty">{empty}</p>
-  const max = Math.max(1, ...rows.map((row) => row.value))
+  // 1보다 작은 값(금액)도 가장 큰 줄이 가득 차게 — 모두 0이면 1.
+  const max = Math.max(0, ...rows.map((row) => row.value)) || 1
   return (
     <ul className="log-insp__bars">
       {rows.map((row, index) => {
