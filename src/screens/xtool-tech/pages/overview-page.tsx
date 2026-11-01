@@ -69,8 +69,6 @@ export function OverviewPage() {
           title="최근 배포 내역"
           actions={
             <SegmentedControl
-              variant="chips"
-              size="sm"
               ariaLabel="배포 상태 필터"
               options={DEPLOY_FILTERS}
               value={filter}

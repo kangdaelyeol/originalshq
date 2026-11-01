@@ -90,7 +90,9 @@ export function toColumnValue(
   column: TechColumn,
   value: TechEditValue,
 ): unknown {
-  if (!column.writable) {
+  // 저장된 writable 표시가 아니라 타입으로 본다 — 쓰기 가능한 타입을 늘린 뒤 동기화
+  // 전이어도 바로 쓸 수 있게.
+  if (!WRITABLE_TYPES.has(column.type)) {
     throw new TechEditError(`'${column.title}' 칸은 여기서 고칠 수 없어요`)
   }
   const fail = (): never => {

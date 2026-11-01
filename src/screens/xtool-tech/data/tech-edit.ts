@@ -4,11 +4,19 @@ import type { TechCellValue, TechColumn, TechEditValue } from './tech-boards'
 // 보낼 값(TechEditValue). 날짜 시간은 Monday에 UTC로 저장돼 있어 한국 시간으로 바꿔 보여 주고,
 // 보낼 때는 한국 시간 그대로 보낸다(함수가 UTC로 바꾼다).
 
-/** 주소 칸 — 좌표까지 있어야 Monday에 써진다(주소 검색으로 고른 값). */
+/** 주소 칸 — 좌표까지 있어야 Monday에 써진다(주소 검색으로 고른 값). Monday에는
+ * "{주소}, {상세주소}" 한 줄로 적고, 읽을 때 첫 ", "에서 다시 나눈다(카카오 도로명·지번
+ * 주소에는 쉼표가 없다). */
 export interface LocationState {
   address: string
+  detail: string
   lat: string
   lng: string
+}
+
+const splitAddress = (full: string): { address: string; detail: string } => {
+  const i = full.indexOf(', ')
+  return i < 0 ? { address: full, detail: '' } : { address: full.slice(0, i), detail: full.slice(i + 2) }
 }
 
 export type EditState =
@@ -48,7 +56,7 @@ export function emptyState(column: TechColumn): EditState {
     case 'link':
       return { url: '', text: '' }
     case 'location':
-      return { address: '', lat: '', lng: '' }
+      return { address: '', detail: '', lat: '', lng: '' }
     default:
       return ''
   }
@@ -77,7 +85,7 @@ export function initialState(column: TechColumn, cell: TechCellValue | undefined
       return { url: String(json?.url ?? ''), text: String(json?.text ?? '') }
     case 'location':
       return {
-        address: String(json?.address ?? cell.text ?? ''),
+        ...splitAddress(String(json?.address ?? cell.text ?? '')),
         lat: json?.lat != null ? String(json.lat) : '',
         lng: json?.lng != null ? String(json.lng) : '',
       }
@@ -107,8 +115,9 @@ export function toEditValue(column: TechColumn, state: EditState): TechEditValue
       return url ? { url, text } : null
     }
     case 'location': {
-      const { address, lat, lng } = state as LocationState
-      return lat && lng ? { address, lat, lng } : null
+      const { address, detail, lat, lng } = state as LocationState
+      const full = detail.trim() ? `${address}, ${detail.trim()}` : address
+      return lat && lng ? { address: full, lat, lng } : null
     }
     case 'status':
       return (state as string) || null

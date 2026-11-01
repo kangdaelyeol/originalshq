@@ -1,10 +1,7 @@
-import { FirebaseError } from 'firebase/app'
 import { Lock, MapPin, Save, Search, X } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
 import {
-  createTechItem,
   searchAddress,
-  updateTechItem,
   type AddressResult,
   type TechBoardKey,
   type TechBoardMeta,
@@ -14,6 +11,7 @@ import {
   type TechMondayUser,
 } from '../../data/tech-boards'
 import { useMondayUsers } from '../../data/tech-boards-store'
+import { saveInBackground } from '../../data/tech-save-queue'
 import {
   emptyState,
   initialState,
@@ -25,6 +23,24 @@ import {
 import { cx } from '../../lib/cx'
 import { Button } from '../ui/button'
 import { DrawerShell } from './drawer-shell'
+
+// 고칠 수 있는 타입 — functions-xtool/src/tech-boards/columns.ts의 WRITABLE_TYPES와 같게.
+// 보드 정보의 writable 표시는 동기화 때 정해져서, 타입을 늘린 직후엔 옛값일 수 있다.
+const WRITABLE_TYPES = new Set([
+  'text',
+  'long_text',
+  'numbers',
+  'status',
+  'dropdown',
+  'date',
+  'people',
+  'checkbox',
+  'phone',
+  'email',
+  'link',
+  'location',
+])
+const isWritable = (c: TechColumn) => c.writable || WRITABLE_TYPES.has(c.type)
 
 // 편집 칸에서 아예 안 보이는 타입 — 버튼·item id·하위 아이템 칸 등 값이 아닌 것.
 const HIDDEN_TYPES = new Set(['button', 'item_id', 'subtasks', 'last_updated', 'creation_log', 'auto_number'])
@@ -38,8 +54,8 @@ interface ItemEditorProps {
   onClose: () => void
 }
 
-/** 항목 편집·생성 — 상세 패널 위에 겹쳐 뜬다. 저장하면 함수가 Monday에 쓰고, 화면은 실시간
- * 구독으로 바뀐 값을 받는다. */
+/** 항목 편집·생성 — 상세 패널 위에 겹쳐 뜬다. 저장을 누르면 바로 닫히고 요청은 뒤에서 간다
+ * (tech-save-queue — 진행·실패는 토스트). 바뀐 값은 실시간 구독으로 들어온다. */
 export function ItemEditor({ open, boardKey, meta, item, onClose }: ItemEditorProps) {
   return (
     <DrawerShell open={open} onClose={onClose} labelledBy="editor-title" layer="top" contentKey={item?.itemId ?? 'new'}>
@@ -56,8 +72,8 @@ interface FormState {
 
 function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'open'>) {
   const users = useMondayUsers()
-  const columns = useMemo(() => meta.columns.filter((c) => c.writable), [meta.columns])
-  const lockedTitles = meta.columns.filter((c) => !c.writable && !HIDDEN_TYPES.has(c.type)).map((c) => c.title)
+  const columns = useMemo(() => meta.columns.filter(isWritable), [meta.columns])
+  const lockedTitles = meta.columns.filter((c) => !isWritable(c) && !HIDDEN_TYPES.has(c.type)).map((c) => c.title)
   // 처음 값은 패널을 열 때 한 번만 — 저장 중에 실시간으로 값이 바뀌어도 입력이 흔들리지 않게.
   const [initial] = useState<FormState>(() => ({
     name: item?.name ?? '',
@@ -67,7 +83,6 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
     ),
   }))
   const [form, setForm] = useState<FormState>(initial)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const changedColumns = columns.filter((c) => !sameState(form.values[c.id], initial.values[c.id]))
@@ -78,33 +93,31 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
   const setValue = (id: string, value: EditState) =>
     setForm((f) => ({ ...f, values: { ...f.values, [id]: value } }))
 
-  const save = async () => {
-    if (!form.name.trim()) {
+  const save = () => {
+    const name = form.name.trim()
+    if (!name) {
       setError('이름을 적어 주세요.')
       return
     }
-    setSaving(true)
-    setError(null)
     const columnsInput: Record<string, TechEditValue> = Object.fromEntries(
       changedColumns.map((c) => [c.id, toEditValue(c, form.values[c.id])]),
     )
-    try {
-      if (item) {
-        await updateTechItem({
+    if (item) {
+      saveInBackground(
+        'update',
+        {
           boardKey,
           itemId: item.itemId,
-          ...(nameChanged ? { name: form.name.trim() } : {}),
+          ...(nameChanged ? { name } : {}),
           ...(groupChanged ? { groupId: form.groupId } : {}),
           columns: columnsInput,
-        })
-      } else {
-        await createTechItem({ boardKey, name: form.name.trim(), groupId: form.groupId || undefined, columns: columnsInput })
-      }
-      onClose()
-    } catch (e) {
-      setError(e instanceof FirebaseError || e instanceof Error ? e.message : '저장하지 못했어요.')
-      setSaving(false)
+        },
+        name,
+      )
+    } else {
+      saveInBackground('create', { boardKey, name, groupId: form.groupId || undefined, columns: columnsInput }, name)
     }
+    onClose()
   }
 
   return (
@@ -124,10 +137,9 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
 
       <form
         className="drawer__body editor"
-        inert={saving}
         onSubmit={(e) => {
           e.preventDefault()
-          void save()
+          save()
         }}
       >
         <Field label="이름" required changed={!!item && nameChanged}>
@@ -191,11 +203,11 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
             {error}
           </p>
         )}
-        <Button variant="ghost" onClick={onClose} disabled={saving}>
+        <Button variant="ghost" onClick={onClose}>
           취소
         </Button>
-        <Button icon={Save} onClick={() => void save()} disabled={saving || !dirty}>
-          {saving ? 'Monday에 저장하는 중…' : item ? '저장' : '만들기'}
+        <Button icon={Save} onClick={save} disabled={!dirty}>
+          {item ? '저장' : '만들기'}
         </Button>
       </footer>
     </>
@@ -395,12 +407,14 @@ function ChipPicker({ id, options, selected, onChange, searchable, empty = '고�
   )
 }
 
-/** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다). */
+/** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다).
+ * 상세 주소(동·호수 등)는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다. */
 function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AddressResult[] | null>(null)
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const hasCoords = Boolean(value.lat && value.lng)
 
   const search = async () => {
     if (query.trim().length < 2) {
@@ -412,7 +426,7 @@ function LocationInput({ id, value, onChange }: { id: string; value: LocationSta
     try {
       setResults(await searchAddress(query))
     } catch (e) {
-      setError(e instanceof Error ? e.message : '주소를 찾지 못했어요.')
+      setError(e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '') : '주소를 찾지 못했어요.')
     } finally {
       setSearching(false)
     }
@@ -424,19 +438,29 @@ function LocationInput({ id, value, onChange }: { id: string; value: LocationSta
         <p className="address-input__current">
           <MapPin size={14} aria-hidden />
           <span>{value.address}</span>
-          {!value.lat && <small>(좌표 없음 — 다시 검색해 고르면 정확해져요)</small>}
-          <button type="button" className="text-link" onClick={() => onChange({ address: '', lat: '', lng: '' })}>
+          {!hasCoords && <small>(좌표 없음 — 다시 검색해 고르면 저장할 수 있어요)</small>}
+          <button type="button" className="text-link" onClick={() => onChange({ address: '', detail: '', lat: '', lng: '' })}>
             지우기
           </button>
         </p>
       ) : (
-        <p className="address-input__current address-input__current--empty">주소 없음</p>
+        <p className="address-input__current address-input__current--empty">주소 없음 — 아래에서 검색해 골라 주세요</p>
+      )}
+      {value.address && (
+        <input
+          className="field__input"
+          placeholder="상세 주소(동·호수, 층 등)"
+          aria-label="상세 주소"
+          value={value.detail}
+          disabled={!hasCoords}
+          onChange={(e) => onChange({ ...value, detail: e.target.value })}
+        />
       )}
       <div className="address-input__search">
         <input
           id={id}
           className="field__input"
-          placeholder="도로명·지번 주소나 장소 이름"
+          placeholder={value.address ? '다른 주소로 바꾸기 — 도로명·지번이나 장소 이름' : '도로명·지번 주소나 장소 이름'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
@@ -460,7 +484,8 @@ function LocationInput({ id, value, onChange }: { id: string; value: LocationSta
               <button
                 type="button"
                 onClick={() => {
-                  onChange({ address: r.address, lat: r.lat, lng: r.lng })
+                  // 주소를 바꿔도 적어 둔 상세 주소는 남긴다.
+                  onChange({ address: r.address, detail: value.detail, lat: r.lat, lng: r.lng })
                   setResults(null)
                   setQuery('')
                 }}

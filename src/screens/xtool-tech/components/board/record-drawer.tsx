@@ -1,4 +1,4 @@
-import { ExternalLink, PenLine, X } from 'lucide-react'
+import { PenLine, X } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useBoardEdit } from './board-edit-context'
 import { StagePill } from './cells'
@@ -11,7 +11,7 @@ export interface DrawerField {
 
 interface RecordDrawerProps {
   /** 열린 기록 — null이면 닫힌다. */
-  record: { itemId: string; name: string; stage: string | null; status: string | null; url: string | null } | null
+  record: { itemId: string; name: string; stage: string | null; status: string | null } | null
   /** 이름 위 한 줄(보드 이름 등) */
   eyebrow: string
   fields?: readonly DrawerField[]
@@ -71,14 +71,6 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
             {children}
           </div>
 
-          {record.url && (
-            <footer className="drawer__footer">
-              <a href={record.url} target="_blank" rel="noreferrer" className="button button--ghost button--md">
-                <ExternalLink size={14} aria-hidden />
-                Monday에서 열기
-              </a>
-            </footer>
-          )}
         </>
       )}
     </DrawerShell>

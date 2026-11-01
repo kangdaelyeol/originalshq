@@ -35,7 +35,8 @@ interface KakaoPlaceDoc {
 async function kakao<T>(apiKey: string, path: string, query: string) {
   const url = `${KAKAO}/${path}?query=${encodeURIComponent(query)}&size=10`
   const response = await fetch(url, {
-    headers: { Authorization: `KakaoAK ${apiKey}` },
+    // 시크릿을 넣을 때 섞여 들어간 앞뒤 공백·줄바꿈은 뗀다.
+    headers: { Authorization: `KakaoAK ${apiKey.trim()}` },
   })
   if (!response.ok) {
     throw new Error(

@@ -9,6 +9,7 @@ import type { LoginLocationState } from '../../pages/login-page'
 import { xtPath } from '../../paths'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
+import { Toaster } from './toaster'
 import { Topbar } from './topbar'
 
 /**
@@ -55,6 +56,7 @@ export function AppLayout() {
           </motion.div>
         </main>
       </div>
+      <Toaster />
       <ScrollRestoration />
     </>
   )
