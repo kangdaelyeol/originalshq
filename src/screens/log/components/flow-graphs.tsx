@@ -1,6 +1,8 @@
 import { INQUIRY_DEVICES } from '../client/inquiry-client'
 import {
   COST_RESOURCES,
+  formatCount,
+  formatMs,
   formatUsd,
   type CostPart,
   type FnCost,
@@ -12,6 +14,7 @@ import {
   formatDuration,
   nextScheduledAt,
   STATUS_LABEL,
+  summarizeRun,
   type SlotState,
 } from '../utils/batch-run'
 import {
@@ -38,27 +41,32 @@ const COL = {
   yellow: '#f2cf5b',
 } as const
 
+// 열 이름 — 영상의 "TYPES / QUESTIONS"처럼 두 낱말.
 const BATCH_COLUMNS: SignalColumn[] = [
-  { x: 98, width: 170, label: 'TRIGGER', color: COL.cyan },
-  { x: 390, width: 210, label: 'JOBS', color: COL.pink },
-  { x: 660, width: 210, label: 'FOLLOW-UP', color: COL.purple },
-  { x: 912, width: 160, label: 'STORAGE', color: COL.yellow },
+  { x: 98, width: 170, label: 'SCHEDULE / IN', color: COL.cyan },
+  { x: 390, width: 210, label: 'JOBS / RUN', color: COL.pink },
+  { x: 660, width: 210, label: 'FOLLOW / UP', color: COL.purple },
+  { x: 912, width: 160, label: 'STORE / OUT', color: COL.yellow },
 ]
 const INQUIRY_COLUMNS: SignalColumn[] = [
-  { x: 82, width: 140, label: 'INPUT', color: COL.cyan },
-  { x: 262, width: 168, label: 'FUNCTION', color: COL.pink },
-  { x: 466, width: 190, label: 'DELIVERY', color: COL.purple },
-  { x: 771, width: 348, label: 'BOARDS', color: COL.yellow },
+  { x: 82, width: 140, label: 'FORM / IN', color: COL.cyan },
+  { x: 262, width: 168, label: 'FUNCTION / API', color: COL.pink },
+  { x: 466, width: 190, label: 'DELIVERY / SEND', color: COL.purple },
+  { x: 771, width: 348, label: 'BOARDS / OUT', color: COL.yellow },
 ]
 const USAGE_COLUMNS: SignalColumn[] = [
-  { x: 100, width: 150, label: 'ENTRY', color: COL.cyan },
-  { x: 470, width: 250, label: 'TABS', color: COL.pink },
+  { x: 100, width: 150, label: 'ENTRY / IN', color: COL.cyan },
+  { x: 470, width: 250, label: 'TABS / VIEW', color: COL.pink },
 ]
 const COST_COLUMNS: SignalColumn[] = [
-  { x: 92, width: 150, label: 'TRIGGER', color: COL.cyan },
-  { x: 430, width: 250, label: 'FUNCTION', color: COL.pink },
-  { x: 860, width: 200, label: 'RESOURCE', color: COL.purple },
+  { x: 92, width: 150, label: 'TRIGGER / IN', color: COL.cyan },
+  { x: 430, width: 250, label: 'FUNCTION / RUN', color: COL.pink },
+  { x: 860, width: 200, label: 'RESOURCE / BILL', color: COL.purple },
 ]
+
+// 카드 사이 세로 간격 — 줄 셋 카드(높이 87.5)·줄 하나 카드(62.5)에 맞춘다.
+const JOB_GAP = 102
+const ROW_GAP = 70
 
 // 탭마다 맨 위에 두는 흐름 그림 — 데이터가 어디서 어디로 가는지와 지금 상태를
 // 퍼셉트론의 신경망처럼 노드와 빛 점으로 보여 준다.
@@ -101,59 +109,109 @@ export const BatchFlow = ({
 }) => {
   const { jobs, now, jobFilter } = state
   const primary = jobs.filter((view) => !FOLLOWS[view.job.id])
-  const rowY = (index: number, count: number) =>
-    count === 1 ? 190 : 46 + (index * (380 - 92)) / (count - 1)
   const yById = new Map(
-    primary.map((view, index) => [view.job.id, rowY(index, primary.length)]),
+    primary.map((view, index) => [view.job.id, 56 + index * JOB_GAP]),
   )
+  const height = 56 + Math.max(0, primary.length - 1) * JOB_GAP + 56
+  // 저장소는 그 저장소에 쓰는 작업들의 가운데 높이.
+  const storeY = (codebase: string) => {
+    const ys = primary
+      .filter((view) => view.job.codebase === codebase)
+      .map((view) => yById.get(view.job.id) ?? 0)
+    return ys.length
+      ? ys.reduce((sum, y) => sum + y, 0) / ys.length
+      : height / 2
+  }
 
-  const jobNode = (view: (typeof jobs)[number], x: number, y: number) => ({
-    id: view.job.id,
-    x,
-    y,
-    label: view.job.label,
-    sub: view.latest
-      ? `${STATUS_LABEL[view.latestStatus ?? 'no-data']} · ${formatAgo(view.latest.startedAt, now)}`
-      : '기록 없음',
-    tag: view.latest ? formatDuration(view.latest.durationMs) : undefined,
-    tone: toneOf(view.latestStatus),
-    width: 210,
-    active: jobFilter === view.job.id,
-    onClick: () => onSelectJob(view.job.id),
-  })
+  // 작업 카드 — 상태·마지막 실행·소요 줄, 켜지면(고른 작업·실패) 결과 요약 띠.
+  const jobNode = (
+    view: (typeof jobs)[number],
+    x: number,
+    y: number,
+  ): SignalNode => {
+    const tone = toneOf(view.latestStatus)
+    return {
+      id: view.job.id,
+      x,
+      y,
+      label: view.job.label,
+      tag: view.job.codebase,
+      rows: [
+        {
+          label: '상태',
+          value: view.latestStatus
+            ? STATUS_LABEL[view.latestStatus]
+            : '기록 없음',
+          tone,
+        },
+        {
+          label: '마지막',
+          value: view.latest ? formatAgo(view.latest.startedAt, now) : '-',
+        },
+        {
+          label: '소요',
+          value: view.latest ? formatDuration(view.latest.durationMs) : '-',
+        },
+      ],
+      result: view.latest ? summarizeRun(view.latest) : undefined,
+      tone,
+      width: 210,
+      active: jobFilter === view.job.id,
+      onClick: () => onSelectJob(view.job.id),
+    }
+  }
 
   const nodes: SignalNode[] = [
     {
       id: 'scheduler',
       x: 98,
-      y: 190,
+      y: height / 2,
       label: 'SCHEDULER',
-      sub: SCHEDULE_HOURS.map((h) => String(h).padStart(2, '0')).join('·'),
-      tag: formatDateTime(nextScheduledAt(now)).slice(-8, -3),
+      rows: [
+        {
+          label: '시각',
+          value: SCHEDULE_HOURS.map((h) => String(h).padStart(2, '0')).join(
+            '·',
+          ),
+        },
+        {
+          label: '다음',
+          value: formatDateTime(nextScheduledAt(now)).slice(-8, -3),
+          tone: 'accent',
+        },
+      ],
       tone: 'accent',
       width: 170,
     },
-    ...primary.map((view) => jobNode(view, 390, yById.get(view.job.id) ?? 190)),
+    ...primary.map((view) =>
+      jobNode(view, 390, yById.get(view.job.id) ?? height / 2),
+    ),
     ...jobs
       .filter((view) => FOLLOWS[view.job.id])
       .map((view) =>
-        jobNode(view, 660, yById.get(FOLLOWS[view.job.id]) ?? 190),
+        jobNode(view, 660, yById.get(FOLLOWS[view.job.id]) ?? height / 2),
       ),
     {
       id: 'store:xtool',
       x: 912,
-      y: yById.get('monday-sync') ?? 100,
+      y: storeY('xtool'),
       label: 'xtool DB',
-      sub: 'Firestore · mondayStats',
+      rows: [
+        { label: '종류', value: 'Firestore' },
+        { label: '내용', value: '고객·통계' },
+      ],
       tone: 'idle',
       width: 160,
     },
     {
       id: 'store:cmip',
       x: 912,
-      y: 280,
+      y: storeY('cmip'),
       label: 'cmip DB',
-      sub: 'Firestore · 채널 성과',
+      rows: [
+        { label: '종류', value: 'Firestore' },
+        { label: '내용', value: '채널 성과' },
+      ],
       tone: 'idle',
       width: 160,
     },
@@ -184,7 +242,7 @@ export const BatchFlow = ({
   return (
     <SignalGraph
       width={1000}
-      height={380}
+      height={height}
       nodes={nodes}
       edges={edges}
       label="배치 파이프라인 — 스케줄러에서 작업, 저장소까지"
@@ -237,12 +295,10 @@ export const InquiryFlow = ({
       : summary.smsOk > 0
         ? 'ok'
         : 'idle'
-  // 보드 노드는 노드 높이(46)보다 넓게 띄워 겹치지 않게.
   // 보드는 들어온 것 전부를 2열로(많은 순으로 왼쪽·오른쪽 번갈아) — 이름과
-  // 건수만 있는 낮은 노드. 오른쪽 열은 반 줄 내려, 그쪽으로 가는 선이 왼쪽 열
-  // 노드 사이 틈을 가로로 곧게 지나가게 한다(bus). 문자 줄은 그 아래.
-  const ROW = 48
-  const BOARD_H = 34
+  // 건수만 있는 낮은 카드(높이 40). 오른쪽 열은 반 줄 내려, 그쪽으로 가는 선이
+  // 왼쪽 열 카드 사이 틈을 가로로 곧게 지나가게 한다(bus). 문자 줄은 그 아래.
+  const ROW = 52
   const BOARD_W = 158
   const COLUMN_X = [676, 866]
   const boardPos = (index: number) => ({
@@ -251,8 +307,8 @@ export const InquiryFlow = ({
   })
   const boardsBottom = boards.length > 0 ? boardPos(boards.length - 1).y : 110
   const mondayY = boards.length > 0 ? (30 + boardsBottom) / 2 : 110
-  const smsY = boardsBottom + 66
-  const height = smsY + 36
+  const smsY = boardsBottom + 84
+  const height = smsY + 48
   const middleY = (mondayY + smsY) / 2
   // 오른쪽 열로 가는 선이 꺾는 곳 — 왼쪽 열 노드의 바로 앞.
   const turnX = COLUMN_X[0] - BOARD_W / 2 - 14
@@ -263,7 +319,7 @@ export const InquiryFlow = ({
       x: 82,
       y: middleY,
       label: '웹사이트 폼',
-      sub: `상담 신청 ${summary.total}건`,
+      rows: [{ label: '신청', value: `${summary.total}건` }],
       tone: 'accent',
       width: 140,
     },
@@ -272,7 +328,7 @@ export const InquiryFlow = ({
       x: 262,
       y: middleY,
       label: 'submitInquiry',
-      sub: 'functions-xtool',
+      rows: [{ label: '위치', value: 'functions-xtool' }],
       tone: has ? 'ok' : 'idle',
       width: 168,
     },
@@ -281,7 +337,18 @@ export const InquiryFlow = ({
       x: 466,
       y: mondayY,
       label: 'Monday 등록',
-      sub: `등록 ${summary.mondayOk} · 미등록 ${summary.mondayFailed}`,
+      rows: [
+        { label: '등록', value: `${summary.mondayOk}건`, tone: 'ok' },
+        {
+          label: '미등록',
+          value: `${summary.mondayFailed}건`,
+          tone: summary.mondayFailed > 0 ? 'fail' : undefined,
+        },
+      ],
+      result:
+        summary.mondayFailed > 0
+          ? `미등록 ${summary.mondayFailed}건 — 눌러서 확인`
+          : `보드 ${boards.length}곳에 등록`,
       tone: mondayTone,
       width: 190,
     },
@@ -290,14 +357,24 @@ export const InquiryFlow = ({
       x: 466,
       y: smsY,
       label: '접수 안내 문자',
-      sub: `발송 ${summary.smsOk} · 실패 ${summary.smsFailed}`,
+      rows: [
+        { label: '발송', value: `${summary.smsOk}건`, tone: 'ok' },
+        {
+          label: '실패',
+          value: `${summary.smsFailed}건`,
+          tone: summary.smsFailed > 0 ? 'fail' : undefined,
+        },
+      ],
+      result:
+        summary.smsFailed > 0
+          ? `발송 실패 ${summary.smsFailed}건 — 눌러서 확인`
+          : 'SOLAPI로 발송',
       tone: smsTone,
       width: 190,
     },
     ...boards.map((each, index) => ({
       id: `board:${each.device}`,
       ...boardPos(index),
-      height: BOARD_H,
       label: each.label,
       tag: `${each.count}건`,
       tone: 'idle' as const,
@@ -308,7 +385,7 @@ export const InquiryFlow = ({
       x: COLUMN_X[0],
       y: smsY,
       label: '고객 휴대폰',
-      sub: 'SOLAPI',
+      rows: [{ label: '경로', value: 'SOLAPI' }],
       tone: smsTone === 'fail' ? 'warn' : 'idle',
       width: BOARD_W,
     },
@@ -377,15 +454,20 @@ export const UsageFlow = ({
   const views = byView.slice(0, MAX_VIEWS)
   const key = (app: UsageApp, view: string) => `${app}|${view}`
   const shown = new Set(views.map((each) => key(each.app, each.view)))
-  const rowY = (index: number) => 34 + index * 56
-  const height = rowY(Math.max(0, views.length - 1)) + 34
+  const rowY = (index: number) => 40 + index * ROW_GAP
+  const height = rowY(Math.max(0, views.length - 1)) + 40
   const nodes: SignalNode[] = [
     {
       id: 'entry',
       x: 100,
       y: height / 2,
       label: '접속',
-      sub: `세션 ${entries.reduce((sum, each) => sum + each.count, 0)}회`,
+      rows: [
+        {
+          label: '세션',
+          value: `${entries.reduce((sum, each) => sum + each.count, 0)}회`,
+        },
+      ],
       tone: 'accent',
       width: 150,
     },
@@ -394,8 +476,14 @@ export const UsageFlow = ({
       x: 470,
       y: rowY(index),
       label: `${showApp ? `${each.app} · ` : ''}${viewLabel(each.app, each.view)}`,
-      sub: `${formatSpan(each.visibleMs)} · ${(each.share * 100).toFixed(0)}%`,
+      rows: [
+        {
+          label: '사용',
+          value: `${formatSpan(each.visibleMs)} · ${(each.share * 100).toFixed(0)}%`,
+        },
+      ],
       tag: `${each.visits}회`,
+      result: `평균 ${formatSpan(each.averageMs)} · 방문자 ${each.visitors}명`,
       tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
       width: 250,
     })),
@@ -468,8 +556,8 @@ export const CostFlow = ({
 }) => {
   const top = fns.slice(0, MAX_VIEWS)
   const rowY = (index: number, count: number, height: number) =>
-    count === 1 ? height / 2 : 34 + (index * (height - 68)) / (count - 1)
-  const height = Math.max(300, 34 + Math.max(0, top.length - 1) * 54 + 34)
+    count === 1 ? height / 2 : 40 + (index * (height - 80)) / (count - 1)
+  const height = Math.max(340, 40 + Math.max(0, top.length - 1) * ROW_GAP + 40)
   const triggers = [...new Set(top.map((each) => each.trigger))]
   const total = fns.reduce((sum, each) => sum + each.cost, 0)
   const partTotal = (part: CostPart) =>
@@ -485,7 +573,12 @@ export const CostFlow = ({
       x: 92,
       y: rowY(index, triggers.length, height),
       label: TRIGGER_LABEL[trigger] ?? trigger,
-      sub: `${fns.filter((each) => each.trigger === trigger).length}개 함수`,
+      rows: [
+        {
+          label: '함수',
+          value: `${fns.filter((each) => each.trigger === trigger).length}개`,
+        },
+      ],
       tone: 'accent' as const,
       width: 150,
     })),
@@ -494,8 +587,15 @@ export const CostFlow = ({
       x: 430,
       y: rowY(index, top.length, height),
       label: each.fn,
-      sub: `${each.codebase ? `${each.codebase} · ` : ''}${formatUsd(each.cost)} · ${(each.share * 100).toFixed(1)}%`,
-      tag: `${each.calls}회`,
+      rows: [
+        {
+          label: '비용',
+          value: `${formatUsd(each.cost)} · ${(each.share * 100).toFixed(1)}%`,
+          tone: (index === 0 ? 'accent' : undefined) as SignalTone | undefined,
+        },
+      ],
+      tag: `${formatCount(each.calls)}회`,
+      result: `읽기 ${formatCount(each.reads)} · 평균 ${formatMs(each.avgMs)}`,
       tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
       width: 250,
     })),
@@ -506,7 +606,12 @@ export const CostFlow = ({
         x: 860,
         y: rowY(index, COST_RESOURCES.length, height),
         label: resource.label,
-        sub: `${formatUsd(cost)} · ${total ? ((cost / total) * 100).toFixed(0) : 0}%`,
+        rows: [
+          {
+            label: '비용',
+            value: `${formatUsd(cost)} · ${total ? ((cost / total) * 100).toFixed(0) : 0}%`,
+          },
+        ],
         tone: 'idle' as const,
         width: 200,
       }
