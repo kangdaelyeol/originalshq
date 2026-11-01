@@ -186,11 +186,18 @@ export const summarizeRun = (run: BatchRun): string => {
         customers
           ? `고객 ${num(customers.customerCount)}명 (변경 ${num(customers.writtenCount)}·삭제 ${num(customers.deletedCount)})`
           : '고객 통합 실패',
-        // 오프라인 매출 원장 — 10/21 이후 기록에만 있다.
+        // 오프라인 매출 원장 — 10/21 이후 기록에만 있다. 11/2 배포부터는 바뀐
+        // 줄만 쓰므로 "변경" 수다(그 전 기록은 전체 줄 수).
         ...(customers?.offlineSaleLines
-          ? [
-              `오프라인 매출 ${num((customers.offlineSaleLines as Record<string, unknown>).written)}줄`,
-            ]
+          ? (() => {
+              const lines = customers.offlineSaleLines as Record<
+                string,
+                unknown
+              >
+              return [
+                `오프라인 매출 변경 ${num(lines.written)}·삭제 ${num(lines.deleted)}줄`,
+              ]
+            })()
           : []),
       ].join(' · ')
     }

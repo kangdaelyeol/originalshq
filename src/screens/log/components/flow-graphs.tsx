@@ -56,7 +56,7 @@ const INQUIRY_COLUMNS: SignalColumn[] = [
 ]
 const USAGE_COLUMNS: SignalColumn[] = [
   { x: 100, width: 150, label: 'ENTRY / IN', color: COL.cyan },
-  { x: 470, width: 250, label: 'TABS / VIEW', color: COL.pink },
+  { x: 580, width: 620, label: 'TABS / VIEW', color: COL.pink },
 ]
 const COST_COLUMNS: SignalColumn[] = [
   { x: 92, width: 150, label: 'TRIGGER / IN', color: COL.cyan },
@@ -227,8 +227,8 @@ export const BatchFlow = ({
         to: view.job.id,
         tone,
         flow: flowing(tone),
+        // 뒤따르는 작업으로 가는 선은 점선(FOLLOW / UP 열이 뜻을 말한다).
         dashed: from !== 'scheduler',
-        label: from !== 'scheduler' ? '직후' : undefined,
       },
       {
         from: view.job.id,
@@ -433,8 +433,19 @@ export const InquiryFlow = ({
 
 // ── 사용 분석 ────────────────────────────────────────────────────────────
 
-/** 탭 이동 흐름 — 접속 → 처음 본 탭(왼쪽 부채꼴), 탭 → 탭(오른쪽 호). 탭은
- * 사용 시간이 많은 순으로 한 줄로 세우고(MAX_VIEWS개), 선 굵기는 횟수다. */
+// 탭 격자 — 3열(사용 시간 순으로 왼쪽 위부터), 열 사이마다 기둥. 선은 기둥을
+// 따라 세로로, 카드 줄 사이 틈을 따라 가로로 꺾어 간다(카드를 가로지르지 않게).
+const TAB_COLS = [360, 580, 800]
+const TAB_W = 180
+const TAB_H = 87.5
+const TAB_GAP = 112
+const USAGE_SPINES = [250, 470, 690, 910]
+
+type Rect = { x: number; y: number; w: number; h: number }
+
+/** 탭 이동 흐름 — 접속 → 처음 본 탭, 탭 → 탭. 탭은 사용 시간이 많은 순으로
+ * 3열 격자에 놓고(MAX_VIEWS개), 선 굵기는 횟수다. 처음 본 횟수는 카드 줄에,
+ * 탭끼리 오간 횟수는 탭을 고르면 그 선 위에 나온다. */
 export const UsageFlow = ({
   byView,
   flows,
@@ -454,8 +465,13 @@ export const UsageFlow = ({
   const views = byView.slice(0, MAX_VIEWS)
   const key = (app: UsageApp, view: string) => `${app}|${view}`
   const shown = new Set(views.map((each) => key(each.app, each.view)))
-  const rowY = (index: number) => 40 + index * ROW_GAP
-  const height = rowY(Math.max(0, views.length - 1)) + 40
+  const rowCount = Math.max(1, Math.ceil(views.length / TAB_COLS.length))
+  const rowY = (row: number) => 56 + row * TAB_GAP
+  const height = rowY(rowCount - 1) + 56
+  const firstCount = new Map(
+    entries.map((entry) => [key(entry.app, entry.view), entry.count]),
+  )
+
   const nodes: SignalNode[] = [
     {
       id: 'entry',
@@ -470,24 +486,34 @@ export const UsageFlow = ({
       ],
       tone: 'accent',
       width: 150,
+      height: 62.5,
     },
-    ...views.map((each, index) => ({
-      id: key(each.app, each.view),
-      x: 470,
-      y: rowY(index),
-      label: `${showApp ? `${each.app} · ` : ''}${viewLabel(each.app, each.view)}`,
-      rows: [
-        {
-          label: '사용',
-          value: `${formatSpan(each.visibleMs)} · ${(each.share * 100).toFixed(0)}%`,
-        },
-      ],
-      tag: `${each.visits}회`,
-      result: `평균 ${formatSpan(each.averageMs)} · 방문자 ${each.visitors}명`,
-      tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
-      width: 250,
-    })),
+    ...views.map((each, index) => {
+      const first = firstCount.get(key(each.app, each.view)) ?? 0
+      return {
+        id: key(each.app, each.view),
+        x: TAB_COLS[index % TAB_COLS.length],
+        y: rowY(Math.floor(index / TAB_COLS.length)),
+        label: viewLabel(each.app, each.view),
+        tag: showApp ? each.app : undefined,
+        rows: [
+          {
+            label: '사용',
+            value: `${formatSpan(each.visibleMs)} · ${(each.share * 100).toFixed(0)}%`,
+            tone: (index === 0 ? 'accent' : undefined) as
+              SignalTone | undefined,
+          },
+          { label: '방문', value: `${each.visits}회 · ${each.visitors}명` },
+          { label: '처음', value: first ? `${first}회` : '-' },
+        ],
+        result: `평균 ${formatSpan(each.averageMs)} 머묾`,
+        tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
+        width: TAB_W,
+        height: TAB_H,
+      }
+    }),
   ]
+
   const between = flows.filter(
     (flow) =>
       shown.has(key(flow.app, flow.from)) && shown.has(key(flow.app, flow.to)),
@@ -497,25 +523,94 @@ export const UsageFlow = ({
   )
   const maxFirst = Math.max(1, ...firsts.map((entry) => entry.count))
   const maxFlow = Math.max(1, ...between.map((flow) => flow.count))
-  const edges: SignalEdge[] = [
+  const touches = (from: string, to: string) =>
+    selected !== null && (from === selected || to === selected)
+  const raw: SignalEdge[] = [
     ...firsts.map((entry) => ({
       from: 'entry',
       to: key(entry.app, entry.view),
       tone: 'accent' as const,
       flow: true,
       weight: 1 + (entry.count / maxFirst) * 3,
-      label: `${entry.count}`,
     })),
-    ...between.map((flow) => ({
-      from: key(flow.app, flow.from),
-      to: key(flow.app, flow.to),
-      tone: (flow.count / maxFlow > 0.5 ? 'accent' : 'idle') as SignalTone,
-      flow: flow.count / maxFlow > 0.25,
-      weight: 1 + (flow.count / maxFlow) * 3,
-      label: `${flow.count}`,
-      route: 'arc' as const,
-    })),
+    ...between.map((flow) => {
+      const from = key(flow.app, flow.from)
+      const to = key(flow.app, flow.to)
+      return {
+        from,
+        to,
+        tone: (flow.count / maxFlow > 0.5 ? 'accent' : 'idle') as SignalTone,
+        flow: flow.count / maxFlow > 0.25,
+        weight: 1 + (flow.count / maxFlow) * 3,
+        // 고른 탭의 선에만 횟수 — 상대 카드 옆에 붙인다.
+        ...(touches(from, to)
+          ? {
+              label: `${flow.count}`,
+              labelAt: to === selected ? ('start' as const) : ('end' as const),
+            }
+          : {}),
+      }
+    }),
   ]
+
+  // 꺾은선 길 — 카드마다 들어오는 선은 왼쪽, 나가는 선은 오른쪽 가장자리에
+  // 나눠 붙이고(상대 카드 높이 순), 기둥 → 줄 사이 틈 → 기둥 → 카드로 간다.
+  // 선마다 몇 픽셀씩 비켜 세워 다발처럼 보이게. 점은 늘 여섯 개(넘어가기용).
+  const rects = new Map<string, Rect>(
+    nodes.map((node) => [
+      node.id,
+      { x: node.x, y: node.y, w: node.width!, h: node.height! },
+    ]),
+  )
+  const ins = new Map<string, SignalEdge[]>()
+  const outs = new Map<string, SignalEdge[]>()
+  for (const edge of raw) {
+    ins.set(edge.to, [...(ins.get(edge.to) ?? []), edge])
+    outs.set(edge.from, [...(outs.get(edge.from) ?? []), edge])
+  }
+  const yOf = (id: string) => rects.get(id)?.y ?? 0
+  for (const list of ins.values())
+    list.sort((a, b) => yOf(a.from) - yOf(b.from))
+  for (const list of outs.values()) list.sort((a, b) => yOf(a.to) - yOf(b.to))
+  const port = (rect: Rect, list: SignalEdge[], edge: SignalEdge) => {
+    const index = list.indexOf(edge)
+    const step = Math.min(9, (rect.h - 26) / Math.max(1, list.length - 1))
+    return rect.y + (index - (list.length - 1) / 2) * step
+  }
+  const gaps = Array.from(
+    { length: rowCount + 1 },
+    (_, row) => rowY(row) - TAB_GAP / 2,
+  )
+  const edges = raw.map((edge, index) => {
+    const a = rects.get(edge.from)!
+    const b = rects.get(edge.to)!
+    const lane = ((index % 5) - 2) * 2
+    const rightSpine = USAGE_SPINES.find((x) => x > a.x + a.w / 2)!
+    const leftSpine = [...USAGE_SPINES]
+      .reverse()
+      .find((x) => x < b.x - b.w / 2)!
+    const start = { x: a.x + a.w / 2, y: port(a, outs.get(edge.from)!, edge) }
+    const end = { x: b.x - b.w / 2, y: port(b, ins.get(edge.to)!, edge) }
+    const middle = (start.y + end.y) / 2
+    const gapY =
+      rightSpine === leftSpine
+        ? end.y
+        : gaps.reduce((best, y) =>
+            Math.abs(y - middle) < Math.abs(best - middle) ? y : best,
+          ) +
+          lane * 1.2
+    return {
+      ...edge,
+      via: [
+        start,
+        { x: rightSpine + lane, y: start.y },
+        { x: rightSpine + lane, y: gapY },
+        { x: leftSpine + lane, y: gapY },
+        { x: leftSpine + lane, y: end.y },
+        end,
+      ],
+    }
+  })
 
   return (
     <SignalGraph
@@ -529,7 +624,7 @@ export const UsageFlow = ({
       edges={edges}
       label="탭 이동 흐름 — 접속에서 처음 본 탭, 탭에서 탭으로"
       columns={USAGE_COLUMNS}
-      spines={[260]}
+      spines={USAGE_SPINES}
       focus={selected}
     />
   )

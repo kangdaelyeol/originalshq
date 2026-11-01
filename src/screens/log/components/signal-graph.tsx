@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
+import { useTween } from '../view-model/use-tween'
 
 // 신호 그래프 — 프롬프트 퍼셉트론 영상(perceptron.mp4)의 신경망 화면을 옮긴
 // 것(기울기·카메라 이동은 뺐다).
@@ -13,6 +14,8 @@ import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 // SVG 세 장을 포갠다 — 뒤(격자·기둥·선: 한 번 그리면 끝), 움직임(빛 점·빛 공:
 // 따로 합성되는 층이라 움직여도 이 층만 다시 칠한다), 앞(숫자·카드). 빛나는
 // 것은 흐림 필터 없이 반투명 겹으로, 움직임은 CSS(stroke-dashoffset·opacity)로만.
+// 데이터가 바뀌어 배치가 달라지면(기간·필터) 노드·선·높이가 이전 자리에서 새
+// 자리로 미끄러지고, 새 노드는 떠오르고 빠지는 노드는 사라진다(useTween).
 
 /** 노드·선의 상태 색 — 성공·주의·실패·실행 중·대기·탭 강조색. */
 export type SignalTone = 'ok' | 'warn' | 'fail' | 'run' | 'idle' | 'accent'
@@ -62,6 +65,12 @@ export interface SignalEdge {
   /** bus — 이 x에서 꺾어 도착 노드 높이로 가로로 곧게 들어간다(앞 열의 노드
    * 사이 틈을 지나가게). */
   turnX?: number
+  /** 꺾은선 길(처음·끝 점 포함) — 주면 route 대신 이 점들을 둥근 모서리로
+   * 잇는다(사용 흐름의 격자: 기둥과 카드 줄 사이 틈을 따라간다). 켜져도 같은
+   * 길. 데이터가 바뀌어 넘어갈 때 점끼리 섞이도록 점 수는 늘 같게 준다. */
+  via?: { x: number; y: number }[]
+  /** 글씨 자리 — via 길의 처음(출발 카드 옆)·끝(도착 카드 옆). 없으면 가운데. */
+  labelAt?: 'start' | 'end'
 }
 
 /** 기둥(열) — 위에 이름과 색 밑줄, 그 열 노드의 색 네모·막대 색. */
@@ -228,6 +237,183 @@ const litPath = (a: Box, b: Box, spines: number[]) => {
   }
 }
 
+/** 꺾은선 길 — 같은 점·한 줄 위의 점은 빼고, 꺾이는 곳마다 둥글게. 세로로
+ * 지나는 x(켜진 기둥 찾기)도 같이 돌려준다. */
+const polyRoute = (
+  via: Point[],
+  labelAt?: SignalEdge['labelAt'],
+): Route & { verticals: number[] } => {
+  const points: Point[] = []
+  for (const p of via) {
+    const last = points[points.length - 1]
+    if (last && Math.hypot(p.x - last.x, p.y - last.y) < 0.5) continue
+    const prev = points[points.length - 2]
+    // 앞의 두 점과 한 줄 위면 가운데 점을 버린다.
+    if (
+      prev &&
+      Math.abs(
+        (last.x - prev.x) * (p.y - last.y) - (last.y - prev.y) * (p.x - last.x),
+      ) < 0.5
+    )
+      points.pop()
+    points.push(p)
+  }
+  const f = (p: Point) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`
+  let d = `M${f(points[0])}`
+  for (let i = 1; i < points.length - 1; i++) {
+    const [a, p, b] = [points[i - 1], points[i], points[i + 1]]
+    const la = Math.hypot(p.x - a.x, p.y - a.y)
+    const lb = Math.hypot(b.x - p.x, b.y - p.y)
+    const r = Math.min(10, la / 2, lb / 2)
+    const p1 = {
+      x: p.x - ((p.x - a.x) / la) * r,
+      y: p.y - ((p.y - a.y) / la) * r,
+    }
+    const p2 = {
+      x: p.x + ((b.x - p.x) / lb) * r,
+      y: p.y + ((b.y - p.y) / lb) * r,
+    }
+    d += ` L${f(p1)} Q${f(p)} ${f(p2)}`
+  }
+  const start = points[0]
+  const end = points[points.length - 1]
+  d += ` L${f(end)}`
+  // 가운데 — 가장 긴 토막의 가운데.
+  let center = start
+  let longest = -1
+  for (let i = 1; i < points.length; i++) {
+    const length = Math.hypot(
+      points[i].x - points[i - 1].x,
+      points[i].y - points[i - 1].y,
+    )
+    if (length > longest) {
+      longest = length
+      center = {
+        x: (points[i].x + points[i - 1].x) / 2,
+        y: (points[i].y + points[i - 1].y) / 2,
+      }
+    }
+  }
+  if (labelAt === 'start') center = { x: start.x + 15, y: start.y }
+  if (labelAt === 'end') center = { x: end.x - 15, y: end.y }
+  const verticals = points
+    .slice(1)
+    .filter((p, i) => Math.abs(p.x - points[i].x) < 0.5)
+    .map((p) => p.x)
+  return { d, start, end, center, verticals }
+}
+
+// ── 넘어가기(useTween) ── 배치(노드 상자·선의 꺾은점·그림 높이)만 섞는다. 글자·
+// 상태는 늘 지금 값 — 빠지는 노드·선만 마지막 값을 들고 사라진다.
+type Placed<T> = { item: T; alpha: number }
+type Geometry = {
+  height: number
+  nodes: Map<string, Placed<SignalNode> & { box: Box }>
+  edges: Map<string, Placed<SignalEdge> & { via: Point[] | null }>
+}
+
+const edgeKey = (edge: SignalEdge) => `${edge.from}>${edge.to}`
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t
+
+const geometryOf = (
+  nodes: SignalNode[],
+  edges: SignalEdge[],
+  height: number,
+): Geometry => ({
+  height,
+  nodes: new Map(
+    nodes.map((node) => [
+      node.id,
+      {
+        item: node,
+        alpha: 1,
+        box: {
+          x: node.x,
+          y: node.y,
+          w: node.width ?? NODE_W,
+          h: node.height ?? cardHeight(node.rows?.length ?? 0),
+        },
+      },
+    ]),
+  ),
+  edges: new Map(
+    edges.map((edge) => [
+      edgeKey(edge),
+      { item: edge, alpha: 1, via: edge.via ?? null },
+    ]),
+  ),
+})
+
+/** 배치가 같은지 — 다르면 넘어가기를 시작한다. */
+const geometryKey = (geometry: Geometry) =>
+  [
+    geometry.height,
+    [...geometry.nodes]
+      .map(([id, { box }]) => `${id}@${box.x},${box.y},${box.w},${box.h}`)
+      .join(';'),
+    [...geometry.edges]
+      .map(
+        ([key, { via }]) =>
+          `${key}${via ? via.map((p) => `${p.x},${p.y}`).join(' ') : ''}`,
+      )
+      .join(';'),
+  ].join('|')
+
+const mixGeometry = (from: Geometry, to: Geometry, t: number): Geometry => {
+  const nodes: Geometry['nodes'] = new Map()
+  for (const [id, next] of to.nodes) {
+    const prev = from.nodes.get(id)
+    nodes.set(
+      id,
+      prev
+        ? {
+            ...next,
+            alpha: lerp(prev.alpha, 1, t),
+            box: {
+              x: lerp(prev.box.x, next.box.x, t),
+              y: lerp(prev.box.y, next.box.y, t),
+              w: lerp(prev.box.w, next.box.w, t),
+              h: lerp(prev.box.h, next.box.h, t),
+            },
+          }
+        : { ...next, alpha: t },
+    )
+  }
+  for (const [id, prev] of from.nodes) {
+    if (!to.nodes.has(id))
+      nodes.set(id, { ...prev, alpha: prev.alpha * (1 - t) })
+  }
+  const edges: Geometry['edges'] = new Map()
+  for (const [key, next] of to.edges) {
+    const prev = from.edges.get(key)
+    const via =
+      prev?.via && next.via && prev.via.length === next.via.length
+        ? next.via.map((p, i) => ({
+            x: lerp(prev.via![i].x, p.x, t),
+            y: lerp(prev.via![i].y, p.y, t),
+          }))
+        : next.via
+    edges.set(
+      key,
+      prev
+        ? { ...next, via, alpha: lerp(prev.alpha, 1, t) }
+        : { ...next, alpha: t },
+    )
+  }
+  for (const [key, prev] of from.edges) {
+    if (!to.edges.has(key))
+      edges.set(key, { ...prev, alpha: prev.alpha * (1 - t) })
+  }
+  return { height: lerp(from.height, to.height, t), nodes, edges }
+}
+
+/** 문자열 → 씨앗 수. */
+const hashOf = (text: string) => {
+  let hash = 0
+  for (const ch of text) hash = (hash * 31 + ch.charCodeAt(0)) | 0
+  return hash
+}
+
 /** 기둥 섬유 한 가닥 — 위에서 아래로 천천히 꼬이며 흔들리는 선(고정). */
 const strandPath = (
   x: number,
@@ -312,43 +498,67 @@ export const SignalGraph = ({
 
   // 그라데이션·마스크 id — 한 화면에 그림이 여럿이어도 겹치지 않게.
   const prefix = useId().replace(/:/g, '')
+
+  // 지금 보이는 배치 — 데이터가 바뀌어 배치가 달라지면 잠깐 섞인 값.
+  const target = geometryOf(nodes, edges, height)
+  const shown = useTween(target, geometryKey(target), mixGeometry)
+  const currentNodes = new Map(nodes.map((node) => [node.id, node]))
+  const currentEdges = new Map(edges.map((edge) => [edgeKey(edge), edge]))
   const boxes = new Map<string, Box>(
-    nodes.map((node) => [
-      node.id,
-      {
-        x: node.x,
-        y: node.y,
-        w: node.width ?? NODE_W,
-        h: node.height ?? cardHeight(node.rows?.length ?? 0),
-      },
-    ]),
+    [...shown.nodes].map(([id, placed]) => [id, placed.box]),
   )
+  const placedNodes = [...shown.nodes].map(([id, placed]) => ({
+    node: currentNodes.get(id) ?? placed.item,
+    box: placed.box,
+    alpha: placed.alpha,
+  }))
+  const graphHeight = shown.height
+
   const top = columns.length > 0 ? HEAD_H : 0
-  const fullHeight = height + top
+  const fullHeight = graphHeight + top
   const viewBox = `0 0 ${width} ${fullHeight}`
   /** x가 들어가는 열의 색 — 없으면 탭 강조색. */
   const columnColor = (x: number) =>
     columns.find((column) => Math.abs(column.x - x) <= column.width / 2)
       ?.color ?? 'var(--log-accent)'
+  /** x 가까이의 기둥 — 꺾은선이 기둥 옆 여러 줄로 지나가도 그 기둥으로. */
+  const spineNear = (x: number) => spines.find((each) => Math.abs(each - x) < 7)
 
   // 선마다 길 — 고른 노드에 닿은 선은 켜져 기둥을 따라 꺾어 간다.
-  const routes = edges.flatMap((edge, index) => {
+  const routes = [...shown.edges].flatMap(([key, placed], index) => {
+    const live = currentEdges.get(key)
+    const edge = live ?? placed.item
     const a = boxes.get(edge.from)
     const b = boxes.get(edge.to)
     if (!a || !b) return []
-    const lit = focus !== null && (edge.from === focus || edge.to === focus)
-    const bent = lit && edge.route !== 'arc' ? litPath(a, b, spines) : null
+    const lit =
+      Boolean(live) &&
+      focus !== null &&
+      (edge.from === focus || edge.to === focus)
+    let path: Route
+    let litX: number[] = []
+    if (placed.via) {
+      const poly = polyRoute(placed.via, edge.labelAt)
+      path = poly
+      litX = poly.verticals
+    } else {
+      const bent = lit && edge.route !== 'arc' ? litPath(a, b, spines) : null
+      path = bent?.route ?? edgePath(a, b, edge.route, edge.turnX)
+      if (bent) litX = [bent.spine]
+    }
     return [
       {
+        key,
         edge,
         index,
         lit,
+        alpha: placed.alpha,
         dim: focus !== null && !lit,
         // 평소 선의 색 — 출발 노드가 있는 열의 색(영상의 분홍·보라·노랑 선).
         color: columnColor(a.x),
         weight: Math.max(1, Math.min(4, edge.weight ?? 1)),
-        path: bent?.route ?? edgePath(a, b, edge.route, edge.turnX),
-        spine: bent?.spine ?? null,
+        path,
+        litX,
       },
     ]
   })
@@ -358,30 +568,38 @@ export const SignalGraph = ({
     if (!route.lit) continue
     linked.add(route.edge.from)
     linked.add(route.edge.to)
-    if (route.spine !== null) litSpines.add(route.spine)
+    for (const x of route.litX) {
+      const spine = spineNear(x)
+      if (spine !== undefined) litSpines.add(spine)
+    }
   }
 
-  // 바닥 먼지 — 늘 같은 자리.
-  const floorRandom = seeded(width * 7 + height)
-  const dust = Array.from(
-    { length: Math.round((width * height) / 5200) },
-    () => ({
-      x: floorRandom() * width,
-      y: floorRandom() * height,
-      r: floorRandom() < 0.85 ? 0.6 : 1.1,
-      opacity: 0.06 + floorRandom() * 0.24,
-    }),
-  )
+  // 바닥 먼지 — 100 높이 띠마다 씨앗을 따로 둬서, 그림 높이가 바뀌어도 있던
+  // 점은 제자리에 있고 늘어난 띠에만 새로 생긴다.
+  const dust: { x: number; y: number; r: number; opacity: number }[] = []
+  for (let band = 0; band * 100 < graphHeight; band++) {
+    const random = seeded(width * 7 + band)
+    for (let i = 0; i < Math.round((width * 100) / 5200); i++) {
+      const dot = {
+        x: random() * width,
+        y: band * 100 + random() * 100,
+        r: random() < 0.85 ? 0.6 : 1.1,
+        opacity: 0.06 + random() * 0.24,
+      }
+      if (dot.y < graphHeight) dust.push(dot)
+    }
+  }
 
-  // 기둥 — 섬유 가닥, 카드로 뻗는 가지, 매듭, 흐르는 빛 점(기둥마다 늘 같게).
+  // 기둥 — 섬유 가닥, 카드로 뻗는 가지, 매듭, 흐르는 빛 점. 씨앗은 기둥 x(가지는
+  // 노드마다 따로)라 높이·노드가 바뀌며 넘어가는 동안에도 흔들리지 않는다.
   const spineParts = spines.map((x) => {
-    const random = seeded(Math.round(x * 13) + height)
+    const random = seeded(Math.round(x * 13))
     // 몇 가닥은 왼쪽 열의 색으로(영상의 분홍·청록이 섞인 섬유).
     const tint =
       [...columns].reverse().find((column) => column.x < x)?.color ??
       'var(--log-accent)'
     const strands = Array.from({ length: 14 }, (_, index) => ({
-      d: strandPath(x + (random() - 0.5) * 16, 4, height - 4, random),
+      d: strandPath(x + (random() - 0.5) * 16, 4, graphHeight - 4, random),
       width: 0.4 + random() * 1,
       opacity: 0.2 + random() * 0.55,
       tinted: index % 6 === 3,
@@ -395,8 +613,8 @@ export const SignalGraph = ({
     const wisps: string[] = []
     const knots: { x: number; y: number; r: number }[] = []
     const f = (n: number) => n.toFixed(1)
-    for (const node of nodes) {
-      const box = boxes.get(node.id)!
+    for (const { node, box, alpha } of placedNodes) {
+      if (alpha < 0.5) continue
       const left = box.x - box.w / 2
       const right = box.x + box.w / 2
       const edgeX =
@@ -406,23 +624,27 @@ export const SignalGraph = ({
             ? right
             : null
       if (edgeX === null) continue
+      const wispRandom = seeded(hashOf(node.id) + Math.round(x))
       for (let i = 0; i < 3; i++) {
-        const sy = box.y + (random() - 0.5) * box.h * 1.8
-        const ey = box.y + (random() - 0.5) * box.h * 0.7
-        const sx = x + (random() - 0.5) * 10
-        const bend = 0.3 + random() * 0.4
+        const sy = box.y + (wispRandom() - 0.5) * box.h * 1.8
+        const ey = box.y + (wispRandom() - 0.5) * box.h * 0.7
+        const sx = x + (wispRandom() - 0.5) * 10
+        const bend = 0.3 + wispRandom() * 0.4
         wisps.push(
           `M${f(sx)},${f(sy)} C${f(sx)},${f(sy + (ey - sy) * 0.8)} ${f(edgeX + (sx - edgeX) * bend)},${f(ey)} ${f(edgeX)},${f(ey)}`,
         )
         if (i === 0) knots.push({ x: edgeX, y: ey, r: 0.9 })
       }
     }
-    for (let i = 0; i < Math.max(3, Math.round(height / 55)); i++) {
-      knots.push({
-        x: x + (random() - 0.5) * 18,
-        y: 8 + random() * (height - 16),
-        r: 0.8 + random() * 1.3,
-      })
+    // 매듭 — 55 높이 칸마다 하나(칸마다 같은 수의 난수를 써서 자리가 고정).
+    const knotRandom = seeded(Math.round(x * 7) + 1)
+    for (let slot = 0; slot * 55 < graphHeight; slot++) {
+      const knot = {
+        x: x + (knotRandom() - 0.5) * 18,
+        y: slot * 55 + 8 + knotRandom() * 39,
+        r: 0.8 + knotRandom() * 1.3,
+      }
+      if (knot.y < graphHeight - 8) knots.push(knot)
     }
     return { x, tint, strands, wisp: wisps.join(' '), knots }
   })
@@ -469,7 +691,7 @@ export const SignalGraph = ({
           <mask id={`${prefix}-vmask`}>
             <rect
               width={width}
-              height={height}
+              height={graphHeight}
               fill={`url(#${prefix}-vfade)`}
             />
           </mask>
@@ -544,7 +766,7 @@ export const SignalGraph = ({
                 <rect
                   x={spine.x - 36}
                   width="72"
-                  height={height}
+                  height={graphHeight}
                   fill={`url(#${prefix}-band-${index})`}
                 />
                 <path d={spine.wisp} className="sig-spine__wisp" />
@@ -573,7 +795,7 @@ export const SignalGraph = ({
                   className="sig-spine__core"
                   x={spine.x - 0.7}
                   width="1.4"
-                  height={height}
+                  height={graphHeight}
                 />
                 {spine.knots.map((knot, knotIndex) => (
                   <g key={knotIndex}>
@@ -597,46 +819,49 @@ export const SignalGraph = ({
 
           {/* 선 — 평소엔 가는 색 선(양끝은 카드로 스며든다). 켜진 선은 넓은
               번짐 · 중간 번짐 · 흰빛 섞인 심 세 겹. */}
-          {routes.map(({ edge, index, lit, dim, color, weight, path }) => {
-            const gradientId = `${prefix}-edge-${index}`
-            return (
-              <g
-                key={`${edge.from}>${edge.to}`}
-                className={`sig-edge is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
-                style={{
-                  ['--col' as string]: color,
-                  animationDelay: `${(index % 12) * 0.04}s`,
-                }}
-              >
-                {lit ? (
-                  <>
-                    <path d={path.d} className="sig-edge__glow" />
-                    <path d={path.d} className="sig-edge__haze" />
-                  </>
-                ) : (
-                  <linearGradient
-                    id={gradientId}
-                    gradientUnits="userSpaceOnUse"
-                    x1={path.start.x}
-                    y1={path.start.y}
-                    x2={path.end.x}
-                    y2={path.end.y}
+          {routes.map(
+            ({ key, edge, index, lit, alpha, dim, color, weight, path }) => {
+              const gradientId = `${prefix}-edge-${index}`
+              return (
+                <g key={key} opacity={alpha < 1 ? alpha : undefined}>
+                  <g
+                    className={`sig-edge is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
+                    style={{
+                      ['--col' as string]: color,
+                      animationDelay: `${(index % 12) * 0.04}s`,
+                    }}
                   >
-                    <stop offset="0" className="sig-edge__stop is-end" />
-                    <stop offset="0.5" className="sig-edge__stop is-mid" />
-                    <stop offset="1" className="sig-edge__stop is-end" />
-                  </linearGradient>
-                )}
-                <path
-                  d={path.d}
-                  pathLength={100}
-                  className={`sig-edge__line${edge.dashed ? ' is-dashed' : ''}`}
-                  stroke={lit ? undefined : `url(#${gradientId})`}
-                  style={{ strokeWidth: lit ? 2.4 : 0.8 + weight * 0.4 }}
-                />
-              </g>
-            )
-          })}
+                    {lit ? (
+                      <>
+                        <path d={path.d} className="sig-edge__glow" />
+                        <path d={path.d} className="sig-edge__haze" />
+                      </>
+                    ) : (
+                      <linearGradient
+                        id={gradientId}
+                        gradientUnits="userSpaceOnUse"
+                        x1={path.start.x}
+                        y1={path.start.y}
+                        x2={path.end.x}
+                        y2={path.end.y}
+                      >
+                        <stop offset="0" className="sig-edge__stop is-end" />
+                        <stop offset="0.5" className="sig-edge__stop is-mid" />
+                        <stop offset="1" className="sig-edge__stop is-end" />
+                      </linearGradient>
+                    )}
+                    <path
+                      d={path.d}
+                      pathLength={100}
+                      className={`sig-edge__line${edge.dashed ? ' is-dashed' : ''}`}
+                      stroke={lit ? undefined : `url(#${gradientId})`}
+                      style={{ strokeWidth: lit ? 2.4 : 0.8 + weight * 0.4 }}
+                    />
+                  </g>
+                </g>
+              )
+            },
+          )}
         </g>
       </svg>
 
@@ -677,38 +902,39 @@ export const SignalGraph = ({
           ))}
           {routes
             .filter(({ edge, lit }) => edge.flow || lit)
-            .map(({ edge, index, lit, dim, color, path }) => (
-              <g
-                key={`${edge.from}>${edge.to}`}
-                className={`sig-pulse is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
-                style={{ ['--col' as string]: color }}
-              >
+            .map(({ key, edge, index, lit, alpha, dim, color, path }) => (
+              <g key={key} opacity={alpha < 1 ? alpha : undefined}>
                 <g
-                  className="sig-pulse__run"
-                  style={{
-                    animationDuration: lit
-                      ? '2.4s'
-                      : `${3.4 + (index % 5) * 0.45}s`,
-                    animationDelay: `-${(index * 0.67) % 3.4}s`,
-                  }}
+                  className={`sig-pulse is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
+                  style={{ ['--col' as string]: color }}
                 >
-                  {lit && (
+                  <g
+                    className="sig-pulse__run"
+                    style={{
+                      animationDuration: lit
+                        ? '2.4s'
+                        : `${3.4 + (index % 5) * 0.45}s`,
+                      animationDelay: `-${(index * 0.67) % 3.4}s`,
+                    }}
+                  >
+                    {lit && (
+                      <path
+                        d={path.d}
+                        pathLength={100}
+                        className="sig-pulse__bloom"
+                      />
+                    )}
                     <path
                       d={path.d}
                       pathLength={100}
-                      className="sig-pulse__bloom"
+                      className="sig-pulse__halo"
                     />
-                  )}
-                  <path
-                    d={path.d}
-                    pathLength={100}
-                    className="sig-pulse__halo"
-                  />
-                  <path
-                    d={path.d}
-                    pathLength={100}
-                    className="sig-pulse__dot"
-                  />
+                    <path
+                      d={path.d}
+                      pathLength={100}
+                      className="sig-pulse__dot"
+                    />
+                  </g>
                 </g>
               </g>
             ))}
@@ -723,37 +949,38 @@ export const SignalGraph = ({
         aria-label={label}
       >
         <g transform={`translate(0,${top})`}>
-          {routes.map(({ edge, dim, path }) => {
+          {routes.map(({ key, edge, alpha, dim, path }) => {
             if (!edge.label) return null
             const pill = edge.label.length * 6.4 + 14
             return (
-              <g
-                key={`${edge.from}>${edge.to}`}
-                className={`sig-tag is-${edge.tone}${dim ? ' is-dim' : ''}`}
-                transform={`translate(${path.center.x - pill / 2},${path.center.y - 17})`}
-              >
-                <rect
-                  className="sig-tag__glass"
-                  width={pill}
-                  height="16"
-                  rx="8"
-                />
-                <rect
-                  className="sig-tag__shine"
-                  x="5"
-                  y="0.5"
-                  width={pill - 10}
-                  height="1"
-                  rx="0.5"
-                />
-                <text
-                  className="sig-tag__text"
-                  x={pill / 2}
-                  y="11.5"
-                  textAnchor="middle"
+              <g key={key} opacity={alpha < 1 ? alpha : undefined}>
+                <g
+                  className={`sig-tag is-${edge.tone}${dim ? ' is-dim' : ''}`}
+                  transform={`translate(${path.center.x - pill / 2},${path.center.y - 17})`}
                 >
-                  {edge.label}
-                </text>
+                  <rect
+                    className="sig-tag__glass"
+                    width={pill}
+                    height="16"
+                    rx="8"
+                  />
+                  <rect
+                    className="sig-tag__shine"
+                    x="5"
+                    y="0.5"
+                    width={pill - 10}
+                    height="1"
+                    rx="0.5"
+                  />
+                  <text
+                    className="sig-tag__text"
+                    x={pill / 2}
+                    y="11.5"
+                    textAnchor="middle"
+                  >
+                    {edge.label}
+                  </text>
+                </g>
               </g>
             )
           })}
@@ -761,8 +988,7 @@ export const SignalGraph = ({
           {/* 카드 — 진한 판, 열 색 네모 + 굵은 이름(오른쪽 값), 회색 이름 ·
               오른쪽 값 줄, 아래 열 색 막대. 고른 노드·실패는 막대 자리에
               결과 띠. */}
-          {nodes.map((node) => {
-            const box = boxes.get(node.id)!
+          {placedNodes.map(({ node, box, alpha }) => {
             const rows = node.rows ?? []
             const isFocus = node.id === focus
             const onPath = focus !== null && linked.has(node.id) && !isFocus
@@ -775,112 +1001,113 @@ export const SignalGraph = ({
               rows.length > 0
             const tagRoom = node.tag ? textWidth(node.tag, 10) + 8 : 0
             return (
-              <g
-                key={node.id}
-                className={`sig-node is-${node.tone}${node.active ? ' is-active' : ''}${onPath ? ' is-path' : ''}${lit ? ' is-lit' : ''}${node.onClick ? ' is-clickable' : ''}${dim ? ' is-dim' : ''}`}
-                transform={`translate(${box.x - box.w / 2},${box.y - box.h / 2})`}
-                style={{ ['--col' as string]: columnColor(box.x) }}
-                role={node.onClick ? 'button' : undefined}
-                tabIndex={node.onClick ? 0 : undefined}
-                aria-label={
-                  node.onClick
-                    ? `${node.label} ${rows.map((row) => `${row.label} ${row.value}`).join(', ')} — 눌러서 자세히`
-                    : undefined
-                }
-                onClick={node.onClick}
-                onKeyDown={onKey(node)}
-              >
-                {lit && (
-                  <>
-                    <rect
-                      className="sig-node__aura is-wide"
-                      x="-7"
-                      y="-7"
-                      width={box.w + 14}
-                      height={box.h + 14}
-                      rx="12"
-                    />
-                    <rect
-                      className="sig-node__aura"
-                      x="-2.5"
-                      y="-2.5"
-                      width={box.w + 5}
-                      height={box.h + 5}
-                      rx="8"
-                    />
-                  </>
-                )}
-                <rect
-                  className="sig-node__box"
-                  width={box.w}
-                  height={box.h}
-                  rx="6"
-                />
-                <rect
-                  className="sig-node__square"
-                  x="11"
-                  y="13.5"
-                  width="6"
-                  height="6"
-                />
-                <text className="sig-node__label" x="23" y="20">
-                  {fit(node.label, box.w - 34 - tagRoom, TITLE_PX)}
-                </text>
-                {node.tag && (
-                  <text
-                    className="sig-node__tag"
-                    x={box.w - 11}
-                    y="20"
-                    textAnchor="end"
-                  >
-                    {node.tag}
+              <g key={node.id} opacity={alpha < 1 ? alpha : undefined}>
+                <g
+                  className={`sig-node is-${node.tone}${node.active ? ' is-active' : ''}${onPath ? ' is-path' : ''}${lit ? ' is-lit' : ''}${node.onClick ? ' is-clickable' : ''}${dim ? ' is-dim' : ''}`}
+                  transform={`translate(${box.x - box.w / 2},${box.y - box.h / 2})`}
+                  style={{ ['--col' as string]: columnColor(box.x) }}
+                  role={node.onClick ? 'button' : undefined}
+                  tabIndex={node.onClick ? 0 : undefined}
+                  aria-label={
+                    node.onClick
+                      ? `${node.label} ${rows.map((row) => `${row.label} ${row.value}`).join(', ')} — 눌러서 자세히`
+                      : undefined
+                  }
+                  onClick={node.onClick}
+                  onKeyDown={onKey(node)}
+                >
+                  {lit && (
+                    <>
+                      <rect
+                        className="sig-node__aura is-wide"
+                        x="-7"
+                        y="-7"
+                        width={box.w + 14}
+                        height={box.h + 14}
+                        rx="12"
+                      />
+                      <rect
+                        className="sig-node__aura"
+                        x="-2.5"
+                        y="-2.5"
+                        width={box.w + 5}
+                        height={box.h + 5}
+                        rx="8"
+                      />
+                    </>
+                  )}
+                  <rect
+                    className="sig-node__box"
+                    width={box.w}
+                    height={box.h}
+                    rx="6"
+                  />
+                  <rect
+                    className="sig-node__square"
+                    x="11"
+                    y="13.5"
+                    width="6"
+                    height="6"
+                  />
+                  <text className="sig-node__label" x="23" y="20">
+                    {fit(node.label, box.w - 34 - tagRoom, TITLE_PX)}
                   </text>
-                )}
-                {rows.map((row, index) => {
-                  const y = TITLE_H + 5 + index * ROW_H
-                  const key = fit(row.label, (box.w - 22) * 0.5, ROW_PX)
-                  const room = box.w - 22 - textWidth(key, ROW_PX) - 10
-                  return (
-                    <g
-                      key={index}
-                      className={`sig-node__row${row.tone ? ` is-${row.tone}` : ''}`}
+                  {node.tag && (
+                    <text
+                      className="sig-node__tag"
+                      x={box.w - 11}
+                      y="20"
+                      textAnchor="end"
                     >
-                      <text className="sig-node__key" x="11" y={y}>
-                        {key}
-                      </text>
-                      <text
-                        className="sig-node__value"
-                        x={box.w - 11}
-                        y={y}
-                        textAnchor="end"
+                      {node.tag}
+                    </text>
+                  )}
+                  {rows.map((row, index) => {
+                    const y = TITLE_H + 5 + index * ROW_H
+                    const key = fit(row.label, (box.w - 22) * 0.5, ROW_PX)
+                    const room = box.w - 22 - textWidth(key, ROW_PX) - 10
+                    return (
+                      <g
+                        key={index}
+                        className={`sig-node__row${row.tone ? ` is-${row.tone}` : ''}`}
                       >
-                        {fit(row.value, room, ROW_PX)}
+                        <text className="sig-node__key" x="11" y={y}>
+                          {key}
+                        </text>
+                        <text
+                          className="sig-node__value"
+                          x={box.w - 11}
+                          y={y}
+                          textAnchor="end"
+                        >
+                          {fit(row.value, room, ROW_PX)}
+                        </text>
+                      </g>
+                    )
+                  })}
+                  {showResult ? (
+                    <g className="sig-node__result">
+                      <rect
+                        x="5"
+                        y={box.h - 19}
+                        width={box.w - 10}
+                        height="14"
+                        rx="2.5"
+                      />
+                      <text x="11" y={box.h - 9}>
+                        {fit(node.result ?? '', box.w - 22, 9)}
                       </text>
                     </g>
-                  )
-                })}
-                {showResult ? (
-                  <g className="sig-node__result">
+                  ) : (
                     <rect
-                      x="5"
-                      y={box.h - 19}
-                      width={box.w - 10}
-                      height="14"
-                      rx="2.5"
+                      className="sig-node__bar"
+                      x={11 + (box.w - 22) * barOffset(node.id) * 0.75}
+                      y={box.h - (rows.length > 0 ? 12 : 9)}
+                      width={Math.max(16, box.w * 0.17)}
+                      height="2.6"
                     />
-                    <text x="11" y={box.h - 9}>
-                      {fit(node.result ?? '', box.w - 22, 9)}
-                    </text>
-                  </g>
-                ) : (
-                  <rect
-                    className="sig-node__bar"
-                    x={11 + (box.w - 22) * barOffset(node.id) * 0.75}
-                    y={box.h - (rows.length > 0 ? 12 : 9)}
-                    width={Math.max(16, box.w * 0.17)}
-                    height="2.6"
-                  />
-                )}
+                  )}
+                </g>
               </g>
             )
           })}

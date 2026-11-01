@@ -183,7 +183,7 @@ export function UsagePanel() {
                 NAVIGATION
               </b>
               <span>
-                사용 시간 상위 탭 · 선 굵기는 이동 횟수 · 숫자는 이동 횟수
+                사용 시간 상위 탭 · 선 굵기는 이동 횟수 · 탭을 누르면 오간 횟수
               </span>
             </header>
             <UsageFlow
