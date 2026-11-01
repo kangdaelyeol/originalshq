@@ -2,7 +2,6 @@ import { CloudOff, LoaderCircle } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { BoardEditContext, type BoardEditState } from '../components/board/board-edit-context'
-import { BoardHeader } from '../components/board/board-header'
 import { ItemEditor } from '../components/board/item-editor'
 import { GlassCard } from '../components/ui/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
@@ -72,7 +71,6 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   const editingItem = editing?.itemId ? (state.itemsById.get(editing.itemId) ?? null) : null
   return (
     <BoardEditContext.Provider value={editContext}>
-      <BoardHeader doc={doc} />
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}
       {tabKey === 'repair' && <RepairBoard doc={doc as TechBoardDoc<'repair'>} />}
       {tabKey === 'records' && <RecordsBoard doc={doc as TechBoardDoc<'records'>} />}

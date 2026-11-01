@@ -18,13 +18,13 @@ import {
   trafficWave,
   type TrafficMetric,
 } from '../data/analytics'
-import { PERIOD_COMPARE } from '../data/period'
+import { PERIOD_COMPARE, PERIOD_OPTIONS } from '../data/period'
 import { compact, formatInt } from '../lib/format'
 
 const sum = (values: readonly number[]) => values.reduce((s, v) => s + v, 0)
 
 export function AnalyticsPage() {
-  const { period } = usePeriod()
+  const { period, setPeriod } = usePeriod()
   const [metric, setMetric] = useState<TrafficMetric>('requests')
 
   const wave = useMemo(() => trafficWave(period, metric), [period, metric])
@@ -42,6 +42,10 @@ export function AnalyticsPage() {
 
   return (
     <>
+      {/* 조회 기간 — 분석 화면에서만 쓴다(상단바에서 옮겨 옴). */}
+      <div className="page-toolbar">
+        <SegmentedControl ariaLabel="조회 기간" options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+      </div>
       <div className="grid grid--kpi">
         {ANALYTICS_KPIS[period].map(({ key, ...kpi }) => (
           <StatCard key={key} {...kpi} />

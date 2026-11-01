@@ -589,8 +589,8 @@ export interface MondayCustomerRebuildResult {
   /** 합친 Cafe24 주문 수와, 그중 주문자 번호가 없거나 결제 전이라 뺀 수. */
   onlineOrderCount: number
   excludedOrderCount: number
-  /** 오프라인 매출 원장(offlineSales) — 쓴 줄 수와, Monday에서 사라져 지운
-   * 줄 수. */
+  /** 오프라인 매출 원장(offlineSales) — 새로 생겼거나 바뀌어 쓴 줄 수와,
+   * Monday에서 사라져 지운 줄 수. */
   offlineSaleLines: { written: number; deleted: number }
 }
 

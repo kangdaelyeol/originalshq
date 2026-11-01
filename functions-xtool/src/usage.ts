@@ -101,6 +101,25 @@ export async function saveUsageSegments(
   await batch.commit()
 }
 
+/** /log 사용 분석의 이어 받기 — since(ms) 이후에 저장(1분마다 덮어씀)된 방문만.
+ * 화면이 지난번 받은 뒤 바뀐 것만 받아 가진 목록에 합친다. */
+export async function listUsageSegmentsUpdatedSince(
+  db: Firestore,
+  since: number,
+  limit: number,
+): Promise<UsageSegment[]> {
+  const snapshot = await db
+    .collection(USAGE_SEGMENTS_COLLECTION)
+    .where('updatedAt', '>=', since)
+    .limit(limit)
+    .get()
+  return snapshot.docs.map((doc) => {
+    const data = doc.data()
+    delete data.expireAt
+    return data as UsageSegment
+  })
+}
+
 /** /log 사용 분석용 — since(ms) 이후에 시작한 방문, 최근 것부터. */
 export async function listUsageSegments(
   db: Firestore,

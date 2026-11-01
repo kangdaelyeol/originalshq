@@ -1,15 +1,12 @@
 import { Bell, Plus } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
-import { usePeriod } from '../../context/period-context'
 import { NOTIFICATIONS, type NotificationItem } from '../../data/notifications'
-import { PERIOD_OPTIONS } from '../../data/period'
 import { Button } from '../ui/button'
-import { SegmentedControl } from '../ui/segmented-control'
 import { NotificationPanel, type PanelAnchor } from './notification-panel'
+import { TopbarBoardLink, TopbarTitle } from './topbar-title'
 
 export function Topbar() {
-  const { period, setPeriod } = usePeriod()
   const { pathname } = useLocation()
   const bellRef = useRef<HTMLButtonElement>(null)
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => NOTIFICATIONS.map((n) => ({ ...n })))
@@ -59,8 +56,9 @@ export function Topbar() {
 
   return (
     <header className="glass topbar">
+      <TopbarTitle />
       <div className="topbar__controls">
-        <SegmentedControl ariaLabel="조회 기간" options={PERIOD_OPTIONS} value={period} onChange={setPeriod} />
+        <TopbarBoardLink />
         <button
           ref={bellRef}
           type="button"

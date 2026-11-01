@@ -1,4 +1,11 @@
-import { FieldValue, Firestore } from 'firebase-admin/firestore'
+import { createHash } from 'crypto'
+import {
+  CollectionReference,
+  DocumentData,
+  FieldValue,
+  Firestore,
+  Query,
+} from 'firebase-admin/firestore'
 import { Cafe24Order } from './cafe24'
 import {
   MondayBoard,
@@ -56,50 +63,115 @@ export async function updateBoard(
   await db.collection(BOARDS_COLLECTION).doc(boardId).update(patch)
 }
 
-/** 보드 한 개의 item을 Monday와 똑같이 맞춘다: 받아온 item은 전부 덮어쓰고,
+// ── 바뀐 문서만 쓰기 ──────────────────────────────────────────────────
+// 동기화는 매번 Monday에서 전체를 받아 저장본과 똑같이 맞추되, 내용 지문(hash)이
+// 달라진 문서만 쓴다. 저장본의 지문을 문서마다 읽으면 문서 수만큼 읽기가 나가서
+// (아이템 1만·고객 8천·원장 2천), 지문을 대상마다 "id → 지문" 목록 문서 하나
+// (syncHashes/{이름})에 모아 두고 그것만 읽는다.
+//   · 목록은 실제 문서를 다 쓴 뒤 맨 마지막에 고친다 — 중간에 실패하면 목록이
+//     옛것이라 다음 실행이 다시 쓴다.
+//   · 하루 첫 실행(KST 날짜가 바뀐 뒤)과 목록이 없을 때는 지금처럼 문서마다
+//     지문을 읽어 맞춘다 — 콘솔에서 문서를 손으로 지운 경우 등 목록과 실제가
+//     어긋나도 하루 안에 바로잡힌다.
+//   · 목록은 JSON 문자열 한 필드 — 맵으로 두면 항목마다 색인이 붙고 필드 수
+//     한도(2만)에도 걸린다. 너무 커지면(900KB) 목록 없이 문서마다 읽는다.
+const HASHES_COLLECTION = 'syncHashes'
+// 바뀜 확인용이라 앞 16자(64비트)면 충분하다 — 목록 크기를 줄인다.
+const SHORT_HASH = 16
+const MAX_INDEX_LENGTH = 900_000
+
+const kstDay = (ms: number) =>
+  new Date(ms + 9 * 3_600_000).toISOString().slice(0, 10)
+
+type HashedDoc = { id: string; hash: string; data: DocumentData }
+
+async function replaceHashed(
+  db: Firestore,
+  options: {
+    /** 목록 문서 이름 — syncHashes/{index}. */
+    index: string
+    collection: CollectionReference
+    /** 목록이 없거나 하루 첫 실행일 때 지문을 문서마다 읽을 범위. */
+    scope: Query
+    docs: HashedDoc[]
+  },
+): Promise<{ writtenCount: number; deletedCount: number }> {
+  const { collection } = options
+  const indexRef = db.collection(HASHES_COLLECTION).doc(options.index)
+  const today = kstDay(Date.now())
+  const indexDoc = await indexRef.get()
+  const verifiedDay = indexDoc.get('verifiedDay') as string | undefined
+  let known: Map<string, string>
+  let verified = verifiedDay
+  if (indexDoc.exists && verifiedDay === today) {
+    known = new Map(
+      Object.entries(
+        JSON.parse(indexDoc.get('hashes') as string) as Record<string, string>,
+      ),
+    )
+  } else {
+    const snapshot = await options.scope.select('hash').get()
+    known = new Map(
+      snapshot.docs.map((doc) => [
+        doc.id,
+        String(doc.get('hash') ?? '').slice(0, SHORT_HASH),
+      ]),
+    )
+    verified = today
+  }
+
+  const changed = options.docs.filter(
+    (doc) => known.get(doc.id) !== doc.hash.slice(0, SHORT_HASH),
+  )
+  const incoming = new Set(options.docs.map((doc) => doc.id))
+  const stale = [...known.keys()].filter((id) => !incoming.has(id))
+
+  // 쓰는 문서와 지우는 문서는 겹치지 않는다(지우고 다시 쓰면 순서에 따라
+  // 문서가 사라질 수 있다 — cmip에서 10/21 발견).
+  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    for (const doc of changed.slice(i, i + BATCH_SIZE)) {
+      batch.set(collection.doc(doc.id), doc.data)
+    }
+    await batch.commit()
+  }
+  for (let i = 0; i < stale.length; i += BATCH_SIZE) {
+    const batch = db.batch()
+    for (const id of stale.slice(i, i + BATCH_SIZE)) {
+      batch.delete(collection.doc(id))
+    }
+    await batch.commit()
+  }
+
+  const hashes = JSON.stringify(
+    Object.fromEntries(
+      options.docs.map((doc) => [doc.id, doc.hash.slice(0, SHORT_HASH)]),
+    ),
+  )
+  if (hashes.length > MAX_INDEX_LENGTH) {
+    await indexRef.delete()
+  } else {
+    await indexRef.set({ hashes, verifiedDay: verified, syncedAt: Date.now() })
+  }
+
+  return { writtenCount: changed.length, deletedCount: stale.length }
+}
+
+/** 보드 한 개의 item을 Monday와 똑같이 맞춘다: 새로 생겼거나 바뀐 item만 쓰고,
  * 저장돼 있는데 이번에 안 온 item(Monday에서 지워졌거나 다른 보드로 옮겨진
- * 것)은 지운다. 지운 문서 수를 돌려준다. */
+ * 것)은 지운다(replaceHashed). */
 export async function replaceBoardItems(
   db: Firestore,
   boardId: string,
   items: MondayItem[],
 ): Promise<{ writtenCount: number; deletedCount: number }> {
   const collection = db.collection(ITEMS_COLLECTION)
-  // 지문만 읽는다(읽기 수는 같지만 내려받는 양이 작다).
-  const existing = await collection
-    .where('boardId', '==', boardId)
-    .select('hash')
-    .get()
-  const existingHashes = new Map(
-    existing.docs.map((doc) => [doc.id, doc.get('hash') as string | undefined]),
-  )
-
-  // 새로 생겼거나 내용이 바뀐 item만 쓴다 — 하루 여섯 번 도는 동기화에서 실제로
-  // 바뀌는 item은 일부라, 매번 전부(1만 건 남짓) 쓰던 것보다 쓰기가 훨씬 적다.
-  // 지문이 없는 예전 문서는 한 번 다시 써서 지문을 붙인다.
-  const changed = items.filter(
-    (item) => existingHashes.get(item.id) !== item.hash,
-  )
-  const incomingIds = new Set(items.map((item) => item.id))
-  const staleRefs = existing.docs
-    .filter((doc) => !incomingIds.has(doc.id))
-    .map((doc) => doc.ref)
-
-  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
-    const batch = db.batch()
-    for (const item of changed.slice(i, i + BATCH_SIZE)) {
-      batch.set(collection.doc(item.id), item)
-    }
-    await batch.commit()
-  }
-
-  for (let i = 0; i < staleRefs.length; i += BATCH_SIZE) {
-    const batch = db.batch()
-    for (const ref of staleRefs.slice(i, i + BATCH_SIZE)) batch.delete(ref)
-    await batch.commit()
-  }
-
-  return { writtenCount: changed.length, deletedCount: staleRefs.length }
+  return replaceHashed(db, {
+    index: `items-${boardId}`,
+    collection,
+    scope: collection.where('boardId', '==', boardId),
+    docs: items.map((item) => ({ id: item.id, hash: item.hash, data: item })),
+  })
 }
 
 /** 보드 등록을 해제한다 — 보드 문서와 그 보드에서 가져온 item을 전부 지운다.
@@ -110,6 +182,7 @@ export async function deleteBoard(
 ): Promise<number> {
   const { deletedCount } = await replaceBoardItems(db, boardId, [])
   await db.collection(BOARDS_COLLECTION).doc(boardId).delete()
+  await db.collection(HASHES_COLLECTION).doc(`items-${boardId}`).delete()
   return deletedCount
 }
 
@@ -145,34 +218,16 @@ export async function replaceCustomers(
   customers: MondayCustomer[],
 ): Promise<Pick<MondayCustomerRebuildResult, 'writtenCount' | 'deletedCount'>> {
   const collection = db.collection(CUSTOMERS_COLLECTION)
-  const existing = await collection.select('hash').get()
-  const existingHashes = new Map(
-    existing.docs.map((doc) => [doc.id, doc.get('hash') as string | undefined]),
-  )
-
-  const changed = customers.filter(
-    (customer) => existingHashes.get(customer.phone) !== customer.hash,
-  )
-  const incomingPhones = new Set(customers.map((customer) => customer.phone))
-  const staleRefs = existing.docs
-    .filter((doc) => !incomingPhones.has(doc.id))
-    .map((doc) => doc.ref)
-
-  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
-    const batch = db.batch()
-    for (const customer of changed.slice(i, i + BATCH_SIZE)) {
-      batch.set(collection.doc(customer.phone), customer)
-    }
-    await batch.commit()
-  }
-
-  for (let i = 0; i < staleRefs.length; i += BATCH_SIZE) {
-    const batch = db.batch()
-    for (const ref of staleRefs.slice(i, i + BATCH_SIZE)) batch.delete(ref)
-    await batch.commit()
-  }
-
-  return { writtenCount: changed.length, deletedCount: staleRefs.length }
+  return replaceHashed(db, {
+    index: 'customers',
+    collection,
+    scope: collection,
+    docs: customers.map((customer) => ({
+      id: customer.phone,
+      hash: customer.hash,
+      data: customer,
+    })),
+  })
 }
 
 /** 목록 화면용 — 고객 전체를 요약 필드만 읽어 돌려준다. 기록 배열(상담내역
@@ -459,30 +514,29 @@ export async function getAttributionRows(
 // 매출을 낸다. 컬렉션 이름과 문서 모양이 그쪽과의 계약이다.
 const OFFLINE_SALES_COLLECTION = 'offlineSales'
 
-/** offlineSales를 주어진 줄들과 똑같이 맞춘다 — 줄은 전부 쓰고, 목록에 없는
- * 문서(Monday에서 지워졌거나 취소된 줄)만 지운다. 지우는 문서와 쓰는 문서가
- * 겹치지 않게 해서, 한 번에 보내도 실행 순서와 상관없이 결과가 맞다(같은
- * 문서를 지우고 다시 쓰면 순서에 따라 문서가 사라졌다 — cmip에서 10/21
- * 발견). */
+/** offlineSales를 주어진 줄들과 똑같이 맞춘다 — 새로 생겼거나 내용이 바뀐 줄만
+ * 쓰고, 목록에 없는 문서(Monday에서 지워졌거나 취소된 줄)만 지운다
+ * (replaceHashed). 줄의 지문은 문서에도 hash로 같이 둔다(하루 첫 실행의 대조용
+ * — cmip는 읽지 않는다, 계약 밖). syncedAt은 마지막으로 내용이 바뀌어 쓴 때. */
 export async function replaceOfflineSales(
   db: Firestore,
   lines: MondayOfflineSaleLine[],
 ): Promise<{ written: number; deleted: number }> {
   const collection = db.collection(OFFLINE_SALES_COLLECTION)
-  const existing = await collection.listDocuments()
-  const nextIds = new Set(lines.map((line) => line.mondaySubitemId))
-  const stale = existing.filter((ref) => !nextIds.has(ref.id))
-
-  const writer = db.bulkWriter()
-  for (const line of lines) {
-    writer.set(collection.doc(line.mondaySubitemId), {
-      ...line,
-      syncedAt: FieldValue.serverTimestamp(),
-    })
-  }
-  for (const ref of stale) writer.delete(ref)
-  await writer.close()
-  return { written: lines.length, deleted: stale.length }
+  const { writtenCount, deletedCount } = await replaceHashed(db, {
+    index: 'offlineSales',
+    collection,
+    scope: collection,
+    docs: lines.map((line) => {
+      const hash = createHash('sha1').update(JSON.stringify(line)).digest('hex')
+      return {
+        id: line.mondaySubitemId,
+        hash,
+        data: { ...line, hash, syncedAt: FieldValue.serverTimestamp() },
+      }
+    }),
+  })
+  return { written: writtenCount, deleted: deletedCount }
 }
 
 const GA_CONSULTATIONS_DOC = 'gaConsultations'

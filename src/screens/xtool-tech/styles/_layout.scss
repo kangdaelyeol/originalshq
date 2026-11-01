@@ -408,3 +408,37 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+// 상단바 왼쪽 — 지금 화면 이름(보드면 실시간·건수·동기화 시각)
+.topbar-title {
+  min-width: 0;
+
+  h1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+}
+
+.topbar__board-link {
+  text-decoration: none;
+}
+
+// 화면 맨 위 도구 줄(분석의 조회 기간 등) — 오른쪽 정렬
+.page-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}

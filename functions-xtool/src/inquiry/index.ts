@@ -331,6 +331,7 @@ export const submitInquiry = async (
     id: ref.id,
     receivedAt,
     receivedDate: koreaToday(receivedAt),
+    updatedAt: receivedAt,
     boardId: board.boardId,
     boardName: board.label,
     phoneFormatted: formatPhone(input.phone),
@@ -362,7 +363,12 @@ export const submitInquiry = async (
 
   inquiry.monday = await runMonday(inquiry, secrets)
   inquiry.sms = await runSms(inquiry, await getInquirySettings(db), secrets)
-  await ref.update({ monday: inquiry.monday, sms: inquiry.sms })
+  inquiry.updatedAt = Date.now()
+  await ref.update({
+    monday: inquiry.monday,
+    sms: inquiry.sms,
+    updatedAt: inquiry.updatedAt,
+  })
   return { inquiry, duplicate: false }
 }
 
@@ -384,7 +390,8 @@ export const retryInquiryStep = async (
     }
     // 앞선 처리가 중간에 끊겼거나 응답만 못 받았을 수 있어 먼저 확인한다.
     inquiry.monday = await runMonday(inquiry, secrets, { checkFirst: true })
-    await ref.update({ monday: inquiry.monday })
+    inquiry.updatedAt = Date.now()
+    await ref.update({ monday: inquiry.monday, updatedAt: inquiry.updatedAt })
   } else {
     if (inquiry.sms.status === 'success') {
       throw new Error('이미 문자를 보낸 문의입니다')
@@ -395,7 +402,8 @@ export const retryInquiryStep = async (
       secrets,
       { manual: true },
     )
-    await ref.update({ sms: inquiry.sms })
+    inquiry.updatedAt = Date.now()
+    await ref.update({ sms: inquiry.sms, updatedAt: inquiry.updatedAt })
   }
   return inquiry
 }
@@ -410,6 +418,20 @@ export const listInquiries = async (
     .collection(INQUIRIES)
     .where('receivedAt', '>=', sinceMs)
     .orderBy('receivedAt', 'desc')
+    .limit(limit)
+    .get()
+  return snapshot.docs.map((doc) => doc.data() as Inquiry)
+}
+
+/** 접수 로그 화면의 이어 받기 — since(ms) 이후에 고친 문의만. */
+export const listInquiriesUpdatedSince = async (
+  db: Firestore,
+  sinceMs: number,
+  limit = 500,
+): Promise<Inquiry[]> => {
+  const snapshot = await db
+    .collection(INQUIRIES)
+    .where('updatedAt', '>=', sinceMs)
     .limit(limit)
     .get()
   return snapshot.docs.map((doc) => doc.data() as Inquiry)

@@ -1,5 +1,5 @@
 import { ClipboardPen, Inbox, Paperclip, SquareCheck } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { PhoneLink } from '../../components/board/cells'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import { RecordTable, type RecordColumn } from '../../components/board/record-table'
@@ -12,6 +12,7 @@ import { PERIOD_COMPARE } from '../../data/period'
 import type { AsRequestRecord, TechBoardDoc } from '../../data/tech-boards'
 import { formatPhone } from '../../data/tech-stage'
 import { byDateDesc, inRange, koreaToday, periodRange, shortDate } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = AsRequestRecord
 
@@ -53,8 +54,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** AS 신청서 — 고객이 직접 낸 AS 신청(양식). 새로 들어온 신청을 보고 처리한다. */
 export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const { current, previous } = periodRange(period, koreaToday())
   const names = PERIOD_COMPARE[period]
 

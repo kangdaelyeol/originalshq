@@ -1,5 +1,5 @@
 import { CircleCheck, PackageOpen, Send, Wrench } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Assignees, PhoneLink, StagePill } from '../../components/board/cells'
 import { DrawerList, RecordDrawer } from '../../components/board/record-drawer'
 import {
@@ -25,6 +25,7 @@ import {
   shortDate,
 } from '../../lib/dates'
 import { formatInt } from '../../lib/format'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = RepairRecord
 
@@ -111,8 +112,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** AS — 기기를 받아 수리해 돌려보내기까지: 입고 대기 → 수리 중 → 발송 대기 → 완료. */
 export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const today = koreaToday()
   const { current } = periodRange(period, today)
   const names = PERIOD_COMPARE[period]

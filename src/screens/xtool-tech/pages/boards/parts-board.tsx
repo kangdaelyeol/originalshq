@@ -1,5 +1,5 @@
 import { CircleAlert, Package, PackageX, Receipt } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { MiniList } from '../../components/board/mini-list'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import { RecordTable, type RecordColumn } from '../../components/board/record-table'
@@ -9,6 +9,7 @@ import { GlassCard } from '../../components/ui/glass-card'
 import { StatCard } from '../../components/ui/stat-card'
 import type { PartRecord, TechBoardDoc } from '../../data/tech-boards'
 import { formatInt } from '../../lib/format'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = PartRecord
 
@@ -50,8 +51,8 @@ const COLUMNS: RecordColumn<R>[] = [
 
 /** 부품 마스터 — 부품 목록과 재고. AS 청구 부품도 여기서 고른다. */
 export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const records = doc.records
   const out = records.filter(isOut)
   const low = records.filter(isLow)

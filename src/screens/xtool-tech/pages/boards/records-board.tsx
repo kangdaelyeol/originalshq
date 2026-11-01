@@ -1,5 +1,5 @@
 import { CircleCheck, FileText, ListTodo, Timer } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Assignees, StagePill } from '../../components/board/cells'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import {
@@ -22,6 +22,7 @@ import {
   periodRange,
   shortDate,
 } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = DocTaskRecord
 
@@ -69,8 +70,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** 자료정리 — 매뉴얼·카테고리 정리 같은 문서 작업. 건수가 적어 목록 위주로. */
 export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const { current } = periodRange(period, koreaToday())
   const names = PERIOD_COMPARE[period]
 

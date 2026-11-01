@@ -1,5 +1,5 @@
 import { CircleCheck, CircleDashed, ListTodo, OctagonAlert } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Assignees, StagePill } from '../../components/board/cells'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import {
@@ -24,6 +24,7 @@ import {
   periodRange,
   shortDate,
 } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = TaskRecord
 
@@ -89,8 +90,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** 기타업무 — 출장·AS·문의 밖의 일(샘플 테스트, 회수품 점검 등): 진행전 → 진행 중 → 막힘 → 완료. */
 export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const today = koreaToday()
   const { current } = periodRange(period, today)
   const names = PERIOD_COMPARE[period]

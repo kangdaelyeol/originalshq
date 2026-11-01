@@ -1,5 +1,5 @@
 import { CircleCheck, OctagonAlert, PackageOpen, Wrench } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Assignees, PhoneLink } from '../../components/board/cells'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import { RecordTable, type RecordColumn } from '../../components/board/record-table'
@@ -13,6 +13,7 @@ import type { RentalRecord, TechBoardDoc } from '../../data/tech-boards'
 import type { Tone } from '../../data/types'
 import { formatPhone } from '../../data/tech-stage'
 import { byDateAsc, koreaToday, shortDate } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = RentalRecord
 
@@ -71,8 +72,8 @@ const COLUMNS: RecordColumn<R>[] = [
 
 /** 대여품 관리 — 대여 기기가 지금 어디 있는지: 대여 가능 → 대여 중 → 회수 후 점검(→ 불량). */
 export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const today = koreaToday()
   const records = doc.records
   const count = (phase: Phase) => records.filter((r) => phaseOf(r) === phase).length

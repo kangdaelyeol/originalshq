@@ -1,5 +1,5 @@
 import { CalendarClock, CircleCheck, Inbox, Truck } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { BarList } from '../../components/charts/bar-list'
 import { countBy } from '../../components/charts/chart-utils'
 import { RecordDrawer, DrawerList } from '../../components/board/record-drawer'
@@ -26,6 +26,7 @@ import {
   relativeDay,
   shortDate,
 } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = FieldServiceRecord
 
@@ -103,8 +104,8 @@ export function FieldServiceBoard({
   doc: TechBoardDoc<'fieldService'>
 }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const today = koreaToday()
   const { current } = periodRange(period, today)
   const names = PERIOD_COMPARE[period]

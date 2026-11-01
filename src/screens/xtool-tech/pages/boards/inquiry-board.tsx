@@ -4,7 +4,7 @@ import {
   MessageCircle,
   MessagesSquare,
 } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { Assignees, PhoneLink, StagePill } from '../../components/board/cells'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import {
@@ -27,6 +27,7 @@ import {
   periodRange,
   shortDate,
 } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = InquiryRecord
 
@@ -104,8 +105,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** 아톡문의 — 카카오톡 상담: 신규 접수 → 1차 안내 → 상담 진행중 → 장기 상담 → 완료. */
 export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const { current } = periodRange(period, koreaToday())
   const names = PERIOD_COMPARE[period]
 

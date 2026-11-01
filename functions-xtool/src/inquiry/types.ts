@@ -91,6 +91,9 @@ export interface Inquiry extends Omit<InquiryInput, 'submissionId'> {
   userAgent: string
   monday: MondayStep
   sms: SmsStep
+  /** 마지막으로 고친 때 — 접수 로그 화면이 바뀐 문의만 이어 받는다. 11/2
+   * 전 문서에는 없다(다시 실행하면 붙는다). */
+  updatedAt?: number
 }
 
 /** settings/inquiry — 문자 발송 설정(접수 로그 화면에서 고친다). */

@@ -1,5 +1,5 @@
 import { Barcode, Boxes, Link2, PackagePlus } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { MiniList } from '../../components/board/mini-list'
 import { RecordDrawer } from '../../components/board/record-drawer'
 import { RecordTable, type RecordColumn } from '../../components/board/record-table'
@@ -11,6 +11,7 @@ import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { SerialRecord, TechBoardDoc } from '../../data/tech-boards'
 import { byDateDesc, inRange, koreaToday, periodRange, shortDate } from '../../lib/dates'
+import { useItemParam } from '../../lib/use-item-param'
 
 type R = SerialRecord
 
@@ -41,8 +42,8 @@ const COLUMNS: RecordColumn<R>[] = [
 /** 엑스툴 SN 관리 — 기기 시리얼 대장. 출장·AS·대여 기록과 이어져 기기 하나의 이력을 본다. */
 export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
   const { period } = usePeriod()
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const close = useCallback(() => setSelectedId(null), [])
+  const [selectedId, setSelectedId] = useItemParam()
+  const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const { current } = periodRange(period, koreaToday())
   const names = PERIOD_COMPARE[period]
 

@@ -4,6 +4,7 @@ import { ScrollRestoration, useLocation, useNavigate, useOutlet } from 'react-ro
 import { DENIED_MESSAGE } from '@/xtool-auth/access'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import { useXtoolSession, type XtoolSession } from '@/xtool-auth/use-xtool-session'
+import { MemberContext } from '../../context/member-context'
 import { pageStagger } from '../../lib/motion'
 import type { LoginLocationState } from '../../pages/login-page'
 import { xtPath } from '../../paths'
@@ -44,7 +45,7 @@ export function AppLayout() {
   if (session.status !== 'ready') return <AppBackground />
 
   return (
-    <>
+    <MemberContext.Provider value={session.member}>
       <AppBackground />
       <div className="shell">
         <Sidebar member={session.member} />
@@ -58,6 +59,6 @@ export function AppLayout() {
       </div>
       <Toaster />
       <ScrollRestoration />
-    </>
+    </MemberContext.Provider>
   )
 }
