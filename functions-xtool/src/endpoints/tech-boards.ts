@@ -173,7 +173,7 @@ export const techSyncNow = onCall(
 // 보드를 바꿨을 때.
 // ────────────────────────────────
 export const techSetupWebhooks = onCall(
-  { secrets: [mondayApiKey], timeoutSeconds: 120 },
+  { secrets: [mondayApiKey], timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS },
   traced('techSetupWebhooks', 'callable', async (request: CallableRequest) => {
     await requireMember(request, true)
     const project = process.env.GCLOUD_PROJECT

@@ -908,14 +908,71 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 }
 
 // ── 신호 그래프(signal-graph.tsx) ──────────────────────────────────────
+// 그림 무대 — 퍼셉트론 평면처럼 살짝 기울인다. 퍼셉트론은 천천히 흔들리지만
+// 여기서는 멈춰 둔다(흔들면 빛 점을 그릴 때마다 기울어진 판 전체를 다시 그려
+// 브라우저 일이 25%쯤 는다 — 기울기만은 비용이 없다).
+.sig-stage {
+  perspective: 1800px;
+}
+
 .sig-graph {
   display: block;
   width: 100%;
   height: auto;
   font-family: $mono;
+  transform: rotateX(4deg) rotateY(-2.5deg);
+  transform-origin: 50% 45%;
+}
 
-  .sig-dot {
-    fill: rgba(255, 255, 255, 0.07);
+// 바닥 — 격자 선, 흩뿌린 색 선분(속성으로 색·투명도), 먼지 점.
+.sig-grid {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.045);
+  stroke-width: 1;
+}
+.sig-dust {
+  fill: #fff;
+}
+
+// 빛기둥 — 탭 강조색의 넓은 띠 + 가는 섬유 + 밝은 심. 숨 쉬듯 밝아졌다
+// 어두워진다(opacity만).
+.sig-spine {
+  animation: sig-breathe 4.8s ease-in-out infinite;
+
+  &__stop {
+    stop-color: var(--log-accent);
+
+    &.is-edge {
+      stop-opacity: 0;
+    }
+    &.is-core {
+      stop-opacity: 0.2;
+    }
+  }
+  &__strand {
+    fill: none;
+    stroke: color-mix(in srgb, var(--log-accent) 70%, #fff);
+    stroke-width: 0.8;
+    opacity: 0.35;
+    animation: sig-breathe 3.2s ease-in-out infinite;
+  }
+  &__core {
+    fill: color-mix(in srgb, var(--log-accent) 60%, #fff);
+    opacity: 0.55;
+  }
+}
+
+// 열 머리 — 퍼셉트론 .pn-colhead: 굵은 이름, 앞 번호는 열 색, 아래 색 밑줄.
+.sig-colhead {
+  &__text {
+    fill: $ink;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  &__no {
+    font-size: 10px;
+    font-weight: 700;
   }
 }
 
@@ -946,10 +1003,12 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     stop-color: var(--tone);
 
     &.is-end {
-      stop-opacity: 0.12;
+      stop-opacity: 0.14;
     }
+    // 가운데는 흰빛을 섞어 밝은 심처럼(퍼셉트론 mixWhite).
     &.is-mid {
-      stop-opacity: 0.78;
+      stop-color: color-mix(in srgb, var(--tone) 70%, #fff);
+      stop-opacity: 0.9;
     }
   }
   &.is-idle .sig-edge__stop {
@@ -961,14 +1020,19 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     }
   }
 
-  // 넓고 옅은 빛 번짐.
+  // 넓고 아주 옅은 번짐 · 중간 번짐(퍼셉트론 켜진 선의 바깥 두 겹).
   &__glow {
     fill: none;
-    opacity: 0.16;
+    opacity: 0.08;
     stroke-linecap: round;
   }
-  &.is-idle .sig-edge__glow {
-    opacity: 0.05;
+  &__haze {
+    fill: none;
+    opacity: 0.22;
+    stroke-linecap: round;
+  }
+  &.is-idle :is(.sig-edge__glow, .sig-edge__haze) {
+    opacity: 0.04;
   }
 
   // 선 — 처음 그려질 때 출발점에서 도착점으로 그어진다(pathLength 100).
@@ -1055,6 +1119,10 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   stroke-dasharray: 0 50;
   animation-name: sig-flow-head;
 }
+// 머리 — 흰 중심(퍼셉트론 빛 점 스프라이트처럼 흰빛 → 색으로 번진다).
+.sig-flow {
+  stroke: color-mix(in srgb, var(--tone) 35%, #fff);
+}
 .sig-flow__halo {
   opacity: 0.2;
 }
@@ -1096,46 +1164,59 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     --tone: var(--log-accent);
   }
 
+  // 카드 — 퍼셉트론 .pn-card(진한 반투명 판, 옅은 테두리 1.5, 모서리 7).
   &__box {
-    fill: #14131a;
+    fill: rgba(15, 14, 21, 0.92);
     stroke: rgba(255, 255, 255, 0.1);
-    transition: stroke 0.15s;
+    stroke-width: 1.5;
+    transition:
+      stroke 0.3s ease,
+      fill 0.3s ease;
   }
+  // 이름 앞 네모·아래 막대 — 그 열의 색(--col, signal-graph.tsx).
+  &__square,
   &__bar {
-    fill: var(--tone);
-  }
-  // 등 — 필터 대신 옅은 테두리로 빛나 보이게.
-  &__lamp {
-    fill: var(--tone);
-    stroke: color-mix(in srgb, var(--tone) 35%, transparent);
-    stroke-width: 4;
-  }
-  &.is-fail .sig-node__lamp,
-  &.is-run .sig-node__lamp {
-    animation: log-blink 1.1s ease-in-out infinite;
-  }
-  &.is-idle .sig-node__lamp {
-    fill: $ink-4;
+    fill: var(--col);
   }
   &__label {
     fill: $ink;
-    font-size: 11.5px;
+    font-size: 12.5px;
     font-weight: 700;
   }
   &__sub {
-    fill: $ink-3;
+    fill: #5d5c6b;
     font-size: 9.5px;
   }
+  // 오른쪽 값 — 상태 색(성공 초록·실패 빨강 등).
   &__tag {
     fill: var(--tone);
-    font-size: 9.5px;
+    font-size: 10px;
     font-weight: 700;
   }
   &.is-idle .sig-node__tag {
-    fill: $ink-2;
+    fill: #e6e5ec;
   }
-  &.is-fail .sig-node__box {
-    fill: color-mix(in srgb, #{$fail} 9%, #14131a);
+
+  // 켜진 카드(실패·고른 노드) — 색 테두리 + 바깥 빛, 판도 그 색으로 물든다.
+  &.is-lit {
+    --hl: var(--tone);
+  }
+  &.is-active {
+    --hl: var(--log-accent);
+  }
+  &__aura {
+    fill: none;
+    stroke: var(--hl);
+    stroke-width: 10;
+    opacity: 0.16;
+  }
+  &.is-lit .sig-node__box {
+    fill: color-mix(in srgb, var(--hl) 15%, rgba(15, 14, 21, 0.94));
+    stroke: var(--hl);
+    stroke-width: 2.5;
+  }
+  &.is-fail .sig-node__aura {
+    animation: log-blink 1.6s ease-in-out infinite;
   }
 
   &.is-clickable {
@@ -1144,13 +1225,8 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 
     &:hover .sig-node__box,
     &:focus-visible .sig-node__box {
-      stroke: $accent-dim;
+      stroke: color-mix(in srgb, var(--col) 60%, rgba(255, 255, 255, 0.2));
     }
-  }
-  &.is-active .sig-node__box {
-    fill: color-mix(in srgb, var(--log-accent) 14%, #14131a);
-    stroke: $accent;
-    stroke-width: 1.5;
   }
 }
 
@@ -1169,7 +1245,7 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 .sig-node__ring {
   fill: none;
   stroke: var(--log-accent);
-  stroke-width: 1;
+  stroke-width: 2;
   animation: log-ring 1.8s ease-in-out infinite;
 }
 
@@ -1872,12 +1948,64 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     width: 28px;
   }
 
+  // 체크박스 — 브라우저 기본(흰 바탕) 대신 어두운 바탕에 얇은 선, 고르면
+  // 강조색으로 채우고 어두운 체크 표시. 일부만 고른 상태(전체 선택 칸)는 가로줄.
   &__check {
-    width: 14px;
-    height: 14px;
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
     margin: 0;
-    accent-color: var(--log-accent);
+    border: 1px solid $line-2;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    appearance: none;
     cursor: pointer;
+    vertical-align: middle;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      box-shadow 0.15s;
+
+    &::after {
+      content: '';
+      width: 8px;
+      height: 4px;
+      border-bottom: 1.6px solid rgba(10, 8, 14, 0.9);
+      border-left: 1.6px solid rgba(10, 8, 14, 0.9);
+      opacity: 0;
+      transform: translateY(-1px) rotate(-45deg) scale(0.6);
+      transition:
+        opacity 0.12s,
+        transform 0.15s;
+    }
+
+    &:hover {
+      border-color: $ink-3;
+    }
+    &:checked,
+    &:indeterminate {
+      border-color: $accent;
+      background: $accent;
+      box-shadow: 0 0 10px
+        color-mix(in srgb, var(--log-accent) 35%, transparent);
+    }
+    &:checked::after {
+      opacity: 1;
+      transform: translateY(-1px) rotate(-45deg) scale(1);
+    }
+    &:indeterminate::after {
+      width: 8px;
+      height: 0;
+      border-left: none;
+      opacity: 1;
+      transform: none;
+    }
+    &:focus-visible {
+      outline: 1px solid $accent;
+      outline-offset: 2px;
+    }
   }
 }
 
@@ -2080,6 +2208,12 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
+@keyframes sig-breathe {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 @keyframes sig-draw {
   from {
     stroke-dashoffset: 100;
@@ -2114,9 +2248,11 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   .log-top__live i,
   .batch-log__badge.is-running span,
   .batch-log__slot.is-running,
-  .sig-node__lamp,
   .sig-edge__line,
   .sig-node__ring,
+  .sig-node__aura,
+  .sig-spine,
+  .sig-spine__strand,
   .sig-tag,
   .log-insp,
   .log-insp * {

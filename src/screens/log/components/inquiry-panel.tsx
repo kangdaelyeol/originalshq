@@ -210,7 +210,6 @@ export function InquiryPanel() {
   }))
     .filter((each) => each.count > 0)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
     .map((each) => each.id)
   const nodeIds = ['form', 'fn', 'monday', ...boardNodeIds, 'sms', 'phone']
   const selectNode = (nodeId: string | null) => {

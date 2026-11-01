@@ -93,7 +93,7 @@ export const CostNodePanel = ({
       <SidePanel
         {...shell}
         tone={fn.errors > 0 ? 'partial' : 'accent'}
-        idLine={`${fn.trigger} · ${fn.memoryMb ? `${fn.memoryMb}MB` : '메모리 모름'}`}
+        idLine={`${fn.codebase ? `${fn.codebase} · ` : ''}${fn.trigger} · ${fn.memoryMb ? `${fn.memoryMb}MB` : '메모리 모름'}`}
         label={`${fn.fn} 비용 상세`}
       >
         <PanelTitle
@@ -111,10 +111,11 @@ export const CostNodePanel = ({
                 value: `${formatMs(fn.avgMs)} · ${formatMs(fn.p95Ms)}`,
               },
               {
-                label: '오류 · 콜드 스타트',
-                value: `${fn.errors} · ${fn.coldStarts}`,
-                tone: fn.errors ? 'warn' : undefined,
+                label: '실패(5xx) · 4xx',
+                value: `${fn.errors} · ${fn.clientErrors ?? 0}`,
+                tone: fn.errors ? 'fail' : undefined,
               },
+              { label: '콜드 스타트', value: `${fn.coldStarts}회` },
               {
                 label: '읽기 (호출당)',
                 value: `${formatCount(fn.reads)} (${fn.calls ? Math.round(fn.reads / fn.calls) : 0})`,

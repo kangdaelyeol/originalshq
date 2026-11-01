@@ -65,8 +65,12 @@ export interface MondayItem {
   /** Monday 쪽 생성/수정 시각(ISO 문자열). */
   createdAt: string | null
   updatedAt: string | null
-  /** 이 문서를 마지막으로 쓴 동기화 시각(ms). */
+  /** 이 문서를 마지막으로 쓴 동기화 시각(ms) — 내용이 바뀐 동기화에서만
+   * 다시 쓰므로 "내용이 마지막으로 바뀌어 반영된 때"다. */
   syncedAt: number
+  /** 내용 지문 — syncedAt을 뺀 나머지로 만든다. 동기화 때 저장된 값과 같으면
+   * 다시 쓰지 않는다(replaceBoardItems). */
+  hash: string
 }
 
 export interface MondaySubitem {
@@ -86,8 +90,11 @@ export interface MondayBoardSyncResult {
   ok: boolean
   /** 동기화를 마친(또는 실패한) 시각(ms). */
   at: number
-  /** Monday에서 받아온 item 수 = 저장한 문서 수. */
+  /** Monday에서 받아온 item 수. */
   itemCount: number
+  /** 그중 새로 생겼거나 내용이 바뀌어 실제로 쓴 문서 수 — 나머지는 그대로라
+   * 다시 쓰지 않았다. 예전 기록에는 없다. */
+  writtenCount?: number
   /** Monday에서 사라져 우리 DB에서도 지운 문서 수. */
   deletedCount: number
   /** phone이 null로 저장된 item 수. */

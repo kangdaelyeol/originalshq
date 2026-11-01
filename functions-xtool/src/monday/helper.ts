@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { normalizeDomesticPhone } from '../utils'
 import { RawMondayBoard, RawMondayItem, RawMondaySubitem } from './client'
 import {
@@ -136,7 +137,7 @@ export const buildMondayItems = (
     const phoneRaw = readPhoneRaw(item, columns, phoneColumnId)
     const phones = extractMondayPhones(phoneRaw)
 
-    return {
+    const body = {
       id: item.id,
       boardId: board.id,
       boardName: board.name,
@@ -153,7 +154,13 @@ export const buildMondayItems = (
       subitems: (item.subitems ?? []).map(toSubitem),
       createdAt: item.created_at ?? null,
       updatedAt: item.updated_at ?? null,
+    }
+    return {
+      ...body,
       syncedAt,
+      // 내용 지문 — 동기화 시각은 빼고 만든다(매번 달라서). 같은 보드를 같은
+      // 순서로 만들어 키 순서가 늘 같다.
+      hash: createHash('sha1').update(JSON.stringify(body)).digest('hex'),
     }
   })
 }

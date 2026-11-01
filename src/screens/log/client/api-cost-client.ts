@@ -6,9 +6,14 @@ import type { ClientResponse } from './batch-run-client'
 
 export interface ApiCostByFn {
   fn: string
+  /** xtool / cmip — 예전 응답에는 없다. */
+  codebase?: string
   trigger: string
   calls: number
+  /** 5xx·예외. */
   errors: number
+  /** 4xx(찾을 수 없음·잘못된 입력 등) — 실패가 아니다. 예전 응답에는 없다. */
+  clientErrors?: number
   coldStarts: number
   avgMs: number
   p95Ms: number

@@ -24,10 +24,41 @@ import {
 import type { useBatchLogViewModel } from '../view-model/use-batch-log-view-model'
 import {
   SignalGraph,
+  type SignalColumn,
   type SignalEdge,
   type SignalNode,
   type SignalTone,
 } from './signal-graph'
+
+// 열 색 — 퍼셉트론 기둥 색(청록·분홍·보라·노랑) 순서.
+const COL = {
+  cyan: '#55d6e2',
+  pink: '#ff5f8f',
+  purple: '#9d8cff',
+  yellow: '#f2cf5b',
+} as const
+
+const BATCH_COLUMNS: SignalColumn[] = [
+  { x: 98, width: 170, label: 'TRIGGER', color: COL.cyan },
+  { x: 390, width: 210, label: 'JOBS', color: COL.pink },
+  { x: 660, width: 210, label: 'FOLLOW-UP', color: COL.purple },
+  { x: 912, width: 160, label: 'STORAGE', color: COL.yellow },
+]
+const INQUIRY_COLUMNS: SignalColumn[] = [
+  { x: 82, width: 140, label: 'INPUT', color: COL.cyan },
+  { x: 262, width: 168, label: 'FUNCTION', color: COL.pink },
+  { x: 466, width: 190, label: 'DELIVERY', color: COL.purple },
+  { x: 771, width: 348, label: 'BOARDS', color: COL.yellow },
+]
+const USAGE_COLUMNS: SignalColumn[] = [
+  { x: 100, width: 150, label: 'ENTRY', color: COL.cyan },
+  { x: 470, width: 250, label: 'TABS', color: COL.pink },
+]
+const COST_COLUMNS: SignalColumn[] = [
+  { x: 92, width: 150, label: 'TRIGGER', color: COL.cyan },
+  { x: 430, width: 250, label: 'FUNCTION', color: COL.pink },
+  { x: 860, width: 200, label: 'RESOURCE', color: COL.purple },
+]
 
 // 탭마다 맨 위에 두는 흐름 그림 — 데이터가 어디서 어디로 가는지와 지금 상태를
 // 퍼셉트론의 신경망처럼 노드와 빛 점으로 보여 준다.
@@ -157,6 +188,8 @@ export const BatchFlow = ({
       nodes={nodes}
       edges={edges}
       label="배치 파이프라인 — 스케줄러에서 작업, 저장소까지"
+      columns={BATCH_COLUMNS}
+      spines={[240, 525, 786]}
       focus={jobFilter === 'all' ? null : jobFilter}
     />
   )
@@ -164,7 +197,8 @@ export const BatchFlow = ({
 
 // ── 문의 접수 ────────────────────────────────────────────────────────────
 
-/** 문의 접수 흐름 — 웹 폼 → 접수 함수 → Monday 보드(기기별)·접수 안내 문자. */
+/** 문의 접수 흐름 — 웹 폼 → 접수 함수 → Monday 보드(기기별, 들어온 보드 전부)·
+ * 접수 안내 문자. */
 export const InquiryFlow = ({
   summary,
   deviceCounts,
@@ -189,7 +223,6 @@ export const InquiryFlow = ({
   }))
     .filter((each) => each.count > 0)
     .sort((a, b) => b.count - a.count)
-    .slice(0, 5)
   const max = Math.max(1, ...boards.map((each) => each.count))
   const has = summary.total > 0
   const mondayTone: SignalTone = !has
@@ -205,32 +238,47 @@ export const InquiryFlow = ({
         ? 'ok'
         : 'idle'
   // 보드 노드는 노드 높이(46)보다 넓게 띄워 겹치지 않게.
-  const boardY = (index: number) => 32 + index * 54
-  const mondayY =
-    boards.length > 0 ? (boardY(0) + boardY(boards.length - 1)) / 2 : 110
+  // 보드는 들어온 것 전부를 2열로(많은 순으로 왼쪽·오른쪽 번갈아) — 이름과
+  // 건수만 있는 낮은 노드. 오른쪽 열은 반 줄 내려, 그쪽으로 가는 선이 왼쪽 열
+  // 노드 사이 틈을 가로로 곧게 지나가게 한다(bus). 문자 줄은 그 아래.
+  const ROW = 48
+  const BOARD_H = 34
+  const BOARD_W = 158
+  const COLUMN_X = [676, 866]
+  const boardPos = (index: number) => ({
+    x: COLUMN_X[index % 2],
+    y: 30 + Math.floor(index / 2) * ROW + (index % 2) * (ROW / 2),
+  })
+  const boardsBottom = boards.length > 0 ? boardPos(boards.length - 1).y : 110
+  const mondayY = boards.length > 0 ? (30 + boardsBottom) / 2 : 110
+  const smsY = boardsBottom + 66
+  const height = smsY + 36
+  const middleY = (mondayY + smsY) / 2
+  // 오른쪽 열로 가는 선이 꺾는 곳 — 왼쪽 열 노드의 바로 앞.
+  const turnX = COLUMN_X[0] - BOARD_W / 2 - 14
 
   const nodes: SignalNode[] = [
     {
       id: 'form',
-      x: 96,
-      y: 190,
+      x: 82,
+      y: middleY,
       label: '웹사이트 폼',
       sub: `상담 신청 ${summary.total}건`,
       tone: 'accent',
-      width: 160,
+      width: 140,
     },
     {
       id: 'fn',
-      x: 330,
-      y: 190,
+      x: 262,
+      y: middleY,
       label: 'submitInquiry',
       sub: 'functions-xtool',
       tone: has ? 'ok' : 'idle',
-      width: 180,
+      width: 168,
     },
     {
       id: 'monday',
-      x: 590,
+      x: 466,
       y: mondayY,
       label: 'Monday 등록',
       sub: `등록 ${summary.mondayOk} · 미등록 ${summary.mondayFailed}`,
@@ -239,8 +287,8 @@ export const InquiryFlow = ({
     },
     {
       id: 'sms',
-      x: 590,
-      y: 318,
+      x: 466,
+      y: smsY,
       label: '접수 안내 문자',
       sub: `발송 ${summary.smsOk} · 실패 ${summary.smsFailed}`,
       tone: smsTone,
@@ -248,21 +296,21 @@ export const InquiryFlow = ({
     },
     ...boards.map((each, index) => ({
       id: `board:${each.device}`,
-      x: 880,
-      y: boardY(index),
+      ...boardPos(index),
+      height: BOARD_H,
       label: each.label,
       tag: `${each.count}건`,
       tone: 'idle' as const,
-      width: 190,
+      width: BOARD_W,
     })),
     {
       id: 'phone',
-      x: 880,
-      y: 318,
+      x: COLUMN_X[0],
+      y: smsY,
       label: '고객 휴대폰',
       sub: 'SOLAPI',
       tone: smsTone === 'fail' ? 'warn' : 'idle',
-      width: 190,
+      width: BOARD_W,
     },
   ]
   // 노드마다 누르면 상세 패널(inquiry-node-panel.tsx).
@@ -275,12 +323,14 @@ export const InquiryFlow = ({
     { from: 'form', to: 'fn', tone: 'accent', flow: has, weight: 2 },
     { from: 'fn', to: 'monday', tone: mondayTone, flow: has, weight: 2 },
     { from: 'fn', to: 'sms', tone: smsTone, flow: summary.smsOk > 0 },
-    ...boards.map((each) => ({
+    ...boards.map((each, index) => ({
       from: 'monday',
       to: `board:${each.device}`,
       tone: 'accent' as const,
       flow: true,
       weight: 1 + (each.count / max) * 3,
+      // 오른쪽 열은 왼쪽 열 노드 사이 틈으로 가로질러 들어간다.
+      ...(index % 2 === 1 ? { route: 'bus' as const, turnX } : {}),
     })),
     {
       from: 'sms',
@@ -293,10 +343,12 @@ export const InquiryFlow = ({
   return (
     <SignalGraph
       width={1000}
-      height={356}
+      height={height}
       nodes={clickable}
       edges={edges}
       label="문의 접수 흐름 — 웹 폼에서 Monday·문자까지"
+      columns={INQUIRY_COLUMNS}
+      spines={[364, 579]}
       focus={selected}
     />
   )
@@ -388,6 +440,8 @@ export const UsageFlow = ({
       }))}
       edges={edges}
       label="탭 이동 흐름 — 접속에서 처음 본 탭, 탭에서 탭으로"
+      columns={USAGE_COLUMNS}
+      spines={[260]}
       focus={selected}
     />
   )
@@ -440,7 +494,7 @@ export const CostFlow = ({
       x: 430,
       y: rowY(index, top.length, height),
       label: each.fn,
-      sub: `${formatUsd(each.cost)} · ${(each.share * 100).toFixed(1)}%`,
+      sub: `${each.codebase ? `${each.codebase} · ` : ''}${formatUsd(each.cost)} · ${(each.share * 100).toFixed(1)}%`,
       tag: `${each.calls}회`,
       tone: (index === 0 ? 'accent' : 'idle') as SignalTone,
       width: 250,
@@ -493,6 +547,8 @@ export const CostFlow = ({
       }))}
       edges={edges}
       label="비용 지도 — 호출 방식에서 함수, 함수가 돈을 쓰는 자원까지"
+      columns={COST_COLUMNS}
+      spines={[236, 657]}
       focus={selected}
     />
   )

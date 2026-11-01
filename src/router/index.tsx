@@ -116,13 +116,11 @@ export const router = createBrowserRouter([
         lazy: xtoolTech('AppLayout'),
         children: [
           { index: true, lazy: xtoolTech('OverviewPage') },
-          // 기술지원팀 Monday 보드(출장업무·AS·자료정리·아톡문의·기타업무) — 사이드바 메뉴에서 온다
+          // 기술지원팀 Monday 보드(메뉴·관리 섹션) — 사이드바에서 온다
           { path: 'boards/:board', lazy: xtoolTech('BoardPage') },
           { path: 'analytics', lazy: xtoolTech('AnalyticsPage') },
-          { path: 'deploy', lazy: xtoolTech('DeployStationPage') },
           { path: 'team', lazy: xtoolTech('TeamPage') },
           { path: 'settings', lazy: xtoolTech('SettingsPage') },
-          { path: 'tasks', lazy: xtoolTech('TasksPage') },
           { path: 'security', lazy: xtoolTech('SecurityPage') },
           { path: '*', element: <Navigate to="/xtool-tech" replace /> },
         ],

@@ -67,17 +67,22 @@ export async function setupTechWebhooks(
       )
     }
     const events = [...ITEM_EVENTS, ...(source.subitems ? SUBITEM_EVENTS : [])]
+    // 보드 안의 이벤트는 동시에 만든다 — Monday가 만들 때마다 우리 주소로 확인
+    // 요청(challenge)을 보내서, 하나씩 하면 보드 9개에 1분 반이 걸린다.
+    const settled = await Promise.allSettled(
+      events.map((event) => createWebhook(apiKey, source.boardId, url, event)),
+    )
     const ids: string[] = []
     const errors: string[] = []
-    for (const event of events) {
-      try {
-        ids.push(await createWebhook(apiKey, source.boardId, url, event))
-      } catch (error) {
+    settled.forEach((result, i) => {
+      if (result.status === 'fulfilled') ids.push(result.value)
+      else {
+        const reason = result.reason
         errors.push(
-          `${event}: ${error instanceof Error ? error.message : String(error)}`,
+          `${events[i]}: ${reason instanceof Error ? reason.message : reason}`,
         )
       }
-    }
+    })
     await saveBoardMeta(db, source.key, {
       boardId: source.boardId,
       webhooks: { ids, at: Date.now(), errors },

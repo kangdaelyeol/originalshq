@@ -63,21 +63,31 @@ export async function replaceBoardItems(
   db: Firestore,
   boardId: string,
   items: MondayItem[],
-): Promise<number> {
+): Promise<{ writtenCount: number; deletedCount: number }> {
   const collection = db.collection(ITEMS_COLLECTION)
+  // 지문만 읽는다(읽기 수는 같지만 내려받는 양이 작다).
   const existing = await collection
     .where('boardId', '==', boardId)
-    .select()
+    .select('hash')
     .get()
+  const existingHashes = new Map(
+    existing.docs.map((doc) => [doc.id, doc.get('hash') as string | undefined]),
+  )
 
+  // 새로 생겼거나 내용이 바뀐 item만 쓴다 — 하루 여섯 번 도는 동기화에서 실제로
+  // 바뀌는 item은 일부라, 매번 전부(1만 건 남짓) 쓰던 것보다 쓰기가 훨씬 적다.
+  // 지문이 없는 예전 문서는 한 번 다시 써서 지문을 붙인다.
+  const changed = items.filter(
+    (item) => existingHashes.get(item.id) !== item.hash,
+  )
   const incomingIds = new Set(items.map((item) => item.id))
   const staleRefs = existing.docs
     .filter((doc) => !incomingIds.has(doc.id))
     .map((doc) => doc.ref)
 
-  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+  for (let i = 0; i < changed.length; i += BATCH_SIZE) {
     const batch = db.batch()
-    for (const item of items.slice(i, i + BATCH_SIZE)) {
+    for (const item of changed.slice(i, i + BATCH_SIZE)) {
       batch.set(collection.doc(item.id), item)
     }
     await batch.commit()
@@ -89,7 +99,7 @@ export async function replaceBoardItems(
     await batch.commit()
   }
 
-  return staleRefs.length
+  return { writtenCount: changed.length, deletedCount: staleRefs.length }
 }
 
 /** 보드 등록을 해제한다 — 보드 문서와 그 보드에서 가져온 item을 전부 지운다.
@@ -98,7 +108,7 @@ export async function deleteBoard(
   db: Firestore,
   boardId: string,
 ): Promise<number> {
-  const deletedCount = await replaceBoardItems(db, boardId, [])
+  const { deletedCount } = await replaceBoardItems(db, boardId, [])
   await db.collection(BOARDS_COLLECTION).doc(boardId).delete()
   return deletedCount
 }
@@ -106,6 +116,24 @@ export async function deleteBoard(
 export async function listItems(db: Firestore): Promise<MondayItem[]> {
   const snapshot = await db.collection(ITEMS_COLLECTION).get()
   return snapshot.docs.map((doc) => doc.data() as MondayItem)
+}
+
+/** 보드 하나의 저장된 item — 동기화에 실패한 보드의 것만 읽을 때. */
+export async function listBoardItems(
+  db: Firestore,
+  boardId: string,
+): Promise<MondayItem[]> {
+  const snapshot = await db
+    .collection(ITEMS_COLLECTION)
+    .where('boardId', '==', boardId)
+    .get()
+  return snapshot.docs.map((doc) => doc.data() as MondayItem)
+}
+
+/** 저장된 item 수 — count 집계라 1,000건당 읽기 1회. */
+export async function countItems(db: Firestore): Promise<number> {
+  const snapshot = await db.collection(ITEMS_COLLECTION).count().get()
+  return snapshot.data().count
 }
 
 /** 통합 고객 컬렉션을 주어진 목록과 똑같이 맞춘다. 내용이 그대로인 문서

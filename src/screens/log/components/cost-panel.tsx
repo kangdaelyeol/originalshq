@@ -57,7 +57,7 @@ export function CostPanel() {
         <div>
           <h2 className="batch-log__title">비용 분석</h2>
           <p className="batch-log__muted">
-            xtool 함수가 호출마다 쓴 자원과 어림 비용 — 로그가 BigQuery에
+            xtool·cmip 함수가 호출마다 쓴 자원과 어림 비용 — 로그가 BigQuery에
             들어오기까지 1분쯤, 화면은 몇 분마다 새로 집계합니다.
           </p>
         </div>
@@ -184,6 +184,11 @@ export function CostPanel() {
                       >
                         <td>
                           {row.fn}{' '}
+                          {row.codebase && (
+                            <span className="batch-log__codebase">
+                              {row.codebase}
+                            </span>
+                          )}{' '}
                           <span className="batch-log__codebase">
                             {row.trigger}
                           </span>

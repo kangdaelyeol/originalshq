@@ -14,6 +14,10 @@ const ORDER = ['fieldService', 'repair', 'techInquiry', 'techTask', 'records', '
 
 type Notice = { tone: 'good' | 'crit'; text: string }
 
+// 함수 호출 클라이언트는 기본 70초만 기다린다 — 전체 동기화·webhook 설정은 1분을 넘길 수
+// 있어 함수 제한 시간(300초)만큼 기다린다.
+const LONG_CALL = { timeout: 300_000 }
+
 /** Monday 연동 — 보드별 마지막 동기화·webhook 상태, 지금 동기화·webhook 다시 설정. */
 export function TechSyncCard() {
   const [metas, setMetas] = useState<TechBoardMeta[] | null>(null)
@@ -39,7 +43,7 @@ export function TechSyncCard() {
     try {
       const { functions } = xtoolFirebase()
       if (kind === 'sync') {
-        const { data } = await httpsCallable<void, { okCount: number; failedCount: number }>(functions, 'techSyncNow')()
+        const { data } = await httpsCallable<void, { okCount: number; failedCount: number }>(functions, 'techSyncNow', LONG_CALL)()
         setNotice({
           tone: data.failedCount ? 'crit' : 'good',
           text: `동기화 끝 — 성공 ${data.okCount}개${data.failedCount ? `, 실패 ${data.failedCount}개(아래 표 참고)` : ''}`,
@@ -48,6 +52,7 @@ export function TechSyncCard() {
         const { data } = await httpsCallable<void, { boards: { key: string; created: number; errors: string[] }[] }>(
           functions,
           'techSetupWebhooks',
+          LONG_CALL,
         )()
         const failed = data.boards.filter((b) => b.errors.length)
         setNotice({

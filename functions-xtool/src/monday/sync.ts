@@ -3,7 +3,9 @@ import { Firestore } from 'firebase-admin/firestore'
 import { fetchBoard } from './client'
 import { buildCustomers, buildDailyInflow, detectBoardKind } from './customers'
 import {
+  countItems,
   getBoard,
+  listBoardItems,
   listBoards,
   listCafe24Orders,
   listItems,
@@ -35,6 +37,7 @@ import {
   MondayBoardSyncResult,
   MondayColumn,
   MondayCustomerRebuildResult,
+  MondayItem,
   MondaySyncSummary,
 } from './types'
 
@@ -99,6 +102,9 @@ export async function syncBoard(
   db: Firestore,
   apiKey: string,
   board: MondayBoard,
+  /** 주면 성공한 보드의 item을 여기 담는다 — 고객 통합이 DB에서 다시 읽지
+   * 않게(syncBoards). */
+  loaded?: Map<string, MondayItem[]>,
 ): Promise<MondayBoardSyncResult> {
   try {
     const raw = await fetchBoard(apiKey, board.id, needsSubitems)
@@ -106,12 +112,18 @@ export async function syncBoard(
       board.phoneColumnId ?? detectPhoneColumnId(raw.columns)
     const syncedAt = Date.now()
     const items = buildMondayItems(raw, resolvedPhoneColumnId, syncedAt)
-    const deletedCount = await replaceBoardItems(db, board.id, items)
+    const { writtenCount, deletedCount } = await replaceBoardItems(
+      db,
+      board.id,
+      items,
+    )
+    loaded?.set(board.id, items)
 
     const result: MondayBoardSyncResult = {
       ok: true,
       at: syncedAt,
       itemCount: items.length,
+      writtenCount,
       deletedCount,
       missingPhoneCount: items.filter((item) => !item.phone).length,
     }
@@ -146,10 +158,12 @@ export async function syncBoard(
  * 없이 그대로 반영된다. */
 export async function rebuildCustomers(
   db: Firestore,
+  /** 이미 가진 item 전체(syncBoards가 방금 받은 것) — 없으면 DB에서 읽는다. */
+  preloaded?: MondayItem[],
 ): Promise<MondayCustomerRebuildResult> {
   const [boards, items, orders] = await Promise.all([
     listBoards(db),
-    listItems(db),
+    preloaded ?? listItems(db),
     listCafe24Orders(db),
   ])
   // kind는 동기화 때 저장해 두지만, 추정 규칙이 바뀐 직후에도 바로 맞도록
@@ -219,6 +233,9 @@ export async function syncBoards(
     boards = await listBoards(db)
   }
 
+  // 전체 동기화면 성공한 보드의 item을 모아 고객 통합에 그대로 넘긴다 — 방금
+  // 저장한 1만 건 남짓을 DB에서 다시 읽지 않게.
+  const loaded = boardId ? undefined : new Map<string, MondayItem[]>()
   const results: MondayBoardSyncResult[] = new Array(boards.length)
   let nextIndex = 0
   // 일꾼 하나가 남은 보드를 하나씩 가져가 처리한다 — SYNC_CONCURRENCY개가
@@ -226,7 +243,7 @@ export async function syncBoards(
   const worker = async () => {
     while (nextIndex < boards.length) {
       const index = nextIndex++
-      results[index] = await syncBoard(db, apiKey, boards[index])
+      results[index] = await syncBoard(db, apiKey, boards[index], loaded)
     }
   }
   await Promise.all(Array.from({ length: SYNC_CONCURRENCY }, worker))
@@ -246,17 +263,51 @@ export async function syncBoards(
 
   // 일부 보드가 실패했어도 다시 만든다 — 실패한 보드의 item은 이전 상태로
   // 남아 있으므로, 통합본은 "지금 저장돼 있는 것"을 그대로 반영하면 된다.
-  summary.customers = await rebuildCustomersSafely(db)
+  const preloaded = loaded
+    ? await collectItems(db, boards, loaded)
+    : undefined
+  summary.customers = await rebuildCustomersSafely(db, preloaded)
   return summary
+}
+
+/** 고객 통합에 넘길 item 전체 — 메모리에 있는 것(성공한 보드) + 실패한 보드의
+ * 저장된 것. 저장된 item 수와 맞지 않으면(등록에서 빠진 보드의 item이 남아
+ * 있는 등) undefined를 돌려줘 예전처럼 DB에서 전부 읽게 한다 — 결과가 늘
+ * 전부 읽을 때와 같도록. 확인은 count 집계라 읽기 10여 회다. */
+async function collectItems(
+  db: Firestore,
+  boards: MondayBoard[],
+  loaded: Map<string, MondayItem[]>,
+): Promise<MondayItem[] | undefined> {
+  try {
+    const missing = boards.filter((board) => !loaded.has(board.id))
+    const fromDb = await Promise.all(
+      missing.map((board) => listBoardItems(db, board.id)),
+    )
+    const items = [...[...loaded.values()].flat(), ...fromDb.flat()]
+    const stored = await countItems(db)
+    if (stored !== items.length) {
+      logger.warn(
+        `고객 통합: 저장된 item ${stored}건과 모은 item ${items.length}건이 ` +
+          '달라 DB에서 전부 다시 읽습니다',
+      )
+      return undefined
+    }
+    return items
+  } catch (error) {
+    logger.warn('고객 통합: item 모으기 실패 — DB에서 전부 다시 읽습니다', error)
+    return undefined
+  }
 }
 
 /** rebuildCustomers를 돌리되, 실패해도 호출부(이미 item 저장을 마친 동기화)를
  * 실패로 만들지 않는다 — 오류는 로그로 남기고 null을 돌려준다. */
 export async function rebuildCustomersSafely(
   db: Firestore,
+  preloaded?: MondayItem[],
 ): Promise<MondayCustomerRebuildResult | null> {
   try {
-    return await rebuildCustomers(db)
+    return await rebuildCustomers(db, preloaded)
   } catch (error) {
     logger.error('Monday 통합 고객 재생성 실패:', error)
     return null
