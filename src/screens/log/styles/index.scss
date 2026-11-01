@@ -822,6 +822,16 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 
 .log-main {
   padding-bottom: 40px;
+  transition: padding-right 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+// 상세 패널이 열리면 넓은 화면에서는 본문을 패널 폭만큼 밀어, 고른 노드·표가
+// 패널 밑에 가리지 않게 한다(그림은 폭에 맞춰 줄어든다). 패널은 화면 오른쪽에서
+// 452px(폭 420 + 여백)를 차지하고, 본문 바깥 여백이 그만큼을 덜어 준다.
+@media (min-width: 1100px) {
+  .batch-log:has(.log-insp:not(.is-closed)) .log-main {
+    padding-right: max(0px, calc(452px - max(28px, (100vw - 1320px) / 2)));
+  }
 }
 
 // ── 맨 아래 줄 — 퍼셉트론 .pn-foot ──────────────────────────────────────
@@ -920,14 +930,51 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     stroke-dasharray: 5 4;
     animation: log-dash 1.2s linear infinite;
   }
+}
 
-  &__label {
-    fill: $ink-2;
-    font-size: 10px;
-    font-weight: 700;
-    paint-order: stroke;
-    stroke: $bg;
-    stroke-width: 4px;
+// 선 위 숫자 — 유리 알약. 반투명 판에 옅은 테두리, 위쪽에 빛 선 한 줄.
+.sig-tag {
+  --tone: #{$ink-3};
+  transition: opacity 0.35s ease;
+
+  &.is-ok {
+    --tone: #{$ok};
+  }
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  &.is-accent {
+    --tone: var(--log-accent);
+  }
+  &.is-dim {
+    opacity: 0.15;
+  }
+
+  &__glass {
+    fill: color-mix(in srgb, var(--tone) 14%, rgba(22, 21, 30, 0.82));
+    stroke: color-mix(in srgb, var(--tone) 38%, rgba(255, 255, 255, 0.16));
+    stroke-width: 0.8;
+  }
+  &__shine {
+    fill: rgba(255, 255, 255, 0.28);
+  }
+  &__text {
+    fill: $ink;
+    font-family:
+      'Pretendard Variable',
+      Pretendard,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
   }
 }
 
@@ -1031,36 +1078,39 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   animation: log-ring 1.8s ease-in-out infinite;
 }
 
-// ── 작업 상세(job-inspector.tsx) — 노드를 누르면 그래프 아래로 펼쳐진다 ──
-// 높이를 grid 행(0fr ↔ 1fr)으로 바꿔 부드럽게 펼치고 접는다(퍼셉트론 .pn-fold).
-.log-insp-fold {
-  display: grid;
-  grid-template-rows: 1fr;
-  margin: 6px -14px -8px;
-  transition:
-    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.3s ease;
-
-  &__inner {
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  &.is-closed {
-    grid-template-rows: 0fr;
-    opacity: 0;
-    pointer-events: none;
-  }
-}
-
+// ── 작업 상세(job-inspector.tsx) — 노드를 누르면 오른쪽에 떠오른다 ────────
+// 퍼셉트론 편집 패널(.pn-insp)과 같은 모양: 위 테두리가 상태 색, 진한 유리판.
+// 위 줄(.log-top) 아래부터 화면 아래까지 붙어 있어 길면 안에서 스크롤한다.
 .log-insp {
   --state: var(--log-accent);
-  position: relative;
-  padding: 18px 20px 20px;
-  border-top: 1px solid $accent-dim;
-  background:
-    linear-gradient(180deg, $accent-soft, transparent 140px),
-    rgba(0, 0, 0, 0.28);
+  position: fixed;
+  top: 70px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  width: min(420px, calc(100vw - 32px));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid var(--state);
+  border-radius: 6px;
+  background: rgba(13, 12, 18, 0.95);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.6),
+    0 0 40px color-mix(in srgb, var(--state) 10%, transparent);
+  color: $ink;
+  font-family: $mono;
+  backdrop-filter: blur(10px);
+  transition:
+    transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.25s ease,
+    border-color 0.3s ease;
+
+  &.is-closed {
+    opacity: 0;
+    transform: translateX(calc(100% + 24px));
+    pointer-events: none;
+  }
 
   &.is-success {
     --state: #{$ok};
@@ -1079,93 +1129,122 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     --state: #{$run};
   }
 
-  // 열릴 때 위에서 아래로 한 번 훑고 지나가는 빛 줄.
-  &::before {
-    content: '';
-    position: absolute;
-    right: 0;
-    left: 0;
-    top: 0;
-    height: 2px;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      var(--log-accent) 30%,
-      #fff 50%,
-      var(--log-accent) 70%,
-      transparent
-    );
-    box-shadow: 0 0 18px var(--log-accent);
-    opacity: 0;
-    animation: log-scan 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) 0.05s;
-    pointer-events: none;
-  }
-
   &__head {
     display: flex;
-    align-items: flex-start;
+    flex: none;
+    align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    margin-bottom: 16px;
-    animation: log-rise 0.4s ease both;
-
-    h2 {
-      margin: 4px 0;
-      font-size: 18px;
-      font-weight: 800;
-    }
-  }
-
-  &__id {
-    color: $accent;
-    font-size: 10.5px;
+    padding: 10px 12px 4px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
 
+    > span {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
     i {
-      margin: 0 4px;
-      color: $ink-4;
-      font-style: normal;
+      width: 7px;
+      height: 7px;
+      background: var(--state);
+      box-shadow: 0 0 8px var(--state);
     }
   }
 
   &__tools {
     display: flex;
-    flex: none;
-    gap: 6px;
+    gap: 2px;
 
     button {
-      @include line-button;
-      height: 28px;
-      padding: 0 10px;
-    }
-  }
+      width: 26px;
+      height: 24px;
+      border: 0;
+      border-radius: 4px;
+      background: transparent;
+      color: $ink-3;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
 
-  &__body {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr) minmax(0, 1.25fr);
-    gap: 10px;
-
-    @media (max-width: 1100px) {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-
-      > :last-child {
-        grid-column: 1 / -1;
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+        color: $ink;
+      }
+      &:focus-visible {
+        outline: 1px solid $accent;
       }
     }
-    @media (max-width: 720px) {
-      grid-template-columns: minmax(0, 1fr);
+  }
+
+  &__id {
+    flex: none;
+    padding: 0 12px 8px;
+    overflow: hidden;
+    border-bottom: 1px solid $line;
+    color: $ink-3;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    i {
+      color: $accent;
+      font-style: normal;
     }
   }
 
-  // 칸 셋 — 왼쪽부터 차례로 떠오른다(--i).
+  // 내용 — 작업을 바꾸면 새로 붙어(key) 빛 줄이 훑고 칸들이 차례로 떠오른다.
+  &__body {
+    position: relative;
+    display: grid;
+    flex: 1;
+    align-content: start;
+    gap: 10px;
+    min-height: 0;
+    padding: 12px;
+    overflow-y: auto;
+    scrollbar-color: $ink-4 transparent;
+    scrollbar-width: thin;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 2px;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        var(--state) 30%,
+        #fff 50%,
+        var(--state) 70%,
+        transparent
+      );
+      box-shadow: 0 0 18px var(--state);
+      opacity: 0;
+      animation: log-scan 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) 0.05s;
+      pointer-events: none;
+    }
+  }
+
+  &__title,
+  &__cell {
+    animation: log-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(0.08s + var(--i) * 0.07s);
+  }
+
+  &__title h2 {
+    margin: 0 0 6px;
+    font-size: 17px;
+    font-weight: 800;
+  }
+
   &__cell {
     min-width: 0;
     padding: 12px 14px 14px;
     border: 1px solid $line;
     background: $panel;
-    animation: log-rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-    animation-delay: calc(0.12s + var(--i) * 0.09s);
 
     h3 {
       display: flex;
@@ -1180,10 +1259,8 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
       &::before {
         @include square(4px);
         content: '';
+        background: var(--state);
       }
-    }
-    h3 + * {
-      margin-top: 0;
     }
     * + h3 {
       margin-top: 16px;
@@ -1191,6 +1268,152 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 
     .batch-log__grid {
       margin-top: 0;
+    }
+  }
+
+  // 숫자 칸 — 두 줄씩(PanelStats).
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 14px;
+    margin: 0;
+
+    dt {
+      color: $ink-3;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+    }
+    dd {
+      margin: 3px 0 0;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+
+      &.is-ok {
+        color: $ok;
+      }
+      &.is-warn {
+        color: $warn;
+      }
+      &.is-fail {
+        color: $fail;
+        text-shadow: 0 0 14px color-mix(in srgb, #{$fail} 45%, transparent);
+      }
+    }
+  }
+
+  // 이름 + 막대 + 값(PanelBars) — 누를 수 있으면 줄 전체가 버튼.
+  &__bars {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    button,
+    div {
+      all: unset;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 5px 6px;
+      border-radius: 3px;
+      font-size: 11.5px;
+    }
+    button {
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+      }
+      &:focus-visible {
+        outline: 1px solid $accent;
+      }
+    }
+    .name {
+      overflow: hidden;
+      color: $ink-2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .track {
+      height: 6px;
+      overflow: hidden;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.06);
+
+      span {
+        display: block;
+        height: 100%;
+        border-radius: 3px;
+        background: var(--state);
+        transform-origin: left;
+        animation: log-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        animation-delay: calc(0.25s + var(--i) * 0.04s);
+      }
+    }
+    .value {
+      color: $ink;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  // 기록 목록(PanelList) — 줄을 누르면 표에서 그 줄이 펼쳐진다.
+  &__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    button {
+      all: unset;
+      box-sizing: border-box;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 2px 10px;
+      width: 100%;
+      padding: 7px 6px;
+      border-bottom: 1px solid $line;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      &:focus-visible {
+        outline: 1px solid $accent;
+      }
+      &:disabled {
+        cursor: default;
+      }
+    }
+    .title {
+      overflow: hidden;
+      color: $ink;
+      font-size: 12px;
+      font-weight: 600;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta {
+      grid-column: 1;
+      color: $ink-3;
+      font-size: 10.5px;
+    }
+    .side {
+      grid-row: 1 / 3;
+      grid-column: 2;
+      align-self: center;
+      color: $ink-2;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
     }
   }
 
@@ -1212,7 +1435,8 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
       letter-spacing: -0.02em;
       text-shadow: 0 0 22px color-mix(in srgb, var(--state) 45%, transparent);
     }
-    span {
+    // 아래 줄(경과 시간)만 — 위 상태 글자 안의 기호는 상태 색·크기 그대로.
+    > span {
       color: $ink-3;
       font-size: 11px;
     }
@@ -1347,11 +1571,6 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     margin: 0;
     color: $ink-3;
     font-size: 11.5px;
-  }
-
-  // 함수 이름처럼 긴 값은 한 줄을 다 쓴다.
-  &__wide {
-    grid-column: 1 / -1;
   }
 
   // 예약 시각 칸이 위에서부터 차례로 켜진다.
@@ -1775,6 +1994,12 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
+@keyframes log-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
 @keyframes log-draw {
   to {
     stroke-dashoffset: 0;
@@ -1797,10 +2022,10 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   .sig-node__lamp,
   .sig-edge__line,
   .sig-node__ring,
+  .sig-tag,
   .log-insp,
   .log-insp *,
-  .log-insp::before,
-  .log-insp-fold {
+  .log-insp__body::before {
     transition: none;
     animation: none !important;
   }

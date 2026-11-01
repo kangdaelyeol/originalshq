@@ -21,8 +21,10 @@ import {
   type InquiryFilter,
 } from '../view-model/use-inquiry-log-view-model'
 import { useToast } from '../view-model/use-toast'
+import { useLatched } from '../view-model/use-latched'
 import { DeviceSelect } from './device-select'
 import { InquiryFlow } from './flow-graphs'
+import { InquiryNodePanel } from './inquiry-node-panel'
 import { ToastStack } from './toast'
 
 const MONDAY_ITEM_URL = (boardId: string, itemId: string) =>
@@ -198,6 +200,41 @@ const InquiryDetail = ({
  */
 export function InquiryPanel() {
   const { state, actions } = useInquiryLogViewModel()
+  // 흐름 그림에서 고른 노드 — 오른쪽 상세 패널. 기기 보드 노드를 고르면 아래
+  // 표도 그 보드로 거른다.
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
+  const shownNode = useLatched(selectedNode)
+  const boardNodeIds = INQUIRY_DEVICES.map((each) => ({
+    id: `board:${each.device}`,
+    count: state.deviceCounts.get(each.device) ?? 0,
+  }))
+    .filter((each) => each.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map((each) => each.id)
+  const nodeIds = ['form', 'fn', 'monday', ...boardNodeIds, 'sms', 'phone']
+  const selectNode = (nodeId: string | null) => {
+    const next = nodeId === selectedNode ? null : nodeId
+    setSelectedNode(next)
+    if (next?.startsWith('board:')) actions.changeDevice(next.slice(6))
+    else if (selectedNode?.startsWith('board:')) actions.changeDevice(null)
+  }
+  /** 패널 목록의 신청을 표에서 펼친다 — 거르기에 가려져 있으면 풀고. */
+  const openInquiry = (inquiry: Inquiry) => {
+    if (!state.rows.some((row) => row.id === inquiry.id)) {
+      actions.changeFilter('all')
+      actions.changeSearch('')
+      if (state.device !== inquiry.device) actions.changeDevice(null)
+    }
+    if (state.openId !== inquiry.id) actions.toggleOpen(inquiry.id)
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() =>
+        document
+          .getElementById(`inq-${inquiry.id}`)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+      ),
+    )
+  }
   const toast = useToast()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -450,7 +487,12 @@ export function InquiryPanel() {
           </b>
           <span>웹 폼 → 접수 함수 → Monday 보드 · 접수 안내 문자</span>
         </header>
-        <InquiryFlow summary={summary} deviceCounts={deviceCounts} />
+        <InquiryFlow
+          summary={summary}
+          deviceCounts={deviceCounts}
+          selected={selectedNode}
+          onSelect={selectNode}
+        />
       </section>
 
       <section className="batch-log__card">
@@ -552,6 +594,7 @@ export function InquiryPanel() {
                   return (
                     <Fragment key={inquiry.id}>
                       <tr
+                        id={`inq-${inquiry.id}`}
                         className={`batch-log__row${open ? ' is-open' : ''}`}
                         onClick={() => actions.toggleOpen(inquiry.id)}
                       >
@@ -615,6 +658,17 @@ export function InquiryPanel() {
           </div>
         )}
       </section>
+      {shownNode && (
+        <InquiryNodePanel
+          open={selectedNode !== null}
+          nodeId={shownNode}
+          nodeIds={nodeIds}
+          inquiries={state.inquiries}
+          onSelect={selectNode}
+          onOpenInquiry={openInquiry}
+          onClose={() => selectNode(null)}
+        />
+      )}
       <ToastStack toasts={toast.toasts} />
     </>
   )

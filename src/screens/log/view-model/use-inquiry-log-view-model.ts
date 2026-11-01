@@ -241,6 +241,8 @@ export const useInquiryLogViewModel = () => {
 
   return {
     state: {
+      // 기간 안의 신청 전부(거르기 전) — 흐름 그림 노드의 상세 패널이 쓴다.
+      inquiries,
       days,
       filter,
       search,

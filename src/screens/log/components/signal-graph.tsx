@@ -171,7 +171,7 @@ export const SignalGraph = ({
         const a = boxes.get(edge.from)
         const b = boxes.get(edge.to)
         if (!a || !b) return null
-        const { d, center } = edgePath(a, b, edge.route)
+        const { d } = edgePath(a, b, edge.route)
         const weight = Math.max(1, Math.min(4, edge.weight ?? 1))
         return (
           <g
@@ -199,16 +199,41 @@ export const SignalGraph = ({
                   />
                 </circle>
               ))}
-            {edge.label && (
-              <text
-                x={center.x}
-                y={center.y - 5}
-                className="sig-edge__label"
-                textAnchor="middle"
-              >
-                {edge.label}
-              </text>
-            )}
+          </g>
+        )
+      })}
+
+      {/* 선 위 숫자 — 모든 선을 그린 뒤에 얹어야 다른 선에 가리지 않는다.
+          유리 알약(반투명 판 + 위쪽 빛 선) 위에 글자. */}
+      {edges.map((edge) => {
+        const a = boxes.get(edge.from)
+        const b = boxes.get(edge.to)
+        if (!edge.label || !a || !b) return null
+        const { center } = edgePath(a, b, edge.route)
+        const width = edge.label.length * 6.4 + 14
+        return (
+          <g
+            key={`label:${edge.from}>${edge.to}`}
+            className={`sig-tag is-${edge.tone}${dimEdge(edge) ? ' is-dim' : ''}`}
+            transform={`translate(${center.x - width / 2},${center.y - 17})`}
+          >
+            <rect className="sig-tag__glass" width={width} height="16" rx="8" />
+            <rect
+              className="sig-tag__shine"
+              x="5"
+              y="0.5"
+              width={width - 10}
+              height="1"
+              rx="0.5"
+            />
+            <text
+              className="sig-tag__text"
+              x={width / 2}
+              y="11.5"
+              textAnchor="middle"
+            >
+              {edge.label}
+            </text>
           </g>
         )
       })}

@@ -1,5 +1,5 @@
 import { INQUIRY_DEVICES } from '../client/inquiry-client'
-import { SCHEDULE_HOURS } from '../constants'
+import { MAX_FLOW_VIEWS as MAX_VIEWS, SCHEDULE_HOURS } from '../constants'
 import {
   formatAgo,
   formatDateTime,
@@ -162,6 +162,8 @@ export const BatchFlow = ({
 export const InquiryFlow = ({
   summary,
   deviceCounts,
+  selected,
+  onSelect,
 }: {
   summary: {
     total: number
@@ -171,6 +173,9 @@ export const InquiryFlow = ({
     smsFailed: number
   }
   deviceCounts: Map<string, number>
+  /** 고른 노드 id — 그 노드와 이어진 것만 밝게. */
+  selected: string | null
+  onSelect: (nodeId: string) => void
 }) => {
   const boards = INQUIRY_DEVICES.map((each) => ({
     ...each,
@@ -254,6 +259,12 @@ export const InquiryFlow = ({
       width: 190,
     },
   ]
+  // 노드마다 누르면 상세 패널(inquiry-node-panel.tsx).
+  const clickable = nodes.map((node) => ({
+    ...node,
+    active: node.id === selected,
+    onClick: () => onSelect(node.id),
+  }))
   const edges: SignalEdge[] = [
     { from: 'form', to: 'fn', tone: 'accent', flow: has, weight: 2 },
     { from: 'fn', to: 'monday', tone: mondayTone, flow: has, weight: 2 },
@@ -277,17 +288,15 @@ export const InquiryFlow = ({
     <SignalGraph
       width={1000}
       height={356}
-      nodes={nodes}
+      nodes={clickable}
       edges={edges}
       label="문의 접수 흐름 — 웹 폼에서 Monday·문자까지"
+      focus={selected}
     />
   )
 }
 
 // ── 사용 분석 ────────────────────────────────────────────────────────────
-
-// 그림에 올리는 탭 수 — 많으면 선이 엉킨다.
-const MAX_VIEWS = 8
 
 /** 탭 이동 흐름 — 접속 → 처음 본 탭(왼쪽 부채꼴), 탭 → 탭(오른쪽 호). 탭은
  * 사용 시간이 많은 순으로 한 줄로 세우고(MAX_VIEWS개), 선 굵기는 횟수다. */
@@ -296,11 +305,16 @@ export const UsageFlow = ({
   flows,
   entries,
   showApp,
+  selected,
+  onSelect,
 }: {
   byView: ViewUsage[]
   flows: Transition[]
   entries: { app: UsageApp; view: string; count: number }[]
   showApp: boolean
+  /** 고른 노드 id('entry' 또는 'app|view'). */
+  selected: string | null
+  onSelect: (nodeId: string) => void
 }) => {
   const views = byView.slice(0, MAX_VIEWS)
   const key = (app: UsageApp, view: string) => `${app}|${view}`
@@ -361,9 +375,14 @@ export const UsageFlow = ({
     <SignalGraph
       width={1000}
       height={height}
-      nodes={nodes}
+      nodes={nodes.map((node) => ({
+        ...node,
+        active: node.id === selected,
+        onClick: () => onSelect(node.id),
+      }))}
       edges={edges}
       label="탭 이동 흐름 — 접속에서 처음 본 탭, 탭에서 탭으로"
+      focus={selected}
     />
   )
 }

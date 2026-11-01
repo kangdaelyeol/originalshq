@@ -108,7 +108,7 @@ function diff(
 }
 
 /** 기존 item 고치기 — Monday에 쓰고, 다시 읽어 캐시를 맞추고, 기록을 남긴다. */
-export async function updateTechItem(
+async function applyUpdate(
   db: Firestore,
   apiKey: string,
   input: TechEditInput,
@@ -155,21 +155,15 @@ export async function updateTechItem(
     ...partial,
   })
 
-  try {
-    if (Object.keys(columnValues).length > 0) {
-      await changeColumnValues(
-        apiKey,
-        source.boardId,
-        before.itemId,
-        columnValues,
-      )
-    }
-    if (moveTo) await moveItemToGroup(apiKey, before.itemId, moveTo)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    await addEditLog(db, log({ ok: false, error: message }))
-    throw error
+  if (Object.keys(columnValues).length > 0) {
+    await changeColumnValues(
+      apiKey,
+      source.boardId,
+      before.itemId,
+      columnValues,
+    )
   }
+  if (moveTo) await moveItemToGroup(apiKey, before.itemId, moveTo)
 
   const after =
     (await refreshItems(db, apiKey, source, [before.itemId], meta)).get(
@@ -183,7 +177,7 @@ export async function updateTechItem(
 }
 
 /** 새 item 만들기 — 이름은 꼭 있어야 한다. */
-export async function createTechItem(
+async function applyCreate(
   db: Firestore,
   apiKey: string,
   input: TechEditInput,
@@ -199,30 +193,13 @@ export async function createTechItem(
   }
   const columnValues = buildColumnValues(meta.columns, input.columns ?? {})
 
-  let itemId: string
-  try {
-    itemId = await createItem(
-      apiKey,
-      source.boardId,
-      input.groupId ?? null,
-      name,
-      columnValues,
-    )
-  } catch (error) {
-    await addEditLog(db, {
-      at: Date.now(),
-      action: 'create',
-      boardKey: source.key,
-      boardName: meta.name,
-      itemId: null,
-      itemName: name,
-      by: editor,
-      changes: [],
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    })
-    throw error
-  }
+  const itemId = await createItem(
+    apiKey,
+    source.boardId,
+    input.groupId ?? null,
+    name,
+    columnValues,
+  )
 
   const after =
     (await refreshItems(db, apiKey, source, [itemId], meta)).get(itemId) ?? null
@@ -242,4 +219,67 @@ export async function createTechItem(
     ok: true,
   })
   return after
+}
+
+/**
+ * 실패 기록 — 입력 검사·Monday 호출·캐시 갱신 어디서 실패하든 하나 남긴다(화면은
+ * 저장을 기다리지 않고 닫히므로, 관리자는 여기서 실패를 본다). 기록 쓰기가 실패해도
+ * 원래 오류를 덮지 않는다.
+ */
+async function logFailure(
+  db: Firestore,
+  action: 'update' | 'create',
+  input: TechEditInput,
+  editor: Editor,
+  error: unknown,
+): Promise<void> {
+  try {
+    const source = findTechBoard({ key: input.boardKey })
+    const [meta, item] = await Promise.all([
+      source ? getBoardMeta(db, source.key) : null,
+      input.itemId ? getItem(db, input.itemId) : null,
+    ])
+    await addEditLog(db, {
+      at: Date.now(),
+      action,
+      boardKey: input.boardKey,
+      boardName: meta?.name ?? String(input.boardKey),
+      itemId: input.itemId ?? null,
+      itemName: item?.name ?? input.name ?? '(이름 없음)',
+      by: editor,
+      changes: [],
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    })
+  } catch {
+    // 기록 실패는 무시 — 사용자에게는 원래 오류가 간다.
+  }
+}
+
+export async function updateTechItem(
+  db: Firestore,
+  apiKey: string,
+  input: TechEditInput,
+  editor: Editor,
+): Promise<TechItemDoc | null> {
+  try {
+    return await applyUpdate(db, apiKey, input, editor)
+  } catch (error) {
+    await logFailure(db, 'update', input, editor, error)
+    throw error
+  }
+}
+
+export async function createTechItem(
+  db: Firestore,
+  apiKey: string,
+  input: TechEditInput,
+  editor: Editor,
+): Promise<TechItemDoc | null> {
+  try {
+    return await applyCreate(db, apiKey, input, editor)
+  } catch (error) {
+    await logFailure(db, 'create', input, editor, error)
+    throw error
+  }
 }

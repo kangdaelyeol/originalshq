@@ -86,3 +86,6 @@ export const PERIOD_OPTIONS = [
 
 /** 목록을 다시 받아 오는 간격 — 화면을 켜 두면 알아서 최신이 된다. */
 export const AUTO_REFRESH_MS = 60_000
+
+/** 사용 분석 흐름 그림에 올리는 탭 수 — 많으면 선이 엉킨다. */
+export const MAX_FLOW_VIEWS = 8

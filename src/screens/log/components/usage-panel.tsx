@@ -12,7 +12,11 @@ import {
   useUsageViewModel,
   type UsageAppFilter,
 } from '../view-model/use-usage-view-model'
+import { useState } from 'react'
+import { MAX_FLOW_VIEWS } from '../constants'
+import { useLatched } from '../view-model/use-latched'
 import { UsageFlow } from './flow-graphs'
+import { UsageNodePanel } from './usage-node-panel'
 
 const APP_OPTIONS: readonly { id: UsageAppFilter; label: string }[] = [
   { id: 'all', label: '전체' },
@@ -50,6 +54,17 @@ export function UsagePanel() {
     now,
   } = state
   const showApp = app === 'all'
+  // 흐름 그림에서 고른 노드('entry' 또는 'app|view') — 오른쪽 상세 패널.
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
+  const shownNode = useLatched(selectedNode)
+  const nodeIds = [
+    'entry',
+    ...byView
+      .slice(0, MAX_FLOW_VIEWS)
+      .map((each) => `${each.app}|${each.view}`),
+  ]
+  const selectNode = (nodeId: string | null) =>
+    setSelectedNode((prev) => (prev === nodeId ? null : nodeId))
 
   return (
     <>
@@ -176,6 +191,8 @@ export function UsagePanel() {
               flows={flows}
               entries={entries}
               showApp={showApp}
+              selected={selectedNode}
+              onSelect={selectNode}
             />
           </section>
 
@@ -401,6 +418,19 @@ export function UsagePanel() {
             </div>
           </section>
         </>
+      )}
+      {shownNode && (
+        <UsageNodePanel
+          open={selectedNode !== null}
+          nodeId={shownNode}
+          nodeIds={nodeIds}
+          summary={summary}
+          byView={byView}
+          allFlows={state.allFlows}
+          entries={entries}
+          onSelect={setSelectedNode}
+          onClose={() => setSelectedNode(null)}
+        />
       )}
     </>
   )

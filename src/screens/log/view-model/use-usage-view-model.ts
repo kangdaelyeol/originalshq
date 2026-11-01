@@ -78,6 +78,8 @@ export const useUsageViewModel = () => {
       byView: usageByView(sessions),
       byDate: usageByDate(sessions),
       flows: transitions(sessions).slice(0, 15),
+      // 탭 이동 전부 — 탭 노드 상세 패널의 "들어온 곳·나간 곳"이 쓴다.
+      allFlows: transitions(sessions),
       entries: entryViews(sessions),
     }),
     [sessions],
