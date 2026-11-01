@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useAutoRefresh } from './use-auto-refresh'
 import {
   deleteInquiries,
   getInquiries,
@@ -8,7 +9,6 @@ import {
   type Inquiry,
   type InquirySettings,
 } from '../client/inquiry-client'
-import { AUTO_REFRESH_MS } from '../constants'
 
 export const INQUIRY_PERIOD_OPTIONS = [
   { days: 1, label: '오늘' },
@@ -107,13 +107,8 @@ export const useInquiryLogViewModel = () => {
     return null
   }, [days])
 
-  useEffect(() => {
-    ;(async () => {
-      await load()
-    })()
-    const timer = setInterval(() => void load(), AUTO_REFRESH_MS)
-    return () => clearInterval(timer)
-  }, [load])
+  // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
+  useAutoRefresh(load)
 
   useEffect(() => {
     ;(async () => {

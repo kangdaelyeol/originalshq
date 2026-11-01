@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useAutoRefresh } from './use-auto-refresh'
 import { getBatchRuns, type BatchRun } from '../client/batch-run-client'
-import { AUTO_REFRESH_MS, BATCH_JOBS } from '../constants'
+import { BATCH_JOBS } from '../constants'
 import {
   countStatuses,
   displayStatus,
@@ -51,13 +52,8 @@ export const useBatchLogViewModel = () => {
     setStatus('ready')
   }, [days])
 
-  useEffect(() => {
-    ;(async () => {
-      await load()
-    })()
-    const timer = setInterval(() => void load(), AUTO_REFRESH_MS)
-    return () => clearInterval(timer)
-  }, [load])
+  // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
+  useAutoRefresh(load)
 
   // 코드베이스마다 기록을 남기기 시작한 때 — 그 전의 예약 시각은 "누락"이
   // 아니라 "기록 전"이다(두 코드베이스는 따로 배포되어 시작 시각이 다르다).

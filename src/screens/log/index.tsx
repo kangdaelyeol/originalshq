@@ -21,14 +21,15 @@ const TABS: readonly {
 const FONT_HREF =
   'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap'
 
-/** 맨 위 줄의 한국 시각 — 1초마다. */
-const useKstClock = () => {
+/** 맨 위 줄의 한국 시각 — 1초마다. 이 조각만 다시 그리도록 따로 둔다(화면
+ * 전체에 두면 표·그림까지 매초 다시 그린다). */
+const LiveClock = () => {
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
-  return new Date(now + 9 * 3_600_000).toISOString().slice(11, 19)
+  return <b>{new Date(now + 9 * 3_600_000).toISOString().slice(11, 19)}</b>
 }
 
 /**
@@ -46,7 +47,6 @@ export default function LogScreen() {
   const [searchParams, setSearchParams] = useSearchParams()
   const param = searchParams.get('tab')
   const current = TABS.find((each) => each.id === param) ?? TABS[0]
-  const clock = useKstClock()
 
   useEffect(() => {
     const previousTitle = document.title
@@ -95,7 +95,7 @@ export default function LogScreen() {
         </nav>
         <span className="log-top__live">
           <i aria-hidden="true" />
-          LIVE <b>{clock}</b> KST
+          LIVE <LiveClock /> KST
         </span>
       </header>
 

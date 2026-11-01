@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent } from 'react'
 
 /** 노드·선의 상태 색 — 성공·주의·실패·실행 중·대기·탭 강조색. */
 export type SignalTone = 'ok' | 'warn' | 'fail' | 'run' | 'idle' | 'accent'
@@ -118,6 +118,28 @@ export const SignalGraph = ({
   /** 고른 노드 — 그 노드와 바로 이어진 노드·선만 밝게 두고 나머지는 흐리게. */
   focus?: string | null
 }) => {
+  // 화면 밖에 있거나 브라우저 탭이 숨겨져 있으면 빛 점·깜빡임(CSS 애니메이션)을
+  // 멈춘다 — 보지 않는 동안 매 프레임 다시 칠하지 않게.
+  const svgRef = useRef<SVGSVGElement>(null)
+  useEffect(() => {
+    const svg = svgRef.current
+    if (!svg) return
+    let onScreen = true
+    const apply = () => {
+      svg.classList.toggle('is-paused', !onScreen || document.hidden)
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      onScreen = entry.isIntersecting
+      apply()
+    })
+    observer.observe(svg)
+    document.addEventListener('visibilitychange', apply)
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('visibilitychange', apply)
+    }
+  }, [])
+
   const linked = new Set<string>(focus ? [focus] : [])
   if (focus) {
     for (const edge of edges) {
@@ -143,6 +165,7 @@ export const SignalGraph = ({
 
   return (
     <svg
+      ref={svgRef}
       className={`sig-graph${focus ? ' has-focus' : ''}`}
       viewBox={`0 0 ${width} ${height}`}
       role="img"
@@ -157,13 +180,6 @@ export const SignalGraph = ({
         >
           <circle cx="1" cy="1" r="1" className="sig-dot" />
         </pattern>
-        <filter id="sig-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
       </defs>
       <rect width={width} height={height} fill="url(#sig-dots)" />
 
@@ -183,21 +199,24 @@ export const SignalGraph = ({
               className={`sig-edge__line${edge.dashed ? ' is-dashed' : ''}`}
               style={{ strokeWidth: 0.9 + weight * 0.55 }}
             />
+            {/* 빛 점 — 선을 따라 흐르는 둥근 점선(CSS stroke-dashoffset).
+                SVG의 animateMotion은 매 프레임 레이아웃을 다시 계산해 무겁다.
+                pathLength를 100으로 두어 선 길이와 상관없이 점 두 개. */}
             {edge.flow &&
-              [0, 1].map((n) => (
-                <circle
-                  key={n}
-                  r={1.8 + weight * 0.35}
-                  className="sig-pulse"
-                  filter="url(#sig-glow)"
-                >
-                  <animateMotion
-                    dur={`${2.6 + (index % 4) * 0.35}s`}
-                    begin={`${(index * 0.41 + n * 1.3) % 2.6}s`}
-                    repeatCount="indefinite"
-                    path={d}
-                  />
-                </circle>
+              (['sig-flow__halo', 'sig-flow'] as const).map((className) => (
+                <path
+                  key={className}
+                  d={d}
+                  pathLength={100}
+                  className={className}
+                  style={{
+                    strokeWidth:
+                      (1.8 + weight * 0.35) *
+                      (className === 'sig-flow' ? 2 : 5),
+                    animationDuration: `${2.6 + (index % 4) * 0.35}s`,
+                    animationDelay: `-${(index * 0.41) % 2.6}s`,
+                  }}
+                />
               ))}
           </g>
         )
@@ -282,7 +301,6 @@ export const SignalGraph = ({
               cx="13"
               cy={node.sub ? box.h / 2 - 6 : box.h / 2}
               r="3.2"
-              filter="url(#sig-glow)"
             />
             <text
               className="sig-node__label"

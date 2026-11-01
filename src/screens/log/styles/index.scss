@@ -978,11 +978,27 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
-.sig-pulse {
-  fill: var(--tone);
+// 빛 점 — 선을 따라 흐르는 둥근 점선. 길이 0인 점선 + 둥근 끝 = 점, 바깥의
+// 넓고 옅은 점선이 빛 번짐.
+.sig-flow,
+.sig-flow__halo {
+  fill: none;
+  stroke: var(--tone);
+  stroke-linecap: round;
+  stroke-dasharray: 0 50;
+  animation: sig-flow linear infinite;
+  pointer-events: none;
 }
-.sig-edge.is-idle .sig-pulse {
-  fill: $ink;
+.sig-flow__halo {
+  opacity: 0.18;
+}
+.sig-edge.is-idle :is(.sig-flow, .sig-flow__halo) {
+  stroke: $ink;
+}
+
+// 화면 밖·숨긴 탭 — 그림 안의 CSS 애니메이션도 멈춘다(signal-graph.tsx).
+.sig-graph.is-paused * {
+  animation-play-state: paused !important;
 }
 
 .sig-node {
@@ -1012,8 +1028,11 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   &__bar {
     fill: var(--tone);
   }
+  // 등 — 필터 대신 옅은 테두리로 빛나 보이게.
   &__lamp {
     fill: var(--tone);
+    stroke: color-mix(in srgb, var(--tone) 35%, transparent);
+    stroke-width: 4;
   }
   &.is-fail .sig-node__lamp,
   &.is-run .sig-node__lamp {
@@ -1100,7 +1119,6 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     0 0 40px color-mix(in srgb, var(--state) 10%, transparent);
   color: $ink;
   font-family: $mono;
-  backdrop-filter: blur(10px);
   transition:
     transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 0.25s ease,
@@ -1193,7 +1211,7 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     }
   }
 
-  // 내용 — 작업을 바꾸면 새로 붙어(key) 빛 줄이 훑고 칸들이 차례로 떠오른다.
+  // 내용 — 작업을 바꾸면 새로 붙어(key) 칸들이 차례로 떠오른다.
   &__body {
     position: relative;
     display: grid;
@@ -1205,27 +1223,6 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
     overflow-y: auto;
     scrollbar-color: $ink-4 transparent;
     scrollbar-width: thin;
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      left: 0;
-      height: 2px;
-      background: linear-gradient(
-        90deg,
-        transparent,
-        var(--state) 30%,
-        #fff 50%,
-        var(--state) 70%,
-        transparent
-      );
-      box-shadow: 0 0 18px var(--state);
-      opacity: 0;
-      animation: log-scan 0.9s cubic-bezier(0.3, 0.6, 0.3, 1) 0.05s;
-      pointer-events: none;
-    }
   }
 
   &__title,
@@ -1960,20 +1957,6 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   }
 }
 
-@keyframes log-scan {
-  0% {
-    top: 0;
-    opacity: 1;
-  }
-  85% {
-    opacity: 0.8;
-  }
-  100% {
-    top: 100%;
-    opacity: 0;
-  }
-}
-
 @keyframes log-rise {
   from {
     opacity: 0;
@@ -1991,6 +1974,12 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
 @keyframes log-fade {
   from {
     opacity: 0;
+  }
+}
+
+@keyframes sig-flow {
+  to {
+    stroke-dashoffset: -100;
   }
 }
 
@@ -2024,15 +2013,15 @@ $accent-soft: color-mix(in srgb, var(--log-accent) 12%, transparent);
   .sig-node__ring,
   .sig-tag,
   .log-insp,
-  .log-insp *,
-  .log-insp__body::before {
+  .log-insp * {
     transition: none;
     animation: none !important;
   }
   .log-insp__spark-line {
     stroke-dashoffset: 0;
   }
-  .sig-pulse {
+  .sig-flow,
+  .sig-flow__halo {
     display: none;
   }
 }

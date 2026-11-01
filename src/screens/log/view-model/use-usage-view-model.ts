@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useAutoRefresh } from './use-auto-refresh'
 import { getUsageSegments, type UsageSegment } from '../client/usage-client'
-import { AUTO_REFRESH_MS } from '../constants'
 import {
   buildSessions,
   entryViews,
@@ -56,13 +56,8 @@ export const useUsageViewModel = () => {
     setStatus('ready')
   }, [days])
 
-  useEffect(() => {
-    ;(async () => {
-      await load()
-    })()
-    const timer = setInterval(() => void load(), AUTO_REFRESH_MS)
-    return () => clearInterval(timer)
-  }, [load])
+  // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
+  useAutoRefresh(load)
 
   const sessions = useMemo(
     () =>
