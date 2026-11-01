@@ -83,10 +83,10 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard title="대여 가능" value={`${count('available')}대`} icon={CircleCheck} tint="green" caption="바로 내보낼 수 있음" />
-        <StatCard title="대여 중" value={`${count('rented')}대`} icon={PackageOpen} tint="blue" caption="고객에게 나가 있음" />
-        <StatCard title="회수 후 점검" value={`${count('checking')}대`} icon={Wrench} tint="amber" caption="돌아와서 확인 중" />
-        <StatCard title="불량" value={`${count('broken')}대`} icon={OctagonAlert} tint="violet" caption="쓸 수 없는 기기" />
+        <StatCard title="대여 가능" value={`${count('available')}대`} icon={CircleCheck} tint="green" />
+        <StatCard title="대여 중" value={`${count('rented')}대`} icon={PackageOpen} tint="blue" />
+        <StatCard title="회수 후 점검" value={`${count('checking')}대`} icon={Wrench} tint="amber" />
+        <StatCard title="불량" value={`${count('broken')}대`} icon={OctagonAlert} tint="violet" />
       </div>
 
       <div className="grid grid--pair">

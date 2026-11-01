@@ -126,12 +126,6 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
   const doneInPeriod = records.filter(
     (r) => isDone(r) && inRange(doneOn(r), current),
   )
-  const turnaround = doneInPeriod
-    .map((r) => ageOf(r, today))
-    .filter((n): n is number => n !== null)
-  const avgDays = turnaround.length
-    ? turnaround.reduce((sum, n) => sum + n, 0) / turnaround.length
-    : null
   const received = records.filter((r) => inRange(r.receivedAt, current))
   const selected = records.find((r) => r.itemId === selectedId) ?? null
 
@@ -148,32 +142,24 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
           value={`${waiting.length}건`}
           icon={PackageOpen}
           tint="blue"
-          caption="기기 도착 전·접수됨"
         />
         <StatCard
           title="수리 중"
           value={`${repairing.length}건`}
           icon={Wrench}
           tint="amber"
-          caption="진행·보류 포함"
         />
         <StatCard
           title="발송 대기"
           value={`${shipping.length}건`}
           icon={Send}
           tint="green"
-          caption="수리 끝, 돌려보내기 전"
         />
         <StatCard
           title={`${names.current} 완료`}
           value={`${doneInPeriod.length}건`}
           icon={CircleCheck}
           tint="violet"
-          caption={
-            avgDays !== null
-              ? `평균 ${avgDays.toFixed(1)}일 걸림`
-              : `같은 기간 접수 ${received.length}건`
-          }
         />
       </div>
 

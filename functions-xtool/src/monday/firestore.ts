@@ -212,13 +212,14 @@ export async function countItems(db: Firestore): Promise<number> {
 /** 통합 고객 컬렉션을 주어진 목록과 똑같이 맞춘다. 내용이 그대로인 문서
  * (hash가 같은 것)는 다시 쓰지 않는다 — 하루 여섯 번 도는 동기화에서 실제로
  * 바뀌는 고객은 일부라서, 매번 전부 쓰는 것보다 쓰기가 훨씬 적다. 목록에
- * 없는 문서(그 번호의 item이 Monday에서 다 사라진 고객)는 지운다. */
+ * 없는 문서(그 번호의 item이 Monday에서 다 사라진 고객)는 지운다. 목록 화면용
+ * 묶음(saveCustomerList)도 같이 맞춘다. */
 export async function replaceCustomers(
   db: Firestore,
   customers: MondayCustomer[],
 ): Promise<Pick<MondayCustomerRebuildResult, 'writtenCount' | 'deletedCount'>> {
   const collection = db.collection(CUSTOMERS_COLLECTION)
-  return replaceHashed(db, {
+  const result = await replaceHashed(db, {
     index: 'customers',
     collection,
     scope: collection,
@@ -228,13 +229,123 @@ export async function replaceCustomers(
       data: customer,
     })),
   })
+  await saveCustomerList(db, customers)
+  return result
 }
 
-/** 목록 화면용 — 고객 전체를 요약 필드만 읽어 돌려준다. 기록 배열(상담내역
- * 본문 등)은 빼고 읽어서, 문서 전체를 내려보내는 것보다 응답이 훨씬 작다. */
+// ── 고객 목록 묶음 ─────────────────────────────────────────────────────
+// 목록 화면(listMondayCustomers)이 열 때마다 고객 문서 8천여 개를 하나씩 읽던
+// 것을, 동기화 때 목록에 필요한 필드만 JSON으로 묶어 문서 열 개 남짓에 저장해
+// 두고 그것만 읽게 한다(읽기 8천여 회 → 열 몇 회). 문서 하나는 1MB까지라
+// 900KB씩 나눈다.
+//   · mondayCustomerList/head — 지금 쓰는 판(version)과 묶음 수, 내용 지문.
+//     묶음 문서는 {판}-{번호}.
+//   · 새 판을 다 쓴 뒤 head를 바꾸고, 그 전전 판을 지운다 — 막 head를 읽은
+//     화면이 바로 전 판을 읽는 중일 수 있어 한 판은 남겨 둔다.
+//   · 고객 내용 지문이 head와 같으면 다시 쓰지 않는다(바뀐 게 없는 동기화).
+//   · 읽다가 묶음이 빠져 있으면(바뀌는 중 등) 예전처럼 문서마다 읽는다.
+const CUSTOMER_LIST_COLLECTION = 'mondayCustomerList'
+const CUSTOMER_LIST_HEAD = 'head'
+const CUSTOMER_LIST_CHUNK_BYTES = 900_000
+
+type CustomerListHead = {
+  version: string
+  chunkCount: number
+  count: number
+  fingerprint: string
+  previous: { version: string; chunkCount: number } | null
+  syncedAt: number
+}
+
+const toListItem = (customer: MondayCustomer): MondayCustomerListItem => ({
+  phone: customer.phone,
+  otherPhones: customer.otherPhones,
+  names: customer.names,
+  emails: customer.emails,
+  summary: customer.summary,
+  lastUpdatedAt: customer.lastUpdatedAt,
+})
+
+async function saveCustomerList(
+  db: Firestore,
+  customers: MondayCustomer[],
+): Promise<void> {
+  const collection = db.collection(CUSTOMER_LIST_COLLECTION)
+  const headRef = collection.doc(CUSTOMER_LIST_HEAD)
+  // 문서 id(전화번호) 순 — 예전처럼 컬렉션을 읽었을 때와 같은 순서.
+  const sorted = [...customers].sort((a, b) =>
+    a.phone < b.phone ? -1 : a.phone > b.phone ? 1 : 0,
+  )
+  const fingerprint = createHash('sha1')
+    .update(sorted.map(({ phone, hash }) => `${phone}:${hash}`).join('|'))
+    .digest('hex')
+  const old = (await headRef.get()).data() as CustomerListHead | undefined
+  if (old?.fingerprint === fingerprint) return
+
+  const chunks: string[] = []
+  let current: string[] = []
+  let bytes = 2
+  for (const customer of sorted) {
+    const json = JSON.stringify(toListItem(customer))
+    const size = Buffer.byteLength(json) + 1
+    if (current.length > 0 && bytes + size > CUSTOMER_LIST_CHUNK_BYTES) {
+      chunks.push(`[${current.join(',')}]`)
+      current = []
+      bytes = 2
+    }
+    current.push(json)
+    bytes += size
+  }
+  if (current.length > 0) chunks.push(`[${current.join(',')}]`)
+
+  const version = Date.now().toString(36)
+  await Promise.all(
+    chunks.map((items, index) =>
+      collection.doc(`${version}-${index}`).set({ items }),
+    ),
+  )
+  const head: CustomerListHead = {
+    version,
+    chunkCount: chunks.length,
+    count: sorted.length,
+    fingerprint,
+    previous: old ? { version: old.version, chunkCount: old.chunkCount } : null,
+    syncedAt: Date.now(),
+  }
+  await headRef.set(head)
+  // 전전 판 지우기 — 실패해도 목록에는 지장이 없다(다음 판 때 남은 채로 둔다).
+  if (old?.previous) {
+    const stale = old.previous
+    await Promise.all(
+      Array.from({ length: stale.chunkCount }, (_, index) =>
+        collection.doc(`${stale.version}-${index}`).delete(),
+      ),
+    ).catch(() => undefined)
+  }
+}
+
+/** 목록 화면용 — 고객 전체의 요약 필드. 동기화가 만들어 둔 묶음(문서 열 개
+ * 남짓)을 읽고, 없거나 바뀌는 중이면 고객 문서마다 요약 필드만 읽는다. */
 export async function listCustomerSummaries(
   db: Firestore,
 ): Promise<MondayCustomerListItem[]> {
+  const collection = db.collection(CUSTOMER_LIST_COLLECTION)
+  const head = (await collection.doc(CUSTOMER_LIST_HEAD).get()).data() as
+    | CustomerListHead
+    | undefined
+  if (head && head.chunkCount > 0) {
+    const docs = await db.getAll(
+      ...Array.from({ length: head.chunkCount }, (_, index) =>
+        collection.doc(`${head.version}-${index}`),
+      ),
+    )
+    if (docs.every((doc) => doc.exists)) {
+      return docs.flatMap(
+        (doc) =>
+          JSON.parse(doc.get('items') as string) as MondayCustomerListItem[],
+      )
+    }
+  }
   const snapshot = await db
     .collection(CUSTOMERS_COLLECTION)
     .select(

@@ -118,7 +118,7 @@ export const router = createBrowserRouter([
           { index: true, lazy: xtoolTech('OverviewPage') },
           // 기술지원팀 Monday 보드(메뉴·관리 섹션) — 사이드바에서 온다
           { path: 'boards/:board', lazy: xtoolTech('BoardPage') },
-          { path: 'analytics', lazy: xtoolTech('AnalyticsPage') },
+          { path: 'design', lazy: xtoolTech('DesignPage') },
           { path: 'team', lazy: xtoolTech('TeamPage') },
           { path: 'settings', lazy: xtoolTech('SettingsPage') },
           { path: '*', element: <Navigate to="/xtool-tech" replace /> },

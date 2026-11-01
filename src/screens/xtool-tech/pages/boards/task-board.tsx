@@ -117,28 +117,24 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
           value={`${open.filter(isNew).length}건`}
           icon={CircleDashed}
           tint="blue"
-          caption="아직 시작 안 함"
         />
         <StatCard
           title="진행 중"
           value={`${working.length}건`}
           icon={ListTodo}
           tint="amber"
-          caption="작업 중인 업무"
         />
         <StatCard
           title="막힘"
           value={`${blocked.length}건`}
           icon={OctagonAlert}
           tint="violet"
-          caption="도움이 필요한 업무"
         />
         <StatCard
           title={`${names.current} 완료`}
           value={`${doneInPeriod.length}건`}
           icon={CircleCheck}
           tint="green"
-          caption={`같은 기간 요청 ${records.filter((r) => inRange(r.requestedAt, current)).length}건`}
         />
       </div>
 

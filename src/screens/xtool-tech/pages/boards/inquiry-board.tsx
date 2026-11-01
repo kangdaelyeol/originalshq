@@ -113,7 +113,6 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
   const records = doc.records
   const open = records.filter((r) => !isDone(r))
   const received = records.filter((r) => inRange(r.receivedAt, current))
-  const resolved = received.filter(isDone).length
   const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   return (
@@ -124,32 +123,24 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
           value={`${open.filter(isWaiting).length}건`}
           icon={MessageCircle}
           tint="blue"
-          caption="신규 접수·1차 안내"
         />
         <StatCard
           title="상담 진행 중"
           value={`${open.filter((r) => !isWaiting(r) && !isLong(r)).length}건`}
           icon={MessagesSquare}
           tint="amber"
-          caption="답을 주고받는 중"
         />
         <StatCard
           title="장기 상담"
           value={`${open.filter(isLong).length}건`}
           icon={Hourglass}
           tint="violet"
-          caption="오래 걸리는 문의"
         />
         <StatCard
           title={`${names.current} 접수`}
           value={`${received.length}건`}
           icon={CircleCheck}
           tint="green"
-          caption={
-            received.length
-              ? `그중 해결 ${resolved}건 · ${Math.round((resolved / received.length) * 100)}%`
-              : '접수 없음'
-          }
         />
       </div>
 

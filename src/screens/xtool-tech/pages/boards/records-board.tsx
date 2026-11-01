@@ -94,28 +94,24 @@ export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
           value={`${open.length}건`}
           icon={ListTodo}
           tint="amber"
-          caption="작업 중인 자료"
         />
         <StatCard
           title="완료"
           value={`${done.length}건`}
           icon={CircleCheck}
           tint="green"
-          caption="전체 기간"
         />
         <StatCard
           title={`${names.current} 요청`}
           value={`${records.filter((r) => inRange(r.requestedAt, current)).length}건`}
           icon={FileText}
           tint="blue"
-          caption={`같은 기간 완료 ${done.filter((r) => inRange(r.completedAt, current)).length}건`}
         />
         <StatCard
           title="평균 소요"
           value={avgDays !== null ? `${avgDays.toFixed(1)}일` : '—'}
           icon={Timer}
           tint="violet"
-          caption="요청일 → 완료일"
         />
       </div>
 

@@ -16,7 +16,6 @@ import { PERIOD_COMPARE } from '../../data/period'
 import type { FieldServiceRecord, TechBoardDoc } from '../../data/tech-boards'
 import { formatPhone, isDone, isNew, splitNames } from '../../data/tech-stage'
 import {
-  addDays,
   byDateAsc,
   byDateDesc,
   inRange,
@@ -115,9 +114,6 @@ export function FieldServiceBoard({
   const upcoming = open
     .filter((r) => r.visitAt && r.visitAt >= today)
     .sort((a, b) => byDateAsc(a.visitAt, b.visitAt))
-  const thisWeek = upcoming.filter(
-    (r) => r.visitAt! <= addDays(today, 6),
-  ).length
   const received = records.filter((r) => inRange(r.receivedAt, current))
   const doneInPeriod = records.filter(
     (r) => isDone(r) && inRange(doneOn(r), current),
@@ -132,28 +128,24 @@ export function FieldServiceBoard({
           value={`${open.filter(isNew).length}건`}
           icon={Inbox}
           tint="blue"
-          caption="일정 조율 전"
         />
         <StatCard
           title="일정 조율 중"
           value={`${open.filter((r) => /조율/.test(r.stage ?? '')).length}건`}
           icon={CalendarClock}
           tint="amber"
-          caption="고객과 날짜 맞추는 중"
         />
         <StatCard
           title="방문 예정"
           value={`${upcoming.length}건`}
           icon={Truck}
           tint="green"
-          caption={`이번 주 ${thisWeek}건`}
         />
         <StatCard
           title={`${names.current} 완료`}
           value={`${doneInPeriod.length}건`}
           icon={CircleCheck}
           tint="violet"
-          caption={`같은 기간 접수 ${received.length}건`}
         />
       </div>
 

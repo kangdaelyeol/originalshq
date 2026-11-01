@@ -59,10 +59,10 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard title="전체 SN" value={`${records.length}대`} icon={Barcode} tint="blue" caption="등록된 기기" />
-        <StatCard title="기기 종류" value={`${new Set(records.map((r) => r.device).filter(Boolean)).size}종`} icon={Boxes} tint="violet" caption="기기 칸 기준" />
-        <StatCard title={`${names.current} 입고`} value={`${records.filter((r) => inRange(r.receivedAt, current)).length}대`} icon={PackagePlus} tint="green" caption="기기 입고일 기준" />
-        <StatCard title="연결 기록 있음" value={`${records.filter((r) => linkCount(r) > 0).length}대`} icon={Link2} tint="amber" caption="출장·AS·대여와 이어진 SN" />
+        <StatCard title="전체 SN" value={`${records.length}대`} icon={Barcode} tint="blue" />
+        <StatCard title="기기 종류" value={`${new Set(records.map((r) => r.device).filter(Boolean)).size}종`} icon={Boxes} tint="violet" />
+        <StatCard title={`${names.current} 입고`} value={`${records.filter((r) => inRange(r.receivedAt, current)).length}대`} icon={PackagePlus} tint="green" />
+        <StatCard title="연결 기록 있음" value={`${records.filter((r) => linkCount(r) > 0).length}대`} icon={Link2} tint="amber" />
       </div>
 
       <div className="grid grid--pair">

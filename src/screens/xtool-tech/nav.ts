@@ -7,8 +7,8 @@ import {
   MessageCircle,
   Package,
   PackageOpen,
+  Palette,
   Settings,
-  TrendingUp,
   Truck,
   Users,
   Wrench,
@@ -63,9 +63,9 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     label: '시스템',
-    // 분석(관리자만)·팀원 & 권한은 아직 목업 — 나중에 쓸 자리로 둔다.
+    // 디자인(부품 카탈로그)은 관리자만. 팀원 & 권한은 아직 목업 — 나중에 쓸 자리로 둔다.
     items: [
-      { to: xtPath('/analytics'), label: '분석', icon: TrendingUp, badge: 'Live', adminOnly: true },
+      { to: xtPath('/design'), label: '디자인', icon: Palette, adminOnly: true },
       { to: xtPath('/team'), label: '팀원 & 권한', icon: Users },
       { to: xtPath('/settings'), label: '설정', icon: Settings },
     ],
