@@ -114,7 +114,6 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
                 { label: '연락처', value: selected.phone ? <PhoneLink phone={selected.phone} /> : null },
                 { label: '주소', value: selected.address },
                 { label: '확인사항', value: selected.agreed ? '확인함' : '체크 안 함' },
-                { label: '첨부', value: selected.attachmentCount ? `${selected.attachmentCount}개(Monday에서 보기)` : null },
               ]
             : []
         }

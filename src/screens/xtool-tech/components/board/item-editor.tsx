@@ -24,6 +24,7 @@ import {
 import { cx } from '../../lib/cx'
 import { Button } from '../ui/button'
 import { DrawerShell } from './drawer-shell'
+import { FileField } from './item-files'
 import { RelationPicker } from './relation-picker'
 import { SubitemsEditor } from './subitems-editor'
 
@@ -121,6 +122,8 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
   const lockedTitles = meta.columns
     .filter((c) => !isWritable(c) && !HIDDEN_TYPES.has(c.type))
     .filter((c) => !(c.type === 'mirror' && c.title === subLabelForLock))
+    // 파일 칸은 아래 "파일 올리기"로 따로 다룬다.
+    .filter((c) => c.type !== 'file')
     .map((c) => c.title)
   // 처음 값은 패널을 열 때 한 번만 — 저장 중에 실시간으로 값이 바뀌어도 입력이 흔들리지 않게.
   const [initial] = useState<FormState>(() => ({
@@ -282,6 +285,24 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
         {subLabel && (
           <SubitemsEditor label={subLabel} columns={subColumns} rows={subRows} onChange={setSubRows} />
         )}
+
+        {/* 파일 칸 — 저장 버튼과 따로, 고르면 바로 뒤에서 올라간다. */}
+        {meta.columns
+          .filter((c) => c.type === 'file')
+          .map((c) => (
+            <Field key={c.id} label={c.title}>
+              {(id) => (
+                <FileField
+                  id={id}
+                  boardKey={boardKey}
+                  itemId={item?.itemId ?? null}
+                  columnId={c.id}
+                  label={c.title}
+                  current={item?.values[c.id]?.value}
+                />
+              )}
+            </Field>
+          ))}
 
         {lockedTitles.length > 0 && (
           <p className="editor__locked">

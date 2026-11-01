@@ -33,9 +33,11 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   const openEditor = useCallback((itemId: string | null) => setEditing({ itemId }), [])
   const closeEditor = useCallback(() => setEditing(null), [])
   const meta = state.meta
+  const itemsById = state.itemsById
+  const itemOf = useCallback((itemId: string) => itemsById.get(itemId), [itemsById])
   const editContext = useMemo<BoardEditState | null>(
-    () => (meta ? { boardKey: tabKey, meta, openEditor } : null),
-    [meta, tabKey, openEditor],
+    () => (meta ? { boardKey: tabKey, meta, openEditor, itemOf } : null),
+    [meta, tabKey, openEditor, itemOf],
   )
 
   if (state.error && !state.board) {

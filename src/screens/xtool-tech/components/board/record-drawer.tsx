@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useBoardEdit } from './board-edit-context'
 import { StagePill } from './cells'
 import { DrawerShell } from './drawer-shell'
+import { ItemFiles } from './item-files'
 
 export interface DrawerField {
   label: string
@@ -69,6 +70,9 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
               ))}
 
             {children}
+
+            {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. */}
+            {edit && edit.itemOf(record.itemId) && <ItemFiles meta={edit.meta} item={edit.itemOf(record.itemId)!} />}
           </div>
 
         </>

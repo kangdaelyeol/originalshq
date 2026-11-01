@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { createTechItem, updateTechItem, type TechEditInput } from './tech-boards'
+import { clearTechFiles, uploadTechFile, type UploadTarget } from './tech-files'
 
 // 저장을 기다리지 않는다 — 편집 패널은 바로 닫고 요청은 뒤에서 보낸다. 진행은 토스트로
 // 보여 주고(저장 중 → 저장했어요), 실패하면 오류 토스트에 "다시 시도"를 붙인다. 실패는
@@ -76,6 +77,65 @@ export function saveInBackground(kind: 'update' | 'create', input: TechEditInput
       })
     })
     .finally(() => setPending(input.itemId, false))
+}
+
+/** 파일 하나를 뒤에서 올린다 — 토스트에 진행률, 실패하면 "다시 시도". */
+export function uploadInBackground(target: UploadTarget, file: File): void {
+  const id = nextId++
+  upsertToast({ id, tone: 'pending', title: `${file.name} 올리는 중… 0%` })
+  setPending(target.itemId, true)
+  uploadTechFile(target, file, (ratio) =>
+    // 다 보낸 뒤 Monday에 붙이는 동안은 99%에 머문다.
+    upsertToast({ id, tone: 'pending', title: `${file.name} 올리는 중… ${Math.min(99, Math.round(ratio * 100))}%` }),
+  )
+    .then(() => {
+      upsertToast({ id, tone: 'success', title: `${file.name} 올렸어요` })
+      setTimeout(() => dismissToast(id), SUCCESS_MS)
+    })
+    .catch((error: unknown) => {
+      upsertToast({
+        id,
+        tone: 'error',
+        title: `${file.name} 올리기에 실패했어요`,
+        message: error instanceof Error ? error.message : String(error),
+        action: {
+          label: '다시 시도',
+          run: () => {
+            dismissToast(id)
+            uploadInBackground(target, file)
+          },
+        },
+      })
+    })
+    .finally(() => setPending(target.itemId, false))
+}
+
+/** 파일 칸 비우기를 뒤에서 — label은 칸 이름(예: "파일") */
+export function clearFilesInBackground(target: UploadTarget, label: string): void {
+  const id = nextId++
+  upsertToast({ id, tone: 'pending', title: `${label} 지우는 중…` })
+  setPending(target.itemId, true)
+  clearTechFiles(target)
+    .then(() => {
+      upsertToast({ id, tone: 'success', title: `${label} 칸을 모두 지웠어요` })
+      setTimeout(() => dismissToast(id), SUCCESS_MS)
+    })
+    .catch((error: unknown) => {
+      upsertToast({
+        id,
+        tone: 'error',
+        title: `${label} 지우기에 실패했어요`,
+        message: (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, ''),
+        action: {
+          label: '다시 시도',
+          run: () => {
+            dismissToast(id)
+            clearFilesInBackground(target, label)
+          },
+        },
+      })
+    })
+    .finally(() => setPending(target.itemId, false))
 }
 
 export const useToasts = (): readonly Toast[] => useSyncExternalStore(subscribe, () => toasts)

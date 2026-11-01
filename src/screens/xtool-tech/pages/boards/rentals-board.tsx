@@ -135,7 +135,6 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
                 { label: '대여일', value: selected.rentedAt ? shortDate(selected.rentedAt) : null },
                 { label: '발송 예정일', value: selected.shipAt ? shortDate(selected.shipAt) : null },
                 { label: '회수일', value: selected.returnedAt ? shortDate(selected.returnedAt) : null },
-                { label: '사진', value: selected.hasPhoto ? '있음(Monday에서 보기)' : null },
               ]
             : []
         }

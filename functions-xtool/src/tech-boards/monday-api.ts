@@ -310,3 +310,80 @@ export async function deleteItem(
     { itemId },
   )
 }
+
+const MONDAY_FILE_URL = 'https://api.monday.com/v2/file'
+
+/** 파일 칸에 파일 붙이기 — 기존 파일 뒤에 더해진다(덮어쓰지 않음). 파일 업로드는
+ * 일반 API가 아니라 /v2/file로 multipart로 보낸다. */
+export async function addFileToColumn(
+  apiKey: string,
+  itemId: string,
+  columnId: string,
+  file: { name: string; type: string; data: Buffer },
+): Promise<string> {
+  // 질의 문자열에 그대로 넣으므로 모양을 엄격히 확인한다.
+  if (!/^\d+$/.test(itemId) || !/^[A-Za-z0-9_]+$/.test(columnId)) {
+    throw new Error('잘못된 항목·칸 id')
+  }
+  const form = new FormData()
+  form.append(
+    'query',
+    `mutation ($file: File!) {
+      add_file_to_column(
+        item_id: ${itemId}
+        column_id: "${columnId}"
+        file: $file
+      ) { id }
+    }`,
+  )
+  form.append(
+    'variables[file]',
+    new Blob([new Uint8Array(file.data)], { type: file.type }),
+    file.name,
+  )
+  const response = await fetch(MONDAY_FILE_URL, {
+    method: 'POST',
+    headers: { Authorization: apiKey },
+    body: form,
+  })
+  const json = (await response.json().catch(() => ({}))) as {
+    data?: { add_file_to_column?: { id: string } }
+    errors?: unknown
+    error_message?: string
+  }
+  if (!response.ok || json.errors || !json.data?.add_file_to_column) {
+    throw new Error(
+      `Monday 파일 업로드 실패(${response.status}): ` +
+        JSON.stringify(json.errors ?? json.error_message ?? json),
+    )
+  }
+  return json.data.add_file_to_column.id
+}
+
+export interface MondayAsset {
+  id: string
+  name: string
+  /** 임시 공개 주소 — 1시간 유효 */
+  public_url: string | null
+  /** 썸네일 주소 — 사진만 */
+  url_thumbnail: string | null
+  file_extension: string | null
+  file_size: number | null
+}
+
+export async function fetchAssets(
+  apiKey: string,
+  ids: string[],
+): Promise<MondayAsset[]> {
+  if (ids.length === 0) return []
+  const data = await fetchMonday<{ assets: MondayAsset[] | null }>(
+    apiKey,
+    `query TechAssets($ids: [ID!]!) {
+      assets(ids: $ids) {
+        id name public_url url_thumbnail file_extension file_size
+      }
+    }`,
+    { ids },
+  )
+  return data.assets ?? []
+}

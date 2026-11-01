@@ -1400,3 +1400,139 @@
     color: var(--crit);
   }
 }
+
+// ── 파일(사진 썸네일·문서 목록·올리기) ────────────────────────────────────────
+.file-thumbs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+  gap: 8px;
+}
+
+.file-thumb {
+  @include well;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 10px;
+  color: var(--text-4);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+  }
+
+  &:hover img {
+    transform: scale(1.04);
+  }
+
+  &[aria-disabled='true'] {
+    pointer-events: none;
+  }
+}
+
+.file-list__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  svg {
+    flex: none;
+    color: var(--text-3);
+  }
+}
+
+.file-list a.drawer__list-meta {
+  color: var(--info);
+}
+
+.file-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .subitems__add small {
+    font-weight: 500;
+    color: var(--text-4);
+  }
+}
+
+.file-field__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    svg {
+      flex: none;
+      color: var(--text-3);
+    }
+  }
+}
+
+.file-field__empty {
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+.file-field__hint {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-4);
+}
+
+.file-field__current {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+
+  .file-field__list {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.file-field__clear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--crit);
+    border-color: rgba(248, 113, 113, 0.4);
+  }
+
+  &.is-confirming {
+    color: var(--crit);
+    border-color: rgba(248, 113, 113, 0.5);
+    background: rgba(248, 113, 113, 0.1);
+  }
+}

@@ -7,10 +7,15 @@ import {
 } from 'firebase-functions/https'
 import { defineSecret } from 'firebase-functions/params'
 import { onSchedule } from 'firebase-functions/scheduler'
+import { getAuth } from 'firebase-admin/auth'
 import { recordBatchRun } from '../batch-log'
 import { traceRun, traced } from '../cost-trace'
 import {
+  attachFile,
+  clearFiles,
   createTechItem,
+  fileUrls,
+  MAX_FILE_BYTES,
   Editor,
   getMember,
   handleWebhookEvent,
@@ -18,12 +23,14 @@ import {
   searchAddress,
   setupTechWebhooks,
   syncTechBoards,
+  TechBoardKey,
   TechBoardsSyncSummary,
   TechEditError,
   TechEditInput,
   updateTechItem,
 } from '../tech-boards'
 import { db, mondayApiKey } from '../app'
+import { endpoint } from '../http'
 
 // 기술지원팀 보드(tech 페이지) — Monday가 원본이고 Firestore(techItems ·
 // techBoardMeta)는 캐시다. 화면은 캐시를 규칙으로 직접 읽고(기술팀만), 고칠 때는
@@ -37,14 +44,14 @@ const kakaoApiKey = defineSecret('KAKAO_REST_API_KEY')
 // 보드 아홉 개, 합쳐 천 건 남짓 — 보통 1분 안에 끝난다.
 const TECH_SYNC_TIMEOUT_SECONDS = 300
 
-/** 로그인한 사람이 기술팀(또는 관리자)인지 — 아니면 거절. 이메일 인증 필수
+/** 토큰의 주인이 기술팀(또는 관리자)인지 — 아니면 거절. 이메일 인증 필수
  * (로그인 화면·Firestore 규칙과 같은 기준). */
-async function requireMember(
-  request: CallableRequest<unknown>,
+async function memberOf(
+  token: { email?: string; email_verified?: boolean } | undefined,
+  uid: string | undefined,
   admin = false,
 ): Promise<Editor> {
-  const token = request.auth?.token
-  if (!request.auth || !token?.email) {
+  if (!uid || !token?.email) {
     throw new HttpsError('unauthenticated', '로그인이 필요해요')
   }
   if (token.email_verified !== true) {
@@ -57,8 +64,11 @@ async function requireMember(
   if (!member || !allowed) {
     throw new HttpsError('permission-denied', '권한이 없는 계정이에요')
   }
-  return { email: member.email, name: member.name, uid: request.auth.uid }
+  return { email: member.email, name: member.name, uid }
 }
+
+const requireMember = (request: CallableRequest<unknown>, admin = false) =>
+  memberOf(request.auth?.token, request.auth?.uid, admin)
 
 /** 화면에 보여 줄 오류로 — 입력 오류는 문구 그대로, 그 밖(Monday 실패 등)은
  * 원인을 붙여서. */
@@ -150,6 +160,117 @@ export const techSearchAddress = onCall(
       throw new HttpsError('internal', '주소를 찾지 못했어요. 잠시 후 다시 해 주세요')
     }
   }),
+)
+
+// ────────────────────────────────
+// techUploadFile — 파일 하나를 Monday 파일 칸에 붙인다. 기술팀만.
+//   POST(본문 = 파일 그대로, 10MB까지)
+//   헤더: Authorization: Bearer <Firebase ID 토큰>, Content-Type: 파일 종류,
+//         X-Board-Key · X-Item-Id · X-Column-Id,
+//         X-File-Name(encodeURIComponent)
+// 호출 함수(onCall)는 JSON이라 base64로 부풀어 10MB를 못 넘겨서 HTTP로 받는다.
+// ────────────────────────────────
+export const techUploadFile = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: 120, memory: '512MiB' },
+  endpoint(
+    { name: 'techUploadFile', method: 'POST' },
+    async ({ request, response }) => {
+      try {
+        const header = request.get('authorization') ?? ''
+        const bearer = header.match(/^Bearer (.+)$/)?.[1]
+        if (!bearer) throw new HttpsError('unauthenticated', '로그인이 필요해요')
+        const decoded = await getAuth()
+          .verifyIdToken(bearer)
+          .catch(() => {
+            throw new HttpsError('unauthenticated', '로그인이 만료됐어요')
+          })
+        const editor = await memberOf(decoded, decoded.uid)
+        const data = request.rawBody ?? Buffer.alloc(0)
+        if (data.length > MAX_FILE_BYTES) {
+          throw new HttpsError(
+            'invalid-argument',
+            '10MB보다 큰 파일은 올릴 수 없어요',
+          )
+        }
+        const doc = await attachFile(
+          db,
+          mondayApiKey.value(),
+          {
+            boardKey: String(request.get('x-board-key') ?? '') as TechBoardKey,
+            itemId: String(request.get('x-item-id') ?? ''),
+            columnId: String(request.get('x-column-id') ?? ''),
+            fileName: decodeURIComponent(request.get('x-file-name') ?? 'file'),
+            contentType: request.get('content-type') ?? '',
+            data,
+          },
+          editor,
+        )
+        response.status(200).send({ ok: true, itemId: doc?.itemId ?? null })
+      } catch (error) {
+        const e = toHttpsError(error)
+        const status =
+          e.code === 'unauthenticated' ? 401 :
+            e.code === 'permission-denied' ? 403 :
+              e.code === 'invalid-argument' ? 400 : 500
+        response.status(status).send({ error: e.message })
+      }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techFileUrls — 항목에 붙은 파일의 임시 주소(1시간)·썸네일. 기술팀만.
+// ────────────────────────────────
+export const techFileUrls = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: 30 },
+  async (
+    request: CallableRequest<{ itemId?: string; assetIds?: string[] }>,
+  ) => {
+    await requireMember(request)
+    try {
+      const files = await fileUrls(
+        db,
+        mondayApiKey.value(),
+        String(request.data?.itemId ?? ''),
+        (request.data?.assetIds ?? []).map(String),
+      )
+      return { files }
+    } catch (error) {
+      throw toHttpsError(error)
+    }
+  },
+)
+
+// ────────────────────────────────
+// techClearFiles — 파일 칸 비우기(모두 지우기). 기술팀만. Monday API에 파일 하나만
+// 지우는 기능이 없어 칸 전체를 비운다.
+// ────────────────────────────────
+export const techClearFiles = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: 60 },
+  async (
+    request: CallableRequest<{
+      boardKey?: string
+      itemId?: string
+      columnId?: string
+    }>,
+  ) => {
+    const editor = await requireMember(request)
+    try {
+      const doc = await clearFiles(
+        db,
+        mondayApiKey.value(),
+        {
+          boardKey: String(request.data?.boardKey ?? '') as TechBoardKey,
+          itemId: String(request.data?.itemId ?? ''),
+          columnId: String(request.data?.columnId ?? ''),
+        },
+        editor,
+      )
+      return { itemId: doc?.itemId ?? null }
+    } catch (error) {
+      throw toHttpsError(error)
+    }
+  },
 )
 
 // ────────────────────────────────
