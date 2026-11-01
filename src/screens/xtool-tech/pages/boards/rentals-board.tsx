@@ -89,6 +89,18 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
         <StatCard title="불량" value={`${count('broken')}대`} icon={OctagonAlert} tint="violet" />
       </div>
 
+      <RecordTable
+        title="대여품 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={assigneesOf}
+        searchOf={searchOf}
+        progress={false}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="기기·SN·대여자 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard title="오래 나가 있는 대여품" subtitle={`${rented.length}대`}>
           <UpcomingList
@@ -108,18 +120,6 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
           <BarList items={countBy(records.map((r) => r.name))} unit="대" ariaLabel="기기별 대여품 수" />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="대여품 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        progress={false}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="기기·SN·대여자 검색"
-      />
 
       <RecordDrawer
         record={selected}

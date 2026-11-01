@@ -149,6 +149,22 @@ export function FieldServiceBoard({
         />
       </div>
 
+      <RecordTable
+        title="출장 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={assigneesOf}
+        searchOf={searchOf}
+        sortOpen={(a, b) =>
+          byDateAsc(a.visitAt, b.visitAt) ||
+          byDateAsc(a.receivedAt, b.receivedAt)
+        }
+        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="고객·주소·비고 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard title="다가오는 방문" subtitle={`${upcoming.length}건`}>
           <UpcomingList
@@ -181,22 +197,6 @@ export function FieldServiceBoard({
           />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="출장 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) =>
-          byDateAsc(a.visitAt, b.visitAt) ||
-          byDateAsc(a.receivedAt, b.receivedAt)
-        }
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·주소·비고 검색"
-      />
 
       <RecordDrawer
         record={selected}

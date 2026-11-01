@@ -65,6 +65,19 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
         <StatCard title="연결 기록 있음" value={`${records.filter((r) => linkCount(r) > 0).length}대`} icon={Link2} tint="amber" />
       </div>
 
+      <RecordTable
+        title="SN 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={noAssignees}
+        searchOf={searchOf}
+        progress={false}
+        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="SN·기기·고객 이름 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard title="기기별 대수" subtitle={`전체 ${records.length}대`}>
           <BarList items={countBy(records.map((r) => r.device))} unit="대" ariaLabel="기기별 SN 수" />
@@ -81,19 +94,6 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
           />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="SN 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={noAssignees}
-        searchOf={searchOf}
-        progress={false}
-        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="SN·기기·고객 이름 검색"
-      />
 
       <RecordDrawer
         record={selected}

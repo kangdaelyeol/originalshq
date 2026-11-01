@@ -78,15 +78,6 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
         <StatCard title="첨부 있음" value={`${records.filter((r) => r.attachmentCount > 0).length}건`} icon={Paperclip} tint="violet" caption="사진·파일을 올린 신청" />
       </div>
 
-      <div className="grid grid--pair">
-        <GlassCard title="기기별 신청" subtitle={`전체 ${records.length}건`}>
-          <BarList items={countBy(records.map((r) => r.device))} ariaLabel="기기별 AS 신청" />
-        </GlassCard>
-        <GlassCard title="구매 경로" subtitle={`전체 ${records.length}건`}>
-          <BarList items={countBy(records.map((r) => r.purchaseChannel))} ariaLabel="구매 경로별 AS 신청" />
-        </GlassCard>
-      </div>
-
       <RecordTable
         title="신청 목록"
         records={records}
@@ -99,6 +90,15 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
         selectedId={selectedId}
         searchPlaceholder="신청자·기기·증상·주소 검색"
       />
+
+      <div className="grid grid--pair">
+        <GlassCard title="기기별 신청" subtitle={`전체 ${records.length}건`}>
+          <BarList items={countBy(records.map((r) => r.device))} ariaLabel="기기별 AS 신청" />
+        </GlassCard>
+        <GlassCard title="구매 경로" subtitle={`전체 ${records.length}건`}>
+          <BarList items={countBy(records.map((r) => r.purchaseChannel))} ariaLabel="구매 경로별 AS 신청" />
+        </GlassCard>
+      </div>
 
       <RecordDrawer
         record={selected}

@@ -68,6 +68,18 @@ export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
         <StatCard title="비용 미입력" value={`${records.filter((r) => r.cost === null).length}개`} icon={Receipt} tint="green" caption="부품 비용 칸이 빈 부품" />
       </div>
 
+      <RecordTable
+        title="부품 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={noAssignees}
+        searchOf={searchOf}
+        progress={false}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="부품명·영문명·SKU·분류 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard title="재고 부족" subtitle={`${out.length + low.length}개`}>
           <MiniList
@@ -86,18 +98,6 @@ export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
           <BarList items={countBy(records.map(firstCategory))} unit="개" ariaLabel="분류별 부품 수" />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="부품 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={noAssignees}
-        searchOf={searchOf}
-        progress={false}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="부품명·영문명·SKU·분류 검색"
-      />
 
       <RecordDrawer
         record={selected}

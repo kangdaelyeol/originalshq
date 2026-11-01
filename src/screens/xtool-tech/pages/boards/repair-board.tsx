@@ -163,6 +163,19 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
         />
       </div>
 
+      <RecordTable
+        title="AS 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={assigneesOf}
+        searchOf={searchOf}
+        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
+        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="고객·기기·증상·SN 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard
           title="기기별 접수"
@@ -185,19 +198,6 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
           />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="AS 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·기기·증상·SN 검색"
-      />
 
       <RecordDrawer
         record={selected}

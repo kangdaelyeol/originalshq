@@ -144,6 +144,19 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
         />
       </div>
 
+      <RecordTable
+        title="문의 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={assigneesOf}
+        searchOf={searchOf}
+        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
+        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="고객·기기·문의 내용 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard
           title="문의 종류"
@@ -166,19 +179,6 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
           />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="문의 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
-        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·기기·문의 내용 검색"
-      />
 
       <RecordDrawer
         record={selected}

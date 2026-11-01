@@ -138,6 +138,21 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
         />
       </div>
 
+      <RecordTable
+        title="업무 목록"
+        records={records}
+        columns={COLUMNS}
+        assigneesOf={assigneesOf}
+        searchOf={searchOf}
+        sortOpen={(a, b) =>
+          byDateAsc(a.dueAt, b.dueAt) || byDateAsc(a.requestedAt, b.requestedAt)
+        }
+        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+        onSelect={(r) => setSelectedId(r.itemId)}
+        selectedId={selectedId}
+        searchPlaceholder="업무·사람·상세내용 검색"
+      />
+
       <div className="grid grid--pair">
         <GlassCard
           title="오래 걸리는 업무"
@@ -177,21 +192,6 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
           />
         </GlassCard>
       </div>
-
-      <RecordTable
-        title="업무 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) =>
-          byDateAsc(a.dueAt, b.dueAt) || byDateAsc(a.requestedAt, b.requestedAt)
-        }
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="업무·사람·상세내용 검색"
-      />
 
       <RecordDrawer
         record={selected}
