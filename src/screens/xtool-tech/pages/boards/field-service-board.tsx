@@ -158,7 +158,7 @@ export function FieldServiceBoard({
       </div>
 
       <div className="grid grid--pair">
-        <GlassCard title="다가오는 방문" subtitle="일정이 잡힌 진행 중 출장">
+        <GlassCard title="다가오는 방문" subtitle={`${upcoming.length}건`}>
           <UpcomingList
             today={today}
             empty="잡힌 방문 일정이 없어요."
@@ -180,7 +180,7 @@ export function FieldServiceBoard({
         </GlassCard>
         <GlassCard
           title="지역별 접수"
-          subtitle={`${names.current} 접수 ${received.length}건`}
+          subtitle={`${names.current} ${received.length}건`}
         >
           <BarList
             items={countBy(received.map((r) => r.region))}

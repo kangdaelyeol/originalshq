@@ -1,4 +1,3 @@
-import { ExternalLink } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { BOARD_TABS, type TechBoardKey } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
@@ -38,25 +37,5 @@ function BoardTitle({ boardKey, fallback }: { boardKey: TechBoardKey; fallback: 
     <div className="topbar-title">
       <h1>{board?.name ?? fallback}</h1>
     </div>
-  )
-}
-
-/** 상단바 오른쪽 — 보드 화면에서만 "Monday 보드" 바로가기 */
-export function TopbarBoardLink() {
-  const { pathname } = useLocation()
-  const tab = boardOf(pathname)
-  return tab ? <BoardLink boardKey={tab.key} /> : null
-}
-
-function BoardLink({ boardKey }: { boardKey: TechBoardKey }) {
-  const { board } = useTechBoard(boardKey)
-  // 보드 주소 — 기록 주소(…/boards/<id>/pulses/<item>)에서 앞부분만
-  const url = board?.records.find((r) => r.url)?.url?.split('/pulses/')[0]
-  if (!url) return null
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className="button button--ghost button--md topbar__board-link">
-      <ExternalLink size={14} aria-hidden />
-      Monday 보드
-    </a>
   )
 }

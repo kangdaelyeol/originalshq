@@ -10,7 +10,7 @@ export function AttentionRow({ tiles, loading }: { tiles: AttentionTile[]; loadi
   return (
     <section className="attention" aria-label="챙겨야 할 것">
       <h2 className="king-section__title">
-        챙겨야 할 것<span>보드마다 손이 필요한 건 — 누르면 그 보드로</span>
+        챙겨야 할 것
       </h2>
       <div className="attention__grid">
         {tiles.map((tile) => (

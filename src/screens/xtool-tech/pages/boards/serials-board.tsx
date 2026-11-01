@@ -69,7 +69,7 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
         <GlassCard title="기기별 대수" subtitle={`전체 ${records.length}대`}>
           <BarList items={countBy(records.map((r) => r.device))} unit="대" ariaLabel="기기별 SN 수" />
         </GlassCard>
-        <GlassCard title="중복 SN" subtitle={`${duplicates.length}건 — 같은 SN이 둘 이상이거나 "중복 SN" 그룹`}>
+        <GlassCard title="중복 SN" subtitle={`${duplicates.length}건`}>
           <MiniList
             empty="중복된 SN이 없어요."
             items={duplicates.slice(0, 7).map((r) => ({

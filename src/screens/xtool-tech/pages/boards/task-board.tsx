@@ -145,7 +145,7 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
       <div className="grid grid--pair">
         <GlassCard
           title="오래 걸리는 업무"
-          subtitle="요청일이 오래된 진행 중 업무"
+          subtitle={`${oldest.length}건`}
         >
           <UpcomingList
             mode="since"

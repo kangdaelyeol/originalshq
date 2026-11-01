@@ -69,7 +69,7 @@ export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
       </div>
 
       <div className="grid grid--pair">
-        <GlassCard title="재고 부족" subtitle={`재고 없음 ${out.length} · 적음 ${low.length}`}>
+        <GlassCard title="재고 부족" subtitle={`${out.length + low.length}개`}>
           <MiniList
             empty="재고가 부족한 부품이 없어요."
             items={shortage.slice(0, 7).map((r) => ({
@@ -82,7 +82,7 @@ export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
             }))}
           />
         </GlassCard>
-        <GlassCard title="분류별 부품" subtitle={`전체 ${records.length}개 — 여러 기종이면 첫 기종 기준`}>
+        <GlassCard title="분류별 부품" subtitle={`전체 ${records.length}개`}>
           <BarList items={countBy(records.map(firstCategory))} unit="개" ariaLabel="분류별 부품 수" />
         </GlassCard>
       </div>

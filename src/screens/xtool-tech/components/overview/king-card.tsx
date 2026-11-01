@@ -5,7 +5,6 @@ import type { KingDef, KingPeriod, KingResult, KingRow } from '../../data/tech-k
 import { shortDate } from '../../lib/dates'
 import { cx } from '../../lib/cx'
 import { cardEnter } from '../../lib/motion'
-import { StatusPill } from '../ui/status-pill'
 
 // 처음에 보여 줄 순위 수 — 나머지는 "외 N명"
 const SHOWN = 5
@@ -28,13 +27,9 @@ export function KingCard({ def, spanLabel, previousLabel, period, result, previo
   return (
     <motion.section className="glass card king-card" variants={cardEnter}>
       <header className="king-card__head">
-        <div>
-          <h2 className="card__title">
-            {spanLabel} {def.title}
-          </h2>
-          <p className="card__subtitle">{def.desc}</p>
-        </div>
-        <StatusPill tone="neutral">{def.board}</StatusPill>
+        <h2 className="card__title">
+          {spanLabel} {def.title}
+        </h2>
       </header>
 
       {result === null ? (

@@ -90,7 +90,7 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
       </div>
 
       <div className="grid grid--pair">
-        <GlassCard title="오래 나가 있는 대여품" subtitle="대여 중 — 대여일이 오래된 순">
+        <GlassCard title="오래 나가 있는 대여품" subtitle={`${rented.length}대`}>
           <UpcomingList
             mode="since"
             today={today}

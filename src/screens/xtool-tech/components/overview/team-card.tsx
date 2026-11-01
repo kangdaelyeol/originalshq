@@ -1,5 +1,5 @@
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import { RECENT_DAYS, type TeamMemberStatus, type WorkBoard } from '../../data/team-status'
+import type { TeamMemberStatus, WorkBoard } from '../../data/team-status'
 import { cx } from '../../lib/cx'
 import { Avatar } from '../ui/avatar'
 import { GlassCard } from '../ui/glass-card'
@@ -18,11 +18,7 @@ export function TeamCard({ members, me, loading }: { members: TeamMemberStatus[]
   return (
     <GlassCard
       title="팀 현황"
-      subtitle={
-        loading
-          ? '불러오는 중…'
-          : `${members.length}명 — 최근 ${RECENT_DAYS}일 기술팀 보드 담당자 · 진행 중이 많은 순 · 이번 주 처리는 세 왕 합계`
-      }
+      subtitle={loading ? '불러오는 중…' : `${members.length}명`}
     >
       {!loading && members.length === 0 ? (
         <p className="bar-list__empty">최근 담당자로 나온 사람이 없어요.</p>

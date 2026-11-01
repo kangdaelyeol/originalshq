@@ -180,7 +180,7 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
       <div className="grid grid--pair">
         <GlassCard
           title="기기별 접수"
-          subtitle={`${names.current} 접수 ${received.length}건`}
+          subtitle={`${names.current} ${received.length}건`}
         >
           <BarList
             items={countBy(received.map((r) => r.device))}
@@ -190,7 +190,7 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
         </GlassCard>
         <GlassCard
           title="담당자별 진행 중"
-          subtitle={`진행 중 ${open.length}건 — 여러 명이 맡은 건은 각자 셉니다`}
+          subtitle={`진행 중 ${open.length}건`}
         >
           <BarList
             items={workload}

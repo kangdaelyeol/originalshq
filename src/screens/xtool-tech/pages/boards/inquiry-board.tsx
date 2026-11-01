@@ -156,7 +156,7 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
       <div className="grid grid--pair">
         <GlassCard
           title="문의 종류"
-          subtitle={`${names.current} 접수 ${received.length}건`}
+          subtitle={`${names.current} ${received.length}건`}
         >
           <BarList
             items={countBy(received.map((r) => r.type))}
@@ -166,7 +166,7 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
         </GlassCard>
         <GlassCard
           title="기기 계열"
-          subtitle={`${names.current} 접수 ${received.length}건`}
+          subtitle={`${names.current} ${received.length}건`}
         >
           <BarList
             items={countBy(received.map((r) => r.deviceSeries))}

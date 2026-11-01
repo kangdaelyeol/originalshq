@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { NOTIFICATIONS, type NotificationItem } from '../../data/notifications'
 import { Button } from '../ui/button'
 import { NotificationPanel, type PanelAnchor } from './notification-panel'
-import { TopbarBoardLink, TopbarTitle } from './topbar-title'
+import { TopbarTitle } from './topbar-title'
 
 export function Topbar() {
   const { pathname } = useLocation()
@@ -58,7 +58,6 @@ export function Topbar() {
     <header className="glass topbar">
       <TopbarTitle />
       <div className="topbar__controls">
-        <TopbarBoardLink />
         <button
           ref={bellRef}
           type="button"

@@ -34,6 +34,13 @@ const upsertToast = (toast: Toast) => {
   emit()
 }
 
+/** 토스트 하나 띄우기(디자인 견본·간단한 알림용) — 성공은 잠시 뒤 저절로 사라진다. */
+export function pushToast(toast: Omit<Toast, 'id'>): void {
+  const id = nextId++
+  upsertToast({ ...toast, id })
+  if (toast.tone === 'success') setTimeout(() => dismissToast(id), SUCCESS_MS)
+}
+
 export function dismissToast(id: number) {
   toasts = toasts.filter((t) => t.id !== id)
   emit()

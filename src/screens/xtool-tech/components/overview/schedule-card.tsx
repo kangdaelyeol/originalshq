@@ -1,7 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { buildSchedule, SCHEDULE_DAYS, type ScheduleEvent, type ScheduleSources } from '../../data/schedule'
+import { buildSchedule, type ScheduleEvent, type ScheduleSources } from '../../data/schedule'
 import { daysBetween, koreaToday, shortDate } from '../../lib/dates'
 import { cx } from '../../lib/cx'
 import { xtPath } from '../../paths'
@@ -38,7 +38,7 @@ export function ScheduleCard({
   return (
     <GlassCard
       title="오늘·이번 주 일정"
-      subtitle={loading ? '불러오는 중…' : `앞으로 ${SCHEDULE_DAYS}일 ${total}건 — 출장 방문 · 기타업무 마감 · 대여품 발송`}
+      subtitle={loading ? '불러오는 중…' : `${total}건`}
       actions={
         <SegmentedControl
           ariaLabel="일정 범위"

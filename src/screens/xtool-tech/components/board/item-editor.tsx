@@ -450,7 +450,7 @@ interface ChipPickerProps {
 }
 
 /** 여러 개 고르기 — 알약을 눌러 켜고 끈다. 사람처럼 많으면 검색 칸이 붙는다. */
-function ChipPicker({ id, options, selected, onChange, searchable, empty = '고를 값이 없어요' }: ChipPickerProps) {
+export function ChipPicker({ id, options, selected, onChange, searchable, empty = '고를 값이 없어요' }: ChipPickerProps) {
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
   const shown = options.filter((o) => selected.includes(o.value) || !needle || o.label.toLowerCase().includes(needle))
@@ -494,7 +494,7 @@ function ChipPicker({ id, options, selected, onChange, searchable, empty = '고�
 
 /** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다).
  * 상세 주소(동·호수 등)는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다. */
-function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
+export function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AddressResult[] | null>(null)
   const [searching, setSearching] = useState(false)
@@ -591,7 +591,7 @@ function LocationInput({ id, value, onChange }: { id: string; value: LocationSta
  * 날짜·시각 — 달력 하나에서 날짜와 시각을 같이 고른다. "시각 없음"을 체크하면 날짜만 고르는
  * 칸이 되고 Monday에도 날짜만 저장된다. 시각이 없는 기존 값은 체크된 채로 열린다.
  */
-function DateTimeInput({
+export function DateTimeInput({
   id,
   title,
   value,
@@ -644,7 +644,7 @@ function DateTimeInput({
 }
 
 /** 여러 개 고르는 드롭다운 — 겉모습은 다른 선택 칸(select)과 같고, 누르면 체크 목록이 열린다. */
-function MultiSelect({
+export function MultiSelect({
   id,
   options,
   selected,

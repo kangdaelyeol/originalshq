@@ -93,8 +93,7 @@ export function OverviewPage() {
       <div className="grid overview-top">
         <MyWorkCard
           names={myNames}
-          displayName={mondayMe?.name ?? member?.name ?? '나'}
-          linked={!!mondayMe}
+            linked={!!mondayMe}
           loading={[field, repair, inquiry, task, docs].some((b) => !b.board && !b.error)}
           sources={{
             fieldService: sources.fieldService,
@@ -125,7 +124,7 @@ export function OverviewPage() {
             <h2 className="king-section__title">
               {label} 기술팀 왕
               <span>
-                {shortDate(period.start)} ~ {shortDate(period.end)} · 담당자가 둘이면 둘 다 1건 · 줄을 누르면 센 기록
+                {shortDate(period.start)} ~ {shortDate(period.end)}
               </span>
             </h2>
             <div className="grid king-grid">
