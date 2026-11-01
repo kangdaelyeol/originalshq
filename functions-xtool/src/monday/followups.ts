@@ -20,7 +20,12 @@ const VISIT_COMPLETED = /체험\s*완료/
 // 응대를 마친 고객을 옮겨 두는 그룹 — 방문체험 보드는 여기 있으면 상태 칸이
 // 아직 남아 있어도 방치가 아니다. 상담 보드(콜백)는 그룹이 아니라 상태와
 // 방문체험 확정으로만 가린다(아래 buildFollowUps).
-const DONE_GROUPS = new Set(['완료', '완료된 영업'])
+//   · SALES_DONE_GROUPS — 영업까지 끝난 그룹. 체험 후 영업 후속(sales)도 끝.
+//   · VISIT_DONE_GROUPS — 방문체험 단계가 끝난 그룹. "완료된 방문체험"에 옮긴
+//     일정 연기·체험 취소 건은 할 일이 끝난 것이다(CS팀 확인, 11/2). 체험을
+//     마친 고객은 이 그룹에 있어도 영업 후속(sales)으로는 센다.
+const SALES_DONE_GROUPS = new Set(['완료', '완료된 영업'])
+const VISIT_DONE_GROUPS = new Set([...SALES_DONE_GROUPS, '완료된 방문체험'])
 // "보류" 그룹이나 보류 상태 — 고객이 고민 중이라 기다리는 것이지 방치가 아니다.
 // 방치와 따로 센다.
 const HOLD_GROUP = '보류'
@@ -75,7 +80,7 @@ const primaryAssignee = (item: MondayItem): string | null =>
  *   · 콜백 — 상담 보드의 진행 중 기록(상담 진행 상태가 결제·미전환·오기입이
  *     아닌 것) 가운데 방문체험이 확정되지 않은 것. 그룹은 보지 않는다.
  *   · 방문체험 — 방문체험 보드의 진행 중 기록 가운데 체험 완료·노쇼가 아니고
- *     완료 그룹(DONE_GROUPS)에 있지 않은 것.
+ *     완료 그룹(VISIT_DONE_GROUPS)에 있지 않은 것.
  *   · 영업 후속(sales) — 방문체험 보드에서 체험 완료인데 결제일·미전환일이
  *     비어 있는 것(상담 진행 상태가 결제·미전환·오기입이면 이미 빠진다).
  *     통계 탭 영업통계의 "체험 후 영업 미처리"가 쓴다.
@@ -103,7 +108,7 @@ export const buildFollowUps = (
       ) {
         continue
       }
-    } else if (DONE_GROUPS.has(item.groupTitle?.trim() ?? '')) {
+    } else if (SALES_DONE_GROUPS.has(item.groupTitle?.trim() ?? '')) {
       continue
     }
 
@@ -119,7 +124,10 @@ export const buildFollowUps = (
           continue
         }
         followUpKind = 'sales'
-      } else if (visitStatus && VISIT_DONE.test(visitStatus)) {
+      } else if (
+        (visitStatus && VISIT_DONE.test(visitStatus)) ||
+        VISIT_DONE_GROUPS.has(item.groupTitle?.trim() ?? '')
+      ) {
         continue
       }
     } else {
