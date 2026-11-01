@@ -18,6 +18,7 @@
  * performance 문서를 한 번에 읽어와 메모리에서 합산한다 (기간이 짧아 문서 수가 적다).
  */
 import { initializeApp, getApps } from 'firebase-admin/app'
+import { installCostCounters } from '../trace/cost-trace'
 import {
   getFirestore,
   FieldValue,
@@ -36,6 +37,9 @@ import { Channel } from '../types'
 if (getApps().length === 0) initializeApp()
 
 export const db = getFirestore('xtool-read')
+// API 비용 추적 — Firestore 읽기·쓰기와 외부 호출을 요청별로 센다
+// (trace/cost-trace.ts). 이 파일이 db를 처음 만드는 곳이라 여기서 한 번.
+installCostCounters(db)
 export { FieldValue }
 
 // --------------------------------------------------------------------------- //

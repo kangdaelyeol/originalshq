@@ -1,5 +1,6 @@
-import { onRequest } from 'firebase-functions/v2/https'
-import { onSchedule } from 'firebase-functions/v2/scheduler'
+// 비용 추적이 붙은 onRequest·onSchedule(trace/functions.ts) — 쓰는 법은
+// firebase-functions의 것과 같다.
+import { onRequest, onSchedule } from './trace/functions'
 import { setGlobalOptions } from 'firebase-functions/v2'
 import * as logger from 'firebase-functions/logger'
 import cors from 'cors'

@@ -97,7 +97,9 @@ const finish = (state: TraceState, end: TraceEnd) => {
     trigger: state.trigger,
     method: state.method,
     status: end.status,
-    ok: end.status < 400 && !end.error,
+    // 4xx(찾을 수 없음·잘못된 입력 등)는 서버가 정상으로 답한 것 — 실패는
+    // 5xx와 예외만.
+    ok: end.status < 500 && !end.error,
     startedAtMs: state.startedAt,
     durationMs: Date.now() - state.startedAt,
     reads: state.reads,

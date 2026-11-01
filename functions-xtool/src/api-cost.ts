@@ -1,7 +1,7 @@
 import { BigQuery } from '@google-cloud/bigquery'
 import { addBigQueryBytes } from './cost-trace'
 
-// API 비용 분석(/log "비용 분석" 탭) — cost-trace.ts가 남긴 호출별 로그를
+// API 비용 분석(/log "비용 분석" 탭) — xtool·cmip의 cost-trace.ts가 남긴 호출별 로그를
 // BigQuery(xtool-63b29.ops_logs)에서 함수별·날짜별로 집계한다. 로그 싱크
 // (api-cost-to-bigquery)가 만든 테이블이라 필드 이름이 소문자로 바뀌어 있지만
 // BigQuery 열 이름은 대소문자를 가리지 않는다. 숫자는 FLOAT로 들어와 정수로
@@ -15,9 +15,14 @@ const MAX_BYTES_BILLED = 2 * 1024 ** 3
 /** 함수 하나의 기간 합계. */
 export interface ApiCostByFn {
   fn: string
+  /** xtool / cmip. */
+  codebase: string
   trigger: string
   calls: number
+  /** 5xx·예외. */
   errors: number
+  /** 4xx(찾을 수 없음·잘못된 입력 등) — 실패가 아니다. */
+  clientErrors: number
   coldStarts: number
   avgMs: number
   p95Ms: number
@@ -86,9 +91,14 @@ const WHERE = `
 const BY_FN = `
   SELECT
     jsonPayload.fn AS fn,
+    ANY_VALUE(jsonPayload.codebase) AS codebase,
     ANY_VALUE(jsonPayload.trigger) AS trigger,
     COUNT(*) AS calls,
-    COUNTIF(NOT jsonPayload.ok) AS errors,
+    -- 실패는 5xx와 예외만 — 4xx(404 등)는 따로 센다. ok 값이 아니라 상태
+    -- 코드로 가려 예전 로그(4xx도 ok=false로 남긴 것)에도 같게 맞는다.
+    COUNTIF(jsonPayload.status >= 500 OR jsonPayload.error != '') AS errors,
+    COUNTIF(jsonPayload.status >= 400 AND jsonPayload.status < 500)
+      AS clientErrors,
     COUNTIF(jsonPayload.coldStart) AS coldStarts,
     AVG(jsonPayload.durationMs) AS avgMs,
     APPROX_QUANTILES(jsonPayload.durationMs, 100)[OFFSET(95)] AS p95Ms,
@@ -125,8 +135,9 @@ const BY_DAY = `
   GROUP BY date, fn
 `
 
+// "at"은 BigQuery 예약어라 별칭으로 못 쓴다 — atMs로 받아 at으로 옮긴다.
 const CALL_FIELDS = `
-  UNIX_MILLIS(timestamp) AS at,
+  UNIX_MILLIS(timestamp) AS atMs,
   jsonPayload.fn AS fn,
   jsonPayload.method AS method,
   jsonPayload.status AS status,
@@ -165,7 +176,7 @@ const num = (value: unknown) => {
 const int = (value: unknown) => Math.round(num(value))
 
 const toCall = (row: Record<string, unknown>): ApiCostCall => ({
-  at: int(row.at),
+  at: int(row.atMs),
   fn: String(row.fn ?? ''),
   method: String(row.method ?? ''),
   status: int(row.status),
@@ -235,9 +246,11 @@ export async function buildApiCostReport(days: number): Promise<ApiCostReport> {
     byFn: fnRes.rows
       .map((row) => ({
         fn: String(row.fn ?? ''),
+        codebase: String(row.codebase ?? ''),
         trigger: String(row.trigger ?? ''),
         calls: int(row.calls),
         errors: int(row.errors),
+        clientErrors: int(row.clientErrors),
         coldStarts: int(row.coldStarts),
         avgMs: int(row.avgMs),
         p95Ms: int(row.p95Ms),
