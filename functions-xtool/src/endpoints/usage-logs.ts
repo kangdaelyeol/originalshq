@@ -1,12 +1,22 @@
 import { onRequest } from 'firebase-functions/https'
 import {
   listUsageSegments,
+  listUsageSegmentsUpdatedSince,
   parseUsageSegments,
   saveUsageSegments,
 } from '../usage'
 import { listBatchRuns } from '../batch-log'
 import { db } from '../app'
-import { endpoint } from '../http'
+import { endpoint, parseSince } from '../http'
+
+// 이어 받기(?since=)의 겹침 — 저장 시각을 정한 뒤 실제로 쓰기까지의 틈과
+// 시계 차이를 덮으려고 since보다 조금 앞부터 준다(겹친 것은 화면이 id로 합친다).
+const UPDATE_OVERLAP_MS = 2 * 60_000
+// 실행 기록은 시작할 때 쓰고 끝날 때 한 번 고친다 — 함수 제한 시간(최대 9분)
+// 안에서만 바뀌므로, since보다 30분 앞부터 시작한 실행만 다시 주면 된다.
+const RUN_OVERLAP_MS = 30 * 60_000
+// 이어 받기 한 번에 이만큼 넘게 바뀌었으면 기간 전체를 다시 준다.
+const MAX_UPDATED = 2_000
 
 // ────────────────────────────────
 // logUsage — 사용 분석 수집(xtool-lead-manager·cmip 화면이 보낸다). 창을 닫을
@@ -36,7 +46,9 @@ export const logUsage = onRequest(
 
 // ────────────────────────────────
 // getUsageSegments — 사용 분석 기록(/log). ?days=N(기본 7, 최대 90)일 안에
-// 시작한 탭 방문을 최근 것부터 최대 20,000건.
+// 시작한 탭 방문을 최근 것부터 최대 20,000건. ?since=(지난 응답의 fetchedAt)를
+// 주면 그 뒤에 저장된 방문만 준다(incremental: true — 1분마다 다시 받을 때
+// 기간 전체 수백 건 대신 몇 건만 읽는다).
 // ────────────────────────────────
 export const getUsageSegments = onRequest(
   { memory: '512MiB' },
@@ -47,12 +59,24 @@ export const getUsageSegments = onRequest(
         Math.max(Number(request.query.days) || 7, 1),
         90,
       )
-      const segments = await listUsageSegments(
-        db,
-        Date.now() - days * 86_400_000,
-        20_000,
-      )
-      response.status(200).send({ segments, days, fetchedAt: Date.now() })
+      const now = Date.now()
+      const windowStart = now - days * 86_400_000
+      const since = parseSince(request.query.since, windowStart, now)
+      const updated =
+        since === null
+          ? null
+          : await listUsageSegmentsUpdatedSince(
+              db,
+              since - UPDATE_OVERLAP_MS,
+              MAX_UPDATED,
+            )
+      const incremental = updated !== null && updated.length < MAX_UPDATED
+      const segments = incremental
+        ? updated
+        : await listUsageSegments(db, windowStart, 20_000)
+      response
+        .status(200)
+        .send({ segments, days, fetchedAt: now, incremental })
     },
   ),
 )
@@ -60,7 +84,8 @@ export const getUsageSegments = onRequest(
 // ────────────────────────────────
 // getBatchRuns — 배치(예약 실행) 함수들의 실행 기록(/log 화면). xtool과 cmip
 // 두 코드베이스가 같은 batchRuns 컬렉션에 쌓으므로 여기 하나에서 같이 준다.
-// ?days=N(기본 7, 최대 90)일 안의 기록을 최근 것부터 최대 2,000건.
+// ?days=N(기본 7, 최대 90)일 안의 기록을 최근 것부터 최대 2,000건. ?since=를
+// 주면 그 뒤에 바뀌었을 수 있는 실행(30분 앞부터 시작한 것)만 준다.
 // ────────────────────────────────
 export const getBatchRuns = onRequest(
   endpoint(
@@ -70,12 +95,19 @@ export const getBatchRuns = onRequest(
         Math.max(Number(request.query.days) || 7, 1),
         90,
       )
+      const now = Date.now()
+      const windowStart = now - days * 86_400_000
+      const since = parseSince(request.query.since, windowStart, now)
       const runs = await listBatchRuns(
         db,
-        Date.now() - days * 86_400_000,
+        since === null
+          ? windowStart
+          : Math.max(windowStart, since - RUN_OVERLAP_MS),
         2_000,
       )
-      response.status(200).send({ runs, days, fetchedAt: Date.now() })
+      response
+        .status(200)
+        .send({ runs, days, fetchedAt: now, incremental: since !== null })
     },
   ),
 )

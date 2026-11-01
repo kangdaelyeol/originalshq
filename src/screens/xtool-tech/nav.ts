@@ -3,7 +3,6 @@ import {
   ClipboardList,
   ClipboardPen,
   FileText,
-  KeyRound,
   LayoutGrid,
   MessageCircle,
   Package,
@@ -23,6 +22,8 @@ export interface NavItem {
   label: string
   icon: LucideIcon
   badge?: string
+  /** 관리자만 보이는 메뉴(주소로 들어와도 화면이 막는다) */
+  adminOnly?: boolean
 }
 
 export interface NavSection {
@@ -62,12 +63,11 @@ export const NAV_SECTIONS: readonly NavSection[] = [
   },
   {
     label: '시스템',
-    // 분석·팀원 & 권한은 아직 목업 — 나중에 쓸 자리로 둔다.
+    // 분석(관리자만)·팀원 & 권한은 아직 목업 — 나중에 쓸 자리로 둔다.
     items: [
-      { to: xtPath('/analytics'), label: '분석', icon: TrendingUp, badge: 'Live' },
+      { to: xtPath('/analytics'), label: '분석', icon: TrendingUp, badge: 'Live', adminOnly: true },
       { to: xtPath('/team'), label: '팀원 & 권한', icon: Users },
       { to: xtPath('/settings'), label: '설정', icon: Settings },
-      { to: xtPath('/security'), label: '보안 & 키', icon: KeyRound },
     ],
   },
 ]

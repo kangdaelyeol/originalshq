@@ -25,15 +25,22 @@ export interface BatchRun {
 export type ClientResponse<T> =
   { ok: true; data: T } | { ok: false; error: string }
 
-/** 최근 days일의 실행 기록 — 최근 것부터. */
+/** 최근 days일의 실행 기록 — 최근 것부터. since(지난 응답의 fetchedAt)를 주면
+ * 그 뒤에 바뀌었을 수 있는 것만 온다(incremental — 가진 목록에 합친다). */
 export const getBatchRuns = async (
   days: number,
-): Promise<ClientResponse<{ runs: BatchRun[]; fetchedAt: number }>> => {
+  since?: number,
+): Promise<
+  ClientResponse<{ runs: BatchRun[]; fetchedAt: number; incremental: boolean }>
+> => {
   try {
-    const response = await fetch(`${API_BASE}/getBatchRuns?days=${days}`)
+    const response = await fetch(
+      `${API_BASE}/getBatchRuns?days=${days}${since ? `&since=${since}` : ''}`,
+    )
     const body = (await response.json().catch(() => ({}))) as {
       runs?: BatchRun[]
       fetchedAt?: number
+      incremental?: boolean
       error?: string
     }
     if (!response.ok) {
@@ -46,7 +53,11 @@ export const getBatchRuns = async (
     }
     return {
       ok: true,
-      data: { runs: body.runs ?? [], fetchedAt: body.fetchedAt ?? Date.now() },
+      data: {
+        runs: body.runs ?? [],
+        fetchedAt: body.fetchedAt ?? Date.now(),
+        incremental: body.incremental === true,
+      },
     }
   } catch (error) {
     return {

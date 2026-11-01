@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { AreaChart, type ChartSeries } from '../components/charts/area-chart'
 import { LatencyBars } from '../components/charts/latency-bars'
 import { CATEGORICAL, OTHER_GRAY, SERIES_COMPARE, SERIES_PRIMARY } from '../components/charts/palette'
@@ -7,6 +8,7 @@ import { GlassCard } from '../components/ui/glass-card'
 import { SegmentedControl } from '../components/ui/segmented-control'
 import { StatCard } from '../components/ui/stat-card'
 import { StatusPill } from '../components/ui/status-pill'
+import { useCurrentMember } from '../context/member-context'
 import { usePeriod } from '../context/period-context'
 import {
   ANALYTICS_KPIS,
@@ -20,10 +22,18 @@ import {
 } from '../data/analytics'
 import { PERIOD_COMPARE, PERIOD_OPTIONS } from '../data/period'
 import { compact, formatInt } from '../lib/format'
+import { XT_BASE } from '../paths'
 
 const sum = (values: readonly number[]) => values.reduce((s, v) => s + v, 0)
 
+/** 분석 — 관리자만(메뉴에서도 숨긴다). 관리자가 아니면 개요로. */
 export function AnalyticsPage() {
+  const member = useCurrentMember()
+  if (!member?.isAdmin) return <Navigate to={XT_BASE} replace />
+  return <Analytics />
+}
+
+function Analytics() {
   const { period, setPeriod } = usePeriod()
   const [metric, setMetric] = useState<TrafficMetric>('requests')
 

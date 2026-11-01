@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import { getBatchRuns, type BatchRun } from '../client/batch-run-client'
 import { BATCH_JOBS } from '../constants'
@@ -9,6 +9,7 @@ import {
   slotsForDay,
   type DisplayStatus,
 } from '../utils/batch-run'
+import { mergeRecent } from '../utils/merge-recent'
 
 // 실행 내역 표를 한 번에 몇 줄씩 보여 줄지 — 30일이면 천 줄이 넘는다.
 const PAGE_SIZE = 50
@@ -38,19 +39,45 @@ export const useBatchLogViewModel = () => {
 
   // 다시 받아 오는 동안에도 이전 목록을 그대로 보여 준다(1분마다 깜빡이지
   // 않게) — 그래서 시작할 때 상태를 loading으로 되돌리지 않는다.
-  const load = useCallback(async () => {
-    const res = await getBatchRuns(days)
-    setNow(Date.now())
-    if (!res.ok) {
-      setError(res.error)
-      setStatus('error')
-      return
-    }
-    setRuns(res.data.runs)
-    setFetchedAt(res.data.fetchedAt)
-    setError(null)
-    setStatus('ready')
-  }, [days])
+  // 처음·기간을 바꿨을 때·새로고침은 기간 전체를, 1분마다는 지난번 뒤에 바뀐
+  // 실행만 받아(since) 가진 목록에 합친다 — 매번 수백 건을 다시 읽지 않게.
+  // 늦게 온 응답이 새 응답을 덮지 않도록 마지막 요청만 반영한다.
+  const cursor = useRef<{ days: number; fetchedAt: number } | null>(null)
+  const latest = useRef(0)
+  const load = useCallback(
+    async (options?: { full?: boolean }) => {
+      const request = ++latest.current
+      const since =
+        !options?.full && cursor.current?.days === days
+          ? cursor.current.fetchedAt
+          : undefined
+      const res = await getBatchRuns(days, since)
+      if (request !== latest.current) return
+      setNow(Date.now())
+      if (!res.ok) {
+        setError(res.error)
+        setStatus('error')
+        return
+      }
+      const { runs: received, fetchedAt, incremental } = res.data
+      cursor.current = { days, fetchedAt }
+      setRuns((prev) =>
+        incremental
+          ? mergeRecent(
+              prev,
+              received,
+              (run) => run.id,
+              (run) => run.startedAt,
+              fetchedAt - days * 86_400_000,
+            )
+          : received,
+      )
+      setFetchedAt(res.data.fetchedAt)
+      setError(null)
+      setStatus('ready')
+    },
+    [days],
+  )
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)
@@ -185,7 +212,7 @@ export const useBatchLogViewModel = () => {
     },
     actions: {
       changeDays: setDays,
-      reload: load,
+      reload: () => load({ full: true }),
       changeJobFilter,
       changeStatusFilter,
       showMore: () => setVisibleCount((prev) => prev + PAGE_SIZE),

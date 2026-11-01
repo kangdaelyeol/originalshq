@@ -27,7 +27,7 @@ export function Sidebar({ member }: { member: XtoolMember }) {
         <nav key={section.label} className="sidebar__section" aria-label={section.label}>
           <p className="sidebar__section-label">{section.label}</p>
           <ul>
-            {section.items.map(({ to, label, icon: Icon, badge }) => (
+            {section.items.filter((item) => !item.adminOnly || member.isAdmin).map(({ to, label, icon: Icon, badge }) => (
               <li key={to}>
                 <NavLink
                   to={to}

@@ -109,3 +109,19 @@ export const findLead = async (response: Response, id: string) => {
 
   return { docRef, snapshot }
 }
+
+/**
+ * /log 화면의 이어 받기 기준(?since=) — 화면이 지난번 받은 응답의 fetchedAt
+ * (서버 시각)을 보내면 그 뒤에 바뀐 것만 준다. 조회 기간 밖이거나 미래거나
+ * 숫자가 아니면 null — 기간 전체를 다시 준다.
+ */
+export const parseSince = (
+  value: unknown,
+  windowStart: number,
+  now: number,
+): number | null => {
+  const since = Number(value)
+  return Number.isFinite(since) && since >= windowStart && since <= now
+    ? since
+    : null
+}

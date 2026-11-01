@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import { getUsageSegments, type UsageSegment } from '../client/usage-client'
 import {
@@ -10,6 +10,7 @@ import {
   usageByView,
   type UsageApp,
 } from '../utils/usage'
+import { mergeRecent } from '../utils/merge-recent'
 
 export type UsageAppFilter = UsageApp | 'all'
 
@@ -42,19 +43,44 @@ export const useUsageViewModel = () => {
   const [visibleSessions, setVisibleSessions] = useState(SESSION_PAGE_SIZE)
 
   // 다시 받는 동안에도 이전 값을 보여 준다(1분마다 깜빡이지 않게).
-  const load = useCallback(async () => {
-    const res = await getUsageSegments(days)
-    setNow(Date.now())
-    if (!res.ok) {
-      setError(res.error)
-      setStatus('error')
-      return
-    }
-    setSegments(res.data.segments)
-    setFetchedAt(res.data.fetchedAt)
-    setError(null)
-    setStatus('ready')
-  }, [days])
+  // 처음·기간을 바꿨을 때·새로고침은 기간 전체를, 1분마다는 지난번 뒤에
+  // 저장된 방문만 받아(since) 가진 목록에 합친다(배치 화면과 같은 방식).
+  const cursor = useRef<{ days: number; fetchedAt: number } | null>(null)
+  const latest = useRef(0)
+  const load = useCallback(
+    async (options?: { full?: boolean }) => {
+      const request = ++latest.current
+      const since =
+        !options?.full && cursor.current?.days === days
+          ? cursor.current.fetchedAt
+          : undefined
+      const res = await getUsageSegments(days, since)
+      if (request !== latest.current) return
+      setNow(Date.now())
+      if (!res.ok) {
+        setError(res.error)
+        setStatus('error')
+        return
+      }
+      const { segments: received, fetchedAt, incremental } = res.data
+      cursor.current = { days, fetchedAt }
+      setSegments((prev) =>
+        incremental
+          ? mergeRecent(
+              prev,
+              received,
+              (segment) => segment.id,
+              (segment) => segment.startedAt,
+              fetchedAt - days * 86_400_000,
+            )
+          : received,
+      )
+      setFetchedAt(res.data.fetchedAt)
+      setError(null)
+      setStatus('ready')
+    },
+    [days],
+  )
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)
@@ -101,7 +127,7 @@ export const useUsageViewModel = () => {
     actions: {
       changeDays: setDays,
       changeApp,
-      reload: load,
+      reload: () => load({ full: true }),
       toggleSession: (id: string) =>
         setOpenSessionId((prev) => (prev === id ? null : id)),
       showMoreSessions: () =>

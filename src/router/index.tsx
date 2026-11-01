@@ -121,7 +121,6 @@ export const router = createBrowserRouter([
           { path: 'analytics', lazy: xtoolTech('AnalyticsPage') },
           { path: 'team', lazy: xtoolTech('TeamPage') },
           { path: 'settings', lazy: xtoolTech('SettingsPage') },
-          { path: 'security', lazy: xtoolTech('SecurityPage') },
           { path: '*', element: <Navigate to="/xtool-tech" replace /> },
         ],
       },

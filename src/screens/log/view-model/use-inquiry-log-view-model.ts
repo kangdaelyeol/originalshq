@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import {
   deleteInquiries,
@@ -9,6 +9,11 @@ import {
   type Inquiry,
   type InquirySettings,
 } from '../client/inquiry-client'
+import { mergeRecent } from '../utils/merge-recent'
+
+// 이어 받기로는 다른 사람이 지운 문의를 알 수 없어서, 이만큼 지나면 기간
+// 전체를 다시 받아 맞춘다.
+const FULL_RELOAD_MS = 10 * 60_000
 
 export const INQUIRY_PERIOD_OPTIONS = [
   { days: 1, label: '오늘' },
@@ -88,24 +93,65 @@ export const useInquiryLogViewModel = () => {
   const [saving, setSaving] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
 
-  /** 다시 받는다 — 실패하면 오류 문구, 성공하면 null(새로고침 알림용). */
-  const load = useCallback(async (): Promise<string | null> => {
-    const res = await getInquiries(days)
-    setNow(Date.now())
-    if (!res.ok) {
-      setError(res.error)
-      setStatus('error')
-      return res.error
-    }
-    setInquiries(res.data.inquiries)
-    // 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
-    const ids = new Set(res.data.inquiries.map((each) => each.id))
-    setSelected((prev) => new Set([...prev].filter((id) => ids.has(id))))
-    setFetchedAt(res.data.fetchedAt)
-    setError(null)
-    setStatus('ready')
-    return null
-  }, [days])
+  /** 다시 받는다 — 실패하면 오류 문구, 성공하면 null(새로고침 알림용).
+   * 처음·기간을 바꿨을 때·새로고침·10분마다는 기간 전체를, 그 사이 1분마다는
+   * 지난번 뒤에 고친 문의만 받아(since) 가진 목록에 합친다. */
+  const cursor = useRef<{
+    days: number
+    fetchedAt: number
+    fullAt: number
+  } | null>(null)
+  const latest = useRef(0)
+  const load = useCallback(
+    async (options?: { full?: boolean }): Promise<string | null> => {
+      const request = ++latest.current
+      const prev = cursor.current
+      const since =
+        !options?.full &&
+        prev?.days === days &&
+        Date.now() - prev.fullAt < FULL_RELOAD_MS
+          ? prev.fetchedAt
+          : undefined
+      const res = await getInquiries(days, since)
+      if (request !== latest.current) return null
+      setNow(Date.now())
+      if (!res.ok) {
+        setError(res.error)
+        setStatus('error')
+        return res.error
+      }
+      const { inquiries: received, fetchedAt } = res.data
+      const incremental = res.data.incremental === true
+      cursor.current = {
+        days,
+        fetchedAt,
+        fullAt: incremental && prev ? prev.fullAt : Date.now(),
+      }
+      if (incremental) {
+        setInquiries((current) =>
+          mergeRecent(
+            current,
+            received,
+            (each) => each.id,
+            (each) => each.receivedAt,
+            fetchedAt - days * 86_400_000,
+          ),
+        )
+      } else {
+        setInquiries(received)
+        // 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
+        const ids = new Set(received.map((each) => each.id))
+        setSelected(
+          (chosen) => new Set([...chosen].filter((id) => ids.has(id))),
+        )
+      }
+      setFetchedAt(res.data.fetchedAt)
+      setError(null)
+      setStatus('ready')
+      return null
+    },
+    [days],
+  )
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)
@@ -270,7 +316,7 @@ export const useInquiryLogViewModel = () => {
       toggleSelect,
       toggleSelectAll,
       deleteSelected,
-      reload: load,
+      reload: () => load({ full: true }),
       toggleOpen: (id: string) =>
         setOpenId((prev) => (prev === id ? null : id)),
       retry,

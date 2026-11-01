@@ -3,13 +3,14 @@ import {
   deleteInquiries,
   getInquirySettings,
   listInquiries,
+  listInquiriesUpdatedSince,
   retryInquiryStep,
   saveInquirySettings,
   submitInquiry as processInquiry,
   validateInquiry,
 } from '../inquiry'
 import { db, mondayApiKey, solapiApiKey, solapiApiSecret } from '../app'
-import { endpoint } from '../http'
+import { endpoint, parseSince } from '../http'
 
 // ────────────────────────────────
 // 웹사이트 상담 신청 — 예전 Zapier 자동화(Monday 보드 등록 + 접수 안내 문자)를
@@ -57,13 +58,36 @@ export const submitInquiry = onRequest(
 )
 
 // listInquiries — 접수 로그 화면. ?days=N(기본 7, 최대 90)일 안의 문의.
+// ?since=(지난 응답의 fetchedAt)를 주면 그 뒤에 고친 문의만 준다
+// (incremental: true). 저장 시각과 실제 쓰기 사이의 틈을 덮으려고 2분 앞부터.
+// 지운 문의는 여기로 알 수 없어서 화면이 10분마다 기간 전체를 다시 받는다.
+const INQUIRY_OVERLAP_MS = 2 * 60_000
+const MAX_UPDATED_INQUIRIES = 500
+
 export const listInquiryLogs = onRequest(
   endpoint(
     { name: 'listInquiryLogs', method: 'GET' },
     async ({ request, response }) => {
       const days = Math.min(Math.max(Number(request.query.days) || 7, 1), 90)
-      const inquiries = await listInquiries(db, Date.now() - days * 86_400_000)
-      response.status(200).send({ inquiries, days, fetchedAt: Date.now() })
+      const now = Date.now()
+      const windowStart = now - days * 86_400_000
+      const since = parseSince(request.query.since, windowStart, now)
+      const updated =
+        since === null
+          ? null
+          : await listInquiriesUpdatedSince(
+              db,
+              since - INQUIRY_OVERLAP_MS,
+              MAX_UPDATED_INQUIRIES,
+            )
+      const incremental =
+        updated !== null && updated.length < MAX_UPDATED_INQUIRIES
+      const inquiries = incremental
+        ? updated
+        : await listInquiries(db, windowStart)
+      response
+        .status(200)
+        .send({ inquiries, days, fetchedAt: now, incremental })
     },
   ),
 )

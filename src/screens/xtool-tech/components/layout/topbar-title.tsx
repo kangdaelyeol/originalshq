@@ -2,10 +2,8 @@ import { ExternalLink } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { BOARD_TABS, type TechBoardKey } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
-import { sinceTime } from '../../lib/dates'
 import { NAV_SECTIONS } from '../../nav'
 import { XT_BASE, xtPath } from '../../paths'
-import { StatusPill } from '../ui/status-pill'
 
 /** 지금 주소의 보드(/xtool-tech/boards/<slug>) */
 const boardOf = (pathname: string) => BOARD_TABS.find((tab) => pathname.startsWith(xtPath(`/boards/${tab.slug}`)))
@@ -21,7 +19,7 @@ const navLabelOf = (pathname: string): string | null => {
   return null
 }
 
-/** 상단바 왼쪽 — 보드면 보드 이름·실시간·건수·동기화 시각, 그 밖은 메뉴 이름. */
+/** 상단바 왼쪽 — 보드면 Monday 보드 이름, 그 밖은 메뉴 이름. */
 export function TopbarTitle() {
   const { pathname } = useLocation()
   const tab = boardOf(pathname)
@@ -39,15 +37,6 @@ function BoardTitle({ boardKey, fallback }: { boardKey: TechBoardKey; fallback: 
   return (
     <div className="topbar-title">
       <h1>{board?.name ?? fallback}</h1>
-      {board && (
-        <p>
-          <StatusPill tone="good" dot="pulse">
-            실시간
-          </StatusPill>
-          전체 {board.records.length}건{board.syncedAt ? ` · 전체 동기화 ${sinceTime(board.syncedAt)}` : ''}
-          {board.lastSync && !board.lastSync.ok && <StatusPill tone="crit">마지막 동기화 실패</StatusPill>}
-        </p>
-      )}
     </div>
   )
 }

@@ -93,10 +93,11 @@ const post = (body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 })
 
-/** 최근 days일에 들어온 상담 신청 — 최근 것부터. */
-export const getInquiries = (days: number) =>
-  request<{ inquiries: Inquiry[]; fetchedAt: number }>(
-    `listInquiryLogs?days=${days}`,
+/** 최근 days일에 들어온 상담 신청 — 최근 것부터. since(지난 응답의 fetchedAt)를
+ * 주면 그 뒤에 고친 것만 온다(incremental — 가진 목록에 합친다). */
+export const getInquiries = (days: number, since?: number) =>
+  request<{ inquiries: Inquiry[]; fetchedAt: number; incremental?: boolean }>(
+    `listInquiryLogs?days=${days}${since ? `&since=${since}` : ''}`,
     undefined,
     '상담 신청 기록을 불러오지 못했습니다',
   )
