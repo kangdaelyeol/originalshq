@@ -24,6 +24,7 @@ import {
 import { cx } from '../../lib/cx'
 import { Button } from '../ui/button'
 import { DrawerShell } from './drawer-shell'
+import { RelationPicker } from './relation-picker'
 import { SubitemsEditor } from './subitems-editor'
 
 // 고칠 수 있는 타입 — functions-xtool/src/tech-boards/columns.ts의 WRITABLE_TYPES와 같게.
@@ -42,7 +43,8 @@ const WRITABLE_TYPES = new Set([
   'link',
   'location',
 ])
-const isWritable = (c: TechColumn) => c.writable || WRITABLE_TYPES.has(c.type)
+const isWritable = (c: TechColumn) =>
+  c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
 
 // 편집 칸에서 아예 안 보이는 타입 — 버튼·item id·하위 아이템 칸 등 값이 아닌 것.
 const HIDDEN_TYPES = new Set(['button', 'item_id', 'subtasks', 'last_updated', 'creation_log', 'auto_number'])
@@ -384,6 +386,17 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
       return <DateTimeInput id={id} title={column.title} value={value as { date: string; time: string }} onChange={onChange} />
     case 'location':
       return <LocationInput id={id} value={value as LocationState} onChange={onChange} />
+    case 'board_relation':
+      // 가리키는 보드가 우리 캐시에 있는 연결 칸만 여기 온다(그 밖은 잠금).
+      return column.linkedBoardKey ? (
+        <RelationPicker
+          boardKey={column.linkedBoardKey}
+          selected={value as string[]}
+          multiple
+          fallbackText={currentText}
+          onChange={(ids) => onChange(ids)}
+        />
+      ) : null
     case 'link': {
       const link = value as { url: string; text: string }
       return (

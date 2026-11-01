@@ -57,6 +57,8 @@ interface RecordTableProps<T extends RecordLike> {
   onSelect: (record: T) => void
   selectedId?: string | null
   searchPlaceholder?: string
+  /** 진행 중/완료 구분이 없는 보드(부품·대여품·SN 등)는 false — 칩 없이 전체를 보인다. */
+  progress?: boolean
 }
 
 // 처음에 보여 줄 줄 수 — 완료 목록은 수백 건이라 "더 보기"로 늘린다.
@@ -74,10 +76,11 @@ export function RecordTable<T extends RecordLike>({
   onSelect,
   selectedId,
   searchPlaceholder = '이름·내용 검색',
+  progress = true,
 }: RecordTableProps<T>) {
   const edit = useBoardEdit()
   const saving = usePendingSaves()
-  const [view, setView] = useState<View>('open')
+  const [view, setView] = useState<View>(progress ? 'open' : 'all')
   const [assignee, setAssignee] = useState('')
   const [query, setQuery] = useState('')
   const [limit, setLimit] = useState(PAGE)
@@ -165,12 +168,14 @@ export function RecordTable<T extends RecordLike>({
       subtitle={`${rows.length}건`}
       actions={
         <>
-          <SegmentedControl
-            ariaLabel="진행 상태"
-            options={viewOptions}
-            value={view}
-            onChange={reset(setView)}
-          />
+          {progress && (
+            <SegmentedControl
+              ariaLabel="진행 상태"
+              options={viewOptions}
+              value={view}
+              onChange={reset(setView)}
+            />
+          )}
           {edit && (
             <Button size="sm" icon={Plus} onClick={() => edit.openEditor(null)}>
               새로 만들기
@@ -191,20 +196,22 @@ export function RecordTable<T extends RecordLike>({
             onChange={(e) => reset(setQuery)(e.target.value)}
           />
         </label>
-        <label className="record-select">
-          <span className="sr-only">담당자</span>
-          <select
-            value={assignee}
-            onChange={(e) => reset(setAssignee)(e.target.value)}
-          >
-            <option value="">담당자 전체</option>
-            {people.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {people.length > 0 && (
+          <label className="record-select">
+            <span className="sr-only">담당자</span>
+            <select
+              value={assignee}
+              onChange={(e) => reset(setAssignee)(e.target.value)}
+            >
+              <option value="">담당자 전체</option>
+              {people.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <div className="table-wrap">

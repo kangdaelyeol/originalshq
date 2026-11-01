@@ -5,7 +5,16 @@
 import { httpsCallable } from 'firebase/functions'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
 
-export type TechBoardKey = 'fieldService' | 'repair' | 'records' | 'techInquiry' | 'techTask' | 'parts'
+export type TechBoardKey =
+  | 'fieldService'
+  | 'repair'
+  | 'records'
+  | 'techInquiry'
+  | 'techTask'
+  | 'asRequests'
+  | 'parts'
+  | 'rentals'
+  | 'serials'
 
 interface RecordBase {
   itemId: string
@@ -90,7 +99,43 @@ export interface DocTaskRecord extends RecordBase {
   details: string | null
 }
 
-/** 부품 마스터 — AS 청구 부품을 고를 때 쓴다(메뉴에는 없음). */
+/** AS 신청서 — 고객이 직접 작성하는 접수 양식 */
+export interface AsRequestRecord extends RecordBase {
+  receivedAt: string | null
+  purchasedAt: string | null
+  purchaseChannel: string | null
+  device: string | null
+  model: string | null
+  symptom: string | null
+  address: string | null
+  phone: string | null
+  agreed: boolean
+  attachmentCount: number
+}
+
+/** 대여품 관리 */
+export interface RentalRecord extends RecordBase {
+  serialNumber: string | null
+  assignees: string[]
+  renter: string | null
+  renterPhone: string | null
+  rentedAt: string | null
+  shipAt: string | null
+  returnedAt: string | null
+  hasPhoto: boolean
+}
+
+/** 엑스툴 SN 관리 — item 이름이 SN */
+export interface SerialRecord extends RecordBase {
+  serialNumber: string
+  device: string | null
+  receivedAt: string | null
+  notes: string | null
+  links: { fieldService: string[]; repair: string[]; rental: string[] }
+  hasPhoto: boolean
+}
+
+/** 부품 마스터 — 관리 메뉴, AS 청구 부품 고르기에도 쓴다. */
 export interface PartRecord extends RecordBase {
   nameEn: string | null
   sku: string | null
@@ -111,7 +156,10 @@ export interface TechBoardRecordMap {
   records: DocTaskRecord
   techInquiry: InquiryRecord
   techTask: TaskRecord
+  asRequests: AsRequestRecord
   parts: PartRecord
+  rentals: RentalRecord
+  serials: SerialRecord
 }
 
 export interface TechSyncResult {
@@ -256,18 +304,39 @@ export const createTechItem = (input: TechEditInput) =>
   httpsCallable<TechEditInput, { itemId: string | null }>(xtoolFirebase().functions, 'techCreateItem')(input)
 
 /** 기술지원팀 보드 — 순서가 곧 사이드바 메뉴 순서(개요 바로 아래). slug는 주소(/xtool-tech/boards/<slug>). */
-export const BOARD_TABS: readonly { slug: string; key: TechBoardKey; label: string }[] = [
-  { slug: 'field-service', key: 'fieldService', label: '출장업무' },
-  { slug: 'repair', key: 'repair', label: 'AS' },
-  { slug: 'records', key: 'records', label: '자료정리' },
-  { slug: 'inquiry', key: 'techInquiry', label: '아톡문의' },
-  { slug: 'tasks', key: 'techTask', label: '기타업무' },
+export const BOARD_TABS: readonly {
+  slug: string
+  key: TechBoardKey
+  label: string
+  /** 사이드바 묶음 — work: "메뉴"(개요 아래 업무 보드) · manage: "관리"(대장·재고) */
+  section: 'work' | 'manage'
+}[] = [
+  { slug: 'field-service', key: 'fieldService', label: '출장업무', section: 'work' },
+  { slug: 'repair', key: 'repair', label: 'AS', section: 'work' },
+  { slug: 'records', key: 'records', label: '자료정리', section: 'work' },
+  { slug: 'inquiry', key: 'techInquiry', label: '아톡문의', section: 'work' },
+  { slug: 'tasks', key: 'techTask', label: '기타업무', section: 'work' },
+  { slug: 'as-requests', key: 'asRequests', label: 'AS 신청서', section: 'manage' },
+  { slug: 'parts', key: 'parts', label: '부품 마스터', section: 'manage' },
+  { slug: 'rentals', key: 'rentals', label: '대여품 관리', section: 'manage' },
+  { slug: 'serials', key: 'serials', label: 'SN 관리', section: 'manage' },
 ]
 
 // Monday 날짜 칸은 시간까지 적으면 "2026-11-02 14:00"으로 온다(보드에 사람이 적은 한국 시각).
 // 화면은 날짜(YYYY-MM-DD)끼리 비교하므로 받을 때 날짜만 남긴다 — 출장 방문 시각만 따로 둔다.
 const DATE_WITH_TIME = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/
-const DATE_FIELDS = ['receivedAt', 'visitAt', 'completedAt', 'requestedAt', 'startedAt', 'dueAt'] as const
+const DATE_FIELDS = [
+  'receivedAt',
+  'visitAt',
+  'completedAt',
+  'requestedAt',
+  'startedAt',
+  'dueAt',
+  'purchasedAt',
+  'rentedAt',
+  'shipAt',
+  'returnedAt',
+] as const
 
 export function normalizeRecord<T>(record: T): T {
   const next: Record<string, unknown> = { ...(record as Record<string, unknown>) }

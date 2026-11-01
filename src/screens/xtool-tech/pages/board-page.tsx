@@ -8,9 +8,13 @@ import { GlassCard } from '../components/ui/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
 import { XT_BASE } from '../paths'
+import { AsRequestsBoard } from './boards/as-requests-board'
 import { FieldServiceBoard } from './boards/field-service-board'
 import { InquiryBoard } from './boards/inquiry-board'
+import { PartsBoard } from './boards/parts-board'
 import { RecordsBoard } from './boards/records-board'
+import { RentalsBoard } from './boards/rentals-board'
+import { SerialsBoard } from './boards/serials-board'
 import { RepairBoard } from './boards/repair-board'
 import { TaskBoard } from './boards/task-board'
 
@@ -72,6 +76,10 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
       {tabKey === 'records' && <RecordsBoard doc={doc as TechBoardDoc<'records'>} />}
       {tabKey === 'techInquiry' && <InquiryBoard doc={doc as TechBoardDoc<'techInquiry'>} />}
       {tabKey === 'techTask' && <TaskBoard doc={doc as TechBoardDoc<'techTask'>} />}
+      {tabKey === 'asRequests' && <AsRequestsBoard doc={doc as TechBoardDoc<'asRequests'>} />}
+      {tabKey === 'parts' && <PartsBoard doc={doc as TechBoardDoc<'parts'>} />}
+      {tabKey === 'rentals' && <RentalsBoard doc={doc as TechBoardDoc<'rentals'>} />}
+      {tabKey === 'serials' && <SerialsBoard doc={doc as TechBoardDoc<'serials'>} />}
       <ItemEditor
         open={editing !== null}
         boardKey={tabKey}

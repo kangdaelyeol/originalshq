@@ -1,7 +1,6 @@
-import { Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { TechColumn, TechItemDoc, PartRecord } from '../../data/tech-boards'
-import { useTechBoard } from '../../data/tech-boards-store'
+import { Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useMemo } from 'react'
+import type { TechColumn } from '../../data/tech-boards'
 import type { EditState } from '../../data/tech-edit'
 import {
   editableSubColumns,
@@ -12,7 +11,7 @@ import {
   type SubRow,
 } from '../../data/tech-subitems'
 import { cx } from '../../lib/cx'
-import { formatInt } from '../../lib/format'
+import { RelationPicker } from './relation-picker'
 
 interface SubitemsEditorProps {
   label: string
@@ -93,16 +92,21 @@ export function SubitemsEditor({ label, columns, rows, onChange }: SubitemsEdito
               )}
               {editable.map((c) =>
                 c.type === 'board_relation' ? (
-                  <PartPicker
+                  <RelationPicker
                     key={c.id}
-                    selected={(row.values[c.id] as string[])[0] ?? null}
-                    fallbackName={row.texts?.[c.id] || row.name}
+                    boardKey={c.linkedBoardKey!}
+                    selected={row.values[c.id] as string[]}
+                    fallbackText={row.texts?.[c.id] || row.name}
                     disabled={row.removed}
-                    onPick={(part) => {
-                      const values = { ...row.values, [c.id]: [part.itemId] }
+                    compact
+                    placeholder="부품 고르기"
+                    onChange={(ids, picked) => {
+                      const values = { ...row.values, [c.id]: ids }
                       // 금액이 비어 있으면 부품 비용으로 채운다.
-                      if (price && !row.values[price.id] && part.cost !== null) values[price.id] = String(part.cost)
-                      update(row.key, { name: part.name, values })
+                      const cost = picked?.record.cost
+                      if (price && !row.values[price.id] && typeof cost === 'number') values[price.id] = String(cost)
+                      // 줄 이름은 고른 것의 이름(Monday 하위 아이템 이름)
+                      update(row.key, { name: picked?.record.name ?? row.name, values })
                     }}
                   />
                 ) : (
@@ -159,103 +163,5 @@ export function SubitemsEditor({ label, columns, rows, onChange }: SubitemsEdito
         {relation ? '부품 추가' : '품목 추가'}
       </button>
     </section>
-  )
-}
-
-/** 부품 고르기 — 부품 마스터 보드(우리 캐시)에서 이름·영문명·SKU·분류로 찾는다. */
-function PartPicker({
-  selected,
-  fallbackName,
-  disabled,
-  onPick,
-}: {
-  selected: string | null
-  fallbackName: string
-  disabled?: boolean
-  onPick: (part: PartRecord & { itemId: string }) => void
-}) {
-  const parts = useTechBoard('parts')
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    ref.current?.querySelector('input')?.focus()
-    ref.current?.querySelector('.part-picker__list')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-    const onDown = (e: PointerEvent) => {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('pointerdown', onDown)
-    return () => document.removeEventListener('pointerdown', onDown)
-  }, [open])
-
-  const records = useMemo(
-    () => (parts.items ?? []).map((item: TechItemDoc) => ({ ...(item.record as PartRecord), itemId: item.itemId })),
-    [parts.items],
-  )
-  const current = records.find((p) => p.itemId === selected)
-  const needle = query.trim().toLowerCase()
-  const shown = records
-    .filter((p) => !needle || [p.name, p.nameEn, p.sku, p.category].join(' ').toLowerCase().includes(needle))
-    .slice(0, 60)
-
-  return (
-    <div
-      ref={ref}
-      className="part-picker"
-      data-popover-open={open || undefined}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape' && open) setOpen(false)
-      }}
-    >
-      <button
-        type="button"
-        className="field__input subitems__input part-picker__trigger"
-        aria-expanded={open}
-        disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span className={cx('multi-select__value', !current && !selected && 'is-empty')}>
-          {current?.name ?? (selected ? fallbackName : '부품 고르기')}
-        </span>
-      </button>
-      {open && (
-        <div className="part-picker__list">
-          <label className="part-picker__search">
-            <Search size={13} aria-hidden />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="부품명·영문명·SKU·분류" aria-label="부품 검색" />
-          </label>
-          {parts.items === null ? (
-            <p className="part-picker__empty">부품 목록을 불러오는 중…</p>
-          ) : shown.length === 0 ? (
-            <p className="part-picker__empty">맞는 부품이 없어요.</p>
-          ) : (
-            <ul>
-              {shown.map((p) => (
-                <li key={p.itemId}>
-                  <button
-                    type="button"
-                    className={cx('part-picker__option', p.itemId === selected && 'is-on')}
-                    onClick={() => {
-                      onPick(p)
-                      setOpen(false)
-                      setQuery('')
-                    }}
-                  >
-                    <strong>{p.name}</strong>
-                    <span>{[p.sku, p.category].filter(Boolean).join(' · ') || '—'}</span>
-                    <small>
-                      재고 {p.stock ?? '—'}
-                      {p.cost !== null && ` · ${formatInt(p.cost)}원`}
-                    </small>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
   )
 }
