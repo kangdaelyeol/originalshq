@@ -3,6 +3,7 @@ import { onRequest } from 'firebase-functions/https'
 import { onSchedule } from 'firebase-functions/scheduler'
 import { readGaTracking, saveGaSyncError, syncGaEvents } from '../ga-sync'
 import { recordBatchRun } from '../batch-log'
+import { traced } from '../cost-trace'
 import {
   deleteBoard,
   fetchItemUpdates,
@@ -501,7 +502,7 @@ export const syncMondayBoardsScheduled = onSchedule(
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
     memory: MONDAY_SYNC_MEMORY,
   },
-  async (event) => {
+  traced('syncMondayBoardsScheduled', 'schedule', async (event) => {
     try {
       const summary = await recordBatchRun(
         db,
@@ -551,5 +552,5 @@ export const syncMondayBoardsScheduled = onSchedule(
       logger.error('GA4 이벤트 수집 실패:', error)
       await saveGaSyncError(db, error)
     }
-  },
+  }),
 )

@@ -137,6 +137,8 @@ export interface TechColumn {
   writable: boolean
   /** 상태·드롭다운의 고를 수 있는 값(Monday 설정 순서) */
   options?: string[]
+  /** 연결 칸이 가리키는 우리 보드(부품 마스터 등) — 있으면 그 캐시에서 골라 쓸 수 있다. */
+  linkedBoardKey?: TechBoardKey
 }
 
 export interface TechGroup {
@@ -165,6 +167,8 @@ export interface TechBoardMeta {
   /** 마지막으로 전체 동기화에 성공한 시각(ms) */
   syncedAt: number | null
   lastSync: TechSyncResult | null
+  /** 하위 아이템 보드(출장 설치 품목·AS 청구 부품) — 하위 아이템이 있는 보드만. */
+  subitems?: { boardId: string; columns: TechColumn[] }
   /** 우리가 만든 Monday webhook — 다시 설정할 때 지우고 새로 만든다. */
   webhooks?: { ids: string[]; at: number; errors: string[] }
 }
@@ -173,6 +177,13 @@ export interface TechBoardMeta {
 export interface TechCellValue {
   text: string
   value: string | null
+}
+
+/** 하위 아이템 하나 — 편집 칸의 처음 값. */
+export interface TechSubitemDoc {
+  id: string
+  name: string
+  values: Record<string, TechCellValue>
 }
 
 /** techItems/{itemId} — Monday item 하나. */
@@ -186,6 +197,8 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   record: TechBoardRecords[K]
   /** 컬럼 id → 값 — 편집 칸의 처음 값 */
   values: Record<string, TechCellValue>
+  /** 하위 아이템(하위 아이템이 있는 보드만, 그 밖에는 빈 배열) */
+  subitems: TechSubitemDoc[]
   createdAt: string | null
   updatedAt: string | null
   /** 우리가 이 문서를 마지막으로 쓴 시각(ms) */
@@ -212,6 +225,13 @@ export type TechEditValue =
   | { lat: string; lng: string; address: string }
   | null
 
+/** 하위 아이템 한 줄의 변경 — 새 줄은 id 없이. */
+export interface TechSubitemEdit {
+  id?: string
+  name?: string
+  columns?: Record<string, TechEditValue>
+}
+
 export interface TechEditInput {
   boardKey: TechBoardKey
   /** 수정할 item — 새로 만들 때는 없다. */
@@ -220,6 +240,12 @@ export interface TechEditInput {
   groupId?: string
   /** 컬럼 id → 새 값 */
   columns?: Record<string, TechEditValue>
+  /** 하위 아이템 추가·수정·삭제 */
+  subitems?: {
+    create?: TechSubitemEdit[]
+    update?: TechSubitemEdit[]
+    remove?: string[]
+  }
 }
 
 export interface TechChange {

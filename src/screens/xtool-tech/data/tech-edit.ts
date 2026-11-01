@@ -48,6 +48,7 @@ export function emptyState(column: TechColumn): EditState {
   switch (column.type) {
     case 'dropdown':
     case 'people':
+    case 'board_relation':
       return []
     case 'checkbox':
       return false
@@ -72,6 +73,10 @@ export function initialState(column: TechColumn, cell: TechCellValue | undefined
     case 'people': {
       const people = (json?.personsAndTeams ?? []) as { id: number | string; kind: string }[]
       return people.filter((p) => p.kind === 'person').map((p) => String(p.id))
+    }
+    case 'board_relation': {
+      const linked = (json?.linkedPulseIds ?? []) as { linkedPulseId: number | string }[]
+      return linked.map((l) => String(l.linkedPulseId))
     }
     case 'checkbox':
       return json?.checked === true || json?.checked === 'true' || cell.text === 'v'
@@ -103,6 +108,7 @@ export function toEditValue(column: TechColumn, state: EditState): TechEditValue
   switch (column.type) {
     case 'dropdown':
     case 'people':
+    case 'board_relation':
       return state as string[]
     case 'checkbox':
       return state as boolean

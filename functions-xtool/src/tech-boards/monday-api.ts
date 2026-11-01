@@ -26,6 +26,21 @@ export interface TechRawBoard {
   columns: TechRawColumn[]
   groups: Array<{ id: string; title: string }>
   items: TechRawItem[]
+  /** 하위 아이템 보드 — 하위 아이템까지 받은 보드만. */
+  subitemBoard?: { id: string; columns: TechRawColumn[] }
+}
+
+/** 하위 아이템 칸(subtasks)의 설정에 적힌 하위 아이템 보드 id */
+const subitemBoardId = (columns: TechRawColumn[]): string | null => {
+  const column = columns.find((c) => c.type === 'subtasks')
+  try {
+    const ids = JSON.parse(column?.settings_str ?? '{}').boardIds as
+      | Array<number | string>
+      | undefined
+    return ids?.length ? String(ids[0]) : null
+  } catch {
+    return null
+  }
 }
 
 const COLUMN_VALUE_FIELDS = `
@@ -115,7 +130,22 @@ export async function fetchTechBoard(
     items.push(...next.next_items_page.items)
     cursor = next.next_items_page.cursor
   }
-  return { ...board, items }
+
+  let subitemBoard: TechRawBoard['subitemBoard']
+  const subId = withSubitems ? subitemBoardId(board.columns) : null
+  if (subId) {
+    const sub = await fetchMonday<{
+      boards: Array<{ id: string; columns: TechRawColumn[] }> | null
+    }>(
+      apiKey,
+      `query TechSubBoard($boardId: ID!) {
+        boards(ids: [$boardId]) { id columns { id title type settings_str } }
+      }`,
+      { boardId: subId },
+    )
+    if (sub.boards?.[0]) subitemBoard = sub.boards[0]
+  }
+  return { ...board, items, subitemBoard }
 }
 
 /** item 몇 개만 다시 읽기(수정 직후·webhook). 지워진 item은 결과에 없거나
@@ -243,5 +273,40 @@ export async function deleteWebhook(apiKey: string, id: string): Promise<void> {
       delete_webhook(id: $id) { id }
     }`,
     { id },
+  )
+}
+
+/** 하위 아이템 만들기 — 만든 id를 돌려준다. */
+export async function createSubitem(
+  apiKey: string,
+  parentId: string,
+  name: string,
+  columnValues: Record<string, unknown>,
+): Promise<string> {
+  const data = await fetchMonday<{ create_subitem: { id: string } }>(
+    apiKey,
+    `mutation TechSubCreate($parentId: ID!, $name: String!, $values: JSON) {
+      create_subitem(
+        parent_item_id: $parentId
+        item_name: $name
+        column_values: $values
+      ) { id }
+    }`,
+    { parentId, name, values: JSON.stringify(columnValues) },
+  )
+  return data.create_subitem.id
+}
+
+/** item(하위 아이템 포함) 지우기 — Monday 휴지통으로 간다. */
+export async function deleteItem(
+  apiKey: string,
+  itemId: string,
+): Promise<void> {
+  await fetchMonday(
+    apiKey,
+    `mutation TechDelete($itemId: ID!) {
+      delete_item(item_id: $itemId) { id }
+    }`,
+    { itemId },
   )
 }

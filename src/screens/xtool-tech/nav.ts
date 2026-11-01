@@ -5,6 +5,7 @@ import {
   LayoutGrid,
   ListTodo,
   MessageCircle,
+  Package,
   Rocket,
   Settings,
   TrendingUp,
@@ -34,6 +35,8 @@ const BOARD_ICONS: Record<TechBoardKey, LucideIcon> = {
   records: FileText,
   techInquiry: MessageCircle,
   techTask: ClipboardList,
+  // 부품 마스터 — 메뉴에는 아직 없음(AS 청구 부품 고르기에만 쓴다)
+  parts: Package,
 }
 
 export const NAV_SECTIONS: readonly NavSection[] = [

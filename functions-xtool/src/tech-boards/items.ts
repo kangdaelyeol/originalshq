@@ -3,7 +3,7 @@ import { buildMondayItems, detectPhoneColumnId } from '../monday/helper'
 import { MondayColumn } from '../monday/types'
 import { convertTechItem, TechBoardSource } from './boards'
 import { TechRawItem } from './monday-api'
-import { TechCellValue, TechItemDoc } from './types'
+import { TechCellValue, TechItemDoc, TechSubitemDoc } from './types'
 
 /** Monday에서 받은 item들 → techItems 문서. 보드 이름·컬럼은 item에 없어서
  * 따로 받는다(전체 동기화는 방금 받은 보드, 한 건 갱신은 저장된 meta). */
@@ -31,6 +31,19 @@ export function toItemDocs(
       }
     }
     const record = convertTechItem(source.key, item)
+    const subitems: TechSubitemDoc[] = (items[i].subitems ?? []).map((sub) => ({
+      id: String(sub.id),
+      name: sub.name,
+      values: Object.fromEntries(
+        sub.column_values.map((cell) => [
+          cell.id,
+          {
+            text: cell.display_value ?? cell.text ?? '',
+            value: (cell as { value?: string | null }).value ?? null,
+          },
+        ]),
+      ),
+    }))
     const body = {
       itemId: item.id,
       boardKey: source.key,
@@ -39,6 +52,7 @@ export function toItemDocs(
       groupId: item.groupId,
       record,
       values,
+      subitems,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     }

@@ -5,7 +5,7 @@
 import { httpsCallable } from 'firebase/functions'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
 
-export type TechBoardKey = 'fieldService' | 'repair' | 'records' | 'techInquiry' | 'techTask'
+export type TechBoardKey = 'fieldService' | 'repair' | 'records' | 'techInquiry' | 'techTask' | 'parts'
 
 interface RecordBase {
   itemId: string
@@ -90,12 +90,28 @@ export interface DocTaskRecord extends RecordBase {
   details: string | null
 }
 
+/** 부품 마스터 — AS 청구 부품을 고를 때 쓴다(메뉴에는 없음). */
+export interface PartRecord extends RecordBase {
+  nameEn: string | null
+  sku: string | null
+  category: string | null
+  stock: number | null
+  cost: number | null
+  priceUsd: number | null
+  location: string | null
+  usage: string | null
+  notes: string | null
+  videoUrl: string | null
+  hasPhoto: boolean
+}
+
 export interface TechBoardRecordMap {
   fieldService: FieldServiceRecord
   repair: RepairRecord
   records: DocTaskRecord
   techInquiry: InquiryRecord
   techTask: TaskRecord
+  parts: PartRecord
 }
 
 export interface TechSyncResult {
@@ -128,6 +144,8 @@ export interface TechColumn {
   writable: boolean
   /** 상태·드롭다운의 고를 수 있는 값 */
   options?: string[]
+  /** 연결 칸이 가리키는 우리 보드(부품 마스터 등) */
+  linkedBoardKey?: TechBoardKey
 }
 
 export interface TechGroup {
@@ -145,6 +163,15 @@ export interface TechBoardMeta {
   syncedAt: number | null
   lastSync: TechSyncResult | null
   webhooks?: { ids: string[]; at: number; errors: string[] }
+  /** 하위 아이템 보드(출장 설치 품목·AS 청구 부품) */
+  subitems?: { boardId: string; columns: TechColumn[] }
+}
+
+/** 하위 아이템 한 줄 */
+export interface TechSubitemDoc {
+  id: string
+  name: string
+  values: Record<string, TechCellValue>
 }
 
 /** Monday에 적힌 값 그대로 — text는 화면용 글자(한국 시간), value는 원본 JSON(시간은 UTC). */
@@ -162,6 +189,8 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   groupId: string | null
   record: TechBoardRecordMap[K]
   values: Record<string, TechCellValue>
+  /** 하위 아이템 — 하위 아이템이 있는 보드만(옛 캐시에는 없을 수 있다) */
+  subitems?: TechSubitemDoc[]
   createdAt: string | null
   updatedAt: string | null
   syncedAt: number
@@ -185,12 +214,20 @@ export type TechEditValue =
   | { lat: string; lng: string; address: string }
   | null
 
+export interface TechSubitemEdit {
+  id?: string
+  name?: string
+  columns?: Record<string, TechEditValue>
+}
+
 export interface TechEditInput {
   boardKey: TechBoardKey
   itemId?: string
   name?: string
   groupId?: string
   columns?: Record<string, TechEditValue>
+  /** 하위 아이템 추가·수정·삭제 */
+  subitems?: { create?: TechSubitemEdit[]; update?: TechSubitemEdit[]; remove?: string[] }
 }
 
 /** item 고치기 — Monday에 쓰고 캐시를 맞춘다(화면은 실시간 구독으로 따라온다). */

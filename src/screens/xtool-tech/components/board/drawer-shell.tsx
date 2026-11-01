@@ -29,6 +29,8 @@ export function DrawerShell({ open, onClose, labelledBy, layer = 'base', content
     panelRef.current?.focus()
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      // 패널 안의 펼친 목록(드롭다운)이 있으면 그것만 닫히게 양보한다.
+      if (panelRef.current?.querySelector('[data-popover-open]')) return
       // 위에 겹친 패널은 먼저(capture) 받아서 아래 패널까지 닫히지 않게 막는다.
       if (layer === 'top') e.stopImmediatePropagation()
       onClose()

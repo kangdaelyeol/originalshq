@@ -1,5 +1,5 @@
 import { TechEditError } from './errors'
-import { TechColumn, TechEditValue } from './types'
+import { TechBoardKey, TechColumn, TechEditValue } from './types'
 import { TechRawColumn } from './monday-api'
 
 // 컬럼 타입별 쓰기 — 화면이 보낸 값(TechEditValue)을 Monday가 받는 column_values
@@ -52,19 +52,50 @@ export function parseOptions(column: TechRawColumn): string[] | undefined {
   return undefined
 }
 
-/** 보드 컬럼 → 화면용 컬럼 정의. 이름 칸(name)은 따로 다뤄서 뺀다. */
-export const toTechColumns = (columns: TechRawColumn[]): TechColumn[] =>
+/** 연결 칸이 가리키는 보드 id(설정의 boardIds 첫 번째) */
+const linkedBoardId = (column: TechRawColumn): string | null => {
+  try {
+    const ids = JSON.parse(column.settings_str ?? '{}').boardIds as
+      | Array<number | string>
+      | undefined
+    return ids?.length ? String(ids[0]) : null
+  } catch {
+    return null
+  }
+}
+
+/** 고칠 수 있는 칸인지 — 연결 칸은 가리키는 보드가 우리 캐시에 있을 때만
+ * (거기서 골라야 해서). */
+export const isWritableColumn = (column: {
+  type: string
+  linkedBoardKey?: string
+}): boolean =>
+  WRITABLE_TYPES.has(column.type) ||
+  (column.type === 'board_relation' && !!column.linkedBoardKey)
+
+/** 보드 컬럼 → 화면용 컬럼 정의. 이름 칸(name)은 따로 다뤄서 뺀다.
+ * keyOfBoard: Monday 보드 id → 우리 보드 이름표(연결 칸이 가리키는 보드 찾기). */
+export const toTechColumns = (
+  columns: TechRawColumn[],
+  keyOfBoard: (boardId: string) => TechBoardKey | undefined = () => undefined,
+): TechColumn[] =>
   columns
     .filter((column) => column.id !== 'name')
     .map((column) => {
       const options = parseOptions(column)
-      return {
+      const linkedId =
+        column.type === 'board_relation' ? linkedBoardId(column) : null
+      const linkedBoardKey = linkedId ? keyOfBoard(linkedId) : undefined
+      const result: TechColumn = {
         id: column.id,
         title: column.title,
         type: column.type,
-        writable: WRITABLE_TYPES.has(column.type),
+        writable: false,
         ...(options ? { options } : {}),
+        ...(linkedBoardKey ? { linkedBoardKey } : {}),
       }
+      result.writable = isWritableColumn(result)
+      return result
     })
 
 /** 한국 날짜·시각(YYYY-MM-DD, HH:MM) → Monday가 받는 UTC 날짜·시각 */
@@ -92,7 +123,7 @@ export function toColumnValue(
 ): unknown {
   // 저장된 writable 표시가 아니라 타입으로 본다 — 쓰기 가능한 타입을 늘린 뒤 동기화
   // 전이어도 바로 쓸 수 있게.
-  if (!WRITABLE_TYPES.has(column.type)) {
+  if (!isWritableColumn(column)) {
     throw new TechEditError(`'${column.title}' 칸은 여기서 고칠 수 없어요`)
   }
   const fail = (): never => {
@@ -166,6 +197,12 @@ export function toColumnValue(
       if (typeof value !== 'object' || Array.isArray(value)) return fail()
       if (!('url' in value) || !/^https?:\/\//.test(value.url)) return fail()
       return { url: value.url, text: value.text || value.url }
+    case 'board_relation':
+      if (isEmpty) return null
+      if (!Array.isArray(value) || value.some((id) => !/^\d+$/.test(id))) {
+        return fail()
+      }
+      return { item_ids: value.map(Number) }
     case 'location': {
       if (isEmpty) return null
       if (typeof value !== 'object' || Array.isArray(value)) return fail()

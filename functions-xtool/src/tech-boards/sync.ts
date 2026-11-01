@@ -1,6 +1,6 @@
 import * as logger from 'firebase-functions/logger'
 import { Firestore } from 'firebase-admin/firestore'
-import { TECH_BOARDS, TechBoardSource } from './boards'
+import { findTechBoard, TECH_BOARDS, TechBoardSource } from './boards'
 import { toTechColumns } from './columns'
 import {
   replaceBoardItems,
@@ -42,11 +42,20 @@ async function syncTechBoard(
       written,
       deleted,
     }
+    const keyOfBoard = (boardId: string) => findTechBoard({ boardId })?.key
     await saveBoardMeta(db, source.key, {
       boardId: source.boardId,
       name: raw.name,
-      columns: toTechColumns(raw.columns),
+      columns: toTechColumns(raw.columns, keyOfBoard),
       groups: raw.groups,
+      ...(raw.subitemBoard
+        ? {
+            subitems: {
+              boardId: raw.subitemBoard.id,
+              columns: toTechColumns(raw.subitemBoard.columns, keyOfBoard),
+            },
+          }
+        : {}),
       syncedAt: result.at,
       lastSync: result,
     })

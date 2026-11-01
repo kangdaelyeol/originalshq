@@ -8,6 +8,7 @@ import {
 import { defineSecret } from 'firebase-functions/params'
 import { onSchedule } from 'firebase-functions/scheduler'
 import { recordBatchRun } from '../batch-log'
+import { traceRun, traced } from '../cost-trace'
 import {
   createTechItem,
   Editor,
@@ -84,7 +85,10 @@ const assess = (result: TechBoardsSyncSummary) => ({
 // ────────────────────────────────
 export const techUpdateItem = onCall(
   { secrets: [mondayApiKey], timeoutSeconds: 60 },
-  async (request: CallableRequest<TechEditInput>) => {
+  traced(
+    'techUpdateItem',
+    'callable',
+    async (request: CallableRequest<TechEditInput>) => {
     const editor = await requireMember(request)
     try {
       const doc = await updateTechItem(
@@ -97,7 +101,7 @@ export const techUpdateItem = onCall(
     } catch (error) {
       throw toHttpsError(error)
     }
-  },
+  }),
 )
 
 // ────────────────────────────────
@@ -105,7 +109,10 @@ export const techUpdateItem = onCall(
 // ────────────────────────────────
 export const techCreateItem = onCall(
   { secrets: [mondayApiKey], timeoutSeconds: 60 },
-  async (request: CallableRequest<TechEditInput>) => {
+  traced(
+    'techCreateItem',
+    'callable',
+    async (request: CallableRequest<TechEditInput>) => {
     const editor = await requireMember(request)
     try {
       const doc = await createTechItem(
@@ -118,7 +125,7 @@ export const techCreateItem = onCall(
     } catch (error) {
       throw toHttpsError(error)
     }
-  },
+  }),
 )
 
 // ────────────────────────────────
@@ -126,7 +133,10 @@ export const techCreateItem = onCall(
 // ────────────────────────────────
 export const techSearchAddress = onCall(
   { secrets: [kakaoApiKey], timeoutSeconds: 20 },
-  async (request: CallableRequest<{ query?: string }>) => {
+  traced(
+    'techSearchAddress',
+    'callable',
+    async (request: CallableRequest<{ query?: string }>) => {
     await requireMember(request)
     try {
       const results = await searchAddress(
@@ -139,7 +149,7 @@ export const techSearchAddress = onCall(
       logger.error('주소 검색 실패:', error)
       throw new HttpsError('internal', '주소를 찾지 못했어요. 잠시 후 다시 해 주세요')
     }
-  },
+  }),
 )
 
 // ────────────────────────────────
@@ -147,7 +157,7 @@ export const techSearchAddress = onCall(
 // ────────────────────────────────
 export const techSyncNow = onCall(
   { secrets: [mondayApiKey], timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS },
-  async (request) => {
+  traced('techSyncNow', 'callable', async (request: CallableRequest) => {
     await requireMember(request, true)
     return recordBatchRun(
       db,
@@ -155,7 +165,7 @@ export const techSyncNow = onCall(
       () => syncTechBoards(db, mondayApiKey.value()),
       assess,
     )
-  },
+  }),
 )
 
 // ────────────────────────────────
@@ -164,13 +174,13 @@ export const techSyncNow = onCall(
 // ────────────────────────────────
 export const techSetupWebhooks = onCall(
   { secrets: [mondayApiKey], timeoutSeconds: 120 },
-  async (request) => {
+  traced('techSetupWebhooks', 'callable', async (request: CallableRequest) => {
     await requireMember(request, true)
     const project = process.env.GCLOUD_PROJECT
     const url = `https://us-central1-${project}.cloudfunctions.net/mondayTechWebhook`
     const boards = await setupTechWebhooks(db, mondayApiKey.value(), url)
     return { url, boards }
-  },
+  }),
 )
 
 // ────────────────────────────────
@@ -179,7 +189,14 @@ export const techSetupWebhooks = onCall(
 // ────────────────────────────────
 export const mondayTechWebhook = onRequest(
   { secrets: [mondayApiKey], timeoutSeconds: 60 },
-  async (request, response) => {
+  (request, response) => traceRun(
+    { fn: 'mondayTechWebhook', trigger: 'http', method: request.method },
+    async (trace) => {
+    // 비용 추적(cost-trace.ts) — 응답이 끝나면 로그 한 줄.
+    response.on('finish', () => trace.end({
+      status: response.statusCode,
+      responseBytes: Number(response.getHeader('content-length') ?? 0),
+    }))
     if (request.method !== 'POST') {
       response.status(405).send({ error: 'Method Not Allowed' })
       return
@@ -203,7 +220,7 @@ export const mondayTechWebhook = onRequest(
       logger.error('Monday webhook 처리 실패:', body.event, error)
       response.status(200).send({ ok: false })
     }
-  },
+    }),
 )
 
 // ────────────────────────────────
@@ -217,7 +234,7 @@ export const syncTechBoardsScheduled = onSchedule(
     secrets: [mondayApiKey],
     timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS,
   },
-  async (event) => {
+  traced('syncTechBoardsScheduled', 'schedule', async (event) => {
     try {
       const summary = await recordBatchRun(
         db,
@@ -237,5 +254,5 @@ export const syncTechBoardsScheduled = onSchedule(
     } catch (error) {
       logger.error('기술 보드 자동 동기화 실패:', error)
     }
-  },
+  }),
 )

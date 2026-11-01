@@ -218,35 +218,13 @@
   }
 
   .admin-chips {
-    display: flex;
-    gap: 6px;
+    @include toggle-set;
+    flex-wrap: nowrap;
   }
 
-  // 팀·관리자 권한 켜고 끄기 — 켜지면 강조색.
+  // 팀·관리자 권한 켜고 끄기 — 상단 기간 선택과 같은 버튼 묶음 모양.
   .admin-chip {
-    height: 26px;
-    padding: 0 11px;
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.03);
-    font-size: 11.5px;
-    font-weight: 600;
-    color: var(--text-3);
-    transition:
-      color 0.2s,
-      background 0.2s,
-      border-color 0.2s;
-
-    &:hover:not(:disabled) {
-      color: var(--text-1);
-      border-color: rgba(255, 255, 255, 0.22);
-    }
-
-    &.is-on {
-      color: var(--accent-hi);
-      background: rgba(var(--accent-rgb), 0.12);
-      border-color: rgba(var(--accent-rgb), 0.45);
-    }
+    @include toggle-option;
 
     &:disabled {
       cursor: not-allowed;
@@ -266,8 +244,7 @@
   }
 
   .table tr.is-disabled .person,
-  .table tr.is-disabled .admin-chips,
-  .table tr.is-disabled .admin-chip {
+  .table tr.is-disabled .admin-chips {
     opacity: 0.6;
   }
 

@@ -2,6 +2,7 @@ import { Firestore } from 'firebase-admin/firestore'
 import { findTechBoard, TechBoardSource } from './boards'
 import { buildColumnValues } from './columns'
 import { TechEditError } from './errors'
+import { applySubitems, planSubitems, subitemChange } from './subitems'
 import {
   addEditLog,
   deleteItem,
@@ -72,6 +73,12 @@ export async function refreshItems(
   return result
 }
 
+/** 하위 줄 묶음의 이름 — 수정 기록에 쓴다. */
+const SUBITEM_LABEL: Record<string, string> = {
+  fieldService: '설치 품목',
+  repair: '청구 부품·공임',
+}
+
 const sourceOf = (key: string): TechBoardSource => {
   const source = findTechBoard({ key })
   if (!source) throw new TechEditError('없는 보드예요')
@@ -137,6 +144,11 @@ async function applyUpdate(
     throw new TechEditError('없는 진행 단계예요')
   }
 
+  // 하위 줄도 Monday에 쓰기 전에 먼저 검사한다(잘못된 입력이면 아무것도 안 쓰게).
+  const subPlan = input.subitems ?
+    planSubitems(meta, before.subitems ?? [], input.subitems) :
+    null
+
   const fields = [
     ...Object.keys(input.columns ?? {}),
     ...(columnValues.name ? ['name'] : []),
@@ -164,12 +176,22 @@ async function applyUpdate(
     )
   }
   if (moveTo) await moveItemToGroup(apiKey, before.itemId, moveTo)
+  if (subPlan) await applySubitems(apiKey, meta, before.itemId, subPlan)
 
   const after =
     (await refreshItems(db, apiKey, source, [before.itemId], meta)).get(
       before.itemId,
     ) ?? null
   const changes = diff(meta, before, after, fields)
+  const subChange = subPlan ?
+    subitemChange(
+      meta,
+      SUBITEM_LABEL[source.key] ?? '하위 항목',
+      before.subitems ?? [],
+      after?.subitems ?? [],
+    ) :
+    null
+  if (subChange) changes.push(subChange)
   if (changes.length > 0) {
     await addEditLog(db, log({ changes, itemName: after?.name ?? before.name }))
   }
@@ -192,6 +214,9 @@ async function applyCreate(
     throw new TechEditError('없는 진행 단계예요')
   }
   const columnValues = buildColumnValues(meta.columns, input.columns ?? {})
+  const subPlan = input.subitems?.create?.length ?
+    planSubitems(meta, [], { create: input.subitems.create }) :
+    null
 
   const itemId = await createItem(
     apiKey,
@@ -200,6 +225,7 @@ async function applyCreate(
     name,
     columnValues,
   )
+  if (subPlan) await applySubitems(apiKey, meta, itemId, subPlan)
 
   const after =
     (await refreshItems(db, apiKey, source, [itemId], meta)).get(itemId) ?? null
@@ -211,11 +237,23 @@ async function applyCreate(
     itemId,
     itemName: name,
     by: editor,
-    changes: diff(meta, null, after, [
-      'name',
-      'group',
-      ...Object.keys(input.columns ?? {}),
-    ]),
+    changes: [
+      ...diff(meta, null, after, [
+        'name',
+        'group',
+        ...Object.keys(input.columns ?? {}),
+      ]),
+      ...(subPlan ?
+        [
+          subitemChange(
+            meta,
+            SUBITEM_LABEL[source.key] ?? '하위 항목',
+            [],
+            after?.subitems ?? [],
+          ),
+        ].filter((c): c is TechChange => c !== null) :
+        []),
+    ],
     ok: true,
   })
   return after

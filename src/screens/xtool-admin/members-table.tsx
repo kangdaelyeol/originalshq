@@ -162,17 +162,19 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                     </div>
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className={cx('admin-chip', member.isAdmin && 'is-on')}
-                      aria-pressed={member.isAdmin}
-                      aria-label={`${member.name} 관리자`}
-                      disabled={busy || isSelf}
-                      title={isSelf ? '자기 자신의 관리자 권한은 뺄 수 없어요' : undefined}
-                      onClick={() => void run(member.email, () => updateMember(member.email, { isAdmin: !member.isAdmin }))}
-                    >
-                      관리자
-                    </button>
+                    <div className="admin-chips">
+                      <button
+                        type="button"
+                        className={cx('admin-chip', member.isAdmin && 'is-on')}
+                        aria-pressed={member.isAdmin}
+                        aria-label={`${member.name} 관리자`}
+                        disabled={busy || isSelf}
+                        title={isSelf ? '자기 자신의 관리자 권한은 뺄 수 없어요' : undefined}
+                        onClick={() => void run(member.email, () => updateMember(member.email, { isAdmin: !member.isAdmin }))}
+                      >
+                        관리자
+                      </button>
+                    </div>
                   </td>
                   <td>
                     <StatusPill tone={status.tone} dot>
