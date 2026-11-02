@@ -1,6 +1,7 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 
-// 사용 분석 — xtool-lead-manager·cmip 화면을 누가(익명 방문자) 얼마나 봤는지.
+// 사용 분석 — xtool-lead-manager·cmip·xtool-tech 화면을 누가(익명 방문자)
+// 얼마나 봤는지.
 // 탭 한 번 방문(들어와서 다른 탭으로 가거나 창을 닫을 때까지)이 문서 하나다.
 // 화면이 보는 동안 1분마다 같은 문서를 덮어써 "실제로 본 시간"을 늘린다.
 // /log의 "사용 분석" 탭이 읽는다. 이름·IP 등 개인을 알아볼 값은 받지 않는다.
@@ -11,7 +12,8 @@ export const USAGE_SEGMENTS_COLLECTION = 'usageSegments'
 // usageSegments.expireAt에 걸면 자동으로 지워진다.
 const RETENTION_DAYS = 90
 
-const APPS = new Set(['xtool', 'cmip'])
+// tech = 기술팀 보드(/xtool-tech).
+const APPS = new Set(['xtool', 'cmip', 'tech'])
 // 한 번에 받는 최대 개수 — 화면은 보통 1~2개씩 보낸다.
 const MAX_SEGMENTS_PER_REQUEST = 20
 const ID_PATTERN = /^[A-Za-z0-9_-]{8,64}$/
@@ -20,7 +22,7 @@ const VIEW_PATTERN = /^[A-Za-z0-9_/-]{1,64}$/
 export interface UsageSegment {
   /** 탭 방문 id — 문서 id. */
   id: string
-  app: 'xtool' | 'cmip'
+  app: 'xtool' | 'cmip' | 'tech'
   /** 브라우저에 저장한 무작위 값 — 같은 브라우저면 같은 방문자. */
   visitorId: string
   /** 화면을 열 때마다 새로 만드는 값. */

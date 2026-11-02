@@ -52,7 +52,7 @@ export const UsageNodePanel = ({
     onSelect(
       nodeIds[(Math.max(0, index) + delta + nodeIds.length) % nodeIds.length],
     )
-  // 앱은 짧은 이름(xtool·cmip)으로 — 탭 이름이 잘리지 않게.
+  // 앱은 짧은 이름(xtool·cmip·tech)으로 — 탭 이름이 잘리지 않게.
   const label = (app: UsageApp, view: string) =>
     `${app} · ${viewLabel(app, view)}`
   const flowRow = (key: string, name: string, count: number) => ({

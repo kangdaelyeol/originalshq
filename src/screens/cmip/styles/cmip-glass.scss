@@ -324,6 +324,15 @@
     border-top-right-radius: 12px;
     border-bottom-right-radius: 12px;
   }
+  // 머리가 두 줄(비교 표: 캠페인 이름 / 지표 이름)이면 첫 줄 끝 칸은 위만
+  // 둥글게, 아래 모서리는 둘째 줄 끝 칸이 맡는다 — 첫 줄이 아래까지 둥글면
+  // 둘째 줄과 어긋나 오른쪽 모서리가 깎여 보인다.
+  thead:has(tr + tr) tr:first-child th:last-child {
+    border-bottom-right-radius: 0;
+  }
+  thead tr + tr th:last-child {
+    border-bottom-right-radius: 12px;
+  }
 
   tbody tr:nth-child(even) td {
     background-image: linear-gradient(
@@ -808,6 +817,36 @@
     border-radius: 50%;
     background: var(--glass-accent);
   }
+}
+
+// 맨 아래 효율 지표 셋(CTR·CPC·CPM) — 옅은 구분선 아래 세 칸.
+.cmip .campaign-card__rates {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid $fill-2;
+}
+.cmip .campaign-card__rate {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cmip .campaign-card__rate-label {
+  font-size: 10.5px;
+  color: $text-3;
+  letter-spacing: 0.02em;
+}
+.cmip .campaign-card__rate-value {
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $text-2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes campaign-card-flash {

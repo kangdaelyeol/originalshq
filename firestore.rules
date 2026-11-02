@@ -88,6 +88,16 @@ service cloud.firestore {
       allow read: if isXtoolAdmin();
     }
 
+    // 설정 > 배경에 직원이 올린 사진(목록·원본) — 기술팀 모두 읽고, 올리기·지우기는
+    // 함수(techAddBackground·techDeleteBackground)만.
+    match /techBackgrounds/{backgroundId} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
+    match /techBackgroundImages/{backgroundId} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
     // This rule allows anyone with your Firestore database reference to view, edit,
     // and delete all data in your Firestore database. It is useful for getting
     // started, but it is configured to expire after 30 days because it

@@ -4,7 +4,7 @@ import type { ClientResponse } from './batch-run-client'
 /** 탭 방문 1건 — functions-xtool/src/usage.ts의 UsageSegment. */
 export interface UsageSegment {
   id: string
-  app: 'xtool' | 'cmip'
+  app: 'xtool' | 'cmip' | 'tech'
   visitorId: string
   sessionId: string
   view: string

@@ -1,24 +1,137 @@
-import { Check, Info, Pipette, Plus, RotateCcw } from 'lucide-react'
-import { useRef, type CSSProperties } from 'react'
+import { Check, ImagePlus, Info, LoaderCircle, Pipette, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { BackgroundArt } from '../components/backgrounds/background-art'
 import { BrandMark } from '../components/brand/brand-mark'
 import { Button } from '../components/ui/button'
 import { GlassCard } from '../components/ui/glass-card'
 import { RangeField } from '../components/ui/range-field'
 import { StatusPill } from '../components/ui/status-pill'
+import { useCurrentMember } from '../context/member-context'
+import {
+  BACKGROUND_ACCEPT,
+  deleteSharedBackground,
+  uploadSharedBackground,
+  useSharedBackgrounds,
+  useSharedBackgroundUrl,
+  type SharedBackground,
+} from '../data/tech-backgrounds'
+import { pushToast } from '../data/tech-save-queue'
 import { cx } from '../lib/cx'
 import { ACCENT_PRESETS, DEFAULT_ACCENT } from '../settings/accent'
 import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '../settings/glass'
-import { BACKGROUND_OPTIONS, useSettings } from '../settings/settings'
+import { BACKGROUND_OPTIONS, isPhotoBackground, useSettings } from '../settings/settings'
 
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
 const CUSTOM_COMMIT_MS = 120
+// "지우기"를 한 번 누르면 이 시간 동안 확인 상태 — 그 안에 한 번 더 눌러야 지운다.
+const CONFIRM_MS = 4000
+
+const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
+
+/** 직원이 공유한 사진 한 장 — 누르면 배경으로. 올린 사람에게만 지우기 버튼이 보인다. */
+function SharedTile({
+  item,
+  selected,
+  mine,
+  onSelect,
+  onDeleted,
+}: {
+  item: SharedBackground
+  selected: boolean
+  mine: boolean
+  onSelect: () => void
+  onDeleted: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (!confirming) return
+    const timer = setTimeout(() => setConfirming(false), CONFIRM_MS)
+    return () => clearTimeout(timer)
+  }, [confirming])
+
+  const remove = () => {
+    if (!confirming) {
+      setConfirming(true)
+      return
+    }
+    setConfirming(false)
+    setDeleting(true)
+    deleteSharedBackground(item.id)
+      .then(() => {
+        pushToast({ tone: 'success', title: `${item.name} 배경을 지웠어요` })
+        onDeleted()
+      })
+      .catch((error: unknown) => {
+        setDeleting(false)
+        pushToast({ tone: 'error', title: '배경을 지우지 못했어요', message: errorText(error) })
+      })
+  }
+
+  return (
+    <div className="bg-tile-wrap">
+      <button
+        type="button"
+        className={cx('bg-tile', selected && 'is-selected', deleting && 'is-busy')}
+        aria-pressed={selected}
+        disabled={deleting}
+        onClick={onSelect}
+      >
+        <span className="bg-tile__art">
+          <BackgroundArt kind="shared" accent={DEFAULT_ACCENT} photoUrl={item.thumbUrl} />
+          {selected && (
+            <span className="bg-tile__check" aria-hidden>
+              <Check size={14} strokeWidth={3} />
+            </span>
+          )}
+        </span>
+        <span className="bg-tile__meta">
+          <span className="bg-tile__name">
+            <span className="bg-tile__title">{item.name}</span>
+            <span className="bg-tile__kind">공유</span>
+          </span>
+          <span className="bg-tile__desc">{item.uploaderName || item.uploaderEmail}님이 공유함</span>
+        </span>
+      </button>
+      {mine && (
+        <button
+          type="button"
+          className={cx('bg-tile__delete', confirming && 'is-confirming')}
+          onClick={remove}
+          disabled={deleting}
+          aria-label={confirming ? `${item.name} 정말 지우기` : `${item.name} 지우기`}
+          title="팀 모두의 목록에서 지워져요"
+        >
+          {deleting ? <LoaderCircle size={13} className="is-spinning" aria-hidden /> : <Trash2 size={13} aria-hidden />}
+          {confirming && '정말 지우기'}
+        </button>
+      )}
+    </div>
+  )
+}
 
 export function SettingsPage() {
-  const { background, accent, accentInUse, glass, setBackground, setAccent, setGlass, reset } = useSettings()
+  const {
+    background,
+    sharedBackgroundId,
+    accent,
+    accentInUse,
+    glass,
+    setBackground,
+    setSharedBackground,
+    setAccent,
+    setGlass,
+    reset,
+  } = useSettings()
+  const member = useCurrentMember()
+  const shared = useSharedBackgrounds()
+  const sharedUrl = useSharedBackgroundUrl(background === 'shared' ? sharedBackgroundId : null)
+  const [uploading, setUploading] = useState(false)
+  const fileInput = useRef<HTMLInputElement>(null)
   const glassPreset = matchGlassPreset(glass)
-  const locked = background === 'photo'
+  const locked = isPhotoBackground(background)
   const isPreset = ACCENT_PRESETS.some((p) => p.value === accent)
   const commitTimer = useRef<number | undefined>(undefined)
 
@@ -27,11 +140,24 @@ export function SettingsPage() {
     commitTimer.current = window.setTimeout(() => setAccent(value), CUSTOM_COMMIT_MS)
   }
 
+  const upload = (file: File | undefined) => {
+    if (fileInput.current) fileInput.current.value = ''
+    if (!file) return
+    setUploading(true)
+    uploadSharedBackground(file)
+      .then((id) => {
+        setSharedBackground(id)
+        pushToast({ tone: 'success', title: '배경 사진을 공유했어요' })
+      })
+      .catch((error: unknown) => pushToast({ tone: 'error', title: '사진을 올리지 못했어요', message: errorText(error) }))
+      .finally(() => setUploading(false))
+  }
+
   return (
     <>
       <GlassCard
         title="배경"
-        subtitle="대시보드와 로그인 화면 뒤에 깔리는 배경이에요. 이 브라우저에 저장돼요."
+        subtitle="대시보드와 로그인 화면 뒤에 깔리는 배경이에요. 고른 배경은 이 브라우저에 저장되고, 올린 사진은 팀 모두가 골라 쓸 수 있어요."
         actions={
           <Button variant="ghost" size="sm" icon={RotateCcw} onClick={reset}>
             기본값으로
@@ -68,6 +194,51 @@ export function SettingsPage() {
             )
           })}
         </div>
+
+        <h3 className="bg-section-label">
+          팀이 공유한 사진 {shared.items && shared.items.length > 0 && <span>{shared.items.length}장</span>}
+        </h3>
+        <div className="bg-options">
+          <button
+            type="button"
+            className={cx('bg-tile', 'bg-tile--upload', uploading && 'is-busy')}
+            disabled={uploading}
+            onClick={() => fileInput.current?.click()}
+          >
+            <span className="bg-tile__art bg-tile__upload">
+              {uploading ? <LoaderCircle size={22} className="is-spinning" aria-hidden /> : <ImagePlus size={22} aria-hidden />}
+              {uploading ? '줄여서 올리는 중…' : '사진 올리기'}
+            </span>
+            <span className="bg-tile__meta">
+              <span className="bg-tile__name">내 사진 공유</span>
+              <span className="bg-tile__desc">JPG·PNG·WEBP — 팀 모두가 배경으로 쓸 수 있어요</span>
+            </span>
+          </button>
+          <input
+            ref={fileInput}
+            type="file"
+            accept={BACKGROUND_ACCEPT}
+            className="sr-only"
+            tabIndex={-1}
+            onChange={(e) => upload(e.target.files?.[0])}
+          />
+          {(shared.items ?? []).map((item) => {
+            const selected = background === 'shared' && sharedBackgroundId === item.id
+            return (
+              <SharedTile
+                key={item.id}
+                item={item}
+                selected={selected}
+                mine={item.uploaderEmail === member?.email}
+                onSelect={() => setSharedBackground(item.id)}
+                onDeleted={() => {
+                  if (selected) setBackground('shards')
+                }}
+              />
+            )
+          })}
+        </div>
+        {shared.error && <p className="bg-section-note">{shared.error}</p>}
       </GlassCard>
 
       <GlassCard
@@ -200,7 +371,7 @@ export function SettingsPage() {
 
           {/* 지금 배경 위에 지금 유리 값으로 칠한 견본 */}
           <div className="glass-preview" aria-hidden>
-            <BackgroundArt kind={background} accent={accentInUse} />
+            <BackgroundArt kind={background} accent={accentInUse} photoUrl={sharedUrl} />
             <div className="glass glass-preview__card">
               <strong>미리보기</strong>
               <p>지금 고른 배경 위에서 유리 판은 이렇게 보여요.</p>

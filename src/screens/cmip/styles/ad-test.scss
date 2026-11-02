@@ -159,18 +159,11 @@
   color: $text-3;
   line-height: 16px;
 }
-.ad-test-detail__title {
-  @include glass.field;
-  box-sizing: border-box;
-  width: 100%;
-  height: 34px;
-  padding: 0 10px;
-  margin-left: -10px;
-  border-radius: 10px;
-  background: transparent;
-  font: inherit;
+.ad-test-detail__name {
+  margin: 0;
   font-size: 17px;
   font-weight: 600;
+  line-height: 1.35;
   color: $text;
 }
 .ad-test-detail__current {
@@ -181,38 +174,31 @@
   font-size: 11.5px;
   color: $text-3;
 }
-.ad-test-detail__actions {
+// 판단 지표 · 기준 구간 켜기 · 안내 — 한 줄.
+.ad-test-detail__controls {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.ad-test-detail__meta {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  align-items: start;
+  align-items: flex-end;
   gap: 10px 14px;
 
-  .ad-field.is-wide {
-    grid-column: auto;
-  }
-  @media (max-width: 900px) {
-    grid-template-columns: minmax(0, 1fr);
+  .ad-field {
+    width: 260px;
   }
 }
-.ad-test-detail__saved {
-  grid-column: 1 / -1;
+.ad-test-detail__hint {
+  margin-left: auto;
+  padding-bottom: 8px;
   font-size: 11.5px;
   color: $text-3;
 }
-.ad-test-detail__danger {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  font-size: 12px;
-  color: $text-3;
+// 켜고 끄는 알약 버튼 — 켜면 데이터색을 옅게.
+.ad-button.is-toggle {
+  margin-bottom: 3px;
+
+  &.is-on {
+    @include glass.tint(var(--glass-accent), 22%);
+    color: $text;
+  }
 }
 
 .ad-test-section {
@@ -237,6 +223,9 @@
     color: $text-3;
   }
 }
+.ad-test-section__aside {
+  margin-left: auto;
+}
 
 // ── 흐름 그래프 ─────────────────────────────────────────────────────────
 
@@ -257,7 +246,10 @@
   font-size: 11px;
   font-weight: 600;
 }
+// 하루 막대 — 구간 안이면 그 구간 색(인라인), 구간 밖(첫 구간 앞 7일 등)은
+// 옅은 회색(색을 안 주면 검게 칠해진다).
 .ad-test-timeline__bar {
+  fill: color-mix(in srgb, var(--glass-text) 30%, transparent);
   opacity: 0.55;
 }
 .ad-test-timeline__line {
@@ -320,48 +312,80 @@
   color: $text-3;
 }
 
-// ── 알림 ────────────────────────────────────────────────────────────────
+// ── 구간(설정 장) ────────────────────────────────────────────────────────
+// 장 하나가 카드 하나 — [색 점 · 이름 · 기간 · 상태] / 바뀐 칸 / 바꾼 이유 /
+// 그 동안의 설정. 왼쪽 세로 띠가 그래프·표의 구간 색과 이어진다.
 
-.ad-test-alerts {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.ad-test-periods {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.ad-test-alert {
+.ad-test-period {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: 7px;
+  padding: 11px 14px 12px 16px;
+  overflow: hidden;
   border-radius: 14px;
   background: $fill-1;
+  @include glass.enter(var(--glass-i, 0), 40ms, 0.35s);
+
+  // 구간 색 띠.
+  &::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    left: 0;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--seg-color);
+  }
+  &.is-current {
+    @include glass.tint(var(--seg-color), 10%);
+  }
+  &.is-baseline {
+    background: none;
+    border: 1px dashed $fill-3;
+  }
 }
-.ad-test-alert__head {
+.ad-test-period__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
 
   b {
-    font-size: 13px;
+    font-size: 13.5px;
     color: $text;
-    font-variant-numeric: tabular-nums;
   }
-  > :last-child {
-    margin-left: auto;
-  }
-}
-.ad-test-alert__ok {
-  font-size: 11.5px;
-  color: var(--glass-accent);
-
-  &.is-out {
-    color: $text-3;
+  .ad-badge {
+    height: 20px;
+    font-size: 11px;
   }
 }
-.ad-test-alert__changes {
+.ad-test-period__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--seg-color);
+}
+.ad-test-period__range {
+  font-size: 12px;
+  color: $text-3;
+  font-variant-numeric: tabular-nums;
+}
+.ad-test-period__first {
+  margin: 0;
+  font-size: 12.5px;
+  color: $text-2;
+}
+.ad-test-period__changes {
   display: flex;
   flex-direction: column;
   gap: 3px;
@@ -373,7 +397,8 @@
 
   span {
     display: inline-block;
-    min-width: 92px;
+    min-width: 84px;
+    margin-right: 8px;
     color: $text-3;
   }
   em {
@@ -385,81 +410,59 @@
     color: $text;
   }
 }
-.ad-test-alert__memo {
+.ad-test-period__memo {
   margin: 0;
   font-size: 12px;
   line-height: 1.5;
   color: $text-2;
 }
-
-// ── 구간 편집 ───────────────────────────────────────────────────────────
-
-.ad-test-segments {
+.ad-test-period__chips {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px;
+
+  .ad-badge {
+    height: 20px;
+    font-size: 10.5px;
+  }
 }
-.ad-test-segments__list {
+.ad-test-periods__scheduled,
+.ad-test-data-events {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
-}
-.ad-test-segment {
-  display: grid;
-  grid-template-columns: 10px 120px 148px auto 148px 40px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  @include glass.enter(var(--glass-i, 0), 30ms, 0.35s);
 
-  @media (max-width: 1100px) {
-    grid-template-columns: 10px 1fr 1fr auto 1fr 40px;
-
-    .ad-test-segment__note {
-      grid-column: 2 / -2;
-    }
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: $fill-1;
+    font-size: 12.5px;
+    color: $text-2;
+  }
+  b {
+    font-size: 13px;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+  .ad-badge {
+    height: 20px;
+    font-size: 11px;
   }
 }
-.ad-test-segment__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 3px;
-  background: var(--seg-color);
+.ad-badge.is-data-spendUp,
+.ad-badge.is-data-resumed {
+  @include glass.tint(var(--glass-good, #3fb950), 22%);
 }
-.ad-test-segment__label {
-  font-weight: 600;
-}
-.ad-test-segment__tilde,
-.ad-test-segment__days {
-  font-size: 12px;
-  color: $text-3;
-  font-variant-numeric: tabular-nums;
-}
-.ad-test-segments__warn {
-  margin: 0;
-  font-size: 12px;
-  color: var(--glass-warn);
-}
-.ad-test-segments__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-.ad-test-segments__even {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: 6px;
-  font-size: 12px;
-  color: $text-3;
-}
-.ad-test-segments__range {
-  margin-left: auto;
-  font-size: 11.5px;
-  color: $text-3;
+.ad-badge.is-data-spendDown,
+.ad-badge.is-data-paused {
+  @include glass.tint(var(--glass-warn), 22%);
 }
 
 // ── 구간별 지표 ─────────────────────────────────────────────────────────
@@ -478,8 +481,10 @@
   font-weight: 600;
 }
 .ad-test-kpis__table {
+  // 머리 — 구간 이름 아래 기간 작은 글씨(두 줄)라, '지표'도 같은 높이의
+  // 가운데에 둔다(아래에 붙이면 '지표'만 아랫줄로 내려가 보인다).
   th {
-    vertical-align: bottom;
+    vertical-align: middle;
 
     small {
       display: block;

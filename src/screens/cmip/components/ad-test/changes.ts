@@ -5,6 +5,7 @@ import {
   type AdEntityKey,
   type AdSettingFields,
   type AdSettingVersion,
+  type AdTestSegment,
   type ConversionGoal,
   type CreativeSet,
 } from '../../client'
@@ -37,7 +38,10 @@ const describe = (
     ? (sets.get(fields.creativeSetId)?.name ?? '(지운 셋)')
     : '',
   '목표 단가': fields.targetCpa !== null ? won(fields.targetCpa) : '',
-  '목표 ROAS': fields.targetRoas !== null ? `${fields.targetRoas}%` : '',
+  '목표 ROAS':
+    fields.targetRoas !== null
+      ? `${fields.targetRoas.toLocaleString('ko-KR')}%`
+      : '',
   퍼널: fields.funnelStage ? FUNNEL_LABEL[fields.funnelStage] : '',
   오디언스: fields.audience,
   '랜딩 URL': fields.landingUrl,
@@ -114,3 +118,76 @@ export const summarizeChanges = (event: SettingEvent): string =>
     .map((c) => `${c.label} ${c.before} → ${c.after}`)
     .join(', ') +
   (event.changes.length > 2 ? ` 외 ${event.changes.length - 2}` : '')
+
+// ── 설정 이력 → 구간 ────────────────────────────────────────────────────
+
+/** 설정 장 하나가 곧 구간 하나 — 그 장이 적용된 기간과 그 동안의 설정. */
+export interface SettingSegment extends AdTestSegment {
+  /** baseline = 첫 설정 전(기준), past = 지난 설정, current = 지금 적용 중. */
+  status: 'baseline' | 'past' | 'current'
+  /** 이 구간을 시작한 변경 — 설정 전 구간이면 null. */
+  event: SettingEvent | null
+  /** 그 동안 적용된 설정(광고셋은 캠페인 설정과 합친 값) — 설정 전이면 null. */
+  setting: AdSettingFields | null
+}
+
+/** 첫 설정 전 기준 구간의 길이. */
+export const BASELINE_DAYS = 14
+
+/**
+ * 설정이 바뀐 날(settingEvents)마다 구간을 자른다 — 매체별 테스트의 구간은 광고
+ * 설정의 장 자체다. 앞날로 넣은 장은 아직 성과가 없어 구간이 아니라 예약으로
+ * 돌려준다. 마지막(지금 적용 중) 구간은 데이터가 있는 마지막 날까지.
+ * withBaseline이면 첫 설정 전 2주(데이터가 있는 만큼)를 "설정 전" 구간으로
+ * 앞에 붙인다 — 첫 설정이 효과가 있었는지 견줄 기준.
+ */
+export function settingSegments(
+  entity: AdEntity,
+  byEntity: ReadonlyMap<AdEntityKey, AdSettingVersion[]>,
+  events: readonly SettingEvent[],
+  {
+    today,
+    firstDay,
+    lastDay,
+    withBaseline,
+  }: {
+    today: string
+    /** 데이터가 있는 첫날·마지막 날(없으면 null). */
+    firstDay: string | null
+    lastDay: string | null
+    withBaseline: boolean
+  },
+): { segments: SettingSegment[]; scheduled: SettingEvent[] } {
+  const past = events.filter((e) => e.date <= today)
+  const scheduled = events.filter((e) => e.date > today)
+  const until = lastDay && lastDay < today ? lastDay : today
+  const segments: SettingSegment[] = past.map((event, i) => {
+    const next = past[i + 1]
+    const end = next ? addDays(next.date, -1) : until
+    return {
+      id: event.date,
+      label: `${i + 1}차`,
+      start: event.date,
+      end: end < event.date ? event.date : end,
+      note: summarizeChanges(event),
+      status: next ? 'past' : 'current',
+      event,
+      setting: settingAt(entity, byEntity, event.date),
+    }
+  })
+  const first = past[0]
+  if (withBaseline && first && firstDay && firstDay < first.date) {
+    const from = addDays(first.date, -BASELINE_DAYS)
+    segments.unshift({
+      id: 'baseline',
+      label: '설정 전',
+      start: from > firstDay ? from : firstDay,
+      end: addDays(first.date, -1),
+      note: `첫 설정(${first.date}) 전 기준`,
+      status: 'baseline',
+      event: null,
+      setting: null,
+    })
+  }
+  return { segments, scheduled }
+}

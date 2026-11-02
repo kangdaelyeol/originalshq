@@ -22,6 +22,7 @@ const APP_OPTIONS: readonly { id: UsageAppFilter; label: string }[] = [
   { id: 'all', label: '전체' },
   { id: 'xtool', label: 'xtool' },
   { id: 'cmip', label: 'cmip' },
+  { id: 'tech', label: 'xtool-tech' },
 ]
 
 const appTag = (app: UsageApp) => (
@@ -29,7 +30,7 @@ const appTag = (app: UsageApp) => (
 )
 
 /**
- * /log의 "사용 분석" 탭 — xtool-lead-manager·cmip를 어느 탭에서 얼마나
+ * /log의 "사용 분석" 탭 — xtool-lead-manager·cmip·xtool-tech를 어느 탭에서 얼마나
  * 봤는지. 사람은 이름이 아니라 브라우저별 무작위 방문자 id로만 구분하고,
  * 시간은 브라우저 탭을 실제로 보고 있던 시간만 센다(다른 탭으로 옮겨 둔 시간
  * 제외). 기록은 화면이 functions-xtool의 logUsage로 보낸다(src/hooks/
@@ -72,9 +73,9 @@ export function UsagePanel() {
         <div>
           <h2 className="batch-log__title">사용 분석</h2>
           <p className="batch-log__muted">
-            xtool-lead-manager·cmip를 어느 탭에서 얼마나 봤는지 — 방문자는
-            브라우저 단위, 시간은 실제로 화면을 보고 있던 시간입니다. 기록은
-            90일 보관.
+            xtool-lead-manager·cmip·xtool-tech를 어느 탭에서 얼마나 봤는지 —
+            방문자는 브라우저 단위, 시간은 실제로 화면을 보고 있던 시간입니다.
+            기록은 90일 보관.
           </p>
         </div>
         <div className="batch-log__controls">

@@ -9,7 +9,8 @@ import { API_BASE } from '@/screens/xtool-lead-manager/constants'
 // 시간을 갱신하고, 다른 탭으로 가거나 창을 닫을 때 마지막 값으로 닫는다.
 // 창을 닫을 때도 빠지지 않게 navigator.sendBeacon으로 보낸다.
 
-export type UsageApp = 'xtool' | 'cmip'
+/** xtool = 리드 매니저, cmip, tech = 기술팀 보드(/xtool-tech). */
+export type UsageApp = 'xtool' | 'cmip' | 'tech'
 
 const ENDPOINT = `${API_BASE}/logUsage`
 const PING_MS = 60_000

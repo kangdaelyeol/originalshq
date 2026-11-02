@@ -49,6 +49,8 @@ export type CampaignHighlightMetric = 'spend' | 'cpa' | 'cpc' | 'cpm'
 export interface CampaignHighlightGroup {
   low: CampaignHighlightRow[]
   high: CampaignHighlightRow[]
+  /** 매긴 항목 전부(작은 순) — 분포 띠의 점 하나하나(마우스를 올리면 상세). */
+  all: CampaignHighlightRow[]
   /** 매긴 값 전부(작은 순) — 분포 띠. */
   values: number[]
   median: number
@@ -110,6 +112,7 @@ const rankBoth = (
   return {
     low: ranked.slice(0, LIMIT).map(toRow),
     high: ranked.slice(-LIMIT).reverse().map(toRow),
+    all: ranked.map(toRow),
     values,
     median: values.length
       ? values.length % 2

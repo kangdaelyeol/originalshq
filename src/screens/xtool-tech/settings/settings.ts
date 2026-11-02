@@ -2,10 +2,13 @@ import { createContext, useContext } from 'react'
 import { DEFAULT_ACCENT, isHexColor } from './accent'
 import { GLASS_DEFAULT, normalizeGlass, type GlassSettings } from './glass'
 
-export type BackgroundKind = 'shards' | 'silk' | 'grunge' | 'photo'
+/** 기본으로 들어 있는 배경 */
+export type BuiltInBackground = 'shards' | 'silk' | 'grunge' | 'photo'
+/** shared — 직원이 올려 팀이 함께 쓰는 사진(sharedBackgroundId) */
+export type BackgroundKind = BuiltInBackground | 'shared'
 
 export interface BackgroundOption {
-  value: BackgroundKind
+  value: BuiltInBackground
   label: string
   description: string
   /** 사진은 강조색을 바꾸지 않는다(사진 색을 해치지 않게). */
@@ -21,13 +24,20 @@ export const BACKGROUND_OPTIONS: readonly BackgroundOption[] = [
 
 export interface Settings {
   background: BackgroundKind
+  /** background가 shared일 때 고른 사진(techBackgrounds 문서 id) */
+  sharedBackgroundId: string | null
   /** 사용자가 고른 강조색 — 사진 배경일 땐 쓰지 않고 기본색을 쓴다(effectiveAccent). */
   accent: string
   /** 유리 판의 흐림·농도·채도·테두리 빛 */
   glass: GlassSettings
 }
 
-export const DEFAULT_SETTINGS: Settings = { background: 'shards', accent: DEFAULT_ACCENT, glass: GLASS_DEFAULT }
+export const DEFAULT_SETTINGS: Settings = {
+  background: 'shards',
+  sharedBackgroundId: null,
+  accent: DEFAULT_ACCENT,
+  glass: GLASS_DEFAULT,
+}
 
 const STORAGE_KEY = 'xtool-tech:settings'
 
@@ -37,10 +47,15 @@ export function loadSettings(): Settings {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return DEFAULT_SETTINGS
     const parsed = JSON.parse(raw) as Partial<Settings>
+    const sharedId = typeof parsed.sharedBackgroundId === 'string' && parsed.sharedBackgroundId ? parsed.sharedBackgroundId : null
+    const shared = parsed.background === 'shared' && sharedId !== null
     return {
-      background: BACKGROUND_OPTIONS.some((o) => o.value === parsed.background)
-        ? (parsed.background as BackgroundKind)
-        : DEFAULT_SETTINGS.background,
+      background: shared
+        ? 'shared'
+        : BACKGROUND_OPTIONS.some((o) => o.value === parsed.background)
+          ? (parsed.background as BuiltInBackground)
+          : DEFAULT_SETTINGS.background,
+      sharedBackgroundId: shared ? sharedId : null,
       accent: isHexColor(parsed.accent) ? parsed.accent.toLowerCase() : DEFAULT_SETTINGS.accent,
       glass: normalizeGlass(parsed.glass),
     }
@@ -57,13 +72,18 @@ export function saveSettings(settings: Settings): void {
   }
 }
 
+/** 사진 배경(작업장 사진·공유 사진)인지 — 강조색을 기본색으로 고정한다. */
+export const isPhotoBackground = (background: BackgroundKind): boolean => background === 'photo' || background === 'shared'
+
 /** 실제로 화면에 쓰는 강조색 — 사진 배경이면 기본색. */
-export const effectiveAccent = (s: Settings): string => (s.background === 'photo' ? DEFAULT_ACCENT : s.accent)
+export const effectiveAccent = (s: Settings): string => (isPhotoBackground(s.background) ? DEFAULT_ACCENT : s.accent)
 
 export interface SettingsState extends Settings {
   /** 지금 화면에 칠해진 강조색 */
   accentInUse: string
-  setBackground: (background: BackgroundKind) => void
+  setBackground: (background: BuiltInBackground) => void
+  /** 팀이 공유한 사진을 배경으로 */
+  setSharedBackground: (id: string) => void
   setAccent: (accent: string) => void
   /** 일부 값만 넘기면 나머지는 그대로 둔다. */
   setGlass: (glass: Partial<GlassSettings>) => void

@@ -8,6 +8,7 @@ export type UsageApp = UsageSegment['app']
 export const APP_LABEL: Record<UsageApp, string> = {
   xtool: 'xtool-lead-manager',
   cmip: 'cmip',
+  tech: 'xtool-tech',
 }
 
 /** 탭 이름 — 화면이 보내는 값(useUsageTracking의 view)을 사람이 읽는 이름으로.
@@ -19,6 +20,8 @@ const VIEW_LABEL: Record<UsageApp, Record<string, string>> = {
     stats: '퍼널 통계',
     'trend/inflow': '통계 · 인입통계',
     'trend/sales': '통계 · 판매통계',
+    'trend/team': '통계 · 영업통계',
+    'trend/tech': '통계 · 기술통계',
     'trend/kpi': '통계 · 개인 KPI',
     tracking: '오기입 추적',
   },
@@ -31,6 +34,22 @@ const VIEW_LABEL: Record<UsageApp, Record<string, string>> = {
     periodTest: '매체별 테스트',
     roas: 'ROAS',
     adPerformance: '광고 성과',
+  },
+  // xtool-tech — 주소 그대로(app-layout.tsx의 usageView).
+  tech: {
+    overview: '개요',
+    'boards/field-service': '출장업무',
+    'boards/repair': 'AS',
+    'boards/records': '자료정리',
+    'boards/inquiry': '아톡문의',
+    'boards/tasks': '기타업무',
+    'boards/as-requests': 'AS 신청서',
+    'boards/parts': '부품 마스터',
+    'boards/rentals': '대여품 관리',
+    'boards/serials': 'SN 관리',
+    design: '디자인',
+    team: '팀원 & 권한',
+    settings: '설정',
   },
 }
 

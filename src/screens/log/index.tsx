@@ -38,7 +38,7 @@ const LiveClock = () => {
  * 로그(/log) — 네 탭.
  *   · 배치 로그: 예약 실행 함수가 제때 돌았는지(batchRuns).
  *   · 문의 접수: 웹사이트 상담 신청이 Monday·문자까지 처리됐는지(inquiries).
- *   · 사용 분석: xtool-lead-manager·cmip를 어떤 탭에서 얼마나 봤는지
+ *   · 사용 분석: xtool-lead-manager·cmip·xtool-tech를 어떤 탭에서 얼마나 봤는지
  *     (usageSegments).
  *   · 비용 분석: xtool·cmip 함수가 호출마다 쓴 자원과 어림 비용(BigQuery ops_logs).
  * 어느 탭인지는 주소의 ?tab= 에 둬서 새로고침·공유해도 같은 탭이 열린다.

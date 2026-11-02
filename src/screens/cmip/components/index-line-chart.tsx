@@ -215,8 +215,13 @@ export const IndexLineChart = ({
     flat: MUTED,
   }
 
-  // 면 그라데이션 id — 모달에 그래프가 여럿 떠도 겹치지 않게.
+  // 면 그라데이션 id — 모달에 그래프가 여럿 떠도 겹치지 않게. 지표 키는
+  // "impressions:c:[AMPM] 03. 메탈팹:combined"처럼 공백·괄호가 섞여 그대로 쓰면
+  // url(#…) 참조가 깨지고(채움이 검정으로 떨어진다) — 영문·숫자만 남긴 키에
+  // 순번을 붙여 쓴다.
   const areaId = `ilc-area-${useId().replace(/[^\w-]/g, '')}`
+  const gradientId = (kind: 'bar' | 'line', key: string, index: number) =>
+    `${areaId}-${kind}-${index}-${key.replace(/[^\w-]/g, '')}`
   const {
     hover,
     setHover,
@@ -438,12 +443,12 @@ export const IndexLineChart = ({
                 여러 지표면 slotW 폭으로 나눠 나란히 놓는다. */}
               {/* 유리 막대 — 값 쪽 끝이 둥글고, 위(값)에서 아래로 옅어지는
                 그라데이션. 처음 붙을 때 기준선에서 차례로 자라 오른다. */}
-              {barSeries.map((s) => {
+              {barSeries.map((s, seriesIndex) => {
                 const isFocused = focused?.key === s.key
                 const dimmed = focused != null && !isFocused
                 const yBase = yIn(s.range, Math.max(s.range.min, 0))
                 const w = Math.max(1, slotW - 2)
-                const fillId = `${areaId}-bar-${s.key}`
+                const fillId = gradientId('bar', s.key, seriesIndex)
                 return (
                   <g
                     key={`bar-${s.key}`}
@@ -498,11 +503,11 @@ export const IndexLineChart = ({
                 선만). 포커스된 지표만 도드라지고 나머지는 은은하게 죽는다. */}
               <g className="index-line-chart__lines">
                 {lineSeries.length === 1 &&
-                  lineSeries.map((s) => (
+                  lineSeries.map((s, seriesIndex) => (
                     <g key={`area-${s.key}`}>
                       <defs>
                         <linearGradient
-                          id={`${areaId}-${s.key}`}
+                          id={gradientId('line', s.key, seriesIndex)}
                           x1="0"
                           y1="0"
                           x2="0"
@@ -511,7 +516,7 @@ export const IndexLineChart = ({
                           <stop
                             offset="0%"
                             stopColor={s.color}
-                            stopOpacity={0.26}
+                            stopOpacity={0.32}
                           />
                           <stop
                             offset="100%"
@@ -527,7 +532,7 @@ export const IndexLineChart = ({
                           (v) => yIn(s.range, v),
                           vbHeight - MARGIN_BOTTOM,
                         )}
-                        fill={`url(#${areaId}-${s.key})`}
+                        fill={`url(#${gradientId('line', s.key, seriesIndex)})`}
                         stroke="none"
                       />
                     </g>
@@ -535,17 +540,32 @@ export const IndexLineChart = ({
                 {lineSeries.map((s) => {
                   const isFocused = focused?.key === s.key
                   const dimmed = focused != null && !isFocused
+                  const d = buildLinePath(s.raw, xCenter, (v) =>
+                    yIn(s.range, v),
+                  )
                   return (
-                    <path
-                      key={s.key}
-                      d={buildLinePath(s.raw, xCenter, (v) => yIn(s.range, v))}
-                      fill="none"
-                      stroke={s.color}
-                      strokeWidth={isFocused ? 3.2 : 2.4}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                      opacity={dimmed ? DIM_OPACITY : 1}
-                    />
+                    <g key={s.key} opacity={dimmed ? DIM_OPACITY : 1}>
+                      {/* 유리 위의 빛 — 선 밑에 넓고 옅은 번짐(흐림 필터 없이). */}
+                      {theme === 'dark' && (
+                        <path
+                          d={d}
+                          fill="none"
+                          stroke={s.color}
+                          strokeWidth={isFocused ? 10 : 8}
+                          strokeLinejoin="round"
+                          strokeLinecap="round"
+                          opacity={0.14}
+                        />
+                      )}
+                      <path
+                        d={d}
+                        fill="none"
+                        stroke={s.color}
+                        strokeWidth={isFocused ? 3.2 : 2.4}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    </g>
                   )
                 })}
               </g>

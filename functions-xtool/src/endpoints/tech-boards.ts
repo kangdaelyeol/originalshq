@@ -11,9 +11,12 @@ import { getAuth } from 'firebase-admin/auth'
 import { recordBatchRun } from '../batch-log'
 import { traceRun, traced } from '../cost-trace'
 import {
+  addBackground,
   attachFile,
+  BackgroundInput,
   clearFiles,
   createTechItem,
+  deleteBackground,
   fileUrls,
   MAX_FILE_BYTES,
   Editor,
@@ -267,6 +270,35 @@ export const techClearFiles = onCall(
         editor,
       )
       return { itemId: doc?.itemId ?? null }
+    } catch (error) {
+      throw toHttpsError(error)
+    }
+  },
+)
+
+// ────────────────────────────────
+// techAddBackground·techDeleteBackground — 설정 > 배경에 사진 올리기·지우기.
+// 올린 사진은 기술팀 모두가 골라 쓰고, 지우기는 올린 사람만. 기술팀만.
+// ────────────────────────────────
+export const techAddBackground = onCall(
+  { timeoutSeconds: 30 },
+  async (request: CallableRequest<BackgroundInput>) => {
+    const editor = await requireMember(request)
+    try {
+      return await addBackground(db, request.data ?? {}, editor)
+    } catch (error) {
+      throw toHttpsError(error)
+    }
+  },
+)
+
+export const techDeleteBackground = onCall(
+  { timeoutSeconds: 30 },
+  async (request: CallableRequest<{ id?: string }>) => {
+    const editor = await requireMember(request)
+    try {
+      await deleteBackground(db, String(request.data?.id ?? ''), editor)
+      return { ok: true }
     } catch (error) {
       throw toHttpsError(error)
     }

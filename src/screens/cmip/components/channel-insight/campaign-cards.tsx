@@ -46,6 +46,25 @@ const FOOT: readonly {
   },
 ]
 
+// 카드 맨 아래 한 줄 — 효율 지표 셋. 노출·클릭이 없으면 계산할 수 없어 '-'.
+const won = (v: number) => `${Math.round(v).toLocaleString('ko-KR')}원`
+const RATES: readonly {
+  key: MetricKey
+  label: string
+  /** 이 값이 0이면 지표를 낼 수 없다(분모). */
+  base: MetricKey
+  format: (value: number) => string
+}[] = [
+  {
+    key: 'ctr',
+    label: 'CTR',
+    base: 'impressions',
+    format: (v) => `${v.toFixed(2)}%`,
+  },
+  { key: 'cpc', label: 'CPC', base: 'clicks', format: won },
+  { key: 'cpm', label: 'CPM', base: 'impressions', format: won },
+]
+
 const CHANNEL_LABEL = Object.fromEntries(
   CHANNELS.map((channel) => [channel.key, channel.label]),
 )
@@ -53,7 +72,7 @@ const CHANNEL_LABEL = Object.fromEntries(
 /**
  * 캠페인·광고셋 목록의 카드 보기 — 캠페인 하나가 카드 하나(광고셋은 표 보기).
  * 카드에는 채널 표식, 이름, 정렬 지표의 값과 그 날짜별 작은 추이 그래프,
- * 아래에 다른 지표 두 개. 카드를 누르면 이 목록 안에서 그 카드가 커지며 추이를
+ * 아래에 다른 지표 두 개, 맨 아래 CTR·CPC·CPM. 카드를 누르면 이 목록 안에서 그 카드가 커지며 추이를
  * 자세히 보여 주고(TrendGrid), 오른쪽 위 동그라미로 아래 비교 표에 넣고 뺀다
  * (표 보기의 체크와 같다).
  */
@@ -168,6 +187,21 @@ export function CampaignCards({
                     className={`campaign-card__chip${footIndex === 0 ? ' has-dot' : ''}`}
                   >
                     {foot.label} {foot.format(row.metrics[foot.key])}
+                  </span>
+                ))}
+              </span>
+
+              <span className="campaign-card__rates">
+                {RATES.map((rate) => (
+                  <span key={rate.key} className="campaign-card__rate">
+                    <span className="campaign-card__rate-label">
+                      {rate.label}
+                    </span>
+                    <span className="campaign-card__rate-value">
+                      {row.metrics[rate.base] > 0
+                        ? rate.format(row.metrics[rate.key])
+                        : '-'}
+                    </span>
                   </span>
                 ))}
               </span>

@@ -60,6 +60,7 @@
 // ── 분포 띠 ──────────────────────────────────────────────────────────────
 
 .hl-strip {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -70,6 +71,13 @@
   margin: 0 5px;
   border-radius: 999px;
   background: $fill-1;
+  transition: background-color 0.2s ease;
+
+  // 점 위에 있을 때만 누르는 손 모양(빈 자리는 눌러도 아무 일 없다).
+  &.is-hover {
+    background: $fill-2;
+    cursor: pointer;
+  }
 
   i {
     position: absolute;
@@ -81,13 +89,27 @@
     opacity: 0.55;
 
     &.is-shown {
-      top: 50%;
       width: 9px;
       height: 9px;
       margin: -4.5px 0 0 -4.5px;
       background: var(--glass-accent);
       opacity: 1;
       @include glass.pop-in(0.35s);
+    }
+    // 마우스를 올린 점 — 크게, 둘레에 옅은 빛.
+    &.is-hover {
+      z-index: 1;
+      width: 11px;
+      height: 11px;
+      margin: -5.5px 0 0 -5.5px;
+      background: $text;
+      opacity: 1;
+      box-shadow: 0 0 0 4px color-mix(in srgb, $text 22%, transparent);
+    }
+    &.is-hover.is-shown {
+      background: var(--glass-accent);
+      box-shadow: 0 0 0 4px
+        color-mix(in srgb, var(--glass-accent) 30%, transparent);
     }
   }
 }
@@ -99,9 +121,86 @@
   margin-left: -1px;
   border-radius: 1px;
   background: $text-2;
+
+  &.is-hover {
+    width: 3px;
+    margin-left: -1.5px;
+    background: $text;
+  }
+}
+
+// 점·중앙값에 마우스를 올리면 띠 위에 뜨는 판 — 띠 양끝 근처면 판이 바깥으로
+// 넘치지 않게 왼쪽·오른쪽 정렬로.
+.hl-pop {
+  @include glass.float;
+  position: absolute;
+  bottom: calc(100% - 2px);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: max-content;
+  max-width: 280px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  animation: hl-pop-in 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+
+  &.is-left {
+    transform: translateX(-12px);
+  }
+  &.is-right {
+    transform: translateX(calc(-100% + 12px));
+  }
+}
+.hl-pop__title {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: $text;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hl-pop__sub {
+  font-size: 11px;
+  color: $text-3;
+  line-height: 1.4;
+}
+.hl-pop__facts {
+  display: grid;
+  gap: 3px;
+  margin: 4px 0 2px;
+
+  div {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+    font-size: 12px;
+  }
+  dt {
+    color: $text-3;
+  }
+  dd {
+    margin: 0;
+    color: $text;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.hl-pop__hint {
+  font-size: 10.5px;
+  color: $text-3;
+}
+
+@keyframes hl-pop-in {
+  from {
+    opacity: 0;
+    translate: 0 4px;
+  }
 }
 .hl-strip__scale {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
   font-size: 10.5px;
@@ -192,6 +291,57 @@
   white-space: nowrap;
 }
 
+// 띠 읽는 법 — 중앙값 옆 ⓘ에 마우스를 올리거나(키보드로 가면) 설명이 뜬다.
+.hl-strip__center {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.hl-strip__help {
+  position: relative;
+  display: inline-flex;
+  color: $text-3;
+  cursor: help;
+  outline: none;
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+  &:hover,
+  &:focus-visible {
+    color: $text;
+  }
+}
+.hl-strip__help-text {
+  @include glass.float;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 5;
+  width: 260px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: $text-2;
+  text-align: left;
+  white-space: normal;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    visibility 0.16s;
+
+  .hl-strip__help:hover &,
+  .hl-strip__help:focus-visible & {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
 @keyframes hl-grow {
   from {
     transform: scaleX(0);
@@ -199,7 +349,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hl-row__track i {
+  .hl-row__track i,
+  .hl-pop {
     animation: none;
   }
 }

@@ -46,8 +46,9 @@ const verdict = (
 
 /**
  * 구간별 지표 — 구간이 열, 지표가 줄. 판단 지표 줄을 맨 위에 두고 가장 좋은
- * 구간에 표시. 칸마다 바로 앞 구간 대비 증감(오름 초록·내림 빨강·같음 회색 —
- * 다른 표와 같은 규칙). 전환이 적은 구간의 단가·전환율에는 "표본 적음".
+ * 구간에 표시. 칸마다 바로 앞 구간 대비 증감 — 화살표는 오르내림, 색은 좋고
+ * 나쁨(단가처럼 낮을수록 좋은 지표는 내려가면 초록, 같음 회색). 전환이 적은
+ * 구간의 단가·전환율에는 "표본 적음".
  */
 export function SegmentKpis({
   segments,
@@ -135,7 +136,17 @@ export function SegmentKpis({
                           )}
                         </span>
                         {d && (
-                          <span className={`roas-delta is-${d.dir}`}>
+                          // 색은 좋고 나쁨 — 낮을수록 좋은 지표(단가)는 내려가면
+                          // 초록. 화살표는 실제 방향 그대로.
+                          <span
+                            className={`roas-delta is-${
+                              kpi.better === 'low' && d.dir !== 'flat'
+                                ? d.dir === 'up'
+                                  ? 'down'
+                                  : 'up'
+                                : d.dir
+                            }`}
+                          >
                             {ARROW[d.dir]}
                             {d.pct !== null
                               ? ` ${Math.abs(d.pct).toFixed(1)}%`

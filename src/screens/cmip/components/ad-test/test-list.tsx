@@ -1,180 +1,118 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { Segmented } from '@/components/glass'
-import type { AdChannel, AdEntity, AdTest } from '../../client'
-import { addDays } from '../../utils'
+import type {
+  PickerChannel,
+  TestTarget,
+} from '../../view-model/use-ad-test-view-model'
 import { CHANNELS } from '../channels'
 import { ChannelTile } from '../channel-insight/channel-label'
 import { shortDate } from '../ad-settings/labels'
 
-type Mode = 'tests' | 'pick'
-const MODE_LABEL: Record<Mode, string> = { tests: '테스트', pick: '새 테스트' }
-type ChannelFilter = 'all' | AdChannel
 const CHANNEL_OPTIONS = {
   all: '전체',
   ...Object.fromEntries(CHANNELS.map((c) => [c.key, c.label])),
-} as Record<ChannelFilter, string>
+} as Record<PickerChannel, string>
 
 /**
- * 왼쪽 — 저장된 테스트(모두가 같이 보는 목록)와, 새 테스트를 만들 캠페인·광고셋
- * 고르기. 대상마다 테스트가 하나라, 이미 테스트가 있는 대상을 고르면 그
- * 테스트가 열린다.
+ * 왼쪽 — 설정 이력이 있는 캠페인·광고셋(광고 설정 탭에서 장을 넣은 것), 최근에
+ * 바뀐 것부터. 광고셋은 캠페인 설정이 바뀐 것도 구간이 되어 같이 나온다.
  */
 export function TestList({
-  tests,
-  entities,
+  targets,
   selectedKey,
   today,
-  hasDraft,
   onSelect,
 }: {
-  tests: readonly AdTest[]
-  entities: readonly AdEntity[]
+  targets: readonly TestTarget[]
   selectedKey: string | null
   today: string
-  hasDraft: (key: string) => boolean
   onSelect: (key: string) => void
 }) {
-  const [mode, setMode] = useState<Mode>(tests.length ? 'tests' : 'pick')
-  const [channel, setChannel] = useState<ChannelFilter>('all')
+  const [channel, setChannel] = useState<PickerChannel>('all')
   const [query, setQuery] = useState('')
-  const testKeys = useMemo(
-    () => new Set(tests.map((t) => t.entityKey)),
-    [tests],
-  )
-  const entityByKey = useMemo(
-    () => new Map(entities.map((e) => [e.key, e])),
-    [entities],
-  )
-
-  // 고를 대상 — 최근 2주 안에 돈 것 먼저, 검색어는 이름·ID.
-  const candidates = useMemo(() => {
+  const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
-    const since = addDays(today, -14)
-    return entities
-      .filter(
-        (e) =>
-          (channel === 'all' || e.channel === channel) &&
-          (!q ||
-            e.name.toLowerCase().includes(q) ||
-            e.campaignName.toLowerCase().includes(q) ||
-            e.platformId.includes(q)),
-      )
-      .sort(
-        (a, b) =>
-          Number(b.lastSeenDate >= since) - Number(a.lastSeenDate >= since) ||
-          b.lastSeenDate.localeCompare(a.lastSeenDate) ||
-          a.name.localeCompare(b.name),
-      )
-      .slice(0, 80)
-  }, [entities, channel, query, today])
+    return targets.filter(
+      ({ entity }) =>
+        (channel === 'all' || entity.channel === channel) &&
+        (!q ||
+          entity.name.toLowerCase().includes(q) ||
+          entity.campaignName.toLowerCase().includes(q) ||
+          entity.platformId.includes(q)),
+    )
+  }, [targets, channel, query])
 
   return (
     <div className="ad-test-list">
       <Segmented
-        options={MODE_LABEL}
-        value={mode}
-        onChange={setMode}
-        label="목록"
+        options={CHANNEL_OPTIONS}
+        value={channel}
+        onChange={setChannel}
+        label="채널"
       />
-
-      {mode === 'tests' ? (
-        tests.length === 0 ? (
-          <p className="ad-test__empty">
-            아직 저장된 테스트가 없습니다.
-            <br />
-            "새 테스트"에서 캠페인이나 광고셋을 고르세요.
-          </p>
-        ) : (
-          <ul className="ad-test-list__items">
-            {tests.map((test, i) => {
-              const entity = entityByKey.get(test.entityKey)
-              return (
-                <li
-                  key={test.id}
-                  style={{ '--glass-i': Math.min(i, 12) } as CSSProperties}
-                >
-                  <button
-                    type="button"
-                    className={`ad-test-item${selectedKey === test.entityKey ? ' is-selected' : ''}`}
-                    onClick={() => onSelect(test.entityKey)}
-                  >
-                    <ChannelTile channelKey={test.channel} />
-                    <span className="ad-test-item__text">
-                      <span className="ad-test-item__title">{test.title}</span>
-                      <span className="ad-test-item__sub">
-                        {test.level === 'adset' ? '광고셋' : '캠페인'} ·{' '}
-                        {entity?.name ?? test.entityName}
-                      </span>
-                      <span className="ad-test-item__meta">
-                        <span
-                          className={`ad-badge ${test.status === 'running' ? 'is-scheduled' : ''}`}
-                        >
-                          {test.status === 'running' ? '진행 중' : '완료'}
-                        </span>
-                        구간 {test.segments.length}개 ·{' '}
-                        {shortDate(
-                          new Date(test.updatedAt).toISOString().slice(0, 10),
-                          today,
-                        )}{' '}
-                        저장
-                        {hasDraft(test.entityKey) && (
-                          <span className="ad-badge is-missing">
-                            저장 안 한 변경
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )
+      <input
+        className="ad-input"
+        type="search"
+        placeholder="캠페인·광고셋 이름 또는 ID"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      {targets.length === 0 ? (
+        <p className="ad-test__empty">
+          아직 설정을 넣은 캠페인·광고셋이 없습니다.
+          <br />
+          광고 설정 탭에서 장을 넣으면, 바뀐 날마다 구간이 생깁니다.
+        </p>
+      ) : shown.length === 0 ? (
+        <p className="ad-test__empty">맞는 캠페인·광고셋이 없습니다.</p>
       ) : (
-        <>
-          <Segmented
-            options={CHANNEL_OPTIONS}
-            value={channel}
-            onChange={setChannel}
-            label="채널"
-          />
-          <input
-            className="ad-input"
-            type="search"
-            placeholder="캠페인·광고셋 이름 또는 ID"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <ul className="ad-test-list__items">
-            {candidates.map((e) => (
-              <li key={e.key}>
+        <ul className="ad-test-list__items">
+          {shown.map((target, i) => {
+            const { entity } = target
+            const inherited =
+              entity.level === 'adset' &&
+              target.events.every((e) => !e.sources.includes('adset'))
+            return (
+              <li
+                key={entity.key}
+                style={{ '--glass-i': Math.min(i, 12) } as CSSProperties}
+              >
                 <button
                   type="button"
-                  className={`ad-test-item is-pick${selectedKey === e.key ? ' is-selected' : ''}`}
-                  onClick={() => onSelect(e.key)}
+                  className={`ad-test-item${selectedKey === entity.key ? ' is-selected' : ''}`}
+                  onClick={() => onSelect(entity.key)}
                 >
-                  <ChannelTile channelKey={e.channel} />
+                  <ChannelTile channelKey={entity.channel} />
                   <span className="ad-test-item__text">
-                    <span className="ad-test-item__title">{e.name}</span>
+                    <span className="ad-test-item__title">{entity.name}</span>
                     <span className="ad-test-item__sub">
-                      {e.level === 'adset'
-                        ? `광고셋 · ${e.campaignName}`
+                      {entity.level === 'adset'
+                        ? `광고셋 · ${entity.campaignName}`
                         : '캠페인'}
                     </span>
                     <span className="ad-test-item__meta">
-                      {testKeys.has(e.key) && (
-                        <span className="ad-badge is-current">테스트 있음</span>
+                      <span className="ad-badge is-current">
+                        구간 {target.segmentCount}
+                      </span>
+                      {target.scheduledCount > 0 && (
+                        <span className="ad-badge is-scheduled">
+                          예약 {target.scheduledCount}
+                        </span>
                       )}
-                      {e.lastSeenDate >= addDays(today, -1)
-                        ? '운영 중'
-                        : `${shortDate(e.lastSeenDate, today)}까지`}
+                      {inherited && (
+                        <span className="ad-badge is-inherited">
+                          캠페인 설정
+                        </span>
+                      )}
+                      {target.lastChange &&
+                        `${shortDate(target.lastChange, today)} 변경`}
                     </span>
                   </span>
                 </button>
               </li>
-            ))}
-          </ul>
-        </>
+            )
+          })}
+        </ul>
       )}
     </div>
   )

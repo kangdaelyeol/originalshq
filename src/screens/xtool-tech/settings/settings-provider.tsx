@@ -8,7 +8,7 @@ import {
   loadSettings,
   saveSettings,
   SettingsContext,
-  type BackgroundKind,
+  type BuiltInBackground,
   type Settings,
 } from './settings'
 
@@ -31,7 +31,10 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       ...settings,
       accentInUse,
-      setBackground: (background: BackgroundKind) => setSettings((s) => ({ ...s, background })),
+      setBackground: (background: BuiltInBackground) =>
+        setSettings((s) => ({ ...s, background, sharedBackgroundId: null })),
+      setSharedBackground: (id: string) =>
+        setSettings((s) => ({ ...s, background: 'shared', sharedBackgroundId: id })),
       setAccent: (accent: string) => setSettings((s) => ({ ...s, accent: accent.toLowerCase() })),
       setGlass: (glass: Partial<GlassSettings>) => setSettings((s) => ({ ...s, glass: { ...s.glass, ...glass } })),
       reset: () => setSettings(DEFAULT_SETTINGS),

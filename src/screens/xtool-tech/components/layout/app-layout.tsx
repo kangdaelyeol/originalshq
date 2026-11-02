@@ -1,5 +1,6 @@
 import { motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
+import { useUsageTracking } from '@/hooks/use-usage-tracking'
 import { ScrollRestoration, useLocation, useNavigate, useOutlet } from 'react-router-dom'
 import { DENIED_MESSAGE } from '@/xtool-auth/access'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
@@ -7,11 +8,21 @@ import { useXtoolSession, type XtoolSession } from '@/xtool-auth/use-xtool-sessi
 import { MemberContext } from '../../context/member-context'
 import { pageStagger } from '../../lib/motion'
 import type { LoginLocationState } from '../../pages/login-page'
-import { xtPath } from '../../paths'
+import { XT_BASE, xtPath } from '../../paths'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
 import { Toaster } from './toaster'
 import { Topbar } from './topbar'
+
+/** 사용 분석(/log)에 남길 탭 이름 — 주소에서 /xtool-tech를 뗀 것(개요는 overview, 보드는 boards/{slug}). */
+const usageView = (pathname: string) => pathname.slice(XT_BASE.length).replace(/^\/+|\/+$/g, '') || 'overview'
+
+/** 지금 보는 화면을 사용 분석으로 보낸다 — 로그인 확인이 끝난(권한 있는) 화면 안에서만 그려서,
+ * 로그인 확인 중·권한 없음 화면은 세지 않는다. */
+function UsageTracking({ pathname }: { pathname: string }) {
+  useUsageTracking('tech', usageView(pathname))
+  return null
+}
 
 /**
  * 사이드바는 화면에 붙어 있고(sticky) 오른쪽 본문만 스크롤된다 — 샘플 영상과 같은 구조.
@@ -46,6 +57,7 @@ export function AppLayout() {
 
   return (
     <MemberContext.Provider value={session.member}>
+      <UsageTracking pathname={pathname} />
       <AppBackground />
       <div className="shell">
         <Sidebar member={session.member} />

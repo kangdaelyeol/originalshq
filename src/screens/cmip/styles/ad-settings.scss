@@ -93,6 +93,26 @@
     font-variant-numeric: tabular-nums;
   }
 }
+// 숫자 칸(number-input.tsx) — 단위(원·%)를 칸 안 오른쪽에 붙인다.
+.ad-number {
+  position: relative;
+  display: block;
+  flex: 1;
+  min-width: 0;
+
+  .ad-input {
+    padding-right: 34px;
+  }
+}
+.ad-number__unit {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  font-size: 12.5px;
+  color: $text-3;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
 textarea.ad-input {
   resize: vertical;
   line-height: 1.5;
@@ -503,11 +523,18 @@ textarea.ad-input {
   padding: 0;
   list-style: none;
 }
+// 목표 한 줄 [이름 | 판단 지표 | 영문 키 | 버튼] — 버튼 칸도 폭을 정해 둔다
+// (숨기기·저장·추가 글자 길이가 달라 줄마다 칸이 어긋나지 않게).
 .ad-goal {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 130px 110px auto;
+  grid-template-columns: minmax(0, 1fr) 130px 140px 76px;
   align-items: center;
   gap: 8px;
+
+  > .ad-button {
+    justify-content: center;
+    width: 100%;
+  }
 
   &.is-archived {
     opacity: 0.5;

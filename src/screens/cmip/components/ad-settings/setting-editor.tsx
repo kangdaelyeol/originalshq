@@ -22,11 +22,12 @@ import { ChannelTile } from '../channel-insight/channel-label'
 import {
   BUDGET_PERIOD_LABEL,
   FUNNEL_LABEL,
-  KPI_LABEL,
   formatBudget,
+  goalOptionLabel,
   shortDate,
   won,
 } from './labels'
+import { NumberInput } from './number-input'
 
 type Funnel = FunnelStage | 'none'
 
@@ -72,24 +73,43 @@ const STATUS_LABEL = {
   past: '지난 설정',
 }
 
+/**
+ * 칸 하나 — 위에 이름, 아래에 힌트. 기본 입력칸(input·textarea)은 <label>로
+ * 감싸 이름을 눌러도 칸에 들어가게 한다. 직접 그린 드롭다운·버튼 묶음(custom)은
+ * <div>로 감싼다 — <label> 안이면 목록 항목을 누를 때 브라우저가 label의 첫
+ * 버튼(드롭다운 열기)을 한 번 더 눌러 목록이 다시 열리고, 이름을 누르면 첫
+ * 버튼("일" 등)이 눌려 값이 바뀐다.
+ */
 const Field = ({
   label,
   hint,
   children,
   wide = false,
+  custom = false,
 }: {
   label: string
   /** 비워 두면 따르는 값(캠페인 설정) 등. */
   hint?: string | null
   children: ReactNode
   wide?: boolean
-}) => (
-  <label className={`ad-field${wide ? ' is-wide' : ''}`}>
-    <span className="ad-field__label">{label}</span>
-    {children}
-    {hint && <span className="ad-field__hint">{hint}</span>}
-  </label>
-)
+  custom?: boolean
+}) => {
+  const className = `ad-field${wide ? ' is-wide' : ''}`
+  const body = (
+    <>
+      <span className="ad-field__label">{label}</span>
+      {children}
+      {hint && <span className="ad-field__hint">{hint}</span>}
+    </>
+  )
+  return custom ? (
+    <div className={className} role="group" aria-label={label}>
+      {body}
+    </div>
+  ) : (
+    <label className={className}>{body}</label>
+  )
+}
 
 /** 설정 한 장의 요약 배지들. */
 const Summary = ({
@@ -108,7 +128,8 @@ const Summary = ({
     fields.creativeSetId &&
       `소재 ${sets.get(fields.creativeSetId)?.name ?? '(지운 셋)'}`,
     fields.targetCpa !== null && `목표 단가 ${won(fields.targetCpa)}`,
-    fields.targetRoas !== null && `목표 ROAS ${fields.targetRoas}%`,
+    fields.targetRoas !== null &&
+      `목표 ROAS ${fields.targetRoas.toLocaleString('ko-KR')}%`,
     fields.funnelStage && `퍼널 ${FUNNEL_LABEL[fields.funnelStage]}`,
   ].filter(Boolean) as string[]
   return chips.length ? (
@@ -211,10 +232,7 @@ export function SettingEditor({
     { value: '', label: isAdset ? '정하지 않음(캠페인 따름)' : '정하지 않음' },
     ...goals
       .filter((g) => !g.archived || g.key === form.conversionGoal)
-      .map((g) => ({
-        value: g.key,
-        label: `${g.label} · ${KPI_LABEL[g.kpi]}`,
-      })),
+      .map((g) => ({ value: g.key, label: goalOptionLabel(g) })),
   ]
   const setOptions = [
     { value: '', label: '없음' },
@@ -264,6 +282,7 @@ export function SettingEditor({
         <div className="ad-editor__grid">
           <Field
             label="전환 목표"
+            custom
             hint={inherit(
               parent?.conversionGoal &&
                 goalMap.get(parent.conversionGoal)?.label,
@@ -278,6 +297,7 @@ export function SettingEditor({
           </Field>
           <Field
             label="소비 설정 비용"
+            custom
             hint={inherit(parent?.budget && formatBudget(parent.budget))}
           >
             <span className="ad-field__row">
@@ -288,17 +308,17 @@ export function SettingEditor({
                 label="예산 기준"
                 role="buttons"
               />
-              <input
-                className="ad-input is-number"
-                inputMode="numeric"
-                placeholder="원"
+              <NumberInput
+                label="소비 설정 비용"
+                unit="원"
                 value={form.budgetAmount}
-                onChange={(e) => set('budgetAmount', e.target.value)}
+                onChange={(v) => set('budgetAmount', v)}
               />
             </span>
           </Field>
           <Field
             label="소재 셋"
+            custom
             hint={inherit(
               parent?.creativeSetId && setMap.get(parent.creativeSetId)?.name,
             )}
@@ -310,7 +330,7 @@ export function SettingEditor({
               label="소재 셋"
             />
           </Field>
-          <Field label="퍼널 단계">
+          <Field label="퍼널 단계" custom>
             <Segmented
               options={FUNNEL_OPTIONS}
               value={form.funnelStage}
@@ -323,12 +343,11 @@ export function SettingEditor({
             label="목표 전환 단가"
             hint={inherit(parent?.targetCpa != null && won(parent.targetCpa))}
           >
-            <input
-              className="ad-input is-number"
-              inputMode="numeric"
-              placeholder="원"
+            <NumberInput
+              label="목표 전환 단가"
+              unit="원"
               value={form.targetCpa}
-              onChange={(e) => set('targetCpa', e.target.value)}
+              onChange={(v) => set('targetCpa', v)}
             />
           </Field>
           <Field
@@ -337,12 +356,12 @@ export function SettingEditor({
               parent?.targetRoas != null && `${parent.targetRoas}%`,
             )}
           >
-            <input
-              className="ad-input is-number"
-              inputMode="decimal"
-              placeholder="%"
+            <NumberInput
+              label="목표 ROAS"
+              unit="%"
+              decimal
               value={form.targetRoas}
-              onChange={(e) => set('targetRoas', e.target.value)}
+              onChange={(v) => set('targetRoas', v)}
             />
           </Field>
           <Field label="타깃 오디언스" wide>

@@ -29,6 +29,24 @@ export const KPI_LABEL: Record<GoalKpi, string> = {
   cvr: 'CVR',
 }
 
+// 전환 목표마다 실제로 세는 이벤트 이름(Meta 표준 이벤트 기준) — 드롭다운에
+// "문의(Contact)"처럼 같이 보여 준다. 목표·소재 관리에서 새로 만든 목표는
+// 이벤트를 모르니 이름만.
+const GOAL_EVENT: Record<string, string> = {
+  inquiry: 'Contact',
+  purchase: 'Purchase',
+  cart: 'AddToCart',
+  signup: 'CompleteRegistration',
+  call: 'Call',
+  landing: 'LandingPageView',
+  traffic: 'LinkClick',
+  awareness: 'Reach',
+}
+
+/** "문의(Contact)" — 이벤트를 모르는 목표는 이름만. */
+export const goalOptionLabel = (goal: { key: string; label: string }) =>
+  GOAL_EVENT[goal.key] ? `${goal.label}(${GOAL_EVENT[goal.key]})` : goal.label
+
 export const CREATIVE_FORMAT_LABEL: Record<CreativeFormat, string> = {
   image: '이미지',
   video: '영상',
