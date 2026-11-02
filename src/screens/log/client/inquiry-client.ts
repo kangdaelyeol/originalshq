@@ -1,5 +1,4 @@
-import { API_BASE } from '@/screens/xtool-lead-manager/constants'
-import type { ClientResponse } from './batch-run-client'
+import { getIncremental, postJson, requestJson } from './http'
 
 /** 처리 단계 상태 — functions-xtool/src/inquiry/types.ts의 StepStatus. */
 export type InquiryStepStatus = 'pending' | 'success' | 'failed' | 'skipped'
@@ -62,76 +61,46 @@ export interface InquirySettings {
   updatedAt: number | null
 }
 
-const request = async <T>(
-  path: string,
-  init: RequestInit | undefined,
-  fallback: string,
-): Promise<ClientResponse<T>> => {
-  try {
-    const response = await fetch(`${API_BASE}/${path}`, init)
-    const body = (await response.json().catch(() => ({}))) as T & {
-      error?: string
-    }
-    if (!response.ok) {
-      return {
-        ok: false,
-        error: body.error ?? `${fallback} (HTTP ${response.status})`,
-      }
-    }
-    return { ok: true, data: body }
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : fallback,
-    }
-  }
-}
-
-const post = (body: unknown): RequestInit => ({
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(body),
-})
-
 /** 최근 days일에 들어온 상담 신청 — 최근 것부터. since(지난 응답의 fetchedAt)를
- * 주면 그 뒤에 고친 것만 온다(incremental — 가진 목록에 합친다). */
+ * 주면 그 뒤에 고친 것만 온다(가진 목록에 합친다). */
 export const getInquiries = (days: number, since?: number) =>
-  request<{ inquiries: Inquiry[]; fetchedAt: number; incremental?: boolean }>(
-    `listInquiryLogs?days=${days}${since ? `&since=${since}` : ''}`,
-    undefined,
+  getIncremental<Inquiry>(
+    'listInquiryLogs',
+    'inquiries',
+    days,
+    since,
     '상담 신청 기록을 불러오지 못했습니다',
   )
 
 /** 실패한 단계(Monday 등록 / 문자 발송)를 다시 실행한다. */
 export const retryInquiry = (id: string, step: 'monday' | 'sms') =>
-  request<{ inquiry: Inquiry }>(
+  requestJson<{ inquiry: Inquiry }>(
     'retryInquiry',
-    post({ id, step }),
     '다시 실행하지 못했습니다',
+    postJson({ id, step }),
   )
 
 export const getInquirySettings = () =>
-  request<{ settings: InquirySettings }>(
+  requestJson<{ settings: InquirySettings }>(
     'inquirySettings',
-    undefined,
     '문자 설정을 불러오지 못했습니다',
   )
 
 export const saveInquirySettings = (
   settings: Omit<InquirySettings, 'updatedAt'>,
 ) =>
-  request<{ settings: InquirySettings }>(
+  requestJson<{ settings: InquirySettings }>(
     'inquirySettings',
-    post(settings),
     '문자 설정을 저장하지 못했습니다',
+    postJson(settings),
   )
 
 /** 접수 기록을 지운다(최대 500건). Monday 아이템·보낸 문자는 그대로다. */
 export const deleteInquiries = (ids: string[]) =>
-  request<{ deleted: number }>(
+  requestJson<{ deleted: number }>(
     'deleteInquiryLogs',
-    post({ ids }),
     '접수 기록을 지우지 못했습니다',
+    postJson({ ids }),
   )
 
 /** 기기 코드 → 보드 이름(functions-xtool/src/inquiry/types.ts의

@@ -1,0 +1,54 @@
+// 토스트(toast.tsx).
+
+@use 'tokens' as *;
+
+// ── 토스트(toast.tsx) ─────────────────────────────────────────────────
+.log-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  font-family: $mono;
+  transform: translateX(-50%);
+  pointer-events: none;
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 11px 16px;
+    border: 1px solid $line-2;
+    border-radius: 3px;
+    background: #15141b;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: $ink;
+    font-size: 12.5px;
+    animation: log-toast-in 0.18s ease-out;
+
+    &.is-info .log-toast__dot {
+      background: $run;
+      animation: log-blink 1s ease-in-out infinite;
+    }
+    &.is-success .log-toast__dot {
+      background: $ok;
+      box-shadow: 0 0 8px $ok;
+    }
+    &.is-error .log-toast__dot {
+      background: $fail;
+      box-shadow: 0 0 8px $fail;
+    }
+  }
+
+  &__dot {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+}

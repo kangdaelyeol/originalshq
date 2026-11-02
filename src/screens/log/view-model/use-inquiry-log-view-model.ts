@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import {
   deleteInquiries,
@@ -9,11 +9,15 @@ import {
   type Inquiry,
   type InquirySettings,
 } from '../client/inquiry-client'
-import { mergeRecent } from '../utils/merge-recent'
+import { keptDays, useIncrementalList } from './use-incremental-list'
 
 // 이어 받기로는 다른 사람이 지운 문의를 알 수 없어서, 이만큼 지나면 기간
 // 전체를 다시 받아 맞춘다.
 const FULL_RELOAD_MS = 10 * 60_000
+
+const KEEP_KEY = 'inquiry'
+const inquiryIdOf = (inquiry: Inquiry) => inquiry.id
+const inquiryTimeOf = (inquiry: Inquiry) => inquiry.receivedAt
 
 export const INQUIRY_PERIOD_OPTIONS = [
   { days: 1, label: '오늘' },
@@ -66,7 +70,7 @@ const matchesSearch = (inquiry: Inquiry, query: string) => {
  * 문자 설정(발송 여부·발신 번호·내용)도 여기서 고친다. 1분마다 다시 받는다.
  */
 export const useInquiryLogViewModel = () => {
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(() => keptDays(KEEP_KEY) ?? 7)
   const [filter, setFilter] = useState<InquiryFilter>('all')
   const [search, setSearch] = useState('')
   // 기기 필터 — null이면 전체.
@@ -74,11 +78,6 @@ export const useInquiryLogViewModel = () => {
   // 체크한 접수 기록(id) — 한 번에 지운다.
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
   const [deleting, setDeleting] = useState(false)
-  const [inquiries, setInquiries] = useState<Inquiry[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [error, setError] = useState<string | null>(null)
-  const [fetchedAt, setFetchedAt] = useState<number | null>(null)
-  const [now, setNow] = useState(() => Date.now())
   const [openId, setOpenId] = useState<string | null>(null)
   // 다시 실행 중인 "id:step" — 버튼을 잠근다.
   const [retrying, setRetrying] = useState<string | null>(null)
@@ -93,65 +92,30 @@ export const useInquiryLogViewModel = () => {
   const [saving, setSaving] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null)
 
-  /** 다시 받는다 — 실패하면 오류 문구, 성공하면 null(새로고침 알림용).
-   * 처음·기간을 바꿨을 때·새로고침·10분마다는 기간 전체를, 그 사이 1분마다는
-   * 지난번 뒤에 고친 문의만 받아(since) 가진 목록에 합친다. */
-  const cursor = useRef<{
-    days: number
-    fetchedAt: number
-    fullAt: number
-  } | null>(null)
-  const latest = useRef(0)
-  const load = useCallback(
-    async (options?: { full?: boolean }): Promise<string | null> => {
-      const request = ++latest.current
-      const prev = cursor.current
-      const since =
-        !options?.full &&
-        prev?.days === days &&
-        Date.now() - prev.fullAt < FULL_RELOAD_MS
-          ? prev.fetchedAt
-          : undefined
-      const res = await getInquiries(days, since)
-      if (request !== latest.current) return null
-      setNow(Date.now())
-      if (!res.ok) {
-        setError(res.error)
-        setStatus('error')
-        return res.error
-      }
-      const { inquiries: received, fetchedAt } = res.data
-      const incremental = res.data.incremental === true
-      cursor.current = {
-        days,
-        fetchedAt,
-        fullAt: incremental && prev ? prev.fullAt : Date.now(),
-      }
-      if (incremental) {
-        setInquiries((current) =>
-          mergeRecent(
-            current,
-            received,
-            (each) => each.id,
-            (each) => each.receivedAt,
-            fetchedAt - days * 86_400_000,
-          ),
-        )
-      } else {
-        setInquiries(received)
-        // 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
-        const ids = new Set(received.map((each) => each.id))
-        setSelected(
-          (chosen) => new Set([...chosen].filter((id) => ids.has(id))),
-        )
-      }
-      setFetchedAt(res.data.fetchedAt)
-      setError(null)
-      setStatus('ready')
-      return null
-    },
-    [days],
-  )
+  // 기간 전체를 다시 받았을 때 목록에서 사라진 기록은 선택에서도 뺀다.
+  const pruneSelection = useCallback((list: Inquiry[]) => {
+    const ids = new Set(list.map((each) => each.id))
+    setSelected((chosen) => new Set([...chosen].filter((id) => ids.has(id))))
+  }, [])
+  // 받기·이어 받기·탭을 오갈 때 보관은 공용 훅이 맡는다. 이어 받기로는 남이 지운
+  // 문의를 알 수 없어서 10분마다 기간 전체를 다시 받는다.
+  const {
+    items: inquiries,
+    setItems: setInquiries,
+    status,
+    error,
+    fetchedAt,
+    now,
+    load,
+  } = useIncrementalList({
+    keepKey: KEEP_KEY,
+    days,
+    fetchPage: getInquiries,
+    idOf: inquiryIdOf,
+    timeOf: inquiryTimeOf,
+    fullEveryMs: FULL_RELOAD_MS,
+    onFull: pruneSelection,
+  })
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)
@@ -168,19 +132,22 @@ export const useInquiryLogViewModel = () => {
     })()
   }, [])
 
-  const retry = useCallback(async (id: string, step: 'monday' | 'sms') => {
-    setRetrying(`${id}:${step}`)
-    setActionError(null)
-    const res = await retryInquiry(id, step)
-    setRetrying(null)
-    if (!res.ok) {
-      setActionError(res.error)
-      return
-    }
-    setInquiries((prev) =>
-      prev.map((each) => (each.id === id ? res.data.inquiry : each)),
-    )
-  }, [])
+  const retry = useCallback(
+    async (id: string, step: 'monday' | 'sms') => {
+      setRetrying(`${id}:${step}`)
+      setActionError(null)
+      const res = await retryInquiry(id, step)
+      setRetrying(null)
+      if (!res.ok) {
+        setActionError(res.error)
+        return
+      }
+      setInquiries((prev) =>
+        prev.map((each) => (each.id === id ? res.data.inquiry : each)),
+      )
+    },
+    [setInquiries],
+  )
 
   /** 저장 — 실패하면 오류 문구, 성공하면 null(저장 알림용). */
   const saveSettings = useCallback(async (): Promise<string | null> => {
@@ -268,7 +235,7 @@ export const useInquiryLogViewModel = () => {
     setInquiries((prev) => prev.filter((each) => !removed.has(each.id)))
     setSelected(new Set())
     setOpenId((prev) => (prev && removed.has(prev) ? null : prev))
-  }, [selected])
+  }, [selected, setInquiries])
 
   const visibleSelected = rows.filter((each) => selected.has(each.id)).length
 

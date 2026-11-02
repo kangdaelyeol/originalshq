@@ -1,0 +1,481 @@
+// 신호 그래프(signal-graph.tsx) — 네 탭 맨 위의 퍼셉트론 그림.
+
+@use 'tokens' as *;
+
+// ── 신호 그래프(signal-graph.tsx) ──────────────────────────────────────
+// 퍼셉트론 영상의 신경망 화면 — 기울이거나 움직이지 않는 평면. SVG 세 장을
+// 포갠다: 뒤 SVG(격자·기둥·선), 빛 점 층(HTML 점 — transform 애니메이션이라
+// GPU 합성 단계에서 움직인다), 앞 SVG(숫자·카드).
+.sig-stage {
+  position: relative;
+}
+
+.sig-graph {
+  display: block;
+  width: 100%;
+  height: auto;
+  font-family: $mono;
+
+  &.is-front {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+  }
+}
+
+// 빛 점 층 — 그림 좌표 크기(인라인 width·height)로 두고 화면 폭에 맞춰
+// scale(signal-graph.tsx의 ResizeObserver). 점(.sig-dot)은 effect가 만든다.
+.sig-motion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+// 화면 밖·숨긴 탭 — 그림 안의 CSS 애니메이션도 멈춘다(signal-graph.tsx).
+.sig-stage.is-paused * {
+  animation-play-state: paused !important;
+}
+
+// 바닥 — 가장자리로 흐려지는 큰 격자와 먼지 점(속성으로 투명도).
+.sig-grid {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.04);
+  stroke-width: 1;
+}
+.sig-dust {
+  fill: #fff;
+}
+
+// 열 머리 — 영상의 "02 TYPES / QUESTIONS": 앞 번호는 열 색, 굵은 대문자, 아래
+// 가는 열 색 밑줄.
+.sig-colhead {
+  &__text {
+    fill: $ink;
+    font-size: 12.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+  }
+  &__no {
+    font-size: 10px;
+    font-weight: 700;
+  }
+}
+
+// 기둥 — 흰 빛 섬유 다발(살짝 보랏빛). 켜진 선이 지나면 탭 강조색으로 물든다.
+// 몇 가닥은 왼쪽 열의 색(--tint, signal-graph.tsx).
+.sig-spine {
+  --spine: #cfcaff;
+
+  &.is-lit {
+    --spine: var(--log-accent);
+  }
+
+  // 옅은 띠 — 가운데가 밝고 양옆으로 사라진다.
+  &__stop {
+    stop-color: var(--spine);
+
+    &.is-edge {
+      stop-opacity: 0;
+    }
+    &.is-core {
+      stop-opacity: 0.09;
+    }
+  }
+  &.is-lit .sig-spine__stop.is-core {
+    stop-opacity: 0.2;
+  }
+
+  // 매듭의 번짐 — 흰 중심에서 기둥 색으로, 그리고 투명으로.
+  &__glow {
+    &.is-core {
+      stop-color: #fff;
+      stop-opacity: 0.9;
+    }
+    &.is-mid {
+      stop-color: var(--spine);
+      stop-opacity: 0.32;
+    }
+    &.is-edge {
+      stop-color: var(--spine);
+      stop-opacity: 0;
+    }
+  }
+
+  &__strand,
+  &__wisp {
+    fill: none;
+    stroke: color-mix(in srgb, var(--spine) 55%, #fff);
+    stroke-linecap: round;
+  }
+  &__strand.is-tinted {
+    stroke: var(--tint);
+  }
+  &__strand.is-glow {
+    stroke-width: 4;
+    opacity: 0.07;
+  }
+  &__wisp {
+    stroke-width: 0.6;
+    opacity: 0.32;
+  }
+  &.is-lit .sig-spine__strand {
+    stroke: color-mix(in srgb, var(--spine) 78%, #fff);
+  }
+  &.is-lit .sig-spine__wisp {
+    opacity: 0.55;
+  }
+  &__core {
+    fill: color-mix(in srgb, var(--spine) 40%, #fff);
+    opacity: 0.3;
+  }
+  &.is-lit .sig-spine__core {
+    fill: color-mix(in srgb, var(--spine) 70%, #fff);
+    opacity: 0.85;
+  }
+  &__knot {
+    fill: #fff;
+  }
+}
+
+// 선과 그 위 빛 점의 색 — 평소엔 출발 열의 색(--col, signal-graph.tsx), 주의·
+// 실패·실행 중만 상태 색.
+@mixin edge-tones {
+  --tone: var(--col, #{$ink-2});
+
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  // 켜진 선 — 탭 강조색(영상에서 한 사례의 경로가 한 색으로 켜지듯).
+  &.is-lit {
+    --tone: var(--log-accent);
+  }
+}
+
+.sig-edge {
+  @include edge-tones;
+  // 선 하나가 처음 그려질 때 살짝 늦게 떠오른다(순서는 g의 animationDelay).
+  animation: log-fade 0.6s ease both;
+
+  // 그라데이션 — 양끝은 옅게(카드에 스며든다), 가운데는 흰빛을 조금 섞어 진하게.
+  &__stop {
+    stop-color: var(--tone);
+
+    &.is-end {
+      stop-opacity: 0.24;
+    }
+    &.is-mid {
+      stop-color: color-mix(in srgb, var(--tone) 82%, #fff);
+      stop-opacity: 0.85;
+    }
+  }
+  &.is-accent .sig-edge__stop.is-mid {
+    stop-opacity: 0.9;
+  }
+  &.is-idle .sig-edge__stop {
+    &.is-end {
+      stop-opacity: 0.08;
+    }
+    &.is-mid {
+      stop-opacity: 0.48;
+    }
+  }
+
+  // 켜진 선 — 넓고 아주 옅은 번짐 · 중간 번짐 · 흰빛 섞인 심(흐림 필터 없이).
+  &__glow,
+  &__haze {
+    fill: none;
+    stroke: var(--tone);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  &__glow {
+    stroke-width: 15;
+    opacity: 0.09;
+  }
+  &__haze {
+    stroke-width: 6;
+    opacity: 0.26;
+  }
+  &.is-lit .sig-edge__line {
+    stroke: color-mix(in srgb, var(--tone) 72%, #fff);
+    stroke-linejoin: round;
+  }
+
+  // 선 — 처음 그려질 때 출발점에서 도착점으로 그어진다(pathLength 100).
+  &__line {
+    fill: none;
+    stroke-linecap: round;
+    stroke-dasharray: 100;
+    animation: sig-draw 0.9s cubic-bezier(0.3, 0.6, 0.2, 1) both;
+    animation-delay: inherit;
+
+    &.is-dashed {
+      stroke-dasharray: 1.4 1.8;
+      animation: log-fade 0.6s ease both;
+    }
+  }
+  // 실패한 선 — 끊긴 점선(움직이지 않는다 — 뒤 층을 다시 칠하지 않게).
+  &.is-fail:not(.is-lit) .sig-edge__line {
+    stroke-dasharray: 2 1.6;
+    animation: log-fade 0.6s ease both;
+  }
+}
+
+// 빛 점 — 점 하나가 div 하나, 둥근 판에 겹 원(흰 중심 · 선 색 번짐)을
+// 그라데이션으로. 키프레임 좌표가 점의 가운데라 크기 절반만큼 당긴다.
+//   · pulse — 선 위 작은 빛 점(흰 중심 + 선 색 번짐)
+//   · lit — 켜진 선의 큰 빛 공(흰 중심 · 번짐 · 넓은 옅은 번짐)
+//   · spark — 섬유를 따라 흐르는 흰 점(기둥 색 번짐)
+.sig-dot {
+  @include edge-tones;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    color-mix(in srgb, var(--tone) 25%, #fff) 0 32%,
+    color-mix(in srgb, var(--tone) 32%, transparent) 38% 100%
+  );
+  will-change: transform;
+
+  &.is-lit {
+    width: 30px;
+    height: 30px;
+    margin: -15px 0 0 -15px;
+    background: radial-gradient(
+      circle closest-side,
+      color-mix(in srgb, var(--tone) 25%, #fff) 0 18%,
+      color-mix(in srgb, var(--tone) 42%, transparent) 21% 43%,
+      color-mix(in srgb, var(--tone) 12%, transparent) 46% 100%
+    );
+  }
+  &.is-spark {
+    --spine: #cfcaff;
+    background: radial-gradient(
+      circle closest-side,
+      #fff 0 31%,
+      color-mix(in srgb, var(--spine) 24%, transparent) 37% 100%
+    );
+  }
+  &.is-spark.is-lit-spine {
+    --spine: var(--log-accent);
+  }
+  &.is-dim {
+    opacity: 0.2;
+  }
+}
+
+// 선 위 숫자 — 유리 알약. 반투명 판에 옅은 테두리, 위쪽에 빛 선 한 줄.
+.sig-tag {
+  --tone: #{$ink-3};
+  transition: opacity 0.35s ease;
+
+  &.is-ok {
+    --tone: #{$ok};
+  }
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  &.is-accent {
+    --tone: var(--log-accent);
+  }
+  &.is-dim {
+    opacity: 0.15;
+  }
+
+  &__glass {
+    fill: color-mix(in srgb, var(--tone) 14%, rgba(22, 21, 30, 0.82));
+    stroke: color-mix(in srgb, var(--tone) 38%, rgba(255, 255, 255, 0.16));
+    stroke-width: 0.8;
+  }
+  &__shine {
+    fill: rgba(255, 255, 255, 0.28);
+  }
+  &__text {
+    fill: $ink;
+    font-family:
+      'Pretendard Variable',
+      Pretendard,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+}
+
+// 카드 — 영상의 카드: 진한 판에 옅은 1px 테두리, 열 색 네모 + 굵은 이름,
+// 회색 이름 · 오른쪽 값 줄, 아래 열 색 짧은 막대.
+.sig-node {
+  --tone: #{$ink-3};
+  --hl: var(--log-accent);
+
+  &.is-ok {
+    --tone: #{$ok};
+  }
+  &.is-warn {
+    --tone: #{$warn};
+  }
+  &.is-fail {
+    --tone: #{$fail};
+    --hl: #{$fail};
+  }
+  &.is-run {
+    --tone: #{$run};
+  }
+  &.is-accent {
+    --tone: var(--log-accent);
+  }
+  // 고른 노드·이어진 노드는 실패여도 경로 색으로 켠다(실패는 줄 값이 말한다).
+  &.is-active,
+  &.is-path {
+    --hl: var(--log-accent);
+  }
+
+  &__box {
+    fill: rgba(14, 13, 20, 0.95);
+    stroke: rgba(255, 255, 255, 0.09);
+    stroke-width: 1;
+    transition:
+      stroke 0.3s ease,
+      fill 0.3s ease;
+  }
+  // 이름 앞 네모·아래 막대 — 그 열의 색(--col, signal-graph.tsx).
+  &__square,
+  &__bar {
+    fill: var(--col);
+  }
+  &__label {
+    fill: $ink;
+    font-size: 12px;
+    font-weight: 700;
+  }
+  &__tag {
+    fill: #e6e5ec;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  &__key {
+    fill: #56556a;
+    font-size: 9.5px;
+  }
+  &__value {
+    fill: #d9d8e2;
+    font-size: 9.5px;
+    font-weight: 600;
+  }
+  // 줄 값의 상태 색 — 성공 초록·실패 빨강 등(글자가 뜻을 같이 말한다).
+  &__row {
+    &.is-ok .sig-node__value {
+      fill: $ok;
+    }
+    &.is-warn .sig-node__value {
+      fill: $warn;
+    }
+    &.is-fail .sig-node__value {
+      fill: $fail;
+    }
+    &.is-run .sig-node__value {
+      fill: $run;
+    }
+    &.is-accent .sig-node__value {
+      fill: var(--log-accent);
+    }
+    &.is-idle .sig-node__value {
+      fill: $ink-3;
+    }
+  }
+
+  // 켜진 카드 — 네온 테두리 + 바깥 빛 두 겹, 판도 그 색으로 물든다.
+  &__aura {
+    fill: none;
+    stroke: var(--hl);
+    stroke-width: 5;
+    opacity: 0.3;
+
+    &.is-wide {
+      stroke-width: 12;
+      opacity: 0.08;
+    }
+  }
+  &.is-lit .sig-node__box {
+    fill: color-mix(in srgb, var(--hl) 11%, rgba(14, 13, 20, 0.96));
+    stroke: var(--hl);
+    stroke-width: 1.8;
+  }
+  // 이어진 노드는 한 단계 옅게.
+  &.is-path:not(.is-fail) {
+    .sig-node__box {
+      fill: color-mix(in srgb, var(--hl) 6%, rgba(14, 13, 20, 0.96));
+      stroke: color-mix(in srgb, var(--hl) 75%, transparent);
+      stroke-width: 1.4;
+    }
+    .sig-node__aura {
+      opacity: 0.16;
+
+      &.is-wide {
+        opacity: 0.04;
+      }
+    }
+  }
+  &.is-fail:not(.is-active, .is-path) .sig-node__aura {
+    animation: log-blink 1.6s ease-in-out infinite;
+  }
+
+  // 결과 띠 — 켜진 카드 아래, 경로 색 바탕에 진한 글자(영상의 "state packed").
+  &__result {
+    rect {
+      fill: color-mix(in srgb, var(--hl) 85%, transparent);
+    }
+    text {
+      fill: #0b0a10;
+      font-size: 9px;
+      font-weight: 800;
+    }
+  }
+
+  &.is-clickable {
+    cursor: pointer;
+    outline: none;
+
+    &:hover .sig-node__box,
+    &:focus-visible .sig-node__box {
+      stroke: color-mix(in srgb, var(--col) 60%, rgba(255, 255, 255, 0.2));
+    }
+    &.is-lit:hover .sig-node__box,
+    &.is-lit:focus-visible .sig-node__box {
+      stroke: color-mix(in srgb, var(--hl) 70%, #fff);
+    }
+  }
+}
+
+// 고른 노드가 있으면 그 노드에 닿은 것만 밝게, 나머지는 흐리게.
+.sig-node,
+.sig-edge {
+  transition: opacity 0.35s ease;
+}
+.sig-node.is-dim {
+  opacity: 0.3;
+}
+.sig-edge.is-dim {
+  opacity: 0.14;
+}

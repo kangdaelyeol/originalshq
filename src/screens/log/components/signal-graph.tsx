@@ -11,9 +11,10 @@ import { useTween } from '../view-model/use-tween'
 //     섬유를 따라 흐르는 빛 점. 켜진 선이 지나는 기둥은 그 색으로 물든다
 //   · 선: 평소엔 가는 색 선(출발 열의 색) + 작은 빛 점. 고른 노드에 닿은 선은
 //     카드 → 기둥 → 카드로 꺾어 가는 굵은 네온 세 겹 + 큰 빛 공
-// SVG 세 장을 포갠다 — 뒤(격자·기둥·선: 한 번 그리면 끝), 움직임(빛 점·빛 공:
-// 따로 합성되는 층이라 움직여도 이 층만 다시 칠한다), 앞(숫자·카드). 빛나는
-// 것은 흐림 필터 없이 반투명 겹으로, 움직임은 CSS(stroke-dashoffset·opacity)로만.
+// 세 겹을 포갠다 — 뒤 SVG(격자·기둥·선: 한 번 그리면 끝), 빛 점 층(HTML 점마다
+// 선을 따라 짚은 좌표로 transform 애니메이션 — 브라우저가 GPU 합성 단계에서
+// 움직여서 매 프레임 다시 칠하지 않는다), 앞 SVG(숫자·카드). 빛나는 것은 흐림
+// 필터 없이 반투명 겹으로.
 // 데이터가 바뀌어 배치가 달라지면(기간·필터) 노드·선·높이가 이전 자리에서 새
 // 자리로 미끄러지고, 새 노드는 떠오르고 빠지는 노드는 사라진다(useTween).
 
@@ -445,6 +446,27 @@ const strandPath = (
   return `${d} L${f(last.x)},${f(last.y)}`
 }
 
+/** 빛 점 하나 — 선(pulse)·켜진 선의 빛 공(lit)·섬유 위 빛 점(spark). */
+type MotionDot = {
+  d: string
+  kind: 'pulse' | 'lit' | 'spark'
+  /** 선의 상태 색(SignalTone) — 섬유 빛 점은 ''. */
+  tone: string
+  /** 출발 열의 색(--col) — 섬유 빛 점은 ''. */
+  color: string
+  dim: boolean
+  /** 켜진 기둥의 섬유 빛 점(탭 강조색). */
+  litSpine: boolean
+  /** 한 바퀴(초)·시작 위치(초 — 이만큼 지난 데서 시작)·거꾸로. */
+  duration: number
+  delay: number
+  reverse: boolean
+}
+
+// 빛 점이 지날 좌표를 이만큼(그림 좌표)마다 짚는다 — 사이는 곧게 이어져서,
+// 이 정도면 곡선도 매끈해 보인다.
+const SAMPLE_STEP = 6
+
 /**
  * 신호 그래프 — 노드(작업·단계·탭)와 그 사이 흐름을 퍼셉트론 영상의 신경망처럼
  * 그린다. 데이터가 실제로 오가는 선(flow)에는 빛 점이 흐르고, 카드 값의 색이
@@ -474,15 +496,24 @@ export const SignalGraph = ({
   /** 기둥 x — 열 사이에 세로로 늘어선 빛 섬유 다발. */
   spines?: number[]
 }) => {
-  // 화면 밖에 있거나 브라우저 탭이 숨겨져 있으면 움직임(CSS 애니메이션)을
-  // 멈춘다 — 보지 않는 동안 매 프레임 다시 칠하지 않게.
+  // 화면 밖에 있거나 브라우저 탭이 숨겨져 있으면 움직임을 멈춘다 — CSS
+  // 애니메이션은 is-paused로, 빛 점(Web Animations)은 직접 멈춘다.
   const stageRef = useRef<HTMLDivElement>(null)
+  const motionRef = useRef<HTMLDivElement>(null)
+  const measureRef = useRef<SVGPathElement>(null)
   useEffect(() => {
     const stage = stageRef.current
     if (!stage) return
     let onScreen = true
     const apply = () => {
-      stage.classList.toggle('is-paused', !onScreen || document.hidden)
+      const paused = !onScreen || document.hidden
+      stage.classList.toggle('is-paused', paused)
+      for (const animation of motionRef.current?.getAnimations({
+        subtree: true,
+      }) ?? []) {
+        if (paused) animation.pause()
+        else animation.play()
+      }
     }
     const observer = new IntersectionObserver(([entry]) => {
       onScreen = entry.isIntersecting
@@ -501,7 +532,11 @@ export const SignalGraph = ({
 
   // 지금 보이는 배치 — 데이터가 바뀌어 배치가 달라지면 잠깐 섞인 값.
   const target = geometryOf(nodes, edges, height)
-  const shown = useTween(target, geometryKey(target), mixGeometry)
+  const targetKey = geometryKey(target)
+  const shown = useTween(target, targetKey, mixGeometry)
+  // 넘어가는 중에는 빛 점을 숨긴다 — 매 프레임 길이 바뀌어 좌표를 다시 짚을 수
+  // 없다. 다 넘어가면 새 길로 다시 만든다.
+  const settled = shown === target || geometryKey(shown) === targetKey
   const currentNodes = new Map(nodes.map((node) => [node.id, node]))
   const currentEdges = new Map(edges.map((edge) => [edgeKey(edge), edge]))
   const boxes = new Map<string, Box>(
@@ -649,6 +684,106 @@ export const SignalGraph = ({
     return { x, tint, strands, wisp: wisps.join(' '), knots }
   })
 
+  // 빛 점 — 섬유마다 몇 개, 데이터가 오가는 선(flow)과 켜진 선마다 하나.
+  const motionDots: MotionDot[] = settled
+    ? [
+        ...spineParts.flatMap((spine) =>
+          spine.strands
+            .filter((strand) => strand.spark)
+            .map((strand) => ({
+              d: strand.d,
+              kind: 'spark' as const,
+              tone: '',
+              color: '',
+              dim: false,
+              litSpine: litSpines.has(spine.x),
+              duration: strand.duration,
+              delay: strand.delay,
+              reverse: strand.reverse,
+            })),
+        ),
+        ...routes
+          .filter(({ edge, lit }) => edge.flow || lit)
+          .map(({ edge, index, lit, dim, color, path }) => ({
+            d: path.d,
+            kind: lit ? ('lit' as const) : ('pulse' as const),
+            tone: edge.tone,
+            color,
+            dim,
+            litSpine: false,
+            duration: lit ? 2.4 : 3.4 + (index % 5) * 0.45,
+            delay: (index * 0.67) % 3.4,
+            reverse: false,
+          })),
+      ]
+    : []
+  const motionKey = JSON.stringify({ top, dots: motionDots })
+
+  // 빛 점 만들기 — 길마다 SAMPLE_STEP마다 짚은 좌표를 transform 키프레임으로
+  // (같은 간격이라 같은 빠르기). transform 애니메이션은 GPU 합성 단계에서 돌아
+  // 매 프레임 다시 칠하지 않는다(SVG 점선을 움직이던 때는 이 층을 초당 60번
+  // 다시 칠해 화면을 켜 둔 동안 브라우저 일의 대부분이었다).
+  useEffect(() => {
+    const layer = motionRef.current
+    const measure = measureRef.current
+    if (!layer || !measure) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const { top: offset, dots } = JSON.parse(motionKey) as {
+      top: number
+      dots: MotionDot[]
+    }
+    const animations = dots.map((dot) => {
+      measure.setAttribute('d', dot.d)
+      const total = measure.getTotalLength()
+      const count = Math.max(2, Math.min(200, Math.ceil(total / SAMPLE_STEP)))
+      const frames = Array.from({ length: count + 1 }, (_, i) => {
+        const point = measure.getPointAtLength((total * i) / count)
+        return {
+          transform: `translate(${point.x.toFixed(1)}px,${(point.y + offset).toFixed(1)}px)`,
+        }
+      })
+      const element = document.createElement('i')
+      element.className = [
+        'sig-dot',
+        `is-${dot.kind}`,
+        dot.tone && `is-${dot.tone}`,
+        dot.dim && 'is-dim',
+        dot.litSpine && 'is-lit-spine',
+      ]
+        .filter(Boolean)
+        .join(' ')
+      if (dot.color) element.style.setProperty('--col', dot.color)
+      layer.append(element)
+      return element.animate(frames, {
+        duration: dot.duration * 1000,
+        delay: -dot.delay * 1000,
+        iterations: Infinity,
+        easing: 'linear',
+        direction: dot.reverse ? 'reverse' : 'normal',
+      })
+    })
+    if (stageRef.current?.classList.contains('is-paused')) {
+      for (const animation of animations) animation.pause()
+    }
+    return () => {
+      for (const animation of animations) animation.cancel()
+      layer.replaceChildren()
+    }
+  }, [motionKey])
+
+  // 빛 점 층 크기 — 그림 좌표(width)를 화면 폭에 맞춘다(뒤·앞 SVG의 viewBox와
+  // 같은 비율). 폭이 바뀔 때만 고친다.
+  useEffect(() => {
+    const stage = stageRef.current
+    const layer = motionRef.current
+    if (!stage || !layer) return
+    const observer = new ResizeObserver(() => {
+      layer.style.transform = `scale(${stage.clientWidth / width})`
+    })
+    observer.observe(stage)
+    return () => observer.disconnect()
+  }, [width])
+
   const onKey = (node: SignalNode) => (event: KeyboardEvent) => {
     if (node.onClick && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
@@ -704,6 +839,8 @@ export const SignalGraph = ({
             fill={`url(#${prefix}-grid)`}
           />
         </g>
+        {/* 빛 점이 지날 좌표를 짚는 데 쓰는 보이지 않는 길. */}
+        <path ref={measureRef} d="M0,0" visibility="hidden" />
 
         {/* 열 머리 — 앞 번호는 열 색, 아래 열 색 밑줄(오른쪽으로 옅어진다). */}
         {columns.map((column, index) => (
@@ -865,81 +1002,14 @@ export const SignalGraph = ({
         </g>
       </svg>
 
-      {/* 움직임 — 섬유를 따라 흐르는 빛 점, 선 위의 빛 점·빛 공. 이 층만 따로
-          합성되어 움직여도 뒤 층(기둥·선)을 다시 칠하지 않는다. */}
-      <svg className="sig-graph is-motion" viewBox={viewBox} aria-hidden="true">
-        <g transform={`translate(0,${top})`}>
-          {spineParts.map((spine) => (
-            <g
-              key={spine.x}
-              className={`sig-spine${litSpines.has(spine.x) ? ' is-lit' : ''}`}
-            >
-              {spine.strands
-                .filter((strand) => strand.spark)
-                .map((strand, index) => (
-                  <g
-                    key={index}
-                    className="sig-spark"
-                    style={{
-                      animationDuration: `${strand.duration}s`,
-                      animationDelay: `-${strand.delay}s`,
-                      animationDirection: strand.reverse ? 'reverse' : 'normal',
-                    }}
-                  >
-                    <path
-                      d={strand.d}
-                      pathLength={100}
-                      className="sig-spark__halo"
-                    />
-                    <path
-                      d={strand.d}
-                      pathLength={100}
-                      className="sig-spark__dot"
-                    />
-                  </g>
-                ))}
-            </g>
-          ))}
-          {routes
-            .filter(({ edge, lit }) => edge.flow || lit)
-            .map(({ key, edge, index, lit, alpha, dim, color, path }) => (
-              <g key={key} opacity={alpha < 1 ? alpha : undefined}>
-                <g
-                  className={`sig-pulse is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
-                  style={{ ['--col' as string]: color }}
-                >
-                  <g
-                    className="sig-pulse__run"
-                    style={{
-                      animationDuration: lit
-                        ? '2.4s'
-                        : `${3.4 + (index % 5) * 0.45}s`,
-                      animationDelay: `-${(index * 0.67) % 3.4}s`,
-                    }}
-                  >
-                    {lit && (
-                      <path
-                        d={path.d}
-                        pathLength={100}
-                        className="sig-pulse__bloom"
-                      />
-                    )}
-                    <path
-                      d={path.d}
-                      pathLength={100}
-                      className="sig-pulse__halo"
-                    />
-                    <path
-                      d={path.d}
-                      pathLength={100}
-                      className="sig-pulse__dot"
-                    />
-                  </g>
-                </g>
-              </g>
-            ))}
-        </g>
-      </svg>
+      {/* 빛 점 층 — 점은 아래 effect가 만든다(React가 그리지 않는다). 그림
+          좌표 크기로 두고 화면 폭에 맞춰 통째로 줄이고 늘린다. */}
+      <div
+        ref={motionRef}
+        className="sig-motion"
+        style={{ width, height: fullHeight }}
+        aria-hidden="true"
+      />
 
       {/* 앞 — 선 위 숫자(유리 알약)와 카드. */}
       <svg

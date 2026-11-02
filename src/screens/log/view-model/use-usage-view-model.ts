@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import { getUsageSegments, type UsageSegment } from '../client/usage-client'
 import {
@@ -10,7 +10,7 @@ import {
   usageByView,
   type UsageApp,
 } from '../utils/usage'
-import { mergeRecent } from '../utils/merge-recent'
+import { keptDays, useIncrementalList } from './use-incremental-list'
 
 export type UsageAppFilter = UsageApp | 'all'
 
@@ -25,62 +25,36 @@ export const USAGE_PERIOD_OPTIONS = [
 // 최근 세션 목록을 한 번에 몇 개씩 보여 줄지.
 const SESSION_PAGE_SIZE = 30
 
+const KEEP_KEY = 'usage'
+const segmentIdOf = (segment: UsageSegment) => segment.id
+const segmentTimeOf = (segment: UsageSegment) => segment.startedAt
+
 /**
  * /log의 "사용 분석" 탭 — usageSegments(탭 방문 기록)를 받아 세션으로 묶고,
  * 기간 요약·탭별 사용량·날짜별 추이·탭 이동 흐름·최근 세션으로 나눈다. 화면을
  * 켜 두면 1분마다 다시 받아 온다.
  */
 export const useUsageViewModel = () => {
-  const [days, setDays] = useState(7)
+  const [days, setDays] = useState(() => keptDays(KEEP_KEY) ?? 7)
   const [app, setApp] = useState<UsageAppFilter>('all')
-  const [segments, setSegments] = useState<UsageSegment[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [error, setError] = useState<string | null>(null)
-  const [fetchedAt, setFetchedAt] = useState<number | null>(null)
-  // "지금" — 받아 올 때마다 갱신한다("몇 분 전" 표시의 기준).
-  const [now, setNow] = useState(() => Date.now())
   const [openSessionId, setOpenSessionId] = useState<string | null>(null)
   const [visibleSessions, setVisibleSessions] = useState(SESSION_PAGE_SIZE)
 
-  // 다시 받는 동안에도 이전 값을 보여 준다(1분마다 깜빡이지 않게).
-  // 처음·기간을 바꿨을 때·새로고침은 기간 전체를, 1분마다는 지난번 뒤에
-  // 저장된 방문만 받아(since) 가진 목록에 합친다(배치 화면과 같은 방식).
-  const cursor = useRef<{ days: number; fetchedAt: number } | null>(null)
-  const latest = useRef(0)
-  const load = useCallback(
-    async (options?: { full?: boolean }) => {
-      const request = ++latest.current
-      const since =
-        !options?.full && cursor.current?.days === days
-          ? cursor.current.fetchedAt
-          : undefined
-      const res = await getUsageSegments(days, since)
-      if (request !== latest.current) return
-      setNow(Date.now())
-      if (!res.ok) {
-        setError(res.error)
-        setStatus('error')
-        return
-      }
-      const { segments: received, fetchedAt, incremental } = res.data
-      cursor.current = { days, fetchedAt }
-      setSegments((prev) =>
-        incremental
-          ? mergeRecent(
-              prev,
-              received,
-              (segment) => segment.id,
-              (segment) => segment.startedAt,
-              fetchedAt - days * 86_400_000,
-            )
-          : received,
-      )
-      setFetchedAt(res.data.fetchedAt)
-      setError(null)
-      setStatus('ready')
-    },
-    [days],
-  )
+  // 받기·이어 받기·탭을 오갈 때 보관은 공용 훅이 맡는다.
+  const {
+    items: segments,
+    status,
+    error,
+    fetchedAt,
+    now,
+    load,
+  } = useIncrementalList({
+    keepKey: KEEP_KEY,
+    days,
+    fetchPage: getUsageSegments,
+    idOf: segmentIdOf,
+    timeOf: segmentTimeOf,
+  })
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)

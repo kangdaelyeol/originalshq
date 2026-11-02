@@ -1,0 +1,185 @@
+// 맨 위 줄·맨 아래 줄·흐름 그림 카드의 머리.
+
+@use 'tokens' as *;
+
+// ── 맨 위 줄 — 퍼셉트론 .pn-top ─────────────────────────────────────────
+.log-top {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 58px;
+  border-bottom: 1px solid $line;
+  white-space: nowrap;
+
+  &__brand {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+
+    i {
+      margin: 0 6px;
+      color: $accent;
+      font-style: normal;
+    }
+  }
+
+  &__tabs {
+    display: flex;
+    flex: 1;
+    justify-content: center;
+    gap: 4px;
+
+    button {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      height: 58px;
+      padding: 0 16px;
+      border: none;
+      background: transparent;
+      color: $ink-3;
+      font: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: color 0.15s;
+
+      small {
+        color: $ink-4;
+        font-size: 10px;
+        font-weight: 700;
+        transition: color 0.15s;
+      }
+
+      // 고른 탭 — 아래에 그 탭의 색 선이 빛난다.
+      &::after {
+        content: '';
+        position: absolute;
+        right: 12px;
+        bottom: -1px;
+        left: 12px;
+        height: 2px;
+        background: var(--tab-accent);
+        box-shadow: 0 0 10px var(--tab-accent);
+        opacity: 0;
+        transform: scaleX(0.4);
+        transition:
+          opacity 0.2s,
+          transform 0.25s ease;
+      }
+
+      &:hover {
+        color: $ink;
+      }
+      &.is-active {
+        color: $ink;
+
+        small {
+          color: var(--tab-accent);
+        }
+        &::after {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      &:focus-visible {
+        outline: 1px solid var(--tab-accent);
+        outline-offset: -6px;
+      }
+    }
+  }
+
+  &__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: $ink-3;
+    font-size: 11px;
+    letter-spacing: 0.06em;
+
+    i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: $accent;
+      box-shadow: 0 0 8px $accent;
+      animation: log-blink 1.6s ease-in-out infinite;
+    }
+    b {
+      color: $ink;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  @media (max-width: 760px) {
+    &__live {
+      display: none;
+    }
+  }
+}
+
+.log-main {
+  padding-bottom: 40px;
+  transition: padding-right 0.38s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+// 상세 패널이 열리면 넓은 화면에서는 본문을 패널 폭만큼 밀어, 고른 노드·표가
+// 패널 밑에 가리지 않게 한다(그림은 폭에 맞춰 줄어든다). 패널은 화면 오른쪽에서
+// 452px(폭 420 + 여백)를 차지하고, 본문 바깥 여백이 그만큼을 덜어 준다.
+@media (min-width: 1100px) {
+  .batch-log:has(.log-insp:not(.is-closed)) .log-main {
+    padding-right: max(0px, calc(452px - max(28px, (100vw - 1320px) / 2)));
+  }
+}
+
+// ── 맨 아래 줄 — 퍼셉트론 .pn-foot ──────────────────────────────────────
+.log-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0 24px;
+  border-top: 1px solid $line;
+  color: $ink-3;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+
+  b {
+    color: $ink;
+    font-weight: 800;
+  }
+}
+
+// ── 흐름 그림 카드 — 퍼셉트론 아래 패널(.pn-panel)의 머리 ─────────────
+.log-flow {
+  padding: 12px 14px 8px;
+  overflow: hidden;
+
+  &__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 12px;
+    margin-bottom: 4px;
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+
+    b {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 800;
+
+      i {
+        @include square;
+      }
+    }
+    span {
+      color: $accent;
+      letter-spacing: 0.02em;
+    }
+  }
+}

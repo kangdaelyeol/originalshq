@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useAutoRefresh } from './use-auto-refresh'
 import { getBatchRuns, type BatchRun } from '../client/batch-run-client'
 import { BATCH_JOBS } from '../constants'
@@ -9,7 +9,7 @@ import {
   slotsForDay,
   type DisplayStatus,
 } from '../utils/batch-run'
-import { mergeRecent } from '../utils/merge-recent'
+import { keptDays, useIncrementalList } from './use-incremental-list'
 
 // 실행 내역 표를 한 번에 몇 줄씩 보여 줄지 — 30일이면 천 줄이 넘는다.
 const PAGE_SIZE = 50
@@ -24,60 +24,32 @@ const MAX_GRID_DAYS = 7
 // 작업 상세 패널의 소요 시간 추이에 쓰는 최근 실행 수.
 const HISTORY_SIZE = 36
 
+const KEEP_KEY = 'batch'
+const runIdOf = (run: BatchRun) => run.id
+const runTimeOf = (run: BatchRun) => run.startedAt
+
 export const useBatchLogViewModel = () => {
-  const [days, setDays] = useState(7)
-  const [runs, setRuns] = useState<BatchRun[]>([])
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [error, setError] = useState<string | null>(null)
-  const [fetchedAt, setFetchedAt] = useState<number | null>(null)
-  // "지금" — 받아 올 때마다 갱신한다(실행 중·누락 판단의 기준).
-  const [now, setNow] = useState(() => Date.now())
+  const [days, setDays] = useState(() => keptDays(KEEP_KEY) ?? 7)
   const [jobFilter, setJobFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<DisplayStatus | 'all'>('all')
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
 
-  // 다시 받아 오는 동안에도 이전 목록을 그대로 보여 준다(1분마다 깜빡이지
-  // 않게) — 그래서 시작할 때 상태를 loading으로 되돌리지 않는다.
-  // 처음·기간을 바꿨을 때·새로고침은 기간 전체를, 1분마다는 지난번 뒤에 바뀐
-  // 실행만 받아(since) 가진 목록에 합친다 — 매번 수백 건을 다시 읽지 않게.
-  // 늦게 온 응답이 새 응답을 덮지 않도록 마지막 요청만 반영한다.
-  const cursor = useRef<{ days: number; fetchedAt: number } | null>(null)
-  const latest = useRef(0)
-  const load = useCallback(
-    async (options?: { full?: boolean }) => {
-      const request = ++latest.current
-      const since =
-        !options?.full && cursor.current?.days === days
-          ? cursor.current.fetchedAt
-          : undefined
-      const res = await getBatchRuns(days, since)
-      if (request !== latest.current) return
-      setNow(Date.now())
-      if (!res.ok) {
-        setError(res.error)
-        setStatus('error')
-        return
-      }
-      const { runs: received, fetchedAt, incremental } = res.data
-      cursor.current = { days, fetchedAt }
-      setRuns((prev) =>
-        incremental
-          ? mergeRecent(
-              prev,
-              received,
-              (run) => run.id,
-              (run) => run.startedAt,
-              fetchedAt - days * 86_400_000,
-            )
-          : received,
-      )
-      setFetchedAt(res.data.fetchedAt)
-      setError(null)
-      setStatus('ready')
-    },
-    [days],
-  )
+  // 받기·이어 받기·탭을 오갈 때 보관은 공용 훅이 맡는다.
+  const {
+    items: runs,
+    status,
+    error,
+    fetchedAt,
+    now,
+    load,
+  } = useIncrementalList({
+    keepKey: KEEP_KEY,
+    days,
+    fetchPage: getBatchRuns,
+    idOf: runIdOf,
+    timeOf: runTimeOf,
+  })
 
   // 1분마다 다시 받는다(탭이 숨겨져 있으면 건너뛴다).
   useAutoRefresh(load)

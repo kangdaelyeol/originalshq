@@ -1,0 +1,283 @@
+// 문의 접수 탭(inquiry-panel.tsx).
+
+@use 'tokens' as *;
+
+// ── 문의 접수 탭(inquiry-panel.tsx) ────────────────────────────────────
+.inquiry-log {
+  &__detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    padding: 14px 16px 16px;
+    border-left: 2px solid $accent;
+    white-space: normal;
+
+    @media (max-width: 900px) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    margin: 0;
+
+    div {
+      min-width: 0;
+    }
+    dt {
+      color: $ink-3;
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+    }
+    dd {
+      margin: 3px 0 0;
+      color: $ink;
+      font-size: 12px;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__steps {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  &__step {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 12px 14px;
+    border: 1px solid $line;
+    border-top: 2px solid $accent-dim;
+    background: $panel;
+
+    h3 {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      color: $ink;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    a {
+      font-size: 12px;
+    }
+  }
+
+  &__sms {
+    margin: 0;
+    padding: 8px 10px;
+    border-left: 2px solid $line-2;
+    color: $ink-2;
+    font-size: 12px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+
+  &__attempts {
+    margin: 0;
+    color: $ink-3;
+    font-size: 11.5px;
+  }
+
+  &__settings {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-top: 2px solid $accent;
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  &__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    input {
+      accent-color: var(--log-accent);
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: $ink-3;
+    font-size: 11px;
+
+    input,
+    textarea {
+      @include field;
+      width: 100%;
+      max-width: 640px;
+      padding: 8px 10px;
+    }
+    input {
+      max-width: 240px;
+    }
+    // 장문 제목은 한글 20자까지 들어가게 조금 넓게.
+    input:not([inputmode='numeric']) {
+      max-width: 360px;
+    }
+    [aria-invalid='true'] {
+      border-color: $fail;
+    }
+    textarea {
+      resize: vertical;
+      line-height: 1.55;
+    }
+  }
+
+  &__preview {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-width: 640px;
+    margin: 0;
+    padding: 10px 12px;
+    border: 1px dashed $line-2;
+    border-radius: 3px;
+    color: $ink;
+    font-size: 12.5px;
+    line-height: 1.55;
+    white-space: pre-wrap;
+
+    span {
+      color: $accent;
+      font-size: 10.5px;
+      letter-spacing: 0.04em;
+    }
+  }
+
+  &__settings-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  // 표 위 도구 줄 — 검색 · 기기 필터 · 건수 · 선택 삭제.
+  &__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  &__search {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    svg {
+      position: absolute;
+      left: 10px;
+      width: 15px;
+      height: 15px;
+      color: $ink-3;
+      pointer-events: none;
+    }
+    input {
+      @include field;
+      width: 260px;
+      height: 32px;
+      padding: 0 12px 0 32px;
+    }
+  }
+
+  &__count {
+    font-size: 11.5px;
+  }
+
+  &__bulk {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    font-size: 12px;
+  }
+
+  &__delete {
+    @include line-button;
+    border-color: color-mix(in srgb, #{$fail} 55%, transparent);
+    color: $fail;
+
+    &:hover:not(:disabled) {
+      background: color-mix(in srgb, #{$fail} 12%, transparent);
+    }
+  }
+
+  &__check-cell {
+    width: 28px;
+  }
+
+  // 체크박스 — 브라우저 기본(흰 바탕) 대신 어두운 바탕에 얇은 선, 고르면
+  // 강조색으로 채우고 어두운 체크 표시. 일부만 고른 상태(전체 선택 칸)는 가로줄.
+  &__check {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    border: 1px solid $line-2;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    appearance: none;
+    cursor: pointer;
+    vertical-align: middle;
+    transition:
+      background-color 0.15s,
+      border-color 0.15s,
+      box-shadow 0.15s;
+
+    &::after {
+      content: '';
+      width: 8px;
+      height: 4px;
+      border-bottom: 1.6px solid rgba(10, 8, 14, 0.9);
+      border-left: 1.6px solid rgba(10, 8, 14, 0.9);
+      opacity: 0;
+      transform: translateY(-1px) rotate(-45deg) scale(0.6);
+      transition:
+        opacity 0.12s,
+        transform 0.15s;
+    }
+
+    &:hover {
+      border-color: $ink-3;
+    }
+    &:checked,
+    &:indeterminate {
+      border-color: $accent;
+      background: $accent;
+      box-shadow: 0 0 10px
+        color-mix(in srgb, var(--log-accent) 35%, transparent);
+    }
+    &:checked::after {
+      opacity: 1;
+      transform: translateY(-1px) rotate(-45deg) scale(1);
+    }
+    &:indeterminate::after {
+      width: 8px;
+      height: 0;
+      border-left: none;
+      opacity: 1;
+      transform: none;
+    }
+    &:focus-visible {
+      outline: 1px solid $accent;
+      outline-offset: 2px;
+    }
+  }
+}

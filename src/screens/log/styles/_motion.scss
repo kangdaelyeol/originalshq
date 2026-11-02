@@ -1,0 +1,86 @@
+// 여러 조각이 같이 쓰는 키프레임과, 움직임 줄이기 설정.
+
+@use 'tokens' as *;
+
+@keyframes log-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes log-blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes log-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes log-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes log-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes sig-draw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes log-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes log-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .batch-log,
+  .log-toast__item,
+  .log-toast__item.is-info .log-toast__dot,
+  .log-top__live i,
+  .batch-log__badge.is-running span,
+  .batch-log__slot.is-running,
+  .sig-edge,
+  .sig-edge__line,
+  .sig-node,
+  .sig-node__aura,
+  .sig-tag,
+  .log-insp,
+  .log-insp * {
+    transition: none;
+    animation: none !important;
+  }
+  .log-insp__spark-line {
+    stroke-dashoffset: 0;
+  }
+  // 흐르는 빛 점 층은 통째로 숨긴다(점도 만들지 않는다 — signal-graph.tsx).
+  .sig-motion {
+    display: none;
+  }
+  .sig-edge__line {
+    stroke-dashoffset: 0;
+  }
+}

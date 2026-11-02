@@ -1,5 +1,4 @@
-import { API_BASE } from '@/screens/xtool-lead-manager/constants'
-import type { ClientResponse } from './batch-run-client'
+import { requestJson } from './http'
 
 // API 비용 분석 — functions-xtool getApiCosts(BigQuery ops_logs 집계). 모양은
 // functions-xtool/src/api-cost.ts와 같다.
@@ -67,27 +66,8 @@ export interface ApiCostReport {
   cached: boolean
 }
 
-export const getApiCosts = async (
-  days: number,
-): Promise<ClientResponse<ApiCostReport>> => {
-  try {
-    const response = await fetch(`${API_BASE}/getApiCosts?days=${days}`)
-    const body = (await response.json().catch(() => ({}))) as Partial<
-      ApiCostReport & { error: string }
-    >
-    if (!response.ok) {
-      return {
-        ok: false,
-        error:
-          body.error ??
-          `API 비용을 불러오지 못했습니다 (HTTP ${response.status})`,
-      }
-    }
-    return { ok: true, data: body as ApiCostReport }
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    }
-  }
-}
+export const getApiCosts = (days: number) =>
+  requestJson<ApiCostReport>(
+    `getApiCosts?days=${days}`,
+    'API 비용을 불러오지 못했습니다',
+  )

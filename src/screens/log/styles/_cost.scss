@@ -1,0 +1,26 @@
+// 비용 분석 탭(cost-panel.tsx).
+
+@use 'tokens' as *;
+
+// ── 비용 분석(cost-panel.tsx) ──────────────────────────────────────────
+.log-cost__bar-cell {
+  width: 30%;
+}
+.log-cost__bar {
+  display: block;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    background: $accent;
+  }
+}
+.log-cost__note p {
+  margin-top: 8px;
+  line-height: 1.65;
+}

@@ -1,4 +1,4 @@
-import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { getIncremental } from './http'
 
 export type RunStatus = 'running' | 'success' | 'partial' | 'failed'
 
@@ -22,47 +22,13 @@ export interface BatchRun {
   error: { message: string; stack: string | null } | null
 }
 
-export type ClientResponse<T> =
-  { ok: true; data: T } | { ok: false; error: string }
-
 /** 최근 days일의 실행 기록 — 최근 것부터. since(지난 응답의 fetchedAt)를 주면
- * 그 뒤에 바뀌었을 수 있는 것만 온다(incremental — 가진 목록에 합친다). */
-export const getBatchRuns = async (
-  days: number,
-  since?: number,
-): Promise<
-  ClientResponse<{ runs: BatchRun[]; fetchedAt: number; incremental: boolean }>
-> => {
-  try {
-    const response = await fetch(
-      `${API_BASE}/getBatchRuns?days=${days}${since ? `&since=${since}` : ''}`,
-    )
-    const body = (await response.json().catch(() => ({}))) as {
-      runs?: BatchRun[]
-      fetchedAt?: number
-      incremental?: boolean
-      error?: string
-    }
-    if (!response.ok) {
-      return {
-        ok: false,
-        error:
-          body.error ??
-          `실행 기록을 불러오지 못했습니다 (HTTP ${response.status})`,
-      }
-    }
-    return {
-      ok: true,
-      data: {
-        runs: body.runs ?? [],
-        fetchedAt: body.fetchedAt ?? Date.now(),
-        incremental: body.incremental === true,
-      },
-    }
-  } catch (error) {
-    return {
-      ok: false,
-      error: error instanceof Error ? error.message : '네트워크 오류',
-    }
-  }
-}
+ * 그 뒤에 바뀌었을 수 있는 것만 온다(가진 목록에 합친다). */
+export const getBatchRuns = (days: number, since?: number) =>
+  getIncremental<BatchRun>(
+    'getBatchRuns',
+    'runs',
+    days,
+    since,
+    '실행 기록을 불러오지 못했습니다',
+  )
