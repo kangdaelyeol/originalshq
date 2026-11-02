@@ -5,6 +5,7 @@ import {
   getCafe24AccessToken,
   isCafe24InvalidTokenError,
 } from './auth'
+import { cafe24Fetch } from './request'
 import { chunkDateRangeForCafe24 } from './utils'
 import type {
   Cafe24OrderCustomerRow,
@@ -423,7 +424,7 @@ async function fetchAllPages<TRaw, TData>(
   while (true) {
     const url = new URL(firstUrl)
     url.searchParams.set('offset', String(offset))
-    const res: Response = await fetch(url, { headers })
+    const res: Response = await cafe24Fetch(url, { headers }, { retry: true })
     const data = (await res.json()) as TData & { error?: { message?: string } }
     if (!res.ok) {
       throw new Error(

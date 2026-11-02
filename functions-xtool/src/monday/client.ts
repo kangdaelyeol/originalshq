@@ -53,38 +53,74 @@ interface ItemsPage {
   items: RawMondayItem[]
 }
 
+// 일시적인 실패에 다시 부르는 간격 — Monday가 가끔 504(Request timed out)·
+// 5xx·429(호출 한도)를 돌려주고, 다음에 부르면 대개 된다(10/31 09:00 동기화가
+// 보드 하나를 504로 놓쳤다). 조회만 다시 부른다 — 쓰기(mutation)는 서버에서
+// 이미 처리됐는데 응답만 못 받았을 수 있어, 다시 부르면 아이템이 두 번 생긴다.
+const RETRY_DELAYS_MS = [2_000, 6_000]
+// 조회 하나를 이보다 오래 기다리지 않는다 — Monday가 응답을 붙잡고 있으면
+// 끊고 다시 부른다(함수 제한 시간까지 매달려 있지 않게). 큰 보드 한 쪽도
+// 보통 10초 안이다.
+const QUERY_TIMEOUT_MS = 60_000
+
+const isMutation = (query: string) => /^\s*mutation\b/.test(query)
+const isRetryableStatus = (status: number) => status === 429 || status >= 500
+
 /** GraphQL POST 호출 하나 — Monday API 호출부가 전부 이 함수를 거친다.
  * REST와 달리 실패가 HTTP status가 아니라 body의 errors로도 올 수 있어
- * 둘 다 확인한다. */
+ * 둘 다 확인한다. 조회는 일시적인 실패(5xx·429·시간 초과·네트워크)에
+ * RETRY_DELAYS_MS만큼 쉬고 다시 부른다. */
 export async function fetchMonday<T>(
   apiKey: string,
   query: string,
   variables: Record<string, unknown>,
 ): Promise<T> {
-  const response = await fetch(MONDAY_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': apiKey,
-    },
-    body: JSON.stringify({ query, variables }),
-  })
+  const retryable = !isMutation(query)
+  for (let attempt = 0; ; attempt++) {
+    const canRetry = retryable && attempt < RETRY_DELAYS_MS.length
+    let response: Response
+    try {
+      response = await fetch(MONDAY_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': apiKey,
+        },
+        body: JSON.stringify({ query, variables }),
+        ...(retryable ? { signal: AbortSignal.timeout(QUERY_TIMEOUT_MS) } : {}),
+      })
+    } catch (error) {
+      // 네트워크 끊김·시간 초과(AbortSignal).
+      if (canRetry) {
+        await sleep(RETRY_DELAYS_MS[attempt])
+        continue
+      }
+      const reason = error instanceof Error ? error.message : String(error)
+      throw new Error(`Monday API 호출 실패(연결): ${reason}`)
+    }
 
-  if (!response.ok) {
-    throw new Error(
-      `Monday API 호출 실패(${response.status}): ${await response.text()}`,
-    )
-  }
+    if (!response.ok) {
+      const body = await response.text()
+      if (canRetry && isRetryableStatus(response.status)) {
+        await sleep(RETRY_DELAYS_MS[attempt])
+        continue
+      }
+      const tries = attempt ? `, ${attempt + 1}번 시도` : ''
+      throw new Error(`Monday API 호출 실패(${response.status}${tries}): ${body}`)
+    }
 
-  const json = (await response.json()) as { data?: T; errors?: unknown }
-  if (json.errors) {
-    throw new Error(`Monday GraphQL 오류: ${JSON.stringify(json.errors)}`)
+    const json = (await response.json()) as { data?: T; errors?: unknown }
+    if (json.errors) {
+      throw new Error(`Monday GraphQL 오류: ${JSON.stringify(json.errors)}`)
+    }
+    if (!json.data) {
+      throw new Error('Monday API 응답에 data가 없습니다')
+    }
+    return json.data
   }
-  if (!json.data) {
-    throw new Error('Monday API 응답에 data가 없습니다')
-  }
-  return json.data
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const COLUMN_VALUE_FIELDS = `
   id

@@ -12,6 +12,7 @@
 // 2시간, refresh_token은 2주짜리라 최소 2주에 한 번은 뭐든 호출이 있어야
 // 연동이 안 끊긴다(공식 문서 기준, 정책 변경 가능).
 import { db } from '../data'
+import { cafe24Fetch } from './request'
 
 // 매출(주문) 데이터 조회에 필요한 최소 권한. Cafe24 앱 생성 시 이 권한을
 // 미리 선택해둬야 인증 화면에 나타난다 — 여기서 요청한다고 없던 권한이
@@ -74,14 +75,20 @@ async function requestCafe24Token(
   clientId: string,
   clientSecret: string,
 ): Promise<Cafe24TokenResponse> {
-  const res = await fetch(`${apiBase(mallId)}/oauth/token`, {
-    method: 'POST',
-    headers: {
-      Authorization: basicAuthHeader(clientId, clientSecret),
-      'Content-Type': 'application/x-www-form-urlencoded',
+  // 다시 부르지 않고(request.ts 참고), 끊기 전에 조금 더 기다린다 — 처리된
+  // 응답을 놓치면 새 refresh_token을 저장하지 못한다.
+  const res = await cafe24Fetch(
+    `${apiBase(mallId)}/oauth/token`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: basicAuthHeader(clientId, clientSecret),
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams(body).toString(),
     },
-    body: new URLSearchParams(body).toString(),
-  })
+    { retry: false, timeoutMs: 60_000 },
+  )
 
   const data = (await res.json()) as Cafe24TokenResponse & {
     error?: string
@@ -227,7 +234,7 @@ async function fetchAllOrdersRaw(
   let url: string | null = `${apiBase(mallId)}/admin/orders?${firstParams.toString()}`
 
   while (url) {
-    const res: Response = await fetch(url, { headers })
+    const res: Response = await cafe24Fetch(url, { headers }, { retry: true })
     const data = (await res.json()) as {
       orders?: unknown[]
       links?: { rel: string; href: string }[]
@@ -319,7 +326,7 @@ export async function debugFetchCafe24RefundsRaw(
   if (apiVersion) headers['X-Cafe24-Api-Version'] = apiVersion
   const params = new URLSearchParams({ shop_no: '1', ...rest })
   const url = `${apiBase(mallId)}/admin/${resource}?${params.toString()}`
-  const res = await fetch(url, { headers })
+  const res = await cafe24Fetch(url, { headers }, { retry: true })
   const body = await res.json()
   return { status: res.status, body }
 }
