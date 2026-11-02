@@ -77,14 +77,15 @@ export const useBatchLogViewModel = () => {
       BATCH_JOBS.map((job) => {
         const jobRuns = runs.filter((run) => run.job === job.id)
         const latest = jobRuns[0]
+        // 나중에 더한 작업은 그 작업의 기록 시작이 더 늦다(constants.ts).
+        const codebaseSince = recordingSince[job.codebase] ?? null
+        const since =
+          codebaseSince !== null && job.recordingSince
+            ? Math.max(codebaseSince, Date.parse(job.recordingSince))
+            : codebaseSince
         const grid = gridDates.map((date) => ({
           date,
-          slots: slotsForDay(
-            jobRuns,
-            date,
-            now,
-            recordingSince[job.codebase] ?? null,
-          ),
+          slots: slotsForDay(jobRuns, date, now, since),
         }))
         const missing = grid
           .flatMap((day) => day.slots)

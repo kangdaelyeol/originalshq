@@ -2,6 +2,7 @@ import { onRequest } from 'firebase-functions/https'
 import {
   deleteInquiries,
   getInquirySettings,
+  Inquiry,
   listInquiries,
   listInquiriesUpdatedSince,
   retryInquiryStep,
@@ -9,6 +10,7 @@ import {
   submitInquiry as processInquiry,
   validateInquiry,
 } from '../inquiry'
+import { checkAdmin } from '../admin-auth'
 import { db, mondayApiKey, solapiApiKey, solapiApiSecret } from '../app'
 import { endpoint, parseSince } from '../http'
 
@@ -61,13 +63,30 @@ export const submitInquiry = onRequest(
 // ?since=(지난 응답의 fetchedAt)를 주면 그 뒤에 고친 문의만 준다
 // (incremental: true). 저장 시각과 실제 쓰기 사이의 틈을 덮으려고 2분 앞부터.
 // 지운 문의는 여기로 알 수 없어서 화면이 10분마다 기간 전체를 다시 받는다.
+//
+// 전부 주는 건 관리자 토큰을 보낸 /log뿐이다. 로그인 없이 부르는 xtool-lead-
+// manager("오늘 웹 문의" — 기기별로 세기만 한다)에는 summaryOf의 칸만 준다.
 const INQUIRY_OVERLAP_MS = 2 * 60_000
 const MAX_UPDATED_INQUIRIES = 500
+
+// 로그인 없는 쪽에 주는 칸 — 연락처·IP·광고 식별값·문의 내용·문자 본문은 뺀다.
+// 이름·회사명은 테스트 신청을 거르는 데 쓴다(lead-manager isTest).
+const summaryOf = (inquiry: Inquiry) => ({
+  id: inquiry.id,
+  device: inquiry.device,
+  boardName: inquiry.boardName,
+  name: inquiry.name,
+  company: inquiry.company,
+  receivedAt: inquiry.receivedAt,
+  receivedDate: inquiry.receivedDate,
+  monday: { status: inquiry.monday.status },
+})
 
 export const listInquiryLogs = onRequest(
   endpoint(
     { name: 'listInquiryLogs', method: 'GET' },
     async ({ request, response }) => {
+      const full = (await checkAdmin(request)).ok
       const days = Math.min(Math.max(Number(request.query.days) || 7, 1), 90)
       const now = Date.now()
       const windowStart = now - days * 86_400_000
@@ -85,9 +104,12 @@ export const listInquiryLogs = onRequest(
       const inquiries = incremental
         ? updated
         : await listInquiries(db, windowStart)
-      response
-        .status(200)
-        .send({ inquiries, days, fetchedAt: now, incremental })
+      response.status(200).send({
+        inquiries: full ? inquiries : inquiries.map(summaryOf),
+        days,
+        fetchedAt: now,
+        incremental,
+      })
     },
   ),
 )
@@ -103,6 +125,7 @@ export const retryInquiry = onRequest(
     {
       name: 'retryInquiry',
       method: 'POST',
+      admin: true,
       onError: (error, response) => {
         response.status(400).send({
           error: error instanceof Error ? error.message : '서버 오류',
@@ -131,6 +154,7 @@ export const inquirySettings = onRequest(
     {
       name: 'inquirySettings',
       method: ['GET', 'POST'],
+      admin: true,
       onError: (error, response) => {
         response.status(400).send({
           error: error instanceof Error ? error.message : '서버 오류',
@@ -152,7 +176,7 @@ export const inquirySettings = onRequest(
 // Monday 아이템·보낸 문자는 지우지 않는다.
 export const deleteInquiryLogs = onRequest(
   endpoint(
-    { name: 'deleteInquiryLogs', method: 'POST' },
+    { name: 'deleteInquiryLogs', method: 'POST', admin: true },
     async ({ request, response }) => {
       const { ids } = (request.body ?? {}) as { ids?: unknown }
       if (

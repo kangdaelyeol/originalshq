@@ -1,0 +1,130 @@
+// 관리자 로그인(sign-in-gate.tsx) — 화면 가운데 얇은 선 카드 하나.
+
+@use 'tokens' as *;
+
+.log-gate {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 40px 0;
+
+  &__card {
+    width: min(100%, 400px);
+    padding: 28px 26px 24px;
+    border: 1px solid $line-2;
+    border-radius: 4px;
+    background: $panel;
+
+    h1 {
+      margin: 18px 0 6px;
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+  }
+
+  &__brand {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+
+    i {
+      margin: 0 6px;
+      color: $accent;
+      font-style: normal;
+    }
+  }
+
+  &__lead,
+  &__hint {
+    margin: 0;
+    color: $ink-3;
+    font-size: 11.5px;
+    text-wrap: pretty;
+  }
+
+  &__lead {
+    margin-bottom: 22px;
+  }
+
+  &__hint {
+    margin-top: 16px;
+
+    a {
+      color: $ink-2;
+    }
+  }
+
+  &__note {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-left: 2px solid $accent;
+    background: $accent-soft;
+    color: $ink-2;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+    text-wrap: pretty;
+  }
+
+  &__form {
+    display: grid;
+    gap: 12px;
+
+    label {
+      display: grid;
+      gap: 6px;
+
+      span {
+        color: $ink-3;
+        font-size: 10.5px;
+        letter-spacing: 0.06em;
+      }
+    }
+
+    input {
+      @include field;
+      height: 36px;
+      padding: 0 10px;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    color: $fail;
+    font-size: 11.5px;
+  }
+
+  &__submit,
+  &__google {
+    @include line-button;
+    width: 100%;
+    height: 36px;
+  }
+
+  &__submit {
+    margin-top: 4px;
+  }
+
+  &__google {
+    border-color: $line-2;
+    color: $ink;
+  }
+
+  &__or {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 0;
+    color: $ink-4;
+    font-size: 10.5px;
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: $line;
+    }
+  }
+}

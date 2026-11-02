@@ -12,6 +12,9 @@ export interface BatchJob {
   functionName: string
   /** 함수 제한 시간(초) — 이보다 오래 "실행 중"이면 시간 초과로 본다. */
   timeoutSeconds: number
+  /** 나중에 더한 작업만 — 기록을 남기기 시작한 첫 예약 시각. 그 전 칸은
+   * 누락이 아니라 "기록 전"이다(코드베이스의 기록 시작보다 늦을 때). */
+  recordingSince?: string
 }
 
 /** 화면에 보여 줄 배치 작업 — 순서가 곧 카드 순서다. */
@@ -33,6 +36,16 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     codebase: 'xtool',
     functionName: 'syncMondayBoardsScheduled',
     timeoutSeconds: 540,
+  },
+  {
+    id: 'tech-boards',
+    label: '기술팀 보드 동기화',
+    description:
+      '기술지원팀 Monday 보드 9개를 다시 읽어 xtool-tech 화면이 읽는 캐시를 맞춥니다. 평소 변경은 webhook으로 몇 초 안에 들어오고, 이 작업은 놓친 것을 메웁니다.',
+    codebase: 'xtool',
+    functionName: 'syncTechBoardsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-01T09:00:00+09:00',
   },
   {
     id: 'cafe24-orders',
@@ -74,6 +87,15 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     codebase: 'cmip',
     functionName: 'syncNaverInsightsScheduled',
     timeoutSeconds: 300,
+  },
+  {
+    id: 'openai-insights',
+    label: 'OpenAI 인사이트',
+    description: '최근 14일 OpenAI 광고 성과를 다시 읽어 저장합니다.',
+    codebase: 'cmip',
+    functionName: 'syncOpenaiInsightsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-10-30T17:00:00+09:00',
   },
 ]
 

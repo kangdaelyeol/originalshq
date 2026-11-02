@@ -19,6 +19,7 @@ export const getApiCosts = onRequest(
     {
       name: 'getApiCosts',
       method: 'GET',
+      admin: true,
       onError: (error, response) => {
         // 확인용 화면이라 원인(권한·테이블 없음 등)을 그대로 돌려준다.
         response.status(502).send({

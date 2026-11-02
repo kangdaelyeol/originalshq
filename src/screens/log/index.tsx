@@ -1,8 +1,11 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { signOutXtool } from '@/xtool-auth/auth-actions'
+import { useXtoolSession } from '@/xtool-auth/use-xtool-session'
 import { BatchLogPanel } from './components/batch-log-panel'
 import { CostPanel } from './components/cost-panel'
 import { InquiryPanel } from './components/inquiry-panel'
+import { SignInGate } from './components/sign-in-gate'
 import { UsagePanel } from './components/usage-panel'
 import './styles/index.scss'
 
@@ -42,11 +45,13 @@ const LiveClock = () => {
  *     (usageSegments).
  *   · 비용 분석: xtool·cmip 함수가 호출마다 쓴 자원과 어림 비용(BigQuery ops_logs).
  * 어느 탭인지는 주소의 ?tab= 에 둬서 새로고침·공유해도 같은 탭이 열린다.
+ * xtool 관리자로 로그인해야 보인다(sign-in-gate.tsx).
  *
  * 모양은 프롬프트 퍼셉트론(/perceptron)과 같은 말 — 검은 바탕, 고정폭 글꼴,
  * 탭마다 바뀌는 강조색, 얇은 선 카드, 빛 점이 흐르는 노드 그래프.
  */
 export default function LogScreen() {
+  const session = useXtoolSession('admin')
   const [searchParams, setSearchParams] = useSearchParams()
   const param = searchParams.get('tab')
   const current = TABS.find((each) => each.id === param) ?? TABS[0]
@@ -69,11 +74,19 @@ export default function LogScreen() {
     }
   }, [])
 
+  const accent = { '--log-accent': current.accent } as CSSProperties
+
+  // 로그인 확인 중(보통 1초 안)에는 바탕만 그린다.
+  if (session.status !== 'ready') {
+    return (
+      <div className="batch-log" style={accent}>
+        {session.status !== 'loading' && <SignInGate session={session} />}
+      </div>
+    )
+  }
+
   return (
-    <div
-      className="batch-log"
-      style={{ '--log-accent': current.accent } as CSSProperties}
-    >
+    <div className="batch-log" style={accent}>
       <header className="log-top">
         <span className="log-top__brand">
           ORIGINALS<i>/</i>OPS LOG
@@ -114,6 +127,16 @@ export default function LogScreen() {
           <b>ORIGINALS HQ</b> · {current.code} TELEMETRY
         </span>
         <span>functions-xtool · functions-cmip · Firestore</span>
+        <span>
+          {session.member.email}
+          <button
+            type="button"
+            className="log-foot__signout"
+            onClick={() => void signOutXtool()}
+          >
+            로그아웃
+          </button>
+        </span>
       </footer>
     </div>
   )

@@ -1,7 +1,15 @@
 import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { xtoolFirebase } from '@/xtool-auth/firebase'
 
 // /log가 functions-xtool을 부르는 공용 길 — 응답 JSON을 읽고, 실패하면 서버가
 // 준 오류 문구(없으면 "무엇을 못 했는지 (HTTP 코드)")로 돌려준다. 던지지 않는다.
+// 부를 때마다 로그인한 관리자의 ID 토큰을 붙인다 — 서버가 관리자인지 확인한다
+// (functions-xtool admin-auth.ts). 만료가 가까우면 SDK가 새 토큰을 받아 준다.
+
+const authHeader = async (): Promise<Record<string, string>> => {
+  const token = await xtoolFirebase().auth.currentUser?.getIdToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 export type ClientResponse<T> =
   { ok: true; data: T } | { ok: false; error: string }
@@ -13,7 +21,10 @@ export const requestJson = async <T>(
   init?: RequestInit,
 ): Promise<ClientResponse<T>> => {
   try {
-    const response = await fetch(`${API_BASE}/${path}`, init)
+    const response = await fetch(`${API_BASE}/${path}`, {
+      ...init,
+      headers: { ...init?.headers, ...(await authHeader()) },
+    })
     const body = (await response.json().catch(() => ({}))) as T & {
       error?: string
     }

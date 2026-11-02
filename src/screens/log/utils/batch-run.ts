@@ -215,6 +215,18 @@ export const summarizeRun = (run: BatchRun): string => {
             : '-'
         }`,
       ].join(' · ')
+    case 'tech-boards': {
+      const ok = result.okCount as number
+      const failed = result.failedCount as number
+      const boards =
+        (result.boards as Record<string, unknown>[] | undefined) ?? []
+      const sum = (key: string) =>
+        boards.reduce((total, board) => total + (Number(board[key]) || 0), 0)
+      return [
+        `보드 ${num(ok)}/${num(ok + failed)} 성공`,
+        `항목 ${num(sum('count'))}건 (변경 ${num(sum('written'))}·삭제 ${num(sum('deleted'))})`,
+      ].join(' · ')
+    }
     case 'google-insights': {
       const campaign = result.campaignResult as Record<string, unknown>
       const adGroup = result.adGroupResult as Record<string, unknown>

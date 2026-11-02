@@ -53,7 +53,7 @@ export const logUsage = onRequest(
 export const getUsageSegments = onRequest(
   { memory: '512MiB' },
   endpoint(
-    { name: 'getUsageSegments', method: 'GET' },
+    { name: 'getUsageSegments', method: 'GET', admin: true },
     async ({ request, response }) => {
       const days = Math.min(
         Math.max(Number(request.query.days) || 7, 1),
@@ -89,7 +89,7 @@ export const getUsageSegments = onRequest(
 // ────────────────────────────────
 export const getBatchRuns = onRequest(
   endpoint(
-    { name: 'getBatchRuns', method: 'GET' },
+    { name: 'getBatchRuns', method: 'GET', admin: true },
     async ({ request, response }) => {
       const days = Math.min(
         Math.max(Number(request.query.days) || 7, 1),

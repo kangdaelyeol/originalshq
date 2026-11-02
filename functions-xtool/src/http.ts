@@ -1,9 +1,10 @@
-// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 입력 검사(400),
-// 실패 시 로그 + 500. 각 엔드포인트는 본 처리만 쓴다.
+// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 관리자 확인(401·403),
+// 입력 검사(400), 실패 시 로그 + 500. 각 엔드포인트는 본 처리만 쓴다.
 import cors from 'cors'
 import type { Response } from 'express'
 import * as logger from 'firebase-functions/logger'
 import type { Request } from 'firebase-functions/https'
+import { checkAdmin } from './admin-auth'
 import { db } from './app'
 import { traceRun } from './cost-trace'
 import { ValidationResponse } from './types'
@@ -17,6 +18,10 @@ interface EndpointOptions<T> {
   name: string
   /** 허용 메서드 — 그 밖은 405. */
   method: Method | Method[]
+  /** 관리자만(/log) — Authorization: Bearer <Firebase ID 토큰>이 등록된
+   * 관리자여야 한다(admin-auth.ts). 토큰이 없거나 만료면 401, 관리자가
+   * 아니면 403. */
+  admin?: boolean
   /** request.body 검사 — 실패하면 400 { error }, 통과하면 data로 넘긴다. */
   validate?: (body: Record<string, unknown>) => ValidationResponse<T>
   /** 실패 로그 문구를 바꿀 때만(기본 "<name> 처리 실패:"). */
@@ -68,6 +73,14 @@ export const endpoint =
             if (!methods.includes(request.method as Method)) {
               response.status(405).send({ error: 'Method Not Allowed' })
               return
+            }
+
+            if (options.admin) {
+              const access = await checkAdmin(request)
+              if (!access.ok) {
+                response.status(access.status).send({ error: access.error })
+                return
+              }
             }
 
             let data = undefined as T
