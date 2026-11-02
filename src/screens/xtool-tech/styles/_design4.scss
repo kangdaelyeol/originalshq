@@ -1,0 +1,166 @@
+// ── Design 4 — sample/design4.mp4 ──────────────────────────────────────────
+// 젤리 슬라이더. 장면(판·홈·젤리·그림자·숫자)은 전부 WebGL 캔버스가 그린다(jelly-shaders.ts).
+// 여기서는 무대 크기·바탕·커서·포커스·견본 패널만 정한다.
+
+// 판 색 — 영상 가장자리(왼쪽 위 #cac8cd · 아래 #a8a3a6)의 가운데쯤. 캔버스가 뜨기 전 잠깐 보인다.
+$d4-plate: #c4c1c5;
+
+.showcase-stage--d4 .showcase-stage__body {
+  background: $d4-plate;
+  color: #3d3a3e;
+}
+
+// ── 슬라이더(장면 전체) ──────────────────────────────────────────────────────
+.d4-slider {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  outline: none;
+  // 세로로 쓸면 화면이 내려가고, 가로로 끌면 젤리가 움직인다
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  &.is-grab {
+    cursor: grab;
+  }
+
+  &.is-grabbing {
+    cursor: grabbing;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(255, 115, 19, 0.85);
+  }
+}
+
+.d4-slider__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.d4-slider__error {
+  position: absolute;
+  inset: auto 0 16px;
+  font-size: 12px;
+  text-align: center;
+  color: #5b5659;
+}
+
+// 무대 — 영상(720×540)과 같은 4:3. 넓은 화면에서는 높이를 560px로 묶고 판을 옆으로 늘린다.
+.d4-scene {
+  max-height: 560px;
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+// 판과 같은 회색 위에, 장면은 홈 둘레만 잘라(640 × 280, 영상 px) 작게 늘어놓는다.
+.d4-parts {
+  display: grid;
+  gap: 16px;
+  padding: 18px 20px 24px;
+  background: linear-gradient(180deg, #b9b5ba, #c4c1c5 40%);
+}
+
+.d4-part {
+  padding: 14px 16px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.28);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.d4-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #4d494e;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.55);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #2f2c30;
+  }
+}
+
+.d4-part__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+    min-width: 0;
+  }
+
+  figcaption {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11.5px;
+    color: #4d494e;
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #2f2c30;
+    }
+  }
+}
+
+.d4-still {
+  display: block;
+  width: 100%;
+  aspect-ratio: 640 / 280;
+  border-radius: 10px;
+  background: $d4-plate;
+}
+
+// 뼈대 — 옆에서 본 단면: 바닥선 · 베지어 곡선 · 점(고정점 회색, 손잡이 주황)
+.d4-rope {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.d4-rope__floor {
+  stroke: #8f8a90;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.d4-rope__curve {
+  fill: none;
+  stroke: rgba(255, 115, 19, 0.85);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.d4-rope__point {
+  fill: #fff;
+  stroke: #6a656b;
+  stroke-width: 0.8;
+}
+
+.d4-rope__anchor {
+  fill: #6a656b;
+}
+
+.d4-rope__knob {
+  fill: #ff7313;
+  stroke: #fff;
+  stroke-width: 1;
+}

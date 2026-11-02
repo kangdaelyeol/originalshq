@@ -1,0 +1,982 @@
+// ── Design 10 — sample/design10.mp4 ──────────────────────────────────────────
+// "AI 영상에 활용하기 좋은 모션그래픽 22가지" 카드 네 장. 크기는 전부 em — 1em = 영상(720×900)의 10px.
+// 시간은 영상 2초(60프레임)를 한 바퀴로 잰 값이다 — 키프레임 % = (프레임 − 1) / 60. 주석의 F는 영상 프레임.
+// 네 움직임 모두 F1에 함께 시작해 2초마다 같이 되풀이된다(영상 F60 → F1이 이어진다).
+@use 'sass:math';
+
+$d10-green: #4aff20; // 큰 면 가운데 (74,255,32)
+$d10-ink: #052a03; // 얼굴 눈·입 — F1 눈 가운데 (0,36,0)
+$d10-panel: #10150f; // 판 바탕 (16,21,15)
+$d10-edge: #1f231e; // 판 테두리 1px (30,32,31)
+$d10-latin: Arial, 'Helvetica Neue', Helvetica, var(--font-sans);
+$d10-hangul: 'Pretendard Variable', Pretendard, var(--font-sans);
+
+// 한 바퀴 2초
+$d10-loop: 2s;
+
+// 스퀴시 젤리: 가로 배율(세로는 1/배율 — 영상 F1~F60 너비×높이가 5230~5307px²로 늘 같다)·땅에서 뜬 높이(영상 px)
+@property --d10-s {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --d10-lift {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+// 공이 땅에서 뜬 높이(영상 px)
+// 표정이 바뀔 때 눈·입이 제자리에서 작아졌다 커지는 배율(F5 눈 6×8 → 5×6, 자리는 그대로)
+@property --d10-pop {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+@property --d10-ball {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.showcase-stage--d10 .showcase-stage__body {
+  background: #000;
+  color: #fff;
+}
+
+// ── 판(영상 한 장) ──────────────────────────────────────────────────────────
+.d10-scene {
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
+  padding: 24px 16px 32px;
+}
+
+.d10-page {
+  font-size: clamp(4px, calc(100cqw / 72), 10px);
+  width: 72em;
+  padding: 0 2.3em 3.4em;
+  background: #000;
+  font-family: $d10-latin;
+  line-height: 1;
+  color: #fff;
+}
+
+// 맨 위 작은 영문 — 대문자 윗선 y=17, 폭 228~492
+.d10-page__eyebrow {
+  margin: math.div(1.54, 1.25) * 1em 0 0;
+  padding-left: 0.18em; // 끝 글자 뒤 자간만큼 — 가운데 맞추기
+  font-size: 1.25em;
+  letter-spacing: 0.18em;
+  text-align: center;
+  color: #d6d6d6;
+}
+
+// 큰 제목 두 줄 — 한글 윗선 y=52(44px), y=104(66px). "모션그래픽"만 초록.
+.d10-page__title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 2.29em 0 0;
+  font-family: $d10-hangul;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.01em;
+
+  > span:first-child {
+    font-size: 4.45em;
+  }
+
+  // 둘째 줄 — 영상은 "모션그래픽"(292px)에 비해 "22가지"(190px)가 좁다
+  > span:last-child {
+    margin-top: math.div(0.49, 6.95) * 1em;
+    font-size: 6.95em;
+    letter-spacing: -0.03em;
+  }
+
+  em {
+    font-style: normal;
+    letter-spacing: 0;
+    color: $d10-green;
+  }
+}
+
+// 카드 네 장 — 판 x=23~351 · 368~697(폭 329, 사이 16)
+.d10-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.48em 1.6em;
+  margin-top: 1.51em;
+}
+
+// ── 카드 ──────────────────────────────────────────────────────────────────────
+.d10-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+// 제목 줄 — 한 줄 간격 28px. 두 줄 제목(01·03)과 한 줄 제목(02·04)은 번호 자리가 같고,
+// 한 줄 제목만 7px 아래에 놓인다(영상 F1: 01 한글 윗선 188, 02 한글 윗선 195, 번호 둘 다 195).
+.d10-card__head {
+  display: flex;
+  align-items: flex-start;
+  height: 5.6em;
+
+  &.is-one-line .d10-card__title {
+    margin-top: math.div(0.7, 2.9) * 1em;
+  }
+
+  &.is-one-line .d10-card__title-en {
+    margin-top: math.div(0.65, 1.87) * 1em;
+  }
+}
+
+// "01" — 숫자 높이 24px(y 195~218), 한글 제목은 번호 왼쪽에서 49px 뒤에서 시작
+.d10-card__no {
+  flex: none;
+  width: math.div(4.9, 3.35) * 1em;
+  margin-top: math.div(0.58, 3.35) * 1em;
+  font-size: 3.35em;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: $d10-green;
+}
+
+.d10-card__title,
+.d10-card__title-en {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.d10-card__title {
+  padding-top: math.div(0.2, 2.9) * 1em;
+  font-family: $d10-hangul;
+  font-size: 2.9em;
+  font-weight: 800;
+  line-height: math.div(2.8, 2.9);
+  letter-spacing: -0.02em;
+}
+
+.d10-card__title-en {
+  margin-left: math.div(1.2, 1.87) * 1em;
+  padding-top: math.div(0.2, 1.87) * 1em;
+  font-size: 1.87em;
+  font-weight: 700;
+  line-height: math.div(2.8, 1.87);
+}
+
+// 판 — 둥근 모서리 8px, 테두리 1px. 높이: 윗줄 213px(y 247~460), 아랫줄 204px(y 580~784)
+.d10-card__panel {
+  position: relative;
+  height: 20.4em;
+  margin-top: 0.62em;
+  overflow: hidden;
+  border: 0.1em solid $d10-edge;
+  border-radius: 0.8em;
+  background: $d10-panel;
+
+  &.is-tall {
+    height: 21.3em;
+  }
+}
+
+.d10-card__caption,
+.d10-card__caption-en {
+  margin: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+
+// 설명 — 한글 윗선 y=469, 영문 대문자 윗선 y=495
+.d10-card__caption {
+  margin-top: math.div(0.57, 2.2) * 1em;
+  font-family: $d10-hangul;
+  font-size: 2.2em;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.d10-card__caption-en {
+  font-size: 1.73em;
+  line-height: 1.2;
+  color: #e4e4e4;
+}
+
+// ── 01 스퀴시 앤 스트레치 ─────────────────────────────────────────────────────
+// 기준점 = 땅 한가운데. 영상 땅 y=434.15 → 판 안쪽 아래에서 24.85px 위.
+.d10-card__panel > .d10-card__squash {
+  position: absolute;
+  left: 50%;
+  bottom: 2.485em;
+}
+
+.d10-squash {
+  position: relative;
+  width: 0;
+  height: 0;
+  animation:
+    d10-squash-s $d10-loop linear infinite,
+    d10-squash-lift $d10-loop linear infinite;
+}
+
+// 몸 — 가만히 72.3px 정사각. 위 모서리가 아래보다 둥글다(F1·F18·F60 모서리 맞춤: 위 34%×28%, 아래 27%×28%).
+// 모서리를 %로 두면 몸이 늘고 줄 때 모서리도 같이 늘어난다 — F13·F44 윤곽과 0.3px 안으로 맞는다.
+.d10-squash__body {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(7.33em * var(--d10-s)); // 가만히 72.5 × 72.2px(F1) — 너비가 1px 더 넓다
+  height: calc(7.23em / var(--d10-s));
+  translate: -50% calc(var(--d10-lift) * -0.1em);
+  // 납작해질수록 위 모서리가 가로로 더 둥글다(F9 위 40%) — 배율 2에서 40%, 늘어날 땐 34% 그대로
+  $top: max(34%, calc(28% + var(--d10-s) * 6%));
+  border-radius: $top $top 27% 27% / 28%;
+  background: $d10-green;
+}
+
+// 그림자 — 땅에서는 몸 너비만 한 거의 검은 띠(아래 4px만 보인다), 공중에서는 작고 옅다(F18: 폭 약 0.4배, 진하기 0.2)
+.d10-squash__shadow {
+  position: absolute;
+  left: 0;
+  bottom: -0.42em;
+  width: calc(7.33em * var(--d10-s));
+  height: 0.84em;
+  translate: -50% 0;
+  scale: max(0.35, 1 - var(--d10-lift) * 0.0065) 1;
+  border-radius: 50%;
+  background: #000;
+  opacity: max(0.2, 0.95 - var(--d10-lift) * 0.0115);
+  filter: blur(0.1em);
+}
+
+// 가로 배율 — 매듭(극값)과 구간 이징을 F1~F60 실측(√(너비/높이))에 맞춘 값(오차 0.002).
+// F3.6 웅크리기 시작 → F10.3 최대 1.999 → F12.1 튀어 오르며 0.638 → F18.4 꼭대기 1 → F38.3 착지 0.688
+// → F40.7 1.80 → F43.7 0.831 → F47.0 1.164 → F50.8 0.909 → F55.6 1.061 → F61 1
+@keyframes d10-squash-s {
+  0% {
+    --d10-s: 1;
+  }
+  4.27% {
+    --d10-s: 1.012;
+    animation-timing-function: cubic-bezier(0.53, 0.02, 0.63, 0.88);
+  }
+  15.48% {
+    --d10-s: 1.999;
+    animation-timing-function: cubic-bezier(0.42, 0.01, 0.58, 1);
+  }
+  18.53% {
+    --d10-s: 0.638;
+    animation-timing-function: cubic-bezier(0.51, 0.04, 0.5, 1);
+  }
+  29% {
+    --d10-s: 0.999;
+    animation-timing-function: cubic-bezier(0.4, 0.04, 0.7, 0.7);
+  }
+  62.1% {
+    --d10-s: 0.688;
+    animation-timing-function: cubic-bezier(0.5, 0.02, 0.53, 0.99);
+  }
+  66.13% {
+    --d10-s: 1.8;
+    animation-timing-function: cubic-bezier(0.42, 0.05, 0.31, 1);
+  }
+  71.1% {
+    --d10-s: 0.831;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.5, 1);
+  }
+  76.6% {
+    --d10-s: 1.164;
+    animation-timing-function: cubic-bezier(0.36, 0.02, 0.51, 0.96);
+  }
+  82.98% {
+    --d10-s: 0.909;
+    animation-timing-function: cubic-bezier(0.57, 0, 0.45, 1);
+  }
+  90.97% {
+    --d10-s: 1.061;
+    animation-timing-function: cubic-bezier(0.4, 0.12, 0.51, 1);
+  }
+  100% {
+    --d10-s: 1;
+  }
+}
+
+// 뜬 높이 — F11.3에 땅을 떠나 7프레임 만에 99.9px(빠르게 감속, 2차 곡선), 20프레임에 걸쳐 천천히 떨어져 F37.8 착지
+@keyframes d10-squash-lift {
+  0%,
+  17.18% {
+    --d10-lift: 0;
+    animation-timing-function: cubic-bezier(0.33, 0.66, 0.61, 1);
+  }
+  28.87% {
+    --d10-lift: 99.9;
+    animation-timing-function: cubic-bezier(0.34, 0.01, 0.69, 0.38);
+  }
+  61.4%,
+  100% {
+    --d10-lift: 0;
+  }
+}
+
+// ── 얼굴 ──────────────────────────────────────────────────────────────────────
+// 표정 세 장을 겹쳐 두고 차례로 켠다. 눈 크기는 몸을 따라 늘지 않고 자리만 몸 크기 비율로 옮긴다
+// (F1 눈 6×8 → F41 눌림 7×8, 사이는 ±15.8% 그대로). 입 너비만 몸 너비를 따라간다(웃는 입 15%, 벌린 입 33%).
+.d10-face {
+  position: absolute;
+  inset: 0;
+  animation: $d10-loop linear infinite;
+}
+
+.d10-face__eye,
+.d10-face__mouth {
+  position: absolute;
+  translate: -50% -50%;
+  scale: var(--d10-pop);
+  overflow: visible;
+}
+
+.d10-face__eye--l {
+  left: 34.2%;
+}
+
+.d10-face__eye--r {
+  left: 65.8%;
+}
+
+.d10-face svg path {
+  fill: none;
+  stroke: $d10-ink;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+// 입은 몸 너비를 따라 가로로만 늘어나니 선 굵기는 화면 기준으로 둔다(표정이 바뀔 땐 같이 가늘어진다)
+.d10-face__mouth path {
+  vector-effect: non-scaling-stroke;
+}
+
+// 보통 — 세로로 긴 점 눈(6×8, 높이 39%)과 작은 웃는 입(높이 63%)
+.d10-face--neutral {
+  animation-name: d10-face-neutral;
+
+  .d10-face__eye {
+    top: 39.3%;
+    width: 0.6em;
+    height: 0.78em;
+    border-radius: 50%;
+    background: $d10-ink;
+  }
+
+  .d10-face__mouth {
+    left: 50%;
+    top: 63%;
+    width: 15.2%;
+    height: 0.5em;
+
+    path {
+      stroke-width: calc(0.17em * var(--d10-pop));
+    }
+  }
+}
+
+// 힘줌 — > < 눈(11×12)과 지그재그 입(몸 너비 15%)
+.d10-face--strain {
+  opacity: 0;
+  animation-name: d10-face-strain;
+
+  .d10-face__eye {
+    top: 38.5%;
+    width: 1.35em;
+    height: 1.45em;
+
+    path {
+      stroke-width: 2.1; // viewBox 단위 — 1 = 영상 1.35px
+    }
+  }
+
+  .d10-face__mouth {
+    left: 50%;
+    top: 60%;
+    width: 15.4%;
+    height: 0.46em;
+
+    path {
+      stroke-width: calc(0.18em * var(--d10-pop));
+    }
+  }
+}
+
+// 신남 — ^ ^ 눈(11×5)과 이가 보이는 벌린 입(몸 너비 33%, 높이 11px)
+.d10-face--happy {
+  opacity: 0;
+  animation-name: d10-face-happy;
+
+  .d10-face__eye {
+    top: 37%;
+    width: 1.2em;
+    height: 0.6em;
+
+    path {
+      stroke-width: 2.3; // viewBox 단위 — 1 = 영상 1px
+    }
+  }
+
+  .d10-face__mouth {
+    left: 50%;
+    top: 68.3%;
+    width: 35%;
+    height: 1.2em;
+
+    path {
+      stroke: none;
+    }
+  }
+
+  .d10-face__lip {
+    fill: $d10-ink;
+  }
+
+  .d10-face__teeth {
+    fill: #eef7ea;
+  }
+}
+
+// 표정 차례 — 보통(F1~F5) → 힘줌(F6 작게 → F8.5 다 커짐, ~F11) → 신남(F12~F39 줄어듦)
+// → 보통(F40~F42) → 신남(F43 작게, F44) → 보통(F45~)
+@keyframes d10-face-neutral {
+  0%,
+  5.8% {
+    opacity: 1;
+    --d10-pop: 1;
+  }
+  7.5% {
+    opacity: 1;
+    --d10-pop: 0.62;
+  }
+  7.6%,
+  63.9% {
+    opacity: 0;
+    --d10-pop: 1;
+  }
+  64%,
+  69.5% {
+    opacity: 1;
+  }
+  69.6%,
+  72.8% {
+    opacity: 0;
+  }
+  72.9%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes d10-face-strain {
+  0%,
+  7.5% {
+    opacity: 0;
+    --d10-pop: 0.45;
+  }
+  7.6% {
+    opacity: 1;
+    --d10-pop: 0.45;
+    animation-timing-function: cubic-bezier(0.3, 0.5, 0.4, 1);
+  }
+  12.5% {
+    --d10-pop: 1;
+  }
+  17.4% {
+    opacity: 1;
+  }
+  17.5%,
+  100% {
+    opacity: 0;
+    --d10-pop: 1;
+  }
+}
+
+@keyframes d10-face-happy {
+  0%,
+  17.4% {
+    opacity: 0;
+    --d10-pop: 1;
+  }
+  17.5%,
+  62% {
+    opacity: 1;
+    --d10-pop: 1;
+  }
+  63.9% {
+    opacity: 1;
+    --d10-pop: 0.45;
+  }
+  64%,
+  69.5% {
+    opacity: 0;
+    --d10-pop: 0.5;
+  }
+  69.6% {
+    opacity: 1;
+    --d10-pop: 0.5;
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.4, 1);
+  }
+  71.6%,
+  72.8% {
+    opacity: 1;
+    --d10-pop: 1;
+  }
+  72.9%,
+  100% {
+    opacity: 0;
+  }
+}
+
+// 멈춘 견본(expression) — 고른 표정만
+.d10-squash.is-still {
+  animation: none;
+
+  .d10-face {
+    animation: none;
+    opacity: 0;
+  }
+
+  &.is-neutral .d10-face--neutral,
+  &.is-strain .d10-face--strain,
+  &.is-happy .d10-face--happy {
+    opacity: 1;
+  }
+}
+
+// ── 02 바운스 ─────────────────────────────────────────────────────────────────
+// 공 지름 51.2px, 가만히 있을 때 바닥 y=435.1. 땅선 2px(y 436~437, x 400~665), 흰색 12%.
+.d10-bounce {
+  position: absolute;
+  inset: 0;
+  animation: d10-ball $d10-loop linear infinite;
+}
+
+.d10-bounce__ground {
+  position: absolute;
+  left: 50%;
+  bottom: 2.1em;
+  width: 26.55em;
+  height: 0.2em;
+  translate: -50% 0;
+  background: rgba(255, 255, 255, 0.123);
+}
+
+// 그림자 — 땅선 위에 겹친다. 땅에 닿으면 선이 거의 지워질 만큼 진하고(0.9), 높이 74px에서 0.27, 126px에서 거의 없다.
+.d10-bounce__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 1.85em;
+  width: 5.4em;
+  height: 0.7em;
+  translate: -50% 0;
+  scale: calc(1 - var(--d10-ball) * 0.0045 + var(--d10-ball) * var(--d10-ball) * 0.000016) 1;
+  border-radius: 50%;
+  background: #000;
+  opacity: calc(0.9 - var(--d10-ball) * 0.0115 + var(--d10-ball) * var(--d10-ball) * 0.000036);
+  filter: blur(0.12em);
+}
+
+.d10-bounce__ball {
+  position: absolute;
+  left: 50%;
+  bottom: 2.393em;
+  width: 5.12em;
+  height: 5.12em;
+  margin-left: -2.56em;
+  // 0.4px 내림은 transform으로 — bottom 소수점은 픽셀에 맞춰 1px씩 튄다
+  translate: 0 calc(0.04em - var(--d10-ball) * 0.1em);
+  border-radius: 50%;
+  background: $d10-green;
+}
+
+// 눈 — 지름 5.5px 점 두 개(가운데에서 ±8px, 위에서 22px). 땅에 닿는 순간 가로선으로 감긴다.
+.d10-bounce__eyes {
+  position: absolute;
+  left: 50%;
+  top: 2.2em;
+  width: 2.15em;
+  height: 0.55em;
+  translate: -50% -50%;
+  display: flex;
+  justify-content: space-between;
+  animation: d10-ball-blink $d10-loop linear infinite;
+
+  i {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: $d10-ink;
+  }
+}
+
+// 뜬 높이 — 땅(0)과 꼭짓점을 번갈아 잇는 매듭 17개. 오르막·내리막 이징은 한 가지씩(실측 오차 0.34px):
+// 오르막은 2차 감속(cubic-bezier(.34,.65,.63,1)), 내리막은 그보다 조금 센 가속. 꼭짓점 126.4 → 74.5 → 43.8
+// → 25.1 → 14.6 → 7.9 → 3.7 → 1.8px(매번 약 0.58배), 오르막이 내리막보다 짧다(F1.2→F8.3→F16.7).
+$d10-rise: cubic-bezier(0.34, 0.65, 0.63, 1);
+$d10-fall: cubic-bezier(0.36, 0, 0.67, 0.41);
+
+@keyframes d10-ball {
+  0% {
+    --d10-ball: 0;
+  }
+  0.32% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  12.18% {
+    --d10-ball: 126.4;
+    animation-timing-function: $d10-fall;
+  }
+  26.23% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  35.35% {
+    --d10-ball: 74.5;
+    animation-timing-function: $d10-fall;
+  }
+  46.02% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  53.08% {
+    --d10-ball: 43.8;
+    animation-timing-function: $d10-fall;
+  }
+  61.37% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  66.83% {
+    --d10-ball: 25.1;
+    animation-timing-function: $d10-fall;
+  }
+  73.27% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  77.35% {
+    --d10-ball: 14.6;
+    animation-timing-function: $d10-fall;
+  }
+  82.08% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  85.38% {
+    --d10-ball: 7.9;
+    animation-timing-function: $d10-fall;
+  }
+  88.7% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  91.35% {
+    --d10-ball: 3.7;
+    animation-timing-function: $d10-fall;
+  }
+  92.82% {
+    --d10-ball: 0;
+    animation-timing-function: $d10-rise;
+  }
+  94.97% {
+    --d10-ball: 1.8;
+    animation-timing-function: $d10-fall;
+  }
+  97.25%,
+  100% {
+    --d10-ball: 0;
+  }
+}
+
+// 눈 감기 — 땅에 닿기 0.6프레임 전부터 0.3프레임 뒤까지 감고 앞뒤 0.6프레임에 걸쳐 뜬다.
+// 큰 튐(1~6번째)은 거의 다 감고(0.15), 마지막 세 번은 0.35 · 0.55 · 0.75만큼(F54·F57·F59 반쯤 감김).
+@keyframes d10-ball-blink {
+  0% {
+    scale: 1 0.16;
+  }
+  0.82% {
+    scale: 1 0.15;
+  }
+  1.82%,
+  24.93% {
+    scale: 1 1;
+  }
+  25.93%,
+  26.73% {
+    scale: 1 0.15;
+  }
+  27.73%,
+  44.72% {
+    scale: 1 1;
+  }
+  45.72%,
+  46.52% {
+    scale: 1 0.15;
+  }
+  47.52%,
+  60.07% {
+    scale: 1 1;
+  }
+  61.07%,
+  61.87% {
+    scale: 1 0.15;
+  }
+  62.87%,
+  71.97% {
+    scale: 1 1;
+  }
+  72.97%,
+  73.77% {
+    scale: 1 0.15;
+  }
+  74.77%,
+  80.78% {
+    scale: 1 1;
+  }
+  81.78%,
+  82.58% {
+    scale: 1 0.15;
+  }
+  83.58%,
+  87.4% {
+    scale: 1 1;
+  }
+  88.4%,
+  89.2% {
+    scale: 1 0.35;
+  }
+  90.2%,
+  91.52% {
+    scale: 1 1;
+  }
+  92.52%,
+  93.32% {
+    scale: 1 0.55;
+  }
+  94.32%,
+  95.95% {
+    scale: 1 1;
+  }
+  96.95%,
+  97.75% {
+    scale: 1 0.75;
+  }
+  98.75%,
+  99.02% {
+    scale: 1 1;
+  }
+  100% {
+    scale: 1 0.16;
+  }
+}
+
+// ── 03 텍스트 스크램블 ────────────────────────────────────────────────────────
+// Arial Bold 41px(대문자 높이 29.5px), 글자 칸 38.6px 고정. 밑줄은 기준선 25px 아래, 칸들보다 양쪽 5.3px 넓다.
+// 진행도(--d10-progress)와 글자는 JS가 d10-clock 시계로 그린다.
+.d10-scramble {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  animation: d10-clock $d10-loop linear infinite;
+}
+
+.d10-scramble__word {
+  display: flex;
+  font-size: 4.1em;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.d10-scramble__char {
+  width: math.div(3.8625, 4.1) * 1em;
+  height: 1em;
+  text-align: center;
+  color: #fcfffb;
+
+  &::before {
+    content: attr(data-ch);
+  }
+
+  &.is-settled {
+    color: $d10-green;
+  }
+}
+
+// 막대 — 높이 1.5px. 바탕 줄(흰 7.5%) 위로 초록이 왼쪽부터 찬다.
+.d10-scramble__bar {
+  position: relative;
+  width: calc(var(--d10-cells) * 3.8625em + 1.06em);
+  height: 0.15em;
+  margin-top: 1.875em;
+  background: rgba(255, 255, 255, 0.075);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: $d10-green;
+    transform-origin: left center;
+    scale: var(--d10-progress, 1) 1;
+  }
+}
+
+// 카드 안 자리 — 기준선 y=694.5(판 안쪽 위에서 113.5px)
+.d10-card__scramble {
+  position: absolute;
+  left: 50%;
+  top: 7.88em;
+  translate: -50% 0;
+}
+
+// ── 04 모핑 ───────────────────────────────────────────────────────────────────
+// viewBox 단위 = 영상 1px. 중심 (532.0, 677.6) — 판 안쪽 위에서 96.6px(판 가운데보다 4.4px 위).
+.d10-morph {
+  display: block;
+  width: 16em;
+  height: 16em;
+  overflow: visible;
+  animation: d10-clock $d10-loop linear infinite;
+
+  path {
+    fill: $d10-green;
+  }
+}
+
+.d10-card__morph {
+  position: absolute;
+  left: 50%;
+  top: 9.66em;
+  translate: calc(-50% - 0.05em) -50%; // 영상 중심은 판 가운데보다 0.5px 왼쪽
+}
+
+// JS 그림의 시계 — 보이는 건 바꾸지 않고 currentTime만 쓴다(use-loop-clock.ts)
+@keyframes d10-clock {
+  from {
+    --d10-clock: 0;
+  }
+  to {
+    --d10-clock: 1;
+  }
+}
+
+// 움직임 줄이기 — 모두 멈춘 첫 모습(젤리·공은 땅에 가만히, 단어는 완성, 모양은 원)
+@media (prefers-reduced-motion: reduce) {
+  .d10-squash,
+  .d10-face,
+  .d10-bounce,
+  .d10-bounce__eyes,
+  .d10-scramble,
+  .d10-morph {
+    animation: none;
+  }
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+.d10-parts {
+  display: grid;
+  gap: 16px;
+  padding: 0 24px 28px;
+}
+
+.d10-part {
+  padding: 16px 18px 18px;
+  border: 1px solid #1d211c;
+  border-radius: 14px;
+  background: #0a0c0a;
+}
+
+.d10-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #9aa39a;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: #161b15;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #cfe9c8;
+  }
+}
+
+.d10-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  figcaption {
+    font-size: 11.5px;
+    color: #9aa39a;
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #cfe9c8;
+    }
+  }
+}
+
+// 견본 칸 — 영상 판과 같은 바탕, 크기 0.7배
+.d10-part__well {
+  position: relative;
+  width: 19em;
+  height: 15em;
+  overflow: hidden;
+  border: 0.1em solid $d10-edge;
+  border-radius: 0.8em;
+  background: $d10-panel;
+  font-size: 7px;
+}
+
+.d10-part__well--wide {
+  width: 34em;
+}
+
+.d10-part__well--tall {
+  height: 21.3em;
+}
+
+.d10-part__well > .d10-part__blob {
+  position: absolute;
+  left: 50%;
+  bottom: 3.6em;
+}
+
+.d10-part__scramble {
+  position: absolute;
+  left: 50%;
+  top: 4.2em;
+  translate: -50% 0;
+}
+
+.d10-part__morph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+}

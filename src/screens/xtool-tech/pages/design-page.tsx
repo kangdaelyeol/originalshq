@@ -1,6 +1,6 @@
 import { CircleCheck, Inbox, PackageOpen, Plus, Save, Search, Trash2, Upload, Wrench } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { lazy, Suspense, useState, type ComponentType, type ReactNode } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { Assignees, StagePill } from '../components/board/cells'
 import { ChipPicker, DateTimeInput, LocationInput, MultiSelect } from '../components/board/item-editor'
 import { MiniList } from '../components/board/mini-list'
@@ -31,11 +31,107 @@ import type { LocationState } from '../data/tech-edit'
 import { addDays, koreaToday, shortDate } from '../lib/dates'
 import { XT_BASE } from '../paths'
 
-/** 디자인 — 관리자만(메뉴에서도 숨긴다). 쓰는 부품을 실제로 띄워 보는 카탈로그. */
+/** 디자인 — 관리자만(메뉴에서도 숨긴다). 쓰는 부품을 실제로 띄워 보는 카탈로그 + 참고 영상을 옮긴 견본. */
 export function DesignPage() {
   const member = useCurrentMember()
   if (!member?.isAdmin) return <Navigate to={XT_BASE} replace />
-  return <ComponentCatalog />
+  return <DesignBoard />
+}
+
+type DesignTab = 'catalog' | 'design1' | 'design2' | 'design3' | 'design4' | 'design5' | 'design6' | 'design7' | 'design8' | 'design9' | 'design10'
+
+const DESIGN_TABS: { value: DesignTab; label: string }[] = [
+  { value: 'catalog', label: '기본 부품' },
+  { value: 'design1', label: 'D1' },
+  { value: 'design2', label: 'D2' },
+  { value: 'design3', label: 'D3' },
+  { value: 'design4', label: 'D4' },
+  { value: 'design5', label: 'D5' },
+  { value: 'design6', label: 'D6' },
+  { value: 'design7', label: 'D7' },
+  { value: 'design8', label: 'D8' },
+  { value: 'design9', label: 'D9' },
+  { value: 'design10', label: 'D10' },
+]
+
+// 참고 영상 견본 — 묶음마다 코드와 스타일을 따로 받는다(그 탭을 열 때만). 한 번에 넣으면 기술팀 모두가
+// 관리자만 보는 견본(WebGL 셰이더·아이콘 150개, 스타일 약 110KB 등)까지 받게 된다.
+const SHOWCASES: Record<Exclude<DesignTab, 'catalog'>, ComponentType> = {
+  design1: lazy(() =>
+    Promise.all([import('../components/showcase/design1/design1-showcase'), import('../styles/showcase/design1.scss')]).then(
+      ([m]) => ({ default: m.Design1Showcase }),
+    ),
+  ),
+  design2: lazy(() =>
+    Promise.all([import('../components/showcase/design2/design2-showcase'), import('../styles/showcase/design2.scss')]).then(
+      ([m]) => ({ default: m.Design2Showcase }),
+    ),
+  ),
+  design3: lazy(() =>
+    Promise.all([import('../components/showcase/design3/design3-showcase'), import('../styles/showcase/design3.scss')]).then(
+      ([m]) => ({ default: m.Design3Showcase }),
+    ),
+  ),
+  design4: lazy(() =>
+    Promise.all([import('../components/showcase/design4/design4-showcase'), import('../styles/showcase/design4.scss')]).then(
+      ([m]) => ({ default: m.Design4Showcase }),
+    ),
+  ),
+  design5: lazy(() =>
+    Promise.all([import('../components/showcase/design5/design5-showcase'), import('../styles/showcase/design5.scss')]).then(
+      ([m]) => ({ default: m.Design5Showcase }),
+    ),
+  ),
+  design6: lazy(() =>
+    Promise.all([import('../components/showcase/design6/design6-showcase'), import('../styles/showcase/design6.scss')]).then(
+      ([m]) => ({ default: m.Design6Showcase }),
+    ),
+  ),
+  design7: lazy(() =>
+    Promise.all([import('../components/showcase/design7/design7-showcase'), import('../styles/showcase/design7.scss')]).then(
+      ([m]) => ({ default: m.Design7Showcase }),
+    ),
+  ),
+  design8: lazy(() =>
+    Promise.all([import('../components/showcase/design8/design8-showcase'), import('../styles/showcase/design8.scss')]).then(
+      ([m]) => ({ default: m.Design8Showcase }),
+    ),
+  ),
+  design9: lazy(() =>
+    Promise.all([import('../components/showcase/design9/design9-showcase'), import('../styles/showcase/design9.scss')]).then(
+      ([m]) => ({ default: m.Design9Showcase }),
+    ),
+  ),
+  design10: lazy(() =>
+    Promise.all([import('../components/showcase/design10/design10-showcase'), import('../styles/showcase/design10.scss')]).then(
+      ([m]) => ({ default: m.Design10Showcase }),
+    ),
+  ),
+}
+
+/** 묶음 고르기 — 고른 묶음은 주소(?tab=)에 남겨 새로고침·공유해도 그대로 연다. */
+function DesignBoard() {
+  const [params, setParams] = useSearchParams()
+  const tab = DESIGN_TABS.find((t) => t.value === params.get('tab'))?.value ?? 'catalog'
+  const Showcase = tab === 'catalog' ? null : SHOWCASES[tab]
+  return (
+    <>
+      <div className="design-tabs">
+        <SegmentedControl
+          ariaLabel="디자인 묶음"
+          options={DESIGN_TABS}
+          value={tab}
+          onChange={(next) => setParams(next === 'catalog' ? {} : { tab: next }, { replace: true })}
+        />
+      </div>
+      {tab === 'catalog' && <ComponentCatalog />}
+      {Showcase && (
+        <Suspense fallback={<p className="showcase-stage__pending">불러오는 중이에요…</p>}>
+          <Showcase />
+        </Suspense>
+      )}
+    </>
+  )
 }
 
 // ── 견본 데이터(화면 안에서만 쓰는 가짜 값) ──────────────────────────────────

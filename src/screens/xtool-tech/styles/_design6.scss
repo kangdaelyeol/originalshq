@@ -1,0 +1,1202 @@
+// ── Design 6 — sample/design6.mp4 ──────────────────────────────────────────
+// 액체 유리 알약 버튼: 유리 판 위 알약 셋(Sleep · Do Not Disturb · Personal). 크기는 전부 em —
+// 1em = 영상 10px(장면 720×540 = 72em×54em). 주석의 F는 영상 프레임, r은 70프레임 주기 안 프레임,
+// t는 알약 단면(알약 긴 축에 수직인 화면 선)을 따라 잰 화면 px.
+//
+// 카메라: 세 알약의 '…' 점·아이콘을 재면 긴 축이 화면 −40.4°, 쌓인 방향이 +40.6°로 수평에 대칭이라
+// 판을 −45° 돌리고 31.4° 눕힌 정투영(rotateX(31.4deg) rotateZ(−45deg), 원근 없음 — 위·아래 알약의
+// 점 간격이 1% 안으로 같다). 그 둘을 합친 2D 행렬로 판 평면을 그린다(글자가 또렷하게 남는다).
+// 높이 z는 판 평면 안 (+k·z, −k·z) 이동과 화면에서 똑같다(k = tan31.4°/√2 = 0.4316). 그래서 3D
+// 쌓기 없이 판 평면에 그리고, 두께(벽)는 아래로 밀린 그림자 조각(box-shadow) 16장으로 그린다.
+
+@use 'sass:math';
+@use 'sass:list';
+@use 'sass:map';
+
+$d6-k: 0.4316;
+$d6-t: 2.9; // 알약 두께(em) — glass-data.ts PILL_T
+$d6-w: 8.2; // 알약 폭 — 먼 테(t −35)에서 가까운 테(t +36)까지 71px ÷ 0.93
+$d6-far: 3.92; // 알약 줄 가운데에서 먼 쪽 끝까지(em) — 먼 테·가까운 테가 영상 단면(F200 t −37 · +40)에 오도록
+$d6-n: 16; // 벽 조각 수(화면 1px 남짓씩)
+$d6-plate-t: 2.7; // 판 두께 — 판 아래 모서리가 윗면보다 화면 14px 아래(F200)
+// 빠짐 — 5프레임에 걸쳐 거의 고르게(파랑 채널 F72 19% → F73 44% → F74 73% → F75 100%)
+$d6-ease-drain: cubic-bezier(0.3, 0.15, 0.6, 1);
+$d6-drain: 167ms;
+
+@property --d6-dark {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+// 알약 자세(glass-motion.ts가 Web Animations로 움직인다) — 바닥 높이 · 두께 · 화면 x 흔들림 · 폭 배율
+@property --d6-z {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --d6-h {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 2.9;
+}
+
+@property --d6-sx {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+@property --d6-sq {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
+
+// 밝기가 넘어가는 동안 알약이 잠깐 유리처럼 비는 정도(F92·F167 — 글자·테가 흐려진다). glass-scene.tsx가 움직인다.
+@property --d6-wash {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+// 밝은/어두운 색 사이 — --d6-dark(0~1)만 바꾸면 무대 전체가 함께 넘어간다(F91~F95, F165~F169)
+@function th($light, $dark) {
+  @return color-mix(in srgb, #{$light}, #{$dark} calc(var(--d6-dark) * 100%));
+}
+
+// 벽 조각 n장 — 위(0)에서 아래(1)까지 정지점 색($stops: (위치 색), ...)을 섞어 칠한다.
+// $depth: 벽 깊이(em, 숫자나 var). 조각 i는 판 평면에서 (−k·d·i/n, +k·d·i/n) — 화면에서 바로 아래.
+@function d6-wall($depth, $stops, $n: $d6-n) {
+  $out: ();
+  @for $i from 1 through $n {
+    $f: math.div($i - 0.5, $n);
+    $c: list.nth(list.nth($stops, -1), 2);
+    @for $k from 1 through list.length($stops) - 1 {
+      $a: list.nth($stops, $k);
+      $b: list.nth($stops, $k + 1);
+      @if $f >= list.nth($a, 1) and $f < list.nth($b, 1) {
+        $w: math.div($f - list.nth($a, 1), list.nth($b, 1) - list.nth($a, 1));
+        $c: color-mix(in srgb, #{list.nth($a, 2)} #{math.round((1 - $w) * 100%)}, #{list.nth($b, 2)});
+      }
+    }
+    $off: math.div($d6-k * $i, $n);
+    $out: list.append($out, calc(#{$depth} * #{-$off}em) calc(#{$depth} * #{$off}em) 0 0 #{$c}, $separator: comma);
+  }
+  @return $out;
+}
+
+// 다섯 색 변수(…0~…4)를 벽 정지점 0 · 0.3 · 0.5 · 0.85 · 1에 둔다
+@function d6-wall-vars($depth, $p) {
+  @return d6-wall(
+    $depth,
+    ((0 var(--#{$p}0)), (0.3 var(--#{$p}1)), (0.5 var(--#{$p}2)), (0.85 var(--#{$p}3)), (1 var(--#{$p}4)))
+  );
+}
+
+// ── 무대 ─────────────────────────────────────────────────────────────────────
+.showcase-stage--d6 .showcase-stage__body {
+  container-type: inline-size;
+  overflow: hidden;
+  background: #16171b;
+}
+
+.d6-scene {
+  --d6-dark: 0;
+  position: relative;
+  isolation: isolate;
+  height: 54em;
+  overflow: hidden;
+  // 무대 폭에 맞춰 72em이 꽉 차게(최대 영상 1.3배)
+  font-size: clamp(4.4px, calc(100cqw / 72), 13px);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  // 4프레임 — 어두워질 땐 천천히 시작해 빨라지고(F92 7% → F93 21% → F94 63% → F95 100%),
+  // 밝아질 땐 꼭 그 거꾸로(F166 37% → F167 78% → F168 93%). 곡선은 세 점에 맞춘 3차 베지어.
+  transition: --d6-dark 133ms cubic-bezier(0.4, 0.4, 0.25, 0.9);
+
+  &.is-dark {
+    --d6-dark: 1;
+    transition: --d6-dark 133ms cubic-bezier(0.75, 0.1, 0.6, 0.6);
+  }
+
+  // 유리 알약(F200 Sleep 단면 · 어두운 장면 F146): 먼 테가 밝고 가까운 쪽으로 어두워지며 끝에 밝은 테.
+  // 벽은 윗모서리 바로 아래 어두운 띠 → 밝은 줄 → 중간 → 바닥 닿는 선.
+  --d6-ink: #{th(#111113, #f4f4f6)};
+  --d6-glass: linear-gradient(
+    to bottom,
+    #{th(#d3d1d4, #2c2a2f)} 0%,
+    #{th(#cfcdd0, #252328)} 12%,
+    #{th(#c9c9c9, #201e23)} 25%,
+    #{th(#c3c3c2, #1d1c21)} 50%,
+    #{th(#b9b9b7, #1c1b20)} 75%,
+    #{th(#afb1ad, #1b1a1f)} 100%
+  );
+  --d6-rim-near: #{th(rgb(220 220 219 / 0.95), rgb(232 232 238 / 0.95))};
+  --d6-rim-far: #{th(rgb(222 220 224 / 0.95), rgb(196 194 202 / 0.9))};
+  --d6-gw0: #{th(#a9a7a8, #2c2a2f)};
+  --d6-gw1: #{th(#aeacad, #242227)};
+  --d6-gw2: #{th(#cac8c8, #2f2d32)};
+  --d6-gw3: #{th(#b8b7b5, #3d3a40)};
+  --d6-gw4: #{th(#a19f9e, #8c8a90)};
+  // 판(F80 왼쪽 모서리 #6e6d6b 선, 가까운 모서리 #d7d2d6 옅은 선 · 어두운 장면은 거의 안 보이고 앞 모서리만 #49444a)
+  --d6-plate-tint: #{th(rgb(110 112 104 / 0.06), rgb(255 255 255 / 0.015))};
+  --d6-plate-line: #{th(rgb(96 95 92 / 0.75), rgb(255 255 255 / 0.1))};
+  --d6-plate-hi: #{th(rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.16))};
+  --d6-pw0: #{th(#e4e1e4, #2c2a2f)};
+  --d6-pw1: #{th(#dbd8db, #232126)};
+  --d6-pw2: #{th(#d6d3d6, #201e23)};
+  --d6-pw3: #{th(#cfccd0, #1d1c21)};
+  --d6-pw4: #{th(#9a989b, #34313a)};
+  --d6-shadow: #{th(rgb(70 66 72 / 0.42), rgb(0 0 0 / 0.75))};
+
+  @media (prefers-reduced-motion: reduce) {
+    transition-duration: 1ms;
+  }
+}
+
+// 바탕 — 밝은 장면은 오른쪽, 어두운 장면은 오른쪽 아래에서 빛이 들어온다.
+// 밝은 장면: 왼쪽 위 #dedadd, 위 가운데 #d8d3d7, 오른쪽 #eee9ed, 왼쪽 아래 #c8c6c8(F80)
+// 어두운 장면: 왼쪽 위 #2b292e, 위 가운데 #1c1c21, 오른쪽 #48494d, 오른쪽 아래 #656569(F120)
+.d6-scene__bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  &--light {
+    background:
+      radial-gradient(60% 55% at 0% 0%, rgb(226 222 226 / 0.75), transparent 70%),
+      radial-gradient(65% 70% at 0% 100%, rgb(190 188 190 / 0.55), transparent 75%),
+      radial-gradient(110% 120% at 100% 55%, #f0ebef 0%, #e8e3e7 30%, #dcd8dc 58%, #d3d0d3 85%);
+  }
+
+  &--dark {
+    opacity: var(--d6-dark);
+    background:
+      radial-gradient(45% 50% at 0% 0%, rgb(48 46 51 / 0.9), transparent 75%),
+      radial-gradient(42% 45% at 100% 0%, rgb(46 44 49 / 0.8), transparent 75%),
+      radial-gradient(95% 105% at 100% 100%, #6a6a6e 0%, #4a4b4f 28%, #323136 55%, #1f1e23 82%, #1c1b20 100%);
+  }
+}
+
+// 카메라 — 판이 출렁이는 화면 기준 움직임(이동 + 세로 배율). 기준점은 가운데 알약 '…' 높이(영상 y562).
+.d6-camera {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 19.2em;
+}
+
+// 판 평면 — 원점이 판 윗면 가운데(영상 359, 633 → 장면 35.9em, 26.3em). 무대가 72em보다 넓으면
+// 가운데에 둔다(가로는 50% − 0.1em). matrix = rotateX(31.4deg) rotateZ(-45deg):
+// x축 → (0.7071, −0.6039), y축 → (0.7071, 0.6039).
+.d6-rig {
+  position: absolute;
+  left: calc(50% - 0.1em);
+  top: 26.3em;
+  width: 0;
+  height: 0;
+  transform: matrix(0.7071, -0.6039, 0.7071, 0.6039, 0, 0);
+}
+
+// ── 판(GlassPlate) ───────────────────────────────────────────────────────────
+// 27.6em × 32.2em(알약 3줄), 모서리 4em, 두께 2.7em — 화면 끝점(왼쪽 165,619 · 오른쪽 553,647 ·
+// 아래 369,813)에 맞춘 크기. 바탕이 비치는 맑은 유리라 윗면은 거의 투명하고 모서리 선만 보인다.
+.d6-plate {
+  --d6-plate-h: calc(10.2em + (var(--d6-rows, 3) - 1) * 11em);
+  position: absolute;
+  left: -13.8em;
+  top: calc(var(--d6-plate-h) / -2);
+  width: 27.6em;
+  height: var(--d6-plate-h);
+  border-radius: 4em;
+  background: var(--d6-plate-tint);
+  box-shadow:
+    inset 0 0 0 0.11em var(--d6-plate-line),
+    inset -0.05em -0.2em 0.1em -0.05em var(--d6-plate-hi),
+    d6-wall-vars($d6-plate-t, d6-pw);
+
+  // 바닥에 지는 그림자 — 빛이 앞에서 와서 뒤(화면 왼쪽 위)로 진다(F200 판 왼쪽 위 바닥 #c7c5c6)
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: var(--d6-shadow);
+    filter: blur(1.8em);
+    opacity: 0.5;
+    transform: translate(-1.4em, -2.2em);
+  }
+}
+
+// ── 알약(GlassPill) ──────────────────────────────────────────────────────────
+// 26.6em × 8.2em(끝이 반원), 중심 x −0.15em, 간격 11em. 버튼 상자는 쉬는 자리의 윗면(z = 2.9em).
+.d6-pill {
+  --d6-content-top: #{$d6-far - 4.4}em;
+  position: absolute;
+  left: -13.45em;
+  top: calc(var(--d6-slot) - #{$d6-far}em);
+  width: 26.6em;
+  height: #{$d6-w}em;
+  padding: 0;
+  border: 0;
+  border-radius: #{$d6-w * 0.5}em;
+  background: none;
+  color: var(--d6-ink);
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transform: translate(#{$d6-k * $d6-t}em, #{-$d6-k * $d6-t}em);
+
+  // 바닥(z=0) 자리도 눌리게 — 벽까지 알약 전체가 버튼
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transform: translate(#{-$d6-k * $d6-t}em, #{$d6-k * $d6-t}em);
+  }
+
+  &:focus-visible .d6-pill__top {
+    outline: 0.22em solid #{th(rgb(40 120 255 / 0.85), rgb(140 180 255 / 0.9))};
+    outline-offset: 0.35em;
+  }
+
+  &:disabled {
+    cursor: default;
+  }
+}
+
+// 바닥 그림자 — 쉬면 뒤쪽으로 부드럽게(알약 먼 쪽 판이 #c9c7ca → #bcbabd), 들리면 넓고 옅게
+.d6-pill__shadow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform: translate(#{-$d6-k * $d6-t}em, #{$d6-k * $d6-t}em);
+  pointer-events: none;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--d6-shadow);
+  }
+
+  &::before {
+    filter: blur(0.9em);
+    opacity: calc(0.62 - var(--d6-z) * 0.15);
+    transform: translate(-0.4em, -1.1em);
+  }
+
+  &::after {
+    filter: blur(1.6em);
+    opacity: calc(var(--d6-z) * 0.11);
+    transform: translate(-0.6em, -0.6em) scale(1.04);
+  }
+}
+
+// 들림 아래 판에 비치는 알약 색(호버, r5~r19 차오름)
+.d6-pill__under {
+  position: absolute;
+  inset: -0.6em;
+  border-radius: 5em;
+  background: var(--d6-t-halo);
+  filter: blur(1.1em);
+  opacity: 0;
+  transform: translate(#{-$d6-k * $d6-t}em, #{$d6-k * $d6-t}em);
+  transition: opacity 120ms ease-out;
+  pointer-events: none;
+}
+
+// 벽·윗면 공통 — 높이(z + h − 쉬는 두께)만큼 화면 위로, 흔들림(sx)은 화면 가로로, 폭은 sq배
+.d6-pill__wall,
+.d6-pill__top {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transform: translate(
+      calc((var(--d6-z) + var(--d6-h) - #{$d6-t}) * #{$d6-k}em + var(--d6-sx) * 0.7071em),
+      calc((#{$d6-t} - var(--d6-z) - var(--d6-h)) * #{$d6-k}em + var(--d6-sx) * 0.7071em)
+    )
+    scaleY(var(--d6-sq));
+}
+
+.d6-pill__wall {
+  box-shadow: d6-wall-vars(var(--d6-h), d6-gw);
+
+  // 켜진 액체 벽 — 짙은 색(r30~34) · 빛(r35~). 빛나는 벽은 하얗게 밝다(F50 #e1e9fb, F195 #fcdcc2)
+  &--deep {
+    box-shadow: d6-wall-vars(var(--d6-h), d6-tdw);
+    opacity: 0;
+  }
+
+  &--glow {
+    box-shadow: d6-wall-vars(var(--d6-h), d6-tgw);
+  }
+
+  // 들렸을 때 바닥 모서리에 도는 알약 색 선(F12~F19 가는 파란 선, F85 분홍)
+  &--tint {
+    box-shadow:
+      calc(var(--d6-h) * #{-$d6-k * 0.94}em) calc(var(--d6-h) * #{$d6-k * 0.94}em) 0 0 var(--d6-t-rim),
+      calc(var(--d6-h) * #{-$d6-k}em) calc(var(--d6-h) * #{$d6-k}em) 0.2em 0 var(--d6-t-rim);
+    opacity: 0;
+  }
+}
+
+.d6-pill__top {
+  overflow: hidden;
+}
+
+// 윗면 겹 — 유리 · 옅은 액체 · 짙은 액체 · 빛 · 뜨거운 빛 · 들림 밝음 · 눌림 어둠 · 번쩍임 · 테두리 빛
+.d6-pill__fx {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.d6-pill__glass {
+  background: var(--d6-glass);
+}
+
+.d6-pill__pale {
+  background: linear-gradient(to bottom, var(--d6-t-pale-far), var(--d6-t-pale-near));
+  opacity: 0;
+}
+
+.d6-pill__deep {
+  background: linear-gradient(to bottom, var(--d6-t-deep-far) 10%, var(--d6-t-deep-near) 90%);
+  opacity: 0;
+}
+
+// 빛 — 밝은 장면 단면과 어두운 장면 단면을 겹쳐 --d6-dark로 넘긴다(기본 1: 그릇이 켜짐·꺼짐을 맡는다)
+.d6-pill__glow {
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  &::before {
+    background: var(--d6-t-glow-l);
+  }
+
+  &::after {
+    background: var(--d6-t-glow-d);
+    opacity: var(--d6-dark);
+  }
+}
+
+// 켜진 직후 더 밝았다가(r37~r41) r44까지 가라앉는 빛
+.d6-pill__hot {
+  background: linear-gradient(to bottom, transparent 30%, var(--d6-t-hot));
+  opacity: 0;
+}
+
+// 들리면 유리가 조금 밝아지고(F6~F7 #d1d1d3 → #e0dee2) 가까운 쪽 아래에 자기 색이 옅게 비친다(F85 분홍)
+.d6-pill__lift {
+  background: linear-gradient(to bottom, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.1) 45%, var(--d6-t-tint));
+  opacity: 0;
+  transition: opacity 90ms ease-out;
+}
+
+// 눌리면 회색으로 가라앉는다(F22~F23 #d8d7db → #bbbab9)
+.d6-pill__shade {
+  background: #{th(rgb(120 118 120 / 0.32), rgb(0 0 0 / 0.3))};
+  opacity: 0;
+  transition: opacity 70ms ease-out;
+}
+
+// 튀어 오를 때 비는 순간 — 밝은 장면은 유리가 맑아지고(F24~F25 가까운 쪽 #bbbab9 → #dedcde),
+// 어두운 장면은 흰 안개(F94~F95)
+.d6-pill__flash {
+  background: linear-gradient(
+    to bottom,
+    #{th(rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.45))},
+    #{th(rgb(255 255 255 / 0.4), rgb(255 255 255 / 0.8))} 60%,
+    #{th(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.85))}
+  );
+  opacity: 0;
+}
+
+// 들렸을 때 윗면 가까운 테를 따라 도는 가는 색 선(F155 어두운 장면의 금색 선이 가장 또렷하다)
+.d6-pill__tintline {
+  box-shadow:
+    inset 0.05em calc(-0.22em - var(--d6-dark) * 0.1em) 0.08em -0.02em var(--d6-t-rim),
+    inset 0.1em -0.5em 0.6em -0.3em var(--d6-t-tint),
+    inset 0.1em -1.2em 1.4em -0.8em var(--d6-t-tint);
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+
+// 밝기가 넘어가는 동안의 흐림(--d6-wash) — 밝은 바탕 빛으로 덮는다. 차오르는 알약은 덮지 않는다(F168 주황은 또렷)
+.d6-pill__veil {
+  background: rgb(222 220 224 / 0.8);
+  opacity: calc(var(--d6-wash) * 0.85);
+}
+
+.d6-pill.is-lit .d6-pill__veil {
+  opacity: 0;
+}
+
+// 테두리 빛 — 먼 쪽은 두 줄의 넓은 띠(t −36 ~ −26), 가까운 쪽은 끝에 붙은 밝은 한 줄(t +38)
+.d6-pill__rim {
+  box-shadow:
+    inset 0 0.14em 0.04em var(--d6-rim-far),
+    inset 0 1.25em 0.45em -1em var(--d6-rim-far),
+    inset 0.13em 0 0.05em var(--d6-rim-far),
+    inset 0.04em -0.3em 0.08em -0.04em var(--d6-rim-near);
+}
+
+// 글자·아이콘·점은 윗면(z = 2.9em) 위, 판의 알약 줄 가운데(--d6-slot)에 둔다 — 세 알약의 '…' 점이
+// 영상(F200 (347.3, 496.2) · (424.3, 562.1) · (502.2, 629.0))과 같은 자리에 온다.
+.d6-pill__content {
+  position: absolute;
+  left: 0;
+  top: var(--d6-content-top);
+  width: 100%;
+  height: 8.8em;
+  filter: opacity(calc(1 - var(--d6-wash) * 0.75));
+}
+
+// 아이콘 크기 — 화면 폭이 영상과 같도록(침대 30px · 달 22px · 사람 15px, F200)
+.d6-pill__icon {
+  position: absolute;
+  left: calc(4.2em - var(--d6-icon) / 2);
+  top: calc(50% - var(--d6-icon) / 2);
+  width: var(--d6-icon);
+  height: var(--d6-icon);
+}
+
+.d6-pill__label {
+  // 가운데에서 0.25em(부모 기준) 왼쪽 — 글자 크기가 1.55배라 0.16em
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  font-size: 1.55em;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  line-height: 1;
+  white-space: nowrap;
+  transform: translate(calc(-50% - 0.16em), -52%);
+}
+
+.d6-pill__icon,
+.d6-pill__label,
+.d6-pill__dots {
+  color: var(--d6-ink);
+  transition: color 130ms ease-out;
+}
+
+.d6-pill__dots {
+  position: absolute;
+  left: 21.5em;
+  top: calc(50% - 0.3em);
+  width: 2.4em;
+  height: 0.6em;
+}
+
+// ── 색(톤) ───────────────────────────────────────────────────────────────────
+// 단면 색은 알약 폭의 비율(0% = 먼 테, 100% = 가까운 테). 밝은 장면 값(-l)과 어두운 장면 값(-d).
+@mixin d6-tone($t) {
+  --d6-t-glow-l: linear-gradient(to bottom, #{map.get($t, glow-l)});
+  --d6-t-glow-d: linear-gradient(to bottom, #{map.get($t, glow-d)});
+  @each $name in (pale-far, pale-near, deep-far, deep-near, hot, halo, halo-hot, rim, tint, ink, near-rim) {
+    --d6-t-#{$name}: #{th(map.get($t, #{$name}-l), map.get($t, #{$name}-d))};
+  }
+  @for $i from 0 through 4 {
+    --d6-tdw#{$i}: #{th(list.nth(map.get($t, dw-l), $i + 1), list.nth(map.get($t, dw-d), $i + 1))};
+    --d6-tgw#{$i}: #{th(list.nth(map.get($t, gw-l), $i + 1), list.nth(map.get($t, gw-d), $i + 1))};
+  }
+}
+
+// 파랑(Sleep) — 밝은 장면 F50 단면: 먼 테 #d5e0f9 → #c7d9fd(21%) → #a8c0f7(49%) → #79a8f3(77%) →
+// #6e9ef0, 가까운 테 #bcd1f3, 벽 #9fb8eb → #e1e9fb(하얗게 빛남) → 바닥 진한 파랑(F50 왼쪽 끝).
+// 옅음 F28 #a5bbd2/#c4cfe0, 짙음 F35 #89abd0/#4880b7.
+.d6-tone--blue {
+  @include d6-tone(
+    (
+      glow-l: (
+        #d5e0f9 0%,
+        #d1defd 4%,
+        #c7d9fd 21%,
+        #b8ccfc 35%,
+        #a8c0f7 49%,
+        #91b2f9 63%,
+        #79a8f3 77%,
+        #6c9eee 88%,
+        #6a9bed 100%,
+      ),
+      glow-d: (
+        #b9d0ff 0%,
+        #4f86f0 8%,
+        #3f7bf0 15%,
+        #2a5fd0 30%,
+        #12306e 45%,
+        #0b1d44 60%,
+        #0a1835 100%,
+      ),
+      pale-far-l: #b3c6dc,
+      pale-far-d: #6f86b8,
+      pale-near-l: #c4d1e2,
+      pale-near-d: #142040,
+      deep-far-l: #89abd0,
+      deep-far-d: #1c2d4a,
+      deep-near-l: #3c76b0,
+      deep-near-d: #102445,
+      hot-l: rgb(150 190 255 / 0.9),
+      hot-d: rgb(80 150 255 / 0.8),
+      halo-l: rgb(150 175 255 / 0.9),
+      halo-d: rgb(50 120 255 / 0.95),
+      halo-hot-l: rgb(70 125 250 / 1),
+      halo-hot-d: rgb(70 140 255 / 1),
+      rim-l: rgb(110 135 255 / 0.7),
+      rim-d: rgb(90 150 255 / 0.95),
+      tint-l: rgb(175 190 255 / 0.45),
+      tint-d: rgb(60 110 255 / 0.25),
+      ink-l: #15213b,
+      ink-d: #f4f8ff,
+      near-rim-l: #bcd1f3,
+      near-rim-d: #b7cdf5,
+      dw-l: (
+        #7d9ec2,
+        #5f8fc0,
+        #6f98c4,
+        #3f6fa6,
+        #2d5285,
+      ),
+      dw-d: (
+        #4a6aa0,
+        #1d3766,
+        #26406e,
+        #13284d,
+        #081530,
+      ),
+      gw-l: (
+        #9fb8eb,
+        #c1d3f6,
+        #d6e3fc,
+        #c9d9f8,
+        #5a88e6,
+      ),
+      gw-d: (
+        #2c4f9a,
+        #1c4ab8,
+        #4d86f2,
+        #3f78ea,
+        #2e4f8f,
+      ),
+    )
+  );
+}
+
+// 빨강(Do Not Disturb) — 어두운 장면 F120 단면: 먼 테 #fabbc3 → #c80711(15%) → #7a0007(32%) →
+// #4c0104(44%) → #3a0207 → #31060b, 가까운 테 #e5bec4, 벽 #8d272f → #de4044 → #913b3f(새빨갛게 빛남).
+.d6-tone--red {
+  @include d6-tone(
+    (
+      glow-l: (
+        #ffe0e3 0%,
+        #fdd9dc 4%,
+        #fbc9cd 21%,
+        #f7a9b0 35%,
+        #f28a93 49%,
+        #ee6c77 63%,
+        #ea5a66 77%,
+        #e5505c 100%,
+      ),
+      glow-d: (
+        #fabbc3 0%,
+        #d13e49 6%,
+        #c80711 15%,
+        #c4030a 21%,
+        #a6000a 27%,
+        #7a0007 32%,
+        #630002 38%,
+        #4c0104 44%,
+        #3b0e10 55%,
+        #3a0207 70%,
+        #31060b 100%,
+      ),
+      pale-far-l: #e5ccd0,
+      pale-far-d: #a8707a,
+      pale-near-l: #ead6d8,
+      pale-near-d: #3a141c,
+      deep-far-l: #c56770,
+      deep-far-d: #3a1218,
+      deep-near-l: #a33a45,
+      deep-near-d: #2a0b11,
+      hot-l: rgb(255 140 150 / 0.9),
+      hot-d: rgb(255 60 70 / 0.7),
+      halo-l: rgb(255 150 160 / 0.85),
+      halo-d: rgb(255 28 42 / 0.95),
+      halo-hot-l: rgb(240 70 85 / 0.9),
+      halo-hot-d: rgb(255 40 50 / 1),
+      rim-l: rgb(250 150 170 / 0.6),
+      rim-d: rgb(255 70 90 / 0.95),
+      tint-l: rgb(250 190 205 / 0.5),
+      tint-d: rgb(255 60 80 / 0.25),
+      ink-l: #3a0c11,
+      ink-d: #ffffff,
+      near-rim-l: #fcc3c8,
+      near-rim-d: #e5bec4,
+      dw-l: (
+        #d58a92,
+        #b5525c,
+        #c06670,
+        #923640,
+        #6c222b,
+      ),
+      dw-d: (
+        #5a1a22,
+        #4a0f18,
+        #5c1520,
+        #3d0910,
+        #1f0307,
+      ),
+      gw-l: (
+        #f0a0a7,
+        #e98b93,
+        #f6b8bd,
+        #fcd6d9,
+        #f6d3d6,
+      ),
+      gw-d: (
+        #8d272f,
+        #981017,
+        #de4044,
+        #d93139,
+        #ff4a55,
+      ),
+    )
+  );
+}
+
+// 주황(Personal) — 밝은 장면 F195 단면: 먼 테 #fce4d1 → #fbdbc2(21%) → #f8cca1(35%) → #f7b57c(49%) →
+// #f29e55(77%) → #eb913f, 가까운 테 #fcd3b4, 벽 #f0bb90 → #fcdcc2 → 바닥 진한 주황(F200 왼쪽 끝).
+// 옅음 F167~F168(벌써 주황이 비친다), 짙음 F173~F175 #d07f24/#b36218.
+.d6-tone--orange {
+  @include d6-tone(
+    (
+      glow-l: (
+        #fce4d1 0%,
+        #fadfcc 4%,
+        #fbdbc2 21%,
+        #f8cca1 35%,
+        #f7b57c 49%,
+        #f2a762 63%,
+        #f29e55 77%,
+        #eb913f 92%,
+        #e5944a 100%,
+      ),
+      glow-d: (
+        #ffd9b0 0%,
+        #f39a3c 8%,
+        #f08a1c 15%,
+        #d5700c 30%,
+        #6a3204 45%,
+        #3e1d03 60%,
+        #321703 100%,
+      ),
+      pale-far-l: #f0cfa8,
+      pale-far-d: #b8875a,
+      pale-near-l: #e9b47a,
+      pale-near-d: #3a2008,
+      deep-far-l: #d07f24,
+      deep-far-d: #4a2508,
+      deep-near-l: #b36218,
+      deep-near-d: #2e1404,
+      hot-l: rgb(255 200 150 / 0.9),
+      hot-d: rgb(255 170 70 / 0.7),
+      halo-l: rgb(225 170 110 / 0.9),
+      halo-d: rgb(255 140 30 / 0.95),
+      halo-hot-l: rgb(250 155 50 / 1),
+      halo-hot-d: rgb(255 150 40 / 1),
+      rim-l: rgb(250 185 100 / 0.7),
+      rim-d: rgb(255 190 70 / 0.95),
+      tint-l: rgb(250 215 170 / 0.45),
+      tint-d: rgb(255 170 50 / 0.22),
+      ink-l: #2a1a0d,
+      ink-d: #fff8f0,
+      near-rim-l: #fcd3b4,
+      near-rim-d: #f5d3b0,
+      dw-l: (
+        #c98744,
+        #b9661c,
+        #c27530,
+        #9c5212,
+        #7a3e0b,
+      ),
+      dw-d: (
+        #6a3a12,
+        #5c2f08,
+        #6a3810,
+        #3e1f05,
+        #1e0e02,
+      ),
+      gw-l: (
+        #f0b07a,
+        #eba062,
+        #f3b886,
+        #f6c79a,
+        #d9823a,
+      ),
+      gw-d: (
+        #94571f,
+        #a45a10,
+        #f29a3a,
+        #e58a2c,
+        #8f5a2c,
+      ),
+    )
+  );
+}
+
+// ── 상태 ─────────────────────────────────────────────────────────────────────
+// 들림(호버): 유리가 밝아지고(r4~r6) 바닥 모서리에 알약 색이 r5부터 r19까지 차오른다.
+.d6-pill.is-lifted {
+  .d6-pill__lift {
+    opacity: 1;
+    transition: opacity 90ms ease-out 120ms;
+  }
+
+  .d6-pill__tintline,
+  .d6-pill__under {
+    opacity: calc(0.55 + var(--d6-dark) * 0.45);
+    transition: opacity 470ms cubic-bezier(0.4, 0, 0.7, 1) 180ms;
+  }
+
+  // 바닥 색 선 — 밝은 장면은 이 선이 주인공(F12), 어두운 장면은 윗면 금색 선이 주인공이라 옅게(F155)
+  .d6-pill__wall--tint {
+    opacity: calc(0.55 - var(--d6-dark) * 0.2);
+    transition: opacity 470ms cubic-bezier(0.4, 0, 0.7, 1) 180ms;
+  }
+
+  .d6-pill__under {
+    opacity: calc(0.12 + var(--d6-dark) * 0.2);
+  }
+}
+
+.d6-pill.is-pressed .d6-pill__shade {
+  opacity: 1;
+}
+
+// 켜짐: 놓는 순간(r21)부터 23프레임(767ms) — 퍼센트 = (r − 21) / 23
+.d6-pill.is-lit {
+  --d6-rim-near: var(--d6-t-near-rim);
+
+  .d6-pill__icon,
+  .d6-pill__label,
+  .d6-pill__dots {
+    color: var(--d6-t-ink);
+  }
+
+  .d6-pill__flash {
+    animation: d6-flash 767ms linear both;
+  }
+
+  // 유리가 맑게 비었다 차오르는 동안 글자도 흐려진다(F24~F31), 쥐어짜일 때(r28)는 안 보인다
+  .d6-pill__glass,
+  .d6-pill__wall:not(.d6-pill__wall--deep, .d6-pill__wall--glow, .d6-pill__wall--tint) {
+    animation: d6-clear 767ms linear both;
+  }
+
+  .d6-pill__content {
+    animation: d6-ink 767ms linear both;
+  }
+
+  .d6-pill__pale {
+    animation: d6-pale 767ms linear both;
+  }
+
+  .d6-pill__deep,
+  .d6-pill__wall--deep {
+    animation: d6-deep 767ms linear both;
+  }
+
+  .d6-pill__glow,
+  .d6-pill__wall--glow {
+    animation: d6-glow 767ms linear both;
+  }
+
+  .d6-pill__liquid,
+  .d6-pill__walls-lit {
+    opacity: 1;
+    transition: none;
+  }
+
+  .d6-pill__hot {
+    animation: d6-hot 767ms linear both;
+  }
+}
+
+// 꺼짐(빠짐): 5프레임에 걸쳐 걷힌다(F70 #71a2f0 → F71 #87aaea → F72 #a7b8e4 → F74 회색). 걷힘은 그릇의
+// 전환, 켜짐 순서는 안쪽 겹의 애니메이션 — 한 요소에 둘을 같이 걸면 크롬은 애니메이션이 빠질 때 0으로 튄다.
+.d6-pill__liquid,
+.d6-pill__walls-lit {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity $d6-drain $d6-ease-drain;
+}
+
+@keyframes d6-flash {
+  0% {
+    opacity: 0;
+  }
+  4.35% {
+    opacity: 0.3;
+  }
+  8.7% {
+    opacity: 0.9;
+  }
+  13% {
+    opacity: 1;
+  }
+  17.4% {
+    opacity: 0.25;
+  }
+  21.7% {
+    opacity: 0;
+  }
+  34.8% {
+    opacity: 0;
+  }
+  39.1% {
+    opacity: 0.4;
+  }
+  43.5%,
+  100% {
+    opacity: 0;
+  }
+}
+
+// 맑아짐 — F24~F25에 유리가 거의 비어 판이 비친다(윤곽만 남음), F27부터 옅은 색이 차며 돌아온다
+@keyframes d6-clear {
+  0%,
+  4.35% {
+    opacity: 1;
+  }
+  8.7% {
+    opacity: 0.45;
+  }
+  13%,
+  17.4% {
+    opacity: 0.12;
+  }
+  26.1% {
+    opacity: 0.4;
+  }
+  43.5%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes d6-ink {
+  0%,
+  4.35% {
+    opacity: 1;
+  }
+  13% {
+    opacity: 0.3;
+  }
+  26.1% {
+    opacity: 0.35;
+  }
+  30.4% {
+    opacity: 0;
+  }
+  34.8% {
+    opacity: 0.4;
+  }
+  43.5% {
+    opacity: 0.75;
+  }
+  52.2%,
+  100% {
+    opacity: 1;
+  }
+}
+
+// 옅게 차오름 — r25부터 r29까지(F26~F30 #c4cfe1 · F167 #e0cebf), 짙어짐에 넘겨준다
+@keyframes d6-pale {
+  0%,
+  13% {
+    opacity: 0;
+  }
+  17.4% {
+    opacity: 0.7;
+  }
+  21.7%,
+  34.8% {
+    opacity: 1;
+  }
+  43.5% {
+    opacity: 0.35;
+  }
+  47.8%,
+  100% {
+    opacity: 0;
+  }
+}
+
+// 짙어짐 — r29부터 차서 r31(F32·F172)에 중간, r34(F35·F175)에 가장 짙게(#4880b7 · #b36218),
+// r35부터 빛에 덮인다. 주황·빨강 주기는 r27부터 이미 짙은 기운이 비친다(F98 붉은 테, F168).
+@keyframes d6-deep {
+  0%,
+  30.4% {
+    opacity: 0;
+  }
+  43.5% {
+    opacity: 0.62;
+  }
+  47.8% {
+    opacity: 0.82;
+  }
+  56.5% {
+    opacity: 1;
+  }
+  60.9% {
+    opacity: 0.45;
+  }
+  65.2%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes d6-glow {
+  0%,
+  56.5% {
+    opacity: 0;
+  }
+  60.9% {
+    opacity: 0.5;
+  }
+  65.2% {
+    opacity: 0.85;
+  }
+  69.6%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes d6-hot {
+  0%,
+  60.9% {
+    opacity: 0;
+  }
+  69.6% {
+    opacity: 1;
+  }
+  87% {
+    opacity: 0.6;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+// ── 빛(PillGlow) — 판에 번지는 색(halo, 알약 아래) · 이웃까지 비추는 빛(bloom, 맨 위) ──────────
+// 빛은 아이콘 쪽 끝(화면 왼쪽 아래)과 가까운 쪽 벽 아래로 가장 진하게 번진다(F200 판 왼쪽 #ac977f, F120).
+.d6-glow {
+  // 켜져 있을 때 빛의 세기(밝은 장면 · 어두운 장면)
+  --d6-halo-on: calc(0.8 + var(--d6-dark) * 0.05);
+  --d6-bloom-on: calc(0.35 + var(--d6-dark) * 0.1);
+  position: absolute;
+  left: -13.45em;
+  top: calc(var(--d6-slot) - #{$d6-far}em);
+  width: 26.6em;
+  height: #{$d6-w}em;
+  border-radius: #{$d6-w * 0.5}em;
+  pointer-events: none;
+  // 걷힘은 바깥 상자의 전환, 켜짐 순서는 안쪽(::before)의 애니메이션 — 한 요소에 둘을 같이 걸면
+  // 크롬은 애니메이션이 빠지는 순간 전환을 만들지 않고 0으로 튄다.
+  // 판 빛은 알약보다 조금 늦게 걷힌다(F72 판의 파란 빛, F143 붉은 빛이 남아 있다).
+  opacity: 0;
+  transition: opacity 200ms $d6-ease-drain;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+  }
+
+  // 판 물들임(--d6-t-halo, 밝은 장면은 밝기를 지키는 옅은 색: 알약 사이 판 #bfbdbf → #aab7e4)과
+  // 아이콘 쪽 끝 아래의 진한 빛(--d6-t-halo-hot)
+  &--halo::before {
+    background:
+      radial-gradient(30% 75% at 12% 72%, var(--d6-t-halo-hot), transparent 82%),
+      linear-gradient(to bottom, transparent 40%, var(--d6-t-halo) 100%);
+    filter: blur(1em);
+    opacity: var(--d6-halo-on);
+    transform: translate(-0.7em, 1.2em) scale(1.03, 1.08);
+  }
+
+  // 위에 빛 더하기(screen) — 어두운 장면에서 이웃 알약 테두리까지 붉게(F120 Personal 먼 테 #b4949f)
+  &--bloom {
+    mix-blend-mode: screen;
+  }
+
+  // 고리 모양 — 켜진 알약 자신(가까운 쪽 #32040e)은 어둡게 두고 이웃 테만 비춘다(F44 DND 먼 쪽 #acb8e4)
+  &--bloom::before {
+    background: radial-gradient(closest-side, transparent 50%, var(--d6-t-halo) 66%, transparent 88%);
+    filter: blur(1.2em);
+    opacity: var(--d6-bloom-on);
+    transform: translate(#{$d6-k * $d6-t * 0.5}em, #{-$d6-k * $d6-t * 0.5}em) scale(1.2, 1.9);
+  }
+
+  &.is-lit {
+    opacity: 1;
+    transition: none;
+  }
+
+  &.is-lit.d6-glow--halo::before {
+    animation: d6-halo 767ms linear both;
+  }
+
+  &.is-lit.d6-glow--bloom::before {
+    animation: d6-bloom 767ms linear both;
+  }
+}
+
+// 판 빛 — r35에 켜져 r36~r37 번쩍(F176~F178 #f5dec9) 뒤 r40까지 가라앉는다
+@keyframes d6-halo {
+  0%,
+  56.5% {
+    opacity: 0;
+  }
+  65.2% {
+    opacity: 0.95;
+  }
+  73.9% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: var(--d6-halo-on);
+  }
+}
+
+@keyframes d6-bloom {
+  0%,
+  56.5% {
+    opacity: 0;
+  }
+  65.2% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: var(--d6-bloom-on);
+  }
+}
+
+// 움직임 줄이기 — 차오르는 순서 없이 색만 바뀐다(그릇의 걷힘 전환은 그대로)
+@media (prefers-reduced-motion: reduce) {
+  .d6-pill.is-lit {
+    .d6-pill__flash,
+    .d6-pill__pale,
+    .d6-pill__deep,
+    .d6-pill__wall--deep,
+    .d6-pill__hot,
+    .d6-pill__glow,
+    .d6-pill__wall--glow,
+    .d6-pill__glass,
+    .d6-pill__wall,
+    .d6-pill__content {
+      animation: none;
+    }
+  }
+
+  .d6-glow.is-lit::before {
+    animation: none;
+  }
+}
+
+// ── 견본(parts) ──────────────────────────────────────────────────────────────
+.d6-parts {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 26px 22px 28px;
+  background: #16171b;
+  color: var(--text-2);
+}
+
+.d6-part__name {
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-3);
+
+  code {
+    font-family: var(--font-mono);
+    color: var(--text-1);
+  }
+}
+
+.d6-part__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+
+  &--icons {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+}
+
+.d6-part__item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+
+  figcaption {
+    font-size: 11.5px;
+    color: var(--text-3);
+  }
+}
+
+// 견본 무대 — 알약 하나짜리 판을 가운데에(글자 크기 5px = 영상 절반)
+.d6-scene--part {
+  height: 26em;
+  font-size: 5.4px;
+  border-radius: 10px;
+
+  .d6-rig {
+    left: 50%;
+    top: 50%;
+  }
+}
+
+.d6-icon-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 8px 10px;
+  border-radius: 10px;
+  background: #dcd9dc;
+  color: #1c1c1f;
+
+  figcaption code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #4a4950;
+  }
+}
+
+.d6-icon-chip__icon {
+  width: 30px;
+  height: 30px;
+}

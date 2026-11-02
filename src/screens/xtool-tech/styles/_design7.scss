@@ -1,0 +1,412 @@
+// ── Design 7 — sample/design7.mp4 ──────────────────────────────────────────
+// 물처럼 펼쳐지는 햄버거 메뉴. 크기는 전부 em — 1em = 영상 10px. 원점은 접힌 버튼의 가운데(영상 356.7, 647).
+// 움직임은 liquid-menu-engine.ts가 그리고, 여기에는 멈춘 모양·색만 있다(주석의 F는 영상 프레임 번호).
+
+$d7-bg: #c7c5ca; // 무대 가운데(G 197.6, 영상 전체가 R+2·B+5로 살짝 보랏빛)
+$d7-line: rgba(0, 0, 0, 0.165); // 격자선 2px(F49: 211 → 183·170)
+$d7-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+
+.showcase-stage--d7 .showcase-stage__body {
+  container-type: inline-size;
+  background: $d7-bg;
+  color: #3f3e43;
+}
+
+.d7-replay {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: var(--text-1);
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+  }
+}
+
+// ── 무대 ──────────────────────────────────────────────────────────────────────
+// 영상 띠(720×419)보다 넓게 — 펼칠 때 알약 끝이 영상 오른쪽 밖(756)까지 넘친다(F77·F78).
+.d7-scene {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 46em;
+  font-size: clamp(4px, calc(100cqw / 100), 10px);
+  // 왼쪽 위가 밝은 사선: 원점에서 G 197.6, 1px마다 x·y 모두 0.037 어두워진다
+  background: linear-gradient(135deg, rgb(227, 225, 230), rgb(172, 170, 175));
+  user-select: none;
+}
+
+.d7-scene__tiles,
+.d7-scene__origin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+
+.d7-scene__tile {
+  position: absolute;
+  box-sizing: border-box;
+  width: 46.5em;
+  height: 19.6em;
+  border-left: 0.2em solid $d7-line;
+  border-top: 0.2em solid $d7-line;
+}
+
+// Bounce | Splash — 가운데 (432, 527.75)
+.d7-scene__toggle {
+  position: absolute;
+  left: 7.53em;
+  top: -11.925em;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+}
+
+// ── 효과 고르기 ────────────────────────────────────────────────────────────────
+.d7-toggle {
+  display: flex;
+  gap: 0.45em;
+}
+
+// Bounce 57×26.5, Splash 53.5×26(F49), 글자 11px(대문자 높이 8px, Bounce 폭 33px)
+.d7-toggle__option {
+  position: relative;
+  isolation: isolate;
+  height: 2.41em;
+  padding: 0 1.09em;
+  border: 0;
+  border-radius: 1.2em;
+  background: rgba(255, 255, 255, 0.28); // 199 → 215
+  font: 600 1.1em/1 $d7-font;
+  color: #69676c;
+  cursor: pointer;
+  transition: color 0.1s ease-out;
+  -webkit-tap-highlight-color: transparent;
+
+  // 고른 쪽 어두운 알약(F49 x380: 위 94 → 아래 64) — 그러데이션은 전환이 안 돼 겹쳐 놓고 흐리기만 한다
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    background: linear-gradient(180deg, #605e63, #3f3d42 92%, #353338);
+    opacity: 0;
+    transition: opacity 0.1s ease-out;
+  }
+
+  &.is-on {
+    color: #fff;
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.9);
+    outline-offset: 2px;
+  }
+}
+
+// ── 메뉴 ──────────────────────────────────────────────────────────────────────
+.d7-menu {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+// 유리 몸·물방울 판 — viewBox(-420 -200 840 400)의 1단위 = 0.1em
+.d7-menu__glass,
+.d7-menu__fx {
+  position: absolute;
+  left: -42em;
+  top: -20em;
+  width: 84em;
+  height: 40em;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.d7-menu__fx {
+  z-index: 3;
+}
+
+.d7-indicator {
+  border-radius: 2.525em;
+  background: linear-gradient(180deg, #555358, #2b292e);
+  // 둘레 옅은 그림자 — 옆 가장자리 -20이 10px에 걸쳐 사라지고, 아래는 -40(F170 Cards 둘레)
+  box-shadow: 0 0.35em 0.8em rgba(0, 0, 0, 0.26);
+}
+
+.d7-menu__indicator {
+  position: absolute;
+  left: -3.55em;
+  top: -4.125em;
+  width: 7.1em;
+  height: 5.05em;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.d7-menu__items {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+}
+
+// 누르는 자리는 표시 알약 크기(71×50.5), 아이콘 28.8px
+.d7-menu__item {
+  position: absolute;
+  top: -4.125em;
+  display: grid;
+  place-items: center;
+  width: 7.1em;
+  height: 5.05em;
+  margin-left: -3.55em;
+  padding: 0;
+  border: 0;
+  border-radius: 2.525em;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.2em rgba(255, 255, 255, 0.85);
+  }
+}
+
+.d7-menu__icon {
+  width: 2.88em;
+  height: 2.88em;
+  margin-top: -0.1em;
+  filter: drop-shadow(0 0.08em 0.08em rgba(0, 0, 0, 0.12));
+  transition: transform 0.1s ease-out;
+
+  // 고른 아이콘은 1.15배(F140 trending 26 → 30px, F1 user 21 → 25px) — F149~F150 두 프레임에 걸쳐 바뀐다
+  .is-active & {
+    transform: scale(1.15);
+  }
+}
+
+.d7-menu__button {
+  position: absolute;
+  left: -6.05em;
+  top: -6.05em;
+  z-index: 4;
+  width: 12.1em;
+  height: 12.1em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.25em rgba(255, 255, 255, 0.85);
+  }
+}
+
+.d7-menu__decor {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+// 따로 선 버튼 속 — 뒤 타일과 상관없이 같은 모양(F1·F49 속 지도가 같다): 가운데 196에서 가장자리 183,
+// 왼쪽 위로 12px 안쪽 그림자(F49 270°: 깊이 10에서 -28, 14.5에서 -16), 2px 어두운 테두리,
+// 오른쪽 아래 흰 테두리(0°·90° 4px, 45° 5px, 135°·315°엔 없다)
+.d7-menu__solid {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle closest-side,
+    rgb(194, 192, 197) 0%,
+    rgb(188, 186, 191) 70%,
+    rgb(185, 183, 188) 85%,
+    rgb(181, 179, 184) 100%
+  );
+  box-shadow:
+    inset -0.34em -0.34em 0.18em rgba(255, 255, 255, 0.9),
+    inset 0.15em 0.17em 0.06em rgba(0, 0, 0, 0.45),
+    inset 0 0 0.05em 0.05em rgba(0, 0, 0, 0.15),
+    inset -0.55em -0.55em 0.35em -0.1em rgba(255, 255, 255, 0.18),
+    inset 1em 1.1em 1.4em 0.1em rgba(0, 0, 0, 0.14);
+}
+
+.d7-menu__shine {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+// 목록 아이콘 — 버튼 가운데보다 1px 오른쪽·0.8px 아래(F49 아이콘 342.7~372.7)
+.d7-menu__list {
+  position: absolute;
+  left: calc(50% - 1.5em);
+  top: calc(50% - 1.12em);
+  width: 3.2em;
+  height: 2.4em;
+  filter: drop-shadow(0 0.08em 0.1em rgba(0, 0, 0, 0.12));
+}
+
+// 라벨 — 알약 아래 x 440 가운데, 글자 높이 18px(F1 743~761), 아래로 번지는 그림자.
+// 글자 크기가 2.55em이라 자리도 그 em으로 적는다(8.33em·9.25em ÷ 2.55).
+.d7-menu__label {
+  position: absolute;
+  left: 3.267em;
+  top: 3.666em;
+  margin: 0;
+  transform: translateX(-50%);
+  font: 700 2.55em/1 $d7-font;
+  // 영상 글꼴이 조금 넓다 — 글자 높이는 그대로 두고 Profile 폭 72 → 80px로 맞춘다
+  letter-spacing: 0.05em;
+  text-indent: 0.05em;
+  color: #fff;
+  text-shadow:
+    0 0.06em 0.12em rgba(0, 0, 0, 0.28),
+    0 0 0.04em rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+.d7-parts {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.d7-part {
+  padding: 18px 20px 20px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.d7-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #55545a;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #3f3e43;
+  }
+}
+
+.d7-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 20px 26px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  figcaption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 11.5px;
+    color: #55545a;
+    text-align: center;
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #3f3e43;
+    }
+  }
+}
+
+// 물 모양 단계 — 무대와 같은 바탕에 0.36배로
+.d7-part__glass {
+  position: relative;
+  overflow: hidden;
+  width: 84em;
+  height: 30em;
+  font-size: 3.4px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgb(214, 212, 217), rgb(188, 186, 191));
+}
+
+.d7-part__glass-svg {
+  position: absolute;
+  left: 0;
+  top: -5em;
+  width: 84em;
+  height: 40em;
+  overflow: visible;
+}
+
+.d7-part__row--small {
+  font-size: 8px;
+}
+
+.d7-part__indicator {
+  width: 7.1em;
+  height: 5.05em;
+  margin: 0 1.2em;
+}
+
+.d7-part__drop {
+  width: 48px;
+  height: 64px;
+  overflow: visible;
+}
+
+.d7-icon-tile__face {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #555358, #2b292e);
+  color: #fff;
+}
+
+.d7-icon-tile__icon {
+  width: 29px;
+  height: 29px;
+}
+
+.d7-icon-tile__list {
+  width: 32px;
+  height: 24px;
+}

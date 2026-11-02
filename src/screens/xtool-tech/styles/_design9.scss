@@ -1,0 +1,460 @@
+// ── Design 9 — sample/design9.mp4 ──────────────────────────────────────────
+// 뉴모피즘 방사형(원형) 메뉴. 크기는 전부 em — 1em = 영상 가운데 장면(코드 창이 붙은 F60~F391)의 10px.
+// 앞뒤 장면(F1~F47, F404~)은 같은 화면을 1.335배 당겨 찍은 것이라 글자·점 같은 작은 모양만 거기서 재고 나눴다.
+// 그림자는 원판 × 가우시안(σ = 흐림/2) 모형을 각도별 밝기 프로파일에 맞춰 얻었다. F는 영상 프레임 번호.
+
+$d9-bg: #dfe4e8; // 바탕 = 버튼 판(223,228,232) — 판은 평평하고 바탕과 같은 색
+$d9-ink: #4a4f5a; // 기본 아이콘 획
+$d9-teal: #1ebecd; // 올림·고름 아이콘, 고른 점, 닫힌 가운데 +
+$d9-red: #da1e4a; // 열린 가운데 ×
+$d9-label-ink: #555a66;
+// 열림·닫힘·뒤집기 곡선 — 위성 6개 64점(F378~F391)에 0.55초로 맞췄을 때 진행도 오차 RMS 0.009
+$d9-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+// 어두운 그림자는 푸른 회색(채널별로 44:43:34만큼 어두워짐) — rgb(143,151,171)에 알파만 바꿔 쓴다.
+// 위성 판: 기본 · 올림(떠오름, F150→F160) · 고름(오목, F226·F432)
+$d9-sat-rest:
+  0.8em 0.8em 1.9em rgba(143, 151, 171, 0.7),
+  -0.85em -0.85em 1.8em rgba(255, 255, 255, 0.95);
+$d9-sat-lift:
+  0.8em 0.8em 2.6em rgba(143, 151, 171, 0.9),
+  -1.05em -1.05em 2.3em rgba(255, 255, 255, 0.92);
+$d9-sat-pressed:
+  inset 0.45em 0.45em 1.2em rgba(143, 151, 171, 0.72),
+  inset -0.6em -0.6em 1.2em #fff;
+// 가운데 판: 기본(F200) · 올림(F85·F365)
+$d9-center-rest:
+  1.15em 1.15em 2.4em rgba(143, 151, 171, 0.71),
+  -1.25em -1.25em 2.3em rgba(255, 255, 255, 0.98);
+$d9-center-lift:
+  1.6em 1.6em 3.1em rgba(143, 151, 171, 0.68),
+  -1.6em -1.6em 3.4em rgba(255, 255, 255, 0.99);
+
+.showcase-stage--d9 .showcase-stage__body {
+  background: $d9-bg;
+  color: #4b5262;
+}
+
+// 무대 — 넓은 빈 바탕 가운데에 메뉴 하나. 무대가 좁으면 메뉴를 통째로 줄인다(최소 1em = 5px).
+.d9-scene {
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px 28px;
+}
+
+.d9-scene .d9-menu {
+  font-size: clamp(5px, calc(100cqw / 42), 10px);
+}
+
+// ── 메뉴 ──────────────────────────────────────────────────────────────────────
+// 상자는 이름표까지 들어가는 크기: 위아래 = 궤도 14.8 + 이름표 거리 6.3 + 반 높이 1.1 = 22.2em씩.
+.d9-menu {
+  position: relative;
+  flex: none;
+  width: 40em;
+  height: 46em;
+  font-size: 10px;
+}
+
+.d9-menu__items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 위성 자리 — 닫히면 가운데에서 0배·투명, 열리면 (--d9-x, --d9-y)에서 1배. translate·scale이 한 진행도로
+// 함께 가서 반지름과 크기가 같이 8~9% 넘쳤다 돌아온다(반지름 148 → 161 → 148px, F376~F391).
+// 열림: 움직임 0.55초 back, 투명도 0.25초 ease-in-out. 순번마다 40ms 늦게(제자리를 지나는 간격 1.2프레임).
+// 닫힘: 같은 순서·같은 곡선으로 거꾸로, 투명도는 0.15초에 먼저 빠진다(F349~F356 진하기 ≈ 진행도).
+.d9-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7.8em;
+  height: 7.8em;
+  margin: -3.9em 0 0 -3.9em;
+  opacity: 0;
+  transform: translate(0, 0) scale(0);
+  transition:
+    transform 0.55s $d9-back calc(var(--d9-i) * 40ms),
+    opacity 0.15s linear calc(var(--d9-i) * 40ms);
+  pointer-events: none;
+}
+
+.d9-menu.is-open .d9-item {
+  opacity: 1;
+  transform: translate(var(--d9-x), var(--d9-y)) scale(1);
+  transition:
+    transform 0.55s $d9-back calc(var(--d9-i) * 40ms),
+    opacity 0.25s ease-in-out calc(var(--d9-i) * 40ms);
+  pointer-events: auto;
+}
+
+// 이름표 자리 — 가운데가 버튼 가운데에서 6.3em(F103 위 62.3px, F261 아래 63.2px).
+// 버튼과 이름표 사이 틈도 올림 영역이다: 영상에서 마우스가 버튼 아래 틈에 들어오자 이름표가 먼저 떴다(F153).
+// (.d9-label의 position: relative보다 앞서도록 자식 선택자로 한 단계 올린다)
+.d9-item > .d9-item__label {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 1.3em;
+  }
+}
+
+.d9-item--above .d9-item__label {
+  bottom: calc(100% + 1.3em);
+
+  &::before {
+    top: 100%;
+  }
+}
+
+.d9-item--below .d9-item__label {
+  top: calc(100% + 1.3em);
+
+  &::before {
+    bottom: 100%;
+  }
+}
+
+// ── 위성 버튼 ────────────────────────────────────────────────────────────────
+// 지름 78px(F92 가장자리 원 맞춤 39.0~39.5px).
+.d9-sat {
+  position: relative;
+  display: block;
+  width: 7.8em;
+  height: 7.8em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font: inherit; // 버튼 기본 글자 크기(13.33px)를 버려야 안쪽 em이 메뉴를 따른다
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// 판 — 기본은 볼록(오프셋 8·흐림 19px). 올리면 흐림 24~26px로 더 진하게 떠오르는데(F150→F160), 아이콘 색과 함께
+// 조금 늦게 바뀐다(아래 아이콘 주석). 고르면 오목 — 볼록↔오목은 보간이 안 돼 바로 바뀐다(F221→F222, F244→F245).
+.d9-sat__face {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: $d9-bg;
+  box-shadow: $d9-sat-rest;
+  transition: box-shadow 0.1s ease-in-out 0.08s;
+}
+
+.d9-sat.is-hovered .d9-sat__face {
+  box-shadow: $d9-sat-lift;
+  transition: box-shadow 0.08s ease-in-out 0.06s;
+}
+
+.d9-sat.is-selected .d9-sat__face {
+  box-shadow: $d9-sat-pressed;
+}
+
+// 아이콘 — Feather 24단위를 3.2em에(획 2단위 = 2.7px, F92 아이콘 폭에서 1.33px/단위).
+// 올리면 바로 1.15배(전환 없음 — F152→F153, F187→F188 한 프레임에 다 커짐). 색은 이름표보다 늦다:
+// 올리고 1~3프레임 뒤 1~2프레임에 청록(F153 → F156, F188 → F191~F192), 떠나면 0~4프레임 머물다 회색(F165~F169).
+.d9-sat__icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.2em;
+  height: 3.2em;
+  margin: -1.6em 0 0 -1.6em;
+  color: $d9-ink;
+  transition: color 0.1s ease-in-out 0.08s;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.d9-sat.is-hovered .d9-sat__icon {
+  color: $d9-teal;
+  transform: scale(1.15);
+  transition: color 0.08s ease-in-out 0.06s;
+}
+
+.d9-sat.is-selected .d9-sat__icon {
+  color: $d9-teal;
+}
+
+// 고른 점 — 지름 8px, 버튼 가운데에서 27px 아래(F253·F432·F5). 누르는 프레임에 바로 생긴다.
+.d9-sat__dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0.8em;
+  height: 0.8em;
+  margin: 2.32em 0 0 -0.4em;
+  border-radius: 50%;
+  background: $d9-teal;
+  visibility: hidden;
+}
+
+.d9-sat.is-selected .d9-sat__dot {
+  visibility: visible;
+}
+
+// ── 이름표 ──────────────────────────────────────────────────────────────────
+// 알약 높이 22px·좌우 11px·모서리 6px(F420 PEOPLE ÷ 1.335). 글자는 굵은 대문자, 캡 높이 9.3px → 13px,
+// 자간 1.1px(CALLS 46px·PEOPLE 56px 폭에서 역산). 자리는 그대로 투명도만 0.12초(F153~F155 0.2→0.66→0.95).
+.d9-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.2em;
+  padding: 0 1.1em;
+  border-radius: 0.6em;
+  background: $d9-bg;
+  box-shadow:
+    0.3em 0.3em 0.6em rgba(143, 151, 171, 0.65),
+    -0.3em -0.3em 0.6em rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.d9-label.is-visible {
+  opacity: 1;
+}
+
+.d9-label__text {
+  margin-right: -0.085em; // 마지막 글자 뒤 자간만큼 당겨 가운데를 맞춘다
+  font: 700 1.3em/1 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  letter-spacing: 0.085em;
+  color: $d9-label-ink;
+}
+
+// ── 가운데 버튼 ─────────────────────────────────────────────────────────────
+// 지름 97px(F200·F365 원 맞춤 48.2~48.9px). 올리면 판이 더 떠오르고(오프셋 12→16, 흐림 24→32px)
+// 아이콘이 1.3배 — 둘 다 0.12초(아이콘 F96~F99 26→20px, 그림자 꼬리 F336~F339).
+.d9-center {
+  position: relative;
+  display: block;
+  width: 9.7em;
+  height: 9.7em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+  perspective: 40em;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.d9-menu > .d9-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  margin: -4.85em 0 0 -4.85em;
+}
+
+// 판 — 열리면 세로축으로 180° 뒤집힌다. 그림자도 거울처럼 넘어가 열린 동안은 왼아래가 어둡다(F200 135°).
+// 뒤집기도 위성과 같은 0.55초 back(면 폭 비 F376 0.43 → F377 0.1 → F378 0.51 → F379 0.80 → F380 0.91).
+.d9-center__disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: $d9-bg;
+  box-shadow: $d9-center-rest;
+  transform: rotateY(0deg);
+  transform-style: preserve-3d;
+  transition:
+    transform 0.55s $d9-back,
+    box-shadow 0.12s ease;
+}
+
+.d9-center.is-open .d9-center__disc {
+  transform: rotateY(180deg);
+}
+
+.d9-center.is-hovered .d9-center__disc {
+  box-shadow: $d9-center-lift;
+}
+
+// 글리프 — 앞면 청록 +, 뒷면 빨간 +. 뒤집히는 동안 45° 돌며 1.3배가 되어 ×(팔 끝 13.5px·획 3.5px, F200).
+// 뒤집기 중간에 +가 기울어 보이는 것(F59)도 이 회전이다.
+.d9-center__glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3.2em;
+  height: 3.2em;
+  margin: -1.6em 0 0 -1.6em;
+  transform-style: preserve-3d;
+  transition: transform 0.55s $d9-back;
+}
+
+.d9-center.is-open .d9-center__glyph {
+  transform: rotate(45deg) scale(1.3);
+}
+
+.d9-center__zoom {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.12s ease;
+}
+
+.d9-center.is-hovered .d9-center__zoom {
+  transform: scale(1.3);
+}
+
+.d9-center__icon {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+}
+
+.d9-center__icon--front {
+  color: $d9-teal;
+}
+
+.d9-center__icon--back {
+  color: $d9-red;
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d9-item,
+  .d9-menu.is-open .d9-item,
+  .d9-center__disc,
+  .d9-center__glyph,
+  .d9-center__zoom {
+    transition-duration: 0.01s;
+  }
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+.d9-parts {
+  display: grid;
+  gap: 18px;
+  padding: 0 24px 28px;
+}
+
+.d9-part {
+  padding: 18px 20px 20px;
+  border-radius: 18px;
+  background: $d9-bg;
+  box-shadow:
+    inset 4px 4px 10px rgba(143, 151, 171, 0.45),
+    inset -4px -4px 10px rgba(255, 255, 255, 0.8);
+}
+
+.d9-part__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #6b7282;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #3f4655;
+  }
+}
+
+.d9-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px 28px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+  }
+
+  figcaption {
+    max-width: 150px;
+    font-size: 11.5px;
+    color: #6b7282;
+    text-align: center;
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #3f4655;
+    }
+  }
+}
+
+.d9-part__specimen {
+  display: grid;
+  place-items: center;
+}
+
+// 버튼 견본은 무대보다 작게(1em = 7px), 그림자가 잘리지 않게 여백을 둔다.
+.d9-part__row--center,
+.d9-part__row--sat {
+  font-size: 7px;
+
+  figure {
+    padding: 16px 14px 0;
+  }
+
+  figcaption {
+    font-size: 11.5px;
+  }
+}
+
+.d9-part__row--items {
+  font-size: 8px;
+
+  figure {
+    gap: 12px;
+    min-width: 96px;
+  }
+
+  figcaption {
+    font-size: 11.5px;
+  }
+}
+
+.d9-part__specimen--blank {
+  height: 2.2em;
+}
+
+.d9-glyph {
+  display: block;
+  width: 3.2em;
+  height: 3.2em;
+  color: $d9-ink;
+
+  svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.d9-glyph--center {
+  color: $d9-teal;
+}

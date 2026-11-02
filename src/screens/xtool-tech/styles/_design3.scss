@@ -1,0 +1,54 @@
+// ── Design 3 — sample/design3.mp4 ──────────────────────────────────────────
+// 영상 한 장(720×1280)을 그대로 옮긴 판. 칸 자리는 영상 속 비율(%)로 놓고, 아이콘 크기는
+// 판 너비를 따라가게 컨테이너 단위(cqw)로 잡는다 — 판이 줄어도 영상과 같은 비례가 유지된다.
+.showcase-stage--d3 .showcase-stage__body {
+  display: flex;
+  justify-content: center;
+  background: #000;
+}
+
+.d3-board {
+  position: relative;
+  width: min(100%, 720px);
+  aspect-ratio: 720 / 1280;
+  container-type: inline-size;
+  color: #fff;
+}
+
+.d3-cell {
+  position: absolute;
+  // 칸 간격(가로 약 55px · 세로 약 77px)만큼을 hover 영역으로
+  width: calc(54 / 720 * 100cqw);
+  height: calc(72 / 720 * 100cqw);
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+}
+
+.d3-cell__icon {
+  display: block;
+  // 24 뷰박스 × 1.37 = 32.9px(영상 기준)
+  width: calc(32.9 / 720 * 100cqw);
+  height: calc(32.9 / 720 * 100cqw);
+}
+
+.d3-cell__name {
+  position: absolute;
+  top: calc(50% + 21 / 720 * 100cqw);
+  left: 50%;
+  translate: -50% 0;
+  max-width: calc(76 / 720 * 100cqw);
+  overflow: hidden;
+  font-size: max(9px, calc(9 / 720 * 100cqw));
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.d3-cell:hover .d3-cell__name {
+  opacity: 1;
+}

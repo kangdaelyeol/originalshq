@@ -1,0 +1,7 @@
+// Design 7 견본 스타일 — 그 탭을 열 때만 받는다(design-page의 lazy 묶음과 함께). 규칙은 전과 똑같이
+// 화면 루트(.xtool-tech) 아래로만 들어간다.
+@use 'sass:meta';
+
+.xtool-tech {
+  @include meta.load-css('../design7');
+}

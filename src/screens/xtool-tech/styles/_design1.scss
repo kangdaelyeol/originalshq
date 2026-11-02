@@ -1,0 +1,484 @@
+// ── Design 1 — sample/design1.mp4 ──────────────────────────────────────────
+// 물이 차오르는 뉴모피즘 하단 탭 바. 크기는 전부 em — 1em = 영상의 10px(영상 720px 폭 기준으로
+// 잰 값). 시간·높이는 30fps 프레임을 하나씩 재서 맞췄다(주석의 F는 영상 프레임 번호).
+
+$d1-bg: #e0e5e9;
+$d1-dark: rgba(163, 177, 198, 0.9);
+$d1-light: #fff;
+$d1-ink: #8a919f; // 선택 안 된 아이콘
+
+.showcase-stage--d1 .showcase-stage__body {
+  background: $d1-bg;
+  color: #4b5262;
+}
+
+// 무대 — 영상처럼 넓은 빈 바탕 가운데에 바 하나. 바 크기는 무대 폭을 따라 줄어든다.
+.d1-scene {
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
+  padding: 96px 24px 88px;
+}
+
+// ── 바 ────────────────────────────────────────────────────────────────────────
+.d1-bar {
+  font-size: clamp(5px, calc(100cqw / 66), 10px);
+  display: flex;
+  gap: 2.4em;
+  padding: 2.4em 3em;
+  border-radius: 5.4em;
+  background: linear-gradient(160deg, #e5e9ee, #dde2e7 55%);
+  box-shadow:
+    1.6em 1.6em 3.4em $d1-dark,
+    -1.6em -1.6em 3.4em $d1-light;
+}
+
+// ── 버튼 ──────────────────────────────────────────────────────────────────────
+.d1-btn {
+  position: relative;
+  flex: none;
+  width: 9em;
+  height: 9em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+// 동그란 판 — 물·거품·방울을 원 안으로 자른다. 평소엔 볼록(바깥 그림자 두 개).
+.d1-btn__face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: 50%;
+  background: $d1-bg;
+  box-shadow:
+    0.9em 0.9em 1.8em rgba(163, 177, 198, 0.9),
+    -0.9em -0.9em 1.8em #fff;
+}
+
+// 물 찬 상태 — 눌린 듯 오목(안쪽 그림자) + 바깥 색 빛. 영상에서 한 프레임에 바뀌어 전환은 없다(F119→F120).
+// 빛은 처음에 진했다가 0.4초쯤 걸쳐 가라앉는다(바깥 고리 채도 0.47 → 0.29).
+.d1-btn.is-wet .d1-btn__face {
+  box-shadow:
+    inset 0.65em 0.65em 1.3em rgba(163, 177, 198, 0.95),
+    inset -0.65em -0.65em 1.3em #fff,
+    0 0 2em 0.3em color-mix(in srgb, var(--d1-glow) 50%, transparent);
+  animation: d1-glow-in 0.45s ease-out;
+}
+
+@keyframes d1-glow-in {
+  from {
+    box-shadow:
+      inset 0.65em 0.65em 1.3em rgba(163, 177, 198, 0.95),
+      inset -0.65em -0.65em 1.3em #fff,
+      0 0 2.4em 0.7em color-mix(in srgb, var(--d1-glow) 66%, transparent);
+  }
+}
+
+// 아이콘 뒤 빛 번쩍임 — 올리는 순간 아이콘 둘레가 버튼 색으로 짙게 번졌다가 물이 차오르는 동안
+// 걷힌다(F120~F125). 아이콘·물보다 아래 — 하트는 흰 채로 둘레만 물들고(F437), 회색 돋보기는
+// 그 빛 위에서 보랏빛 회색으로 보인다(F120).
+.d1-btn__orb {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 6em;
+  height: 6em;
+  margin: -3em 0 0 -3em;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--d1-glow) 62%, transparent) 0%,
+    color-mix(in srgb, var(--d1-glow) 30%, transparent) 34%,
+    color-mix(in srgb, var(--d1-glow) 10%, transparent) 55%,
+    transparent 72%
+  );
+  opacity: 0;
+  pointer-events: none;
+}
+
+.d1-btn.is-wet .d1-btn__orb {
+  animation: d1-orb 0.5s ease-out forwards;
+}
+
+@keyframes d1-orb {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  8% {
+    opacity: 1;
+    transform: none;
+  }
+  40% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
+}
+
+// 선택 점 — 버튼 맨 아래 안쪽, 테두리에 아래가 살짝 잘린다. 빛은 위로만 번진다(원 밖은 잘림).
+// 물 아래에 있어서, 물이 다 빠지는 순간 마지막 물방울이 점이 되는 것처럼 보인다(F470→F471).
+.d1-btn__dot {
+  position: absolute;
+  left: 50%;
+  bottom: -0.2em;
+  z-index: 1;
+  width: 0.64em;
+  height: 0.64em;
+  margin-left: -0.32em;
+  border-radius: 50%;
+  background: var(--d1-ink);
+  box-shadow:
+    0 0 0.25em 0.08em var(--d1-ink),
+    0 0 0.9em 0.4em color-mix(in srgb, var(--d1-dot-glow) 75%, transparent);
+  opacity: 0;
+  transform: scale(0.4);
+  // 선택이 풀릴 때 점은 두 프레임 만에 사라진다(F312→F314).
+  transition:
+    opacity 0.06s linear,
+    transform 0.06s linear;
+}
+
+.d1-btn.is-selected .d1-btn__dot {
+  opacity: 1;
+  transform: none;
+  transition-duration: 0.2s;
+}
+
+// ── 물 ────────────────────────────────────────────────────────────────────────
+// 차오름: 올리고 0.05초 뒤부터 0.28초 동안 80%까지(수면 = 위에서 21.5%). 영상 수위(F122→F130)를
+// 재 보니 ease-out quad 곡선과 거의 같다.
+// 빠짐: 떠나고 0.07초 뒤 0.26초 동안(F161→F168) — 처음 한 프레임에 30% 가까이 빠지고 끝이 느리다.
+.d1-water {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  transform: translateY(101%);
+  transition: transform 0.26s cubic-bezier(0.2, 0.6, 0.4, 1) 0.07s;
+  pointer-events: none;
+}
+
+.d1-btn.is-wet .d1-water {
+  transform: translateY(21.5%);
+  transition: transform 0.28s cubic-bezier(0.25, 0.46, 0.45, 0.94) 0.05s;
+}
+
+// 앞 물 — 수면은 거의 곧은 선이고 왼쪽이 높게 2~6° 기운 채 천천히 흔들린다(F128~F158).
+// 떠나는 순간 수평으로 돌아온다(애니메이션을 떼면 기울기 0).
+.d1-water__front {
+  position: absolute;
+  left: -25%;
+  right: -25%;
+  top: 0;
+  height: 150%;
+  background: linear-gradient(180deg, var(--d1-top) 0%, var(--d1-bottom) 52%);
+  transform-origin: 50% 0;
+
+  // 수면 바로 아래 옅은 띠(빛 반사)
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 0.4em;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.4), transparent);
+  }
+}
+
+// 뒤 물결 — 앞 물보다 옅고 다르게 기울어, 수면 위로 2~4px 비치거나 가운데에서 꺾여 보인다.
+.d1-water__back {
+  position: absolute;
+  left: -25%;
+  right: -25%;
+  top: -0.42em;
+  height: 2em;
+  background: color-mix(in srgb, var(--d1-top) 45%, #fff);
+  // 빈 상태에서는 숨긴다(물보다 위로 나와 있어 아래 테두리에 비친다). 빠지는 동안은 남겨 둔다.
+  opacity: 0;
+  transform-origin: 35% 100%;
+  transition: opacity 0s linear 0.3s;
+}
+
+.d1-btn.is-wet .d1-water__back {
+  opacity: 0.72;
+  transition: none;
+}
+
+.d1-btn.is-wet .d1-water__front {
+  animation: d1-sway 1.2s ease-in-out infinite alternate;
+}
+
+.d1-btn.is-wet .d1-water__back {
+  animation: d1-sway-back 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes d1-sway {
+  from {
+    transform: rotate(1.5deg);
+  }
+  to {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes d1-sway-back {
+  from {
+    transform: translateY(0.12em) rotate(-1deg);
+  }
+  to {
+    transform: translateY(-0.12em) rotate(4.5deg);
+  }
+}
+
+// 물속 거품 넷 — 바닥에서 초당 약 25px로 올라가며 사라진다. 올릴 때마다 한 번(반복 없음).
+.d1-bubble {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 0.28em;
+  height: 0.28em;
+  margin: -0.14em 0 0 -0.14em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 0 0.25em rgba(255, 255, 255, 0.7);
+  opacity: 0;
+  transform: translate(var(--bx), 3.9em);
+}
+
+.d1-btn.is-wet .d1-bubble {
+  animation: d1-bubble var(--bt) cubic-bezier(0.3, 0.2, 0.6, 1) var(--bd) forwards;
+}
+
+@keyframes d1-bubble {
+  0% {
+    opacity: 0;
+    transform: translate(var(--bx), 3.9em);
+  }
+  14% {
+    opacity: 0.9;
+  }
+  68% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--bx), 1.2em);
+  }
+}
+
+// ── 아이콘 ────────────────────────────────────────────────────────────────────
+// 물 위에 그린다 — 잠기면 흰색 + 흰 빛, 떠나면 0.2초 걸쳐 원래 색으로(F463→F468).
+.d1-btn__icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 3;
+  width: 5.2em;
+  height: 5.2em;
+  margin: -2.6em 0 0 -2.6em;
+  color: $d1-ink;
+  transition:
+    color 0.2s ease 0.03s,
+    filter 0.2s ease;
+}
+
+.d1-btn.is-selected .d1-btn__icon {
+  color: var(--d1-ink);
+  filter: drop-shadow(0 0 0.12em color-mix(in srgb, var(--d1-ink) 55%, transparent));
+}
+
+.d1-btn.is-wet .d1-btn__icon {
+  color: #fff;
+  filter: drop-shadow(0 0 0.18em rgba(255, 255, 255, 0.9));
+  // 처음 두 프레임은 원래 색(빛에 물든 채), 그다음 흰색으로(F122→F124)
+  transition:
+    color 0.1s linear 0.06s,
+    filter 0.1s linear 0.06s;
+}
+
+// 하트는 잠기는 순간 속까지 흰색(F202→F203), 떠나는 순간 다시 비운다.
+.d1-btn--fill.is-wet .d1-btn__icon {
+  fill: #fff;
+}
+
+// ── 흘러내리는 방울 ───────────────────────────────────────────────────────────
+// 물이 빠질 때 원 안쪽 위 벽에 남은 방울 — 같은 두 높이(-21px·+9px)에서 잠깐 멈추며 내려오다
+// +18px쯤에서 사라진다. 한 방울 약 0.8초(F469→F491). 가로 위치·늦춤은 버튼이 정한다(--x, --dd).
+.d1-drip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 4;
+  width: 0.58em;
+  height: 0.58em;
+  margin: -0.29em 0 0 -0.29em;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 35% 30%,
+    color-mix(in srgb, var(--d1-top) 55%, #fff) 0%,
+    var(--d1-bottom) 72%
+  );
+  box-shadow: 0 0 0.25em color-mix(in srgb, var(--d1-glow) 55%, transparent);
+  opacity: 0;
+  animation: d1-drip 0.8s var(--dd) both;
+}
+
+@keyframes d1-drip {
+  0% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y0)) scale(0.6);
+    animation-timing-function: cubic-bezier(0.25, 0.7, 0.4, 1);
+  }
+  5% {
+    opacity: 1;
+  }
+  33% {
+    transform: translate(calc(var(--x) + var(--dx) * 0.4), -2.1em) scale(1);
+    animation-timing-function: linear;
+  }
+  42% {
+    transform: translate(calc(var(--x) + var(--dx) * 0.5), -1.98em) scale(1);
+    animation-timing-function: cubic-bezier(0.45, 0.05, 0.4, 1);
+  }
+  75% {
+    transform: translate(calc(var(--x) + var(--dx) * 0.9), 0.85em) scale(1);
+    animation-timing-function: linear;
+  }
+  85% {
+    opacity: 1;
+    transform: translate(calc(var(--x) + var(--dx)), 0.95em) scale(1);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(var(--x) + var(--dx)), 1.8em) scale(0.85);
+  }
+}
+
+// 움직임 줄이기를 켠 사람에게는 흔들림·거품·방울을 뺀다(차고 빠지는 것만).
+@media (prefers-reduced-motion: reduce) {
+  .d1-btn.is-wet .d1-water__front,
+  .d1-btn.is-wet .d1-water__back,
+  .d1-btn.is-wet .d1-bubble,
+  .d1-drip {
+    animation: none;
+  }
+
+  .d1-drip {
+    display: none;
+  }
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+.d1-parts {
+  display: grid;
+  gap: 18px;
+  padding: 0 24px 28px;
+}
+
+.d1-part {
+  padding: 18px 20px 20px;
+  border-radius: 18px;
+  background: $d1-bg;
+  box-shadow:
+    inset 4px 4px 10px rgba(163, 177, 198, 0.45),
+    inset -4px -4px 10px rgba(255, 255, 255, 0.8);
+}
+
+.d1-part__name {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #6b7282;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.6);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #3f4655;
+  }
+}
+
+.d1-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px 28px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 0;
+  }
+
+  figcaption {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 11.5px;
+    color: #6b7282;
+    text-align: center;
+
+    code {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: #3f4655;
+    }
+  }
+}
+
+// 상태 견본 버튼은 무대 바와 같은 크기(1em = 10px)로, 그림자가 잘리지 않게 여백을 둔다.
+.d1-part__row--buttons {
+  font-size: 7px;
+
+  figure {
+    padding: 14px 10px 0;
+  }
+
+  figcaption {
+    font-size: 11.5px;
+  }
+}
+
+.d1-tone {
+  min-width: 112px;
+}
+
+.d1-tone__icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: $d1-bg;
+  color: $d1-ink;
+  box-shadow:
+    5px 5px 11px rgba(163, 177, 198, 0.75),
+    -5px -5px 11px rgba(255, 255, 255, 0.9);
+
+  svg {
+    width: 38px;
+    height: 38px;
+  }
+}
+
+.d1-tone__water {
+  width: 64px;
+  height: 18px;
+  border-radius: 9px;
+}

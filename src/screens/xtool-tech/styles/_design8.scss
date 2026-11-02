@@ -1,0 +1,934 @@
+// ── Design 8 — sample/design8.mp4 ──────────────────────────────────────────
+// "Glassy SideBar V5": 거실 사진 위 유리 사이드바. 크기는 전부 em — 1em = 영상 10px(720px 폭 기준).
+// 사진은 영상 프레임 중앙값으로 커서·툴팁을 지우고, 패널이 늘 가리는 띠는 좌우를 이어 메웠다.
+// 주석의 F는 영상 프레임 번호(30fps).
+
+$d8-red: #e54f34; // 배지 빨강(F1 활동 배지 가운데)
+$d8-ink: rgba(255, 255, 255, 0.9);
+
+.showcase-stage--d8 .showcase-stage__body {
+  container-type: inline-size;
+  background: #14110f;
+}
+
+.d8-layout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+// 장면 72×93.4em = 영상 사진 영역(x 0..720, y 173..1106). 무대가 좁으면 폭에 맞춰 줄어든다.
+.d8-scene {
+  font-size: clamp(5px, calc(100cqw / 72), 10px);
+  position: relative;
+  flex: none;
+  width: 72em;
+  height: 93.4em;
+  margin: 0 auto;
+  overflow: hidden;
+  background: #2b2420;
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.d8-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  user-select: none;
+  pointer-events: none;
+}
+
+// 야간 모드 — 사진만 누른다(사이드바의 형제라 backdrop-filter는 그대로 본다)
+.d8-night {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(8, 10, 30, 0.52), rgba(8, 10, 30, 0.66));
+  pointer-events: none;
+}
+
+// ── 사이드바 자리 ─────────────────────────────────────────────────────────────
+// 가운데 (35.75em, 47.2em) — 접힘·펼침 모두 이 점이 가운데라 폭·높이가 양쪽으로 자란다(F1·F169).
+.d8-sidebar {
+  position: absolute;
+  left: 35.75em;
+  top: 47.2em;
+  translate: -50% -50%;
+  font-family: Inter, system-ui, sans-serif;
+  color: #fff;
+}
+
+// ── 유리 패널 ─────────────────────────────────────────────────────────────────
+// 뒤 사진을 σ18px로 흐리고 채도 1.6배, 위에서 아래로 흰빛을 얹은 모형이 F166~169 빈 자리 색과
+// RMS 5(0~255)로 맞았다. 실제 렌더와 띠별로 맞대 채도 1.75·밝기 0.98·위 흰빛 13→11%(22%)로 다듬었다.
+// 테두리는 옆 32%·위 한 줄 더 밝게(F150 x 195·y 199).
+// 그림자는 아래로만 짙다(바로 밑 비율 0.67, 옆 0.93) — 0 5em 7em −3.6em 50%.
+.d8-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+  border-radius: 3.9em;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.13),
+    rgba(255, 255, 255, 0.11) 22%,
+    rgba(255, 255, 255, 0.035) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  backdrop-filter: blur(1.8em) saturate(1.75) brightness(0.98);
+  -webkit-backdrop-filter: blur(1.8em) saturate(1.75) brightness(0.98);
+  box-shadow:
+    inset 0 0 0 0.1em rgba(255, 255, 255, 0.32),
+    inset 0 0.1em 0 rgba(255, 255, 255, 0.4),
+    0 5em 7em -3.6em rgba(0, 0, 0, 0.5);
+}
+
+// ── 머리: 로고 + 이름 ─────────────────────────────────────────────────────────
+// 로고 가운데 = 패널 왼쪽·위에서 (3.9em, 3.85em) — 접혀도 같은 자리(F1 357.5,302.5 · F169 234,237.5)
+.d8-head {
+  position: relative;
+  flex: none;
+  height: 6.05em;
+  padding: 1.65em 0 0 1.7em;
+  box-sizing: border-box;
+}
+
+.d8-logo {
+  position: relative;
+  display: block;
+  width: 4.4em;
+  height: 4.4em;
+  border-radius: 50%;
+  // 위·왼쪽 #e6674a → 아래·오른쪽 #d4422b(F169), 둘레에 아래로 번지는 붉은 빛
+  background: radial-gradient(circle at 30% 18%, #ee7a5c 0%, #e6654b 36%, #d6472e 78%, #d2412a 100%);
+  box-shadow: 0 0.6em 1.6em -0.3em rgba(226, 72, 44, 0.5);
+}
+
+.d8-logo__mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: #fff;
+}
+
+.d8-head__text {
+  position: absolute;
+  left: 7.7em;
+  top: 1.99em;
+  display: flex;
+  flex-direction: column;
+  white-space: nowrap;
+}
+
+.d8-head__name {
+  font-size: 1.8em;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+}
+
+.d8-head__caption {
+  margin-top: 0.08em;
+  font-size: 1.4em;
+  font-weight: 500;
+  line-height: 1.3;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+// ── 검색 ──────────────────────────────────────────────────────────────────────
+// 칸: 패널 안쪽 1.6em, 높이 4.5em(F169 y 278..323) · 검정 11%로 살짝 어둡다
+.d8-search {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  height: 4.5em;
+  margin-top: 2.1em; // 칸 위 7.9em → 영상과 맞대 0.25em 내림(돋보기 F169 y 294..310)
+}
+
+.d8-search__field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 4.5em;
+  margin: 0 1.6em;
+  border-radius: 2.25em;
+  overflow: hidden;
+}
+
+.d8-search__bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(0, 0, 0, 0.11);
+  box-shadow: inset 0 0 0 0.1em rgba(255, 255, 255, 0.05);
+}
+
+.d8-search__inner {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  width: 29.3em;
+}
+
+.d8-search__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2em;
+  height: 2em;
+  margin-left: 1.35em;
+  color: rgba(255, 255, 255, 0.75);
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.d8-search__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  margin: 0 0 0 calc(1.55em / 1.65);
+  padding: calc(0.25em / 1.65) 0 0; // 영상보다 2~3px 위에 있어 내린다(F169 y 297..311)
+  border: 0;
+  outline: none;
+  background: none;
+  color: #fff;
+  font: 400 1.65em/1 Inter, system-ui, sans-serif;
+
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// ⌘K — 3.75×2em, 칸 오른쪽에서 0.8em(F160 x 459..496)
+.d8-kbd {
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: calc(2em / 1.2);
+  margin-right: calc(0.8em / 1.2);
+  padding: 0 calc(0.8em / 1.2);
+  border-radius: 0.5em;
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow:
+    inset 0 0 0 0.08em rgba(255, 255, 255, 0.14),
+    inset 0 0.08em 0 rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.62);
+  font: 500 1.2em/1 Inter, system-ui, sans-serif;
+}
+
+// 접혔을 때 칸 전체가 "검색 열기" 단추
+.d8-search__open {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  cursor: pointer;
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 0.2em rgba(255, 255, 255, 0.55);
+  }
+}
+
+// ── 메뉴 목록 ─────────────────────────────────────────────────────────────────
+// 줄 4.8em·사이 0.2em, 섹션 머리 3.75em — MAIN 가운데 15.8em, 대시보드 19.9em … 설정 72.05em(F169)
+.d8-list {
+  position: relative;
+  flex: none;
+  margin-top: 1em;
+}
+
+.d8-group + .d8-group,
+.d8-group > * + * {
+  margin-top: 0.2em;
+}
+
+.d8-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 3.75em;
+  padding: 0.75em 0 0 3em;
+  box-sizing: border-box;
+}
+
+.d8-section__label {
+  font-size: 1.15em;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.174em; // 2px — MAIN 36px · WORKSPACE 88px 폭과 맞는 값
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+// 접힌 구분선 — 2em×0.2em, 가운데 (3.9em, 2.25em)(F1 y 423 · 663)
+.d8-section__rule {
+  position: absolute;
+  left: 2.9em;
+  top: 2.15em;
+  width: 2em;
+  height: 0.2em;
+  border-radius: 0.1em;
+  background: rgba(255, 255, 255, 0.32);
+}
+
+// 선택 알약 — 위가 가장 밝은 유리 알약. F169 단면(바탕 대비 흰빛): 위 2~5px 48% → 10px 32% →
+// 20px 19% → 가운데 10% → 아래 17%, 색은 따뜻한 흰색(R이 G·B보다 4% 더)
+.d8-pill {
+  position: absolute;
+  left: 1.55em;
+  right: 1.55em;
+  top: 0;
+  border-radius: 2.4em;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 238, 228, 0.55) 0%,
+    rgba(255, 236, 226, 0.46) 8%,
+    rgba(255, 232, 220, 0.32) 18%,
+    rgba(255, 228, 214, 0.19) 32%,
+    rgba(255, 224, 208, 0.1) 52%,
+    rgba(255, 224, 208, 0.11) 70%,
+    rgba(255, 228, 214, 0.16) 88%,
+    rgba(255, 232, 220, 0.2) 100%
+  );
+  box-shadow:
+    inset 0 0 0 0.1em rgba(255, 255, 255, 0.45),
+    inset 0 0.1em 0 rgba(255, 255, 255, 0.4),
+    0 0.25em 0.7em rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+}
+
+.d8-pill--still {
+  height: 4.8em;
+}
+
+// ── 메뉴 한 줄 ────────────────────────────────────────────────────────────────
+// 줄 상자 = 패널 폭 − 3.1em. 안 내용은 펼침 폭(29.4em)으로 고정 — 패널 끝이 잘라 가며 드러낸다(F76).
+.d8-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 4.8em;
+  margin-inline: 1.55em;
+}
+
+.d8-item__btn {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 4.8em;
+  padding: 0;
+  border: 0;
+  border-radius: 2.4em;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+
+  // 펼쳤을 때 올리면 옅은 알약(F92 활동 줄 +17, 위보다 아래가 조금 더 밝다) — 0.15초
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.085));
+    opacity: 0;
+    transition: opacity calc(0.15s / var(--d8-time, 1)) ease;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.2em rgba(255, 255, 255, 0.55);
+  }
+}
+
+[data-expanded] .d8-item__btn:hover::before,
+.d8-item.is-hover .d8-item__btn::before {
+  opacity: 1;
+}
+
+.d8-item__inner {
+  position: absolute;
+  inset: 0 auto 0 0;
+  display: flex;
+  align-items: center;
+  width: 29.4em;
+}
+
+// 아이콘 2em(lucide 20px — 글리프 높이 18px, F169), 가운데 = 패널 왼쪽 3.9em
+.d8-item__icon {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2em;
+  height: 2em;
+  margin-left: 1.35em;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.d8-icon {
+  width: 100%;
+  height: 100%;
+  stroke-width: 2.1;
+}
+
+// 라벨 500·16.5px — 시작 x = 패널 6.5em(F169 260px)
+.d8-item__label {
+  margin-left: calc(1.6em / 1.65);
+  font-size: 1.65em;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  color: $d8-ink;
+}
+
+.d8-item[data-selected] .d8-item__label,
+.d8-item[data-selected] .d8-item__icon {
+  color: #fff;
+}
+
+// 끝 칸 — 오른쪽 끝 = 패널 29.85em(F169 x 493), 폭 2.4em 가운데 맞춤
+.d8-item__trail {
+  position: absolute;
+  right: 1.1em;
+  top: 50%;
+  display: flex;
+  justify-content: center;
+  min-width: 2.4em;
+  translate: 0 -50%;
+}
+
+.d8-item__trail--switch {
+  min-width: 0;
+}
+
+.d8-item__caret {
+  position: absolute;
+  left: 25.9em;
+  top: 50%;
+  display: grid;
+  place-items: center;
+  width: 2.4em;
+  height: 2.4em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  translate: 0 -50%;
+  outline: none;
+
+  &:hover {
+    color: #fff;
+  }
+
+  &:focus-visible {
+    box-shadow: 0 0 0 0.2em rgba(255, 255, 255, 0.55);
+  }
+}
+
+.d8-item__caret-icon {
+  display: grid;
+  width: 1.6em;
+  height: 1.6em;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.d8-sidebar:not([data-expanded]) .d8-item__caret {
+  pointer-events: none;
+}
+
+// ── 끝 표시 ───────────────────────────────────────────────────────────────────
+.d8-badge {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  font-family: Inter, system-ui, sans-serif;
+  font-weight: 600;
+  line-height: 1;
+  color: #fff;
+}
+
+// "12" — 34×19px 회색 알약(흰색 17% + 밝은 테)
+.d8-badge--count {
+  height: calc(1.9em / 1.25);
+  padding: 0 calc(1em / 1.25);
+  border-radius: 1em;
+  background: rgba(255, 255, 255, 0.17);
+  box-shadow: inset 0 0 0 0.08em rgba(255, 255, 255, 0.2);
+  font-size: 1.25em;
+}
+
+// "3" — 23px 빨간 원(위 #e2654c → 아래 #d3442c) + 붉은 번짐
+.d8-badge--alert {
+  width: calc(2.3em / 1.2);
+  height: calc(2.3em / 1.2);
+  border-radius: 50%;
+  background: linear-gradient(160deg, #e86a4f, #d3442c);
+  box-shadow: 0 0 0.5em rgba(226, 70, 44, 0.55);
+  font-size: 1.2em;
+}
+
+// 일정 빨간 점 8px(F169 x 478..485)
+.d8-badge--dot {
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+  background: $d8-red;
+  box-shadow: 0 0 0.4em rgba(229, 79, 52, 0.6);
+}
+
+// 접힌 아이콘 위 빨간 점 — 빨강 1em + 밝은 테 0.2em, 아이콘 가운데에서 (+0.9, −0.9)em(F1 x 366.5,y 504)
+.d8-icon-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin: -1.4em 0 0 0.4em;
+  border-radius: 50%;
+  background: $d8-red;
+  box-shadow: 0 0 0 0.2em rgba(255, 236, 231, 0.92);
+}
+
+// ── 하위 메뉴(프로젝트) ───────────────────────────────────────────────────────
+// 줄기·가지 x = 패널 4em(아이콘 가운데), 흰색 30%. 위로 0.95em 나와 아이콘 밑까지 잇는다.
+.d8-sub {
+  position: relative;
+  clip-path: inset(-1.4em -3em 0 -3em);
+}
+
+// 줄기 — 맨 아래 가지가 꺾이는 데까지. 높이가 0이 되면 저절로 사라진다(bottom 기준).
+.d8-sub__trunk {
+  position: absolute;
+  left: 3.95em;
+  top: -0.95em;
+  bottom: 3.4em;
+  width: 0.1em;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.d8-sub__list {
+  margin: 0;
+  padding: 0.1em 0 0.2em;
+  list-style: none;
+}
+
+.d8-sub__item + .d8-sub__item {
+  margin-top: 0.2em;
+}
+
+.d8-sub__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 4.1em;
+  padding: 0 0 0 9.1em;
+  border: 0;
+  background: none;
+  color: rgba(255, 255, 255, 0.7);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition: color calc(0.15s / var(--d8-time, 1)) ease;
+
+  &:hover,
+  &:focus-visible {
+    color: #fff;
+  }
+}
+
+.d8-sub__branch {
+  position: absolute;
+  left: 3.95em;
+  top: calc(50% - 1.15em);
+  width: 1.15em;
+  height: 1.15em;
+  box-sizing: border-box;
+  border-left: 0.1em solid rgba(255, 255, 255, 0.3);
+  border-bottom: 0.1em solid rgba(255, 255, 255, 0.3);
+  border-bottom-left-radius: 1em;
+}
+
+// 색 점 — 0.8em 둥근 네모 + 같은 색 번짐, 가운데 x 7.25em(F169 267.5px)
+.d8-sub__dot {
+  position: absolute;
+  left: 6.85em;
+  top: 50%;
+  width: 0.8em;
+  height: 0.8em;
+  margin-top: -0.4em;
+  border-radius: 0.26em;
+  background: var(--d8-dot);
+  box-shadow: 0 0 0.6em color-mix(in srgb, var(--d8-dot) 60%, transparent);
+}
+
+.d8-sub__label {
+  font-size: 1.55em;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+// ── 아래: 야간 모드·구분선·프로필 ─────────────────────────────────────────────
+// 설정 줄 아래 1.8em, 바닥에서 야간 10.55em · 구분선 7.2em · 프로필 3.7em(F169 985·1019·1054)
+.d8-foot {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  margin-top: 1.7em;
+  padding-bottom: 1.5em;
+}
+
+.d8-foot__rule {
+  display: block;
+  height: 0.1em;
+  margin: 0.95em 1.6em 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2) 50%, transparent);
+}
+
+.d8-switch {
+  position: relative;
+  display: block;
+  width: 4.4em;
+  height: 2.4em;
+  border-radius: 1.2em;
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    inset 0 -0.1em 0 rgba(255, 255, 255, 0.16),
+    inset 0 0.1em 0.2em rgba(0, 0, 0, 0.1);
+  transition: background-color calc(0.25s / var(--d8-time, 1)) ease;
+
+  &[data-on] {
+    background: rgba(236, 106, 76, 0.85);
+  }
+}
+
+.d8-switch__knob {
+  position: absolute;
+  left: 0.2em;
+  top: 0.2em;
+  width: 2em;
+  height: 2em;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.1em 0.4em rgba(0, 0, 0, 0.25);
+}
+
+.d8-profile {
+  position: relative;
+  flex: none;
+  height: 4.4em;
+  margin-top: 1.3em;
+}
+
+// 아바타 4.4em = 그림 4em + 반투명 흰 테 0.2em(F1 반지름 19~21px)
+.d8-avatar {
+  position: absolute;
+  left: 1.7em;
+  top: 0;
+  box-sizing: border-box;
+  width: 4.4em;
+  height: 4.4em;
+  padding: 0.2em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.d8-avatar__face {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+// 초록 점 — 1em + 흰 테 0.2em, 아바타 가운데에서 (+1.55, +1.35)em(F169 x 249.5,y 1067.5)
+.d8-avatar__status {
+  position: absolute;
+  left: 3.05em;
+  top: 2.85em;
+  box-sizing: border-box;
+  width: 1.4em;
+  height: 1.4em;
+  border: 0.2em solid #f3fff4;
+  border-radius: 50%;
+  background: #44cd78;
+}
+
+.d8-profile__text {
+  position: absolute;
+  left: 7.1em;
+  top: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  white-space: nowrap;
+  translate: 0 -50%;
+}
+
+.d8-profile__name {
+  font-size: 1.6em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.d8-profile__mail {
+  font-size: 1.35em;
+  font-weight: 500;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.d8-profile__more {
+  position: absolute;
+  left: 27.85em;
+  top: 50%;
+  display: grid;
+  width: 1.6em;
+  height: 1.6em;
+  color: rgba(255, 255, 255, 0.65);
+  translate: 0 -50%;
+
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+// ── 펼침/접힘 단추 ────────────────────────────────────────────────────────────
+// 흰 원 3.1em, 가운데 = 패널 오른쪽 테두리·로고 높이(F1 396.5,303 · F169 519.5,238)
+// 둘레 반투명 흰 고리 0.5em(+15/255) + 아래로 옅은 그림자
+.d8-toggle {
+  position: absolute;
+  right: -1.55em;
+  top: 2.3em;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 3.1em;
+  height: 3.1em;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #2b2a2c;
+  cursor: pointer;
+  outline: none;
+  box-shadow:
+    0 0 0 0.5em rgba(255, 255, 255, 0.13),
+    0 0.4em 1.2em rgba(0, 0, 0, 0.2);
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    box-shadow:
+      0 0 0 0.5em rgba(255, 255, 255, 0.45),
+      0 0.4em 1.2em rgba(0, 0, 0, 0.2);
+  }
+}
+
+.d8-toggle__icon {
+  display: grid;
+  width: 1.8em;
+  height: 1.8em;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    stroke-width: 2.6;
+  }
+}
+
+// ── 툴팁 ──────────────────────────────────────────────────────────────────────
+// 밝은 회색 판 rgba(210,206,205,.92) — TV 위 L193 · 벽 위 L204(F23·F69)와 맞는 색, 높이 3.5em
+.d8-tip {
+  position: absolute;
+  z-index: 3;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.d8-tip__body {
+  transform-origin: 0 50%;
+}
+
+.d8-tip__bubble {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 3.5em;
+  padding: 0 1.2em;
+  border-radius: 1.1em;
+  background: rgba(210, 206, 205, 0.92);
+  box-shadow:
+    inset 0 0 0 0.1em rgba(255, 255, 255, 0.35),
+    0 0.4em 1.4em rgba(0, 0, 0, 0.25);
+  color: #2f2d2e;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.d8-tip__label {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1;
+}
+
+// 칩 — 최소 2.06em·높이 2em, 글자 500·12px
+.d8-tip__chip {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: calc(2.06em / 1.2);
+  height: calc(2em / 1.2);
+  margin-left: calc(0.8em / 1.2);
+  padding: 0 calc(0.66em / 1.2);
+  border-radius: 0.5em;
+  background: rgba(0, 0, 0, 0.07);
+  box-shadow: inset 0 0 0 0.08em rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 1.2em;
+  font-weight: 500;
+  line-height: 1;
+}
+
+// ── 부품 진열 ─────────────────────────────────────────────────────────────────
+.d8-parts {
+  display: grid;
+  flex: 1 1 300px;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 18px;
+  background: rgba(14, 13, 12, 0.94);
+}
+
+.d8-part {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+}
+
+// 사진 일부를 바탕으로 — 부품의 유리가 실제처럼 흐림을 보이게(글자 크기 7px로 줄여 진열)
+.d8-part__view {
+  font-size: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  padding: 1.6em;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  background-color: #2b2420;
+  background-repeat: no-repeat;
+  background-size: 72em auto;
+  color: #fff;
+  font-family: Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.d8-part__name {
+  font-size: 12px;
+  color: var(--text-3);
+
+  code {
+    font-family: var(--font-mono);
+    color: var(--text-1);
+  }
+}
+
+.d8-part__row {
+  display: flex;
+  align-items: center;
+  gap: 1.6em;
+}
+
+.d8-part__row--center {
+  justify-content: center;
+}
+
+.d8-part__tips {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.8em;
+}
+
+.d8-part__badges {
+  display: flex;
+  align-items: center;
+  gap: 0.9em;
+}
+
+.d8-part__logo {
+  padding: 1.2em 1.7em;
+}
+
+.d8-sidebar--preview {
+  position: relative;
+  left: auto;
+  top: auto;
+  translate: none;
+}
+
+.d8-panel--preview {
+  padding: 0.9em 0;
+  border-radius: 3em;
+}
+
+.d8-list--still {
+  margin: 0;
+}
+
+.d8-measured {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 6px;
+  margin: 4px 0 0;
+  font-size: 12px;
+
+  div {
+    display: flex;
+    gap: 12px;
+  }
+
+  dt {
+    flex: none;
+    width: 72px;
+    color: var(--text-3);
+  }
+
+  dd {
+    min-width: 0;
+    margin: 0;
+    color: var(--text-2);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+  }
+}
