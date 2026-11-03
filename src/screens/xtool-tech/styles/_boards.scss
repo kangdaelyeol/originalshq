@@ -733,6 +733,12 @@
     flex: 1;
     min-width: 0;
   }
+
+  // 검색 버튼 — 입력 칸과 같은 높이로(버튼 기본 높이는 입력보다 낮다)
+  .button {
+    flex: none;
+    height: auto;
+  }
 }
 
 .address-input__results {

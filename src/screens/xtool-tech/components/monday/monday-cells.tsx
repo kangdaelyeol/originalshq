@@ -26,7 +26,7 @@ function People({ names }: { names: string[] }) {
   if (names.length === 0) {
     return (
       <span className="mon-people__empty" aria-label="담당자 없음">
-        <UserRound size={15} strokeWidth={1.8} aria-hidden />
+        <UserRound size={15} strokeWidth={2.8} aria-hidden />
       </span>
     )
   }

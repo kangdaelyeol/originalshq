@@ -401,7 +401,7 @@ function UpdatesButton({ count, active, label, onClick }: { count: number; activ
       title={count > 0 ? `업데이트 ${count}개` : '업데이트 쓰기'}
       onClick={onClick}
     >
-      <Icon size={19} strokeWidth={1.6} aria-hidden />
+      <Icon size={19} strokeWidth={2.6} aria-hidden />
       {count > 0 && <span className="mon-updates__count">{count >= UPDATE_COUNT_LIMIT ? `${UPDATE_COUNT_LIMIT}+` : count}</span>}
     </button>
   )

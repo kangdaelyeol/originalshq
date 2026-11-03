@@ -42,13 +42,23 @@ export function watchCachedUpdates(
   )
 }
 
-/** Monday에서 다시 읽기(서버가 캐시도 새로 쓴다) */
-export async function fetchUpdates(boardKey: TechBoardKey, itemId: string): Promise<TechUpdate[]> {
-  const { data } = await httpsCallable<{ boardKey: string; itemId: string }, { updates: TechUpdate[] }>(
+// 같은 항목을 읽는 중이면 그 요청을 같이 쓴다(패널을 금방 다시 열거나 개발 모드가 두 번 부를 때
+// Monday를 두 번 부르지 않게).
+const reading = new Map<string, Promise<TechUpdate[]>>()
+
+/** Monday에서 다시 읽기(서버가 캐시와 말풍선 개수도 새로 쓴다) */
+export function fetchUpdates(boardKey: TechBoardKey, itemId: string): Promise<TechUpdate[]> {
+  const key = `${boardKey}:${itemId}`
+  const pending = reading.get(key)
+  if (pending) return pending
+  const request = httpsCallable<{ boardKey: string; itemId: string }, { updates: TechUpdate[] }>(
     xtoolFirebase().functions,
     'techItemUpdates',
   )({ boardKey, itemId })
-  return data.updates
+    .then(({ data }) => data.updates)
+    .finally(() => reading.delete(key))
+  reading.set(key, request)
+  return request
 }
 
 /** 업데이트(parentId면 그 답글) 쓰기 — 새 업데이트 id */

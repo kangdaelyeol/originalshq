@@ -10,6 +10,7 @@ import { xtPath } from '../../paths'
 import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'
+import { MondayWorkboxSkeleton, SkeletonText } from './monday-skeleton'
 import { SelectionProvider } from './monday-selection-bar'
 import { matchesItem, nextSort, type MonSort } from './monday-values'
 import { useCollapsedGroups } from './use-monday-prefs'
@@ -114,7 +115,7 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
         </span>
 
         <span className="mon-toolbar__count">
-          {loading ? '불러오는 중…' : `${total}개 항목${state !== 'all' ? ` · 전체 ${totalAll}개` : ''}`}
+          {loading ? <SkeletonText width={72} /> : `${total}개 항목${state !== 'all' ? ` · 전체 ${totalAll}개` : ''}`}
         </span>
       </div>
 
@@ -132,6 +133,8 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
             />
           ))}
         </SelectionProvider>
+        {/* 아직 안 온 보드 자리 — 하나도 안 왔으면 두 개, 몇 개 왔으면 아래에 하나 */}
+        {loading && (boards.length === 0 ? [5, 3] : [3]).map((rows, i) => <MondayWorkboxSkeleton key={i} rows={rows} />)}
       </div>
 
       {menu && (

@@ -4,6 +4,7 @@ import { Navigate, useParams } from 'react-router-dom'
 import { BoardEditContext, type BoardEditState } from '../components/board/board-edit-context'
 import { ItemEditor } from '../components/board/item-editor'
 import { MondayBoard } from '../components/monday/monday-board'
+import { MondayBoardSkeleton } from '../components/monday/monday-skeleton'
 import { GlassCard } from '../components/ui/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
@@ -62,6 +63,8 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
     )
   }
   if (!state.board || !editContext) {
+    // Monday 표는 표 모양 그대로 블록을 그려 둔다(스켈레톤).
+    if (layout === 'monday') return <MondayBoardSkeleton boardKey={tabKey} meta={state.meta} />
     return (
       <GlassCard className="empty">
         <LoaderCircle size={22} className="is-spinning" aria-hidden />
