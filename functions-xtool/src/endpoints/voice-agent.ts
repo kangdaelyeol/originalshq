@@ -1,33 +1,41 @@
-import { randomUUID } from 'node:crypto'
+import { randomUUID, timingSafeEqual } from 'node:crypto'
+import { onDocumentCreated } from 'firebase-functions/firestore'
 import { onRequest } from 'firebase-functions/https'
+import * as logger from 'firebase-functions/logger'
 import {
   AccessToken,
   RoomAgentDispatch,
   RoomConfiguration,
 } from 'livekit-server-sdk'
-import { livekitApiKey, livekitApiSecret, livekitUrl } from '../app'
+import {
+  anthropicApiKey,
+  db,
+  livekitApiKey,
+  livekitApiSecret,
+  livekitUrl,
+  voiceAgentSecret,
+} from '../app'
 import { endpoint } from '../http'
 import type { ValidationResponse } from '../types'
+import { ANALYSIS_MODEL, analyzeCall } from '../voice-call/analyze'
+import {
+  CALLS,
+  INSTALLMENT,
+  type CallContext,
+  type CallLatency,
+  type CallRecord,
+  type CallTurn,
+} from '../voice-call/types'
 
 // 에이전트 워커가 LiveKit에 등록한 이름(xtool-ai-sales-agent 레포 src/main.ts agentName).
 const AGENT_NAME = 'xtool-sales-agent'
 // 토큰으로 방에 들어올 수 있는 시간. 통화 길이가 아니라 접속 시작까지의 유효 시간이다.
 const TOKEN_TTL = '10m'
-
-const INSTALLMENT = ['희망', '희망 안 함', '미기입'] as const
-
-/**
- * 에이전트에 넘기는 통화별 고객 정보 — job metadata(JSON). 에이전트 레포
- * src/call-context.ts의 CallContextSchema와 맞춰야 하는 계약이다.
- */
-interface CallContext {
-  callId: string
-  customerName: string
-  device: string
-  inquiredAt: string
-  installment: (typeof INSTALLMENT)[number]
-  inquiryText: string
-}
+// 웹 테스트 방 이름 앞머리 — 통화 기록의 source를 가른다.
+const WEB_TEST_PREFIX = 'voice-test-'
+// 대화록 크기 상한 — 8분 통화 상한(에이전트 call-guard.ts) 기준으로 넉넉하게.
+const MAX_TURNS = 400
+const MAX_TURN_CHARS = 4_000
 
 type TestCallInput = Omit<CallContext, 'callId'>
 
@@ -86,7 +94,8 @@ export const createVoiceAgentSession = onRequest(
       validate: validateTestCall,
     },
     async ({ data, response }) => {
-      const roomName = `voice-test-${Date.now()}-${randomUUID().slice(0, 8)}`
+      const suffix = randomUUID().slice(0, 8)
+      const roomName = `${WEB_TEST_PREFIX}${Date.now()}-${suffix}`
       const call: CallContext = { callId: roomName, ...data }
 
       const token = new AccessToken(
@@ -115,6 +124,199 @@ export const createVoiceAgentSession = onRequest(
         roomName,
         participantToken: await token.toJwt(),
       })
+    },
+  ),
+)
+
+type CallResultInput = Omit<
+  CallRecord,
+  | 'source'
+  | 'status'
+  | 'result'
+  | 'analysisModel'
+  | 'analysisError'
+  | 'analyzedAt'
+>
+
+const isTurn = (value: unknown): value is CallTurn => {
+  const turn = value as CallTurn
+  return (
+    typeof turn === 'object' &&
+    turn !== null &&
+    (turn.role === 'agent' || turn.role === 'customer') &&
+    typeof turn.text === 'string' &&
+    turn.text.length <= MAX_TURN_CHARS &&
+    typeof turn.at === 'number'
+  )
+}
+
+const validateCallResult = (
+  body: Record<string, unknown>,
+): ValidationResponse<CallResultInput> => {
+  if (typeof body !== 'object' || body === null) {
+    return { ok: false, error: 'invalid request body' }
+  }
+  const { callId, customer, startedAt, endedAt, endReason, transcript } = body
+  if (typeof callId !== 'string' || !/^[\w-]{1,128}$/.test(callId)) {
+    return { ok: false, error: 'callId must be 1-128 letters, digits, _ or -' }
+  }
+  if (typeof customer !== 'object' || customer === null) {
+    return { ok: false, error: 'customer is required' }
+  }
+  if (typeof startedAt !== 'number' || typeof endedAt !== 'number') {
+    return { ok: false, error: 'startedAt and endedAt must be numbers' }
+  }
+  if (typeof endReason !== 'string') {
+    return { ok: false, error: 'endReason must be a string' }
+  }
+  if (
+    !Array.isArray(transcript) ||
+    transcript.length > MAX_TURNS ||
+    !transcript.every(isTurn)
+  ) {
+    return {
+      ok: false,
+      error: `transcript must be up to ${MAX_TURNS} turns of {role, text, at}`,
+    }
+  }
+  return {
+    ok: true,
+    data: {
+      callId,
+      customer: customer as CallContext,
+      startedAt,
+      endedAt,
+      endReason,
+      transcript,
+      ...(parseLatency(body.latency)
+        ? { latency: parseLatency(body.latency) }
+        : {}),
+    },
+  }
+}
+
+const LATENCY_KEYS = ['endOfUtteranceMs', 'llmTtftMs', 'ttsTtfbMs'] as const
+
+// 지연 기록은 선택값 — 모양이 틀리면 버리고 저장은 계속한다(판정이 더 중요하다).
+const parseLatency = (value: unknown): CallLatency | undefined => {
+  if (typeof value !== 'object' || value === null) return undefined
+  const latency = value as Record<string, unknown>
+  const ok = LATENCY_KEYS.every(
+    (key) =>
+      Array.isArray(latency[key]) &&
+      (latency[key] as unknown[]).length <= MAX_TURNS * 2 &&
+      (latency[key] as unknown[]).every((ms) => typeof ms === 'number'),
+  )
+  return ok ? (latency as unknown as CallLatency) : undefined
+}
+
+const secretMatches = (given: string | undefined, expected: string) => {
+  if (!given) return false
+  const a = Buffer.from(given)
+  const b = Buffer.from(expected)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+
+// ────────────────────────────────
+// submitVoiceCallResult — 에이전트가 통화를 마치면 대화록을 보낸다(에이전트 레포
+// src/call-result.ts). 공유 비밀키(X-Voice-Agent-Secret)로 확인하고 calls/{callId}에
+// 저장한다. 요약·판정은 저장을 받은 트리거(extractVoiceCallJudgment)가 따로 채운다 —
+// 에이전트가 통화 종료를 모델 응답까지 기다리지 않게 하려는 것이다.
+// ────────────────────────────────
+export const submitVoiceCallResult = onRequest(
+  { secrets: [voiceAgentSecret] },
+  endpoint(
+    {
+      name: 'submitVoiceCallResult',
+      method: 'POST',
+      validate: validateCallResult,
+    },
+    async ({ request, response, data }) => {
+      if (
+        !secretMatches(
+          request.get('x-voice-agent-secret'),
+          voiceAgentSecret.value(),
+        )
+      ) {
+        response.status(401).send({ error: 'invalid agent secret' })
+        return
+      }
+      const record: CallRecord = {
+        ...data,
+        source: data.callId.startsWith(WEB_TEST_PREFIX) ? 'web-test' : 'phone',
+        status: 'saved',
+      }
+      // 같은 통화를 두 번 보내면(재시도) 덮어쓰지 않고 처음 것을 둔다.
+      const created = await db
+        .collection(CALLS)
+        .doc(data.callId)
+        .create(record)
+        .then(() => true)
+        .catch((error: { code?: number }) => {
+          if (error.code === 6) return false // ALREADY_EXISTS
+          throw error
+        })
+      response
+        .status(created ? 201 : 200)
+        .send({ callId: data.callId, created })
+    },
+  ),
+)
+
+// ────────────────────────────────
+// extractVoiceCallJudgment — 통화 기록이 저장되면 요약과 판정 칸(README 6-2)을
+// 뽑아 같은 문서에 붙인다. 실패하면 status: analysis_failed와 이유를 남긴다.
+// ────────────────────────────────
+export const extractVoiceCallJudgment = onDocumentCreated(
+  {
+    document: `${CALLS}/{callId}`,
+    database: 'xtool-read',
+    secrets: [anthropicApiKey],
+    timeoutSeconds: 120,
+  },
+  async (event) => {
+    const snapshot = event.data
+    if (!snapshot) return
+    const record = snapshot.data() as CallRecord
+    try {
+      const result = await analyzeCall(record, anthropicApiKey.value())
+      await snapshot.ref.update({
+        status: 'analyzed',
+        result,
+        analysisModel: ANALYSIS_MODEL,
+        analyzedAt: Date.now(),
+      })
+    } catch (error) {
+      logger.error('extractVoiceCallJudgment 처리 실패:', error)
+      await snapshot.ref.update({
+        status: 'analysis_failed',
+        analysisModel: ANALYSIS_MODEL,
+        analysisError: error instanceof Error ? error.message : String(error),
+        analyzedAt: Date.now(),
+      })
+    }
+  },
+)
+
+// ────────────────────────────────
+// getVoiceCall — 통화 기록 한 건(?callId=). /log "AI 상담원" 탭이 통화가 끝난 뒤
+// 요약·판정이 붙을 때까지 몇 초마다 다시 부른다. 관리자만.
+// ────────────────────────────────
+export const getVoiceCall = onRequest(
+  endpoint(
+    { name: 'getVoiceCall', method: 'GET', admin: true },
+    async ({ request, response }) => {
+      const callId = String(request.query.callId ?? '')
+      if (!/^[\w-]{1,128}$/.test(callId)) {
+        response.status(400).send({ error: 'callId is required' })
+        return
+      }
+      const snapshot = await db.collection(CALLS).doc(callId).get()
+      if (!snapshot.exists) {
+        response.status(404).send({ error: '통화 기록이 아직 없습니다' })
+        return
+      }
+      response.status(200).send(snapshot.data())
     },
   ),
 )

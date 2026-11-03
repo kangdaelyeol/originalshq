@@ -28,3 +28,8 @@ export const solapiApiSecret = defineSecret('SOLAPI_API_SECRET')
 export const livekitUrl = defineSecret('LIVEKIT_URL')
 export const livekitApiKey = defineSecret('LIVEKIT_API_KEY')
 export const livekitApiSecret = defineSecret('LIVEKIT_API_SECRET')
+// 에이전트가 통화 결과를 보낼 때 붙이는 공유 비밀키(X-Voice-Agent-Secret). 에이전트의
+// VOICE_AGENT_SECRET과 같은 값이다.
+export const voiceAgentSecret = defineSecret('VOICE_AGENT_SECRET')
+// 통화 후 요약·판정 추출(voice-call/analyze.ts).
+export const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY')
