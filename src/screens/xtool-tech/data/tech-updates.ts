@@ -1,10 +1,13 @@
+import { doc, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
 import type { TechBoardKey } from './tech-boards'
 
-// item 업데이트(Monday 댓글) — Monday 표 말풍선 패널이 그때그때 읽고 쓴다. 서버:
-// functions-xtool tech-boards/updates.ts. 우리 화면에서 쓴 글은 API 키 주인 계정으로 올라가서
-// 본문 끝에 서명("— 이름 · xtool tech")이 붙는다 — 읽을 때 떼어 작성자로 보여 준다.
+// item 업데이트(Monday 댓글) — Monday 표 말풍선 패널이 읽고 쓴다. 서버: functions-xtool
+// tech-boards/updates.ts. 읽은 목록은 서버가 techItemUpdates/{itemId}에 캐시해 둬서 패널은
+// 그걸 바로 보여 주고(실시간), 열 때마다 Monday에서 다시 읽어 맞춘다. 우리 화면에서 쓴 글은 API
+// 키 주인 계정으로 올라가서 본문 끝에 서명("— 이름 · xtool tech")이 붙는다 — 읽을 때 떼어
+// 작성자로 보여 준다.
 
 export interface TechUpdate {
   id: string
@@ -23,6 +26,23 @@ export function authorOf(update: TechUpdate): { text: string; author: string; vi
   return { text: update.text.trim(), author: update.creator?.name ?? '알 수 없음', viaApp: false }
 }
 
+/**
+ * 캐시된 업데이트 — 처음 응답이 곧바로 오고, 글이 올라오거나 Monday에서 바뀌면(webhook) 따라온다.
+ * 캐시가 없으면 null. 못 읽으면(규칙 배포 전 등) onError — 패널은 함수로 읽은 것만 쓴다.
+ */
+export function watchCachedUpdates(
+  itemId: string,
+  onData: (updates: TechUpdate[] | null) => void,
+  onError: () => void,
+): () => void {
+  return onSnapshot(
+    doc(xtoolFirebase().db, 'techItemUpdates', itemId),
+    (snap) => onData(snap.exists() ? ((snap.data().updates ?? []) as TechUpdate[]) : null),
+    onError,
+  )
+}
+
+/** Monday에서 다시 읽기(서버가 캐시도 새로 쓴다) */
 export async function fetchUpdates(boardKey: TechBoardKey, itemId: string): Promise<TechUpdate[]> {
   const { data } = await httpsCallable<{ boardKey: string; itemId: string }, { updates: TechUpdate[] }>(
     xtoolFirebase().functions,
@@ -31,7 +51,11 @@ export async function fetchUpdates(boardKey: TechBoardKey, itemId: string): Prom
   return data.updates
 }
 
-/** 업데이트(parentId면 그 답글) 쓰기 */
-export async function postUpdate(boardKey: TechBoardKey, itemId: string, text: string, parentId?: string): Promise<void> {
-  await httpsCallable(xtoolFirebase().functions, 'techCreateUpdate')({ boardKey, itemId, text, parentId: parentId ?? null })
+/** 업데이트(parentId면 그 답글) 쓰기 — 새 업데이트 id */
+export async function postUpdate(boardKey: TechBoardKey, itemId: string, text: string, parentId?: string): Promise<string> {
+  const { data } = await httpsCallable<
+    { boardKey: string; itemId: string; text: string; parentId: string | null },
+    { id: string }
+  >(xtoolFirebase().functions, 'techCreateUpdate')({ boardKey, itemId, text, parentId: parentId ?? null })
+  return data.id
 }

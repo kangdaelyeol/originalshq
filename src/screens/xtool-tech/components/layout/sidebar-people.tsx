@@ -1,21 +1,24 @@
 import { ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
+import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { useCurrentMember } from '../../context/member-context'
+import { usePhotoOf, useProfilePhoto } from '../../data/tech-profiles'
 import { useMyIdentity, useWorkPeople, useWorkSources } from '../../data/use-my-work'
 import { cx } from '../../lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { personColor } from '../../lib/person-color'
 import type { NavItem } from '../../nav'
 import { MY_WORK_PATH, myWorkPath } from '../../paths'
+import { Avatar } from '../ui/avatar'
 
 // Design 8 하위 메뉴와 같은 곡선(0.33, 1, 0.68, 1) — 높이와 갈매기가 함께 움직인다
 const EASE = [0.33, 1, 0.68, 1] as const
 
 /**
  * 내 업무 메뉴 — 누르면 내 업무로 가며 아래로 직원 목록이 펼쳐진다(Design 8 SidebarSubList처럼
- * 아이콘 밑 줄기에서 둥글게 꺾인 가지 + 색 점 + 이름). 오른쪽 갈매기는 목록만 접고 편다.
+ * 아이콘 밑 줄기에서 둥글게 꺾인 가지 + 프로필 사진 + 이름). 오른쪽 갈매기는 목록만 접고 편다.
  * 사이드바를 접으면 목록은 숨는다.
  */
 export function SidebarPeopleItem({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
@@ -83,8 +86,12 @@ export function SidebarPeopleItem({ item, collapsed }: { item: NavItem; collapse
 function PeopleList() {
   const { pathname, search } = useLocation()
   const me = useMyIdentity()
+  const member = useCurrentMember()
   // 기술팀이 아닌 관리자는 개인 보드("나")가 없다 — 직원 목록만.
-  const isTech = useCurrentMember()?.teams.tech === true
+  const isTech = member?.teams.tech === true
+  // 내 사진은 이메일로, 다른 사람은 이름으로(담당자 동그라미와 같은 방법)
+  const myPhoto = useProfilePhoto(member?.email)
+  const photoOf = usePhotoOf()
   const { sources, loading } = useWorkSources()
   const today = koreaToday()
   // /admin/xtool에서 기술팀으로 등록한 사람만
@@ -99,12 +106,25 @@ function PeopleList() {
     <>
       <span className="nav-sub__trunk" aria-hidden />
       <ul className="nav-sub__list" aria-label="직원별 업무">
-        {/* 사람마다 이름으로 정한 색, 나는 강조색 */}
+        {/* 프로필 사진 — 없으면 이니셜(사람마다 이름으로 정한 색, 나는 강조색) */}
         {isTech && (
-          <PersonRow to={myWorkPath()} label={me.name ? `나 · ${me.name}` : '나'} color="var(--accent)" count={myOpen} active={viewingMe} />
+          <PersonRow
+            to={myWorkPath()}
+            label={me.name ? `나 · ${me.name}` : '나'}
+            avatar={{ name: me.name ?? '나', color: 'var(--accent)', ink: 'var(--accent-ink)', photo: myPhoto }}
+            count={myOpen}
+            active={viewingMe}
+          />
         )}
         {others.map((p) => (
-          <PersonRow key={p.name} to={myWorkPath(p.name)} label={p.name} color={personColor(p.name)} count={p.open} active={who === p.name} />
+          <PersonRow
+            key={p.name}
+            to={myWorkPath(p.name)}
+            label={p.name}
+            avatar={{ name: p.name, color: personColor(p.name), photo: photoOf(p.name) }}
+            count={p.open}
+            active={who === p.name}
+          />
         ))}
         {loading && others.length === 0 && <li className="nav-sub__note">불러오는 중…</li>}
       </ul>
@@ -112,7 +132,14 @@ function PeopleList() {
   )
 }
 
-function PersonRow({ to, label, color, count, active }: { to: string; label: string; color: string; count: number; active: boolean }) {
+interface RowAvatar {
+  name: string
+  color: string
+  ink?: string
+  photo?: string
+}
+
+function PersonRow({ to, label, avatar, count, active }: { to: string; label: string; avatar: RowAvatar; count: number; active: boolean }) {
   return (
     <li>
       <Link
@@ -122,7 +149,14 @@ function PersonRow({ to, label, color, count, active }: { to: string; label: str
         title={`${label} — 진행 중 ${count}건`}
       >
         <span className="nav-sub__branch" aria-hidden />
-        <span className="nav-sub__dot" style={{ '--dot': color } as CSSProperties} aria-hidden />
+        <Avatar
+          initials={initialsOf(avatar.name, '')}
+          color={avatar.color}
+          ink={avatar.ink}
+          size="xs"
+          photo={avatar.photo}
+          className="nav-sub__avatar"
+        />
         <span className="nav-sub__label">{label}</span>
         {count > 0 && <span className="nav-sub__count">{count}</span>}
       </Link>

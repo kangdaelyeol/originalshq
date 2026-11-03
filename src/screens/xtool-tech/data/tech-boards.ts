@@ -239,11 +239,15 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   values: Record<string, TechCellValue>
   /** 하위 아이템 — 하위 아이템이 있는 보드만(옛 캐시에는 없을 수 있다) */
   subitems?: TechSubitemDoc[]
-  /** 업데이트(Monday 댓글) 수 — 세는 보드(출장)만 */
+  /** 업데이트(Monday 댓글) 수 — 세는 보드(출장·아톡문의)만 */
   updateCount?: number
   createdAt: string | null
   updatedAt: string | null
   syncedAt: number
+  /** 화면에서만 — 이 탭에서 만든 항목의 처음 임시 id. 줄 열쇠로 쓴다(만들어진 뒤에도 같게). */
+  localKey?: string
+  /** 화면에서만 — 아직 캐시에 없는(만드는 중인) 항목. record가 비어 있다. */
+  draft?: boolean
 }
 
 /** techMeta/mondayUsers — 담당자 칸에 고를 수 있는 사람 */
@@ -278,11 +282,23 @@ export interface TechEditInput {
   columns?: Record<string, TechEditValue>
   /** 하위 아이템 추가·수정·삭제 */
   subitems?: { create?: TechSubitemEdit[]; update?: TechSubitemEdit[]; remove?: string[] }
+  /** 고치기 전에 본 값(캐시 글자) — 그사이 다른 사람이 같은 칸을 바꿨으면 서버가 그 칸은 쓰지 않는다. */
+  base?: { name?: string; groupId?: string | null; columns?: Record<string, string> }
+}
+
+/** 다른 사람이 먼저 바꿔서 쓰지 않은 칸 — field는 'name' · 'group' · 컬럼 id, theirs는 지금 값 */
+export interface TechConflict {
+  field: string
+  title: string
+  theirs: string | null
 }
 
 /** item 고치기 — Monday에 쓰고 캐시를 맞춘다(화면은 실시간 구독으로 따라온다). */
 export const updateTechItem = (input: TechEditInput) =>
-  httpsCallable<TechEditInput, { itemId: string | null }>(xtoolFirebase().functions, 'techUpdateItem')(input)
+  httpsCallable<TechEditInput, { itemId: string | null; conflicts?: TechConflict[] }>(
+    xtoolFirebase().functions,
+    'techUpdateItem',
+  )(input)
 
 export interface AddressResult {
   label: string

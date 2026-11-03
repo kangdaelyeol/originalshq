@@ -78,7 +78,8 @@ export function RelationPicker({
 
   const options = useMemo(
     () =>
-      (board.items ?? []).map((item: TechItemDoc) => {
+      // 만드는 중인 항목(record가 비어 있다)은 아직 이을 수 없다.
+      (board.items ?? []).filter((item) => !item.draft).map((item: TechItemDoc) => {
         const record = item.record as unknown as PickedItem['record']
         return { itemId: item.itemId, record, ...describe(boardKey, record) }
       }),

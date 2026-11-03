@@ -329,6 +329,20 @@
   gap: 12px;
 }
 
+// 저장 표시 — 저장 중 N건 · 모두 저장됨
+.sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-3);
+  font-size: 12.5px;
+  white-space: nowrap;
+
+  &.is-saving {
+    color: var(--text-2);
+  }
+}
+
 .icon-button {
   @include well;
   position: relative;
@@ -421,7 +435,7 @@
   align-items: center;
   gap: 8px;
   height: 32px;
-  padding: 0 10px 0 48px;
+  padding: 0 10px 0 58px;
   border-radius: 9px;
   font-size: 12.5px;
   color: var(--text-3);
@@ -440,13 +454,13 @@
     color: var(--text-1);
     background: rgba(255, 255, 255, 0.06);
 
-    .nav-sub__dot {
-      box-shadow: 0 0 10px color-mix(in srgb, var(--dot) 80%, transparent);
+    .nav-sub__avatar {
+      box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--avatar) 70%, transparent);
     }
   }
 }
 
-// 가지 — 줄기에서 둥글게 꺾여 색 점까지
+// 가지 — 줄기에서 둥글게 꺾여 프로필 사진까지
 .nav-sub__branch {
   position: absolute;
   top: calc(50% - 9px);
@@ -458,17 +472,12 @@
   border-bottom-left-radius: 8px;
 }
 
-// 색 점 — 둥근 네모 + 같은 색 번짐
-.nav-sub__dot {
+// 프로필 사진(없으면 이니셜) — 가지 끝에
+.nav-sub__avatar {
   position: absolute;
   top: 50%;
-  left: 32px;
-  width: 8px;
-  height: 8px;
-  margin-top: -4px;
-  border-radius: 2.5px;
-  background: var(--dot);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--dot) 60%, transparent);
+  left: 31px;
+  margin-top: -10px;
 }
 
 .nav-sub__label {

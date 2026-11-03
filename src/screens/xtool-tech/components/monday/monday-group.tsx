@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, LoaderCircle, MessageCircle, MessageCirclePlus } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import type { TechBoardKey, TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
 import {
   formatPhoneTyping,
   initialState,
@@ -18,7 +18,7 @@ import { labelColor } from './monday-colors'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'
 import { selectionKey, useSelection } from './monday-selection'
-import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell, type MonSort } from './monday-values'
+import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell, rowKey, type MonSort } from './monday-values'
 
 export interface MonGroup {
   id: string
@@ -51,8 +51,6 @@ export interface GroupTableProps {
   onMore: () => void
   editing: EditingCell | null
   setEditing: (editing: EditingCell | null) => void
-  /** 저장 중이면 새 값을 먼저 보여 준다. */
-  cellOf: (item: TechItemDoc, column: TechColumn) => TechCellValue | undefined
   nameOf: (item: TechItemDoc) => string
   commitCell: (item: TechItemDoc, column: TechColumn, commit: CellCommit) => void
   commitName: (item: TechItemDoc, name: string) => void
@@ -62,20 +60,16 @@ export interface GroupTableProps {
   addItem: ((groupId: string, name: string) => void) | null
   /** 하위 아이템 "+ 추가" — 이름만 적어 만든다. */
   addSubitem: (item: TechItemDoc, name: string) => void
-  /** 만드는 중인 하위 아이템 이름 — 저장이 끝나기 전에 먼저 보여 준다. */
-  creatingSubs: (itemId: string) => string[]
   /** 하위 아이템 이름 칸 머리글(품목명·부품명) */
   subNameTitle: string
   /** 업데이트(말풍선) 패널 열기 — 말풍선이 없는 보드면 null */
   openUpdates: ((item: TechItemDoc) => void) | null
-  /** 지금 패널이 열린 항목 */
+  /** 지금 패널이 열린 줄(rowKey) */
   updatesOpenFor: string | null
-  /** 만드는 중인 새 항목 이름 */
-  creating: string[]
-  pending: ReadonlySet<string>
   subColumns: TechColumn[] | null
+  /** 하위 아이템을 펼친 줄(rowKey) */
   expanded: ReadonlySet<string>
-  toggleExpanded: (itemId: string) => void
+  toggleExpanded: (key: string) => void
 }
 
 /** 칸 머리글 오른쪽 끝을 끌어 너비를 바꾼다. */
@@ -111,6 +105,38 @@ function ResizeHandle({ id, width, onResize }: { id: string; width: number; onRe
 
 const ariaSort = (sort: MonSort, id: string) =>
   sort?.columnId === id ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined
+
+/**
+ * 그룹 끝 자동 불러오기 — 이 줄이 스크롤 상자 바닥 근처(400px 전)에 오면 다음 줄들을 붙인다
+ * ("더 보기"를 누르지 않게). 붙인 뒤에도 아직 보이면 다시 붙도록, 남은 수가 바뀔 때마다 새로 지켜본다.
+ */
+function AutoMore({ remaining, onMore }: { remaining: number; onMore: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const onMoreRef = useRef(onMore)
+  useEffect(() => {
+    onMoreRef.current = onMore
+  })
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // 표가 스스로 스크롤된다 — 내 업무의 보드 박스면 그 박스, 아니면 판
+    const root = el.closest<HTMLElement>('.mon-section--own-scroll, .mon-scroll')
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) onMoreRef.current()
+      },
+      { root, rootMargin: '0px 0px 400px 0px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [remaining])
+  return (
+    <div ref={ref} className="mon-more" role="status">
+      <LoaderCircle size={13} className="is-spinning" aria-hidden />
+      {remaining}개 더 불러오는 중…
+    </div>
+  )
+}
 
 /** 줄 고르기 체크박스(Monday) — 머리글은 그룹 전체, 일부만 골랐으면 가운데 선(indeterminate). */
 function RowCheck({ checked, mixed, label, onChange }: { checked: boolean; mixed?: boolean; label: string; onChange: (on: boolean) => void }) {
@@ -151,11 +177,11 @@ function SortButton({ id, title, sort, onSort }: { id: string; title: string; so
 }
 
 /** 그룹 아래 요약 — 상태 칸은 라벨 비율 막대, 숫자 칸은 합계(Monday 그룹 바닥 줄). */
-function SummaryCell({ column, items, cellOf }: { column: TechColumn; items: TechItemDoc[]; cellOf: GroupTableProps['cellOf'] }) {
+function SummaryCell({ column, items }: { column: TechColumn; items: TechItemDoc[] }) {
   if (column.type === 'status') {
     const counts = new Map<string, number>()
     for (const item of items) {
-      const label = cellOf(item, column)?.text ?? ''
+      const label = item.values[column.id]?.text ?? ''
       counts.set(label, (counts.get(label) ?? 0) + 1)
     }
     const total = items.length
@@ -172,7 +198,7 @@ function SummaryCell({ column, items, cellOf }: { column: TechColumn; items: Tec
     )
   }
   if (column.type === 'numbers') {
-    const sum = items.reduce((s, item) => s + (Number((cellOf(item, column)?.text ?? '').replace(/,/g, '')) || 0), 0)
+    const sum = items.reduce((s, item) => s + (Number((item.values[column.id]?.text ?? '').replace(/,/g, '')) || 0), 0)
     return (
       <div className="mon-cell mon-summary__cell">
         <span className="mon-summary__sum">
@@ -192,19 +218,17 @@ const SUB_WIDTH = 130
 
 /**
  * 하위 아이템(출장 설치 품목·AS 청구 부품) — Monday처럼 줄 아래로 들여 펼친다. 왼쪽 줄기에서
- * 줄마다 둥글게 꺾인 가지가 나오고, 맨 아래 "+ 품목명 추가"로 이름만 적어 새 줄을 만든다.
- * 칸 고치기는 "열기"의 편집 패널에서.
+ * 줄마다 둥글게 꺾인 가지가 나오고, 맨 아래 "+ 품목명 추가"로 이름만 적어 새 줄을 만든다(바로
+ * 보이고 뒤에서 만든다). 칸 고치기는 "열기"의 편집 패널에서.
  */
 function SubTable({
   columns,
   subitems,
-  creating,
   nameTitle,
   onAdd,
 }: {
   columns: TechColumn[]
   subitems: TechSubitemDoc[]
-  creating: string[]
   nameTitle: string
   onAdd: (name: string) => void
 }) {
@@ -235,17 +259,6 @@ function SubTable({
           ))}
         </div>
       ))}
-      {creating.map((name, i) => (
-        <div key={`${name}-${i}`} className="mon-sub__row mon-sub__row--item is-creating" role="row">
-          <div className="mon-cell mon-sub__name" role="rowheader">
-            <LoaderCircle size={13} className="is-spinning" aria-hidden />
-            <span className="mon-text">{name}</span>
-          </div>
-          {shown.map((c) => (
-            <div key={c.id} className="mon-cell" role="gridcell" />
-          ))}
-        </div>
-      ))}
       <div className="mon-sub__row mon-sub__row--item mon-sub__row--add" role="row">
         <div className="mon-cell mon-sub__name" role="rowheader">
           <AddInput label={nameTitle} onAdd={onAdd} />
@@ -259,7 +272,7 @@ function SubTable({
 export function GroupTable(props: GroupTableProps) {
   const { boardKey, group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore, sort, onSort } = props
   const selection = useSelection()
-  const groupIds = group.items.map((item) => item.itemId)
+  const groupIds = group.items.map(rowKey)
   const pickedCount = selection ? groupIds.filter((id) => selection.selected.has(selectionKey(boardKey, id))).length : 0
   const style = { '--group': group.color } as CSSProperties
   const Chevron = collapsed ? ChevronRight : ChevronDown
@@ -304,31 +317,17 @@ export function GroupTable(props: GroupTableProps) {
           </div>
 
           {group.items.slice(0, limit).map((item) => (
-            <ItemRow key={item.itemId} item={item} {...props} />
+            <ItemRow key={rowKey(item)} item={item} {...props} />
           ))}
 
-          {group.items.length > limit && (
-            <button type="button" className="mon-more" onClick={onMore}>
-              더 보기 <span>{group.items.length - limit}개 남음</span>
-            </button>
-          )}
-
-          {props.creating.map((name, i) => (
-            <div key={`${name}-${i}`} className="mon-row is-creating" role="row">
-              <div className="mon-cell mon-cell--name" role="rowheader">
-                <LoaderCircle size={13} className="is-spinning" aria-hidden />
-                <span className="mon-text">{name}</span>
-              </div>
-              <div className="mon-cell mon-row__fill" aria-hidden />
-            </div>
-          ))}
+          {group.items.length > limit && <AutoMore remaining={group.items.length - limit} onMore={onMore} />}
 
           {props.addItem && <AddRow nameTitle={nameTitle} onAdd={(name) => props.addItem?.(group.id, name)} />}
 
           <div className="mon-row mon-summary" role="row" aria-label="요약">
             <div className="mon-cell mon-cell--name mon-summary__lead" />
             {columns.map((c) => (
-              <SummaryCell key={c.id} column={c} items={group.items} cellOf={props.cellOf} />
+              <SummaryCell key={c.id} column={c} items={group.items} />
             ))}
           </div>
         </>
@@ -409,23 +408,24 @@ function UpdatesButton({ count, active, label, onClick }: { count: number; activ
 }
 
 function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
-  const { columns, editing, setEditing, nameOf, commitName, pending, subColumns, expanded } = props
-  const nameKey = `${item.itemId}:name`
+  const { columns, editing, setEditing, nameOf, commitName, subColumns, expanded } = props
+  const key = rowKey(item)
+  const nameKey = `${key}:name`
   const subCount = item.subitems?.length ?? 0
-  const open = expanded.has(item.itemId)
+  const open = expanded.has(key)
   const Chevron = open ? ChevronDown : ChevronRight
   const selection = useSelection()
-  const picked = selection?.selected.has(selectionKey(props.boardKey, item.itemId)) ?? false
+  const picked = selection?.selected.has(selectionKey(props.boardKey, key)) ?? false
 
   return (
     <>
-      <div className={cx('mon-row', pending.has(item.itemId) && 'is-saving', picked && 'is-selected')} role="row" aria-selected={picked}>
+      <div className={cx('mon-row', picked && 'is-selected')} role="row" aria-selected={picked}>
         <div className="mon-cell mon-cell--name" role="rowheader">
           {selection && (
             <RowCheck
               checked={picked}
               label={`${nameOf(item)} 고르기`}
-              onChange={(on) => selection.set(props.boardKey, [item.itemId], on)}
+              onChange={(on) => selection.set(props.boardKey, [key], on)}
             />
           )}
           {subColumns && (
@@ -434,7 +434,7 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
               className={cx('mon-expand', subCount === 0 && !open && 'is-empty')}
               aria-expanded={open}
               aria-label={`하위 아이템 ${subCount}개 ${open ? '접기' : '펼치기'}`}
-              onClick={() => props.toggleExpanded(item.itemId)}
+              onClick={() => props.toggleExpanded(key)}
             >
               <Chevron size={14} strokeWidth={2.2} aria-hidden />
             </button>
@@ -460,11 +460,11 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
             </button>
           )}
           {subCount > 0 && <span className="mon-subcount">{subCount}</span>}
-          {pending.has(item.itemId) && <LoaderCircle size={12} className="is-spinning mon-saving" aria-label="저장 중" />}
-          {props.openUpdates && (
+          {/* 만드는 중인 항목은 Monday에 아직 없어 업데이트를 쓸 곳이 없다. */}
+          {props.openUpdates && !item.draft && (
             <UpdatesButton
               count={item.updateCount ?? 0}
-              active={props.updatesOpenFor === item.itemId}
+              active={props.updatesOpenFor === key}
               label={nameOf(item)}
               onClick={() => props.openUpdates?.(item)}
             />
@@ -479,7 +479,6 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
         <SubTable
           columns={subColumns}
           subitems={item.subitems ?? []}
-          creating={props.creatingSubs(item.itemId)}
           nameTitle={props.subNameTitle}
           onAdd={(name) => props.addSubitem(item, name)}
         />
@@ -493,13 +492,11 @@ function ItemCell({
   column,
   editing,
   setEditing,
-  cellOf,
   commitCell,
   openFiles,
-  pending,
 }: GroupTableProps & { item: TechItemDoc; column: TechColumn }) {
-  const key = `${item.itemId}:${column.id}`
-  const cell = cellOf(item, column)
+  const key = `${rowKey(item)}:${column.id}`
+  const cell = item.values[column.id]
   const writable = isWritable(column)
   const active = editing?.key === key
   const commit = (c: CellCommit) => {
@@ -509,13 +506,13 @@ function ItemCell({
 
   const start = (target: HTMLElement) => {
     if (column.type === 'file') {
-      openFiles(item, column)
+      // 만드는 중인 항목은 Monday에 아직 없어 파일을 올릴 곳이 없다.
+      if (!item.draft) openFiles(item, column)
       return
     }
     if (!writable) return
     if (column.type === 'checkbox') {
-      // 저장 중에 또 누르면 순서가 뒤바뀔 수 있어 끝날 때까지 기다린다.
-      if (pending.has(item.itemId)) return
+      // 연달아 눌러도 저장 대기열이 순서대로(마지막 값으로) 보낸다.
       const next = !(initialState(column, cell) as boolean)
       commitCell(item, column, { state: next, preview: previewCell(column, next) })
       return

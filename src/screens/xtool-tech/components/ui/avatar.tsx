@@ -6,7 +6,7 @@ interface AvatarProps {
   color: string
   /** 글자색 — 밝은 바탕(강조 녹색 등)이면 짙은 색으로. 기본은 흰색. */
   ink?: string
-  size?: 'sm' | 'md'
+  size?: 'xs' | 'sm' | 'md'
   className?: string
   /** 프로필 사진(설정 > 프로필 사진) — 있으면 이니셜 대신 */
   photo?: string

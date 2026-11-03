@@ -259,7 +259,10 @@ function RelationEditor({ column, cell, anchor, onCommit, onCancel, boardKey }: 
   const [selected, setSelected] = useState(initial)
   const options = useMemo(() => {
     const fallback = (cell?.text ?? '').split(', ')
-    const fromBoard = (board.items ?? []).map((item) => ({ value: item.itemId, label: item.name, sub: item.record.stage ?? undefined }))
+    // 만드는 중인 항목은 아직 Monday에 없어 이을 수 없다.
+    const fromBoard = (board.items ?? [])
+      .filter((item) => !item.draft)
+      .map((item) => ({ value: item.itemId, label: item.name, sub: item.record.stage ?? undefined }))
     const known = new Set(fromBoard.map((o) => o.value))
     const missing = initial.map((id, i) => ({ value: id, label: fallback[i] ?? `#${id}` })).filter((o) => !known.has(o.value))
     return [...missing, ...fromBoard]

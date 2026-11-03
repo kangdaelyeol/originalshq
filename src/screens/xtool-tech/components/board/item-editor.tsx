@@ -6,12 +6,11 @@ import {
   type TechBoardKey,
   type TechBoardMeta,
   type TechColumn,
-  type TechEditValue,
   type TechItemDoc,
   type TechMondayUser,
 } from '../../data/tech-boards'
 import { useMondayUsers } from '../../data/tech-boards-store'
-import { saveInBackground } from '../../data/tech-save-queue'
+import { createItem, editItem, type CellEdit } from '../../data/tech-outbox'
 import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubRow } from '../../data/tech-subitems'
 import {
   emptyState,
@@ -170,15 +169,15 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
       setError(`${subLabel}의 새 줄에 이름(부품)을 넣어 주세요.`)
       return
     }
-    const columnsInput: Record<string, TechEditValue> = Object.fromEntries(
-      changedColumns.map((c) => [c.id, toEditValue(c, form.values[c.id])]),
+    const columnsInput: Record<string, CellEdit> = Object.fromEntries(
+      changedColumns.map((c) => [c.id, { value: toEditValue(c, form.values[c.id]) }]),
     )
+    // 저장 대기열 — 패널은 바로 닫고 Monday에는 뒤에서 쓴다(실패만 토스트).
     if (item) {
-      saveInBackground(
-        'update',
+      editItem(
+        boardKey,
+        item.itemId,
         {
-          boardKey,
-          itemId: item.itemId,
           ...(nameChanged ? { name } : {}),
           ...(groupChanged ? { groupId: form.groupId } : {}),
           columns: columnsInput,
@@ -187,17 +186,12 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
         name,
       )
     } else {
-      saveInBackground(
-        'create',
-        {
-          boardKey,
-          name,
-          groupId: form.groupId || undefined,
-          columns: columnsInput,
-          ...(subEdits?.create?.length ? { subitems: { create: subEdits.create } } : {}),
-        },
+      createItem(boardKey, {
         name,
-      )
+        groupId: form.groupId || undefined,
+        columns: columnsInput,
+        ...(subEdits?.create?.length ? { subitems: { create: subEdits.create } } : {}),
+      })
     }
     onClose()
   }

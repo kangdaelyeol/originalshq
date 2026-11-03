@@ -1,11 +1,11 @@
 import { CornerDownRight, LoaderCircle, X } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useCurrentMember } from '../../context/member-context'
 import type { TechBoardKey } from '../../data/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { dismissToast, pushToast } from '../../data/tech-save-queue'
-import { authorOf, fetchUpdates, postUpdate, type TechUpdate } from '../../data/tech-updates'
+import { authorOf, fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from '../../data/tech-updates'
 import { isComposing } from '../../lib/ime'
 import { cx } from '../../lib/cx'
 import { usePortalRoot } from '../../lib/portal-root'
@@ -26,6 +26,31 @@ function whenText(iso: string | null): string {
   return `${year}${Number(k.slice(5, 7))}월 ${Number(k.slice(8, 10))}일 ${k.slice(11, 16)}`
 }
 
+/** 올린(올리는 중인) 글 — 서버 목록에 그 id가 들어오면 서버 것을 보여 준다. */
+interface Post {
+  update: TechUpdate
+  parentId?: string
+  /** 올라간 뒤의 업데이트 id */
+  realId?: string
+}
+
+/** 서버 목록 + 아직 목록에 없는 내 글(새 글은 맨 위, 답글은 그 글 아래) */
+function mergePosts(server: TechUpdate[], posts: Post[]): TechUpdate[] {
+  const known = new Set(server.flatMap((u) => [u.id, ...u.replies.map((r) => r.id)]))
+  const open = posts
+    .filter((p) => !(p.realId && known.has(p.realId)))
+    .map((p) => ({ ...p, update: p.realId ? { ...p.update, id: p.realId } : p.update }))
+  if (open.length === 0) return server
+  const top = open.filter((p) => !p.parentId).reverse().map((p) => p.update)
+  return [
+    ...top,
+    ...server.map((u) => {
+      const replies = open.filter((p) => p.parentId === u.id).map((p) => p.update)
+      return replies.length ? { ...u, replies: [...u.replies, ...replies] } : u
+    }),
+  ]
+}
+
 interface UpdatesPanelProps {
   boardKey: TechBoardKey
   itemId: string
@@ -37,14 +62,25 @@ interface UpdatesPanelProps {
 /**
  * 업데이트 패널(Monday 항목 패널의 "업데이트" 탭) — 오른쪽에 붙어 열린다. 위에 쓰기 칸, 아래로
  * 최근 업데이트와 답글. Monday 패널의 서식 도구·파일·활동 로그·좋아요·조회 수는 우리에게 없어서
- * 뺐다. 글은 우리 API 계정으로 올라가고 끝에 쓴 사람 서명이 붙는다(tech-updates.ts).
+ * 뺐다. 글은 우리 API 계정으로 올라가고 끝에 쓴 사람 서명이 붙는다(tech-updates.ts). 목록은 캐시를
+ * 바로 보여 주고(실시간) 열 때 Monday에서 다시 읽어 맞춘다 — 기다리는 건 처음 여는 항목뿐.
  */
 export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelProps) {
   const root = usePortalRoot()
   const member = useCurrentMember()
   const photoOf = usePhotoOf()
-  const [updates, setUpdates] = useState<TechUpdate[] | null>(null)
+  // 서버 목록(캐시 또는 함수로 읽은 것) — 내 글은 posts에 따로 두고 합쳐 보여 준다.
+  const [server, setServer] = useState<TechUpdate[] | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
   const [error, setError] = useState<string | null>(null)
+  // 캐시를 구독하고 있는지 — 못 읽으면(규칙 배포 전) 글을 올린 뒤 함수로 다시 읽는다.
+  const live = useRef(false)
+  // "불러오는 중"은 늦어질 때만 — 캐시는 보통 바로 와서 깜빡이지 않게.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setSlow(true), 400)
+    return () => clearTimeout(timer)
+  }, [])
   const [draft, setDraft] = useState('')
   // 올리는 중인 글의 임시 id
   const tempId = useRef(0)
@@ -65,14 +101,32 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
       .then((list) => {
         if (!alive.current) return
         setError(null)
-        setUpdates(list)
+        setServer(list)
       })
       .catch((e: unknown) => alive.current && setError(errorText(e)))
   }, [boardKey, itemId])
 
+  useEffect(
+    () =>
+      watchCachedUpdates(
+        itemId,
+        (list) => {
+          live.current = true
+          if (list) setServer(list)
+        },
+        () => {
+          live.current = false
+        },
+      ),
+    [itemId],
+  )
+
+  // 캐시는 바로 보이고, Monday에서 다시 읽어 맞춘다(그사이 webhook을 놓쳤어도).
   useEffect(() => {
     load()
   }, [load])
+
+  const updates = useMemo(() => (server ? mergePosts(server, posts) : posts.length ? mergePosts([], posts) : null), [server, posts])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -95,8 +149,8 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   const me = member?.name || member?.email || ''
 
   /**
-   * 올리기 — 목록에 바로 넣어 보여 주고(흐리게, "올리는 중") 요청은 뒤에서. 끝나면 서버 목록으로
-   * 바꾸고, 실패하면 뺀 뒤 토스트에 "다시 시도"를 붙인다.
+   * 올리기 — 목록에 바로 넣어 보여 주고(흐리게, "올리는 중") 요청은 뒤에서. 올라가면 서버가 캐시를
+   * 새로 써서 그 글이 목록에 들어오고, 실패하면 뺀 뒤 토스트에 "다시 시도"를 붙인다.
    */
   const send = (text: string, parentId?: string): boolean => {
     const body = text.trim()
@@ -109,19 +163,16 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
       creator: null,
       replies: [],
     }
-    const without = (list: TechUpdate[]) =>
-      list.filter((u) => u.id !== temp.id).map((u) => ({ ...u, replies: u.replies.filter((r) => r.id !== temp.id) }))
-    setUpdates((list) =>
-      parentId
-        ? (list ?? []).map((u) => (u.id === parentId ? { ...u, replies: [...u.replies, temp] } : u))
-        : [temp, ...(list ?? [])],
-    )
+    setPosts((list) => [...list, { update: temp, parentId }])
     postUpdate(boardKey, itemId, body, parentId)
-      .then(() => {
-        if (alive.current) load()
+      .then((id) => {
+        if (!alive.current) return
+        setPosts((list) => list.map((p) => (p.update.id === temp.id ? { ...p, realId: id } : p)))
+        // 캐시를 못 읽으면 함수로 다시 읽어 맞춘다.
+        if (!live.current) load()
       })
       .catch((e: unknown) => {
-        if (alive.current) setUpdates((list) => (list ? without(list) : list))
+        if (alive.current) setPosts((list) => list.filter((p) => p.update.id !== temp.id))
         const toastId: number = pushToast({
           tone: 'error',
           title: '업데이트를 올리지 못했어요',
@@ -184,13 +235,14 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
 
         {error && (
           <p className="mon-panel__note mon-panel__note--error" role="alert">
-            {error}
+            {/* 캐시가 있으면 그걸 보여 주고 있다 — 최신이 아닐 수 있다는 것만 알린다. */}
+            {server ? 'Monday에서 다시 읽지 못해 저장된 목록을 보여 주고 있어요.' : error}
             <button type="button" onClick={load}>
               다시 불러오기
             </button>
           </p>
         )}
-        {!updates && !error && (
+        {!updates && !error && slow && (
           <p className="mon-panel__note">
             <LoaderCircle size={14} className="is-spinning" aria-hidden /> 불러오는 중…
           </p>

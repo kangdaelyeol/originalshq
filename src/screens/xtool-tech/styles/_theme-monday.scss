@@ -15,6 +15,9 @@ $primary: var(--mon-primary);
 $primary-hi: var(--mon-primary-hi);
 
 @mixin theme-monday {
+  // Monday 글꼴 — 한글은 이 중에 없어 마지막 sans-serif(운영체제 한글 글꼴)로 나온다. Figtree는
+  // 화면이 Google Fonts에서 불러온다(settings-provider).
+  --font-sans: Figtree, Roboto, 'Noto Sans Hebrew', 'Noto Kufi Arabic', 'Noto Sans JP', sans-serif;
   --bg: #{$page};
   --text-1: var(--mon-text);
   --text-2: var(--mon-text-soft);
@@ -65,9 +68,15 @@ $primary-hi: var(--mon-primary-hi);
     font-weight: 600;
   }
 
+  // 사이드바 글자는 모두 500 — Monday 표와 같은 굵기(유리 화면의 굵은 이름·배지도 덮는다)
   .sidebar {
     border-color: $line;
     background: $nav;
+    font-weight: 500;
+
+    * {
+      font-weight: inherit;
+    }
   }
 
   .topbar {
@@ -126,7 +135,6 @@ $primary-hi: var(--mon-primary-hi);
   .sidebar__section-label {
     color: var(--text-2);
     font-size: 13px;
-    font-weight: 600;
     letter-spacing: 0;
     text-transform: none;
   }

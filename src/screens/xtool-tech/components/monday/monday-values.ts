@@ -174,6 +174,9 @@ export function matchesItem(item: TechItemDoc, peopleColumns: TechColumn[], need
 export const OTHER_GROUP = '__other'
 
 /** 그 항목이 들어갈 그룹 id */
+/** 줄 열쇠 — 이 탭에서 만든 항목은 처음 임시 id(만들어진 뒤에도 줄·편집·선택이 이어지게) */
+export const rowKey = (item: TechItemDoc): string => item.localKey ?? item.itemId
+
 export const groupIdOf = (meta: TechBoardMeta, item: TechItemDoc): string =>
   item.groupId && meta.groups.some((g) => g.id === item.groupId) ? item.groupId : OTHER_GROUP
 
@@ -212,4 +215,4 @@ export function splitNamePhone(name: string): { label: string; phones: string } 
 }
 
 /** 업데이트(Monday 댓글) 말풍선이 있는 보드 — 서버 TECH_BOARDS의 updates와 같게 */
-export const UPDATE_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService'])
+export const UPDATE_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService', 'techInquiry'])

@@ -15,6 +15,8 @@ import {
   type Settings,
 } from './settings'
 
+const FIGTREE_HREF = 'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap'
+
 /**
  * 설정 상태 + 이 화면의 루트 요소(.xtool-tech). 강조색·유리 값은 CSS 변수로 루트 요소 style에
  * 칠한다 — :root에 쓰면 originalshq의 다른 화면(같은 이름의 --glass-* 등)에 새어 나간다. 첫
@@ -29,6 +31,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     saveSettings(settings)
   }, [settings])
+
+  // Monday 표 글꼴(Figtree) — 고를 때 한 번만 불러온다. index.html은 다른 화면과 같이 써서 손대지 않는다.
+  const monday = settings.layout === 'monday'
+  useEffect(() => {
+    if (!monday || document.head.querySelector(`link[href="${FIGTREE_HREF}"]`)) return
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = FIGTREE_HREF
+    document.head.append(link)
+  }, [monday])
 
   const value = useMemo(
     () => ({
@@ -54,7 +66,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   )
 
   // Monday 표면 theme-monday + 색(남색은 기본이라 클래스 없음 · mon-light · mon-black)
-  const monday = settings.layout === 'monday'
   const rootClass = cx('xtool-tech', monday && 'theme-monday', monday && settings.mondayPalette !== 'navy' && `mon-${settings.mondayPalette}`)
 
   return (

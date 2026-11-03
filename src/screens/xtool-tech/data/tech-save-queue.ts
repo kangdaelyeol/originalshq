@@ -1,10 +1,8 @@
 import { useSyncExternalStore } from 'react'
-import { createTechItem, updateTechItem, type TechEditInput } from './tech-boards'
 import { clearTechFiles, uploadTechFile, type UploadTarget } from './tech-files'
 
-// 저장을 기다리지 않는다 — 편집 패널은 바로 닫고 요청은 뒤에서 보낸다. 진행은 토스트로
-// 보여 주고(저장 중 → 저장했어요), 실패하면 오류 토스트에 "다시 시도"를 붙인다. 실패는
-// 서버가 수정 기록(techEditLogs)에도 남긴다. 저장이 끝나면 바뀐 값은 실시간 구독으로 온다.
+// 토스트와 파일 올리기 — 항목 수정·만들기·지우기·옮기기는 저장 대기열(tech-outbox.ts)이 조용히
+// 보내고 실패만 여기 토스트로 알린다. 파일은 오래 걸려 진행률을 토스트로 보여 준다.
 
 export type ToastTone = 'pending' | 'success' | 'error'
 
@@ -34,7 +32,7 @@ const upsertToast = (toast: Toast) => {
   emit()
 }
 
-/** 토스트 하나 띄우기(디자인 견본·간단한 알림용) — 성공은 잠시 뒤 저절로 사라진다. 토스트 id를 돌려준다. */
+/** 토스트 하나 띄우기 — 성공은 잠시 뒤 저절로 사라진다. 토스트 id를 돌려준다. */
 export function pushToast(toast: Omit<Toast, 'id'>): number {
   const id = nextId++
   upsertToast({ ...toast, id })
@@ -47,7 +45,13 @@ export function dismissToast(id: number) {
   emit()
 }
 
-const setPending = (itemId: string | undefined, on: boolean) => {
+/** 떠 있는 토스트 바꾸기(없어졌으면 다시 띄운다) */
+export const setToast = (id: number, toast: Omit<Toast, 'id'>): void => upsertToast({ ...toast, id })
+
+export const hasToast = (id: number): boolean => toasts.some((t) => t.id === id)
+
+/** 저장 중인 item 표시 켜고 끄기 — 유리 화면 표 줄의 저장 표시 */
+export const markSaving = (itemId: string | undefined, on: boolean): void => {
   if (!itemId) return
   const next = new Set(pending)
   if (on) next.add(itemId)
@@ -56,102 +60,11 @@ const setPending = (itemId: string | undefined, on: boolean) => {
   emit()
 }
 
-/** 수정·생성을 뒤에서 보낸다. label은 토스트에 보일 항목 이름. onSettled는 끝났을 때(성공 여부) —
- * Monday 표가 바로 보여 준 새 값을 실패하면 되돌리는 데 쓴다. */
-export function saveInBackground(
-  kind: 'update' | 'create',
-  input: TechEditInput,
-  label: string,
-  onSettled?: (ok: boolean) => void,
-): void {
-  const id = nextId++
-  const verb = kind === 'create' ? '만들기' : '저장'
-  upsertToast({ id, tone: 'pending', title: `${label} ${verb} 중…` })
-  setPending(input.itemId, true)
-  const request = kind === 'create' ? createTechItem(input) : updateTechItem(input)
-  request
-    .then(() => {
-      upsertToast({ id, tone: 'success', title: kind === 'create' ? `${label} 만들었어요` : `${label} 저장했어요` })
-      setTimeout(() => dismissToast(id), SUCCESS_MS)
-      onSettled?.(true)
-    })
-    .catch((error: unknown) => {
-      upsertToast({
-        id,
-        tone: 'error',
-        title: `${label} ${verb}에 실패했어요`,
-        // 함수 오류 문구 끝의 상태 코드 꼬리표([500])는 뗀다.
-        message: (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, ''),
-        action: {
-          label: '다시 시도',
-          run: () => {
-            dismissToast(id)
-            saveInBackground(kind, input, label, onSettled)
-          },
-        },
-      })
-      onSettled?.(false)
-    })
-    .finally(() => setPending(input.itemId, false))
-}
-
-/**
- * 여러 건을 한 번에 뒤에서 — 토스트 하나에 진행(k/N)을 보여 주고, 끝나면 성공·일부 실패를 알린다.
- * run은 묶음(chunk) 하나를 처리하고 실패한 key를 돌려준다. 실패분만 "다시 시도"할 수 있다.
- */
-export function batchInBackground(
-  label: { pending: string; done: string; failed: string },
-  keys: string[],
-  chunkSize: number,
-  run: (chunk: string[]) => Promise<string[]>,
-  hooks: {
-    /** 시작할 때(다시 시도 포함) — 화면에 먼저 반영 */
-    onStart?: (keys: string[]) => void
-    /** 끝났을 때 — 실패한 것은 되돌린다 */
-    onSettled?: (done: string[], failed: string[]) => void
-  } = {},
-): void {
-  const id = nextId++
-  hooks.onStart?.(keys)
-  const total = keys.length
-  const failed: string[] = []
-  const done: string[] = []
-  upsertToast({ id, tone: 'pending', title: `${label.pending} 0/${total}` })
-  void (async () => {
-    for (let i = 0; i < keys.length; i += chunkSize) {
-      const chunk = keys.slice(i, i + chunkSize)
-      const bad = await run(chunk).catch(() => chunk)
-      failed.push(...bad)
-      done.push(...chunk.filter((k) => !bad.includes(k)))
-      upsertToast({ id, tone: 'pending', title: `${label.pending} ${Math.min(i + chunk.length, total)}/${total}` })
-    }
-    hooks.onSettled?.(done, failed)
-    if (failed.length === 0) {
-      upsertToast({ id, tone: 'success', title: label.done })
-      setTimeout(() => dismissToast(id), SUCCESS_MS)
-      return
-    }
-    upsertToast({
-      id,
-      tone: 'error',
-      title: label.failed,
-      message: `${total}건 중 ${failed.length}건을 처리하지 못했어요.`,
-      action: {
-        label: '다시 시도',
-        run: () => {
-          dismissToast(id)
-          batchInBackground(label, failed, chunkSize, run, hooks)
-        },
-      },
-    })
-  })()
-}
-
 /** 파일 하나를 뒤에서 올린다 — 토스트에 진행률, 실패하면 "다시 시도". */
 export function uploadInBackground(target: UploadTarget, file: File): void {
   const id = nextId++
   upsertToast({ id, tone: 'pending', title: `${file.name} 올리는 중… 0%` })
-  setPending(target.itemId, true)
+  markSaving(target.itemId, true)
   uploadTechFile(target, file, (ratio) =>
     // 다 보낸 뒤 Monday에 붙이는 동안은 99%에 머문다.
     upsertToast({ id, tone: 'pending', title: `${file.name} 올리는 중… ${Math.min(99, Math.round(ratio * 100))}%` }),
@@ -175,14 +88,14 @@ export function uploadInBackground(target: UploadTarget, file: File): void {
         },
       })
     })
-    .finally(() => setPending(target.itemId, false))
+    .finally(() => markSaving(target.itemId, false))
 }
 
 /** 파일 칸 비우기를 뒤에서 — label은 칸 이름(예: "파일") */
 export function clearFilesInBackground(target: UploadTarget, label: string): void {
   const id = nextId++
   upsertToast({ id, tone: 'pending', title: `${label} 지우는 중…` })
-  setPending(target.itemId, true)
+  markSaving(target.itemId, true)
   clearTechFiles(target)
     .then(() => {
       upsertToast({ id, tone: 'success', title: `${label} 칸을 모두 지웠어요` })
@@ -203,7 +116,7 @@ export function clearFilesInBackground(target: UploadTarget, label: string): voi
         },
       })
     })
-    .finally(() => setPending(target.itemId, false))
+    .finally(() => markSaving(target.itemId, false))
 }
 
 export const useToasts = (): readonly Toast[] => useSyncExternalStore(subscribe, () => toasts)

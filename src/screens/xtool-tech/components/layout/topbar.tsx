@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { NOTIFICATIONS, type NotificationItem } from '../../data/notifications'
 import { Button } from '../ui/button'
 import { NotificationPanel, type PanelAnchor } from './notification-panel'
+import { SyncStatus } from './sync-status'
 import { TopbarTitle } from './topbar-title'
 
 /**
@@ -62,6 +63,7 @@ export function Topbar({ embedded = false }: { embedded?: boolean }) {
     <header className={embedded ? 'mon-board__head' : 'glass topbar'}>
       <TopbarTitle />
       <div className="topbar__controls">
+        <SyncStatus />
         <button
           ref={bellRef}
           type="button"
