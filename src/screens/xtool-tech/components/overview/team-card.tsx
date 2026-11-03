@@ -1,5 +1,6 @@
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TeamMemberStatus, WorkBoard } from '../../data/team-status'
+import { usePhotoOf } from '../../data/tech-profiles'
 import { cx } from '../../lib/cx'
 import { Avatar } from '../ui/avatar'
 import { GlassCard } from '../ui/glass-card'
@@ -15,6 +16,7 @@ const BOARD_SHORT: Record<WorkBoard, string> = {
 /** 팀 현황 — 사람마다 진행 중(보드별)·오늘 방문·이번 주 처리. 나는 강조. */
 export function TeamCard({ members, me, loading }: { members: TeamMemberStatus[]; me: ReadonlySet<string>; loading: boolean }) {
   const max = Math.max(1, ...members.map((m) => m.openTotal))
+  const photoOf = usePhotoOf()
   return (
     <GlassCard
       title="팀 현황"
@@ -27,7 +29,7 @@ export function TeamCard({ members, me, loading }: { members: TeamMemberStatus[]
           {members.map((m) => (
             <li key={m.name} className={cx('team-member', me.has(m.name) && 'is-me')}>
               <div className="team-member__head">
-                <Avatar initials={initialsOf(m.name, m.name)} color={me.has(m.name) ? 'var(--accent)' : 'rgba(255, 255, 255, 0.14)'} ink={me.has(m.name) ? 'var(--accent-ink)' : undefined} />
+                <Avatar initials={initialsOf(m.name, m.name)} color={me.has(m.name) ? 'var(--accent)' : 'rgba(255, 255, 255, 0.14)'} ink={me.has(m.name) ? 'var(--accent-ink)' : undefined} photo={photoOf(m.name)} />
                 <div className="team-member__name">
                   <strong>{m.name}</strong>
                   {me.has(m.name) && <span>나</span>}

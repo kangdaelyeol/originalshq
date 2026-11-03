@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { cx } from '../lib/cx'
 import { PortalRootContext } from '../lib/portal-root'
 import { accentVars } from './accent'
 import { glassVars, type GlassSettings } from './glass'
@@ -53,7 +54,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   return (
     <SettingsContext.Provider value={value}>
       <PortalRootContext.Provider value={rootEl}>
-        <div ref={setRootEl} className="xtool-tech" style={cssVars}>
+        {/* Monday 표 레이아웃이면 화면 전체를 Monday 모양으로(theme-monday — styles/_theme-monday.scss). */}
+        <div ref={setRootEl} className={cx('xtool-tech', settings.layout === 'monday' && 'theme-monday')} style={cssVars}>
           {children}
         </div>
       </PortalRootContext.Provider>

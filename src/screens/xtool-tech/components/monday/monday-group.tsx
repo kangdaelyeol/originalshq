@@ -7,7 +7,7 @@ import { formatInt } from '../../lib/format'
 import { labelColor } from './monday-colors'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'
-import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell } from './monday-values'
+import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell, type MonSort } from './monday-values'
 
 export interface MonGroup {
   id: string
@@ -24,6 +24,9 @@ export interface EditingCell {
 
 export interface GroupTableProps {
   group: MonGroup
+  sort: MonSort
+  /** 머리글 정렬 단추 — 누를 때마다 오름차순 → 내림차순 → 해제 */
+  onSort: (columnId: string) => void
   columns: TechColumn[]
   /** 칸 너비(px) — 이름 칸은 'name' */
   widthOf: (id: string) => number
@@ -42,7 +45,12 @@ export interface GroupTableProps {
   commitCell: (item: TechItemDoc, column: TechColumn, commit: CellCommit) => void
   commitName: (item: TechItemDoc, name: string) => void
   openItem: (itemId: string) => void
-  addItem: (groupId: string, name: string) => void
+  /** 그룹 맨 아래 "+ 추가" — null이면 줄을 그리지 않는다(내 업무). */
+  addItem: ((groupId: string, name: string) => void) | null
+  /** 하위 아이템 "+ 추가" — 이름만 적어 만든다. */
+  addSubitem: (item: TechItemDoc, name: string) => void
+  /** 하위 아이템 이름 칸 머리글(품목명·부품명) */
+  subNameTitle: string
   /** 만드는 중인 새 항목 이름 */
   creating: string[]
   pending: ReadonlySet<string>
@@ -72,6 +80,28 @@ function ResizeHandle({ id, width, onResize }: { id: string; width: number; onRe
         start.current = null
       }}
     />
+  )
+}
+
+const ariaSort = (sort: MonSort, id: string) =>
+  sort?.columnId === id ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined
+
+/** 머리글에 올리면 위 테두리에 걸쳐 뜨는 정렬 단추(Monday) — 정렬 중이면 늘 보이고 방향 삼각형이 밝다. */
+function SortButton({ id, title, sort, onSort }: { id: string; title: string; sort: MonSort; onSort: (id: string) => void }) {
+  const dir = sort?.columnId === id ? sort.dir : 0
+  return (
+    <button
+      type="button"
+      className={cx('mon-sort', dir === 1 && 'is-asc', dir === -1 && 'is-desc')}
+      aria-label={`${title} ${dir === 1 ? '내림차순으로' : dir === -1 ? '정렬 해제' : '오름차순으로'} 정렬`}
+      title={dir === 1 ? '오름차순 — 누르면 내림차순' : dir === -1 ? '내림차순 — 누르면 정렬 해제' : '정렬'}
+      onClick={() => onSort(id)}
+    >
+      <svg width="8" height="12" viewBox="0 0 8 12" aria-hidden>
+        <path className="mon-sort__up" d="M4 0.5 7.5 5H0.5z" />
+        <path className="mon-sort__down" d="M4 11.5 0.5 7h7z" />
+      </svg>
+    </button>
   )
 }
 
@@ -110,15 +140,43 @@ function SummaryCell({ column, items, cellOf }: { column: TechColumn; items: Tec
   return <div className="mon-cell mon-summary__cell" />
 }
 
-/** 하위 아이템(출장 설치 품목·AS 청구 부품) — 줄 아래로 펼쳐 보기만. 고치기는 "열기"의 편집 패널. */
-function SubTable({ columns, subitems }: { columns: TechColumn[]; subitems: TechSubitemDoc[] }) {
-  const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type))
-  const template = `220px ${shown.map(() => '130px').join(' ')}`
+// 하위 표에 안 그리는 칸 — 생성 로그·수정 시각, 이름과 같은 값을 서버가 맞춰 적는 "품명"
+const SUB_HIDDEN_TYPES = new Set(['creation_log', 'last_updated'])
+const isSubNameMirror = (c: TechColumn) => c.type === 'text' && c.title.replace(/\s/g, '') === '품명'
+const SUB_NAME_WIDTH = 340
+const SUB_WIDTH = 130
+
+/**
+ * 하위 아이템(출장 설치 품목·AS 청구 부품) — Monday처럼 줄 아래로 들여 펼친다. 왼쪽 줄기에서
+ * 줄마다 둥글게 꺾인 가지가 나오고, 맨 아래 "+ 품목명 추가"로 이름만 적어 새 줄을 만든다.
+ * 칸 고치기는 "열기"의 편집 패널에서.
+ */
+function SubTable({
+  columns,
+  subitems,
+  nameTitle,
+  onAdd,
+}: {
+  columns: TechColumn[]
+  subitems: TechSubitemDoc[]
+  nameTitle: string
+  onAdd: (name: string) => void
+}) {
+  const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type) && !SUB_HIDDEN_TYPES.has(c.type) && !isSubNameMirror(c))
+  const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')}`
+  const [value, setValue] = useState('')
+  const submit = () => {
+    const name = value.trim()
+    if (!name) return
+    onAdd(name)
+    setValue('')
+  }
   return (
-    <div className="mon-sub" role="rowgroup" style={{ '--sub-cols': template } as CSSProperties}>
+    <div className="mon-sub" role="rowgroup" aria-label={`하위 아이템 ${subitems.length}개`} style={{ '--sub-cols': template } as CSSProperties}>
+      <span className="mon-sub__trunk" aria-hidden />
       <div className="mon-sub__row mon-sub__row--head" role="row">
-        <div className="mon-cell" role="columnheader">
-          하위 아이템
+        <div className="mon-cell mon-sub__name" role="columnheader">
+          <span className="mon-text">{nameTitle}</span>
         </div>
         {shown.map((c) => (
           <div key={c.id} className="mon-cell" role="columnheader" title={c.title}>
@@ -127,8 +185,8 @@ function SubTable({ columns, subitems }: { columns: TechColumn[]; subitems: Tech
         ))}
       </div>
       {subitems.map((sub) => (
-        <div key={sub.id} className="mon-sub__row" role="row">
-          <div className="mon-cell is-left" role="rowheader">
+        <div key={sub.id} className="mon-sub__row mon-sub__row--item" role="row">
+          <div className="mon-cell mon-sub__name" role="rowheader" title={sub.name}>
             <span className="mon-text">{sub.name}</span>
           </div>
           {shown.map((c) => (
@@ -138,13 +196,34 @@ function SubTable({ columns, subitems }: { columns: TechColumn[]; subitems: Tech
           ))}
         </div>
       ))}
+      <div className="mon-sub__row mon-sub__row--item mon-sub__row--add" role="row">
+        <div className="mon-cell mon-sub__name" role="rowheader">
+          <input
+            className="mon-add"
+            placeholder={`+ ${nameTitle} 추가`}
+            aria-label={`${nameTitle} 추가`}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={submit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                submit()
+              } else if (e.key === 'Escape') {
+                setValue('')
+                e.currentTarget.blur()
+              }
+            }}
+          />
+        </div>
+      </div>
     </div>
   )
 }
 
 /** 그룹 하나 — 색 막대가 붙은 제목, 머리글, 줄들, "+ 추가" 줄, 요약 줄. */
 export function GroupTable(props: GroupTableProps) {
-  const { group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore } = props
+  const { group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore, sort, onSort } = props
   const style = { '--group': group.color } as CSSProperties
   const Chevron = collapsed ? ChevronRight : ChevronDown
 
@@ -161,12 +240,14 @@ export function GroupTable(props: GroupTableProps) {
       {!collapsed && (
         <>
           <div className="mon-row mon-row--head" role="row">
-            <div className="mon-cell mon-cell--name" role="columnheader">
+            <div className="mon-cell mon-cell--name" role="columnheader" aria-sort={ariaSort(sort, 'name')}>
+              <SortButton id="name" title={nameTitle} sort={sort} onSort={onSort} />
               <span className="mon-text">{nameTitle}</span>
               <ResizeHandle id="name" width={widthOf('name')} onResize={onResize} />
             </div>
             {columns.map((c) => (
-              <div key={c.id} className="mon-cell" role="columnheader" title={c.title}>
+              <div key={c.id} className="mon-cell" role="columnheader" title={c.title} aria-sort={ariaSort(sort, c.id)}>
+                <SortButton id={c.id} title={c.title} sort={sort} onSort={onSort} />
                 <span className="mon-text">{c.title}</span>
                 <ResizeHandle id={c.id} width={widthOf(c.id)} onResize={onResize} />
               </div>
@@ -194,7 +275,7 @@ export function GroupTable(props: GroupTableProps) {
             </div>
           ))}
 
-          <AddRow nameTitle={nameTitle} onAdd={(name) => props.addItem(group.id, name)} />
+          {props.addItem && <AddRow nameTitle={nameTitle} onAdd={(name) => props.addItem?.(group.id, name)} />}
 
           <div className="mon-row mon-summary" role="row" aria-label="요약">
             <div className="mon-cell mon-cell--name mon-summary__lead" />
@@ -257,10 +338,9 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
           {subColumns && (
             <button
               type="button"
-              className={cx('mon-expand', subCount === 0 && 'is-empty')}
+              className={cx('mon-expand', subCount === 0 && !open && 'is-empty')}
               aria-expanded={open}
               aria-label={`하위 아이템 ${subCount}개 ${open ? '접기' : '펼치기'}`}
-              disabled={subCount === 0}
               onClick={() => props.toggleExpanded(item.itemId)}
             >
               <Chevron size={14} strokeWidth={2.2} aria-hidden />
@@ -298,7 +378,14 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
         ))}
         <div className="mon-cell mon-cell--end" aria-hidden />
       </div>
-      {open && subColumns && subCount > 0 && <SubTable columns={subColumns} subitems={item.subitems ?? []} />}
+      {open && subColumns && (
+        <SubTable
+          columns={subColumns}
+          subitems={item.subitems ?? []}
+          nameTitle={props.subNameTitle}
+          onAdd={(name) => props.addSubitem(item, name)}
+        />
+      )}
     </>
   )
 }

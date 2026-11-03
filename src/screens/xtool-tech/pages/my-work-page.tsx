@@ -1,6 +1,7 @@
 import { AlarmClock, CircleCheck, Hourglass, ListTodo, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { MondayMyWork } from '../components/monday/monday-my-work'
 import { MyWorkRow } from '../components/overview/my-work-card'
 import { GlassCard } from '../components/ui/glass-card'
 import { SegmentedControl } from '../components/ui/segmented-control'
@@ -12,6 +13,7 @@ import { BOARD_TABS } from '../data/tech-boards'
 import { useMyIdentity, useWorkSources } from '../data/use-my-work'
 import { daysBetween, inRange, koreaToday, periodRange } from '../lib/dates'
 import { myWorkPath } from '../paths'
+import { useSettings } from '../settings/settings'
 
 // 처음에 보여 줄 줄 수
 const PAGE = 20
@@ -37,6 +39,7 @@ export function MyWorkPage() {
   const me = useMyIdentity()
   const { sources, loading } = useWorkSources()
   const { period } = usePeriod()
+  const { layout } = useSettings()
   const today = koreaToday()
 
   const who = params.get('who')
@@ -76,6 +79,30 @@ export function MyWorkPage() {
   const others = people.map((p) => p.name).filter((n) => !me.names.has(n))
   if (who && !mine && !others.includes(who)) others.unshift(who)
   const title = mine ? '내 담당 업무' : `${who}님 담당 업무`
+
+  // Monday 표 레이아웃 — 숫자 카드 없이 보드마다 Monday 표로(칸을 바로 고친다).
+  if (layout === 'monday') {
+    const entries = new Map<MyWorkBoard, Set<string>>()
+    for (const item of items) {
+      if (state !== 'all' && (state === 'done') !== item.done) continue
+      const ids = entries.get(item.boardKey) ?? new Set<string>()
+      ids.add(item.itemId)
+      entries.set(item.boardKey, ids)
+    }
+    const meLabel = myName ? `나 · ${myName}` : '나'
+    return (
+      <MondayMyWork
+        entries={entries}
+        loading={loading}
+        personLabel={mine ? meLabel : (who ?? '')}
+        people={[{ value: null, label: meLabel }, ...others.map((name) => ({ value: name, label: name }))]}
+        onPerson={(next) => navigate(myWorkPath(next))}
+        state={state}
+        onState={setState}
+        totalAll={items.length}
+      />
+    )
+  }
 
   return (
     <>

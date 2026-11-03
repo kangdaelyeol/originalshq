@@ -5,6 +5,7 @@
   --mon-cell: #2b2c44;
   --mon-hover: #33354f;
   --mon-line: #43445d;
+  --mon-line-strong: #5f6278;
   --mon-text: #d5d8df;
   --mon-text-2: #9699a6;
   --mon-primary: #2364e3;
@@ -378,9 +379,20 @@
     color: var(--mon-text);
   }
 
+  // 하위 아이템이 없으면 줄에 올렸을 때만 흐리게(눌러서 첫 줄을 추가한다)
   &.is-empty {
-    visibility: hidden;
+    opacity: 0;
   }
+
+  // 펼친 줄 — 파란 테두리 상자(Monday)
+  &[aria-expanded='true'] {
+    border: 1px solid var(--mon-primary);
+    color: var(--mon-text);
+  }
+}
+
+.mon-row:hover .mon-expand.is-empty {
+  opacity: 0.6;
 }
 
 .mon-name {
@@ -505,6 +517,17 @@
 
   & + & {
     margin-left: -8px;
+  }
+}
+
+.mon-avatar.has-photo {
+  overflow: hidden;
+  background: var(--mon-badge);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 }
 
@@ -651,30 +674,77 @@
   }
 }
 
-// 하위 아이템 — 줄 아래로 들여 펼친다.
+// 하위 아이템 — 줄 아래로 들여 펼친다. 이름 칸 갈매기 밑에서 내려오는 줄기에서 줄마다 둥글게
+// 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 갈매기 반 폭 10.
+$sub-trunk: 25.5px;
+$sub-indent: 52px;
+$sub-row: 34px;
+
 .mon-sub {
-  position: sticky;
-  left: 0;
+  position: relative;
   width: max-content;
-  margin: 0 0 8px 46px;
-  padding-left: 8px;
-  border-left: 1px solid var(--mon-line);
+  padding: 12px 0 14px $sub-indent;
+}
+
+.mon-sub__trunk {
+  position: absolute;
+  top: 0;
+  // 마지막 줄의 가지가 꺾이는 데서 끝난다 — 그 줄 가지가 나머지를 그린다.
+  bottom: 14px + $sub-row;
+  left: $sub-trunk;
+  border-left: 1px solid var(--mon-line-strong);
 }
 
 .mon-sub__row {
+  position: relative;
   display: grid;
   grid-template-columns: var(--sub-cols);
 
   .mon-cell {
-    height: 32px;
-    background: #262740;
-    font-size: 13px;
+    height: $sub-row;
+    font-size: 13.5px;
   }
+}
+
+// 줄마다 줄기에서 둥글게 꺾여 들어오는 가지
+.mon-sub__row--item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -($sub-indent - $sub-trunk);
+  width: $sub-indent - $sub-trunk - 1px;
+  height: 50%;
+  border-bottom: 1px solid var(--mon-line-strong);
+  border-left: 1px solid var(--mon-line-strong);
+  border-bottom-left-radius: 8px;
+  pointer-events: none;
 }
 
 .mon-sub__row--head .mon-cell {
   border-top: 1px solid var(--mon-line);
-  color: var(--mon-text-2);
+}
+
+// 이름 칸 — 왼쪽에 옅은 그룹 색 막대
+.mon-sub__name.mon-cell {
+  justify-content: flex-start;
+  padding-left: 12px;
+  border-left: 6px solid color-mix(in srgb, var(--group) 45%, var(--mon-cell));
+  text-align: left;
+}
+
+.mon-sub__row--head .mon-sub__name.mon-cell {
+  justify-content: center;
+  border-top-left-radius: 6px;
+}
+
+.mon-sub__row--item:hover > .mon-cell:not(.mon-cell--status) {
+  background: var(--mon-hover);
+}
+
+.mon-sub__row--add .mon-sub__name.mon-cell {
+  grid-column: 1 / -1;
+  padding-left: 6px;
+  border-bottom-left-radius: 6px;
 }
 
 // ── 팝오버(칸 편집·도구 메뉴) ────────────────────────────────────────────────
@@ -989,5 +1059,336 @@
       height: 11px;
       background: #2b2c44;
     }
+  }
+}
+
+// ── 날짜 칸 달력(Monday 날짜 팝오버) ─────────────────────────────────────────
+.mon-date {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 8px;
+}
+
+.mon-date__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mon-date__today {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--mon-text-2);
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+}
+
+.mon-date__clock {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &.is-on {
+    color: #66a3ff;
+  }
+}
+
+.mon-date__inputs {
+  display: flex;
+  gap: 6px;
+}
+
+.mon-date__text,
+.mon-date__time {
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--mon-text-2);
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--mon-primary);
+  }
+
+  &::selection {
+    background: #6e7287;
+  }
+}
+
+.mon-date__text {
+  flex: 1;
+}
+
+.mon-date__time {
+  width: 112px;
+  color-scheme: dark;
+
+  // 시계 단추는 빼고 글자만(위 시계 단추로 켜고 끈다)
+  &::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}
+
+.mon-date__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mon-date__select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  select {
+    height: 30px;
+    padding: 0 26px 0 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text);
+    font: inherit;
+    appearance: none;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    option {
+      background: var(--mon-pop);
+    }
+  }
+
+  svg {
+    position: absolute;
+    right: 8px;
+    pointer-events: none;
+  }
+}
+
+.mon-date__arrows {
+  display: flex;
+  margin-left: auto;
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+.mon-date__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 4px;
+}
+
+.mon-date__weekday {
+  height: 30px;
+  color: var(--mon-text-2);
+  font-size: 13px;
+  line-height: 30px;
+  text-align: center;
+}
+
+.mon-date__day {
+  justify-self: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font: inherit;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &.is-outside {
+    color: #5f6278;
+  }
+
+  &.is-today:not(.is-selected) {
+    color: #66a3ff;
+    font-weight: 600;
+  }
+
+  &.is-selected {
+    background: var(--mon-primary);
+    color: #fff;
+  }
+}
+
+.mon-date__footer {
+  margin: 2px -10px 0;
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--mon-line);
+  text-align: center;
+
+  button {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text-2);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--mon-text);
+    }
+  }
+}
+
+// ── 머리글 정렬 단추 — 위 테두리에 반쯤 걸친 작은 원(Monday) ──────────────────────
+.mon-sort {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #393b56;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.15s;
+
+  path {
+    fill: #9699a6;
+  }
+
+  &:hover path {
+    fill: var(--mon-text);
+  }
+
+  &.is-asc,
+  &.is-desc {
+    opacity: 1;
+  }
+
+  &.is-asc .mon-sort__up,
+  &.is-desc .mon-sort__down {
+    fill: #fff;
+  }
+
+  &.is-asc .mon-sort__down,
+  &.is-desc .mon-sort__up {
+    fill: #5f6278;
+  }
+}
+
+.mon-row--head .mon-cell:hover,
+.mon-row--head .mon-cell:focus-within {
+  background: var(--mon-hover);
+
+  .mon-sort {
+    opacity: 1;
+  }
+}
+
+// 이름 칸 머리글은 가운데 정렬이라 단추도 칸 가운데
+.mon-row--head .mon-cell--name .mon-sort {
+  left: calc(50% - 3px);
+}
+
+// ── 보드 구역(내 업무에서 보드마다 제목 + 그룹 표) ───────────────────────────────
+.mon-section + .mon-section {
+  margin-top: 30px;
+}
+
+.mon-section__title {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: fit-content;
+  margin: 22px 0 -8px;
+  font-size: 20px;
+  font-weight: 600;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mon-text);
+
+    svg {
+      color: var(--mon-text-2);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    &:hover svg {
+      opacity: 1;
+    }
+  }
+
+  span {
+    color: var(--mon-text-2);
+    font-size: 13px;
+    font-weight: 400;
+  }
+}
+
+// 도구 줄 탭(진행 중·완료·전체)
+.mon-tabs {
+  display: inline-flex;
+  align-self: stretch;
+  margin: 0 6px;
+}
+
+.mon-tab {
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    color: var(--mon-text);
+  }
+
+  &.is-on {
+    border-bottom-color: var(--mon-primary);
+    color: var(--mon-text);
   }
 }

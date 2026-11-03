@@ -87,8 +87,12 @@ export function saveSettings(settings: Settings): void {
 /** 사진 배경(작업장 사진·공유 사진)인지 — 강조색을 기본색으로 고정한다. */
 export const isPhotoBackground = (background: BackgroundKind): boolean => background === 'photo' || background === 'shared'
 
-/** 실제로 화면에 쓰는 강조색 — 사진 배경이면 기본색. */
-export const effectiveAccent = (s: Settings): string => (isPhotoBackground(s.background) ? DEFAULT_ACCENT : s.accent)
+/** Monday 표 레이아웃의 강조색 — Monday 주 버튼·선택 표시의 파랑(캡처에서 잰 값). */
+export const MONDAY_ACCENT = '#2364e3'
+
+/** 실제로 화면에 쓰는 강조색 — Monday 표면 Monday 파랑, 사진 배경이면 기본색. */
+export const effectiveAccent = (s: Settings): string =>
+  s.layout === 'monday' ? MONDAY_ACCENT : isPhotoBackground(s.background) ? DEFAULT_ACCENT : s.accent
 
 export interface SettingsState extends Settings {
   /** 지금 화면에 칠해진 강조색 */

@@ -5,6 +5,7 @@ import { Link, NavLink } from 'react-router-dom'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
+import { useProfilePhoto } from '../../data/tech-profiles'
 import { cx } from '../../lib/cx'
 import { SIDEBAR_TOGGLE_KEY } from '../../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS } from '../../nav'
@@ -29,6 +30,7 @@ interface SidebarProps {
  */
 export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
   const id = useId()
+  const photo = useProfilePhoto(member.email)
   return (
     <div className="sidebar-wrap">
       <aside id={id} className="glass sidebar">
@@ -68,7 +70,7 @@ export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
 
         <div className="sidebar__footer">
           {/* 강조색 판 위 강조색 글자색 — 설정을 따라간다. */}
-          <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" size="md" />
+          <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" size="md" photo={photo} />
           <div className="sidebar__user" title={member.email}>
             <strong>{member.name || member.email}</strong>
             <span>{member.isAdmin ? '관리자' : member.email}</span>

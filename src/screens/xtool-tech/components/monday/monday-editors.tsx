@@ -1,13 +1,14 @@
 import { Check, Search, X } from 'lucide-react'
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TechCellValue, TechColumn } from '../../data/tech-boards'
 import { useMondayUsers, useTechBoard } from '../../data/tech-boards-store'
+import { usePhotoOf } from '../../data/tech-profiles'
 import { initialState, sameState, type EditState, type LocationState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
-import { personColor } from '../../lib/person-color'
-import { DateTimeInput, LocationInput } from '../board/item-editor'
+import { LocationInput } from '../board/item-editor'
 import { labelColor } from './monday-colors'
+import { PersonAvatar } from './monday-cells'
+import { DatePicker } from './monday-date-picker'
 import { MonPopover } from './monday-popover'
 import { previewCell } from './monday-values'
 
@@ -80,6 +81,7 @@ export function CellEditor(props: CellEditorProps) {
     case 'board_relation':
       return props.column.linkedBoardKey ? <RelationEditor {...props} boardKey={props.column.linkedBoardKey} /> : null
     case 'date':
+      return <DatePicker {...props} />
     case 'long_text':
     case 'link':
     case 'location':
@@ -204,17 +206,10 @@ function DropdownEditor({ column, cell, anchor, onCommit, onCancel }: CellEditor
   )
 }
 
-function Avatar({ name }: { name: string }) {
-  return (
-    <span className="mon-avatar" style={{ '--avatar': personColor(name) } as CSSProperties} aria-hidden>
-      {initialsOf(name, '')}
-    </span>
-  )
-}
-
 /** 담당자 — Monday 사용자 목록에서. 처음부터 지정돼 있던 사람(목록 밖·비활성)도 이름을 지킨다. */
 function PeopleEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProps) {
   const users = useMondayUsers()
+  const photoOf = usePhotoOf()
   const [initial] = useState(() => initialState(column, cell) as string[])
   const [selected, setSelected] = useState(initial)
   const options = useMemo(() => {
@@ -243,7 +238,7 @@ function PeopleEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorPr
         onChange={setSelected}
         renderOption={(o) => (
           <>
-            <Avatar name={o.label} />
+            <PersonAvatar name={o.label} photo={photoOf(o.label)} />
             {o.label}
           </>
         )}
@@ -289,7 +284,7 @@ function RelationEditor({ column, cell, anchor, onCommit, onCancel, boardKey }: 
   )
 }
 
-/** 날짜·긴 글·링크·주소 — 작은 입력 판. 바깥을 누르거나 "적용"으로 저장, Esc는 취소. */
+/** 긴 글·링크·주소 — 작은 입력 판. 바깥을 누르거나 "적용"으로 저장, Esc는 취소. */
 function FormEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProps) {
   const [initial] = useState(() => initialState(column, cell))
   const [value, setValue] = useState<EditState>(initial)
@@ -305,14 +300,6 @@ function FormEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProp
   return (
     <MonPopover anchor={anchor} width={width} escapeCommits={false} onClose={finish} className="mon-form">
       <p className="mon-form__title">{column.title}</p>
-      {column.type === 'date' && (
-        <DateTimeInput
-          id={`${column.id}-edit`}
-          title={column.title}
-          value={value as { date: string; time: string }}
-          onChange={setValue}
-        />
-      )}
       {column.type === 'long_text' && (
         <textarea
           className="field__input field__textarea"

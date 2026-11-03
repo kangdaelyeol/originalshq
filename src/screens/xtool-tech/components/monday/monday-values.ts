@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import type { TechCellValue, TechColumn } from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import type { EditState, LocationState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
 import { koreaToday } from '../../lib/dates'
@@ -140,3 +140,49 @@ export function previewCell(column: TechColumn, state: EditState, names: string[
 
 /** 바로 고쳐 쓰는 칸 — 칸 안에 입력 칸이 그대로 열린다(나머지는 팝오버). */
 export const INLINE_TYPES = new Set(['text', 'numbers', 'phone', 'email'])
+
+/** 이름 칸 머리글 — Monday 이름 칸 제목은 캐시에 없어서 보드마다 정한다. */
+export const NAME_TITLE: Record<TechBoardKey, string> = {
+  fieldService: '고객',
+  repair: '고객',
+  records: '업무',
+  techInquiry: '고객',
+  techTask: '업무',
+  asRequests: '신청자',
+  parts: '부품',
+  rentals: '대여품',
+  serials: 'SN',
+}
+
+/** 하위 아이템 이름 칸 머리글 */
+export const SUB_NAME_TITLE: Partial<Record<TechBoardKey, string>> = {
+  fieldService: '품목명',
+  repair: '부품명',
+}
+
+export const splitNames = (text: string | undefined): string[] =>
+  (text ?? '').split(', ').map((s) => s.trim()).filter(Boolean)
+
+/** 검색어(소문자)·사람으로 거르기 — 이름과 모든 칸 글자에서 찾고, 사람은 담당자 칸에서. */
+export function matchesItem(item: TechItemDoc, peopleColumns: TechColumn[], needle: string, person: string | null): boolean {
+  if (person && !peopleColumns.some((c) => splitNames(item.values[c.id]?.text).includes(person))) return false
+  if (!needle) return true
+  return item.name.toLowerCase().includes(needle) || Object.values(item.values).some((v) => v.text?.toLowerCase().includes(needle))
+}
+
+/** Monday에서 그룹이 바뀐 뒤 아직 보드 정보가 다시 동기화되지 않은 항목을 모으는 그룹 */
+export const OTHER_GROUP = '__other'
+
+/** 그 항목이 들어갈 그룹 id */
+export const groupIdOf = (meta: TechBoardMeta, item: TechItemDoc): string =>
+  item.groupId && meta.groups.some((g) => g.id === item.groupId) ? item.groupId : OTHER_GROUP
+
+/** 보드에서 보이는 칸 — 하위 아이템·버튼 칸은 뺀다. */
+export const visibleColumns = (meta: TechBoardMeta): TechColumn[] => meta.columns.filter((c) => !HIDDEN_TYPES.has(c.type))
+
+/** 머리글 정렬 — 1 오름차순 · -1 내림차순 */
+export type MonSort = { columnId: string; dir: 1 | -1 } | null
+
+/** 머리글 정렬 단추 — 누를 때마다 오름차순 → 내림차순 → 해제 */
+export const nextSort = (current: MonSort, id: string): MonSort =>
+  current?.columnId !== id ? { columnId: id, dir: 1 } : current.dir === 1 ? { columnId: id, dir: -1 } : null

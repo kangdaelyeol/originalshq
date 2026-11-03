@@ -2,6 +2,7 @@ import { Check, FileText, MapPin, UserRound } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TechCellValue, TechColumn } from '../../data/tech-boards'
+import { usePhotoOf } from '../../data/tech-profiles'
 import { formatPhone } from '../../data/tech-stage'
 import { cx } from '../../lib/cx'
 import { personColor } from '../../lib/person-color'
@@ -9,8 +10,18 @@ import { fileCount, isChecked, mondayDate, parseJson, splitText } from './monday
 
 // Monday 표 칸 하나 — 컬럼 타입마다 Monday 다크 모드처럼 그린다.
 
+/** 사람 동그라미 하나 — 프로필 사진이 있으면 사진, 없으면 이름 색 + 이니셜. */
+export function PersonAvatar({ name, photo }: { name: string; photo?: string }) {
+  return (
+    <span className={cx('mon-avatar', photo && 'has-photo')} style={{ '--avatar': personColor(name) } as CSSProperties}>
+      {photo ? <img src={photo} alt="" /> : initialsOf(name, '')}
+    </span>
+  )
+}
+
 /** 사람 동그라미 — Monday처럼 둘까지 겹쳐 그리고 나머지는 +N, 비어 있으면 빈 사람 모양. */
 function People({ names }: { names: string[] }) {
+  const photoOf = usePhotoOf()
   if (names.length === 0) {
     return (
       <span className="mon-people__empty" aria-label="담당자 없음">
@@ -22,9 +33,7 @@ function People({ names }: { names: string[] }) {
   return (
     <span className="mon-people" title={names.join(', ')}>
       {shown.map((name) => (
-        <span key={name} className="mon-avatar" style={{ '--avatar': personColor(name) } as CSSProperties}>
-          {initialsOf(name, '')}
-        </span>
+        <PersonAvatar key={name} name={name} photo={photoOf(name)} />
       ))}
       {names.length > 2 && <span className="mon-avatar mon-avatar--more">+{names.length - 1}</span>}
       <span className="sr-only">{names.join(', ')}</span>

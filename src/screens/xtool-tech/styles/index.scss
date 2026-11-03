@@ -4,6 +4,7 @@
 // 들어가게 load-css로 감싼다 — originalshq의 다른 화면(cmip·리드 매니저 등)과 클래스 이름이
 // 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
 @use 'base';
+@use 'theme-monday' as *;
 
 .xtool-tech {
   @include meta.load-css('background');
@@ -16,4 +17,9 @@
   @include meta.load-css('notifications');
   @include meta.load-css('settings');
   @include meta.load-css('showcase');
+}
+
+// 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday가 붙으면 위 스타일을 Monday 모양으로 덮는다.
+.xtool-tech.theme-monday {
+  @include theme-monday;
 }
