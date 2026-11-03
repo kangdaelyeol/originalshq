@@ -1,10 +1,11 @@
 import { Camera, Check, ImagePlus, Info, LoaderCircle, Pipette, Plus, RotateCcw, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { BackgroundArt } from '../components/backgrounds/background-art'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '../components/brand/brand-mark'
 import { Avatar } from '../components/ui/avatar'
 import { Button } from '../components/ui/button'
+import { ConfirmDialog } from '../components/ui/confirm-dialog'
 import { GlassCard } from '../components/ui/glass-card'
 import { RangeField } from '../components/ui/range-field'
 import { StatusPill } from '../components/ui/status-pill'
@@ -27,8 +28,6 @@ import { BACKGROUND_OPTIONS, isPhotoBackground, LAYOUT_OPTIONS, useSettings, typ
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
 const CUSTOM_COMMIT_MS = 120
-// "지우기"를 한 번 누르면 이 시간 동안 확인 상태 — 그 안에 한 번 더 눌러야 지운다.
-const CONFIRM_MS = 4000
 
 /** 레이아웃 견본 — 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표. */
 function LayoutArt({ layout }: { layout: BoardLayout }) {
@@ -148,17 +147,8 @@ function SharedTile({
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  useEffect(() => {
-    if (!confirming) return
-    const timer = setTimeout(() => setConfirming(false), CONFIRM_MS)
-    return () => clearTimeout(timer)
-  }, [confirming])
-
+  // 확인 모달에서 "지우기"를 누르면
   const remove = () => {
-    if (!confirming) {
-      setConfirming(true)
-      return
-    }
     setConfirming(false)
     setDeleting(true)
     deleteSharedBackground(item.id)
@@ -200,16 +190,23 @@ function SharedTile({
       {mine && (
         <button
           type="button"
-          className={cx('bg-tile__delete', confirming && 'is-confirming')}
-          onClick={remove}
+          className="bg-tile__delete"
+          onClick={() => setConfirming(true)}
           disabled={deleting}
-          aria-label={confirming ? `${item.name} 정말 지우기` : `${item.name} 지우기`}
+          aria-label={`${item.name} 지우기`}
           title="팀 모두의 목록에서 지워져요"
         >
           {deleting ? <LoaderCircle size={13} className="is-spinning" aria-hidden /> : <Trash2 size={13} aria-hidden />}
-          {confirming && '정말 지우기'}
         </button>
       )}
+      <ConfirmDialog
+        open={confirming}
+        title={`'${item.name}' 배경을 지울까요?`}
+        message="팀 모두의 배경 목록에서 지워지고 되돌릴 수 없어요. 이 배경을 쓰던 사람은 기본 배경으로 바뀌어요."
+        confirmLabel="지우기"
+        onCancel={() => setConfirming(false)}
+        onConfirm={remove}
+      />
     </div>
   )
 }

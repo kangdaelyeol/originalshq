@@ -10,7 +10,7 @@ import { cx } from '../../lib/cx'
 import { pageStagger } from '../../lib/motion'
 import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
-import { XT_BASE, xtPath } from '../../paths'
+import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
 import { useSettings } from '../../settings/settings'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
@@ -71,7 +71,8 @@ export function AppLayout() {
       <div className={cx('shell', collapsed && 'is-collapsed', layout === 'monday' && 'is-wide')}>
         <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
-          <Topbar />
+          {/* Monday 표의 보드·내 업무는 상단바가 표 판 안에 들어간다(MondayBoard·MondayMyWork). */}
+          {!(layout === 'monday' && (pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH))) && <Topbar />}
           {/* 경로가 바뀌면 새로 그려서 카드들이 차례로 떠오르게 한다(motion.ts 주석 참고). */}
           <motion.div key={pathname} className="page" variants={pageStagger} initial="hidden" animate="show">
             {outlet}

@@ -320,6 +320,19 @@ $primary-hi: #3a78f0;
     }
   }
 
+  // 확인 모달 — Monday 대화 상자
+  .confirm__card {
+    border-color: $line;
+    border-radius: 8px;
+    background: #30324e;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  }
+
+  .confirm__danger {
+    border-radius: 4px;
+    background: #d83a52;
+  }
+
   // Monday 표는 바탕과 같은 판이라 테두리만 옅게
   .mon-board {
     border-color: $line;

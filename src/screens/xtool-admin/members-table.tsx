@@ -14,13 +14,12 @@ import { usePhotoOf } from '@/screens/xtool-tech/data/tech-profiles'
 import { Avatar } from '@/screens/xtool-tech/components/ui/avatar'
 import { Button } from '@/screens/xtool-tech/components/ui/button'
 import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
+import { ConfirmDialog } from '@/screens/xtool-tech/components/ui/confirm-dialog'
 import { StatusPill } from '@/screens/xtool-tech/components/ui/status-pill'
 import { cx } from '@/screens/xtool-tech/lib/cx'
 import { CredentialNote } from './credential-note'
 import { firestoreErrorMessage, functionErrorMessage, relativeTime } from './errors'
 
-// 삭제 버튼을 한 번 더 눌러야 지운다 — 그 사이 기다리는 시간.
-const CONFIRM_MS = 3000
 
 function statusOf(member: XtoolMember) {
   if (member.status === 'disabled') return { tone: 'crit', label: '정지' } as const
@@ -54,17 +53,6 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
     [],
   )
 
-  useEffect(() => {
-    if (!confirming) return
-    const timer = setTimeout(() => setConfirming(null), CONFIRM_MS)
-    return () => clearTimeout(timer)
-  }, [confirming])
-
-  useEffect(() => {
-    if (!confirmingReset) return
-    const timer = setTimeout(() => setConfirmingReset(null), CONFIRM_MS)
-    return () => clearTimeout(timer)
-  }, [confirmingReset])
 
   const run = async (email: string, task: () => Promise<void>) => {
     setPending(email)
@@ -78,11 +66,8 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
     }
   }
 
+  // 확인 모달에서 "재발급"을 누르면
   const onResetPassword = (email: string) => {
-    if (confirmingReset !== email) {
-      setConfirmingReset(email)
-      return
-    }
     setConfirmingReset(null)
     const password = generateTempPassword()
     setPending(email)
@@ -94,15 +79,13 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
       .finally(() => setPending(null))
   }
 
+  // 확인 모달에서 "삭제"를 누르면
   const onDelete = (email: string) => {
-    if (confirming !== email) {
-      setConfirming(email)
-      return
-    }
     setConfirming(null)
     void run(email, () => removeMember(email))
   }
 
+  const nameOfMember = (email: string | null) => (members ?? []).find((m) => m.email === email)?.name || email || ''
   const needle = query.trim().toLowerCase()
   const shown = (members ?? []).filter(
     (m) => !needle || m.email.includes(needle) || m.name.toLowerCase().includes(needle),
@@ -231,14 +214,11 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                           size="sm"
                           icon={KeyRound}
                           disabled={busy || member.status === 'disabled'}
-                          className={cx(confirmingReset === member.email && 'button--danger')}
                           title="임시 비밀번호를 새로 만들어요 — 쓰던 기기의 로그인은 끊겨요"
-                          aria-label={
-                            confirmingReset === member.email ? `${member.name} 비밀번호 정말 재발급` : `${member.name} 비밀번호 재발급`
-                          }
-                          onClick={() => onResetPassword(member.email)}
+                          aria-label={`${member.name} 비밀번호 재발급`}
+                          onClick={() => setConfirmingReset(member.email)}
                         >
-                          {confirmingReset === member.email ? '정말 재발급' : '비밀번호 재발급'}
+                          비밀번호 재발급
                         </Button>
                         <Button
                           variant="ghost"
@@ -259,11 +239,10 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                           size="sm"
                           icon={Trash2}
                           disabled={busy}
-                          className={cx(confirming === member.email && 'button--danger')}
-                          aria-label={confirming === member.email ? `${member.name} 정말 삭제` : `${member.name} 삭제`}
-                          onClick={() => onDelete(member.email)}
+                          aria-label={`${member.name} 삭제`}
+                          onClick={() => setConfirming(member.email)}
                         >
-                          {confirming === member.email ? '정말 삭제' : '삭제'}
+                          삭제
                         </Button>
                       </div>
                     )}
@@ -274,6 +253,23 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           </tbody>
         </table>
       </div>
+      <ConfirmDialog
+        open={confirmingReset !== null}
+        tone="primary"
+        title={`${nameOfMember(confirmingReset)}님 비밀번호를 다시 발급할까요?`}
+        message="새 임시 비밀번호를 만들어요. 지금 쓰던 비밀번호는 더 못 쓰고, 로그인돼 있던 기기에서도 로그아웃돼요."
+        confirmLabel="재발급"
+        onCancel={() => setConfirmingReset(null)}
+        onConfirm={() => confirmingReset && onResetPassword(confirmingReset)}
+      />
+      <ConfirmDialog
+        open={confirming !== null}
+        title={`${nameOfMember(confirming)}님을 구성원에서 삭제할까요?`}
+        message="팀 페이지에 더는 들어올 수 없어요. 다시 쓰게 하려면 새로 등록해야 해요."
+        confirmLabel="삭제"
+        onCancel={() => setConfirming(null)}
+        onConfirm={() => confirming && onDelete(confirming)}
+      />
     </GlassCard>
   )
 }

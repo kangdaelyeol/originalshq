@@ -23,8 +23,9 @@
   @include monday-tokens;
   display: flex;
   flex-direction: column;
-  // 상단바·여백을 뺀 화면 높이 — 표는 자기 안에서 위아래·옆으로 스크롤된다(Monday처럼).
-  height: calc(100dvh - 124px);
+  // 화면 높이(위아래 여백만 뺀다 — 상단바는 판 안 머리말로 들어온다). 표는 자기 안에서
+  // 위아래·옆으로 스크롤된다(Monday처럼).
+  height: calc(100dvh - 40px);
   min-height: 480px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -34,13 +35,49 @@
   font-size: 14px;
 }
 
+// ── 머리말(상단바가 판 안으로) · 보기 탭 ──────────────────────────────────────────
+.mon-board__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 14px 24px 4px;
+
+  .topbar-title h1 {
+    margin: 0;
+    color: var(--mon-text);
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+}
+
+.mon-board__views {
+  display: flex;
+  margin: 0 24px;
+  border-bottom: 1px solid var(--mon-line);
+
+  .mon-tab {
+    height: 36px;
+    padding: 0 6px;
+    line-height: 34px;
+  }
+}
+
 // ── 위 도구 줄 ──────────────────────────────────────────────────────────────
 .mon-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px;
-  padding: 16px 24px 4px;
+  padding: 14px 24px 4px;
 }
 
 .mon-primary {
@@ -302,10 +339,6 @@
   background: var(--mon-hover);
 }
 
-.mon-row:hover .mon-open {
-  opacity: 1;
-}
-
 // 이름 칸 뒤를 한 칸으로 채우는 줄("+ 추가"·만드는 중)
 .mon-row__fill {
   grid-column: 2 / -1;
@@ -426,30 +459,6 @@
 .mon-saving {
   flex: none;
   color: var(--mon-text-2);
-}
-
-.mon-open {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  margin-left: auto;
-  padding: 0 7px;
-  border: 0;
-  border-radius: 4px;
-  background: none;
-  color: var(--mon-text-2);
-  font-size: 12px;
-  opacity: 0;
-  transition: opacity 0.12s;
-
-  &:hover,
-  &:focus-visible {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--mon-text);
-    opacity: 1;
-  }
 }
 
 // 칸 종류별
@@ -1390,5 +1399,578 @@ $sub-row: 34px;
   &.is-on {
     border-bottom-color: var(--mon-primary);
     color: var(--mon-text);
+  }
+}
+
+// ── 전화 칸 ─────────────────────────────────────────────────────────────────
+.mon-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #66a3ff;
+}
+
+.mon-phone__flag {
+  flex: none;
+  font-size: 15px;
+  line-height: 1;
+}
+
+// ── 이름 칸 오른쪽 말풍선(업데이트) ─────────────────────────────────────────────
+.mon-updates {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  align-self: stretch;
+  width: 44px;
+  margin: 0 -8px 0 auto;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--mon-line);
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover,
+  &.is-active {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mon-text);
+  }
+
+  &.has-updates {
+    color: var(--mon-text);
+  }
+}
+
+.mon-updates__count {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--mon-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+  transform: translate(2px, 0);
+}
+
+// ── 업데이트 패널(Monday 항목 패널) ─────────────────────────────────────────────
+.mon-panel {
+  @include monday-tokens;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  width: min(640px, 100vw);
+  border-left: 1px solid var(--mon-line);
+  background: var(--mon-bg);
+  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  color: var(--mon-text);
+  font-size: 14px;
+  animation: mon-panel-in 0.22s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@keyframes mon-panel-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+
+.mon-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 22px 24px 8px;
+}
+
+.mon-panel__close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mon-text);
+  }
+}
+
+.mon-panel__title {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 24px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-panel__tabs {
+  display: flex;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--mon-line);
+}
+
+.mon-panel__tab {
+  padding: 10px 4px;
+  border-bottom: 2px solid transparent;
+  color: var(--mon-text-2);
+
+  &.is-on {
+    border-bottom-color: var(--mon-primary);
+    color: var(--mon-text);
+  }
+}
+
+.mon-panel__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  padding: 20px 24px 40px;
+  overflow: auto;
+}
+
+.mon-panel__note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--mon-text-2);
+
+  button {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mon-text);
+  }
+}
+
+.mon-panel__note--error {
+  color: #ff7f8f;
+}
+
+.mon-composer {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--mon-line);
+  border-radius: 8px;
+
+  &:focus-within {
+    border-color: var(--mon-primary);
+  }
+
+  textarea {
+    min-height: 96px;
+    padding: 14px 16px;
+    border: 0;
+    background: none;
+    color: var(--mon-text);
+    font: inherit;
+    line-height: 1.6;
+    resize: vertical;
+    outline: none;
+
+    &::placeholder {
+      color: var(--mon-text-2);
+    }
+  }
+}
+
+.mon-composer__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px 10px 16px;
+  color: var(--mon-text-2);
+  font-size: 12px;
+}
+
+.mon-composer__send {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--mon-primary);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--mon-primary-hi);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.mon-update {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 18px 6px;
+  border: 1px solid var(--mon-line);
+  border-radius: 8px;
+}
+
+.mon-update__author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .mon-avatar {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    font-size: 12px;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  time {
+    color: var(--mon-text-2);
+    font-size: 12.5px;
+  }
+
+  &.is-small .mon-avatar {
+    width: 26px;
+    height: 26px;
+    font-size: 10px;
+  }
+}
+
+.mon-update__text {
+  margin: 0;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.mon-update__replies {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 4px 0 0;
+  padding: 12px 0 0 14px;
+  border-top: 1px solid var(--mon-line);
+  list-style: none;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+.mon-update__actions {
+  display: flex;
+  margin: 0 -18px;
+  padding: 2px 10px;
+  border-top: 1px solid var(--mon-line);
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+.mon-update__reply {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 -18px;
+  padding: 12px 18px 14px;
+  border-top: 1px solid var(--mon-line);
+
+  .mon-avatar {
+    width: 30px;
+    height: 30px;
+    border: 0;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
+    padding: 0 14px;
+    border: 1px solid var(--mon-line);
+    border-radius: 6px;
+    background: none;
+    color: var(--mon-text);
+    font: inherit;
+    outline: none;
+
+    &:focus {
+      border-color: var(--mon-primary);
+    }
+  }
+
+  button {
+    height: 34px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 4px;
+    background: var(--mon-primary);
+    color: #fff;
+
+    &:disabled {
+      opacity: 0.45;
+    }
+  }
+}
+
+// ── 파일 칸 모달 ─────────────────────────────────────────────────────────────
+.mon-modal {
+  @include monday-tokens;
+  position: fixed;
+  inset: 0;
+  z-index: 75;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.55);
+  animation: mon-fade-in 0.15s ease-out;
+}
+
+@keyframes mon-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.mon-modal__card {
+  display: flex;
+  flex-direction: column;
+  width: min(760px, 100%);
+  max-height: min(720px, calc(100dvh - 48px));
+  border: 1px solid var(--mon-line);
+  border-radius: 12px;
+  background: var(--mon-pop);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  color: var(--mon-text);
+}
+
+.mon-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 20px 14px 24px;
+  border-bottom: 1px solid var(--mon-line);
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 500;
+  }
+
+  p {
+    margin: 2px 0 0;
+    color: var(--mon-text-2);
+    font-size: 13px;
+  }
+}
+
+.mon-modal__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--mon-text);
+  }
+}
+
+.mon-modal__body {
+  min-height: 0;
+  padding: 18px 24px;
+  overflow: auto;
+}
+
+.mon-modal__empty,
+.mon-modal__hint {
+  margin: 0;
+  color: var(--mon-text-2);
+  font-size: 13px;
+}
+
+.mon-modal__error {
+  margin: 0 0 12px;
+  color: #ff7f8f;
+  font-size: 13px;
+}
+
+.mon-filecards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mon-filecard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--mon-line);
+  border-radius: 8px;
+  background: var(--mon-bg);
+}
+
+.mon-filecard__preview {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  width: 100%;
+  height: 150px;
+  overflow: hidden;
+  background: #11121f;
+  color: var(--mon-text-2);
+
+  img,
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  video {
+    object-fit: contain;
+    background: #000;
+  }
+}
+
+.mon-filecard__image {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+}
+
+.mon-filecard__icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mon-filecard__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+
+  span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  a {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    color: var(--mon-text-2);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--mon-text);
+    }
+  }
+}
+
+.mon-modal__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px 18px;
+  border-top: 1px solid var(--mon-line);
+
+  .mon-modal__hint {
+    margin-left: auto;
+  }
+}
+
+.mon-modal__upload,
+.mon-modal__clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 4px;
+}
+
+.mon-modal__upload {
+  background: var(--mon-primary);
+  color: #fff;
+
+  &:hover {
+    background: var(--mon-primary-hi);
+  }
+}
+
+.mon-modal__clear {
+  border: 1px solid var(--mon-line-strong);
+  background: none;
+  color: var(--mon-text);
+
+  &:hover {
+    border-color: #e2445c;
+    color: #ff7f8f;
   }
 }

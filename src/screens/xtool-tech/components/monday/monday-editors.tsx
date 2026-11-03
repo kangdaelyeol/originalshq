@@ -22,12 +22,14 @@ interface InlineInputProps {
   initial: string
   label: string
   inputMode?: 'decimal' | 'tel' | 'email'
+  /** 치는 대로 모양 맞추기(연락처 하이픈) */
+  format?: (value: string) => string
   onCommit: (value: string) => void
   onCancel: () => void
 }
 
 /** 칸 안 입력 — 엔터·탭·바깥 누르기로 저장, Esc로 취소. */
-export function InlineInput({ initial, label, inputMode, onCommit, onCancel }: InlineInputProps) {
+export function InlineInput({ initial, label, inputMode, format, onCommit, onCancel }: InlineInputProps) {
   const [value, setValue] = useState(initial)
   // 엔터로 저장한 뒤 blur가 한 번 더 저장하지 않게
   const [done, setDone] = useState(false)
@@ -45,7 +47,7 @@ export function InlineInput({ initial, label, inputMode, onCommit, onCancel }: I
       inputMode={inputMode}
       autoFocus
       onFocus={(e) => e.currentTarget.select()}
-      onChange={(e) => setValue(e.target.value)}
+      onChange={(e) => setValue(format ? format(e.target.value) : e.target.value)}
       onBlur={() => finish(true)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {

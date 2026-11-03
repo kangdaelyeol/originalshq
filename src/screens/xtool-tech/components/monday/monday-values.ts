@@ -24,7 +24,7 @@ const WIDTH_BY_TYPE: Record<string, number> = {
   lookup: 240,
   board_relation: 180,
   link: 160,
-  phone: 136,
+  phone: 164,
   email: 180,
   file: 96,
   item_id: 110,
@@ -146,7 +146,7 @@ export const NAME_TITLE: Record<TechBoardKey, string> = {
   fieldService: '클라이언트',
   repair: '고객',
   records: '업무',
-  techInquiry: '고객',
+  techInquiry: '고객명',
   techTask: '업무',
   asRequests: '신청자',
   parts: '부품',
@@ -186,3 +186,30 @@ export type MonSort = { columnId: string; dir: 1 | -1 } | null
 /** 머리글 정렬 단추 — 누를 때마다 오름차순 → 내림차순 → 해제 */
 export const nextSort = (current: MonSort, id: string): MonSort =>
   current?.columnId !== id ? { columnId: id, dir: 1 } : current.dir === 1 ? { columnId: id, dir: -1 } : null
+
+// ── 이름에 적힌 전화번호(출장 "장성진 010-5060-1512") ─────────────────────────────
+// 전화번호 칸이 따로 있는 보드는 이름 칸에 번호를 떼고 보여 준다. Monday 이름은 그대로 두고
+// (고객 통합이 이름에서 번호를 읽는다) 화면에서만 뗀다.
+export const PHONE_IN_NAME_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService'])
+
+// 숫자 9~12자리에 -·.·공백·괄호가 섞인 덩어리
+const PHONE_IN_TEXT = /\+?\d[\d\s().-]{7,}\d/g
+
+/** 이름 → 보일 이름과 떼어 낸 번호 글자(이름을 고칠 때 다시 붙인다) */
+export function splitNamePhone(name: string): { label: string; phones: string } {
+  const found = (name.match(PHONE_IN_TEXT) ?? []).filter((p) => {
+    const digits = p.replace(/\D/g, '').length
+    return digits >= 9 && digits <= 12
+  })
+  if (found.length === 0) return { label: name, phones: '' }
+  let label = name
+  for (const phone of found) label = label.replace(phone, ' ')
+  label = label
+    .replace(/\(\s*\)/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^[\s:,/-]+|[\s:,/-]+$/g, '')
+  return { label: label || name, phones: found.map((p) => p.trim()).join(' ') }
+}
+
+/** 업데이트(Monday 댓글) 말풍선이 있는 보드 — 서버 TECH_BOARDS의 updates와 같게 */
+export const UPDATE_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService'])

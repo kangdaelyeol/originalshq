@@ -1,7 +1,7 @@
-import { ChevronDown, ChevronRight, LoaderCircle, Maximize2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, LoaderCircle, MessageCircle, MessageCirclePlus } from 'lucide-react'
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
-import { initialState, isWritable, type EditState } from '../../data/tech-edit'
+import { formatPhoneTyping, initialState, isPhoneColumn, isWritable, type EditState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
 import { formatInt } from '../../lib/format'
 import { labelColor } from './monday-colors'
@@ -44,13 +44,18 @@ export interface GroupTableProps {
   nameOf: (item: TechItemDoc) => string
   commitCell: (item: TechItemDoc, column: TechColumn, commit: CellCommit) => void
   commitName: (item: TechItemDoc, name: string) => void
-  openItem: (itemId: string) => void
+  /** 파일 칸 모달 열기 */
+  openFiles: (item: TechItemDoc, column: TechColumn) => void
   /** 그룹 맨 아래 "+ 추가" — null이면 줄을 그리지 않는다(내 업무). */
   addItem: ((groupId: string, name: string) => void) | null
   /** 하위 아이템 "+ 추가" — 이름만 적어 만든다. */
   addSubitem: (item: TechItemDoc, name: string) => void
   /** 하위 아이템 이름 칸 머리글(품목명·부품명) */
   subNameTitle: string
+  /** 업데이트(말풍선) 패널 열기 — 말풍선이 없는 보드면 null */
+  openUpdates: ((item: TechItemDoc) => void) | null
+  /** 지금 패널이 열린 항목 */
+  updatesOpenFor: string | null
   /** 만드는 중인 새 항목 이름 */
   creating: string[]
   pending: ReadonlySet<string>
@@ -323,8 +328,25 @@ function AddRow({ nameTitle, onAdd }: { nameTitle: string; onAdd: (name: string)
   )
 }
 
+/** 이름 칸 오른쪽 말풍선 — 업데이트가 있으면 개수 배지, 없으면 +가 붙은 말풍선(Monday). */
+function UpdatesButton({ count, active, label, onClick }: { count: number; active: boolean; label: string; onClick: () => void }) {
+  const Icon = count > 0 ? MessageCircle : MessageCirclePlus
+  return (
+    <button
+      type="button"
+      className={cx('mon-updates', count > 0 && 'has-updates', active && 'is-active')}
+      aria-label={`${label} 업데이트 ${count}개`}
+      title={count > 0 ? `업데이트 ${count}개` : '업데이트 쓰기'}
+      onClick={onClick}
+    >
+      <Icon size={19} strokeWidth={1.6} aria-hidden />
+      {count > 0 && <span className="mon-updates__count">{count > 99 ? '99+' : count}</span>}
+    </button>
+  )
+}
+
 function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
-  const { columns, editing, setEditing, nameOf, commitName, openItem, pending, subColumns, expanded } = props
+  const { columns, editing, setEditing, nameOf, commitName, pending, subColumns, expanded } = props
   const nameKey = `${item.itemId}:name`
   const subCount = item.subitems?.length ?? 0
   const open = expanded.has(item.itemId)
@@ -367,10 +389,14 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
           )}
           {subCount > 0 && <span className="mon-subcount">{subCount}</span>}
           {pending.has(item.itemId) && <LoaderCircle size={12} className="is-spinning mon-saving" aria-label="저장 중" />}
-          <button type="button" className="mon-open" onClick={() => openItem(item.itemId)} aria-label={`${nameOf(item)} 열기`} title="열기 — 모든 칸·파일·하위 아이템">
-            <Maximize2 size={12} aria-hidden />
-            열기
-          </button>
+          {props.openUpdates && (
+            <UpdatesButton
+              count={item.updateCount ?? 0}
+              active={props.updatesOpenFor === item.itemId}
+              label={nameOf(item)}
+              onClick={() => props.openUpdates?.(item)}
+            />
+          )}
         </div>
         {columns.map((column) => (
           <ItemCell key={column.id} item={item} column={column} {...props} />
@@ -396,7 +422,7 @@ function ItemCell({
   setEditing,
   cellOf,
   commitCell,
-  openItem,
+  openFiles,
 }: GroupTableProps & { item: TechItemDoc; column: TechColumn }) {
   const key = `${item.itemId}:${column.id}`
   const cell = cellOf(item, column)
@@ -409,7 +435,7 @@ function ItemCell({
 
   const start = (target: HTMLElement) => {
     if (column.type === 'file') {
-      openItem(item.itemId)
+      openFiles(item, column)
       return
     }
     if (!writable) return
@@ -428,7 +454,8 @@ function ItemCell({
         <InlineInput
           initial={initial}
           label={column.title}
-          inputMode={column.type === 'numbers' ? 'decimal' : column.type === 'phone' ? 'tel' : column.type === 'email' ? 'email' : undefined}
+          inputMode={column.type === 'numbers' ? 'decimal' : isPhoneColumn(column) ? 'tel' : column.type === 'email' ? 'email' : undefined}
+          format={isPhoneColumn(column) ? formatPhoneTyping : undefined}
           onCommit={(value) => commit({ state: value as EditState, preview: previewCell(column, value) })}
           onCancel={() => setEditing(null)}
         />

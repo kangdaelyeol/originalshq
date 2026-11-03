@@ -804,3 +804,83 @@
     }
   }
 }
+
+// ── 확인 모달("정말 지울까요?") ─────────────────────────────────────────────
+.confirm {
+  position: fixed;
+  inset: 0;
+  // 편집 패널(61)·파일 모달(75)·칸 팝오버(80) 위, 사진 크게 보기(90) 아래
+  z-index: 85;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.5);
+  animation: confirm-in 0.14s ease-out;
+}
+
+@keyframes confirm-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.confirm__card {
+  @include glass;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px 14px;
+  width: min(420px, 100%);
+  padding: 22px 22px 18px;
+  border-radius: var(--radius-card);
+  // 글이 짧은 판이라 배경이 비치지 않게 더 짙게
+  background-color: rgba(22, 23, 27, 0.92);
+}
+
+.confirm__icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+
+  &--danger {
+    background: rgba(248, 113, 113, 0.14);
+    color: var(--crit);
+  }
+
+  &--primary {
+    background: rgba(var(--accent-rgb), 0.16);
+    color: var(--accent);
+  }
+}
+
+.confirm__title {
+  margin: 6px 0 0;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.confirm__message {
+  margin-top: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.confirm__actions {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.confirm__danger {
+  border-color: transparent;
+  background: #dc4c5c;
+  color: #fff;
+
+  &:hover {
+    background: #e85f6e;
+  }
+}

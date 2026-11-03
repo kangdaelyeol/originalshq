@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState, type CSSProperties, type ReactN
 import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { toEditValue } from '../../data/tech-edit'
 import { saveInBackground, usePendingSaves } from '../../data/tech-save-queue'
-import { useBoardEdit } from '../board/board-edit-context'
 import { groupColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
 import { GroupTable, type EditingCell, type MonGroup } from './monday-group'
@@ -12,11 +11,16 @@ import {
   NAME_TITLE,
   NAME_WIDTH,
   OTHER_GROUP,
+  PHONE_IN_NAME_BOARDS,
   sortValue,
+  splitNamePhone,
   SUB_NAME_TITLE,
+  UPDATE_BOARDS,
   visibleColumns,
   type MonSort,
 } from './monday-values'
+import { FilesModal } from './monday-files-modal'
+import { UpdatesPanel } from './monday-updates-panel'
 import { useColumnWidths } from './use-monday-prefs'
 
 // 그룹마다 처음 그릴 줄 수 — 완료 그룹은 수천 건이라 나눠 그린다.
@@ -56,7 +60,6 @@ export interface MondaySectionProps {
  */
 export function MondaySection(props: MondaySectionProps) {
   const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, title, allowAdd = true } = props
-  const edit = useBoardEdit()
   const pending = usePendingSaves()
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
@@ -67,6 +70,12 @@ export function MondaySection(props: MondaySectionProps) {
   const [creating, setCreating] = useState<{ id: number; groupId: string; name: string }[]>([])
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [limits, setLimits] = useState<Record<string, number>>({})
+  // 업데이트(말풍선) 패널을 연 항목
+  const [updatesFor, setUpdatesFor] = useState<string | null>(null)
+  // 파일 칸 모달을 연 항목·칸
+  const [filesFor, setFilesFor] = useState<{ itemId: string; columnId: string } | null>(null)
+  // 이름에 적힌 전화번호는 전화번호 칸에 있으니 이름 칸에서는 뗀다(Monday 이름은 그대로).
+  const stripPhone = PHONE_IN_NAME_BOARDS.has(boardKey)
   const createId = useRef(0)
 
   const widthOf = useCallback(
@@ -86,9 +95,10 @@ export function MondaySection(props: MondaySectionProps) {
   const nameOf = useCallback(
     (item: TechItemDoc) => {
       const preview = previews.get(`${item.itemId}:name`)
-      return preview && preview.base === item.name ? preview.cell.text : item.name
+      const name = preview && preview.base === item.name ? preview.cell.text : item.name
+      return stripPhone ? splitNamePhone(name).label : name
     },
-    [previews],
+    [previews, stripPhone],
   )
 
   // 미리 보기 하나 걸고, 저장이 끝나면(실패면 바로, 성공이면 잠시 뒤) 뗀다 — 그 사이 같은 칸을
@@ -118,7 +128,10 @@ export function MondaySection(props: MondaySectionProps) {
     )
   }
 
-  const commitName = (item: TechItemDoc, name: string) => {
+  const commitName = (item: TechItemDoc, label: string) => {
+    // 번호를 떼고 보여 준 이름이면 고친 이름 뒤에 원래 번호를 다시 붙여 Monday에 쓴다.
+    const phones = stripPhone ? splitNamePhone(item.name).phones : ''
+    const name = phones ? `${label} ${phones}` : label
     if (name === item.name) return
     const settle = showPreview(`${item.itemId}:name`, { base: item.name, cell: { text: name, value: null } })
     saveInBackground('update', { boardKey, itemId: item.itemId, name }, name, settle)
@@ -159,6 +172,9 @@ export function MondaySection(props: MondaySectionProps) {
   }, [items, meta, columns, sort])
 
   const shown = hideEmptyGroups ? groups.filter((g) => g.items.length > 0) : groups
+  const updatesItem = updatesFor ? items.find((item) => item.itemId === updatesFor) : undefined
+  const filesItem = filesFor ? items.find((item) => item.itemId === filesFor.itemId) : undefined
+  const filesColumn = filesFor ? columns.find((c) => c.id === filesFor.columnId) : undefined
 
   return (
     <div className="mon-section" style={{ '--mon-cols': template } as CSSProperties}>
@@ -183,9 +199,11 @@ export function MondaySection(props: MondaySectionProps) {
           nameOf={nameOf}
           commitCell={commitCell}
           commitName={commitName}
-          openItem={(itemId) => edit?.openEditor(itemId)}
+          openFiles={(item, column) => setFilesFor({ itemId: item.itemId, columnId: column.id })}
           addItem={allowAdd ? addItem : null}
           addSubitem={addSubitem}
+          openUpdates={UPDATE_BOARDS.has(boardKey) ? (item) => setUpdatesFor(item.itemId) : null}
+          updatesOpenFor={updatesFor}
           creating={creating.filter((c) => c.groupId === group.id).map((c) => c.name)}
           pending={pending}
           subColumns={meta.subitems?.columns ?? null}
@@ -200,6 +218,18 @@ export function MondaySection(props: MondaySectionProps) {
           }
         />
       ))}
+      {filesItem && filesColumn && (
+        <FilesModal
+          boardKey={boardKey}
+          item={filesItem}
+          column={filesColumn}
+          itemName={nameOf(filesItem)}
+          onClose={() => setFilesFor(null)}
+        />
+      )}
+      {updatesItem && (
+        <UpdatesPanel boardKey={boardKey} itemId={updatesItem.itemId} title={nameOf(updatesItem)} onClose={() => setUpdatesFor(null)} />
+      )}
     </div>
   )
 }

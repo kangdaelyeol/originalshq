@@ -239,6 +239,8 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   values: Record<string, TechCellValue>
   /** 하위 아이템 — 하위 아이템이 있는 보드만(옛 캐시에는 없을 수 있다) */
   subitems?: TechSubitemDoc[]
+  /** 업데이트(Monday 댓글) 수 — 세는 보드(출장)만 */
+  updateCount?: number
   createdAt: string | null
   updatedAt: string | null
   syncedAt: number

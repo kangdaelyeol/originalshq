@@ -6,7 +6,11 @@ import { Button } from '../ui/button'
 import { NotificationPanel, type PanelAnchor } from './notification-panel'
 import { TopbarTitle } from './topbar-title'
 
-export function Topbar() {
+/**
+ * 상단바 — 왼쪽 제목, 오른쪽 알림·새 이슈. embedded면 Monday 표 판(.mon-board) 맨 위에 들어가는
+ * 머리말 모양(Monday 보드 머리말처럼 판과 한 몸)으로 그린다.
+ */
+export function Topbar({ embedded = false }: { embedded?: boolean }) {
   const { pathname } = useLocation()
   const bellRef = useRef<HTMLButtonElement>(null)
   const [notifications, setNotifications] = useState<NotificationItem[]>(() => NOTIFICATIONS.map((n) => ({ ...n })))
@@ -55,7 +59,7 @@ export function Topbar() {
   }, [])
 
   return (
-    <header className="glass topbar">
+    <header className={embedded ? 'mon-board__head' : 'glass topbar'}>
       <TopbarTitle />
       <div className="topbar__controls">
         <button

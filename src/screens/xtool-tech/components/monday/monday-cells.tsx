@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TechCellValue, TechColumn } from '../../data/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
+import { isPhoneColumn } from '../../data/tech-edit'
 import { formatPhone } from '../../data/tech-stage'
 import { cx } from '../../lib/cx'
 import { personColor } from '../../lib/person-color'
@@ -89,7 +90,15 @@ export function CellView({ column, cell }: CellViewProps) {
       ) : null
     }
     case 'phone':
-      return text ? <span className="mon-text">{formatPhone(text) ?? text}</span> : null
+      // Monday 전화 칸처럼 국기 + 파란 번호
+      return text ? (
+        <span className="mon-phone">
+          <span className="mon-phone__flag" aria-hidden>
+            🇰🇷
+          </span>
+          <span className="mon-text">{formatPhone(text) ?? text}</span>
+        </span>
+      ) : null
     case 'file': {
       const count = fileCount(cell)
       return count > 0 ? (
@@ -100,6 +109,7 @@ export function CellView({ column, cell }: CellViewProps) {
       ) : null
     }
     default:
+      if (text && isPhoneColumn(column)) return <span className="mon-text">{formatPhone(text) ?? text}</span>
       return text ? <span className="mon-text">{text}</span> : null
   }
 }

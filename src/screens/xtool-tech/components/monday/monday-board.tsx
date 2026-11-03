@@ -1,8 +1,8 @@
 import { ArrowDownUp, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Plus, Search, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
 import { cx } from '../../lib/cx'
-import { useBoardEdit } from '../board/board-edit-context'
+import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'
 import {
@@ -28,7 +28,7 @@ interface MondayBoardProps {
  * 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다.
  */
 export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
-  const edit = useBoardEdit()
+  const boardRef = useRef<HTMLElement>(null)
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
   const peopleColumns = useMemo(() => columns.filter((c) => c.type === 'people'), [columns])
@@ -63,9 +63,22 @@ export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
   const sortTitle = sort ? (sort.columnId === 'name' ? nameTitle : columns.find((c) => c.id === sort.columnId)?.title) : null
 
   return (
-    <section className="mon-board" aria-label={meta.name}>
+    <section ref={boardRef} className="mon-board" aria-label={meta.name}>
+      <Topbar embedded />
+      <nav className="mon-board__views" aria-label="보기">
+        <span className="mon-tab is-on">메인 테이블</span>
+      </nav>
       <div className="mon-toolbar">
-        <button type="button" className="mon-primary" onClick={() => edit?.openEditor(null)}>
+        <button
+          type="button"
+          className="mon-primary"
+          // Monday처럼 새 항목은 표 안에서 — 첫 그룹의 "+ 추가" 줄로 데려간다.
+          onClick={() => {
+            const input = boardRef.current?.querySelector<HTMLInputElement>('.mon-row--add .mon-add')
+            input?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+            input?.focus({ preventScroll: true })
+          }}
+        >
           <Plus size={15} strokeWidth={2.4} aria-hidden />
           새로운 {nameTitle}
         </button>

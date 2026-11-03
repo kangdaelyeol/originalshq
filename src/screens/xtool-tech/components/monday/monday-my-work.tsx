@@ -1,13 +1,12 @@
 import { ArrowUpRight, CircleUserRound, Search, X } from 'lucide-react'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { MyWorkBoard } from '../../data/my-work'
 import { BOARD_TABS } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
 import { cx } from '../../lib/cx'
 import { xtPath } from '../../paths'
-import { BoardEditContext, type BoardEditState } from '../board/board-edit-context'
-import { ItemEditor } from '../board/item-editor'
+import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'
 import { matchesItem, nextSort, type MonSort } from './monday-values'
@@ -50,6 +49,10 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
 
   return (
     <section className="mon-board" aria-label={personLabel}>
+      <Topbar embedded />
+      <nav className="mon-board__views" aria-label="보기">
+        <span className="mon-tab is-on">메인 테이블</span>
+      </nav>
       <div className="mon-toolbar">
         <span className="mon-tool-group is-on">
           <button
@@ -152,7 +155,7 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
   )
 }
 
-/** 보드 하나 — 제목(보드로 가는 링크) + 그 보드의 그룹 표. 편집 패널도 보드마다 따로 연다. */
+/** 보드 하나 — 제목(보드로 가는 링크) + 그 보드의 그룹 표. */
 function MyWorkBoardSection({
   boardKey,
   label,
@@ -169,51 +172,33 @@ function MyWorkBoardSection({
   const board = useTechBoard(boardKey)
   const [collapsed, setCollapsed] = useCollapsedGroups(boardKey)
   const [sort, setSort] = useState<MonSort>(null)
-  // 편집 패널 — itemId가 null이면 새로 만들기(내 업무에선 쓰지 않는다), editing이 null이면 닫힘.
-  const [editing, setEditing] = useState<{ itemId: string | null } | null>(null)
   const meta = board.meta
-  const itemsById = board.itemsById
-  const openEditor = useCallback((itemId: string | null) => setEditing({ itemId }), [])
-  const itemOf = useCallback((itemId: string) => itemsById.get(itemId), [itemsById])
-  const editContext = useMemo<BoardEditState | null>(
-    () => (meta ? { boardKey, meta, openEditor, itemOf } : null),
-    [meta, boardKey, openEditor, itemOf],
-  )
   const items = useMemo(
     () => (board.items ?? []).filter((item) => ids.has(item.itemId) && matchesItem(item, [], needle, null)),
     [board.items, ids, needle],
   )
-  if (!meta || !editContext || items.length === 0) return null
+  if (!meta || items.length === 0) return null
 
   return (
-    <BoardEditContext.Provider value={editContext}>
-      <MondaySection
-        boardKey={boardKey}
-        meta={meta}
-        items={items}
-        hideEmptyGroups
-        allowAdd={false}
-        sort={sort}
-        onSort={(id) => setSort((current) => nextSort(current, id))}
-        collapsed={collapsed}
-        setCollapsed={setCollapsed}
-        title={
-          <h2 className="mon-section__title">
-            <Link to={xtPath(`/boards/${slug}`)}>
-              {label}
-              <ArrowUpRight size={15} aria-hidden />
-            </Link>
-            <span>{items.length}개</span>
-          </h2>
-        }
-      />
-      <ItemEditor
-        open={editing !== null}
-        boardKey={boardKey}
-        meta={meta}
-        item={editing?.itemId ? (itemsById.get(editing.itemId) ?? null) : null}
-        onClose={() => setEditing(null)}
-      />
-    </BoardEditContext.Provider>
+    <MondaySection
+      boardKey={boardKey}
+      meta={meta}
+      items={items}
+      hideEmptyGroups
+      allowAdd={false}
+      sort={sort}
+      onSort={(id) => setSort((current) => nextSort(current, id))}
+      collapsed={collapsed}
+      setCollapsed={setCollapsed}
+      title={
+        <h2 className="mon-section__title">
+          <Link to={xtPath(`/boards/${slug}`)}>
+            {label}
+            <ArrowUpRight size={15} aria-hidden />
+          </Link>
+          <span>{items.length}개</span>
+        </h2>
+      }
+    />
   )
 }

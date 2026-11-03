@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
 import { checkFile, fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink, type TechFileRef } from '../../data/tech-files'
 import { clearFilesInBackground, uploadInBackground } from '../../data/tech-save-queue'
+import { ConfirmDialog } from '../ui/confirm-dialog'
 import { ImageViewer, type ViewerImage } from './image-viewer'
 
 const VIDEO = /\.(mp4|mov|m4v|webm|avi|mkv)$/i
@@ -162,21 +163,10 @@ export function FileField({
   const [confirming, setConfirming] = useState(false)
   const files = filesOf(current)
 
-  // "모두 지우기"를 한 번 누르면 4초 동안 확인 상태 — 그 안에 한 번 더 눌러야 지운다.
-  useEffect(() => {
-    if (!confirming) return
-    const timer = setTimeout(() => setConfirming(false), 4000)
-    return () => clearTimeout(timer)
-  }, [confirming])
-
+  // "모두 지우기" — 확인 모달에서 한 번 더 확인한다.
   const clearAll = () => {
-    if (!itemId) return
-    if (!confirming) {
-      setConfirming(true)
-      return
-    }
     setConfirming(false)
-    clearFilesInBackground({ boardKey, itemId, columnId }, label)
+    if (itemId) clearFilesInBackground({ boardKey, itemId, columnId }, label)
   }
 
   const pick = (list: FileList | null) => {
@@ -206,12 +196,11 @@ export function FileField({
           {itemId && (
             <button
               type="button"
-              className={confirming ? 'file-field__clear is-confirming' : 'file-field__clear'}
-              onClick={clearAll}
-              title="Monday에서도 지워지고 되돌릴 수 없어요"
+              className="file-field__clear"
+              onClick={() => setConfirming(true)}
             >
               <Trash2 size={13} aria-hidden />
-              {confirming ? `${files.length}개 정말 지우기` : '모두 지우기'}
+              모두 지우기
             </button>
           )}
         </div>
@@ -239,6 +228,14 @@ export function FileField({
         <p className="file-field__empty">항목을 만든 뒤에 파일을 올릴 수 있어요.</p>
       )}
       {problem && <p className="editor__error">{problem}</p>}
+      <ConfirmDialog
+        open={confirming}
+        title={`파일 ${files.length}개를 모두 지울까요?`}
+        message={`'${label}' 칸의 파일이 Monday에서도 지워지고 되돌릴 수 없어요.`}
+        confirmLabel="모두 지우기"
+        onCancel={() => setConfirming(false)}
+        onConfirm={clearAll}
+      />
     </div>
   )
 }

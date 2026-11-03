@@ -3,6 +3,7 @@ import { Eye, Phone } from 'lucide-react'
 import { useState } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
 import { Button } from '@/screens/xtool-tech/components/ui/button'
+import { ConfirmDialog } from '@/screens/xtool-tech/components/ui/confirm-dialog'
 import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
 import { functionErrorMessage } from './errors'
 
@@ -69,11 +70,10 @@ export function PhoneCopyCard() {
             size="sm"
             icon={Phone}
             disabled={busy !== null || !canRun}
-            className={confirming ? 'button--danger' : undefined}
             title={canRun ? undefined : '먼저 미리보기로 대상을 확인해 주세요'}
-            onClick={() => (confirming ? void call(false) : setConfirming(true))}
+            onClick={() => setConfirming(true)}
           >
-            {busy === 'run' ? 'Monday에 쓰는 중…' : confirming ? `정말 ${result?.targetCount}건 복사` : '복사 실행'}
+            {busy === 'run' ? 'Monday에 쓰는 중…' : '복사 실행'}
           </Button>
         </>
       }
@@ -132,6 +132,15 @@ export function PhoneCopyCard() {
           )}
         </div>
       )}
+      <ConfirmDialog
+        open={confirming}
+        tone="primary"
+        title={`전화번호 ${result?.targetCount ?? 0}건을 복사할까요?`}
+        message="Monday 출장업무 보드의 '전화번호' 칸에 바로 써요(칸이 없으면 만들어요). 클라이언트 이름은 그대로예요."
+        confirmLabel="복사 실행"
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => void call(false)}
+      />
     </GlassCard>
   )
 }

@@ -15,7 +15,9 @@ import { saveInBackground } from '../../data/tech-save-queue'
 import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubRow } from '../../data/tech-subitems'
 import {
   emptyState,
+  formatPhoneTyping,
   initialState,
+  isPhoneColumn,
   isWritable,
   sameState,
   toEditValue,
@@ -414,9 +416,10 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
         <input
           id={id}
           className="field__input"
-          type={column.type === 'email' ? 'email' : column.type === 'phone' ? 'tel' : 'text'}
+          type={column.type === 'email' ? 'email' : isPhoneColumn(column) ? 'tel' : 'text'}
           value={value as string}
-          onChange={(e) => onChange(e.target.value)}
+          // 연락처는 치는 대로 010-1234-5678 모양으로(저장은 숫자만 — toEditValue)
+          onChange={(e) => onChange(isPhoneColumn(column) ? formatPhoneTyping(e.target.value) : e.target.value)}
         />
       )
   }

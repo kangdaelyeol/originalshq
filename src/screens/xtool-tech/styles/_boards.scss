@@ -1408,7 +1408,8 @@
 .image-viewer {
   position: fixed;
   inset: 0;
-  z-index: 65;
+  // 모든 패널·모달(편집 패널 61 · 파일 모달 75 · 칸 팝오버 80) 위에
+  z-index: 90;
   display: grid;
   place-items: center;
   padding: 72px 76px 32px;

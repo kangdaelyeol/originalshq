@@ -23,6 +23,29 @@ const WRITABLE_TYPES = new Set([
 export const isWritable = (c: TechColumn) =>
   c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
 
+// ── 연락처 칸 ─────────────────────────────────────────────────────────────────
+// 전화 칸과 제목이 연락처·전화·휴대폰인 글자 칸 — 칠 때는 010-1234-5678로 맞춰 보여 주고,
+// 저장은 숫자만(하이픈 없이) 한다. 리드 매니저가 고객을 번호(숫자)로 찾는다.
+const PHONE_TITLE = /연락처|전화|휴대폰|핸드폰|phone/i
+
+export const isPhoneColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean =>
+  c.type === 'phone' || (c.type === 'text' && PHONE_TITLE.test(c.title.replace(/\s/g, '')))
+
+/** 치는 중인 번호 → 하이픈을 넣은 모양(02 지역번호·10~11자리). 숫자가 아닌 글자는 버린다. */
+export function formatPhoneTyping(value: string): string {
+  const d = value.replace(/\D/g, '').slice(0, 11)
+  if (d.startsWith('02')) {
+    if (d.length <= 2) return d
+    if (d.length <= 5) return `${d.slice(0, 2)}-${d.slice(2)}`
+    if (d.length <= 9) return `${d.slice(0, 2)}-${d.slice(2, 5)}-${d.slice(5)}`
+    return `${d.slice(0, 2)}-${d.slice(2, 6)}-${d.slice(6, 10)}`
+  }
+  if (d.length <= 3) return d
+  if (d.length <= 7) return `${d.slice(0, 3)}-${d.slice(3)}`
+  if (d.length <= 10) return `${d.slice(0, 3)}-${d.slice(3, 6)}-${d.slice(6)}`
+  return `${d.slice(0, 3)}-${d.slice(3, 7)}-${d.slice(7)}`
+}
+
 /** 주소 칸 — 좌표까지 있어야 Monday에 써진다(주소 검색으로 고른 값). Monday에는
  * "{주소}, {상세주소}" 한 줄로 적고, 읽을 때 첫 ", "에서 다시 나눈다(카카오 도로명·지번
  * 주소에는 쉼표가 없다). */
@@ -114,11 +137,11 @@ export function initialState(column: TechColumn, cell: TechCellValue | undefined
         lng: json?.lng != null ? String(json.lng) : '',
       }
     case 'phone':
-      return String(json?.phone ?? cell.text ?? '')
+      return formatPhoneTyping(String(json?.phone ?? cell.text ?? ''))
     case 'email':
       return String(json?.email ?? cell.text ?? '')
     default:
-      return cell.text ?? ''
+      return isPhoneColumn(column) ? formatPhoneTyping(cell.text ?? '') : (cell.text ?? '')
   }
 }
 
@@ -147,7 +170,8 @@ export function toEditValue(column: TechColumn, state: EditState): TechEditValue
     case 'status':
       return (state as string) || null
     default:
-      return (state as string).trim()
+      // 연락처는 숫자만 저장한다.
+      return isPhoneColumn(column) ? (state as string).replace(/\D/g, '') : (state as string).trim()
   }
 }
 

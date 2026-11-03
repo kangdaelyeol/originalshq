@@ -75,15 +75,9 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   const editor = (
     <ItemEditor open={editing !== null} boardKey={tabKey} meta={editContext.meta} item={editingItem} onClose={closeEditor} />
   )
-  // 설정 > 레이아웃 "Monday 표" — 보드 칸·그룹을 Monday 그대로 늘어놓고 칸을 눌러 바로 고친다.
-  if (layout === 'monday') {
-    return (
-      <BoardEditContext.Provider value={editContext}>
-        <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
-        {editor}
-      </BoardEditContext.Provider>
-    )
-  }
+  // 설정 > 레이아웃 "Monday 표" — 보드 칸·그룹을 Monday 그대로 늘어놓고 칸을 눌러 바로 고친다
+  // (편집 패널 없이 — 파일은 파일 칸 모달, 업데이트는 말풍선 패널).
+  if (layout === 'monday') return <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
   return (
     <BoardEditContext.Provider value={editContext}>
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}
