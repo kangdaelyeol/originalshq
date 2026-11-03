@@ -7,6 +7,7 @@
  * 매출과 합치지 않고 별도로 쓴다(전체 요약/ROAS 탭에서 온라인/오프라인을
  * 따로 집계해 보여줘야 해서).
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -133,7 +134,7 @@ export async function getCafe24Revenue(
   dateEnd: ISODate,
 ): Promise<Cafe24RevenueSummary> {
   const params = new URLSearchParams({ dateStart, dateEnd })
-  const res = await fetch(
+  const res = await authFetch(
     `${CMIP_API_BASE}/getCafe24Revenue?${params.toString()}`,
   )
 

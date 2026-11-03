@@ -7,6 +7,7 @@
  * 시작한 장 중 가장 늦은 것이고, 앞날로 넣은 장은 예약이다. 광고셋에서 비워 둔
  * 칸은 그 날의 캠페인 설정을 따른다.
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -189,7 +190,7 @@ export const EMPTY_AD_SETTING: AdSettingFields = {
 }
 
 const call = async <T>(endpoint: string, init?: RequestInit): Promise<T> => {
-  const res = await fetch(`${CMIP_API_BASE}/${endpoint}`, init)
+  const res = await authFetch(`${CMIP_API_BASE}/${endpoint}`, init)
   let body: unknown
   try {
     body = await res.json()

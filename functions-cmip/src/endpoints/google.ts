@@ -45,7 +45,8 @@ export const oauthCallback = onRequest(
   { secrets: [googleClientId, googleClientSecret] },
   // 구글 OAuth 콜백은 GET 방식
   endpoint(
-    { method: 'GET', fallback: 'Google OAuth 인증 실패' },
+    // Google이 부르는 주소라 로그인 확인을 하지 않는다.
+    { method: 'GET', fallback: 'Google OAuth 인증 실패', public: true },
     async ({ request }) => {
       const { code, state, error, error_description } =
         request.query as OauthCallbackQuery

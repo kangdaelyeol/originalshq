@@ -5,6 +5,7 @@
  * (channel-insight, google-insight-client.ts가 담당)과는 무관하고, GoogleTestPanel
  * 에서 "진짜 연동이 되는지"만 확인하는 용도다.
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import { CallableError, callFunction } from './csv-client'
 
@@ -69,7 +70,7 @@ async function getJson<T>(
   params: Record<string, string>,
 ): Promise<T> {
   const query = new URLSearchParams(params)
-  const res = await fetch(`${CMIP_API_BASE}/${name}?${query.toString()}`)
+  const res = await authFetch(`${CMIP_API_BASE}/${name}?${query.toString()}`)
 
   let body: unknown
   try {

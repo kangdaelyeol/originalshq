@@ -25,9 +25,9 @@ import {
   formatBudget,
   goalOptionLabel,
   shortDate,
-  won,
 } from './labels'
 import { NumberInput } from './number-input'
+import { ResultMetrics } from './result-metrics'
 
 type Funnel = FunnelStage | 'none'
 
@@ -38,12 +38,12 @@ interface Form {
   budgetAmount: string
   budgetPeriod: BudgetPeriod
   creativeSetId: string
-  targetCpa: string
-  targetRoas: string
   funnelStage: Funnel
   audience: string
-  landingUrl: string
   memo: string
+  /** 화면에서 뺀 칸(목표 단가·목표 ROAS·랜딩 URL) — 결과 지표로 대신 보고,
+   * 예전에 넣은 값은 지우지 않고 새 장에도 그대로 넘긴다. */
+  kept: Pick<AdSettingFields, 'targetCpa' | 'targetRoas' | 'landingUrl'>
 }
 
 const formOf = (fields: AdSettingFields, effectiveFrom: string): Form => ({
@@ -52,13 +52,15 @@ const formOf = (fields: AdSettingFields, effectiveFrom: string): Form => ({
   budgetAmount: fields.budget ? String(fields.budget.amount) : '',
   budgetPeriod: fields.budget?.period ?? 'daily',
   creativeSetId: fields.creativeSetId ?? '',
-  targetCpa: fields.targetCpa === null ? '' : String(fields.targetCpa),
-  targetRoas: fields.targetRoas === null ? '' : String(fields.targetRoas),
   funnelStage: fields.funnelStage ?? 'none',
   audience: fields.audience,
-  landingUrl: fields.landingUrl,
   // 바꾼 이유는 장마다 새로 쓴다.
   memo: '',
+  kept: {
+    targetCpa: fields.targetCpa,
+    targetRoas: fields.targetRoas,
+    landingUrl: fields.landingUrl,
+  },
 })
 
 const numberOrNull = (text: string): number | null => {
@@ -127,9 +129,6 @@ const Summary = ({
     fields.budget && formatBudget(fields.budget),
     fields.creativeSetId &&
       `소재 ${sets.get(fields.creativeSetId)?.name ?? '(지운 셋)'}`,
-    fields.targetCpa !== null && `목표 단가 ${won(fields.targetCpa)}`,
-    fields.targetRoas !== null &&
-      `목표 ROAS ${fields.targetRoas.toLocaleString('ko-KR')}%`,
     fields.funnelStage && `퍼널 ${FUNNEL_LABEL[fields.funnelStage]}`,
   ].filter(Boolean) as string[]
   return chips.length ? (
@@ -210,12 +209,10 @@ export function SettingEditor({
       conversionGoal: form.conversionGoal || null,
       budget: amount === null ? null : { amount, period: form.budgetPeriod },
       creativeSetId: form.creativeSetId || null,
-      targetCpa: numberOrNull(form.targetCpa),
-      targetRoas: numberOrNull(form.targetRoas),
       funnelStage: form.funnelStage === 'none' ? null : form.funnelStage,
       audience: form.audience,
-      landingUrl: form.landingUrl,
       memo: form.memo,
+      ...form.kept,
     }
     const done =
       form.effectiveFrom > today
@@ -245,8 +242,12 @@ export function SettingEditor({
         <ChannelTile channelKey={entity.channel} />
         <div className="ad-editor__titles">
           <span className="ad-editor__level">
-            {isAdset ? '광고셋' : '캠페인'}
-            {isAdset && campaign && ` · ${campaign.name}`}
+            <span className={`ad-editor__level-tag is-${entity.level}`}>
+              {isAdset ? '광고셋' : '캠페인'}
+            </span>
+            {isAdset && campaign && (
+              <span className="ad-editor__level-parent">{campaign.name}</span>
+            )}
           </span>
           <h3>{entity.name}</h3>
           <span className="ad-editor__meta">
@@ -257,6 +258,8 @@ export function SettingEditor({
           </span>
         </div>
       </header>
+
+      <ResultMetrics entityKey={entity.key} today={today} />
 
       <section className="ad-editor__form">
         <div className="ad-editor__date">
@@ -339,45 +342,12 @@ export function SettingEditor({
               role="buttons"
             />
           </Field>
-          <Field
-            label="목표 전환 단가"
-            hint={inherit(parent?.targetCpa != null && won(parent.targetCpa))}
-          >
-            <NumberInput
-              label="목표 전환 단가"
-              unit="원"
-              value={form.targetCpa}
-              onChange={(v) => set('targetCpa', v)}
-            />
-          </Field>
-          <Field
-            label="목표 ROAS"
-            hint={inherit(
-              parent?.targetRoas != null && `${parent.targetRoas}%`,
-            )}
-          >
-            <NumberInput
-              label="목표 ROAS"
-              unit="%"
-              decimal
-              value={form.targetRoas}
-              onChange={(v) => set('targetRoas', v)}
-            />
-          </Field>
           <Field label="타깃 오디언스" wide>
             <input
               className="ad-input"
               placeholder="관심사·연령·리타깃 등"
               value={form.audience}
               onChange={(e) => set('audience', e.target.value)}
-            />
-          </Field>
-          <Field label="랜딩 URL" wide>
-            <input
-              className="ad-input"
-              placeholder="https://"
-              value={form.landingUrl}
-              onChange={(e) => set('landingUrl', e.target.value)}
             />
           </Field>
           <Field label="바꾼 이유·메모" wide>

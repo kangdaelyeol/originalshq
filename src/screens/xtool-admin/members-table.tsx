@@ -10,6 +10,7 @@ import {
   type XtoolMember,
 } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
+import { usePhotoOf } from '@/screens/xtool-tech/data/tech-profiles'
 import { Avatar } from '@/screens/xtool-tech/components/ui/avatar'
 import { Button } from '@/screens/xtool-tech/components/ui/button'
 import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
@@ -36,6 +37,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
   const [query, setQuery] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  const photoOf = usePhotoOf()
   // 비밀번호 재발급 — 한 번 더 눌러야 한다(쓰던 로그인이 끊기니까). 발급한 값은 위에 보여 준다.
   const [confirmingReset, setConfirmingReset] = useState<string | null>(null)
   const [issued, setIssued] = useState<{ email: string; password: string } | null>(null)
@@ -164,7 +166,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                 <tr key={member.email} className={cx(member.status === 'disabled' && 'is-disabled')} aria-busy={busy}>
                   <td>
                     <div className="person">
-                      <Avatar initials={initialsOf(member.name, member.email)} color="rgba(255, 255, 255, 0.12)" />
+                      <Avatar initials={initialsOf(member.name, member.email)} color="rgba(255, 255, 255, 0.12)" photo={photoOf(member.name)} />
                       <div>
                         <p className="person__name">
                           {member.name}

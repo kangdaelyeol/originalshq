@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { AdminGate } from '@/xtool-auth/admin-gate'
 import { useAdjustmentsViewModel } from './view-model/use-adjustments-view-model'
 import './styles/index.scss'
 
@@ -14,9 +15,21 @@ const effectLabel = (amount: number) =>
  *
  * 카페24 API로는 잡히지 않는 환불 변동(취소 후 환불 없이 철회된 주문 등)을
  * 날짜·금액으로 직접 등록한다. 등록한 값은 CMIP 온라인 매출의 환불 금액과
- * 순매출에 반영된다.
+ * 순매출에 반영된다. xtool 관리자만 쓴다(AdminGate — 서버 functions-cmip도
+ * 같은 기준으로 확인한다).
  */
 export default function Cafe24Adjustments() {
+  return (
+    <AdminGate
+      title="CAFE24 환불 보정"
+      lead="매출 숫자를 바꾸는 화면이라 xtool 관리자만 쓸 수 있어요."
+    >
+      <Cafe24AdjustmentsScreen />
+    </AdminGate>
+  )
+}
+
+function Cafe24AdjustmentsScreen() {
   const { state, actions } = useAdjustmentsViewModel()
   const {
     adjustments,

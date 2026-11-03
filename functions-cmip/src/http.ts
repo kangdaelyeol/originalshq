@@ -1,10 +1,11 @@
-// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 입력 검사(400),
-// 실패 응답(HttpError는 그 상태 코드, 그 밖은 로그 + 500). 각 엔드포인트는 본
-// 처리만 쓴다. 비용 추적은 trace/functions.ts의 onRequest가 붙인다.
+// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 로그인 확인(401·403),
+// 입력 검사(400), 실패 응답(HttpError는 그 상태 코드, 그 밖은 로그 + 500). 각
+// 엔드포인트는 본 처리만 쓴다. 비용 추적은 trace/functions.ts의 onRequest가 붙인다.
 import cors from 'cors'
 import type { Response } from 'express'
 import * as logger from 'firebase-functions/logger'
 import type { Request } from 'firebase-functions/v2/https'
+import { checkAdmin } from './auth'
 import type { ValidationResponse } from './types'
 import { validateGetInsightBody } from './util'
 
@@ -34,6 +35,10 @@ interface EndpointOptions<T> {
   validate?: (request: Request) => ValidationResponse<T>
   /** 500 응답 문구 — 던진 값이 Error가 아닐 때만 쓴다(기본 '서버 오류'). */
   fallback?: string
+  /** 로그인 없이 부를 수 있게 — Google·Cafe24가 부르는 OAuth 콜백만. 그 밖은
+   * xtool 관리자의 ID 토큰이 있어야 한다(auth.ts — 없거나 만료면 401, 관리자가
+   * 아니면 403). */
+  public?: boolean
 }
 
 /**
@@ -63,6 +68,14 @@ export const endpoint =
         if (!methods.includes(request.method as Method)) {
           response.status(405).send({ error: 'Method Not Allowed' })
           return
+        }
+
+        if (!options.public) {
+          const auth = await checkAdmin(request)
+          if (!auth.ok) {
+            response.status(auth.status).send({ error: auth.error })
+            return
+          }
         }
 
         let data = undefined as T

@@ -54,7 +54,8 @@ export const getCafe24AuthUrl = onRequest(
 export const cafe24OauthCallback = onRequest(
   { secrets: [cafe24ClientId, cafe24SecretKey] },
   endpoint(
-    { method: 'GET', fallback: 'Cafe24 OAuth 인증 실패' },
+    // Cafe24가 부르는 주소라 로그인 확인을 하지 않는다.
+    { method: 'GET', fallback: 'Cafe24 OAuth 인증 실패', public: true },
     async ({ request }) => {
       const {
         code,

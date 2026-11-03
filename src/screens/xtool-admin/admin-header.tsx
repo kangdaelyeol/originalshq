@@ -5,9 +5,11 @@ import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/screens/xtool-tech/components/brand/brand-mark'
 import { Avatar } from '@/screens/xtool-tech/components/ui/avatar'
+import { useProfilePhoto } from '@/screens/xtool-tech/data/tech-profiles'
 import { XT_BASE } from '@/screens/xtool-tech/paths'
 
 export function AdminHeader({ member }: { member: XtoolMember }) {
+  const photo = useProfilePhoto(member.email)
   return (
     <header className="glass admin-header">
       <div className="admin-header__brand">
@@ -24,7 +26,7 @@ export function AdminHeader({ member }: { member: XtoolMember }) {
         </Link>
       </nav>
       <div className="admin-header__user" title={member.email}>
-        <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" />
+        <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" photo={photo} />
         <div className="sidebar__user">
           <strong>{member.name || member.email}</strong>
           <span>{member.email}</span>

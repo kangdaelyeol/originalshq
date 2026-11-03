@@ -105,6 +105,22 @@ service cloud.firestore {
       allow read: if isXtoolTeamMember('tech');
     }
 
+    // 프로필 사진(설정 > 프로필 사진) — 기술팀 모두 읽고, 쓰기·지우기는 본인 문서만. 사진은 화면이
+    // 작게 줄여 bytes로 넣는다(100KB 아래).
+    match /xtoolProfiles/{email} {
+      allow read: if isXtoolTeamMember('tech');
+
+      allow create, update: if isXtoolTeamMember('tech') && signedInEmail() == email
+        && request.resource.data.keys().hasOnly(['email', 'name', 'photo', 'photoType', 'updatedAt'])
+        && request.resource.data.email == email
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.photo is bytes && request.resource.data.photo.size() <= 100 * 1024
+        && request.resource.data.photoType in ['image/webp', 'image/jpeg', 'image/png']
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if isXtoolTeamMember('tech') && signedInEmail() == email;
+    }
+
     // This rule allows anyone with your Firestore database reference to view, edit,
     // and delete all data in your Firestore database. It is useful for getting
     // started, but it is configured to expire after 30 days because it

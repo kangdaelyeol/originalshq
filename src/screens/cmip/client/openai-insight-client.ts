@@ -5,6 +5,7 @@
  * insight-client.ts와 거의 동일하게 구현한다 — 프론트에서 따로 합칠 원본 행이 없다
  * (google-insight-client.ts와 달리).
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -19,7 +20,7 @@ export async function getOpenaiInsights(
   dateEnd: ISODate,
 ): Promise<MetaInsightSummary> {
   const params = new URLSearchParams({ dateStart, dateEnd })
-  const res = await fetch(
+  const res = await authFetch(
     `${CMIP_API_BASE}/getOpenaiInsight?${params.toString()}`,
   )
 

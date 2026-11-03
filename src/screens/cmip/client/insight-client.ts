@@ -2,6 +2,7 @@
  * getAllInsights 클라이언트 — functions-cmip `getAllInsights`(onRequest, GET) 호출.
  * onCall/onRequest POST와 달리 쿼리 스트링으로 dateStart/dateEnd(YYYY-MM-DD)를 받는다.
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -158,7 +159,7 @@ export async function getAllInsights(
   dateEnd: ISODate,
 ): Promise<MetaInsightSummary> {
   const params = new URLSearchParams({ dateStart, dateEnd })
-  const res = await fetch(
+  const res = await authFetch(
     `${CMIP_API_BASE}/getAllInsights?${params.toString()}`,
   )
 

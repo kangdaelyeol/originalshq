@@ -5,7 +5,6 @@ import { BasePage } from '@/pages/base-page'
 import { DevPage } from '@/pages/dev-page'
 import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Dev } from '@/screens/dev'
-import Cafe24Adjustments from '@/screens/cafe24-adjustments'
 import HomeScreen from '@/screens/home'
 import PrivacyScreen from '@/screens/privacy'
 import PrivacyDocScreen from '@/screens/privacy/doc'
@@ -38,7 +37,13 @@ export const router = createBrowserRouter([
           Component: (await import('@/screens/parke')).default,
         }),
       },
-      { path: 'cafe24', element: <Cafe24Adjustments /> },
+      {
+        // Lazy: 관리자 로그인(Firebase SDK)을 쓴다 — 다른 화면 번들에 넣지 않는다.
+        path: 'cafe24',
+        lazy: async () => ({
+          Component: (await import('@/screens/cafe24-adjustments')).default,
+        }),
+      },
       {
         // Lazy: xtool 팀 페이지(기술팀 — 앞으로 영업팀·콜백팀) 구성원·권한 관리. Firebase SDK와
         // xtool-tech 유리 부품을 쓴다.

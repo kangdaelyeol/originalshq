@@ -7,6 +7,7 @@
  * 낸다(광고 채널 쪽엔 없는 4번째 버킷 — groupByMonth로 프론트에서 파생하는
  * 대신 서버가 직접 계산해서 준다).
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -69,7 +70,7 @@ export async function getOfflineRevenue(
   dateEnd: ISODate,
 ): Promise<OfflineRevenueSummary> {
   const params = new URLSearchParams({ dateStart, dateEnd })
-  const res = await fetch(
+  const res = await authFetch(
     `${CMIP_API_BASE}/getOfflineRevenue?${params.toString()}`,
   )
 

@@ -3,6 +3,7 @@
  * (onCall의 { data }/{ result } 콜러블 프로토콜이 아님). 성공 시 반환값이 body에
  * 그대로 오고, 실패 시 { error: string } 형태로 온다 (index.ts의 sendError 참고).
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { AlertCheckData, MortarScoreData, WindowStats, ISODate } from '../types'
 
@@ -24,7 +25,7 @@ export async function callFunction<TReq, TRes>(
   name: string,
   data: TReq,
 ): Promise<TRes> {
-  const res = await fetch(`${CMIP_API_BASE}/${name}`, {
+  const res = await authFetch(`${CMIP_API_BASE}/${name}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

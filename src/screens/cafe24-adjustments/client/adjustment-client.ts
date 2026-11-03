@@ -1,3 +1,4 @@
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 
 /** functions-cmip의 cafe24Adjustments 문서 1건 — 관리자가 손으로 넣는 환불
@@ -27,7 +28,7 @@ const request = async <T>(
   pick: (body: Record<string, unknown>) => T,
 ): Promise<ClientResponse<T>> => {
   try {
-    const response = await fetch(`${CMIP_API_BASE}/${endpoint}`, init)
+    const response = await authFetch(`${CMIP_API_BASE}/${endpoint}`, init)
     const body = (await response.json().catch(() => ({}))) as Record<
       string,
       unknown

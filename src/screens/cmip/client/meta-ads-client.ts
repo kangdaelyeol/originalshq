@@ -3,6 +3,7 @@
  * Meta 광고(소재) 단위 광고비와 광고 → 광고셋 → 캠페인 연결을 받는다. "광고
  * 성과" 탭이 Monday 상담의 utm_campaign(광고 이름)과 맞춘다.
  */
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
@@ -28,7 +29,7 @@ export async function getMetaAdInsights(
   dateEnd: ISODate,
 ): Promise<MetaAdInsights> {
   const params = new URLSearchParams({ dateStart, dateEnd })
-  const res = await fetch(
+  const res = await authFetch(
     `${CMIP_API_BASE}/getMetaAdInsights?${params.toString()}`,
   )
 
