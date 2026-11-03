@@ -83,6 +83,16 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     recordingSince: '2026-11-04T09:00:00+09:00',
   },
   {
+    id: 'daangn-creatives',
+    label: '당근 소재',
+    description:
+      '집행 중인 당근 소재(영상·이미지)를 찾아 원본(영상은 스트리밍을 mp4로)과 분석용 프레임을 Storage에 모읍니다.',
+    codebase: 'cmip',
+    functionName: 'syncDaangnCreativesScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-04T09:00:00+09:00',
+  },
+  {
     id: 'google-insights',
     label: 'Google Ads 인사이트',
     description: '최근 14일 캠페인·광고그룹 성과를 다시 읽어 저장합니다.',

@@ -1,5 +1,6 @@
-// 소재 파일 처리 — 내려받아 원본을 Storage에 두고, 분석용 프레임(긴 변 768px
-// JPEG)을 ffmpeg로 뽑아 같이 둔다. 영상은 framePlan 시점마다(첫 3초 촘촘히),
+// 소재 파일 처리 — 내려받아(HLS 스트리밍이면 조각을 받아 mp4 한 파일로) 원본을
+// Storage에 두고, 분석용 프레임(긴 변 768px JPEG)을 ffmpeg로 뽑아 같이 둔다.
+// 내려받기는 늘 Node가 하고 ffmpeg는 로컬 파일만 다룬다(fetchHls 참고). 영상은 framePlan 시점마다(첫 3초 촘촘히),
 // 이미지는 한 장. Claude는 영상을 직접 받지 않아서 분석은 이 프레임으로 한다.
 import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
@@ -64,13 +65,120 @@ export const isMissingBucket = (err: unknown) =>
  * 소재 하나를 처리한다 — url에서 내려받아 Storage의 adCreatives/{id}/에 원본과
  * frames/를 올린다. 같은 id로 다시 돌리면 덮어쓴다.
  */
-export async function processCreativeMedia(
-  id: string,
-  kind: CreativeKind,
-  url: string,
-  knownLengthSec: number | null,
-): Promise<CreativeMedia> {
+/** 파일 주소 — hls면 스트리밍 목록(.m3u8, 당근 영상)이라 ffmpeg로 mp4 한
+ * 파일로 받는다. */
+export interface MediaSource {
+  url: string
+  lengthSec: number | null
+  hls?: boolean
+}
+
+/** 목록을 받는다 — 당근 재생 주소는 서명된 다른 주소로 넘어가므로(301), 조각
+ * 주소는 넘어간 뒤의 최종 주소(res.url)를 기준으로 만들어야 한다. */
+const fetchPlaylist = async (url: string) => {
   const res = await fetch(url)
+  if (!res.ok) throw new Error(`HLS 목록 받기 실패(HTTP ${res.status})`)
+  return { text: await res.text(), url: res.url || url }
+}
+
+/** 목록의 URI 줄들(주석·빈 줄 제외)을 목록 주소 기준 절대 주소로. */
+const uriLines = (text: string, base: string) =>
+  text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'))
+    .map((l) => new URL(l, base).toString())
+
+/**
+ * HLS 스트림을 한 파일로 받는다 — 화질이 여러 개인 목록(master)이면 가장 높은
+ * 대역폭을 고르고, 조각(.ts)을 차례로 받아 이어 붙인다(MPEG-TS는 그대로 이어
+ * 붙여도 된다). fMP4 조각이면 초기화 조각(EXT-X-MAP)을 앞에 붙인다. 암호화된
+ * 스트림은 받지 않는다.
+ */
+async function fetchHls(
+  url: string,
+  dir: string,
+): Promise<{ ext: 'ts' | 'mp4' }> {
+  let { text, url: playlistUrl } = await fetchPlaylist(url)
+  if (text.includes('#EXT-X-STREAM-INF')) {
+    const lines = text.split('\n').map((l) => l.trim())
+    let best: { bandwidth: number; uri: string } | null = null
+    for (const [i, line] of lines.entries()) {
+      if (!line.startsWith('#EXT-X-STREAM-INF')) continue
+      const bandwidth = Number(line.match(/BANDWIDTH=(\d+)/)?.[1] ?? 0)
+      const uri = lines.slice(i + 1).find((l) => l && !l.startsWith('#'))
+      if (uri && (!best || bandwidth > best.bandwidth))
+        best = { bandwidth, uri }
+    }
+    if (!best) throw new Error('HLS 목록에 재생할 화질이 없습니다')
+    ;({ text, url: playlistUrl } = await fetchPlaylist(
+      new URL(best.uri, playlistUrl).toString(),
+    ))
+  }
+  if (/#EXT-X-KEY:(?!.*METHOD=NONE)/.test(text))
+    throw new Error('암호화된 HLS 영상은 받을 수 없습니다')
+
+  const map = text.match(/#EXT-X-MAP:.*URI="([^"]+)"/)?.[1]
+  const parts = [
+    ...(map ? [new URL(map, playlistUrl).toString()] : []),
+    ...uriLines(text, playlistUrl),
+  ]
+  if (parts.length === 0) throw new Error('HLS 목록에 조각이 없습니다')
+
+  const chunks: Buffer[] = []
+  let bytes = 0
+  for (const part of parts) {
+    const res = await fetch(part)
+    if (!res.ok) throw new Error(`HLS 조각 받기 실패(HTTP ${res.status})`)
+    const chunk = Buffer.from(await res.arrayBuffer())
+    bytes += chunk.length
+    if (bytes > MAX_BYTES) throw new Error(`파일이 너무 큽니다(${bytes} bytes)`)
+    chunks.push(chunk)
+  }
+  const ext = map ? 'mp4' : 'ts'
+  await writeFile(join(dir, `stream.${ext}`), Buffer.concat(chunks))
+  return { ext }
+}
+
+/** 원본을 임시 폴더에 받는다 — 일반 파일은 그대로, HLS는 스트림을 복사해 mp4로. */
+async function download(
+  dir: string,
+  kind: CreativeKind,
+  source: MediaSource,
+): Promise<{ input: string; body: Buffer; contentType: string }> {
+  if (source.hls) {
+    // 조각은 Node가 받고 ffmpeg에는 로컬 파일만 준다 — 운영(리눅스)의 정적
+    // 빌드 ffmpeg는 네트워크 주소를 직접 열면 이름 찾기(DNS)에서 죽는다
+    // (signal 11, 2026-11-03 당근 영상).
+    const stream = join(dir, `stream.${(await fetchHls(source.url, dir)).ext}`)
+    const input = join(dir, 'original.mp4')
+    // 다시 인코딩하지 않고 그대로 mp4에 담는다(-c copy). AAC 오디오는 mp4에
+    // 넣으려면 비트스트림 변환이 필요하다.
+    try {
+      await run(ffmpeg(), [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        stream,
+        '-c',
+        'copy',
+        '-bsf:a',
+        'aac_adtstoasc',
+        '-y',
+        input,
+      ])
+    } catch (err) {
+      // 명령 줄 전체 대신 ffmpeg가 남긴 마지막 오류 한 줄만.
+      const stderr = (err as { stderr?: string }).stderr?.trim() ?? ''
+      throw new Error(
+        `HLS 영상 변환 실패 — ${stderr.split('\n').pop() || '알 수 없는 오류'}`,
+      )
+    }
+    const body = await readFile(input)
+    return { input, body, contentType: 'video/mp4' }
+  }
+  const res = await fetch(source.url)
   if (!res.ok) throw new Error(`파일 내려받기 실패(HTTP ${res.status})`)
   const length = Number(res.headers.get('content-length') ?? 0)
   if (length > MAX_BYTES) throw new Error(`파일이 너무 큽니다(${length} bytes)`)
@@ -78,11 +186,20 @@ export async function processCreativeMedia(
     res.headers.get('content-type') ??
     (kind === 'video' ? 'video/mp4' : 'image/jpeg')
   const body = Buffer.from(await res.arrayBuffer())
+  const input = join(dir, `original.${extOf(contentType)}`)
+  await writeFile(input, body)
+  return { input, body, contentType }
+}
 
+export async function processCreativeMedia(
+  id: string,
+  kind: CreativeKind,
+  source: MediaSource,
+): Promise<CreativeMedia> {
   const dir = await mkdtemp(join(tmpdir(), 'creative-'))
   try {
-    const input = join(dir, `original.${extOf(contentType)}`)
-    await writeFile(input, body)
+    const { input, body, contentType } = await download(dir, kind, source)
+    const knownLengthSec = source.lengthSec
     const info = await probe(input)
     const lengthSec =
       kind === 'video' ? (knownLengthSec ?? info.lengthSec) : null

@@ -202,14 +202,29 @@
   }
 }
 
+// 그룹 제목 줄 — 위로 스크롤하면 맨 위에 붙고 칸 머리글이 그 바로 아래에 붙는다(어느 그룹을 보고
+// 있는지 늘 보이게). 줄은 표 너비만큼 바탕을 칠해 지나가는 줄을 가리고, 안의 글자는 옆으로 밀어도
+// 왼쪽에 붙는다. 다음 그룹이 올라오면 그 그룹 제목으로 바뀐다(sticky가 그룹 안에서만).
+$group-title-h: 40px;
+
 .mon-group__title {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: $group-title-h;
+  background: var(--mon-bg);
+  // 판 왼쪽 여백(.mon-scroll padding)까지 덮는다.
+  box-shadow: -24px 0 0 var(--mon-bg);
+}
+
+.mon-group__title-inner {
   position: sticky;
   left: 0;
   display: flex;
   align-items: center;
   gap: 10px;
   width: fit-content;
-  height: 40px;
+  height: 100%;
 }
 
 .mon-group__toggle {
@@ -286,8 +301,9 @@
 
 .mon-row--head {
   position: sticky;
-  top: 0;
-  z-index: 3;
+  top: $group-title-h;
+  // 제목 줄(5) 위 — 위 테두리에 걸친 정렬 동그라미가 제목 줄에 가려지지 않게
+  z-index: 6;
 
   .mon-cell {
     border-top: 1px solid var(--mon-line);
@@ -1401,6 +1417,12 @@ $sub-row: 34px;
 
   .mon-group:first-child {
     margin-top: 6px;
+  }
+
+  // 그룹 제목 줄 — 박스 바탕색으로, 박스 왼쪽 여백(18px)까지
+  .mon-group__title {
+    background: var(--mon-workbox);
+    box-shadow: -18px 0 0 var(--mon-workbox);
   }
 
   // 옆으로 밀 때 이름 칸이 박스 왼쪽 여백(18px)을 박스 바탕색으로 덮는다(판 여백 24px 대신).

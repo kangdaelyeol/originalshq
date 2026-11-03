@@ -11,6 +11,9 @@ export const ADVERTISER_ID = '4620635'
 /** 목록 API 한 쪽의 크기. */
 export const PAGE_SIZE = 100
 
+/** 부가세 — 당근 비용은 VAT 포함이라 다른 매체와 맞출 때 나눈다. */
+export const VAT_RATE = 1.1
+
 /** 성과 API 한 번의 한도 — ID 50개, 기간 31일(문서). */
 export const PERFORMANCE_MAX_IDS = 50
 export const PERFORMANCE_MAX_DAYS = 31

@@ -30,6 +30,7 @@ const docToRow = (d: QueryDocumentSnapshot<DocumentData>): DaangnInsightRow => {
     impressions: x.impressions,
     clicks: x.clicks,
     spend: x.spend,
+    spendWithVat: x.spendWithVat,
     conversions: x.conversions,
     revenue: x.revenue,
     date_start: x.date_start,

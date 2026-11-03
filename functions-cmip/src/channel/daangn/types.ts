@@ -64,8 +64,11 @@ export interface DaangnInsightRow {
   adgroup_name: string
   impressions: number
   clicks: number
-  /** 당근이 준 비용 그대로(원). VAT 포함 여부는 화면 숫자와 맞춰 확인 중. */
+  /** 광고비(원, VAT 별도) — 다른 매체(Meta·Google·네이버) 광고비가 VAT 별도라
+   * 합산·ROAS가 맞게, 당근이 준 비용(VAT 포함)을 1.1로 나눠 반올림했다. */
   spend: number
+  /** 당근이 준 비용 그대로(원, VAT 포함) — 당근비즈니스 화면 숫자와 같다. */
+  spendWithVat: number
   /** 구매 건수. */
   conversions: number
   /** 구매 금액(purchasePrice). */

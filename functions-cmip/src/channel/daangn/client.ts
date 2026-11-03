@@ -5,6 +5,7 @@ import { addDays } from '../utils'
 import {
   ADVERTISER_ID,
   API_BASE_URL,
+  VAT_RATE,
   PAGE_SIZE,
   PERFORMANCE_MAX_DAYS,
   PERFORMANCE_MAX_IDS,
@@ -133,8 +134,9 @@ export async function fetchAllDaangnInsightRows(
         const date = kstDateOf(p.duration)
         // 기간 끝을 포함하는 날까지 오므로 요청한 범위만 남긴다.
         if (date < start || date > end) continue
-        const spend = Number(p.cost ?? 0)
-        if (!(p.impression || p.click || spend)) continue
+        // 당근 비용은 VAT 포함이다(2026-11-03 당근비즈니스 화면과 대조).
+        const spendWithVat = Number(p.cost ?? 0)
+        if (!(p.impression || p.click || spendWithVat)) continue
         const group = byId.get(p.id)
         rows.push({
           campaign_id: group?.campaignId ?? '',
@@ -143,7 +145,8 @@ export async function fetchAllDaangnInsightRows(
           adgroup_name: group?.title ?? '',
           impressions: p.impression ?? 0,
           clicks: p.click ?? 0,
-          spend,
+          spend: Math.round(spendWithVat / VAT_RATE),
+          spendWithVat,
           conversions: p.purchase ?? 0,
           revenue: p.purchasePrice ?? 0,
           date_start: date,

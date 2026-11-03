@@ -1,8 +1,11 @@
 // 광고 소재 엔드포인트 — 집행 중인 광고의 소재(이미지·영상)를 매체에서 가져와
-// 원본과 분석용 프레임을 Storage에 모은다(creatives/). 지금은 Meta만.
-import { metaAdsId } from '../config'
+// 원본과 분석용 프레임을 Storage에 모은다(creatives/). 지금은 Meta·당근.
+import { daangnAdsApiKey, metaAdsId } from '../config'
 import { recordBatchRun } from '../batch-log'
-import { syncMetaCreatives as syncMetaCreativesFromApi } from '../creatives'
+import {
+  syncDaangnCreatives as syncDaangnCreativesFromApi,
+  syncMetaCreatives as syncMetaCreativesFromApi,
+} from '../creatives'
 import { db } from '../data'
 import { endpoint } from '../http'
 import { scheduledSync } from '../scheduled-sync'
@@ -36,6 +39,44 @@ export const syncMetaCreativesScheduled = scheduledSync({
       job: 'meta-creatives',
       label: 'Meta 소재',
       run: () => syncMetaCreativesFromApi(metaAdsId.value(), deadline()),
+    },
+  ],
+})
+
+/** 당근 소재 수동 실행(POST) — 결과는 /log에도 남는다. */
+export const syncDaangnCreatives = onRequest(
+  {
+    secrets: [daangnAdsApiKey],
+    timeoutSeconds: TIMEOUT_SECONDS,
+    memory: MEMORY,
+  },
+  endpoint({ method: 'POST', fallback: '당근 소재 동기화 실패' }, () =>
+    recordBatchRun(
+      db,
+      { job: 'daangn-creatives', codebase: 'cmip', trigger: 'manual' },
+      () =>
+        syncDaangnCreativesFromApi(
+          { apiKey: daangnAdsApiKey.value() },
+          deadline(),
+        ),
+    ),
+  ),
+)
+
+export const syncDaangnCreativesScheduled = scheduledSync({
+  secrets: [daangnAdsApiKey],
+  windowDays: 0,
+  timeoutSeconds: TIMEOUT_SECONDS,
+  memory: MEMORY,
+  jobs: [
+    {
+      job: 'daangn-creatives',
+      label: '당근 소재',
+      run: () =>
+        syncDaangnCreativesFromApi(
+          { apiKey: daangnAdsApiKey.value() },
+          deadline(),
+        ),
     },
   ],
 })

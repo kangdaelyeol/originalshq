@@ -266,12 +266,15 @@ export function GroupTable(props: GroupTableProps) {
 
   return (
     <section className={cx('mon-group', collapsed && 'is-collapsed')} style={style} role="table" aria-label={group.title}>
+      {/* 제목 줄은 위에 붙고(그 아래 칸 머리글), 안의 글자는 옆으로 밀어도 왼쪽에 붙는다. */}
       <div className="mon-group__title">
-        <button type="button" className="mon-group__toggle" aria-expanded={!collapsed} onClick={onToggle}>
-          <Chevron size={18} strokeWidth={2.2} aria-hidden />
-          <span className="mon-group__name">{group.title}</span>
-        </button>
-        <span className="mon-group__count">{group.items.length}개 항목</span>
+        <div className="mon-group__title-inner">
+          <button type="button" className="mon-group__toggle" aria-expanded={!collapsed} onClick={onToggle}>
+            <Chevron size={18} strokeWidth={2.2} aria-hidden />
+            <span className="mon-group__name">{group.title}</span>
+          </button>
+          <span className="mon-group__count">{group.items.length}개 항목</span>
+        </div>
       </div>
 
       {!collapsed && (

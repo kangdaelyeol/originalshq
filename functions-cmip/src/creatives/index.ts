@@ -1,18 +1,25 @@
-// 광고 소재 동기화 — 매체에서 집행 중인 광고의 소재를 찾아 adCreatives에 모으고,
-// 아직 처리하지 않은 소재를 몇 개씩 내려받아 프레임을 뽑는다(media.ts).
+// 광고 소재 동기화 — 매체(Meta·당근)에서 집행 중인 광고의 소재를 찾아
+// adCreatives에 모으고, 아직 처리하지 않은 소재를 몇 개씩 내려받아 프레임을
+// 뽑는다(media.ts).
 // 쓰기를 줄이려고, 이미 있는 소재는 광고가 늘었거나 날짜가 바뀐 경우에만 고친다.
 import type { WriteBatch } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
+import type { DaangnCredentials } from '../channel/daangn/client'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
-import { isMissingBucket, processCreativeMedia } from './media'
+import { findActiveDaangnCreatives } from './daangn'
 import {
-  findActiveMetaCreatives,
-  mediaUrlOf,
-  pageTokensOf,
+  isMissingBucket,
+  processCreativeMedia,
+  type MediaSource,
+} from './media'
+import { findActiveMetaCreatives, mediaUrlOf, pageTokensOf } from './meta'
+import {
+  AD_CREATIVES,
+  type AdCreative,
+  type CreativeChannel,
   type FoundCreative,
-} from './meta'
-import { AD_CREATIVES, type AdCreative } from './types'
+} from './types'
 
 export * from './types'
 
@@ -23,11 +30,13 @@ const PROCESS_PER_RUN = 60
 /** 이만큼 실패하면 failed로 멈춘다(그 전까지는 다음 실행에 다시 시도). */
 const MAX_ATTEMPTS = 3
 
-const adsetKeysOf = (ads: FoundCreative['ads']) =>
-  [...new Set(Object.values(ads).map((a) => `meta:adset:${a.adsetId}`))].sort()
+const adsetKeysOf = (channel: CreativeChannel, ads: FoundCreative['ads']) =>
+  [
+    ...new Set(Object.values(ads).map((a) => `${channel}:adset:${a.adsetId}`)),
+  ].sort()
 
 export interface CreativeSyncResult {
-  /** 집행 중인 광고 수와 거기서 찾은 소재 수. */
+  /** 집행 중인 광고(당근은 소재) 수와 거기서 찾은 소재 수. */
   ads: number
   creatives: number
   /** 이번에 처음 본 소재. */
@@ -40,32 +49,25 @@ export interface CreativeSyncResult {
   pending: number
 }
 
-/**
- * Meta 소재 동기화. deadlineMs(벽시계 시각)가 가까우면 처리를 멈추고 남은 건
- * 다음 실행에 넘긴다.
- */
-export async function syncMetaCreatives(
-  accessToken: string,
-  deadlineMs: number,
-): Promise<CreativeSyncResult> {
+/** 1) 찾은 소재를 adCreatives에 모은다 — 이미 있는 문서는 한 번에 읽고,
+ * 광고가 늘었거나 날짜가 바뀐 것만 고친다. */
+async function recordFound(
+  found: readonly FoundCreative[],
+): Promise<{ newCreatives: number; updated: number }> {
   const today = todayISO()
-  const found = await findActiveMetaCreatives(accessToken)
-
-  // 1) 찾은 소재를 모은다 — 이미 있는 문서는 한 번에 읽는다.
-  const refs = found.creatives.map((c) => db.collection(AD_CREATIVES).doc(c.id))
+  const refs = found.map((c) => db.collection(AD_CREATIVES).doc(c.id))
   const existing = refs.length ? await db.getAll(...refs) : []
   let newCreatives = 0
   let updated = 0
   // 쓰기 묶음은 500건이 상한이라 400건씩 나눠 쓴다.
   const writes: ((batch: WriteBatch) => void)[] = []
-  for (const [index, creative] of found.creatives.entries()) {
+  for (const [index, creative] of found.entries()) {
     const snap = existing[index]
-    const adsetKeys = adsetKeysOf(creative.ads)
     if (!snap.exists) {
       const doc: AdCreative = {
         ...creative,
-        channel: 'meta',
-        adsetKeys,
+        sourceUrl: creative.sourceUrl ?? null,
+        adsetKeys: adsetKeysOf(creative.channel, creative.ads),
         firstSeenAt: Date.now(),
         lastSeenDate: today,
         status: 'pending',
@@ -87,9 +89,11 @@ export async function syncMetaCreatives(
     writes.push((batch) =>
       batch.update(refs[index], {
         ads,
-        adsetKeys: adsetKeysOf(ads),
+        adsetKeys: adsetKeysOf(creative.channel, ads),
         lastSeenDate: today,
         pageId: prev.pageId ?? creative.pageId,
+        // 당근 재생 주소가 바뀌었으면 새 것으로(다시 받을 때 쓴다).
+        sourceUrl: creative.sourceUrl ?? prev.sourceUrl ?? null,
       }),
     )
     updated += 1
@@ -99,16 +103,26 @@ export async function syncMetaCreatives(
     for (const write of writes.slice(i, i + 400)) write(batch)
     await batch.commit()
   }
+  return { newCreatives, updated }
+}
 
-  // 2) 처리 안 한 소재를 몇 개씩 — 새로 찾은 것만이 아니라 지난번에 못 한 것도.
+/** 2) 그 채널의 처리 안 한 소재를 몇 개씩 — 새로 찾은 것만이 아니라 지난번에
+ * 못 한 것도. prepare가 소재마다 받을 주소를 정하는 함수를 돌려준다(Meta는
+ * 페이지 토큰을 한 번만 받으려고 미리 준비한다). */
+async function processPending(
+  channel: CreativeChannel,
+  deadlineMs: number,
+  prepare: (
+    pending: AdCreative[],
+  ) => Promise<(c: AdCreative) => Promise<MediaSource>>,
+): Promise<Pick<CreativeSyncResult, 'processed' | 'failed' | 'pending'>> {
   const pendingSnap = await db
     .collection(AD_CREATIVES)
     .where('status', '==', 'pending')
+    .where('channel', '==', channel)
     .get()
   const pending = pendingSnap.docs.map((d) => d.data() as AdCreative)
-  const pageTokens = pending.some((c) => c.kind === 'video')
-    ? await pageTokensOf(accessToken)
-    : new Map<string, string>()
+  const sourceOf = await prepare(pending)
 
   let processed = 0
   let stopped = 0
@@ -117,16 +131,11 @@ export async function syncMetaCreatives(
     if (Date.now() > deadlineMs) break
     const ref = db.collection(AD_CREATIVES).doc(creative.id)
     try {
-      const { url, lengthSec } = await mediaUrlOf(
-        creative,
-        accessToken,
-        pageTokens,
-      )
+      const source = await sourceOf(creative)
       const media = await processCreativeMedia(
         creative.id,
         creative.kind,
-        url,
-        lengthSec,
+        source,
       )
       await ref.update({ status: 'ready', media, error: null })
       processed += 1
@@ -147,15 +156,62 @@ export async function syncMetaCreatives(
       if (attempts >= MAX_ATTEMPTS) stopped += 1
     }
   }
+  // 실패해도 MAX_ATTEMPTS 전이면 다시 시도할 거라 남은 것에 든다.
+  return { processed, failed, pending: pending.length - processed - stopped }
+}
 
+/**
+ * Meta 소재 동기화. deadlineMs(벽시계 시각)가 가까우면 처리를 멈추고 남은 건
+ * 다음 실행에 넘긴다.
+ */
+export async function syncMetaCreatives(
+  accessToken: string,
+  deadlineMs: number,
+): Promise<CreativeSyncResult> {
+  const found = await findActiveMetaCreatives(accessToken)
+  const recorded = await recordFound(found.creatives)
+  const processed = await processPending(
+    'meta',
+    deadlineMs,
+    async (pending) => {
+      // 영상은 페이지 토큰으로만 파일 주소가 온다(meta.ts 참고).
+      const pageTokens = pending.some((c) => c.kind === 'video')
+        ? await pageTokensOf(accessToken)
+        : new Map<string, string>()
+      return (creative) => mediaUrlOf(creative, accessToken, pageTokens)
+    },
+  )
   return {
     ads: found.ads,
     creatives: found.creatives.length,
-    newCreatives,
-    updated,
-    processed,
-    failed,
-    // 실패해도 MAX_ATTEMPTS 전이면 다시 시도할 거라 남은 것에 든다.
-    pending: pending.length - processed - stopped,
+    ...recorded,
+    ...processed,
+  }
+}
+
+/** 당근 소재 동기화 — 주소는 찾을 때 받아 둔 것(sourceUrl). 영상은 HLS다. */
+export async function syncDaangnCreatives(
+  credentials: DaangnCredentials,
+  deadlineMs: number,
+): Promise<CreativeSyncResult> {
+  const found = await findActiveDaangnCreatives(credentials)
+  const recorded = await recordFound(found.creatives)
+  const processed = await processPending(
+    'daangn',
+    deadlineMs,
+    async () => async (creative) => {
+      if (!creative.sourceUrl) throw new Error('파일 주소가 없습니다')
+      return {
+        url: creative.sourceUrl,
+        lengthSec: null,
+        hls: creative.kind === 'video',
+      }
+    },
+  )
+  return {
+    ads: found.ads,
+    creatives: found.creatives.length,
+    ...recorded,
+    ...processed,
   }
 }

@@ -8,7 +8,7 @@
 //     토큰으로 물어야 온다(me/accounts에서 받는다).
 import { META_AD_ACCOUNT_IDS } from '../channel/meta'
 import { graphGet } from '../channel/meta/creatives'
-import type { CreativeAd, CreativeKind } from './types'
+import type { CreativeKind, FoundCreative } from './types'
 
 interface RawCreative {
   image_hash?: string
@@ -31,16 +31,6 @@ interface RawAd {
   adset_id?: string
   campaign_id?: string
   creative?: RawCreative
-}
-
-/** 찾은 소재 하나 — 문서 id 기준으로 광고를 모은 것. */
-export interface FoundCreative {
-  id: string
-  kind: CreativeKind
-  mediaId: string
-  accountId: string
-  pageId: string | null
-  ads: Record<string, CreativeAd>
 }
 
 export const creativeId = (kind: CreativeKind, mediaId: string) =>
@@ -123,8 +113,9 @@ export async function findActiveMetaCreatives(
       if (!ad.creative || !ad.adset_id || !ad.campaign_id) continue
       for (const { kind, mediaId } of mediaOf(ad.creative)) {
         const id = creativeId(kind, mediaId)
-        const found = byId.get(id) ?? {
+        const found: FoundCreative = byId.get(id) ?? {
           id,
+          channel: 'meta',
           kind,
           mediaId,
           accountId,

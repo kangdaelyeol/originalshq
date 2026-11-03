@@ -38,7 +38,10 @@ service cloud.firestore {
 
     match /xtoolMembers/{memberId} {
       // 본인 문서는 메일 인증 전에도 읽는다 — 로그인·가입할 때 등록 여부를 확인해야 해서.
-      allow read: if (request.auth != null && signedInEmail() == memberId) || isXtoolAdmin();
+      // 기술팀원은 기술팀으로 등록된 사람의 문서를 읽는다(내 업무의 직원 목록) — 다른 팀만
+      // 등록된 사람은 못 읽는다. 목록은 where('teams.tech', '==', true)로 물어야 통과한다.
+      allow read: if (request.auth != null && signedInEmail() == memberId) || isXtoolAdmin()
+        || (isXtoolTeamMember('tech') && resource.data.get('teams', {}).get('tech', false) == true);
 
       allow create: if isXtoolAdmin()
         && request.resource.data.keys().hasOnly(

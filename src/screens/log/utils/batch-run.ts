@@ -227,7 +227,8 @@ export const summarizeRun = (run: BatchRun): string => {
         `항목 ${num(sum('count'))}건 (변경 ${num(sum('written'))}·삭제 ${num(sum('deleted'))})`,
       ].join(' · ')
     }
-    case 'meta-creatives': {
+    case 'meta-creatives':
+    case 'daangn-creatives': {
       const failed = (result.failed as unknown[] | undefined) ?? []
       return [
         `소재 ${num(result.creatives)}개 (새 ${num(result.newCreatives)})`,
