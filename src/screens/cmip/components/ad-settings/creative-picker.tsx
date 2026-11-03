@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import type { AdCreativeView } from '../../client'
+import {
+  analyzeCreative,
+  type AdCreativeView,
+  type CreativeAnalysis,
+} from '../../client'
 import type { AdCreativesState } from '../../view-model/use-ad-creatives'
 
 const lengthLabel = (c: AdCreativeView) =>
@@ -14,13 +18,126 @@ const shortDate = (iso: string) => {
   return `${m}/${d}`
 }
 
-/** 소재 하나 크게 — 원본(영상은 재생)과 분석용 프레임 전부, 쓴 광고. */
+const STRENGTH_LABEL: Record<string, string> = {
+  strong: '강함',
+  medium: '보통',
+  weak: '약함',
+}
+
+/** 분석 결과 — 퍼셉트론 게시본 프롬프트로 Claude가 본 것. 프레임 수만큼
+ * 비용이 들어(영상 30장이면 약 $0.2) 누를 때만 돈다. */
+function CreativeAnalysisPanel({
+  creative,
+  onAnalyzed,
+}: {
+  creative: AdCreativeView
+  onAnalyzed: (analysis: CreativeAnalysis) => void
+}) {
+  const [running, setRunning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const analysis = creative.analysis
+  const canRun = creative.status === 'ready' && !running
+
+  const run = async () => {
+    setRunning(true)
+    setError(null)
+    try {
+      onAnalyzed(await analyzeCreative(creative.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  const r = analysis?.status === 'done' ? analysis.result : null
+  const rows: [string, string][] = r
+    ? [
+        ['주제', r.topic],
+        [
+          '훅',
+          `${r.hook.technique} · ${STRENGTH_LABEL[r.hook.strength] ?? r.hook.strength} — ${r.hook.firstSeconds}`,
+        ],
+        ['핵심 메시지', r.message],
+        ['톤', r.tone],
+        ['대상', r.persona],
+        ['CTA', r.cta],
+        ['형식', r.format],
+      ]
+    : []
+
+  return (
+    <section className="ad-creative-modal__analysis">
+      <div className="ad-creative-modal__analysis-head">
+        <h5>
+          분석{' '}
+          {analysis && (
+            <span>
+              {analysis.caseTitle} · 망 v{analysis.graphVersion}
+              {analysis.model ? ` · ${analysis.model}` : ''}
+              {analysis.costUsd != null
+                ? ` · $${analysis.costUsd.toFixed(3)}`
+                : ''}
+            </span>
+          )}
+        </h5>
+        <button
+          type="button"
+          className="ad-button is-small is-primary"
+          onClick={run}
+          disabled={!canRun}
+        >
+          {running ? '분석 중… (수십 초)' : analysis ? '다시 분석' : '분석하기'}
+        </button>
+      </div>
+      {error && (
+        <p className="ad-results__note">분석하지 못했습니다 — {error}</p>
+      )}
+      {!analysis && !error && (
+        <p className="ad-results__note">
+          퍼셉트론에 게시한 프롬프트(CREATIVE ANALYSIS)로 Claude가 프레임을 보고
+          주제·훅·메시지를 정리합니다.
+        </p>
+      )}
+      {analysis?.status === 'hold' && (
+        <p className="ad-results__note">
+          게이트가 사람 검토로 보냈습니다(신뢰도가 기준보다 낮아 Claude를 부르지
+          않았습니다).
+        </p>
+      )}
+      {analysis?.status === 'failed' && (
+        <p className="ad-results__note">실패 — {analysis.error}</p>
+      )}
+      {r && (
+        <>
+          <p className="ad-creative-modal__summary">{r.summary}</p>
+          <dl className="ad-creative-modal__facts">
+            {rows.map(([label, value]) => (
+              <div key={label}>
+                <dt>{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
+          <details className="ad-creative-modal__detail">
+            <summary>퍼셉트론 출력 원문</summary>
+            <pre>{r.detail}</pre>
+          </details>
+        </>
+      )}
+    </section>
+  )
+}
+
+/** 소재 하나 크게 — 원본(영상은 재생)과 분석, 분석용 프레임 전부, 쓴 광고. */
 function CreativePreview({
   creative,
   onClose,
+  onAnalyzed,
 }: {
   creative: AdCreativeView
   onClose: () => void
+  onAnalyzed: (analysis: CreativeAnalysis) => void
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -83,6 +200,8 @@ function CreativePreview({
           </p>
         )}
 
+        <CreativeAnalysisPanel creative={creative} onAnalyzed={onAnalyzed} />
+
         {media && media.frames.length > 1 && (
           <section className="ad-creative-modal__frames">
             <h5>
@@ -130,7 +249,9 @@ export function CreativePicker({
   selected: readonly string[]
   onToggle: (id: string) => void
 }) {
-  const [preview, setPreview] = useState<AdCreativeView | null>(null)
+  const [previewId, setPreviewId] = useState<string | null>(null)
+  // 이 화면에서 방금 분석한 결과 — 목록을 다시 받지 않고 카드·창에 바로 보인다.
+  const [analyzed, setAnalyzed] = useState<Record<string, CreativeAnalysis>>({})
 
   if (state.status === 'loading')
     return <p className="ad-results__note">소재를 불러오는 중…</p>
@@ -141,7 +262,10 @@ export function CreativePicker({
       </p>
     )
 
-  const creatives = state.creatives
+  const creatives = state.creatives.map((c) =>
+    analyzed[c.id] ? { ...c, analysis: analyzed[c.id] } : c,
+  )
+  const preview = creatives.find((c) => c.id === previewId) ?? null
   const known = new Set(creatives.map((c) => c.id))
   const missing = selected.filter((id) => !known.has(id)).length
   const active = creatives.filter((c) => c.active).length
@@ -178,7 +302,7 @@ export function CreativePicker({
                 <button
                   type="button"
                   className="ad-creative__thumb"
-                  onClick={() => setPreview(c)}
+                  onClick={() => setPreviewId(c.id)}
                   aria-label="크게 보기"
                 >
                   {c.media?.thumbnailUrl ? (
@@ -189,6 +313,9 @@ export function CreativePicker({
                     </span>
                   )}
                   <span className="ad-creative__kind">{lengthLabel(c)}</span>
+                  {c.analysis?.status === 'done' && (
+                    <span className="ad-creative__analyzed">분석됨</span>
+                  )}
                 </button>
                 <label className="ad-creative__pick">
                   <input
@@ -210,7 +337,13 @@ export function CreativePicker({
       )}
 
       {preview && (
-        <CreativePreview creative={preview} onClose={() => setPreview(null)} />
+        <CreativePreview
+          creative={preview}
+          onClose={() => setPreviewId(null)}
+          onAnalyzed={(analysis) =>
+            setAnalyzed((prev) => ({ ...prev, [preview.id]: analysis }))
+          }
+        />
       )}
     </section>
   )

@@ -16,6 +16,7 @@
     "logs": "firebase functions:log"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "cors": "^2.8.6",
     "ffmpeg-static": "^5.2.0",
     "firebase-admin": "^13.10.0",

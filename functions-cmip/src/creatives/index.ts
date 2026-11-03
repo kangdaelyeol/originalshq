@@ -25,6 +25,7 @@ import {
 
 export * from './types'
 export * from './list'
+export * from './analyze'
 
 /** 한 번 실행에 처리(내려받기·프레임)할 최대 소재 수 — 나머지는 다음 실행에.
  * 제한 시간(deadlineMs)이 먼저 오면 그 전에 멈춘다. 이미지는 하나에 1초 남짓,

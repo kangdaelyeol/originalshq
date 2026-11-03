@@ -918,3 +918,90 @@ textarea.ad-input {
   color: $text-2;
   word-break: break-all;
 }
+
+// 분석(creative-picker.tsx CreativeAnalysisPanel).
+.ad-creative__analyzed {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--glass-accent) 85%, transparent);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #15170d;
+}
+.ad-creative-modal__analysis {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ad-creative-modal__analysis-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  h5 {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $text;
+
+    span {
+      margin-left: 4px;
+      font-weight: 400;
+      color: $text-3;
+    }
+  }
+}
+.ad-creative-modal__summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: $text;
+}
+.ad-creative-modal__facts {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+
+  div {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: $fill-1;
+  }
+  dt {
+    font-size: 11.5px;
+    color: $text-3;
+  }
+  dd {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: $text;
+    word-break: break-word;
+  }
+}
+.ad-creative-modal__detail {
+  font-size: 12px;
+  color: $text-3;
+
+  summary {
+    cursor: pointer;
+  }
+  pre {
+    margin: 6px 0 0;
+    padding: 10px;
+    overflow-x: auto;
+    border-radius: 10px;
+    background: $fill-1;
+    font-size: 11.5px;
+    color: $text-2;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

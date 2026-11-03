@@ -73,4 +73,6 @@ export interface AdCreative extends FoundCreative {
   attempts: number
   error: string | null
   media: CreativeMedia | null
+  /** 마지막 분석(analyze.ts) — 분석하기 전에는 없다. */
+  analysis?: import('./analyze').CreativeAnalysis
 }

@@ -1,8 +1,9 @@
 // 광고 소재 엔드포인트 — 집행 중인 광고의 소재(이미지·영상)를 매체에서 가져와
 // 원본과 분석용 프레임을 Storage에 모은다(creatives/). 지금은 Meta·당근.
-import { daangnAdsApiKey, metaAdsId } from '../config'
+import { anthropicApiKey, daangnAdsApiKey, metaAdsId } from '../config'
 import { recordBatchRun } from '../batch-log'
 import {
+  analyzeCreative as analyzeCreativeWithClaude,
   listAdCreatives as listAdCreativesFromDb,
   syncDaangnCreatives as syncDaangnCreativesFromApi,
   syncMetaCreatives as syncMetaCreativesFromApi,
@@ -94,6 +95,26 @@ export const listAdCreatives = onRequest(
         throw new HttpError(400, 'entityKey는 "채널:단위:ID" 모양이어야 합니다')
       }
       return { entityKey, creatives: await listAdCreativesFromDb(entityKey) }
+    },
+  ),
+)
+
+/** 소재 하나 분석(POST { creativeId }) — 퍼셉트론 게시본 프롬프트 + Claude.
+ * 프레임 최대 30장을 보내 한 번에 수십 초 걸리고, 비용이 들어 화면이 누를 때만
+ * 돈다. 결과는 소재 문서에 남는다. */
+export const analyzeCreative = onRequest(
+  { secrets: [anthropicApiKey], timeoutSeconds: 300, memory: '512MiB' },
+  endpoint(
+    { method: 'POST', fallback: '소재 분석 실패' },
+    async ({ request }) => {
+      const { creativeId } = (request.body ?? {}) as { creativeId?: unknown }
+      if (
+        typeof creativeId !== 'string' ||
+        !/^[A-Za-z0-9_-]{1,120}$/.test(creativeId)
+      ) {
+        throw new HttpError(400, 'creativeId가 필요합니다')
+      }
+      return analyzeCreativeWithClaude(creativeId, anthropicApiKey.value())
     },
   ),
 )

@@ -428,6 +428,34 @@ export interface AdCreativeView {
     /** 분석용 프레임 — 영상 속 시점(초)마다 한 장. */
     frames: { t: number; url: string | null }[]
   } | null
+  /** 마지막 분석(analyzeCreative) — 아직 안 했으면 null. */
+  analysis: CreativeAnalysis | null
+}
+
+/** 소재 분석 — 퍼셉트론 게시본 프롬프트(CREATIVE ANALYSIS) + Claude. */
+export interface CreativeAnalysis {
+  /** hold: 게이트가 사람 검토로 보냄(Claude를 안 불렀다). */
+  status: 'done' | 'hold' | 'failed'
+  at: number
+  graphVersion: number
+  caseId: number
+  caseTitle: string
+  model: string | null
+  result: {
+    topic: string
+    hook: { firstSeconds: string; technique: string; strength: string }
+    message: string
+    tone: string
+    persona: string
+    cta: string
+    format: string
+    summary: string
+    /** 퍼셉트론 프롬프트의 ## output이 요구한 모양(JSON 글). */
+    detail: string
+  } | null
+  error: string | null
+  usage: { inputTokens: number; outputTokens: number } | null
+  costUsd: number | null
 }
 
 /** 캠페인·광고셋 하나의 저장 소재 — 집행 중인 것 먼저. */
@@ -439,3 +467,11 @@ export const listAdCreatives = async (
   )
   return body.creatives
 }
+
+/** 소재 하나를 분석한다(수십 초, 비용이 든다) — 결과는 소재 문서에도 남는다. */
+export const analyzeCreative = (creativeId: string) =>
+  call<CreativeAnalysis>('analyzeCreative', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creativeId }),
+  })

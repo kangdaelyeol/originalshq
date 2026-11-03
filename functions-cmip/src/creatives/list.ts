@@ -6,6 +6,7 @@ import { adEntitiesCol, type AdEntityKey } from '../ad-settings'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
 import { withDownloadUrls } from './media'
+import type { CreativeAnalysis } from './analyze'
 import { AD_CREATIVES, type AdCreative } from './types'
 
 export interface AdCreativeView {
@@ -28,6 +29,8 @@ export interface AdCreativeView {
     contentType: string
     frames: { t: number; url: string | null }[]
   } | null
+  /** 마지막 분석 — 아직 안 했으면 null. */
+  analysis: CreativeAnalysis | null
 }
 
 /** array-contains-any는 값 30개까지라 나눠 묻는다. */
@@ -120,6 +123,7 @@ export async function listAdCreatives(
             frames: media.frames.map((f) => ({ t: f.t, url: f.url ?? null })),
           }
         : null,
+      analysis: creative.analysis ?? null,
     })
   }
   // 집행 중인 것 먼저, 그다음 최근에 본 순.
