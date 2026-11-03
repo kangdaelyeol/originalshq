@@ -11,7 +11,7 @@ const LIMIT = 300
 interface EditLog {
   id: string
   at: number
-  action: 'update' | 'create'
+  action: 'update' | 'create' | 'delete'
   boardKey: string
   boardName: string
   itemId: string | null
@@ -85,7 +85,7 @@ export function EditLogCard() {
               <time className="log-row__time">{stamp(log.at)}</time>
               <strong>{log.by.name || log.by.email}</strong>
               <span className="log-row__verb">
-                {log.boardName} · <b>{log.itemName}</b> {log.action === 'create' ? '만듦' : '수정'}
+                {log.boardName} · <b>{log.itemName}</b> {log.action === 'create' ? '만듦' : log.action === 'delete' ? '지움' : '수정'}
               </span>
               {!log.ok && (
                 <StatusPill tone="crit" dot>

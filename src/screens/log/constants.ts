@@ -73,6 +73,16 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     timeoutSeconds: 300,
   },
   {
+    id: 'meta-creatives',
+    label: 'Meta 소재',
+    description:
+      '집행 중인 광고의 소재(이미지·영상)를 찾아 원본과 분석용 프레임을 Storage에 모읍니다. 새 소재는 제한 시간 안에서 한 번에 60개까지 처리하고, 남은 것은 다음 실행에 이어 합니다.',
+    codebase: 'cmip',
+    functionName: 'syncMetaCreativesScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-04T09:00:00+09:00',
+  },
+  {
     id: 'google-insights',
     label: 'Google Ads 인사이트',
     description: '최근 14일 캠페인·광고그룹 성과를 다시 읽어 저장합니다.',
@@ -96,6 +106,15 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     functionName: 'syncOpenaiInsightsScheduled',
     timeoutSeconds: 300,
     recordingSince: '2026-10-30T17:00:00+09:00',
+  },
+  {
+    id: 'daangn-insights',
+    label: '당근 인사이트',
+    description: '최근 14일 당근 광고그룹 성과를 다시 읽어 저장합니다.',
+    codebase: 'cmip',
+    functionName: 'syncDaangnInsightsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T09:00:00+09:00',
   },
 ]
 

@@ -55,8 +55,9 @@ const COLUMN_VALUE_FIELDS = `
   ... on BoardRelationValue { display_value }
 `
 
-// 업데이트 개수를 셀 때 받는 최대 수 — 말풍선 배지에 쓴다(넘으면 그 수로 보인다).
-const UPDATE_COUNT_LIMIT = 100
+// 업데이트 개수를 셀 때 받는 최대 수 — 말풍선 배지에 쓴다(화면은 이 수부터 "20+").
+// 보드를 200건씩 하위 아이템까지 받는 요청이라 크게 잡으면 Monday 복잡도 한도를 넘는다.
+export const UPDATE_COUNT_LIMIT = 20
 
 const itemFields = (withSubitems: boolean, withUpdates = false) => `
   id

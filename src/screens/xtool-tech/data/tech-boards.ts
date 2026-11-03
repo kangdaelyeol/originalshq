@@ -301,6 +301,18 @@ export const searchAddress = async (query: string) =>
     )({ query })
   ).data.results
 
+/** 한 번에 지울 수 있는 item 수 — 서버(MAX_DELETE)와 같게 */
+export const MAX_DELETE = 25
+
+/** item 여러 개 지우기 — Monday 휴지통으로 간다. 실패한 것은 따로 돌려준다. */
+export const deleteTechItems = async (boardKey: TechBoardKey, itemIds: string[]) =>
+  (
+    await httpsCallable<
+      { boardKey: TechBoardKey; itemIds: string[] },
+      { deleted: string[]; failed: { itemId: string; error: string }[] }
+    >(xtoolFirebase().functions, 'techDeleteItems', { timeout: 120_000 })({ boardKey, itemIds })
+  ).data
+
 /** 새 item 만들기 */
 export const createTechItem = (input: TechEditInput) =>
   httpsCallable<TechEditInput, { itemId: string | null }>(xtoolFirebase().functions, 'techCreateItem')(input)

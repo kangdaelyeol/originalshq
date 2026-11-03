@@ -3,7 +3,7 @@
 // 남긴다. index.ts는 import 한 줄만 이쪽으로 바꿨다(핸들러 코드는 그대로).
 //
 // 함수 이름은 실행 중 환경변수에서 읽는다 — Cloud Run에 배포된 2세대 함수는
-// FUNCTION_TARGET에 내보낸 이름(previewCsv 등)이 들어 있다. 없으면 서비스
+// FUNCTION_TARGET에 내보낸 이름(getAdSettings 등)이 들어 있다. 없으면 서비스
 // 이름(K_SERVICE, 소문자)으로.
 import type { Response } from 'express'
 import {

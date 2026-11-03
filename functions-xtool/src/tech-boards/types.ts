@@ -261,7 +261,7 @@ export interface TechChange {
  * 남아서, 실제로 바꾼 사람은 여기에만 남는다). */
 export interface TechEditLog {
   at: number
-  action: 'update' | 'create'
+  action: 'update' | 'create' | 'delete'
   boardKey: TechBoardKey
   boardName: string
   itemId: string | null

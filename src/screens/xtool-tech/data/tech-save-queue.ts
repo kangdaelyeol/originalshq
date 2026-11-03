@@ -34,11 +34,12 @@ const upsertToast = (toast: Toast) => {
   emit()
 }
 
-/** 토스트 하나 띄우기(디자인 견본·간단한 알림용) — 성공은 잠시 뒤 저절로 사라진다. */
-export function pushToast(toast: Omit<Toast, 'id'>): void {
+/** 토스트 하나 띄우기(디자인 견본·간단한 알림용) — 성공은 잠시 뒤 저절로 사라진다. 토스트 id를 돌려준다. */
+export function pushToast(toast: Omit<Toast, 'id'>): number {
   const id = nextId++
   upsertToast({ ...toast, id })
   if (toast.tone === 'success') setTimeout(() => dismissToast(id), SUCCESS_MS)
+  return id
 }
 
 export function dismissToast(id: number) {
@@ -92,6 +93,58 @@ export function saveInBackground(
       onSettled?.(false)
     })
     .finally(() => setPending(input.itemId, false))
+}
+
+/**
+ * 여러 건을 한 번에 뒤에서 — 토스트 하나에 진행(k/N)을 보여 주고, 끝나면 성공·일부 실패를 알린다.
+ * run은 묶음(chunk) 하나를 처리하고 실패한 key를 돌려준다. 실패분만 "다시 시도"할 수 있다.
+ */
+export function batchInBackground(
+  label: { pending: string; done: string; failed: string },
+  keys: string[],
+  chunkSize: number,
+  run: (chunk: string[]) => Promise<string[]>,
+  hooks: {
+    /** 시작할 때(다시 시도 포함) — 화면에 먼저 반영 */
+    onStart?: (keys: string[]) => void
+    /** 끝났을 때 — 실패한 것은 되돌린다 */
+    onSettled?: (done: string[], failed: string[]) => void
+  } = {},
+): void {
+  const id = nextId++
+  hooks.onStart?.(keys)
+  const total = keys.length
+  const failed: string[] = []
+  const done: string[] = []
+  upsertToast({ id, tone: 'pending', title: `${label.pending} 0/${total}` })
+  void (async () => {
+    for (let i = 0; i < keys.length; i += chunkSize) {
+      const chunk = keys.slice(i, i + chunkSize)
+      const bad = await run(chunk).catch(() => chunk)
+      failed.push(...bad)
+      done.push(...chunk.filter((k) => !bad.includes(k)))
+      upsertToast({ id, tone: 'pending', title: `${label.pending} ${Math.min(i + chunk.length, total)}/${total}` })
+    }
+    hooks.onSettled?.(done, failed)
+    if (failed.length === 0) {
+      upsertToast({ id, tone: 'success', title: label.done })
+      setTimeout(() => dismissToast(id), SUCCESS_MS)
+      return
+    }
+    upsertToast({
+      id,
+      tone: 'error',
+      title: label.failed,
+      message: `${total}건 중 ${failed.length}건을 처리하지 못했어요.`,
+      action: {
+        label: '다시 시도',
+        run: () => {
+          dismissToast(id)
+          batchInBackground(label, failed, chunkSize, run, hooks)
+        },
+      },
+    })
+  })()
 }
 
 /** 파일 하나를 뒤에서 올린다 — 토스트에 진행률, 실패하면 "다시 시도". */

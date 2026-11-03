@@ -1,26 +1,12 @@
-// Monday 표 레이아웃(설정 > 레이아웃 "Monday 표") — Monday 다크 모드 보드 화면을 따라 한다.
-// 색은 Monday 캡처에서 잰 값. 표와 팝오버(화면 루트에 띄운다)가 같이 쓴다.
-@mixin monday-tokens {
-  --mon-bg: #18192d;
-  --mon-cell: #2b2c44;
-  --mon-hover: #33354f;
-  --mon-line: #43445d;
-  --mon-line-strong: #5f6278;
-  --mon-text: #d5d8df;
-  --mon-text-2: #9699a6;
-  --mon-primary: #2364e3;
-  --mon-primary-hi: #3a78f0;
-  --mon-chip: #192f67;
-  --mon-badge: #3a3a50;
-  --mon-pop: #30324e;
-}
+// Monday 표 레이아웃(설정 > 레이아웃 "Monday 표") — Monday 보드 화면을 따라 한다. 색은 모두
+// --mon-* 변수(_monday-palettes.scss — 남색·라이트·블랙)로, 화면 루트에 칠해져 표와 팝오버(루트에
+// 띄운다)가 같이 쓴다.
 
 .shell.is-wide {
   max-width: none;
 }
 
 .mon-board {
-  @include monday-tokens;
   display: flex;
   flex-direction: column;
   // 화면 높이(위아래 여백만 뺀다 — 상단바는 판 안 머리말로 들어온다). 표는 자기 안에서
@@ -28,7 +14,7 @@
   height: calc(100dvh - 40px);
   min-height: 480px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--mon-overlay);
   border-radius: 16px;
   background: var(--mon-bg);
   color: var(--mon-text);
@@ -111,11 +97,11 @@
   white-space: nowrap;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
   }
 
   &.is-on {
-    background: rgba(35, 100, 227, 0.22);
+    background: var(--mon-tool-on);
   }
 }
 
@@ -125,7 +111,7 @@
   border-radius: 4px;
 
   &.is-on {
-    background: rgba(35, 100, 227, 0.22);
+    background: var(--mon-tool-on);
 
     .mon-tool {
       background: none;
@@ -146,7 +132,7 @@
   color: var(--mon-text-2);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--mon-overlay-strong);
     color: var(--mon-text);
   }
 }
@@ -240,7 +226,7 @@
   letter-spacing: -0.01em;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: var(--mon-overlay);
   }
 }
 
@@ -361,7 +347,7 @@
     content: '';
     position: absolute;
     inset: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
+    border: 1px solid var(--mon-outline);
     border-radius: 3px;
     pointer-events: none;
   }
@@ -408,7 +394,7 @@
   color: var(--mon-text-2);
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--mon-overlay-strong);
     color: var(--mon-text);
   }
 
@@ -442,7 +428,7 @@
   cursor: text;
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.22);
+    border-color: var(--mon-outline);
   }
 }
 
@@ -550,9 +536,9 @@
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 1.5px solid #bebfc9;
+  border: 1.5px solid var(--mon-person-empty);
   border-radius: 50%;
-  color: #bebfc9;
+  color: var(--mon-person-empty);
 }
 
 .mon-check {
@@ -560,7 +546,7 @@
   place-items: center;
   width: 18px;
   height: 18px;
-  border: 1px solid #797e93;
+  border: 1px solid var(--mon-control);
   border-radius: 3px;
 
   &.is-on {
@@ -580,7 +566,7 @@
 }
 
 .mon-link {
-  color: #66a3ff;
+  color: var(--mon-link);
 
   &:hover {
     text-decoration: underline;
@@ -615,7 +601,7 @@
   }
 
   &:hover {
-    border-color: rgba(255, 255, 255, 0.22);
+    border-color: var(--mon-outline);
   }
 
   &:focus {
@@ -631,7 +617,7 @@
   padding: 0 16px;
   border: 0;
   background: none;
-  color: #66a3ff;
+  color: var(--mon-link);
 
   span {
     margin-left: 6px;
@@ -684,13 +670,17 @@
 }
 
 // 하위 아이템 — 줄 아래로 들여 펼친다. 이름 칸 갈매기 밑에서 내려오는 줄기에서 줄마다 둥글게
-// 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 갈매기 반 폭 10.
-$sub-trunk: 25.5px;
-$sub-indent: 52px;
+// 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 체크박스 16·여백 2·간격 6
+// + 갈매기 반 폭 10.
+$sub-trunk: 49.5px;
+$sub-indent: 76px;
 $sub-row: 34px;
 
 .mon-sub {
-  position: relative;
+  // 표를 옆으로 스크롤해도 하위 표는 이름 칸처럼 왼쪽에 붙어 있는다(부모 줄 갈매기 밑 그대로).
+  position: sticky;
+  left: 0;
+  z-index: 1;
   width: max-content;
   padding: 12px 0 14px $sub-indent;
 }
@@ -758,15 +748,14 @@ $sub-row: 34px;
 
 // ── 팝오버(칸 편집·도구 메뉴) ────────────────────────────────────────────────
 .mon-popover {
-  @include monday-tokens;
   position: fixed;
   z-index: 80;
   overflow: auto;
   padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--mon-overlay);
   border-radius: 8px;
   background: var(--mon-pop);
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 10px 34px var(--mon-shadow);
   color: var(--mon-text);
   font-size: 14px;
 }
@@ -841,7 +830,7 @@ $sub-row: 34px;
     color: var(--mon-text-2);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--mon-overlay-strong);
       color: var(--mon-text);
     }
   }
@@ -894,7 +883,7 @@ $sub-row: 34px;
   text-align: left;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
   }
 
   small {
@@ -911,7 +900,7 @@ $sub-row: 34px;
 }
 
 .mon-menu__item.is-on {
-  background: rgba(35, 100, 227, 0.25);
+  background: var(--mon-tool-on);
 }
 
 .mon-pick__empty {
@@ -934,7 +923,7 @@ $sub-row: 34px;
   border: 0;
   border-top: 1px solid var(--mon-line);
   background: none;
-  color: #66a3ff;
+  color: var(--mon-link);
 }
 
 .mon-form {
@@ -966,7 +955,7 @@ $sub-row: 34px;
   color: var(--mon-text);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
   }
 }
 
@@ -1094,7 +1083,7 @@ $sub-row: 34px;
   color: var(--mon-text);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
   }
 }
 
@@ -1110,11 +1099,11 @@ $sub-row: 34px;
   color: var(--mon-text);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
   }
 
   &.is-on {
-    color: #66a3ff;
+    color: var(--mon-link);
   }
 }
 
@@ -1140,7 +1129,7 @@ $sub-row: 34px;
   }
 
   &::selection {
-    background: #6e7287;
+    background: var(--mon-line-strong);
   }
 }
 
@@ -1181,7 +1170,7 @@ $sub-row: 34px;
     cursor: pointer;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
     }
 
     option {
@@ -1212,7 +1201,7 @@ $sub-row: 34px;
     color: var(--mon-text);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
     }
   }
 }
@@ -1243,15 +1232,15 @@ $sub-row: 34px;
   font: inherit;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--mon-overlay-strong);
   }
 
   &.is-outside {
-    color: #5f6278;
+    color: var(--mon-muted);
   }
 
   &.is-today:not(.is-selected) {
-    color: #66a3ff;
+    color: var(--mon-link);
     font-weight: 600;
   }
 
@@ -1275,7 +1264,7 @@ $sub-row: 34px;
     color: var(--mon-text-2);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
       color: var(--mon-text);
     }
   }
@@ -1294,13 +1283,13 @@ $sub-row: 34px;
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: #393b56;
+  background: var(--mon-sort-bg);
   opacity: 0;
   transform: translateX(-50%);
   transition: opacity 0.15s;
 
   path {
-    fill: #9699a6;
+    fill: var(--mon-text-2);
   }
 
   &:hover path {
@@ -1319,7 +1308,7 @@ $sub-row: 34px;
 
   &.is-asc .mon-sort__down,
   &.is-desc .mon-sort__up {
-    fill: #5f6278;
+    fill: var(--mon-muted);
   }
 }
 
@@ -1338,44 +1327,97 @@ $sub-row: 34px;
 }
 
 // ── 보드 구역(내 업무에서 보드마다 제목 + 그룹 표) ───────────────────────────────
+// ── 내 업무 보드 박스 ───────────────────────────────────────────────────────────
+// 보드 하나 = 박스 하나. 박스는 판의 보이는 높이 안으로 줄이고(머리말·도구 줄을 뺀 높이), 길면 머리말은
+// 그대로 두고 표만 박스 안에서 위아래·옆으로 스크롤된다. 옆 스크롤도 박스마다 따로 — 칸 수가 다른
+// 보드가 같이 밀려 텅 비지 않게.
+.mon-workbox {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 250px);
+  min-height: 0;
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid var(--mon-line);
+  border-radius: 12px;
+  background: var(--mon-workbox);
+
+  & + & {
+    margin-top: 22px;
+  }
+}
+
+.mon-workbox__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--mon-line);
+  background: var(--mon-workbox-head);
+}
+
+.mon-workbox__icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--mon-icon-tint);
+  color: var(--mon-icon-ink);
+}
+
+.mon-workbox__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mon-text);
+  font-size: 18px;
+  font-weight: 600;
+
+  svg {
+    color: var(--mon-text-2);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  &:hover svg {
+    opacity: 1;
+  }
+}
+
+// 그룹 건수(.mon-group__count)와 같은 모양
+.mon-workbox__count {
+  color: var(--mon-text-2);
+  font-size: 13px;
+}
+
+// 박스 안 표 — 위아래·옆 스크롤이 박스 안에서(칸 머리글은 박스 안에서 위에 붙는다)
+.mon-section--own-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 18px 16px;
+
+  .mon-group:first-child {
+    margin-top: 6px;
+  }
+
+  // 옆으로 밀 때 이름 칸이 박스 왼쪽 여백(18px)을 박스 바탕색으로 덮는다(판 여백 24px 대신).
+  .mon-cell--name,
+  .mon-summary__lead.mon-cell {
+    box-shadow: -18px 0 0 var(--mon-workbox);
+  }
+
+  .mon-summary__lead.mon-cell {
+    background: var(--mon-workbox);
+  }
+}
+
 .mon-section + .mon-section {
   margin-top: 30px;
 }
 
-.mon-section__title {
-  position: sticky;
-  left: 0;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  width: fit-content;
-  margin: 22px 0 -8px;
-  font-size: 20px;
-  font-weight: 600;
-
-  a {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--mon-text);
-
-    svg {
-      color: var(--mon-text-2);
-      opacity: 0;
-      transition: opacity 0.15s;
-    }
-
-    &:hover svg {
-      opacity: 1;
-    }
-  }
-
-  span {
-    color: var(--mon-text-2);
-    font-size: 13px;
-    font-weight: 400;
-  }
-}
 
 // 도구 줄 탭(진행 중·완료·전체)
 .mon-tabs {
@@ -1408,7 +1450,7 @@ $sub-row: 34px;
   align-items: center;
   gap: 8px;
   min-width: 0;
-  color: #66a3ff;
+  color: var(--mon-link);
 }
 
 .mon-phone__flag {
@@ -1434,7 +1476,7 @@ $sub-row: 34px;
 
   &:hover,
   &.is-active {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
     color: var(--mon-text);
   }
 
@@ -1462,7 +1504,6 @@ $sub-row: 34px;
 
 // ── 업데이트 패널(Monday 항목 패널) ─────────────────────────────────────────────
 .mon-panel {
-  @include monday-tokens;
   position: fixed;
   top: 0;
   right: 0;
@@ -1473,7 +1514,7 @@ $sub-row: 34px;
   width: min(640px, 100vw);
   border-left: 1px solid var(--mon-line);
   background: var(--mon-bg);
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.45);
+  box-shadow: -12px 0 40px var(--mon-shadow);
   color: var(--mon-text);
   font-size: 14px;
   animation: mon-panel-in 0.22s cubic-bezier(0.33, 1, 0.68, 1);
@@ -1506,7 +1547,7 @@ $sub-row: 34px;
   color: var(--mon-text-2);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
     color: var(--mon-text);
   }
 }
@@ -1559,13 +1600,13 @@ $sub-row: 34px;
     padding: 4px 8px;
     border: 0;
     border-radius: 4px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
     color: var(--mon-text);
   }
 }
 
 .mon-panel__note--error {
-  color: #ff7f8f;
+  color: var(--mon-danger-text);
 }
 
 .mon-composer {
@@ -1704,7 +1745,7 @@ $sub-row: 34px;
     color: var(--mon-text);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
     }
   }
 }
@@ -1756,14 +1797,13 @@ $sub-row: 34px;
 
 // ── 파일 칸 모달 ─────────────────────────────────────────────────────────────
 .mon-modal {
-  @include monday-tokens;
   position: fixed;
   inset: 0;
   z-index: 75;
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--mon-scrim);
   animation: mon-fade-in 0.15s ease-out;
 }
 
@@ -1781,7 +1821,7 @@ $sub-row: 34px;
   border: 1px solid var(--mon-line);
   border-radius: 12px;
   background: var(--mon-pop);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 60px var(--mon-shadow);
   color: var(--mon-text);
 }
 
@@ -1818,7 +1858,7 @@ $sub-row: 34px;
   color: var(--mon-text-2);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--mon-overlay);
     color: var(--mon-text);
   }
 }
@@ -1838,7 +1878,7 @@ $sub-row: 34px;
 
 .mon-modal__error {
   margin: 0 0 12px;
-  color: #ff7f8f;
+  color: var(--mon-danger-text);
   font-size: 13px;
 }
 
@@ -1867,7 +1907,7 @@ $sub-row: 34px;
   width: 100%;
   height: 150px;
   overflow: hidden;
-  background: #11121f;
+  background: var(--mon-preview);
   color: var(--mon-text-2);
 
   img,
@@ -1926,7 +1966,7 @@ $sub-row: 34px;
     color: var(--mon-text-2);
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
       color: var(--mon-text);
     }
   }
@@ -1971,6 +2011,209 @@ $sub-row: 34px;
 
   &:hover {
     border-color: #e2445c;
-    color: #ff7f8f;
+    color: var(--mon-danger-text);
+  }
+}
+
+// ── 줄 고르기(체크박스)·선택 막대 ────────────────────────────────────────────────
+.mon-check-row {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  margin: 0 2px 0 0;
+  border: 1px solid var(--mon-control);
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+
+  &:hover {
+    border-color: var(--mon-text);
+  }
+
+  &:checked,
+  &:indeterminate {
+    border-color: var(--mon-primary);
+    background: var(--mon-primary);
+  }
+
+  // 체크 표시
+  &:checked::after {
+    content: '';
+    width: 8px;
+    height: 4px;
+    margin-top: -2px;
+    border: 2px solid #fff;
+    border-top: 0;
+    border-right: 0;
+    transform: rotate(-45deg);
+  }
+
+  &:indeterminate::after {
+    content: '';
+    width: 8px;
+    height: 2px;
+    background: #fff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mon-primary);
+    outline-offset: 2px;
+  }
+}
+
+// 고른 줄 — Monday 선택 색
+.mon-row.is-selected > .mon-cell:not(.mon-cell--status),
+.mon-row.is-selected:hover > .mon-cell:not(.mon-cell--status) {
+  background: var(--mon-selected-row);
+}
+
+.mon-selbar {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  z-index: 72;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 10px 8px 18px;
+  border: 1px solid var(--mon-line);
+  border-radius: 10px;
+  background: var(--mon-pop);
+  box-shadow: 0 12px 40px var(--mon-shadow);
+  color: var(--mon-text);
+  transform: translateX(-50%);
+  animation: mon-selbar-in 0.2s cubic-bezier(0.33, 1, 0.68, 1);
+}
+
+@keyframes mon-selbar-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 16px);
+  }
+}
+
+.mon-selbar__count {
+  display: grid;
+  place-items: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 15px;
+  background: var(--mon-primary);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mon-selbar__label {
+  margin-right: 16px;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.mon-selbar__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.mon-selbar__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 56px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--mon-text);
+  font-size: 12px;
+
+  &:hover,
+  &.is-on {
+    background: var(--mon-overlay);
+  }
+}
+
+.mon-selbar__divider {
+  align-self: stretch;
+  width: 1px;
+  margin: 4px 2px;
+  background: var(--mon-line);
+}
+
+.mon-selbar__close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: var(--mon-overlay);
+    color: var(--mon-text);
+  }
+}
+
+.mon-selbar__dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+// ── 저장이 끝나기 전에 먼저 보여 준 것(흐리게) ─────────────────────────────────────
+.mon-sub__row.is-creating .mon-cell {
+  color: var(--mon-text-2);
+
+  svg {
+    flex: none;
+    margin-right: 6px;
+  }
+}
+
+.mon-update.is-pending,
+.mon-update__replies li.is-pending {
+  opacity: 0.6;
+}
+
+.mon-update__pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mon-text-2);
+  font-size: 12.5px;
+}
+
+// ── 설정 > Monday 색상 견본 ──────────────────────────────────────────────────────
+.palette-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 160px));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.palette-tile__art {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  height: 52px;
+  padding: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+
+  i {
+    display: block;
+    height: 10px;
+    border-radius: 2px;
   }
 }

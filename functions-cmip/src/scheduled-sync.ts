@@ -3,6 +3,7 @@
 // 수동 실행(sync* HTTP 함수)은 body로 기간을 받고, 없으면 같은 "최근 N일".
 import * as logger from 'firebase-functions/logger'
 import type { SecretParam } from 'firebase-functions/params'
+import type { MemoryOption } from 'firebase-functions/v2/options'
 import type { Request } from 'firebase-functions/v2/https'
 import { recordBatchRun } from './batch-log'
 import { addDays, todayISO } from './channel/utils'
@@ -52,15 +53,20 @@ interface ScheduledJob {
  */
 export const scheduledSync = (options: {
   secrets: SecretParam[]
+  /** 다시 받을 최근 일수 — 기간을 쓰지 않는 작업(소재 동기화 등)이면 0. */
   windowDays: number
   jobs: ScheduledJob[]
+  /** 기본 300초 · 256MiB(전역 기본값). */
+  timeoutSeconds?: number
+  memory?: MemoryOption
 }) =>
   onSchedule(
     {
       schedule: SYNC_SCHEDULE,
       timeZone: 'Asia/Seoul',
       secrets: options.secrets,
-      timeoutSeconds: 300,
+      timeoutSeconds: options.timeoutSeconds ?? 300,
+      ...(options.memory ? { memory: options.memory } : {}),
     },
     async (event) => {
       const range = recentRange(options.windowDays)

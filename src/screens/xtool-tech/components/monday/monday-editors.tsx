@@ -5,6 +5,7 @@ import { useMondayUsers, useTechBoard } from '../../data/tech-boards-store'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { initialState, sameState, type EditState, type LocationState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
+import { isComposing } from '../../lib/ime'
 import { LocationInput } from '../board/item-editor'
 import { labelColor } from './monday-colors'
 import { PersonAvatar } from './monday-cells'
@@ -50,7 +51,7 @@ export function InlineInput({ initial, label, inputMode, format, onCommit, onCan
       onChange={(e) => setValue(format ? format(e.target.value) : e.target.value)}
       onBlur={() => finish(true)}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !isComposing(e)) {
           e.preventDefault()
           finish(true)
         } else if (e.key === 'Escape') {
@@ -311,7 +312,7 @@ function FormEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProp
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             // ⌘/Ctrl+엔터로 저장(엔터는 줄바꿈)
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            if (e.key === 'Enter' && !isComposing(e) && (e.metaKey || e.ctrlKey)) {
               e.preventDefault()
               finish(true)
             }

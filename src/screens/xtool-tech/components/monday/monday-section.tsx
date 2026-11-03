@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { toEditValue } from '../../data/tech-edit'
 import { saveInBackground, usePendingSaves } from '../../data/tech-save-queue'
+import { cx } from '../../lib/cx'
 import { groupColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
 import { GroupTable, type EditingCell, type MonGroup } from './monday-group'
@@ -20,6 +21,8 @@ import {
   type MonSort,
 } from './monday-values'
 import { FilesModal } from './monday-files-modal'
+import { useOptimistic } from './monday-optimistic'
+import { selectionKey } from './monday-selection'
 import { UpdatesPanel } from './monday-updates-panel'
 import { useColumnWidths } from './use-monday-prefs'
 
@@ -47,8 +50,8 @@ export interface MondaySectionProps {
   onSort: (columnId: string) => void
   collapsed: ReadonlySet<string>
   setCollapsed: (ids: string[], collapsed: boolean) => void
-  /** 구역 제목(내 업무에서 보드 이름) — 없으면 보드 화면처럼 그룹만 */
-  title?: ReactNode
+  /** 옆·위아래 스크롤을 이 구역 안에서 — 내 업무의 보드 박스(칸 수가 다른 보드를 쌓는다) */
+  ownScroll?: boolean
   /** 그룹 맨 아래 "+ 추가" 줄 — 내 업무에서는 끈다(새 항목은 담당자가 비어 있어 목록에서 사라진다). */
   allowAdd?: boolean
 }
@@ -59,7 +62,7 @@ export interface MondaySectionProps {
  * 보인다. 칸 너비는 구역마다(--mon-cols) — 내 업무처럼 여러 보드를 쌓아도 보드마다 제 칸으로 그린다.
  */
 export function MondaySection(props: MondaySectionProps) {
-  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, title, allowAdd = true } = props
+  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, ownScroll = false, allowAdd = true } = props
   const pending = usePendingSaves()
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
@@ -70,6 +73,10 @@ export function MondaySection(props: MondaySectionProps) {
   const [creating, setCreating] = useState<{ id: number; groupId: string; name: string }[]>([])
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set())
   const [limits, setLimits] = useState<Record<string, number>>({})
+  // 만드는 중인 하위 아이템(저장이 끝나기 전에 먼저 보여 준다)
+  const [creatingSubs, setCreatingSubs] = useState<{ id: number; itemId: string; name: string }[]>([])
+  // 지우는 중(숨김)·그룹을 옮기는 중(새 그룹) — 선택 막대가 건다.
+  const optimistic = useOptimistic()
   // 업데이트(말풍선) 패널을 연 항목
   const [updatesFor, setUpdatesFor] = useState<string | null>(null)
   // 파일 칸 모달을 연 항목·칸
@@ -147,9 +154,17 @@ export function MondaySection(props: MondaySectionProps) {
     )
   }
 
-  // 하위 아이템 "+ 추가" — 이름만 적어 그 항목 아래에 만든다.
-  const addSubitem = (item: TechItemDoc, name: string) =>
-    saveInBackground('update', { boardKey, itemId: item.itemId, subitems: { create: [{ name }] } }, `${item.name} · ${name}`)
+  // 하위 아이템 "+ 추가" — 이름만 적어 그 항목 아래에 만든다. 끝날 때까지 하위 표에 먼저 보인다.
+  const addSubitem = (item: TechItemDoc, name: string) => {
+    const id = ++createId.current
+    setCreatingSubs((list) => [...list, { id, itemId: item.itemId, name }])
+    saveInBackground(
+      'update',
+      { boardKey, itemId: item.itemId, subitems: { create: [{ name }] } },
+      `${item.name} · ${name}`,
+      () => setCreatingSubs((list) => list.filter((c) => c.id !== id)),
+    )
+  }
 
   const groups: MonGroup[] = useMemo(() => {
     const sortColumn = sort && sort.columnId !== 'name' ? columns.find((c) => c.id === sort.columnId) : null
@@ -161,17 +176,19 @@ export function MondaySection(props: MondaySectionProps) {
       const d = typeof x === 'number' && typeof y === 'number' ? x - y : String(x).localeCompare(String(y), 'ko', { numeric: true })
       return d * (sort?.dir ?? 1)
     }
+    const live = items.filter((item) => !optimistic.hidden.has(selectionKey(boardKey, item.itemId)))
+    const groupOf = (item: TechItemDoc) => optimistic.moved.get(selectionKey(boardKey, item.itemId)) ?? groupIdOf(meta, item)
     const list = [
       ...meta.groups.map((g, i) => ({ id: g.id, title: g.title, color: groupColor(i) })),
-      ...(items.some((item) => groupIdOf(meta, item) === OTHER_GROUP)
+      ...(live.some((item) => groupOf(item) === OTHER_GROUP)
         ? [{ id: OTHER_GROUP, title: '그 밖의 항목', color: groupColor(meta.groups.length) }]
         : []),
     ]
     return list.map((g) => {
-      const inGroup = items.filter((item) => groupIdOf(meta, item) === g.id)
+      const inGroup = live.filter((item) => groupOf(item) === g.id)
       return { ...g, items: sort ? [...inGroup].sort(compare) : inGroup }
     })
-  }, [items, meta, columns, sort])
+  }, [items, meta, columns, sort, optimistic, boardKey])
 
   const shown = hideEmptyGroups ? groups.filter((g) => g.items.length > 0) : groups
   const updatesItem = updatesFor ? items.find((item) => item.itemId === updatesFor) : undefined
@@ -179,11 +196,11 @@ export function MondaySection(props: MondaySectionProps) {
   const filesColumn = filesFor ? columns.find((c) => c.id === filesFor.columnId) : undefined
 
   return (
-    <div className="mon-section" style={{ '--mon-cols': template } as CSSProperties}>
-      {title}
+    <div className={cx('mon-section', ownScroll && 'mon-section--own-scroll')} style={{ '--mon-cols': template } as CSSProperties}>
       {shown.map((group) => (
         <GroupTable
           key={group.id}
+          boardKey={boardKey}
           group={group}
           sort={sort}
           onSort={onSort}
@@ -204,6 +221,7 @@ export function MondaySection(props: MondaySectionProps) {
           openFiles={(item, column) => setFilesFor({ itemId: item.itemId, columnId: column.id })}
           addItem={allowAdd ? addItem : null}
           addSubitem={addSubitem}
+          creatingSubs={(itemId) => creatingSubs.filter((c) => c.itemId === itemId).map((c) => c.name)}
           openUpdates={UPDATE_BOARDS.has(boardKey) ? (item) => setUpdatesFor(item.itemId) : null}
           updatesOpenFor={updatesFor}
           creating={creating.filter((c) => c.groupId === group.id).map((c) => c.name)}

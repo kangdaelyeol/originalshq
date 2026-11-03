@@ -34,7 +34,8 @@ export interface NavSection {
   items: NavItem[]
 }
 
-const BOARD_ICONS: Record<TechBoardKey, LucideIcon> = {
+/** 보드 아이콘 — 사이드바 메뉴와 내 업무(Monday 표)의 보드 박스 머리말 */
+export const BOARD_ICONS: Record<TechBoardKey, LucideIcon> = {
   fieldService: Truck,
   repair: Wrench,
   records: FileText,

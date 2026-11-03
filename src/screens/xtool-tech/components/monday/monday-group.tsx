@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, LoaderCircle, MessageCircle, MessageCirclePlus } from 'lucide-react'
-import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
-import type { TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import type { TechBoardKey, TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
 import {
   formatPhoneTyping,
   initialState,
@@ -12,10 +12,12 @@ import {
 } from '../../data/tech-edit'
 import { pushToast } from '../../data/tech-save-queue'
 import { cx } from '../../lib/cx'
+import { isComposing } from '../../lib/ime'
 import { formatInt } from '../../lib/format'
 import { labelColor } from './monday-colors'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'
+import { selectionKey, useSelection } from './monday-selection'
 import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell, type MonSort } from './monday-values'
 
 export interface MonGroup {
@@ -32,6 +34,7 @@ export interface EditingCell {
 }
 
 export interface GroupTableProps {
+  boardKey: TechBoardKey
   group: MonGroup
   sort: MonSort
   /** 머리글 정렬 단추 — 누를 때마다 오름차순 → 내림차순 → 해제 */
@@ -59,6 +62,8 @@ export interface GroupTableProps {
   addItem: ((groupId: string, name: string) => void) | null
   /** 하위 아이템 "+ 추가" — 이름만 적어 만든다. */
   addSubitem: (item: TechItemDoc, name: string) => void
+  /** 만드는 중인 하위 아이템 이름 — 저장이 끝나기 전에 먼저 보여 준다. */
+  creatingSubs: (itemId: string) => string[]
   /** 하위 아이템 이름 칸 머리글(품목명·부품명) */
   subNameTitle: string
   /** 업데이트(말풍선) 패널 열기 — 말풍선이 없는 보드면 null */
@@ -106,6 +111,25 @@ function ResizeHandle({ id, width, onResize }: { id: string; width: number; onRe
 
 const ariaSort = (sort: MonSort, id: string) =>
   sort?.columnId === id ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined
+
+/** 줄 고르기 체크박스(Monday) — 머리글은 그룹 전체, 일부만 골랐으면 가운데 선(indeterminate). */
+function RowCheck({ checked, mixed, label, onChange }: { checked: boolean; mixed?: boolean; label: string; onChange: (on: boolean) => void }) {
+  const ref = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = Boolean(mixed)
+  }, [mixed])
+  return (
+    <input
+      ref={ref}
+      type="checkbox"
+      className="mon-check-row"
+      checked={checked}
+      aria-label={label}
+      onChange={(e) => onChange(e.target.checked)}
+      onClick={(e) => e.stopPropagation()}
+    />
+  )
+}
 
 /** 머리글에 올리면 위 테두리에 걸쳐 뜨는 정렬 단추(Monday) — 정렬 중이면 늘 보이고 방향 삼각형이 밝다. */
 function SortButton({ id, title, sort, onSort }: { id: string; title: string; sort: MonSort; onSort: (id: string) => void }) {
@@ -174,11 +198,13 @@ const SUB_WIDTH = 130
 function SubTable({
   columns,
   subitems,
+  creating,
   nameTitle,
   onAdd,
 }: {
   columns: TechColumn[]
   subitems: TechSubitemDoc[]
+  creating: string[]
   nameTitle: string
   onAdd: (name: string) => void
 }) {
@@ -209,6 +235,17 @@ function SubTable({
           ))}
         </div>
       ))}
+      {creating.map((name, i) => (
+        <div key={`${name}-${i}`} className="mon-sub__row mon-sub__row--item is-creating" role="row">
+          <div className="mon-cell mon-sub__name" role="rowheader">
+            <LoaderCircle size={13} className="is-spinning" aria-hidden />
+            <span className="mon-text">{name}</span>
+          </div>
+          {shown.map((c) => (
+            <div key={c.id} className="mon-cell" role="gridcell" />
+          ))}
+        </div>
+      ))}
       <div className="mon-sub__row mon-sub__row--item mon-sub__row--add" role="row">
         <div className="mon-cell mon-sub__name" role="rowheader">
           <AddInput label={nameTitle} onAdd={onAdd} />
@@ -220,7 +257,10 @@ function SubTable({
 
 /** 그룹 하나 — 색 막대가 붙은 제목, 머리글, 줄들, "+ 추가" 줄, 요약 줄. */
 export function GroupTable(props: GroupTableProps) {
-  const { group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore, sort, onSort } = props
+  const { boardKey, group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore, sort, onSort } = props
+  const selection = useSelection()
+  const groupIds = group.items.map((item) => item.itemId)
+  const pickedCount = selection ? groupIds.filter((id) => selection.selected.has(selectionKey(boardKey, id))).length : 0
   const style = { '--group': group.color } as CSSProperties
   const Chevron = collapsed ? ChevronRight : ChevronDown
 
@@ -238,6 +278,14 @@ export function GroupTable(props: GroupTableProps) {
         <>
           <div className="mon-row mon-row--head" role="row">
             <div className="mon-cell mon-cell--name" role="columnheader" aria-sort={ariaSort(sort, 'name')}>
+              {selection && (
+                <RowCheck
+                  checked={groupIds.length > 0 && pickedCount === groupIds.length}
+                  mixed={pickedCount > 0 && pickedCount < groupIds.length}
+                  label={`${group.title} 모두 고르기`}
+                  onChange={(on) => selection.set(boardKey, groupIds, on)}
+                />
+              )}
               <SortButton id="name" title={nameTitle} sort={sort} onSort={onSort} />
               <span className="mon-text">{nameTitle}</span>
               <ResizeHandle id="name" width={widthOf('name')} onResize={onResize} />
@@ -312,7 +360,7 @@ function AddInput({ label, onAdd }: { label: string; onAdd: (name: string) => vo
       onChange={(e) => setValue(e.target.value)}
       onBlur={submit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !isComposing(e)) {
           e.preventDefault()
           submit()
         } else if (e.key === 'Escape') {
@@ -363,11 +411,20 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
   const subCount = item.subitems?.length ?? 0
   const open = expanded.has(item.itemId)
   const Chevron = open ? ChevronDown : ChevronRight
+  const selection = useSelection()
+  const picked = selection?.selected.has(selectionKey(props.boardKey, item.itemId)) ?? false
 
   return (
     <>
-      <div className={cx('mon-row', pending.has(item.itemId) && 'is-saving')} role="row">
+      <div className={cx('mon-row', pending.has(item.itemId) && 'is-saving', picked && 'is-selected')} role="row" aria-selected={picked}>
         <div className="mon-cell mon-cell--name" role="rowheader">
+          {selection && (
+            <RowCheck
+              checked={picked}
+              label={`${nameOf(item)} 고르기`}
+              onChange={(on) => selection.set(props.boardKey, [item.itemId], on)}
+            />
+          )}
           {subColumns && (
             <button
               type="button"
@@ -419,6 +476,7 @@ function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
         <SubTable
           columns={subColumns}
           subitems={item.subitems ?? []}
+          creating={props.creatingSubs(item.itemId)}
           nameTitle={props.subNameTitle}
           onAdd={(name) => props.addSubitem(item, name)}
         />

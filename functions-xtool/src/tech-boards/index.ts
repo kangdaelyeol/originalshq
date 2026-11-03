@@ -1,6 +1,11 @@
 export { findTechBoard, TECH_BOARDS } from './boards'
 export type { TechBoardSource } from './boards'
-export { createTechItem, updateTechItem } from './edits'
+export {
+  createTechItem,
+  deleteTechItems,
+  MAX_DELETE,
+  updateTechItem,
+} from './edits'
 export { TechEditError } from './errors'
 export type { Editor } from './edits'
 export { getMember } from './firestore'

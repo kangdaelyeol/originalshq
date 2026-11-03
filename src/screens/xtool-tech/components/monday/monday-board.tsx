@@ -4,7 +4,10 @@ import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-b
 import { cx } from '../../lib/cx'
 import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
+import { useOptimistic } from './monday-optimistic'
 import { MondaySection } from './monday-section'
+import { selectionKey } from './monday-selection'
+import { SelectionProvider } from './monday-selection-bar'
 import {
   groupIdOf,
   matchesItem,
@@ -27,7 +30,13 @@ interface MondayBoardProps {
  * Monday 표 레이아웃(보드 화면) — 위 도구 줄(새 항목·검색·사람·정렬·모두 접기)과 보드 한 장
  * 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다.
  */
-export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
+export function MondayBoard({ boardKey, meta, items: allItems }: MondayBoardProps) {
+  // 지우는 중인 항목은 바로 뺀다(건수·사람 목록·거르기까지).
+  const { hidden } = useOptimistic()
+  const items = useMemo(
+    () => (hidden.size ? allItems.filter((item) => !hidden.has(selectionKey(boardKey, item.itemId))) : allItems),
+    [allItems, hidden, boardKey],
+  )
   const boardRef = useRef<HTMLElement>(null)
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
@@ -154,16 +163,18 @@ export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
 
       <div className="mon-scroll">
         {filtering && shown.length === 0 && <p className="mon-empty">조건에 맞는 항목이 없어요.</p>}
-        <MondaySection
-          boardKey={boardKey}
-          meta={meta}
-          items={shown}
-          hideEmptyGroups={filtering}
-          sort={sort}
-          onSort={(id) => setSort((current) => nextSort(current, id))}
-          collapsed={collapsed}
-          setCollapsed={setCollapsed}
-        />
+        <SelectionProvider>
+          <MondaySection
+            boardKey={boardKey}
+            meta={meta}
+            items={shown}
+            hideEmptyGroups={filtering}
+            sort={sort}
+            onSort={(id) => setSort((current) => nextSort(current, id))}
+            collapsed={collapsed}
+            setCollapsed={setCollapsed}
+          />
+        </SelectionProvider>
       </div>
 
       {menu?.kind === 'person' && (

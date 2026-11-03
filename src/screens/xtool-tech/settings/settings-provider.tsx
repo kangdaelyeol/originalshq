@@ -10,6 +10,7 @@ import {
   saveSettings,
   SettingsContext,
   type BoardLayout,
+  type MondayPalette,
   type BuiltInBackground,
   type Settings,
 } from './settings'
@@ -34,6 +35,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       ...settings,
       accentInUse,
       setLayout: (layout: BoardLayout) => setSettings((s) => ({ ...s, layout })),
+      setMondayPalette: (mondayPalette: MondayPalette) => setSettings((s) => ({ ...s, mondayPalette })),
       setBackground: (background: BuiltInBackground) =>
         setSettings((s) => ({ ...s, background, sharedBackgroundId: null })),
       setSharedBackground: (id: string) =>
@@ -41,7 +43,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       setAccent: (accent: string) => setSettings((s) => ({ ...s, accent: accent.toLowerCase() })),
       setGlass: (glass: Partial<GlassSettings>) => setSettings((s) => ({ ...s, glass: { ...s.glass, ...glass } })),
       // 배경 카드의 "기본값으로" — 보드 화면 모양(레이아웃)은 따로 고른 것이라 남긴다.
-      reset: () => setSettings((s) => ({ ...DEFAULT_SETTINGS, layout: s.layout })),
+      reset: () => setSettings((s) => ({ ...DEFAULT_SETTINGS, layout: s.layout, mondayPalette: s.mondayPalette })),
     }),
     [settings, accentInUse],
   )
@@ -51,11 +53,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [accentInUse, settings.glass],
   )
 
+  // Monday 표면 theme-monday + 색(남색은 기본이라 클래스 없음 · mon-light · mon-black)
+  const monday = settings.layout === 'monday'
+  const rootClass = cx('xtool-tech', monday && 'theme-monday', monday && settings.mondayPalette !== 'navy' && `mon-${settings.mondayPalette}`)
+
   return (
     <SettingsContext.Provider value={value}>
       <PortalRootContext.Provider value={rootEl}>
         {/* Monday 표 레이아웃이면 화면 전체를 Monday 모양으로(theme-monday — styles/_theme-monday.scss). */}
-        <div ref={setRootEl} className={cx('xtool-tech', settings.layout === 'monday' && 'theme-monday')} style={cssVars}>
+        <div ref={setRootEl} className={rootClass} style={cssVars}>
           {children}
         </div>
       </PortalRootContext.Provider>

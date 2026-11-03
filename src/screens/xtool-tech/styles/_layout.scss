@@ -64,6 +64,8 @@
 
 .sidebar {
   height: 100%;
+  // 접는 동안 칸(76px)보다 좁아질 수 있게 — 숨긴 글자가 최소 폭으로 칸을 밀지 않는다.
+  min-width: 0;
   display: flex;
   flex-direction: column;
   padding: 22px 16px 18px;
@@ -548,9 +550,91 @@
   }
 }
 
+// ── 접기 단추로 접고 펴기 ────────────────────────────────────────────────────────
+// 칸 너비만 줄고(.shell 그리드 전환) 안의 아이콘은 제자리 — 여백을 그대로 두면 76px 칸에서
+// 아이콘이 정확히 가운데다. 글자는 흐려지며 칸에 잘린다. (예전엔 누르는 순간 아이콘 줄 모양으로
+// 바뀌어, 넓은 칸 가운데로 아이콘이 먼저 모였다가 칸이 줄었다.)
+$fold: 0.35s cubic-bezier(0.33, 1, 0.68, 1);
+$fold-text: '.sidebar__brand-text, .sidebar__section-label, .nav-item__label, .nav-item__badge, .nav-people__caret, .sidebar__user, .sidebar__logout';
+
+#{$fold-text} {
+  // 펼칠 때는 칸이 넓어진 뒤에 나타난다.
+  transition:
+    opacity 0.2s 0.12s,
+    visibility 0s;
+}
+
+.sidebar__brand,
+.sidebar__footer,
+.nav-people__row .nav-item {
+  transition: padding $fold;
+}
+
+.sidebar__brand-text,
+.sidebar__section-label {
+  white-space: nowrap;
+}
+
+// 섹션 이름 자리도 같이 줄고, 접히면 그 자리에 얇은 구분선(예전 아이콘 줄 모양)
+.sidebar__section-label {
+  max-height: 20px;
+  overflow: hidden;
+  transition:
+    opacity 0.2s 0.12s,
+    visibility 0s,
+    max-height $fold,
+    margin $fold;
+}
+
+.sidebar__section + .sidebar__section {
+  border-top: 1px solid transparent;
+  transition:
+    margin $fold,
+    padding $fold,
+    border-color $fold;
+}
+
 .shell.is-collapsed {
   grid-template-columns: 76px minmax(0, 1fr);
-  @include sidebar-rail;
+
+  #{$fold-text} {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.12s,
+      visibility 0s 0.12s;
+  }
+
+  .sidebar__section-label {
+    max-height: 0;
+    margin-bottom: 0;
+    transition:
+      opacity 0.12s,
+      visibility 0s 0.12s,
+      max-height $fold,
+      margin $fold;
+  }
+
+  .sidebar__section + .sidebar__section {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top-color: var(--line);
+  }
+
+  // 로고(40px)·아바타(38px)를 76px 칸 가운데로 — 펼침과 1~3px 차이라 같이 미끄러진다.
+  .sidebar__brand {
+    padding-left: 1px;
+  }
+
+  .sidebar__footer {
+    padding-left: 2px;
+  }
+
+  // 갈매기 자리(오른쪽 40px)는 비운다 — 안 그러면 줄 바탕이 칸 밖으로 넘친다.
+  .nav-people__row .nav-item {
+    padding-right: 12px;
+  }
 }
 
 // 좁아지면 늘 아이콘 줄 — 펼칠 자리가 없어서 접기 단추도 숨긴다.

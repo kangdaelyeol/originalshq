@@ -4,8 +4,10 @@ import { createPortal } from 'react-dom'
 import { useCurrentMember } from '../../context/member-context'
 import type { TechBoardKey } from '../../data/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
-import { pushToast } from '../../data/tech-save-queue'
+import { dismissToast, pushToast } from '../../data/tech-save-queue'
 import { authorOf, fetchUpdates, postUpdate, type TechUpdate } from '../../data/tech-updates'
+import { isComposing } from '../../lib/ime'
+import { cx } from '../../lib/cx'
 import { usePortalRoot } from '../../lib/portal-root'
 import { PersonAvatar } from './monday-cells'
 
@@ -40,22 +42,27 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   const [updates, setUpdates] = useState<TechUpdate[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
-  const [posting, setPosting] = useState(false)
+  // 올리는 중인 글의 임시 id
+  const tempId = useRef(0)
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
 
   // 닫힌 뒤 늦게 온 응답은 버린다.
   const alive = useRef(true)
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    // 개발 모드(StrictMode)는 effect를 정리했다 다시 돌린다 — 다시 돌 때 되살린다.
+    alive.current = true
+    return () => {
       alive.current = false
-    },
-    [],
-  )
+    }
+  }, [])
   const load = useCallback(() => {
-    setError(null)
     fetchUpdates(boardKey, itemId)
-      .then((list) => alive.current && setUpdates(list))
+      .then((list) => {
+        if (!alive.current) return
+        setError(null)
+        setUpdates(list)
+      })
       .catch((e: unknown) => alive.current && setError(errorText(e)))
   }, [boardKey, itemId])
 
@@ -81,22 +88,51 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
     panelRef.current?.querySelector<HTMLTextAreaElement>('.mon-composer textarea')?.focus()
   }, [itemId])
 
-  const send = async (text: string, parentId?: string) => {
-    if (!text.trim() || posting) return false
-    setPosting(true)
-    try {
-      await postUpdate(boardKey, itemId, text, parentId)
-      load()
-      return true
-    } catch (e) {
-      pushToast({ tone: 'error', title: '업데이트를 올리지 못했어요', message: errorText(e) })
-      return false
-    } finally {
-      setPosting(false)
-    }
-  }
-
   const me = member?.name || member?.email || ''
+
+  /**
+   * 올리기 — 목록에 바로 넣어 보여 주고(흐리게, "올리는 중") 요청은 뒤에서. 끝나면 서버 목록으로
+   * 바꾸고, 실패하면 뺀 뒤 토스트에 "다시 시도"를 붙인다.
+   */
+  const send = (text: string, parentId?: string): boolean => {
+    const body = text.trim()
+    if (!body) return false
+    const temp: TechUpdate = {
+      id: `temp-${++tempId.current}`,
+      // 서명을 붙여 두면 작성자(나)로 보인다(authorOf).
+      text: `${body}\n\n— ${me || '나'} · xtool tech`,
+      createdAt: new Date().toISOString(),
+      creator: null,
+      replies: [],
+    }
+    const without = (list: TechUpdate[]) =>
+      list.filter((u) => u.id !== temp.id).map((u) => ({ ...u, replies: u.replies.filter((r) => r.id !== temp.id) }))
+    setUpdates((list) =>
+      parentId
+        ? (list ?? []).map((u) => (u.id === parentId ? { ...u, replies: [...u.replies, temp] } : u))
+        : [temp, ...(list ?? [])],
+    )
+    postUpdate(boardKey, itemId, body, parentId)
+      .then(() => {
+        if (alive.current) load()
+      })
+      .catch((e: unknown) => {
+        if (alive.current) setUpdates((list) => (list ? without(list) : list))
+        const toastId: number = pushToast({
+          tone: 'error',
+          title: '업데이트를 올리지 못했어요',
+          message: errorText(e),
+          action: {
+            label: '다시 시도',
+            run: () => {
+              dismissToast(toastId)
+              send(body, parentId)
+            },
+          },
+        })
+      })
+    return true
+  }
 
   return createPortal(
     <aside ref={panelRef} className="mon-panel" role="dialog" aria-label={`${title} 업데이트`}>
@@ -117,7 +153,7 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
           className="mon-composer"
           onSubmit={(e) => {
             e.preventDefault()
-            void send(draft).then((ok) => ok && setDraft(''))
+            if (send(draft)) setDraft('')
           }}
         >
           <textarea
@@ -128,16 +164,15 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               // ⌘/Ctrl+엔터로 올리기(엔터는 줄바꿈)
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              if (e.key === 'Enter' && !isComposing(e) && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault()
-                void send(draft).then((ok) => ok && setDraft(''))
+                if (send(draft)) setDraft('')
               }
             }}
           />
           <div className="mon-composer__foot">
             <span>{me ? `${me} 이름으로 올라가요` : ''}</span>
-            <button type="submit" className="mon-composer__send" disabled={!draft.trim() || posting}>
-              {posting && !replyTo ? <LoaderCircle size={14} className="is-spinning" aria-hidden /> : null}
+            <button type="submit" className="mon-composer__send" disabled={!draft.trim()}>
               업데이트
             </button>
           </div>
@@ -165,14 +200,12 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
             photoOf={photoOf}
             me={me}
             replying={replyTo === update.id}
-            posting={posting}
             onReply={() => setReplyTo((id) => (id === update.id ? null : update.id))}
-            onSendReply={(text) =>
-              send(text, update.id).then((ok) => {
-                if (ok) setReplyTo(null)
-                return ok
-              })
-            }
+            onSendReply={(text) => {
+              const ok = send(text, update.id)
+              if (ok) setReplyTo(null)
+              return ok
+            }}
           />
         ))}
       </div>
@@ -181,6 +214,9 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   )
 }
 
+/** 올리는 중인 글(아직 서버에 없다) */
+const isPending = (update: TechUpdate) => update.id.startsWith('temp-')
+
 function Author({ update, photoOf, small }: { update: TechUpdate; photoOf: (name: string) => string | undefined; small?: boolean }) {
   const { author, viaApp } = authorOf(update)
   const photo = photoOf(author) ?? (viaApp ? undefined : (update.creator?.photo ?? undefined))
@@ -188,7 +224,14 @@ function Author({ update, photoOf, small }: { update: TechUpdate; photoOf: (name
     <div className={small ? 'mon-update__author is-small' : 'mon-update__author'}>
       <PersonAvatar name={author} photo={photo} />
       <strong>{author}</strong>
-      <time dateTime={update.createdAt ?? undefined}>{whenText(update.createdAt)}</time>
+      {isPending(update) ? (
+        <span className="mon-update__pending">
+          <LoaderCircle size={12} className="is-spinning" aria-hidden />
+          올리는 중
+        </span>
+      ) : (
+        <time dateTime={update.createdAt ?? undefined}>{whenText(update.createdAt)}</time>
+      )}
     </div>
   )
 }
@@ -198,7 +241,6 @@ function UpdateCard({
   photoOf,
   me,
   replying,
-  posting,
   onReply,
   onSendReply,
 }: {
@@ -206,20 +248,19 @@ function UpdateCard({
   photoOf: (name: string) => string | undefined
   me: string
   replying: boolean
-  posting: boolean
   onReply: () => void
-  onSendReply: (text: string) => Promise<boolean>
+  onSendReply: (text: string) => boolean
 }) {
   const [reply, setReply] = useState('')
   return (
-    <article className="mon-update">
+    <article className={cx('mon-update', isPending(update) && 'is-pending')}>
       <Author update={update} photoOf={photoOf} />
       <p className="mon-update__text">{authorOf(update).text}</p>
 
       {update.replies.length > 0 && (
         <ul className="mon-update__replies">
           {update.replies.map((r) => (
-            <li key={r.id}>
+            <li key={r.id} className={cx(isPending(r) && 'is-pending')}>
               <Author update={r} photoOf={photoOf} small />
               <p className="mon-update__text">{authorOf(r).text}</p>
             </li>
@@ -239,7 +280,7 @@ function UpdateCard({
           className="mon-update__reply"
           onSubmit={(e) => {
             e.preventDefault()
-            void onSendReply(reply).then((ok) => ok && setReply(''))
+            if (onSendReply(reply)) setReply('')
           }}
         >
           <PersonAvatar name={me || '나'} photo={me ? photoOf(me) : undefined} />
@@ -250,8 +291,8 @@ function UpdateCard({
             aria-label="답글 쓰기"
             onChange={(e) => setReply(e.target.value)}
           />
-          <button type="submit" disabled={!reply.trim() || posting}>
-            {posting ? <LoaderCircle size={14} className="is-spinning" aria-hidden /> : '답글'}
+          <button type="submit" disabled={!reply.trim()}>
+            답글
           </button>
         </form>
       )}

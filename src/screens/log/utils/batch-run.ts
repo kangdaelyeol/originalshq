@@ -227,6 +227,13 @@ export const summarizeRun = (run: BatchRun): string => {
         `항목 ${num(sum('count'))}건 (변경 ${num(sum('written'))}·삭제 ${num(sum('deleted'))})`,
       ].join(' · ')
     }
+    case 'meta-creatives': {
+      const failed = (result.failed as unknown[] | undefined) ?? []
+      return [
+        `소재 ${num(result.creatives)}개 (새 ${num(result.newCreatives)})`,
+        `처리 ${num(result.processed)} · 실패 ${num(failed.length)} · 남음 ${num(result.pending)}`,
+      ].join(' · ')
+    }
     case 'google-insights': {
       const campaign = result.campaignResult as Record<string, unknown>
       const adGroup = result.adGroupResult as Record<string, unknown>

@@ -4,6 +4,7 @@
 // 들어가게 load-css로 감싼다 — originalshq의 다른 화면(cmip·리드 매니저 등)과 클래스 이름이
 // 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
 @use 'base';
+@use 'monday-palettes' as *;
 @use 'theme-monday' as *;
 
 .xtool-tech {
@@ -20,6 +21,21 @@
 }
 
 // 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday가 붙으면 위 스타일을 Monday 모양으로 덮는다.
+// 색은 Monday 색상(남색 기본 · mon-light · mon-black)의 --mon-* 변수.
 .xtool-tech.theme-monday {
+  @include palette-navy;
   @include theme-monday;
+}
+
+.xtool-tech.theme-monday.mon-light {
+  @include palette-light;
+
+  // 밝은 판 위 스크롤바
+  :where(*) {
+    scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+  }
+}
+
+.xtool-tech.theme-monday.mon-black {
+  @include palette-black;
 }

@@ -1,6 +1,5 @@
-// Meta 광고 소재 읽기 확인(디버그·조회만) — 소재 분석(AI)에 쓸 영상을 Graph
-// API로 가져올 수 있는지 본다. 광고 → 소재(creative) → 영상 ID → 영상 파일
-// 주소(source)까지 따라가고, 단계마다 무엇이 막히는지 돌려준다. 쓰기는 없다.
+// Meta 광고 소재 읽기(조회만) — 소재 분석(AI)에 쓸 광고 하나의 문구·CTA·
+// 링크·영상·타겟팅과, 분석할 광고를 고르는 목록. 쓰기는 없다.
 import { META_AD_ACCOUNT_IDS } from './index'
 
 const GRAPH = 'https://graph.facebook.com/v25.0'
@@ -57,45 +56,6 @@ const videoIdsOf = (ad: AdNode): string[] => {
       ].filter((v): v is string => !!v),
     ),
   ]
-}
-
-export interface MetaCreativeCheck {
-  /** 토큰에 허가된 권한(받을 수 있으면). */
-  permissions: string[] | string
-  accounts: {
-    adAccountId: string
-    ads: number
-    adsWithVideo: number
-    error?: string
-    sample: {
-      adId: string
-      adName: string
-      creativeType: string | null
-      videoIds: string[]
-    }[]
-  }[]
-  /** 영상 파일까지 받아지는지 — 영상마다 source(다운로드 주소)가 오는지. */
-  videos: {
-    videoId: string
-    sourceAvailable: boolean
-    /** 주소 자체는 서명된 임시 주소라 호스트만. */
-    sourceHost: string | null
-    lengthSec: number | null
-    /** 영상 주인(페이지) — 페이지 소유 영상은 페이지 토큰이 있어야 파일 주소가 온다. */
-    owner?: string
-    /** 그 페이지 토큰으로 다시 물었을 때 파일 주소가 오는지. */
-    sourceWithPageToken?: boolean | string
-    error?: string
-  }[]
-  /** 광고 계정 영상 목록(advideos)에서 파일 주소가 오는지 — 계정마다 5개. */
-  advideos: {
-    adAccountId: string
-    withSource: number
-    total: number
-    error?: string
-  }[]
-  /** 이 토큰으로 받을 수 있는 페이지 토큰 수. */
-  pageTokens: number | string
 }
 
 // ── 소재 분석용 조회(쓰기 없음) ─────────────────────────────────────────

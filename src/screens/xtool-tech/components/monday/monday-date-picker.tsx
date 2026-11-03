@@ -3,6 +3,7 @@ import { useState } from 'react'
 import type { TechCellValue, TechColumn } from '../../data/tech-boards'
 import { initialState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
+import { isComposing } from '../../lib/ime'
 import { koreaToday } from '../../lib/dates'
 import type { CellCommit } from './monday-editors'
 import { MonPopover } from './monday-popover'
@@ -144,7 +145,7 @@ export function DatePicker({ column, cell, anchor, onCommit, onCancel }: DatePic
           onFocus={(e) => e.currentTarget.select()}
           onChange={(e) => typed(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !isComposing(e)) {
               e.preventDefault()
               const parsed = parseDate(text)
               if (parsed) pick(parsed)
@@ -162,7 +163,7 @@ export function DatePicker({ column, cell, anchor, onCommit, onCancel }: DatePic
               setTouched(true)
             }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === 'Enter' && !isComposing(e)) {
                 e.preventDefault()
                 commit(date, time)
               }

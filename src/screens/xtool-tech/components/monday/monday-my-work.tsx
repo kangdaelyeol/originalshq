@@ -5,10 +5,12 @@ import type { MyWorkBoard } from '../../data/my-work'
 import { BOARD_TABS } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
 import { cx } from '../../lib/cx'
+import { BOARD_ICONS } from '../../nav'
 import { xtPath } from '../../paths'
 import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'
+import { SelectionProvider } from './monday-selection-bar'
 import { matchesItem, nextSort, type MonSort } from './monday-values'
 import { useCollapsedGroups } from './use-monday-prefs'
 
@@ -118,16 +120,18 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
 
       <div className="mon-scroll">
         {!loading && boards.length === 0 && <p className="mon-empty">담당 업무가 없어요.</p>}
-        {boards.map((tab) => (
-          <MyWorkBoardSection
-            key={tab.key}
-            boardKey={tab.key as MyWorkBoard}
-            label={tab.label}
-            slug={tab.slug}
-            ids={entries.get(tab.key as MyWorkBoard)!}
-            needle={needle}
-          />
-        ))}
+        <SelectionProvider>
+          {boards.map((tab) => (
+            <MyWorkBoardSection
+              key={tab.key}
+              boardKey={tab.key as MyWorkBoard}
+              label={tab.label}
+              slug={tab.slug}
+              ids={entries.get(tab.key as MyWorkBoard)!}
+              needle={needle}
+            />
+          ))}
+        </SelectionProvider>
       </div>
 
       {menu && (
@@ -155,7 +159,11 @@ export function MondayMyWork({ entries, loading, personLabel, people, onPerson, 
   )
 }
 
-/** 보드 하나 — 제목(보드로 가는 링크) + 그 보드의 그룹 표. */
+/**
+ * 보드 하나 = 박스 하나 — 위에 머리말(아이콘·보드 이름·건수, 누르면 그 보드로), 아래 그룹 표. 박스는
+ * 화면 높이 안으로 줄여서, 길면 머리말은 그대로 두고 표만 박스 안에서 스크롤된다(칸 머리글도 박스
+ * 안에서 위에 붙는다). 옆 스크롤도 박스마다 따로 — 칸 수가 다른 보드가 같이 밀리지 않게.
+ */
 function MyWorkBoardSection({
   boardKey,
   label,
@@ -179,26 +187,32 @@ function MyWorkBoardSection({
   )
   if (!meta || items.length === 0) return null
 
+  const Icon = BOARD_ICONS[boardKey]
+
   return (
-    <MondaySection
-      boardKey={boardKey}
-      meta={meta}
-      items={items}
-      hideEmptyGroups
-      allowAdd={false}
-      sort={sort}
-      onSort={(id) => setSort((current) => nextSort(current, id))}
-      collapsed={collapsed}
-      setCollapsed={setCollapsed}
-      title={
-        <h2 className="mon-section__title">
-          <Link to={xtPath(`/boards/${slug}`)}>
-            {label}
-            <ArrowUpRight size={15} aria-hidden />
-          </Link>
-          <span>{items.length}개</span>
-        </h2>
-      }
-    />
+    <section className="mon-workbox" aria-label={label}>
+      <header className="mon-workbox__head">
+        <span className="mon-workbox__icon" aria-hidden>
+          <Icon size={16} strokeWidth={2} />
+        </span>
+        <Link to={xtPath(`/boards/${slug}`)} className="mon-workbox__title" title={`${label} 보드로`}>
+          {label}
+          <ArrowUpRight size={15} aria-hidden />
+        </Link>
+        <span className="mon-workbox__count">{items.length}건</span>
+      </header>
+      <MondaySection
+        boardKey={boardKey}
+        meta={meta}
+        items={items}
+        hideEmptyGroups
+        allowAdd={false}
+        ownScroll
+        sort={sort}
+        onSort={(id) => setSort((current) => nextSort(current, id))}
+        collapsed={collapsed}
+        setCollapsed={setCollapsed}
+      />
+    </section>
   )
 }

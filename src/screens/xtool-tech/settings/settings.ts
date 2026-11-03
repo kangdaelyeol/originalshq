@@ -30,9 +30,21 @@ export const LAYOUT_OPTIONS: readonly { value: BoardLayout; label: string; descr
   { value: 'monday', label: 'Monday 표', description: 'Monday처럼 그룹별 표 — 칸을 눌러 바로 고쳐요' },
 ]
 
+/** Monday 표 레이아웃의 색 — 남색(Monday 다크) · 라이트 · 블랙(Monday 나이트) */
+export type MondayPalette = 'navy' | 'light' | 'black'
+
+export const MONDAY_PALETTES: readonly { value: MondayPalette; label: string; swatch: [string, string, string] }[] = [
+  // 견본: 바탕 · 칸 · 선택
+  { value: 'navy', label: '남색', swatch: ['#18192d', '#2b2c44', '#192f67'] },
+  { value: 'light', label: '라이트', swatch: ['#ffffff', '#f5f6fa', '#cce5ff'] },
+  { value: 'black', label: '블랙', swatch: ['#121212', '#272727', '#192f67'] },
+]
+
 export interface Settings {
   /** 보드 화면 모양 */
   layout: BoardLayout
+  /** Monday 표 레이아웃의 색 */
+  mondayPalette: MondayPalette
   background: BackgroundKind
   /** background가 shared일 때 고른 사진(techBackgrounds 문서 id) */
   sharedBackgroundId: string | null
@@ -44,6 +56,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   layout: 'dashboard',
+  mondayPalette: 'navy',
   background: 'shards',
   sharedBackgroundId: null,
   accent: DEFAULT_ACCENT,
@@ -62,6 +75,9 @@ export function loadSettings(): Settings {
     const shared = parsed.background === 'shared' && sharedId !== null
     return {
       layout: LAYOUT_OPTIONS.some((o) => o.value === parsed.layout) ? (parsed.layout as BoardLayout) : DEFAULT_SETTINGS.layout,
+      mondayPalette: MONDAY_PALETTES.some((o) => o.value === parsed.mondayPalette)
+        ? (parsed.mondayPalette as MondayPalette)
+        : DEFAULT_SETTINGS.mondayPalette,
       background: shared
         ? 'shared'
         : BACKGROUND_OPTIONS.some((o) => o.value === parsed.background)
@@ -98,6 +114,7 @@ export interface SettingsState extends Settings {
   /** 지금 화면에 칠해진 강조색 */
   accentInUse: string
   setLayout: (layout: BoardLayout) => void
+  setMondayPalette: (palette: MondayPalette) => void
   setBackground: (background: BuiltInBackground) => void
   /** 팀이 공유한 사진을 배경으로 */
   setSharedBackground: (id: string) => void

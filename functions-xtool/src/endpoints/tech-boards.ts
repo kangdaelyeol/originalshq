@@ -15,16 +15,24 @@ import {
   attachFile,
   BackgroundInput,
   clearFiles,
+  copyPhonesFromNames,
+  createItemUpdate,
   createTechItem,
+  deleteTechItems,
+  fetchItemUpdates,
+  findTechBoard,
   deleteBackground,
   fileUrls,
   MAX_FILE_BYTES,
   Editor,
   getMember,
   handleWebhookEvent,
+  MAX_DELETE,
   MondayWebhookEvent,
+  refreshItems,
   searchAddress,
   setupTechWebhooks,
+  syncTechBoard,
   syncTechBoards,
   TechBoardKey,
   TechBoardsSyncSummary,
@@ -321,6 +329,174 @@ export const techSyncNow = onCall(
       assess,
     )
   }),
+)
+
+// ────────────────────────────────
+// techDeleteItems — item 여러 개 지우기(Monday 표 선택 막대). 기술팀만. Monday
+// 휴지통으로 간다. 한 번에 MAX_DELETE개까지 — 화면이 나눠 보낸다.
+// ────────────────────────────────
+export const techDeleteItems = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: 120 },
+  traced(
+    'techDeleteItems',
+    'callable',
+    async (
+      request: CallableRequest<{ boardKey: TechBoardKey; itemIds: string[] }>,
+    ) => {
+      const editor = await requireMember(request)
+      const ids = request.data?.itemIds
+      if (
+        !findTechBoard({ key: String(request.data?.boardKey ?? '') }) ||
+        !Array.isArray(ids) ||
+        ids.length === 0 ||
+        ids.length > MAX_DELETE ||
+        ids.some((id) => typeof id !== 'string' || !/^\d+$/.test(id))
+      ) {
+        throw new HttpsError('invalid-argument', '지울 항목이 올바르지 않아요')
+      }
+      try {
+        return await deleteTechItems(
+          db,
+          mondayApiKey.value(),
+          request.data.boardKey,
+          ids,
+          editor,
+        )
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techItemUpdates·techCreateUpdate — item 업데이트(Monday 댓글) 읽기·쓰기. 기술팀만,
+// 업데이트를 세는 보드(출장)의 우리 캐시에 있는 item만.
+// ────────────────────────────────
+async function updatesTarget(data: { boardKey?: string; itemId?: string }) {
+  const source = findTechBoard({ key: String(data?.boardKey ?? '') })
+  const itemId = String(data?.itemId ?? '')
+  if (!source?.updates || !/^\d+$/.test(itemId)) {
+    throw new HttpsError('invalid-argument', '업데이트를 볼 수 없는 항목이에요')
+  }
+  const cached = await db.collection('techItems').doc(itemId).get()
+  if (cached.data()?.boardKey !== source.key) {
+    throw new HttpsError('not-found', '보드에 없는 항목이에요')
+  }
+  return { source, itemId }
+}
+
+export const techItemUpdates = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: 30 },
+  traced(
+    'techItemUpdates',
+    'callable',
+    async (request: CallableRequest<{ boardKey: string; itemId: string }>) => {
+      await requireMember(request)
+      const { itemId } = await updatesTarget(request.data)
+      try {
+        return { updates: await fetchItemUpdates(mondayApiKey.value(), itemId) }
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
+)
+
+export const techCreateUpdate = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: 30 },
+  traced(
+    'techCreateUpdate',
+    'callable',
+    async (
+      request: CallableRequest<{
+        boardKey: string
+        itemId: string
+        text: string
+        parentId?: string | null
+      }>,
+    ) => {
+      const editor = await requireMember(request)
+      const { source, itemId } = await updatesTarget(request.data)
+      const parentId = request.data?.parentId ?
+        String(request.data.parentId) :
+        null
+      let id: string
+      try {
+        // 답글은 이 item의 업데이트에만 — 다른 보드의 업데이트에 달지 못하게.
+        if (parentId) {
+          const updates = await fetchItemUpdates(mondayApiKey.value(), itemId)
+          if (!updates.some((update) => update.id === parentId)) {
+            throw new HttpsError(
+              'invalid-argument',
+              '답글을 달 업데이트를 찾지 못했어요',
+            )
+          }
+        }
+        id = await createItemUpdate(
+          mondayApiKey.value(),
+          itemId,
+          String(request.data?.text ?? ''),
+          editor.name || editor.email,
+          parentId,
+        )
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+      // 말풍선 개수를 바로 맞춘다 — 실패해도 글은 올라갔으니 성공으로 돌려준다(webhook·정기
+      // 동기화가 곧 맞춘다). 실패로 돌려주면 다시 눌러 같은 글이 두 번 올라간다.
+      await refreshItems(db, mondayApiKey.value(), source, [itemId]).catch(
+        (error) => logger.warn(`업데이트 개수 갱신 실패(${itemId}):`, error),
+      )
+      return { id }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techCopyPhones — 출장업무 item 이름에서 번호를 뽑아 "전화번호" 칸에 복사(관리자).
+// 이름은 그대로 둔다. 칸이 없으면 이름 칸 옆에 만들고, 이미 채워진 건은 건너뛴다.
+// dryRun이면 무엇을 할지만 돌려준다. 끝나면 그 보드를 다시 동기화해 새 칸을 캐시에
+// 넣는다. 그 뒤로 새로 만든 건은 webhook이 채운다(tech-boards/phones.ts).
+// ────────────────────────────────
+// 화면에 돌려줄 목록 길이 — 나머지는 건수만
+const PHONE_LIST_LIMIT = 50
+
+export const techCopyPhones = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS },
+  traced(
+    'techCopyPhones',
+    'callable',
+    async (request: CallableRequest<{ dryRun?: boolean }>) => {
+      await requireMember(request, true)
+      const source = findTechBoard({ key: 'fieldService' })
+      if (!source) throw new HttpsError('not-found', '출장업무 보드가 없어요')
+      const dryRun = request.data?.dryRun !== false
+      try {
+        const result = await copyPhonesFromNames(
+          mondayApiKey.value(),
+          source,
+          dryRun,
+        )
+        // 새 칸이 캐시(meta)에 들어가야 webhook 자동 채우기가 동작한다 — 실패하면 알린다.
+        const sync = dryRun ?
+          null :
+          await syncTechBoard(db, mondayApiKey.value(), source)
+        return {
+          ...result,
+          dryRun,
+          sync: sync ? { ok: sync.ok, error: sync.error ?? null } : null,
+          targetCount: result.targets.length,
+          noPhoneCount: result.noPhone.length,
+          targets: result.targets.slice(0, PHONE_LIST_LIMIT),
+          noPhone: result.noPhone.slice(0, PHONE_LIST_LIMIT),
+          errors: result.errors.slice(0, PHONE_LIST_LIMIT),
+        }
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
 )
 
 // ────────────────────────────────

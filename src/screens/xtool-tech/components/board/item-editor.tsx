@@ -26,6 +26,7 @@ import {
   type LocationState,
 } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
+import { isComposing } from '../../lib/ime'
 import { Button } from '../ui/button'
 import { DrawerShell } from './drawer-shell'
 import { FileField } from './item-files'
@@ -540,7 +541,8 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
             // 편집 폼 전체가 저장되지 않게 — 엔터는 주소 검색.
             if (e.key === 'Enter') {
               e.preventDefault()
-              void search()
+              // 한글 조합 중 엔터는 확정된 뒤 한 번 더 오니 그때 검색한다.
+              if (!isComposing(e)) void search()
             }
           }}
         />

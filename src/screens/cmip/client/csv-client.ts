@@ -1,11 +1,13 @@
 /**
+ * cmip API 공용 요청(callFunction·CallableError) — 이름은 처음 CSV 업로드용으로
+ * 만들어서 남은 것이다(퍼셉트론 화면도 이 경로에서 가져다 쓴다).
+ *
  * cmip 백엔드는 onRequest + cors 로 구성되어 있어 순수 JSON 요청/응답이다
  * (onCall의 { data }/{ result } 콜러블 프로토콜이 아님). 성공 시 반환값이 body에
  * 그대로 오고, 실패 시 { error: string } 형태로 온다 (index.ts의 sendError 참고).
  */
 import { authFetch } from '@/xtool-auth/auth-fetch'
 import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
-import type { AlertCheckData, MortarScoreData, WindowStats, ISODate } from '../types'
 
 export class CallableError extends Error {
   status: number
@@ -46,55 +48,4 @@ export async function callFunction<TReq, TRes>(
   }
 
   return body as TRes
-}
-
-// --------------------------------------------------------------------------- //
-// MORTAR SCORE / Alert
-// --------------------------------------------------------------------------- //
-
-export interface MortarScoreResult {
-  score: number
-  grade: 'A' | 'B' | 'C' | 'D' | 'F'
-  reasons: string[]
-  cur: WindowStats
-  prev: WindowStats
-  ref_date: ISODate
-}
-
-export interface AlertCheckResult {
-  created: number
-}
-
-export type AlertSeverity = 'info' | 'warn' | 'critical'
-
-export interface AlertSummary {
-  id: string
-  channel: string
-  alertType: string
-  severity: AlertSeverity
-  title: string
-  message: string
-  refDate: ISODate | null
-  createdAt: string | null
-}
-
-export interface ListAlertsData {
-  brandId: string | number
-  limit?: number
-}
-
-export interface ListAlertsResult {
-  alerts: AlertSummary[]
-}
-
-export function mortarScore(data: MortarScoreData): Promise<MortarScoreResult> {
-  return callFunction<MortarScoreData, MortarScoreResult>('mortarScore', data)
-}
-
-export function alertCheck(data: AlertCheckData): Promise<AlertCheckResult> {
-  return callFunction<AlertCheckData, AlertCheckResult>('alertCheck', data)
-}
-
-export function listAlerts(data: ListAlertsData): Promise<ListAlertsResult> {
-  return callFunction<ListAlertsData, ListAlertsResult>('listAlerts', data)
 }

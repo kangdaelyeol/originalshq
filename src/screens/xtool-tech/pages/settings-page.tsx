@@ -23,7 +23,14 @@ import { pushToast } from '../data/tech-save-queue'
 import { cx } from '../lib/cx'
 import { ACCENT_PRESETS, DEFAULT_ACCENT } from '../settings/accent'
 import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '../settings/glass'
-import { BACKGROUND_OPTIONS, isPhotoBackground, LAYOUT_OPTIONS, useSettings, type BoardLayout } from '../settings/settings'
+import {
+  BACKGROUND_OPTIONS,
+  isPhotoBackground,
+  LAYOUT_OPTIONS,
+  MONDAY_PALETTES,
+  useSettings,
+  type BoardLayout,
+} from '../settings/settings'
 
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
@@ -215,6 +222,8 @@ export function SettingsPage() {
   const {
     layout,
     setLayout,
+    mondayPalette,
+    setMondayPalette,
     background,
     sharedBackgroundId,
     accent,
@@ -281,6 +290,35 @@ export function SettingsPage() {
             )
           })}
         </div>
+        {monday && (
+          <>
+            <h3 className="bg-section-label">Monday 색상</h3>
+            <div className="palette-options" role="radiogroup" aria-label="Monday 색상">
+              {MONDAY_PALETTES.map((palette) => {
+                const selected = palette.value === mondayPalette
+                return (
+                  <button
+                    key={palette.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    className={cx('glass-preset', 'palette-tile', selected && 'is-selected')}
+                    onClick={() => setMondayPalette(palette.value)}
+                  >
+                    {/* 견본 — 바탕 위에 칸 두 줄, 하나는 선택 색 */}
+                    <span className="palette-tile__art" style={{ background: palette.swatch[0] }} aria-hidden>
+                      <i style={{ background: palette.swatch[1] }} />
+                      <i style={{ background: palette.swatch[2] }} />
+                    </span>
+                    <span className="glass-preset__label">
+                      <strong>{palette.label}</strong>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
         {monday && (
           <p className="accent-picker__note">
             <Info size={14} aria-hidden />

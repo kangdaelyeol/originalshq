@@ -16,8 +16,10 @@ import {
   createItem,
   fetchTechItems,
   moveItemToGroup,
+  deleteItem as deleteMondayItem,
 } from './monday-api'
 import {
+  TechBoardKey,
   TechBoardMeta,
   TechChange,
   TechEditInput,
@@ -325,4 +327,67 @@ export async function createTechItem(
     await logFailure(db, 'create', input, editor, error)
     throw error
   }
+}
+
+// 한 번에 지울 수 있는 item 수 — 화면이 이만큼씩 나눠 보낸다.
+export const MAX_DELETE = 25
+
+/**
+ * item 여러 개 지우기(Monday 표의 선택 막대) — Monday 휴지통으로 보내고(30일 안에
+ * Monday에서 되살릴 수 있다) 캐시에서 뺀다. 우리 캐시에서 이 보드 것으로 확인된 item만
+ * 지운다. 하나씩 하고, 실패한 것은 따로 돌려준다(나머지는 계속).
+ */
+export async function deleteTechItems(
+  db: Firestore,
+  apiKey: string,
+  boardKey: TechBoardKey,
+  itemIds: string[],
+  editor: Editor,
+): Promise<{
+  deleted: string[]
+  failed: Array<{ itemId: string; error: string }>
+}> {
+  const source = sourceOf(boardKey)
+  const meta = await getBoardMeta(db, source.key)
+  const deleted: string[] = []
+  const failed: Array<{ itemId: string; error: string }> = []
+  for (const itemId of itemIds) {
+    const item = await getItem(db, itemId)
+    if (!item || item.boardKey !== source.key) {
+      failed.push({ itemId, error: '이 보드에 없는 항목이에요' })
+      continue
+    }
+    try {
+      await deleteMondayItem(apiKey, itemId)
+      await deleteItem(db, itemId)
+      deleted.push(itemId)
+      await addEditLog(db, {
+        at: Date.now(),
+        action: 'delete',
+        boardKey: source.key,
+        boardName: meta?.name ?? source.key,
+        itemId,
+        itemName: item.name,
+        by: editor,
+        changes: [],
+        ok: true,
+      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      failed.push({ itemId, error: message })
+      await addEditLog(db, {
+        at: Date.now(),
+        action: 'delete',
+        boardKey: source.key,
+        boardName: meta?.name ?? source.key,
+        itemId,
+        itemName: item.name,
+        by: editor,
+        changes: [],
+        ok: false,
+        error: message,
+      }).catch(() => undefined)
+    }
+  }
+  return { deleted, failed }
 }

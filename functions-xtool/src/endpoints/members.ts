@@ -64,17 +64,27 @@ async function requireAdmin(
 }
 
 /** 그 이메일의 Auth 계정에 비밀번호를 넣는다 — 없으면 만들고, 있으면(예: 전에
- * Google로 로그인) 비밀번호를 바꾸고 기존 로그인을 모두 끊는다. */
+ * Google로 로그인) 비밀번호를 바꾸고 기존 로그인을 모두 끊는다. 새로 발급할 때는
+ * (allowExisting=false) 이미 있는 계정을 건드리지 않는다 — 같은 Firebase 프로젝트의
+ * 다른 화면 계정을 구성원 등록만으로 가져가지 못하게. */
 async function setAuthPassword(
   email: string,
   password: string,
   name: string,
+  allowExisting: boolean,
 ): Promise<string> {
   const auth = getAuth()
   const existing = await auth.getUserByEmail(email).catch((error) => {
     if (error?.code === 'auth/user-not-found') return null
     throw error
   })
+  if (existing && !allowExisting) {
+    throw new HttpsError(
+      'failed-precondition',
+      '이미 로그인 계정이 있는 이메일이에요. 발급을 끄고 등록한 뒤, ' +
+        '목록에서 비밀번호 재발급을 눌러 주세요',
+    )
+  }
   if (!existing) {
     const user = await auth.createUser({
       email,
@@ -127,25 +137,32 @@ export const xtoolIssueAccount = onCall(
       )
 
       const ref = db.collection(MEMBERS).doc(email)
-      if ((await ref.get()).exists) {
-        throw new HttpsError(
+      const alreadyExists = () =>
+        new HttpsError(
           'already-exists',
           '이미 등록된 이메일이에요. 목록에서 비밀번호를 다시 발급해 주세요',
         )
+      if ((await ref.get()).exists) throw alreadyExists()
+      await setAuthPassword(email, password, name, false)
+      try {
+        // create — 두 관리자가 같은 이메일을 동시에 발급하면 나중 것은 거절된다.
+        await ref.create({
+          email,
+          name,
+          isAdmin: data.isAdmin === true,
+          teams,
+          status: 'active',
+          mustChangePassword: true,
+          passwordIssuedAt: FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          createdBy: adminEmail,
+          updatedAt: FieldValue.serverTimestamp(),
+        })
+      } catch (error) {
+        // Firestore ALREADY_EXISTS(6)
+        if ((error as { code?: number }).code === 6) throw alreadyExists()
+        throw error
       }
-      await setAuthPassword(email, password, name)
-      await ref.set({
-        email,
-        name,
-        isAdmin: data.isAdmin === true,
-        teams,
-        status: 'active',
-        mustChangePassword: true,
-        passwordIssuedAt: FieldValue.serverTimestamp(),
-        createdAt: FieldValue.serverTimestamp(),
-        createdBy: adminEmail,
-        updatedAt: FieldValue.serverTimestamp(),
-      })
       return { email }
     },
   ),
@@ -173,7 +190,7 @@ export const xtoolResetPassword = onCall(
       const ref = db.collection(MEMBERS).doc(email)
       const member = (await ref.get()).data()
       if (!member) throw new HttpsError('not-found', '등록되지 않은 구성원이에요')
-      await setAuthPassword(email, password, String(member.name ?? ''))
+      await setAuthPassword(email, password, String(member.name ?? ''), true)
       await ref.update({
         mustChangePassword: true,
         passwordIssuedAt: FieldValue.serverTimestamp(),
@@ -195,9 +212,13 @@ export const xtoolSetPassword = onCall(
     'callable',
     async (request: CallableRequest<{ password: string }>) => {
       const uid = request.auth?.uid
-      const tokenEmail = request.auth?.token.email
+      const token = request.auth?.token
+      const tokenEmail = token?.email
       if (!uid || !tokenEmail) {
         throw new HttpsError('unauthenticated', '로그인이 필요해요')
+      }
+      if (token?.email_verified !== true) {
+        throw new HttpsError('permission-denied', '메일 인증이 필요해요')
       }
       const password = checkPassword(request.data?.password)
       const ref = db.collection(MEMBERS).doc(normalizeEmail(tokenEmail))
@@ -209,6 +230,15 @@ export const xtoolSetPassword = onCall(
         throw new HttpsError(
           'failed-precondition',
           '이미 비밀번호를 정했어요. 로그인해 주세요',
+        )
+      }
+      // 지금 임시 비밀번호로 로그인한 것이어야 한다 — 재발급 전에 받은 토큰(잃어버린
+      // 기기 등, 최대 1시간 유효)으로 비밀번호를 정해 계정을 가져가지 못하게.
+      const issuedAt = member.passwordIssuedAt?.toMillis?.() ?? 0
+      if ((token?.auth_time ?? 0) * 1000 < issuedAt) {
+        throw new HttpsError(
+          'unauthenticated',
+          '로그인이 만료됐어요. 받은 임시 비밀번호로 다시 로그인해 주세요',
         )
       }
       await getAuth().updateUser(uid, { password })

@@ -1,0 +1,129 @@
+// Monday 색상(설정 > 레이아웃 > Monday 색상) — 남색(기본) · 라이트 · 블랙. 레이아웃은 같고 색만 다르다.
+// 값은 Monday 캡처에서 잰 것(남색: sample/monday-1~4, 라이트·블랙: 출장업무 보드 캡처). 화면 루트
+// (.xtool-tech.theme-monday)에 칠해서 표·사이드바·카드·팝오버(루트에 띄운다)가 같이 쓴다.
+
+// 남색 — Monday 다크
+@mixin palette-navy {
+  color-scheme: dark;
+  --mon-page: #18192d;
+  --mon-bg: #18192d;
+  --mon-surface: #2b2c44;
+  --mon-nav: #23263d;
+  --mon-cell: #2b2c44;
+  --mon-hover: #33354f;
+  --mon-line: #43445d;
+  --mon-line-strong: #5f6278;
+  --mon-control: #797e93;
+  --mon-text: #d5d8df;
+  --mon-text-soft: #c3c6d4;
+  --mon-text-2: #9699a6;
+  --mon-text-4: #80839a;
+  --mon-primary: #2364e3;
+  --mon-primary-hi: #3a78f0;
+  --mon-chip: #192f67;
+  --mon-badge: #3a3a50;
+  --mon-pop: #30324e;
+  --mon-selected-nav: #192f67;
+  --mon-selected-ink: #fff;
+  --mon-selected-row: #1c2c63;
+  --mon-overlay: rgba(255, 255, 255, 0.08);
+  --mon-overlay-strong: rgba(255, 255, 255, 0.12);
+  --mon-outline: rgba(255, 255, 255, 0.22);
+  --mon-link: #66a3ff;
+  --mon-muted: #5f6278;
+  --mon-workbox: #1c1d33;
+  --mon-workbox-head: #23253d;
+  --mon-sort-bg: #393b56;
+  --mon-preview: #11121f;
+  --mon-person-empty: #bebfc9;
+  --mon-tool-on: rgba(35, 100, 227, 0.22);
+  --mon-icon-tint: rgba(35, 100, 227, 0.2);
+  --mon-icon-ink: #8fb4ff;
+  --mon-danger-text: #ff7f8f;
+  --mon-shadow: rgba(0, 0, 0, 0.55);
+  --mon-scrim: rgba(0, 0, 0, 0.55);
+}
+
+// 라이트 — Monday 기본(흰 판·연한 회청 선·연파랑 선택)
+@mixin palette-light {
+  color-scheme: light;
+  --mon-page: #ffffff;
+  --mon-bg: #ffffff;
+  --mon-surface: #f5f6fa;
+  --mon-nav: #ffffff;
+  --mon-cell: #ffffff;
+  --mon-hover: #f5f6f8;
+  --mon-line: #d0d4e4;
+  --mon-line-strong: #b4b8cc;
+  --mon-control: #c3c6d4;
+  --mon-text: #323338;
+  --mon-text-soft: #4b4c55;
+  --mon-text-2: #676879;
+  --mon-text-4: #8a8b99;
+  --mon-primary: #0073ea;
+  --mon-primary-hi: #0060b9;
+  --mon-chip: #cce5ff;
+  --mon-badge: #e6e9ef;
+  --mon-pop: #ffffff;
+  --mon-selected-nav: #cce5ff;
+  --mon-selected-ink: #323338;
+  --mon-selected-row: #e5f2ff;
+  --mon-overlay: rgba(0, 0, 0, 0.05);
+  --mon-overlay-strong: rgba(0, 0, 0, 0.09);
+  --mon-outline: rgba(0, 0, 0, 0.22);
+  --mon-link: #1f76c2;
+  --mon-muted: #b4b8cc;
+  --mon-workbox: #ffffff;
+  --mon-workbox-head: #f5f6fa;
+  --mon-sort-bg: #e6e9ef;
+  --mon-preview: #f0f1f5;
+  --mon-person-empty: #9a9cad;
+  --mon-tool-on: #cce5ff;
+  --mon-icon-tint: #e5f0ff;
+  --mon-icon-ink: #0073ea;
+  --mon-danger-text: #d83a52;
+  --mon-shadow: rgba(29, 36, 69, 0.18);
+  --mon-scrim: rgba(41, 47, 76, 0.4);
+}
+
+// 블랙 — Monday 나이트(검은 바탕·회색 판)
+@mixin palette-black {
+  color-scheme: dark;
+  --mon-page: #121212;
+  --mon-bg: #121212;
+  --mon-surface: #272727;
+  --mon-nav: #181818;
+  --mon-cell: #272727;
+  --mon-hover: #303030;
+  --mon-line: #4a4a4a;
+  --mon-line-strong: #6a6a6a;
+  --mon-control: #8a8a8a;
+  --mon-text: #e6e6e6;
+  --mon-text-soft: #cfcfcf;
+  --mon-text-2: #a3a3a3;
+  --mon-text-4: #8a8a8a;
+  --mon-primary: #2364e3;
+  --mon-primary-hi: #3a78f0;
+  --mon-chip: #192f67;
+  --mon-badge: #3a3a3a;
+  --mon-pop: #2f2f2f;
+  --mon-selected-nav: #192f67;
+  --mon-selected-ink: #fff;
+  --mon-selected-row: #1d2a4d;
+  --mon-overlay: rgba(255, 255, 255, 0.08);
+  --mon-overlay-strong: rgba(255, 255, 255, 0.12);
+  --mon-outline: rgba(255, 255, 255, 0.22);
+  --mon-link: #66a3ff;
+  --mon-muted: #666666;
+  --mon-workbox: #1a1a1a;
+  --mon-workbox-head: #222222;
+  --mon-sort-bg: #3a3a3a;
+  --mon-preview: #0b0b0b;
+  --mon-person-empty: #bdbdbd;
+  --mon-tool-on: rgba(35, 100, 227, 0.25);
+  --mon-icon-tint: rgba(35, 100, 227, 0.22);
+  --mon-icon-ink: #8fb4ff;
+  --mon-danger-text: #ff7f8f;
+  --mon-shadow: rgba(0, 0, 0, 0.6);
+  --mon-scrim: rgba(0, 0, 0, 0.6);
+}

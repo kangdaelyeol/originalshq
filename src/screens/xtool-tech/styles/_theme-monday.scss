@@ -3,22 +3,23 @@
 // 덮어쓴다. 색은 Monday 캡처(sample/monday-1~4)에서 잰 값. 로그인 화면(.login)은 연출이 있는 화면이라
 // 그대로 둔다. index.scss가 `.xtool-tech.theme-monday { @include theme-monday; }`로 넣는다.
 
-$page: #18192d;
-$surface: #2b2c44;
-$nav: #23263d;
-$line: #43445d;
-$line-strong: #6e7287;
-$control: #797e93;
-$selected: #192f67;
-$primary: #2364e3;
-$primary-hi: #3a78f0;
+// 색은 모두 --mon-* 변수(_monday-palettes.scss — 남색·라이트·블랙)
+$page: var(--mon-page);
+$surface: var(--mon-surface);
+$nav: var(--mon-nav);
+$line: var(--mon-line);
+$line-strong: var(--mon-line-strong);
+$control: var(--mon-control);
+$selected: var(--mon-selected-nav);
+$primary: var(--mon-primary);
+$primary-hi: var(--mon-primary-hi);
 
 @mixin theme-monday {
   --bg: #{$page};
-  --text-1: #d5d8df;
-  --text-2: #c3c6d4;
-  --text-3: #9699a6;
-  --text-4: #80839a;
+  --text-1: var(--mon-text);
+  --text-2: var(--mon-text-soft);
+  --text-3: var(--mon-text-2);
+  --text-4: var(--mon-text-4);
   --line: #{$line};
   --good: #00c875;
   --warn: #fdab3d;
@@ -65,7 +66,7 @@ $primary-hi: #3a78f0;
   }
 
   .sidebar {
-    border-color: transparent;
+    border-color: $line;
     background: $nav;
   }
 
@@ -78,17 +79,17 @@ $primary-hi: #3a78f0;
     border-color: $line;
     border-radius: 12px;
     background: $surface;
-    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 10px 34px var(--mon-shadow);
   }
 
   .drawer-scrim {
-    background: rgba(0, 0, 0, 0.5);
+    background: var(--mon-scrim);
   }
 
   .notif {
     border-color: $line;
     background: $surface;
-    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 10px 34px var(--mon-shadow);
   }
 
   // 토스트 — Monday처럼 결과는 색 판(성공 초록·실패 빨강), 진행 중은 판 색
@@ -96,7 +97,7 @@ $primary-hi: #3a78f0;
     border-color: $line;
     border-radius: 6px;
     background: $surface;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 8px 24px var(--mon-shadow);
   }
 
   .toast--success {
@@ -137,17 +138,17 @@ $primary-hi: #3a78f0;
 
     &:hover {
       border-color: transparent;
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--mon-overlay);
     }
 
     &.is-active {
       border-color: transparent;
       background: $selected;
       box-shadow: none;
-      color: #fff;
+      color: var(--mon-selected-ink);
 
       .nav-item__icon {
-        color: #fff;
+        color: var(--mon-selected-ink);
       }
     }
   }
@@ -191,7 +192,7 @@ $primary-hi: #3a78f0;
 
     &:hover {
       border-color: $control;
-      background: rgba(255, 255, 255, 0.07);
+      background: var(--mon-overlay);
     }
 
     &.button--sm {
@@ -205,7 +206,7 @@ $primary-hi: #3a78f0;
     background: transparent;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--mon-overlay);
     }
   }
 
@@ -233,7 +234,7 @@ $primary-hi: #3a78f0;
   .search {
     border-color: transparent;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.07);
+    background: var(--mon-overlay);
   }
 
   .check input {
@@ -315,7 +316,7 @@ $primary-hi: #3a78f0;
 
     &.is-selected {
       border-color: $primary;
-      background: rgba(35, 100, 227, 0.12);
+      background: var(--mon-tool-on);
       box-shadow: none;
     }
   }
@@ -324,8 +325,8 @@ $primary-hi: #3a78f0;
   .confirm__card {
     border-color: $line;
     border-radius: 8px;
-    background: #30324e;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    background: var(--mon-pop);
+    box-shadow: 0 20px 60px var(--mon-shadow);
   }
 
   .confirm__danger {
