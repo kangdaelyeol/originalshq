@@ -16,10 +16,17 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.email_verified == true;
     }
 
+    // 관리자가 발급한 임시 비밀번호로 들어온 동안(첫 비밀번호를 정하기 전 — mustChangePassword)은
+    // 본인 문서만 읽을 수 있다. 표시는 함수(functions-xtool endpoints/members.ts)만 쓰고 지운다.
+    function passwordReady(data) {
+      return data.get('mustChangePassword', false) != true;
+    }
+
     function isXtoolAdmin() {
       let path = /databases/$(database)/documents/xtoolMembers/$(signedInEmail());
       return emailVerified() && signedInEmail() != '' && exists(path)
-        && get(path).data.isAdmin == true && get(path).data.status == 'active';
+        && get(path).data.isAdmin == true && get(path).data.status == 'active'
+        && passwordReady(get(path).data);
     }
 
     function validMemberFields(data) {
@@ -68,7 +75,7 @@ service cloud.firestore {
     function isXtoolTeamMember(team) {
       let path = /databases/$(database)/documents/xtoolMembers/$(signedInEmail());
       return emailVerified() && signedInEmail() != '' && exists(path)
-        && get(path).data.status == 'active'
+        && get(path).data.status == 'active' && passwordReady(get(path).data)
         && (get(path).data.isAdmin == true || get(path).data.teams.get(team, false) == true);
     }
 

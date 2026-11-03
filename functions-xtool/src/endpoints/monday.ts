@@ -530,6 +530,17 @@ export const syncMondayBoardsScheduled = onSchedule(
           `실패 ${summary.failedCount}개`,
         summary.customers,
       )
+      // 단계별 시간 + 보드별 받기·쓰기 시간 — 실행 시간이 어디서 나오는지
+      // (docs/cost-optimization).
+      logger.info('Monday 동기화 단계별 시간:', {
+        ...summary.timings,
+        boards: summary.boards.map(({ name, itemCount, fetchMs, writeMs }) => ({
+          name,
+          itemCount,
+          fetchMs,
+          writeMs,
+        })),
+      })
     } catch (error) {
       logger.error('Monday 자동 동기화 실패:', error)
     }

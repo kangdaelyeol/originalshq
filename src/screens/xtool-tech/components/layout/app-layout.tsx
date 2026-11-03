@@ -11,6 +11,7 @@ import { pageStagger } from '../../lib/motion'
 import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
 import { XT_BASE, xtPath } from '../../paths'
+import { useSettings } from '../../settings/settings'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
 import { Toaster } from './toaster'
@@ -38,6 +39,7 @@ export function AppLayout() {
   const session = useXtoolSession('tech')
   const previousRef = useRef<XtoolSession['status']>('loading')
   const [collapsed, toggleSidebar] = useSidebarCollapsed()
+  const { layout } = useSettings()
 
   // 로그인 화면은 lazy라 받는 동안 이 화면이 남아 있다 — 그 사이 상태가 한 번 더 바뀌어도
   // (권한 없음 → 로그아웃) 처음 보낸 안내가 덮이지 않게, 이동은 여기 한 곳에서 이전 상태를 보고 한다.
@@ -46,7 +48,10 @@ export function AppLayout() {
     previousRef.current = session.status
     const toLogin = (notice?: string) =>
       navigate(xtPath('/login'), { replace: true, state: (notice ? { notice } : null) satisfies LoginLocationState | null })
-    if (session.status === 'denied') {
+    if (session.status === 'denied' && session.reason === 'password-setup') {
+      // 임시 비밀번호로 들어온 사람 — 로그인은 둔 채 로그인 화면에서 비밀번호부터 정하게.
+      toLogin()
+    } else if (session.status === 'denied') {
       void signOutXtool()
       toLogin(DENIED_MESSAGE[session.reason])
     } else if (session.status === 'signedOut' || session.status === 'unconfigured') {
@@ -62,7 +67,8 @@ export function AppLayout() {
     <MemberContext.Provider value={session.member}>
       <UsageTracking pathname={pathname} />
       <AppBackground />
-      <div className={cx('shell', collapsed && 'is-collapsed')}>
+      {/* Monday 표는 칸이 많아 화면 폭을 다 쓴다(is-wide). */}
+      <div className={cx('shell', collapsed && 'is-collapsed', layout === 'monday' && 'is-wide')}>
         <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
           <Topbar />

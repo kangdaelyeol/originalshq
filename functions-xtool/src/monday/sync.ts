@@ -39,7 +39,28 @@ import {
   MondayCustomerRebuildResult,
   MondayItem,
   MondaySyncSummary,
+  StepTimings,
 } from './types'
+
+/** 단계별 시간 재기 — time(이름, 할 일)로 감싸면 걸린 시간을 steps[이름]에
+ * 더한다(같은 이름이 여러 번·동시에 돌면 합). 실행 비용 대부분이 기다리는
+ * 시간이라 어느 단계가 긴지 보려고 쓴다(docs/cost-optimization). */
+const createTimer = () => {
+  const steps: StepTimings = {}
+  const time = async <T>(name: string, run: () => Promise<T>): Promise<T> => {
+    const startedAt = Date.now()
+    try {
+      return await run()
+    } finally {
+      steps[name] = (steps[name] ?? 0) + (Date.now() - startedAt)
+    }
+  }
+  return { steps, time }
+}
+type Timer = ReturnType<typeof createTimer>
+
+/** timer가 없을 때(보드 하나 등록 등) — 재지 않고 그냥 돌린다. */
+const untimed: Timer['time'] = (_name, run) => run()
 
 /** 하위 아이템까지 받아야 하는 보드인지 — 결제 보드는 금액이 품목 줄(하위
  * 아이템)에만 있고, 출장은 설치 품목이, AS는 부품·공임 청구가 하위 아이템에
@@ -105,18 +126,24 @@ export async function syncBoard(
   /** 주면 성공한 보드의 item을 여기 담는다 — 고객 통합이 DB에서 다시 읽지
    * 않게(syncBoards). */
   loaded?: Map<string, MondayItem[]>,
+  timer?: Timer,
 ): Promise<MondayBoardSyncResult> {
+  const time = timer?.time ?? untimed
   try {
-    const raw = await fetchBoard(apiKey, board.id, needsSubitems)
+    const fetchStartedAt = Date.now()
+    const raw = await time('boards.fetch', () =>
+      fetchBoard(apiKey, board.id, needsSubitems),
+    )
+    const fetchMs = Date.now() - fetchStartedAt
     const resolvedPhoneColumnId =
       board.phoneColumnId ?? detectPhoneColumnId(raw.columns)
     const syncedAt = Date.now()
     const items = buildMondayItems(raw, resolvedPhoneColumnId, syncedAt)
-    const { writtenCount, deletedCount } = await replaceBoardItems(
-      db,
-      board.id,
-      items,
+    const writeStartedAt = Date.now()
+    const { writtenCount, deletedCount } = await time('boards.write', () =>
+      replaceBoardItems(db, board.id, items),
     )
+    const writeMs = Date.now() - writeStartedAt
     loaded?.set(board.id, items)
 
     const result: MondayBoardSyncResult = {
@@ -126,6 +153,8 @@ export async function syncBoard(
       writtenCount,
       deletedCount,
       missingPhoneCount: items.filter((item) => !item.phone).length,
+      fetchMs,
+      writeMs,
     }
     await updateBoard(db, board.id, {
       name: raw.name,
@@ -160,48 +189,69 @@ export async function rebuildCustomers(
   db: Firestore,
   /** 이미 가진 item 전체(syncBoards가 방금 받은 것) — 없으면 DB에서 읽는다. */
   preloaded?: MondayItem[],
+  /** 주면 단계별 시간을 여기 더한다(syncBoards). 이름은 'rebuild.*'. */
+  timer?: Timer,
 ): Promise<MondayCustomerRebuildResult> {
-  const [boards, items, orders] = await Promise.all([
-    listBoards(db),
-    preloaded ?? listItems(db),
-    listCafe24Orders(db),
-  ])
+  const time = timer?.time ?? untimed
+  const [boards, items, orders] = await time('rebuild.read', () =>
+    Promise.all([
+      listBoards(db),
+      preloaded ?? listItems(db),
+      listCafe24Orders(db),
+    ]),
+  )
   // kind는 동기화 때 저장해 두지만, 추정 규칙이 바뀐 직후에도 바로 맞도록
   // 저장된 컬럼 정의에서 다시 추정한다.
   const kindByBoardId = new Map(
     boards.map((board) => [board.id, detectBoardKind(board.columns)]),
   )
-  const { customers, ...counts } = buildCustomers(
-    items,
-    kindByBoardId,
-    Date.now(),
-    orders,
+  const { customers, ...counts } = await time(
+    'rebuild.buildCustomers',
+    async () => buildCustomers(items, kindByBoardId, Date.now(), orders),
   )
-  const written = await replaceCustomers(db, customers)
+  // 아래 단계 시간은 계산(build*)과 저장(save*)을 합친 값이다.
+  const written = await time('rebuild.customers', () =>
+    replaceCustomers(db, customers),
+  )
   // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
-  await saveDailyInflow(db, buildDailyInflow(items, kindByBoardId))
+  await time('rebuild.dailyInflow', () =>
+    saveDailyInflow(db, buildDailyInflow(items, kindByBoardId)),
+  )
   const purchaseItems = items.filter(
     (item) => kindByBoardId.get(item.boardId) === 'purchase',
   )
   // 판매 통계(제품별 판매 수량)도 — 결제 보드의 품목 줄과 Cafe24 주문 품목.
-  await saveDailySales(db, buildDailySales(purchaseItems, orders))
+  await time('rebuild.dailySales', () =>
+    saveDailySales(db, buildDailySales(purchaseItems, orders)),
+  )
   // 오프라인 매출 원장(cmip의 오프라인 매출·ROAS가 읽는다).
-  const offlineSaleLines = await replaceOfflineSales(
-    db,
-    buildOfflineSaleLines(purchaseItems),
+  const offlineSaleLines = await time('rebuild.offlineSales', () =>
+    replaceOfflineSales(db, buildOfflineSaleLines(purchaseItems)),
   )
   // 날짜별 신규·재구매 금액(cmip ROAS 탭의 신규 고객 ROAS).
-  await saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers))
+  await time('rebuild.repeatRevenue', () =>
+    saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers)),
+  )
   // 광고 기여 ROAS 재료(cmip ROAS 탭의 ROAS 하한·코호트 ROAS).
-  await saveAttributionRows(db, buildAttributionRows(customers))
+  await time('rebuild.attribution', () =>
+    saveAttributionRows(db, buildAttributionRows(customers)),
+  )
   // GA ClientId가 적힌 상담(오기입 추적).
-  await saveGaConsultations(db, buildGaConsultations(items, kindByBoardId))
+  await time('rebuild.gaConsultations', () =>
+    saveGaConsultations(db, buildGaConsultations(items, kindByBoardId)),
+  )
   // 진행 중인 상담·방문체험(방치 현황).
-  await saveFollowUps(db, buildFollowUps(items, kindByBoardId))
+  await time('rebuild.followUps', () =>
+    saveFollowUps(db, buildFollowUps(items, kindByBoardId)),
+  )
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).
-  await saveKpiFacts(db, buildKpiFacts(items, kindByBoardId))
+  await time('rebuild.kpiFacts', () =>
+    saveKpiFacts(db, buildKpiFacts(items, kindByBoardId)),
+  )
   // 기술 통계 재료(출장·AS·기술 문의·기타업무 — 번호 없는 기록 포함).
-  await saveTechFacts(db, buildTechFacts(items, kindByBoardId))
+  await time('rebuild.techFacts', () =>
+    saveTechFacts(db, buildTechFacts(items, kindByBoardId)),
+  )
   return {
     customerCount: customers.length,
     ...counts,
@@ -224,13 +274,15 @@ export async function syncBoards(
   apiKey: string,
   boardId?: string,
 ): Promise<MondaySyncSummary> {
+  const startedAt = Date.now()
+  const timer = createTimer()
   let boards: MondayBoard[]
   if (boardId) {
     const board = await getBoard(db, boardId)
     if (!board) throw new Error(`등록되지 않은 보드입니다(boardId: ${boardId})`)
     boards = [board]
   } else {
-    boards = await listBoards(db)
+    boards = await timer.time('listBoards', () => listBoards(db))
   }
 
   // 전체 동기화면 성공한 보드의 item을 모아 고객 통합에 그대로 넘긴다 — 방금
@@ -243,10 +295,14 @@ export async function syncBoards(
   const worker = async () => {
     while (nextIndex < boards.length) {
       const index = nextIndex++
-      results[index] = await syncBoard(db, apiKey, boards[index], loaded)
+      results[index] = await syncBoard(db, apiKey, boards[index], loaded, timer)
     }
   }
-  await Promise.all(Array.from({ length: SYNC_CONCURRENCY }, worker))
+  // 'boards'는 보드 단계 전체의 벽시계 시간, 'boards.fetch'·'boards.write'는
+  // 보드마다 걸린 시간의 합이다(4개씩 같이 돌아서 합이 더 크다).
+  await timer.time('boards', () =>
+    Promise.all(Array.from({ length: SYNC_CONCURRENCY }, worker)),
+  )
 
   const summary: MondaySyncSummary = {
     boards: [],
@@ -264,9 +320,10 @@ export async function syncBoards(
   // 일부 보드가 실패했어도 다시 만든다 — 실패한 보드의 item은 이전 상태로
   // 남아 있으므로, 통합본은 "지금 저장돼 있는 것"을 그대로 반영하면 된다.
   const preloaded = loaded
-    ? await collectItems(db, boards, loaded)
+    ? await timer.time('collectItems', () => collectItems(db, boards, loaded))
     : undefined
-  summary.customers = await rebuildCustomersSafely(db, preloaded)
+  summary.customers = await rebuildCustomersSafely(db, preloaded, timer)
+  summary.timings = { totalMs: Date.now() - startedAt, steps: timer.steps }
   return summary
 }
 
@@ -305,9 +362,10 @@ async function collectItems(
 export async function rebuildCustomersSafely(
   db: Firestore,
   preloaded?: MondayItem[],
+  timer?: Timer,
 ): Promise<MondayCustomerRebuildResult | null> {
   try {
-    return await rebuildCustomers(db, preloaded)
+    return await rebuildCustomers(db, preloaded, timer)
   } catch (error) {
     logger.error('Monday 통합 고객 재생성 실패:', error)
     return null

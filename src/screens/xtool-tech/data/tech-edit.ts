@@ -4,6 +4,25 @@ import type { TechCellValue, TechColumn, TechEditValue } from './tech-boards'
 // 보낼 값(TechEditValue). 날짜 시간은 Monday에 UTC로 저장돼 있어 한국 시간으로 바꿔 보여 주고,
 // 보낼 때는 한국 시간 그대로 보낸다(함수가 UTC로 바꾼다).
 
+// 고칠 수 있는 타입 — functions-xtool/src/tech-boards/columns.ts의 WRITABLE_TYPES와 같게.
+// 보드 정보의 writable 표시는 동기화 때 정해져서, 타입을 늘린 직후엔 옛값일 수 있다.
+const WRITABLE_TYPES = new Set([
+  'text',
+  'long_text',
+  'numbers',
+  'status',
+  'dropdown',
+  'date',
+  'people',
+  'checkbox',
+  'phone',
+  'email',
+  'link',
+  'location',
+])
+export const isWritable = (c: TechColumn) =>
+  c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
+
 /** 주소 칸 — 좌표까지 있어야 Monday에 써진다(주소 검색으로 고른 값). Monday에는
  * "{주소}, {상세주소}" 한 줄로 적고, 읽을 때 첫 ", "에서 다시 나눈다(카카오 도로명·지번
  * 주소에는 쉼표가 없다). */

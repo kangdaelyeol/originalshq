@@ -1,19 +1,30 @@
-import { Search, Trash2 } from 'lucide-react'
+import { KeyRound, Search, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { removeMember, TEAMS, updateMember, watchMembers, type XtoolMember } from '@/xtool-auth/members'
+import {
+  generateTempPassword,
+  removeMember,
+  resetMemberPassword,
+  TEAMS,
+  updateMember,
+  watchMembers,
+  type XtoolMember,
+} from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { Avatar } from '@/screens/xtool-tech/components/ui/avatar'
 import { Button } from '@/screens/xtool-tech/components/ui/button'
 import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
 import { StatusPill } from '@/screens/xtool-tech/components/ui/status-pill'
 import { cx } from '@/screens/xtool-tech/lib/cx'
-import { firestoreErrorMessage, relativeTime } from './errors'
+import { CredentialNote } from './credential-note'
+import { firestoreErrorMessage, functionErrorMessage, relativeTime } from './errors'
 
 // 삭제 버튼을 한 번 더 눌러야 지운다 — 그 사이 기다리는 시간.
 const CONFIRM_MS = 3000
 
 function statusOf(member: XtoolMember) {
   if (member.status === 'disabled') return { tone: 'crit', label: '정지' } as const
+  // 임시 비밀번호를 받고 아직 자기 비밀번호를 안 정함
+  if (member.mustChangePassword) return { tone: 'warn', label: '첫 로그인 대기' } as const
   if (!member.uid) return { tone: 'neutral', label: '가입 전' } as const
   return { tone: 'good', label: '활성' } as const
 }
@@ -25,6 +36,9 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
   const [query, setQuery] = useState('')
   const [confirming, setConfirming] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
+  // 비밀번호 재발급 — 한 번 더 눌러야 한다(쓰던 로그인이 끊기니까). 발급한 값은 위에 보여 준다.
+  const [confirmingReset, setConfirmingReset] = useState<string | null>(null)
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null)
 
   useEffect(
     () =>
@@ -44,6 +58,12 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
     return () => clearTimeout(timer)
   }, [confirming])
 
+  useEffect(() => {
+    if (!confirmingReset) return
+    const timer = setTimeout(() => setConfirmingReset(null), CONFIRM_MS)
+    return () => clearTimeout(timer)
+  }, [confirmingReset])
+
   const run = async (email: string, task: () => Promise<void>) => {
     setPending(email)
     setError(null)
@@ -54,6 +74,22 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
     } finally {
       setPending(null)
     }
+  }
+
+  const onResetPassword = (email: string) => {
+    if (confirmingReset !== email) {
+      setConfirmingReset(email)
+      return
+    }
+    setConfirmingReset(null)
+    const password = generateTempPassword()
+    setPending(email)
+    setError(null)
+    setIssued(null)
+    resetMemberPassword(email, password)
+      .then(() => setIssued({ email, password }))
+      .catch((e: unknown) => setError(functionErrorMessage(e)))
+      .finally(() => setPending(null))
   }
 
   const onDelete = (email: string) => {
@@ -97,6 +133,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           {error}
         </p>
       )}
+      {issued && <CredentialNote {...issued} onClose={() => setIssued(null)} />}
       <div className="table-wrap">
         <table className="table table--roomy">
           <thead>
@@ -187,6 +224,20 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                   <td>
                     {!isSelf && (
                       <div className="row-actions">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          icon={KeyRound}
+                          disabled={busy || member.status === 'disabled'}
+                          className={cx(confirmingReset === member.email && 'button--danger')}
+                          title="임시 비밀번호를 새로 만들어요 — 쓰던 기기의 로그인은 끊겨요"
+                          aria-label={
+                            confirmingReset === member.email ? `${member.name} 비밀번호 정말 재발급` : `${member.name} 비밀번호 재발급`
+                          }
+                          onClick={() => onResetPassword(member.email)}
+                        >
+                          {confirmingReset === member.email ? '정말 재발급' : '비밀번호 재발급'}
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"

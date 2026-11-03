@@ -3,10 +3,12 @@ import { useCallback, useMemo, useState } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
 import { BoardEditContext, type BoardEditState } from '../components/board/board-edit-context'
 import { ItemEditor } from '../components/board/item-editor'
+import { MondayBoard } from '../components/monday/monday-board'
 import { GlassCard } from '../components/ui/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
 import { XT_BASE } from '../paths'
+import { useSettings } from '../settings/settings'
 import { AsRequestsBoard } from './boards/as-requests-board'
 import { FieldServiceBoard } from './boards/field-service-board'
 import { InquiryBoard } from './boards/inquiry-board'
@@ -27,6 +29,7 @@ export function BoardPage() {
 
 function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['key']; label: string }) {
   const state = useTechBoard(tabKey)
+  const { layout } = useSettings()
   // 편집 패널 — itemId가 null이면 새로 만들기, editing 자체가 null이면 닫힘.
   const [editing, setEditing] = useState<{ itemId: string | null } | null>(null)
   const openEditor = useCallback((itemId: string | null) => setEditing({ itemId }), [])
@@ -69,6 +72,18 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
 
   const doc = state.board
   const editingItem = editing?.itemId ? (state.itemsById.get(editing.itemId) ?? null) : null
+  const editor = (
+    <ItemEditor open={editing !== null} boardKey={tabKey} meta={editContext.meta} item={editingItem} onClose={closeEditor} />
+  )
+  // 설정 > 레이아웃 "Monday 표" — 보드 칸·그룹을 Monday 그대로 늘어놓고 칸을 눌러 바로 고친다.
+  if (layout === 'monday') {
+    return (
+      <BoardEditContext.Provider value={editContext}>
+        <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
+        {editor}
+      </BoardEditContext.Provider>
+    )
+  }
   return (
     <BoardEditContext.Provider value={editContext}>
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}
@@ -80,13 +95,7 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
       {tabKey === 'parts' && <PartsBoard doc={doc as TechBoardDoc<'parts'>} />}
       {tabKey === 'rentals' && <RentalsBoard doc={doc as TechBoardDoc<'rentals'>} />}
       {tabKey === 'serials' && <SerialsBoard doc={doc as TechBoardDoc<'serials'>} />}
-      <ItemEditor
-        open={editing !== null}
-        boardKey={tabKey}
-        meta={editContext.meta}
-        item={editingItem}
-        onClose={closeEditor}
-      />
+      {editor}
     </BoardEditContext.Provider>
   )
 }

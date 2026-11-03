@@ -122,6 +122,8 @@ export interface XtoolMemberLite {
   isAdmin: boolean
   status: string
   teams?: Record<string, boolean>
+  /** 관리자가 발급한 임시 비밀번호를 아직 안 바꿨으면 true(endpoints/members.ts) */
+  mustChangePassword?: boolean
 }
 
 /** 등록된 구성원(xtoolMembers/{소문자 이메일}) — 로그인 화면과 같은 명단. */

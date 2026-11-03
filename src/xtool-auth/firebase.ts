@@ -7,7 +7,7 @@ import {
   type Auth,
 } from 'firebase/auth'
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore'
-import { getFunctions, type Functions } from 'firebase/functions'
+import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions'
 import { XTOOL_FIREBASE_CONFIG } from './firebase-config'
 
 // 다른 화면(parke 등)이 다른 Firebase 프로젝트를 써도 섞이지 않게 이름 붙인 앱으로 만든다.
@@ -25,11 +25,11 @@ function readEmulatorFlag(): boolean {
 
 // 로컬 확인용 — 개발 서버에서 localStorage 'xtool-emulator'를 '1'로 두면 실제 프로젝트 대신
 // Firebase 에뮬레이터(가짜 프로젝트 demo-xtool)에 붙는다. 기본 포트(9099·8080)는 다른 도구와
-// 잘 겹쳐서 따로 정했다 — 에뮬레이터도 이 포트(auth 9199 · firestore 8188)로 띄운다. 배포
-// 빌드에서는 이 분기가 통째로 빠진다.
+// 잘 겹쳐서 따로 정했다 — 에뮬레이터도 이 포트(auth 9199 · firestore 8188 · functions 5199)로
+// 띄운다. 배포 빌드에서는 이 분기가 통째로 빠진다.
 const useEmulator = import.meta.env.DEV && readEmulatorFlag()
 
-const EMULATOR_PORTS = { auth: 9199, firestore: 8188 }
+const EMULATOR_PORTS = { auth: 9199, firestore: 8188, functions: 5199 }
 
 const EMULATOR_CONFIG = {
   apiKey: 'demo-key',
@@ -66,6 +66,7 @@ export function xtoolFirebase(): XtoolFirebase {
   if (useEmulator) {
     connectAuthEmulator(auth, `http://127.0.0.1:${EMULATOR_PORTS.auth}`, { disableWarnings: true })
     connectFirestoreEmulator(db, '127.0.0.1', EMULATOR_PORTS.firestore)
+    connectFunctionsEmulator(functions, '127.0.0.1', EMULATOR_PORTS.functions)
     // 에뮬레이터에서는 Google 팝업 대신 가짜 Google 계정으로 로그인한다.
     Object.assign(window, {
       __xtoolEmulatorGoogle: (email: string) =>

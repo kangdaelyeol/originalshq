@@ -19,13 +19,49 @@ import { pushToast } from '../data/tech-save-queue'
 import { cx } from '../lib/cx'
 import { ACCENT_PRESETS, DEFAULT_ACCENT } from '../settings/accent'
 import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '../settings/glass'
-import { BACKGROUND_OPTIONS, isPhotoBackground, useSettings } from '../settings/settings'
+import { BACKGROUND_OPTIONS, isPhotoBackground, LAYOUT_OPTIONS, useSettings, type BoardLayout } from '../settings/settings'
 
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
 const CUSTOM_COMMIT_MS = 120
 // "지우기"를 한 번 누르면 이 시간 동안 확인 상태 — 그 안에 한 번 더 눌러야 지운다.
 const CONFIRM_MS = 4000
+
+/** 레이아웃 견본 — 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표. */
+function LayoutArt({ layout }: { layout: BoardLayout }) {
+  if (layout === 'dashboard') {
+    return (
+      <span className="layout-art layout-art--dashboard" aria-hidden>
+        <span className="layout-art__kpis">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="layout-art__card">
+          <i />
+          <i />
+          <i />
+        </span>
+      </span>
+    )
+  }
+  return (
+    <span className="layout-art layout-art--monday" aria-hidden>
+      {['#579bfc', '#a25ddc'].map((group) => (
+        <span key={group} className="layout-art__group" style={{ '--group': group } as CSSProperties}>
+          {[0, 1, 2].map((row) => (
+            <span key={row} className="layout-art__row">
+              <i />
+              <i style={{ background: ['#6e7287', '#fdab3d', '#00c875'][(row + (group === '#579bfc' ? 0 : 1)) % 3] }} />
+              <i />
+            </span>
+          ))}
+        </span>
+      ))}
+    </span>
+  )
+}
 
 const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
 
@@ -114,6 +150,8 @@ function SharedTile({
 
 export function SettingsPage() {
   const {
+    layout,
+    setLayout,
     background,
     sharedBackgroundId,
     accent,
@@ -155,6 +193,30 @@ export function SettingsPage() {
 
   return (
     <>
+      <GlassCard title="레이아웃" subtitle="보드 화면(출장업무·AS 등)의 모양이에요. 고른 모양은 이 브라우저에 저장돼요.">
+        <div className="layout-options" role="radiogroup" aria-label="레이아웃">
+          {LAYOUT_OPTIONS.map((option) => {
+            const selected = option.value === layout
+            return (
+              <button
+                key={option.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                className={cx('glass-preset', 'layout-tile', selected && 'is-selected')}
+                onClick={() => setLayout(option.value)}
+              >
+                <LayoutArt layout={option.value} />
+                <span className="glass-preset__label">
+                  <strong>{option.label}</strong>
+                  <span>{option.description}</span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </GlassCard>
+
       <GlassCard
         title="배경"
         subtitle="대시보드와 로그인 화면 뒤에 깔리는 배경이에요. 고른 배경은 이 브라우저에 저장되고, 올린 사진은 팀 모두가 골라 쓸 수 있어요."

@@ -22,7 +22,17 @@ export const BACKGROUND_OPTIONS: readonly BackgroundOption[] = [
   { value: 'photo', label: '작업장 사진', description: 'xTool 장비가 있는 작업장', kind: 'photo' },
 ]
 
+/** 보드 화면 모양 — dashboard: 카드·차트(기본) · monday: Monday처럼 그룹별 표, 칸을 눌러 바로 고친다. */
+export type BoardLayout = 'dashboard' | 'monday'
+
+export const LAYOUT_OPTIONS: readonly { value: BoardLayout; label: string; description: string }[] = [
+  { value: 'dashboard', label: '대시보드', description: '숫자 카드·차트와 목록 — 처음부터 쓰던 화면' },
+  { value: 'monday', label: 'Monday 표', description: 'Monday처럼 그룹별 표 — 칸을 눌러 바로 고쳐요' },
+]
+
 export interface Settings {
+  /** 보드 화면 모양 */
+  layout: BoardLayout
   background: BackgroundKind
   /** background가 shared일 때 고른 사진(techBackgrounds 문서 id) */
   sharedBackgroundId: string | null
@@ -33,6 +43,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
+  layout: 'dashboard',
   background: 'shards',
   sharedBackgroundId: null,
   accent: DEFAULT_ACCENT,
@@ -50,6 +61,7 @@ export function loadSettings(): Settings {
     const sharedId = typeof parsed.sharedBackgroundId === 'string' && parsed.sharedBackgroundId ? parsed.sharedBackgroundId : null
     const shared = parsed.background === 'shared' && sharedId !== null
     return {
+      layout: LAYOUT_OPTIONS.some((o) => o.value === parsed.layout) ? (parsed.layout as BoardLayout) : DEFAULT_SETTINGS.layout,
       background: shared
         ? 'shared'
         : BACKGROUND_OPTIONS.some((o) => o.value === parsed.background)
@@ -81,6 +93,7 @@ export const effectiveAccent = (s: Settings): string => (isPhotoBackground(s.bac
 export interface SettingsState extends Settings {
   /** 지금 화면에 칠해진 강조색 */
   accentInUse: string
+  setLayout: (layout: BoardLayout) => void
   setBackground: (background: BuiltInBackground) => void
   /** 팀이 공유한 사진을 배경으로 */
   setSharedBackground: (id: string) => void

@@ -1,18 +1,20 @@
-import { ArrowRight, ChevronsRight, CircleCheck, Info, Lock, Mail } from 'lucide-react'
+import { ArrowRight, ChevronsRight, CircleCheck, Info, KeyRound, Lock, Mail } from 'lucide-react'
 import { useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { checkAccess } from '@/xtool-auth/access'
 import {
-  registerWithEmail,
+  completePasswordSetup,
   sendPasswordReset,
   signInWithEmail,
   signInWithGoogle,
+  signOutXtool,
   type AuthOutcome,
 } from '@/xtool-auth/auth-actions'
+import { DENIED_MESSAGE } from '@/xtool-auth/access'
 import { isXtoolFirebaseConfigured, xtoolFirebase } from '@/xtool-auth/firebase'
-import { normalizeEmail } from '@/xtool-auth/members'
+import { MIN_PASSWORD, normalizeEmail } from '@/xtool-auth/members'
 import xtoolLogoUrl from '../assets/symbols/xtool-logo-text.png'
 import { AppBackground } from '../components/layout/app-background'
 import { GoogleMark } from '../components/login/brand-marks'
@@ -25,13 +27,16 @@ import { cx } from '../lib/cx'
 import { XT_BASE } from '../paths'
 import { useSettings } from '../settings/settings'
 
-type Mode = 'login' | 'register' | 'reset'
+// setup — 관리자가 발급한 임시 비밀번호로 처음 들어온 사람이 자기 비밀번호를 정한다.
+type Mode = 'login' | 'setup' | 'reset'
 type Note = { tone: 'good' | 'info'; text: string }
 
 /** 다른 화면(잠금·로그아웃)에서 넘겨주는 안내 — navigate(..., { state: { notice } }). */
 export interface LoginLocationState {
   notice?: string
 }
+
+const SETUP_NOTE: Note = { tone: 'info', text: DENIED_MESSAGE['password-setup'] }
 
 const UNCONFIGURED_NOTE: Note = {
   tone: 'info',
@@ -46,7 +51,9 @@ const YEAR = new Date().getFullYear()
 const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /**
- * 로그인 — Firebase Auth(이메일·비밀번호, Google). 관리자(/admin/xtool)가 등록한 사람만 들어온다.
+ * 로그인 — Firebase Auth(이메일·비밀번호, Google). 계정은 관리자(/admin/xtool)가 아이디(회사 이메일)와
+ * 임시 비밀번호로 발급하고, 처음 로그인하면 바로 자기 비밀번호를 정한다(setup). 로그인은 이 브라우저에
+ * 계속 남는다.
  * 누르면 모서리 조각이 가운데로 모이는 동안 검증하고, 성공이면 로고가 뜬 뒤 대시보드로,
  * 실패면 조각이 빨갛게 떨리고 카드가 흔들린 뒤 폼으로 돌아와 오류를 보여 준다.
  * 회원가입·비밀번호 재설정으로 바꿀 때도 같은 연출로 폼이 갈아끼워진다(샘플 영상의 Sign in ↔ Sign up).
@@ -66,7 +73,7 @@ export function LoginPage() {
   )
   const [loginError, setLoginError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
-  // 가입·재설정 메일을 보내는 중(버튼 문구) — busy는 폼 전환 연출 중에도 켜져서 따로 둔다.
+  // 재설정 메일을 보내는 중(버튼 문구) — busy는 폼 전환 연출 중에도 켜져서 따로 둔다.
   const [sending, setSending] = useState(false)
   const [mismatch, setMismatch] = useState(false)
   // 로그인을 진행하는 중엔 "이미 로그인돼 있으면 바로 넘기기" 확인이 끼어들지 않게.
@@ -106,7 +113,13 @@ export function LoginPage() {
       const user = auth.currentUser
       if (!user || cancelled || signingInRef.current) return
       const access = await checkAccess(user, 'tech').catch(() => null)
-      if (access?.ok && !cancelled && !signingInRef.current) navigate(XT_BASE, { replace: true })
+      if (cancelled || signingInRef.current || !access) return
+      if (access.ok) navigate(XT_BASE, { replace: true })
+      // 임시 비밀번호로 들어와 있다(보드에서 넘어왔거나 새로 고침) — 비밀번호 설정부터.
+      else if (access.reason === 'password-setup') {
+        setMode('setup')
+        setNote(SETUP_NOTE)
+      }
     })
     return () => {
       cancelled = true
@@ -135,6 +148,11 @@ export function LoginPage() {
         return
       }
       signingInRef.current = false
+      if (!outcome.ok && outcome.setup) {
+        setMode('setup')
+        setNote(SETUP_NOTE)
+        return
+      }
       if (!outcome.cancelled) {
         flushSync(() => setLoginError(outcome.message))
         choreo.focusField('password')
@@ -154,6 +172,16 @@ export function LoginPage() {
     }
 
     signingInRef.current = false
+    // 임시 비밀번호로 들어왔다 — 흔들지 않고 모인 조각이 갈라지며 비밀번호 설정 폼으로.
+    if (outcome.setup) {
+      flushSync(() => {
+        setMode('setup')
+        setNote(SETUP_NOTE)
+      })
+      await choreo.split()
+      unlockAndFocus('password')
+      return
+    }
     // Google 창을 닫은 거면 흔들지 않고 조용히 폼으로 돌아온다.
     if (outcome.cancelled) {
       await choreo.split()
@@ -167,7 +195,7 @@ export function LoginPage() {
     unlockAndFocus('password')
   }
 
-  /** 가입·재설정 메일 보내기 — 성공하면 로그인 폼으로 돌아가 안내를, 실패하면 이 폼에 오류를. */
+  /** 재설정 메일 보내기 — 성공하면 로그인 폼으로 돌아가 안내를, 실패하면 이 폼에 오류를. */
   const runRequest = async (request: Promise<AuthOutcome>, successNote: Note) => {
     setBusy(true)
     setSending(true)
@@ -211,12 +239,7 @@ export function LoginPage() {
     if (busy || !isXtoolFirebaseConfigured) return
     const data = new FormData(e.currentTarget)
     void runSignIn(
-      signInWithEmail(
-        String(data.get('email') ?? ''),
-        String(data.get('password') ?? ''),
-        'tech',
-        data.get('remember') === 'on',
-      ),
+      signInWithEmail(String(data.get('email') ?? ''), String(data.get('password') ?? ''), 'tech'),
     )
   }
 
@@ -225,7 +248,7 @@ export function LoginPage() {
     void runSignIn(signInWithGoogle('tech'))
   }
 
-  const onRegister = (e: FormEvent<HTMLFormElement>) => {
+  const onSetup = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (busy || !isXtoolFirebaseConfigured) return
     const data = new FormData(e.currentTarget)
@@ -233,21 +256,23 @@ export function LoginPage() {
       setMismatch(true)
       return
     }
-    const email = normalizeEmail(String(data.get('email') ?? ''))
-    void runRequest(registerWithEmail(email, String(data.get('password') ?? '')), {
-      tone: 'good',
-      text: `인증 메일을 보냈어요(${email}). 메일의 링크를 누른 뒤 로그인해 주세요.`,
-    })
+    void runSignIn(completePasswordSetup(String(data.get('password') ?? ''), 'tech'))
+  }
+
+  /** 비밀번호 설정을 그만두고 다른 계정으로 — 임시 비밀번호 로그인을 끊고 로그인 폼으로. */
+  const leaveSetup = async () => {
+    await signOutXtool()
+    await switchTo('login')
   }
 
   const onReset = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (busy || !isXtoolFirebaseConfigured) return
     const email = normalizeEmail(String(new FormData(e.currentTarget).get('email') ?? ''))
-    // 가입 여부는 알려 주지 않는다 — 있으면 메일이 가고, 없으면 아무 일도 없다.
+    // 계정이 있는지는 알려 주지 않는다 — 있으면 메일이 가고, 없으면 아무 일도 없다.
     void runRequest(sendPasswordReset(email), {
       tone: 'good',
-      text: `가입된 계정이면 비밀번호 재설정 메일이 갔어요(${email}). 메일의 링크로 새 비밀번호를 정해 주세요.`,
+      text: `등록된 계정이면 비밀번호 재설정 메일이 갔어요(${email}). 메일의 링크로 새 비밀번호를 정해 주세요.`,
     })
   }
 
@@ -292,9 +317,9 @@ export function LoginPage() {
                 </p>
               )}
 
-              <form className="login-form" onSubmit={onLogin}>
+              <form key="login" className="login-form" onSubmit={onLogin}>
                 <LoginField
-                  label="이메일"
+                  label="아이디(이메일)"
                   icon={Mail}
                   type="email"
                   name="email"
@@ -313,11 +338,7 @@ export function LoginPage() {
                   error={loginError}
                   onChange={() => setLoginError(null)}
                 />
-                <div className="login-row">
-                  <label className="check">
-                    <input type="checkbox" name="remember" defaultChecked />
-                    로그인 상태 유지
-                  </label>
+                <div className="login-row login-row--end">
                   <button
                     type="button"
                     className="text-link"
@@ -340,73 +361,62 @@ export function LoginPage() {
                 </button>
               </div>
 
-              <p className="login-switch">
-                등록됐는데 처음 쓰시나요?
-                <button type="button" className="text-link text-link--accent" onClick={() => void switchTo('register')}>
-                  회원가입
-                </button>
-              </p>
+              <p className="login-switch">처음이면 관리자에게 받은 임시 비밀번호로 로그인하세요.</p>
             </>
-          ) : mode === 'register' ? (
+          ) : mode === 'setup' ? (
             <>
               <h1 className="login-content__title">
-                처음 <em>회원가입</em>
+                비밀번호 <em>설정</em>
               </h1>
-              <p className="login-note login-note--info">
-                <Info size={15} aria-hidden />
-                관리자가 등록한 이메일로만 가입할 수 있어요. Google 계정이면 가입 없이 바로 로그인하세요.
-              </p>
+              {note && (
+                <p className={cx('login-note', `login-note--${note.tone}`)} role="status">
+                  <Info size={15} aria-hidden />
+                  {note.text}
+                </p>
+              )}
 
-              <form className="login-form" onSubmit={onRegister}>
+              {/* key — 폼이 바뀌면 칸을 새로 그린다(안 그러면 방금 친 이메일이 새 비밀번호 칸에 남는다). */}
+              <form key="setup" className="login-form" onSubmit={onSetup}>
                 <LoginField
-                  label="회사 이메일"
-                  icon={Mail}
-                  type="email"
-                  name="email"
-                  placeholder="name@xtool.co.kr"
-                  autoComplete="email"
+                  label="새 비밀번호"
+                  icon={KeyRound}
+                  type="password"
+                  name="password"
+                  placeholder={`${MIN_PASSWORD}자 이상`}
+                  autoComplete="new-password"
+                  minLength={MIN_PASSWORD}
                   required
-                  error={formError}
-                  onChange={() => setFormError(null)}
+                  error={loginError}
+                  onChange={() => {
+                    setMismatch(false)
+                    setLoginError(null)
+                  }}
                 />
-                <div className="login-grid-2">
-                  <LoginField
-                    label="비밀번호"
-                    icon={Lock}
-                    type="password"
-                    name="password"
-                    placeholder="8자 이상"
-                    autoComplete="new-password"
-                    minLength={8}
-                    required
-                    onChange={() => setMismatch(false)}
-                  />
-                  <LoginField
-                    label="비밀번호 확인"
-                    icon={Lock}
-                    type="password"
-                    name="confirm"
-                    placeholder="한 번 더"
-                    autoComplete="new-password"
-                    required
-                    onChange={() => setMismatch(false)}
-                  />
-                </div>
+                <LoginField
+                  label="새 비밀번호 확인"
+                  icon={Lock}
+                  type="password"
+                  name="confirm"
+                  placeholder="한 번 더"
+                  autoComplete="new-password"
+                  required
+                  onChange={() => setMismatch(false)}
+                />
                 {mismatch && (
                   <p className="login-error" role="alert">
                     비밀번호가 서로 달라요
                   </p>
                 )}
                 <button type="submit" className="login-submit">
-                  {sending ? '확인하는 중…' : '인증 메일 받고 가입하기'}
+                  비밀번호 정하고 시작하기
                   <ArrowRight size={16} strokeWidth={2.4} aria-hidden />
                 </button>
               </form>
 
               <p className="login-switch">
-                이미 가입했나요?
-                <button type="button" className="text-link text-link--accent" onClick={() => void switchTo('login')}>
-                  로그인
+                내 계정이 아닌가요?
+                <button type="button" className="text-link text-link--accent" onClick={() => void leaveSetup()}>
+                  다른 계정으로 로그인
                 </button>
               </p>
             </>
@@ -417,10 +427,10 @@ export function LoginPage() {
               </h1>
               <p className="login-note login-note--info">
                 <Info size={15} aria-hidden />
-                가입한 이메일을 넣으면 새 비밀번호를 정하는 링크를 보내 드려요.
+                로그인 이메일을 넣으면 새 비밀번호를 정하는 링크를 보내 드려요. 메일이 안 오면 관리자에게 비밀번호 재발급을 요청하세요.
               </p>
 
-              <form className="login-form" onSubmit={onReset}>
+              <form key="reset" className="login-form" onSubmit={onReset}>
                 <LoginField
                   label="이메일"
                   icon={Mail}

@@ -101,7 +101,15 @@ export interface MondayBoardSyncResult {
   missingPhoneCount: number
   /** 실패했을 때만 — 오류 메시지. */
   error?: string
+  /** Monday에서 받는 데 걸린 시간(ms). 11/3 이후 기록에만 있다. */
+  fetchMs?: number
+  /** mondayItems에 반영(비교·쓰기·삭제)하는 데 걸린 시간(ms). */
+  writeMs?: number
 }
+
+/** 단계 이름 → 걸린 시간(ms). 여러 번·동시에 도는 단계(보드마다 받기 등)는
+ * 더한 값이라 벽시계 시간보다 클 수 있다. */
+export type StepTimings = Record<string, number>
 
 export interface MondaySyncSummary {
   boards: Array<{ boardId: string; name: string } & MondayBoardSyncResult>
@@ -110,6 +118,9 @@ export interface MondaySyncSummary {
   /** 동기화 뒤 통합 고객을 다시 만든 결과 — 그 단계가 실패했으면 null(item은
    * 이미 저장됐고, rebuildMondayCustomers로 다시 돌릴 수 있다). */
   customers: MondayCustomerRebuildResult | null
+  /** 단계별 걸린 시간 — 비용(실행 시간)이 어디서 나오는지 보려고 남긴다
+   * (docs/cost-optimization). 11/3 이후 기록에만 있다. */
+  timings?: { totalMs: number; steps: StepTimings }
 }
 
 /** previewBoard의 결과 — 저장하지 않고 보드 하나를 읽어본 요약. */

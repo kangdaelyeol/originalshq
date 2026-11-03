@@ -1,7 +1,5 @@
 import {
   browserLocalPersistence,
-  browserSessionPersistence,
-  createUserWithEmailAndPassword,
   getAdditionalUserInfo,
   sendEmailVerification,
   sendPasswordResetEmail,
@@ -13,7 +11,7 @@ import {
 } from 'firebase/auth'
 import { checkAccess, DENIED_MESSAGE, type AccessTarget } from './access'
 import { googleProvider, xtoolFirebase } from './firebase'
-import { getMember, normalizeEmail, recordSignIn } from './members'
+import { normalizeEmail, recordSignIn, setOwnPassword } from './members'
 
 export type AuthOutcome =
   | { ok: true }
@@ -22,6 +20,8 @@ export type AuthOutcome =
       message: string
       /** 사용자가 Google 창을 닫은 경우 — 오류로 보여 주지 않는다. */
       cancelled?: boolean
+      /** 임시 비밀번호로 들어왔다 — 로그인은 유지한 채 비밀번호 설정 화면으로. */
+      setup?: boolean
     }
 
 const errorCode = (e: unknown): string => (e as { code?: string }).code ?? ''
@@ -57,6 +57,10 @@ export function authErrorMessage(e: unknown): string {
 async function admit(cred: UserCredential, target: AccessTarget): Promise<AuthOutcome> {
   const { user } = cred
   const access = await checkAccess(user, target)
+  if (!access.ok && access.reason === 'password-setup') {
+    await recordSignIn(user).catch(() => undefined)
+    return { ok: false, message: DENIED_MESSAGE['password-setup'], setup: true }
+  }
   if (!access.ok) {
     let message = DENIED_MESSAGE[access.reason]
     if (access.reason === 'unverified') {
@@ -79,16 +83,14 @@ async function admit(cred: UserCredential, target: AccessTarget): Promise<AuthOu
   return { ok: true }
 }
 
-/** remember가 false면 브라우저(탭)를 닫을 때 로그아웃된다. */
-export async function signInWithEmail(
-  email: string,
-  password: string,
-  target: AccessTarget,
-  remember = true,
-): Promise<AuthOutcome> {
+/**
+ * 로그인은 이 브라우저에 계속 남긴다(local) — 로그아웃하거나, 관리자가 비밀번호를 다시 발급·
+ * 계정을 정지하기 전까지는 다시 로그인할 일이 없다(Firebase 갱신 토큰은 기한이 없다).
+ */
+export async function signInWithEmail(email: string, password: string, target: AccessTarget): Promise<AuthOutcome> {
   try {
     const { auth } = xtoolFirebase()
-    await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence)
+    await setPersistence(auth, browserLocalPersistence)
     const cred = await signInWithEmailAndPassword(auth, normalizeEmail(email), password)
     return await admit(cred, target)
   } catch (e) {
@@ -96,9 +98,27 @@ export async function signInWithEmail(
   }
 }
 
+/**
+ * 첫 비밀번호 정하기 — 임시 비밀번호로 로그인한 상태에서. 비밀번호가 바뀌면 지금 로그인이
+ * 끊기므로(함수가 바꾼다) 새 비밀번호로 곧바로 다시 로그인한다.
+ */
+export async function completePasswordSetup(password: string, target: AccessTarget): Promise<AuthOutcome> {
+  const { auth } = xtoolFirebase()
+  const email = auth.currentUser?.email
+  if (!email) return { ok: false, message: '로그인이 풀렸어요. 임시 비밀번호로 다시 로그인해 주세요.' }
+  try {
+    await setOwnPassword(password)
+  } catch (e) {
+    const message = e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '') : ''
+    return { ok: false, message: message || '비밀번호를 저장하지 못했어요. 잠시 후 다시 해 주세요.' }
+  }
+  return signInWithEmail(email, password, target)
+}
+
 /** 팝업이 막히지 않게 클릭 처리 안에서 곧바로(await 없이) 불러야 한다. */
 export async function signInWithGoogle(target: AccessTarget): Promise<AuthOutcome> {
   try {
+    // 팝업을 먼저 띄워야 해서 저장 방식은 따로 정하지 않는다 — 기본값이 local(계속 로그인)이다.
     const cred = await signInWithPopup(xtoolFirebase().auth, googleProvider)
     return await admit(cred, target)
   } catch (e) {
@@ -106,28 +126,6 @@ export async function signInWithGoogle(target: AccessTarget): Promise<AuthOutcom
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
       return { ok: false, message: '', cancelled: true }
     }
-    return { ok: false, message: authErrorMessage(e) }
-  }
-}
-
-/**
- * 가입 — 등록된 이메일만. 계정을 먼저 만든 뒤 등록 여부를 보고(가입 전엔 목록을 볼 권한이
- * 없다), 등록이 없거나 정지면 방금 만든 계정을 바로 지운다. 등록돼 있으면 인증 메일을 보내고
- * 로그아웃 — 인증 링크를 누른 뒤 로그인하면 들어간다.
- */
-export async function registerWithEmail(email: string, password: string): Promise<AuthOutcome> {
-  const { auth } = xtoolFirebase()
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(email), password)
-    const member = await getMember(cred.user.email ?? email).catch(() => null)
-    if (!member || member.status !== 'active') {
-      await cred.user.delete().catch(() => signOut(auth))
-      return { ok: false, message: member ? DENIED_MESSAGE.disabled : DENIED_MESSAGE['not-registered'] }
-    }
-    await sendEmailVerification(cred.user)
-    await signOut(auth)
-    return { ok: true }
-  } catch (e) {
     return { ok: false, message: authErrorMessage(e) }
   }
 }

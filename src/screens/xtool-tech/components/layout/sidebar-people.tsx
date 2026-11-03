@@ -6,16 +6,9 @@ import { buildWorkPeople } from '../../data/my-work'
 import { useMyIdentity, useWorkSources } from '../../data/use-my-work'
 import { cx } from '../../lib/cx'
 import { koreaToday } from '../../lib/dates'
+import { personColor } from '../../lib/person-color'
 import type { NavItem } from '../../nav'
 import { MY_WORK_PATH, myWorkPath } from '../../paths'
-
-// 사람 구분용 장식 색 — 이름으로 정해져서 어느 화면에서 봐도 같은 사람은 같은 색. 나는 강조색.
-const PERSON_COLORS = ['#3a9ae6', '#de6a30', '#1fa878', '#9a7cf2', '#eda12a', '#e5609a', '#38b6c4', '#b8c24a']
-const colorOf = (name: string) => {
-  let h = 0
-  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0
-  return PERSON_COLORS[h % PERSON_COLORS.length]
-}
 
 // Design 8 하위 메뉴와 같은 곡선(0.33, 1, 0.68, 1) — 높이와 갈매기가 함께 움직인다
 const EASE = [0.33, 1, 0.68, 1] as const
@@ -103,9 +96,10 @@ function PeopleList() {
     <>
       <span className="nav-sub__trunk" aria-hidden />
       <ul className="nav-sub__list" aria-label="직원별 업무">
+        {/* 사람마다 이름으로 정한 색, 나는 강조색 */}
         <PersonRow to={myWorkPath()} label={me.name ? `나 · ${me.name}` : '나'} color="var(--accent)" count={myOpen} active={viewingMe} />
         {others.map((p) => (
-          <PersonRow key={p.name} to={myWorkPath(p.name)} label={p.name} color={colorOf(p.name)} count={p.open} active={who === p.name} />
+          <PersonRow key={p.name} to={myWorkPath(p.name)} label={p.name} color={personColor(p.name)} count={p.open} active={who === p.name} />
         ))}
         {loading && others.length === 0 && <li className="nav-sub__note">불러오는 중…</li>}
       </ul>

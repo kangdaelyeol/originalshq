@@ -20,14 +20,8 @@ export function useXtoolSession(target: AccessTarget): XtoolSession {
   useEffect(() => {
     if (!isXtoolFirebaseConfigured) return
     let current = 0
-    return onAuthStateChanged(xtoolFirebase().auth, (user) => {
-      // 로그인 상태가 빠르게 바뀌면 늦게 끝난 이전 확인 결과는 버린다.
-      const ticket = ++current
-      if (!user) {
-        setSession({ status: 'signedOut' })
-        return
-      }
-      setSession({ status: 'loading' })
+    let retry: ReturnType<typeof setTimeout> | undefined
+    const check = (user: User, ticket: number, attempt: number) => {
       void checkAccess(user, target)
         .then((access) => {
           if (ticket !== current) return
@@ -38,9 +32,28 @@ export function useXtoolSession(target: AccessTarget): XtoolSession {
           )
         })
         .catch(() => {
-          if (ticket === current) setSession({ status: 'denied', reason: 'not-registered', email: user.email ?? '' })
+          // 명단을 못 읽은 건 대개 잠깐 끊긴 연결이다 — 거절(→ 로그아웃)하지 않고 다시 확인해서
+          // 로그인이 풀리지 않게 한다(1·2·4…초, 최대 30초 간격).
+          if (ticket !== current) return
+          retry = setTimeout(() => check(user, ticket, attempt + 1), Math.min(30_000, 1000 * 2 ** attempt))
         })
+    }
+    const off = onAuthStateChanged(xtoolFirebase().auth, (user) => {
+      // 로그인 상태가 빠르게 바뀌면 늦게 끝난 이전 확인 결과는 버린다.
+      const ticket = ++current
+      clearTimeout(retry)
+      if (!user) {
+        setSession({ status: 'signedOut' })
+        return
+      }
+      setSession({ status: 'loading' })
+      check(user, ticket, 0)
     })
+    return () => {
+      current++
+      clearTimeout(retry)
+      off()
+    }
   }, [target])
 
   return session

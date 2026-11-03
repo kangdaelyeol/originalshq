@@ -55,8 +55,14 @@ const setPending = (itemId: string | undefined, on: boolean) => {
   emit()
 }
 
-/** 수정·생성을 뒤에서 보낸다. label은 토스트에 보일 항목 이름. */
-export function saveInBackground(kind: 'update' | 'create', input: TechEditInput, label: string): void {
+/** 수정·생성을 뒤에서 보낸다. label은 토스트에 보일 항목 이름. onSettled는 끝났을 때(성공 여부) —
+ * Monday 표가 바로 보여 준 새 값을 실패하면 되돌리는 데 쓴다. */
+export function saveInBackground(
+  kind: 'update' | 'create',
+  input: TechEditInput,
+  label: string,
+  onSettled?: (ok: boolean) => void,
+): void {
   const id = nextId++
   const verb = kind === 'create' ? '만들기' : '저장'
   upsertToast({ id, tone: 'pending', title: `${label} ${verb} 중…` })
@@ -66,6 +72,7 @@ export function saveInBackground(kind: 'update' | 'create', input: TechEditInput
     .then(() => {
       upsertToast({ id, tone: 'success', title: kind === 'create' ? `${label} 만들었어요` : `${label} 저장했어요` })
       setTimeout(() => dismissToast(id), SUCCESS_MS)
+      onSettled?.(true)
     })
     .catch((error: unknown) => {
       upsertToast({
@@ -78,10 +85,11 @@ export function saveInBackground(kind: 'update' | 'create', input: TechEditInput
           label: '다시 시도',
           run: () => {
             dismissToast(id)
-            saveInBackground(kind, input, label)
+            saveInBackground(kind, input, label, onSettled)
           },
         },
       })
+      onSettled?.(false)
     })
     .finally(() => setPending(input.itemId, false))
 }

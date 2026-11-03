@@ -4,7 +4,7 @@ import { getMember, type TeamKey, type XtoolMember } from './members'
 /** 들어가려는 곳 — 팀 페이지 하나 또는 관리자 화면. */
 export type AccessTarget = TeamKey | 'admin'
 
-export type DeniedReason = 'not-registered' | 'disabled' | 'no-access' | 'unverified'
+export type DeniedReason = 'not-registered' | 'disabled' | 'no-access' | 'unverified' | 'password-setup'
 
 export type AccessResult = { ok: true; member: XtoolMember } | { ok: false; reason: DeniedReason }
 
@@ -13,6 +13,7 @@ export const DENIED_MESSAGE: Record<DeniedReason, string> = {
   disabled: '사용이 정지된 계정이에요. 관리자에게 문의해 주세요.',
   'no-access': '이 페이지를 쓸 권한이 없는 계정이에요. 관리자에게 권한을 요청해 주세요.',
   unverified: '메일 인증이 아직 안 됐어요. 받은 메일의 인증 링크를 누른 뒤 다시 로그인해 주세요.',
+  'password-setup': '임시 비밀번호로 로그인했어요. 앞으로 쓸 비밀번호를 먼저 정해 주세요.',
 }
 
 /**
@@ -26,6 +27,8 @@ export async function checkAccess(user: User, target: AccessTarget): Promise<Acc
   if (member.status !== 'active') return { ok: false, reason: 'disabled' }
   const allowed = target === 'admin' ? member.isAdmin : member.teams[target] === true
   if (!allowed) return { ok: false, reason: 'no-access' }
+  // 관리자가 발급한 임시 비밀번호로 들어왔으면 자기 비밀번호부터 — 그동안은 규칙이 데이터를 막는다.
+  if (member.mustChangePassword) return { ok: false, reason: 'password-setup' }
   // 비밀번호 계정은 메일 인증 전엔 막는다 — 남이 등록된 이메일로 먼저 가입해 들어오는 걸 막는다.
   if (!user.emailVerified) return { ok: false, reason: 'unverified' }
   return { ok: true, member }

@@ -16,6 +16,7 @@ import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubR
 import {
   emptyState,
   initialState,
+  isWritable,
   sameState,
   toEditValue,
   type EditState,
@@ -27,25 +28,6 @@ import { DrawerShell } from './drawer-shell'
 import { FileField } from './item-files'
 import { RelationPicker } from './relation-picker'
 import { SubitemsEditor } from './subitems-editor'
-
-// 고칠 수 있는 타입 — functions-xtool/src/tech-boards/columns.ts의 WRITABLE_TYPES와 같게.
-// 보드 정보의 writable 표시는 동기화 때 정해져서, 타입을 늘린 직후엔 옛값일 수 있다.
-const WRITABLE_TYPES = new Set([
-  'text',
-  'long_text',
-  'numbers',
-  'status',
-  'dropdown',
-  'date',
-  'people',
-  'checkbox',
-  'phone',
-  'email',
-  'link',
-  'location',
-])
-const isWritable = (c: TechColumn) =>
-  c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
 
 // 편집 칸에서 아예 안 보이는 타입 — 버튼·item id·하위 아이템 칸 등 값이 아닌 것.
 const HIDDEN_TYPES = new Set(['button', 'item_id', 'subtasks', 'last_updated', 'creation_log', 'auto_number'])

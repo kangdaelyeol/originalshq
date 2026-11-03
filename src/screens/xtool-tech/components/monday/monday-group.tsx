@@ -1,0 +1,374 @@
+import { ChevronDown, ChevronRight, LoaderCircle, Maximize2 } from 'lucide-react'
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
+import type { TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
+import { initialState, isWritable, type EditState } from '../../data/tech-edit'
+import { cx } from '../../lib/cx'
+import { formatInt } from '../../lib/format'
+import { labelColor } from './monday-colors'
+import { CellView } from './monday-cells'
+import { CellEditor, InlineInput, type CellCommit } from './monday-editors'
+import { cellClass, cellStyle, HIDDEN_TYPES, INLINE_TYPES, MIN_WIDTH, previewCell } from './monday-values'
+
+export interface MonGroup {
+  id: string
+  title: string
+  color: string
+  items: TechItemDoc[]
+}
+
+/** 지금 고치는 칸 — 팝오버는 그 칸 요소를 따라 뜬다. */
+export interface EditingCell {
+  key: string
+  anchor: HTMLElement
+}
+
+export interface GroupTableProps {
+  group: MonGroup
+  columns: TechColumn[]
+  /** 칸 너비(px) — 이름 칸은 'name' */
+  widthOf: (id: string) => number
+  onResize: (id: string, width: number) => void
+  /** 이름 칸 머리글(고객·업무 …) */
+  nameTitle: string
+  collapsed: boolean
+  onToggle: () => void
+  limit: number
+  onMore: () => void
+  editing: EditingCell | null
+  setEditing: (editing: EditingCell | null) => void
+  /** 저장 중이면 새 값을 먼저 보여 준다. */
+  cellOf: (item: TechItemDoc, column: TechColumn) => TechCellValue | undefined
+  nameOf: (item: TechItemDoc) => string
+  commitCell: (item: TechItemDoc, column: TechColumn, commit: CellCommit) => void
+  commitName: (item: TechItemDoc, name: string) => void
+  openItem: (itemId: string) => void
+  addItem: (groupId: string, name: string) => void
+  /** 만드는 중인 새 항목 이름 */
+  creating: string[]
+  pending: ReadonlySet<string>
+  subColumns: TechColumn[] | null
+  expanded: ReadonlySet<string>
+  toggleExpanded: (itemId: string) => void
+}
+
+/** 칸 머리글 오른쪽 끝을 끌어 너비를 바꾼다. */
+function ResizeHandle({ id, width, onResize }: { id: string; width: number; onResize: (id: string, width: number) => void }) {
+  const start = useRef<{ x: number; width: number } | null>(null)
+  return (
+    <span
+      className="mon-resize"
+      aria-hidden
+      onPointerDown={(e: ReactPointerEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+        start.current = { x: e.clientX, width }
+        e.currentTarget.setPointerCapture(e.pointerId)
+      }}
+      onPointerMove={(e) => {
+        if (!start.current) return
+        onResize(id, Math.max(MIN_WIDTH, start.current.width + e.clientX - start.current.x))
+      }}
+      onPointerUp={() => {
+        start.current = null
+      }}
+    />
+  )
+}
+
+/** 그룹 아래 요약 — 상태 칸은 라벨 비율 막대, 숫자 칸은 합계(Monday 그룹 바닥 줄). */
+function SummaryCell({ column, items, cellOf }: { column: TechColumn; items: TechItemDoc[]; cellOf: GroupTableProps['cellOf'] }) {
+  if (column.type === 'status') {
+    const counts = new Map<string, number>()
+    for (const item of items) {
+      const label = cellOf(item, column)?.text ?? ''
+      counts.set(label, (counts.get(label) ?? 0) + 1)
+    }
+    const total = items.length
+    return (
+      <div className="mon-cell mon-summary__cell">
+        {total > 0 && (
+          <span className="mon-battery" title={[...counts].map(([label, n]) => `${label || '비어 있음'} ${n}`).join(' · ')}>
+            {[...counts].map(([label, n]) => (
+              <span key={label} style={{ flexGrow: n, '--label': labelColor(label) } as CSSProperties} />
+            ))}
+          </span>
+        )}
+      </div>
+    )
+  }
+  if (column.type === 'numbers') {
+    const sum = items.reduce((s, item) => s + (Number((cellOf(item, column)?.text ?? '').replace(/,/g, '')) || 0), 0)
+    return (
+      <div className="mon-cell mon-summary__cell">
+        <span className="mon-summary__sum">
+          {formatInt(sum)}
+          <small>합계</small>
+        </span>
+      </div>
+    )
+  }
+  return <div className="mon-cell mon-summary__cell" />
+}
+
+/** 하위 아이템(출장 설치 품목·AS 청구 부품) — 줄 아래로 펼쳐 보기만. 고치기는 "열기"의 편집 패널. */
+function SubTable({ columns, subitems }: { columns: TechColumn[]; subitems: TechSubitemDoc[] }) {
+  const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type))
+  const template = `220px ${shown.map(() => '130px').join(' ')}`
+  return (
+    <div className="mon-sub" role="rowgroup" style={{ '--sub-cols': template } as CSSProperties}>
+      <div className="mon-sub__row mon-sub__row--head" role="row">
+        <div className="mon-cell" role="columnheader">
+          하위 아이템
+        </div>
+        {shown.map((c) => (
+          <div key={c.id} className="mon-cell" role="columnheader" title={c.title}>
+            <span className="mon-text">{c.title}</span>
+          </div>
+        ))}
+      </div>
+      {subitems.map((sub) => (
+        <div key={sub.id} className="mon-sub__row" role="row">
+          <div className="mon-cell is-left" role="rowheader">
+            <span className="mon-text">{sub.name}</span>
+          </div>
+          {shown.map((c) => (
+            <div key={c.id} className={cellClass(c)} style={cellStyle(c, sub.values[c.id])} role="gridcell">
+              <CellView column={c} cell={sub.values[c.id]} />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** 그룹 하나 — 색 막대가 붙은 제목, 머리글, 줄들, "+ 추가" 줄, 요약 줄. */
+export function GroupTable(props: GroupTableProps) {
+  const { group, columns, widthOf, onResize, nameTitle, collapsed, onToggle, limit, onMore } = props
+  const style = { '--group': group.color } as CSSProperties
+  const Chevron = collapsed ? ChevronRight : ChevronDown
+
+  return (
+    <section className={cx('mon-group', collapsed && 'is-collapsed')} style={style} role="table" aria-label={group.title}>
+      <div className="mon-group__title">
+        <button type="button" className="mon-group__toggle" aria-expanded={!collapsed} onClick={onToggle}>
+          <Chevron size={18} strokeWidth={2.2} aria-hidden />
+          <span className="mon-group__name">{group.title}</span>
+        </button>
+        <span className="mon-group__count">{group.items.length}개 항목</span>
+      </div>
+
+      {!collapsed && (
+        <>
+          <div className="mon-row mon-row--head" role="row">
+            <div className="mon-cell mon-cell--name" role="columnheader">
+              <span className="mon-text">{nameTitle}</span>
+              <ResizeHandle id="name" width={widthOf('name')} onResize={onResize} />
+            </div>
+            {columns.map((c) => (
+              <div key={c.id} className="mon-cell" role="columnheader" title={c.title}>
+                <span className="mon-text">{c.title}</span>
+                <ResizeHandle id={c.id} width={widthOf(c.id)} onResize={onResize} />
+              </div>
+            ))}
+            <div className="mon-cell mon-cell--end" aria-hidden />
+          </div>
+
+          {group.items.slice(0, limit).map((item) => (
+            <ItemRow key={item.itemId} item={item} {...props} />
+          ))}
+
+          {group.items.length > limit && (
+            <button type="button" className="mon-more" onClick={onMore}>
+              더 보기 <span>{group.items.length - limit}개 남음</span>
+            </button>
+          )}
+
+          {props.creating.map((name, i) => (
+            <div key={`${name}-${i}`} className="mon-row is-creating" role="row">
+              <div className="mon-cell mon-cell--name" role="rowheader">
+                <LoaderCircle size={13} className="is-spinning" aria-hidden />
+                <span className="mon-text">{name}</span>
+              </div>
+              <div className="mon-cell mon-row__fill" aria-hidden />
+            </div>
+          ))}
+
+          <AddRow nameTitle={nameTitle} onAdd={(name) => props.addItem(group.id, name)} />
+
+          <div className="mon-row mon-summary" role="row" aria-label="요약">
+            <div className="mon-cell mon-cell--name mon-summary__lead" />
+            {columns.map((c) => (
+              <SummaryCell key={c.id} column={c} items={group.items} cellOf={props.cellOf} />
+            ))}
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+/** 맨 아래 "+ 고객 추가" — 이름만 적고 엔터면 이 그룹에 새 항목을 만든다. */
+function AddRow({ nameTitle, onAdd }: { nameTitle: string; onAdd: (name: string) => void }) {
+  const [value, setValue] = useState('')
+  const submit = () => {
+    const name = value.trim()
+    if (!name) return
+    onAdd(name)
+    setValue('')
+  }
+  return (
+    <div className="mon-row mon-row--add" role="row">
+      <div className="mon-cell mon-cell--name" role="rowheader">
+        <input
+          className="mon-add"
+          placeholder={`+ ${nameTitle} 추가`}
+          aria-label={`${nameTitle} 추가`}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={submit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              submit()
+            } else if (e.key === 'Escape') {
+              setValue('')
+              e.currentTarget.blur()
+            }
+          }}
+        />
+      </div>
+      <div className="mon-cell mon-row__fill" aria-hidden />
+    </div>
+  )
+}
+
+function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
+  const { columns, editing, setEditing, nameOf, commitName, openItem, pending, subColumns, expanded } = props
+  const nameKey = `${item.itemId}:name`
+  const subCount = item.subitems?.length ?? 0
+  const open = expanded.has(item.itemId)
+  const Chevron = open ? ChevronDown : ChevronRight
+
+  return (
+    <>
+      <div className={cx('mon-row', pending.has(item.itemId) && 'is-saving')} role="row">
+        <div className="mon-cell mon-cell--name" role="rowheader">
+          {subColumns && (
+            <button
+              type="button"
+              className={cx('mon-expand', subCount === 0 && 'is-empty')}
+              aria-expanded={open}
+              aria-label={`하위 아이템 ${subCount}개 ${open ? '접기' : '펼치기'}`}
+              disabled={subCount === 0}
+              onClick={() => props.toggleExpanded(item.itemId)}
+            >
+              <Chevron size={14} strokeWidth={2.2} aria-hidden />
+            </button>
+          )}
+          {editing?.key === nameKey ? (
+            <InlineInput
+              initial={nameOf(item)}
+              label="이름"
+              onCommit={(name) => {
+                setEditing(null)
+                if (name.trim()) commitName(item, name.trim())
+              }}
+              onCancel={() => setEditing(null)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="mon-name"
+              title={nameOf(item)}
+              onClick={(e) => setEditing({ key: nameKey, anchor: e.currentTarget })}
+            >
+              {nameOf(item)}
+            </button>
+          )}
+          {subCount > 0 && <span className="mon-subcount">{subCount}</span>}
+          {pending.has(item.itemId) && <LoaderCircle size={12} className="is-spinning mon-saving" aria-label="저장 중" />}
+          <button type="button" className="mon-open" onClick={() => openItem(item.itemId)} aria-label={`${nameOf(item)} 열기`} title="열기 — 모든 칸·파일·하위 아이템">
+            <Maximize2 size={12} aria-hidden />
+            열기
+          </button>
+        </div>
+        {columns.map((column) => (
+          <ItemCell key={column.id} item={item} column={column} {...props} />
+        ))}
+        <div className="mon-cell mon-cell--end" aria-hidden />
+      </div>
+      {open && subColumns && subCount > 0 && <SubTable columns={subColumns} subitems={item.subitems ?? []} />}
+    </>
+  )
+}
+
+function ItemCell({
+  item,
+  column,
+  editing,
+  setEditing,
+  cellOf,
+  commitCell,
+  openItem,
+}: GroupTableProps & { item: TechItemDoc; column: TechColumn }) {
+  const key = `${item.itemId}:${column.id}`
+  const cell = cellOf(item, column)
+  const writable = isWritable(column)
+  const active = editing?.key === key
+  const commit = (c: CellCommit) => {
+    setEditing(null)
+    commitCell(item, column, c)
+  }
+
+  const start = (target: HTMLElement) => {
+    if (column.type === 'file') {
+      openItem(item.itemId)
+      return
+    }
+    if (!writable) return
+    if (column.type === 'checkbox') {
+      const next = !(initialState(column, cell) as boolean)
+      commitCell(item, column, { state: next, preview: previewCell(column, next) })
+      return
+    }
+    setEditing({ key, anchor: target })
+  }
+
+  if (active && INLINE_TYPES.has(column.type)) {
+    const initial = initialState(column, cell) as string
+    return (
+      <div className={cx(cellClass(column), 'is-editing')} role="gridcell">
+        <InlineInput
+          initial={initial}
+          label={column.title}
+          inputMode={column.type === 'numbers' ? 'decimal' : column.type === 'phone' ? 'tel' : column.type === 'email' ? 'email' : undefined}
+          onCommit={(value) => commit({ state: value as EditState, preview: previewCell(column, value) })}
+          onCancel={() => setEditing(null)}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cx(cellClass(column), writable && 'is-writable', active && 'is-active')}
+      style={cellStyle(column, cell)}
+      role="gridcell"
+      tabIndex={writable || column.type === 'file' ? 0 : -1}
+      title={writable || column.type === 'file' ? undefined : `${column.title} — Monday에서만 고칠 수 있어요`}
+      onClick={(e) => start(e.currentTarget)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === 'F2') {
+          e.preventDefault()
+          start(e.currentTarget)
+        }
+      }}
+    >
+      <CellView column={column} cell={cell} />
+      {active && editing && (
+        <CellEditor column={column} cell={cell} anchor={editing.anchor} onCommit={commit} onCancel={() => setEditing(null)} />
+      )}
+    </div>
+  )
+}

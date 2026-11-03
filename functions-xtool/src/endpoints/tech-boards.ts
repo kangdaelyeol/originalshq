@@ -61,8 +61,10 @@ async function memberOf(
     throw new HttpsError('permission-denied', '메일 인증이 필요해요')
   }
   const member = await getMember(db, token.email)
+  // 임시 비밀번호로 들어온 동안(첫 비밀번호를 정하기 전)은 아무것도 못 한다.
   const allowed =
     member?.status === 'active' &&
+    member.mustChangePassword !== true &&
     (admin ? member.isAdmin : member.isAdmin || member.teams?.tech === true)
   if (!member || !allowed) {
     throw new HttpsError('permission-denied', '권한이 없는 계정이에요')

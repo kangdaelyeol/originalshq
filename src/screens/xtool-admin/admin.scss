@@ -188,6 +188,117 @@
     margin-bottom: 12px;
   }
 
+  // ── 임시 비밀번호 ─────────────────────────────────────────────────────────
+  .member-form__password {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-width: 420px;
+  }
+
+  .member-form__password-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .member-form__password-input {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+  }
+
+  // 방금 발급한 아이디·임시 비밀번호(지금만 보인다)
+  .credential-note {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+    padding: 14px 16px;
+    border: 1px solid rgba(var(--accent-rgb), 0.35);
+    border-radius: 12px;
+    background: rgba(var(--accent-rgb), 0.07);
+  }
+
+  .credential-note__icon {
+    margin-top: 2px;
+    color: var(--accent);
+  }
+
+  .credential-note__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 28px;
+    margin: 0;
+
+    div {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    dt {
+      @include label-caps;
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+    }
+  }
+
+  .credential-note__password {
+    font-family: var(--font-mono);
+    letter-spacing: 0.04em;
+    user-select: all;
+  }
+
+  .credential-note__hint {
+    grid-column: 2;
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  .credential-note__actions {
+    grid-column: 3;
+    grid-row: 1 / 3;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .credential-note__copy,
+  .credential-note__close {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-1);
+    font-size: 12.5px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+  }
+
+  .credential-note__close {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+    background: none;
+  }
+
+  .admin-gate__switch {
+    display: block;
+    margin: 14px auto 0;
+  }
+
   // ── 구성원 표 ─────────────────────────────────────────────────────────────
   .admin-search {
     display: flex;

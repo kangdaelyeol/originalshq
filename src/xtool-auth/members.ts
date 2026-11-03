@@ -10,11 +10,12 @@ import {
   type Timestamp,
 } from 'firebase/firestore'
 import type { User } from 'firebase/auth'
+import { httpsCallable } from 'firebase/functions'
 import { xtoolFirebase } from './firebase'
 
 // ────────────────────────────────────────────────────────────────────────
-// 등록된 구성원(xtoolMembers/{소문자 이메일}) — 관리자(/admin/xtool)가 등록한 사람만 팀 페이지에
-// 로그인·가입할 수 있다. 팀이 늘면 TEAMS에 한 줄 더하면 된다(규칙은 팀 이름을 몰라도 된다).
+// 등록된 구성원(xtoolMembers/{소문자 이메일}) — 관리자(/admin/xtool)가 등록·발급한 사람만 팀 페이지에
+// 로그인할 수 있다. 팀이 늘면 TEAMS에 한 줄 더하면 된다(규칙은 팀 이름을 몰라도 된다).
 // ────────────────────────────────────────────────────────────────────────
 
 export type TeamKey = 'tech' | 'sales' | 'callback'
@@ -40,6 +41,9 @@ export interface XtoolMember {
   /** 처음 로그인하면 본인이 남긴다 — 관리자 화면에서 "가입 전/로그인함"을 가른다. */
   uid?: string
   lastSignInAt?: Timestamp | null
+  /** 관리자가 발급한 임시 비밀번호를 아직 안 바꿨으면 true — 그동안은 비밀번호 설정만 할 수 있다. */
+  mustChangePassword?: boolean
+  passwordIssuedAt?: Timestamp | null
 }
 
 const COLLECTION = 'xtoolMembers'
@@ -105,4 +109,41 @@ export async function removeMember(email: string): Promise<void> {
 export async function recordSignIn(user: User): Promise<void> {
   if (!user.email) return
   await updateDoc(memberRef(user.email), { uid: user.uid, lastSignInAt: serverTimestamp() })
+}
+
+// ── 아이디·비밀번호 발급(functions-xtool endpoints/members.ts) ─────────────────
+// 비밀번호 계정은 관리자만 만든다 — Auth 계정 생성·비밀번호 지정은 함수(관리자 SDK)가 한다.
+
+/** 비밀번호 최소 길이 — 함수와 같게 */
+export const MIN_PASSWORD = 8
+
+// 헷갈리는 글자(0·O·1·l·I)는 뺀다 — 직원에게 말로·메신저로 옮겨 적기 쉽게.
+const PASSWORD_CHARS = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+/** 임시 비밀번호 — 10자, 글자·숫자 섞어서 */
+export function generateTempPassword(length = 10): string {
+  const bytes = crypto.getRandomValues(new Uint32Array(length))
+  let out = ''
+  for (const b of bytes) out += PASSWORD_CHARS[b % PASSWORD_CHARS.length]
+  // 숫자가 하나도 없으면 마지막 자리를 숫자로
+  return /\d/.test(out) ? out : out.slice(0, -1) + String(2 + (bytes[0] % 8))
+}
+
+/** 구성원 등록 + 아이디(이메일)·임시 비밀번호 발급 */
+export async function issueAccount(input: Omit<MemberInput, 'status'> & { password: string }): Promise<void> {
+  await httpsCallable(xtoolFirebase().functions, 'xtoolIssueAccount')({
+    ...input,
+    email: normalizeEmail(input.email),
+    name: input.name.trim(),
+  })
+}
+
+/** 임시 비밀번호 다시 발급 — 그 사람이 쓰던 로그인은 끊긴다. */
+export async function resetMemberPassword(email: string, password: string): Promise<void> {
+  await httpsCallable(xtoolFirebase().functions, 'xtoolResetPassword')({ email: normalizeEmail(email), password })
+}
+
+/** 첫 로그인 — 임시 비밀번호로 들어온 본인이 자기 비밀번호를 정한다. */
+export async function setOwnPassword(password: string): Promise<void> {
+  await httpsCallable(xtoolFirebase().functions, 'xtoolSetPassword')({ password })
 }

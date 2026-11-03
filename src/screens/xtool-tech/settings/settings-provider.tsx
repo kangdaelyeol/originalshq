@@ -8,6 +8,7 @@ import {
   loadSettings,
   saveSettings,
   SettingsContext,
+  type BoardLayout,
   type BuiltInBackground,
   type Settings,
 } from './settings'
@@ -31,13 +32,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     () => ({
       ...settings,
       accentInUse,
+      setLayout: (layout: BoardLayout) => setSettings((s) => ({ ...s, layout })),
       setBackground: (background: BuiltInBackground) =>
         setSettings((s) => ({ ...s, background, sharedBackgroundId: null })),
       setSharedBackground: (id: string) =>
         setSettings((s) => ({ ...s, background: 'shared', sharedBackgroundId: id })),
       setAccent: (accent: string) => setSettings((s) => ({ ...s, accent: accent.toLowerCase() })),
       setGlass: (glass: Partial<GlassSettings>) => setSettings((s) => ({ ...s, glass: { ...s.glass, ...glass } })),
-      reset: () => setSettings(DEFAULT_SETTINGS),
+      // 배경 카드의 "기본값으로" — 보드 화면 모양(레이아웃)은 따로 고른 것이라 남긴다.
+      reset: () => setSettings((s) => ({ ...DEFAULT_SETTINGS, layout: s.layout })),
     }),
     [settings, accentInUse],
   )
