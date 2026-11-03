@@ -184,22 +184,32 @@ export async function fetchTechItems(
   return data.items ?? []
 }
 
-export async function fetchMondayUsers(apiKey: string): Promise<Array<{
+export interface MondayUser {
   id: string
   name: string
   email: string
   enabled: boolean
-}>> {
+}
+
+/**
+ * 담당자로 고를 Monday 사용자. Monday가 User의 enabled 필드를 없애서(질의가 통째로 거절됐다)
+ * 묻지 않는다 — 이 목록은 활성 계정만 오므로 모두 enabled로 둔다(화면이 이 값으로 거른다).
+ */
+export async function fetchMondayUsers(apiKey: string): Promise<MondayUser[]> {
   const data = await fetchMonday<{
-    users: Array<{ id: string; name: string; email: string; enabled: boolean }>
+    users: Array<{ id: string; name: string; email: string }> | null
   }>(
     apiKey,
     `query TechUsers {
-      users(kind: non_guests, limit: 500) { id name email enabled }
+      users(kind: non_guests, limit: 500) { id name email }
     }`,
     {},
   )
-  return data.users ?? []
+  return (data.users ?? []).map((user) => ({
+    ...user,
+    id: String(user.id),
+    enabled: true,
+  }))
 }
 
 /** 이름·컬럼 값 바꾸기 — 한 번에 여러 칸. shape를 주면 바뀐 item을 돌려준다. */
