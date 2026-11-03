@@ -1,7 +1,8 @@
 import { Firestore } from 'firebase-admin/firestore'
 import { fetchMonday } from '../monday/client'
 import { TechEditError } from './errors'
-import { saveItemUpdates } from './firestore'
+import { saveItemUpdates, setUpdateCount } from './firestore'
+import { UPDATE_COUNT_LIMIT } from './monday-api'
 import { TechBoardKey } from './types'
 
 // item 업데이트(Monday 댓글) — Monday 표의 말풍선 패널이 읽고 쓴다. 읽은 목록은
@@ -66,7 +67,8 @@ export async function fetchItemUpdates(
   return (data.items?.[0]?.updates ?? []).map(toUpdate)
 }
 
-/** Monday에서 다시 읽어 캐시에 쓰고 돌려준다. */
+/** Monday에서 다시 읽어 캐시에 쓰고 돌려준다. 표의 말풍선 개수도 맞춘다 — 동기화가 아직
+ * 안 돌았거나 webhook을 놓쳤어도 패널을 한 번 열면 개수가 맞는다. */
 export async function refreshItemUpdates(
   db: Firestore,
   apiKey: string,
@@ -74,7 +76,11 @@ export async function refreshItemUpdates(
   itemId: string,
 ): Promise<TechUpdate[]> {
   const updates = await fetchItemUpdates(apiKey, itemId)
-  await saveItemUpdates(db, key, itemId, updates)
+  await Promise.all([
+    saveItemUpdates(db, key, itemId, updates),
+    // 동기화와 같은 기준(최근 UPDATE_COUNT_LIMIT개까지 센다)
+    setUpdateCount(db, itemId, Math.min(updates.length, UPDATE_COUNT_LIMIT)),
+  ])
   return updates
 }
 

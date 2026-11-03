@@ -107,6 +107,20 @@ export async function deleteItem(db: Firestore, itemId: string): Promise<void> {
   ])
 }
 
+/** item의 업데이트 개수 — 캐시에 있는 item이고 달라졌을 때만 쓴다(같으면 화면 구독에 쓸데없는
+ * 변경이 가지 않게). */
+export async function setUpdateCount(
+  db: Firestore,
+  itemId: string,
+  count: number,
+): Promise<void> {
+  const ref = db.collection(ITEMS).doc(itemId)
+  const snap = await ref.get()
+  if (snap.exists && snap.get('updateCount') !== count) {
+    await ref.update({ updateCount: count })
+  }
+}
+
 /** item 업데이트 목록을 캐시에 — 통째로 바꾼다. */
 export async function saveItemUpdates(
   db: Firestore,

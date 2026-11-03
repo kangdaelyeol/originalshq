@@ -7,9 +7,10 @@ import { CostPanel } from './components/cost-panel'
 import { InquiryPanel } from './components/inquiry-panel'
 import { SignInGate } from './components/sign-in-gate'
 import { UsagePanel } from './components/usage-panel'
+import { VoiceAgentPanel } from './components/voice-agent-panel'
 import './styles/index.scss'
 
-type LogTab = 'batch' | 'inquiry' | 'usage' | 'cost'
+type LogTab = 'batch' | 'inquiry' | 'usage' | 'cost' | 'agent'
 
 const TABS: readonly {
   id: LogTab
@@ -21,6 +22,7 @@ const TABS: readonly {
   { id: 'inquiry', label: '문의 접수', code: 'INTAKE', accent: '#a48bff' },
   { id: 'usage', label: '사용 분석', code: 'USAGE', accent: '#ec5069' },
   { id: 'cost', label: '비용 분석', code: 'COST', accent: '#cfe85e' },
+  { id: 'agent', label: 'AI 상담원', code: 'VOICE', accent: '#ff9f43' },
 ]
 
 const FONT_HREF =
@@ -38,12 +40,13 @@ const LiveClock = () => {
 }
 
 /**
- * 로그(/log) — 네 탭.
+ * 로그(/log) — 다섯 탭.
  *   · 배치 로그: 예약 실행 함수가 제때 돌았는지(batchRuns).
  *   · 문의 접수: 웹사이트 상담 신청이 Monday·문자까지 처리됐는지(inquiries).
  *   · 사용 분석: xtool-lead-manager·cmip·xtool-tech를 어떤 탭에서 얼마나 봤는지
  *     (usageSegments).
  *   · 비용 분석: xtool·cmip 함수가 호출마다 쓴 자원과 어림 비용(BigQuery ops_logs).
+ *   · AI 상담원: AI 음성 상담원(xtool-ai-sales-agent)과 브라우저로 통화해 보는 내부 테스트.
  * 어느 탭인지는 주소의 ?tab= 에 둬서 새로고침·공유해도 같은 탭이 열린다.
  * xtool 관리자로 로그인해야 보인다(sign-in-gate.tsx).
  *
@@ -120,6 +123,7 @@ export default function LogScreen() {
         {current.id === 'inquiry' && <InquiryPanel />}
         {current.id === 'usage' && <UsagePanel />}
         {current.id === 'cost' && <CostPanel />}
+        {current.id === 'agent' && <VoiceAgentPanel />}
       </main>
 
       <footer className="log-foot">

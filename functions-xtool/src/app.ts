@@ -24,3 +24,7 @@ export const mondayApiKey = defineSecret('MONDAY_API_KEY')
 // 상담 신청 접수 안내 문자(SOLAPI).
 export const solapiApiKey = defineSecret('SOLAPI_API_KEY')
 export const solapiApiSecret = defineSecret('SOLAPI_API_SECRET')
+// AI 음성 상담원(xtool-ai-sales-agent 레포) — LiveKit Cloud 프로젝트 접속 정보.
+export const livekitUrl = defineSecret('LIVEKIT_URL')
+export const livekitApiKey = defineSecret('LIVEKIT_API_KEY')
+export const livekitApiSecret = defineSecret('LIVEKIT_API_SECRET')
