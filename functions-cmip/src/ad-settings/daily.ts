@@ -35,6 +35,11 @@ const SOURCE: Record<
     campaign: { collection: 'openaiInsightDaily', idField: 'campaign_id' },
     adset: { collection: 'openaiInsightDaily', idField: 'adgroup_id' },
   },
+  // 당근 행도 NaverInsightRow와 같은 모양이다(광고비는 VAT를 뺀 값).
+  daangn: {
+    campaign: { collection: 'daangnInsightDaily', idField: 'campaign_id' },
+    adset: { collection: 'daangnInsightDaily', idField: 'adgroup_id' },
+  },
 }
 
 /** Google 행을 Naver 행 모양으로 — 일별 합계·파생 지표 공식을 그대로 쓰려고

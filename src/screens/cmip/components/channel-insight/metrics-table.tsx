@@ -21,6 +21,7 @@ interface ChannelBreakdown {
   google: MetricsSummary
   naver: MetricsSummary
   openai: MetricsSummary
+  daangn: MetricsSummary
 }
 
 export function MetricsTable<T extends MetricsSummary>({

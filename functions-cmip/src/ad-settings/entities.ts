@@ -12,6 +12,7 @@ import type {
 } from '../channel/google/types'
 import type { NaverInsightRow } from '../channel/naver/types'
 import type { OpenaiInsightRow } from '../channel/openai/types'
+import type { DaangnInsightRow } from '../channel/daangn/types'
 import {
   adEntityKey,
   type AdChannel,
@@ -138,6 +139,20 @@ export const sightingsFromOpenai = (
     }),
   )
 
+export const sightingsFromDaangn = (
+  rows: readonly DaangnInsightRow[],
+): AdEntitySighting[] =>
+  rows.flatMap((r) =>
+    both('daangn', {
+      campaignId: r.campaign_id,
+      campaignName: r.campaign_name,
+      adsetId: r.adgroup_id,
+      adsetName: r.adgroup_name,
+      date: r.date_start,
+      resultType: null,
+    }),
+  )
+
 /**
  * 본 것들을 adEntities에 반영한다 — 처음 본 날·마지막 본 날을 넓히고, 이름은
  * 가장 최근 날의 이름으로(플랫폼에서 이름을 바꾸면 따라간다). 동기화가 지난
@@ -235,7 +250,7 @@ export async function backfillAdEntities(): Promise<{
   recorded: number
   scanned: Record<string, number>
 }> {
-  const [meta, googleCampaigns, googleAdGroups, naver, openai] =
+  const [meta, googleCampaigns, googleAdGroups, naver, openai, daangn] =
     await Promise.all([
       db
         .collection('metaInsightDaily')
@@ -282,6 +297,16 @@ export async function backfillAdEntities(): Promise<{
           'date_start',
         )
         .get(),
+      db
+        .collection('daangnInsightDaily')
+        .select(
+          'campaign_id',
+          'campaign_name',
+          'adgroup_id',
+          'adgroup_name',
+          'date_start',
+        )
+        .get(),
     ])
   const sightings = [
     ...sightingsFromMeta(meta.docs.map((d) => d.data() as DataSetInsight)),
@@ -295,6 +320,9 @@ export async function backfillAdEntities(): Promise<{
     ...sightingsFromOpenai(
       openai.docs.map((d) => d.data() as OpenaiInsightRow),
     ),
+    ...sightingsFromDaangn(
+      daangn.docs.map((d) => d.data() as DaangnInsightRow),
+    ),
   ]
   const { recorded } = await recordAdEntities(sightings)
   return {
@@ -305,6 +333,7 @@ export async function backfillAdEntities(): Promise<{
       googleAdGroupInsightDaily: googleAdGroups.size,
       naverInsightDaily: naver.size,
       openaiInsightDaily: openai.size,
+      daangnInsightDaily: daangn.size,
     },
   }
 }

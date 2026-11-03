@@ -7,15 +7,16 @@
  */
 import type { ChannelSplitSeries } from '../client'
 
-export type ChannelKey = 'meta' | 'google' | 'naver' | 'openai'
+export type ChannelKey = 'meta' | 'google' | 'naver' | 'openai' | 'daangn'
 
-// 지금은 Meta/Google/Naver/OpenAI — 당근이 붙으면 이 목록만 늘리면 된다
+// 지금은 Meta/Google/Naver/OpenAI/당근 — 채널이 붙으면 이 목록만 늘리면 된다
 // (CombinedInsight.total/series가 그 채널 키를 갖게 되는 시점에 맞춰).
 export const CHANNELS: readonly { key: ChannelKey; label: string }[] = [
   { key: 'meta', label: 'Meta' },
   { key: 'google', label: 'Google' },
   { key: 'naver', label: 'Naver' },
   { key: 'openai', label: 'OpenAI' },
+  { key: 'daangn', label: '당근' },
 ]
 
 /** CombinedCampaign/CombinedAdset(둘 다 ChannelSplitSeries 모양)에서 실제로

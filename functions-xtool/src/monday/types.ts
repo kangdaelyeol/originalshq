@@ -722,7 +722,7 @@ export interface MondayDailyRepeatRevenue {
  * 샘플 요청·결제 중 가장 이른 날이라, 문의 없이 산 고객은 첫 결제일이다. */
 export type MondayAttributionRow = [
   string,
-  'meta' | 'google' | 'naver' | 'other' | 'unknown',
+  'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown',
   string,
   [string, number][],
   /** 그 UTM 상담의 접수일 — UTM이 없으면 ''. */

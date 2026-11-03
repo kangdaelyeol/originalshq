@@ -10,7 +10,13 @@ import type { ISODate } from '../types'
 import { addDays, todayISO } from '../utils'
 
 /** 광고 채널(광고비가 있는 쪽) — 순서가 곧 표의 줄 순서다. */
-export const AD_CHANNELS = ['meta', 'google', 'naver'] as const
+export const AD_CHANNELS = [
+  'meta',
+  'google',
+  'naver',
+  'openai',
+  'daangn',
+] as const
 export type AdChannel = (typeof AD_CHANNELS)[number]
 
 /** ROAS 범위 표의 줄 — 채널에 "UTM 광고지만 인정 밖"을 더한 것. UTM이
@@ -22,8 +28,10 @@ export const CHANNEL_LABEL: Record<RangeBucket, string> = {
   meta: 'Meta',
   google: 'Google',
   naver: 'Naver',
+  openai: 'OpenAI',
+  daangn: '당근',
   adOutside: 'UTM 광고 · 인정 밖 (상담 전 구매·90일 초과)',
-  other: 'UTM 있음 · 광고 아님 (chatgpt·당근 등)',
+  other: 'UTM 있음 · 광고 아님 (chatgpt.com 자연 유입·threads 등)',
   unknown: 'UTM 없음',
 }
 

@@ -12,7 +12,7 @@ import { CMIP_API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
-export type AdChannel = 'meta' | 'google' | 'naver' | 'openai'
+export type AdChannel = 'meta' | 'google' | 'naver' | 'openai' | 'daangn'
 export type AdLevel = 'campaign' | 'adset'
 
 /** "meta:adset:1203…" — 채널·단위·플랫폼 ID. */

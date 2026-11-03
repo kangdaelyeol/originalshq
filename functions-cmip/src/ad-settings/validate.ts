@@ -15,7 +15,7 @@ import type {
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const ENTITY_KEY = /^(meta|google|naver|openai):(campaign|adset):[^/@]+$/
+const ENTITY_KEY = /^(meta|google|naver|openai|daangn):(campaign|adset):[^/@]+$/
 const GOAL_KEY = /^[a-z][a-z0-9_]{0,31}$/
 const KPIS: readonly GoalKpi[] = ['cpa', 'roas', 'cpc', 'cpm', 'ctr', 'cvr']
 const FUNNEL: readonly FunnelStage[] = [

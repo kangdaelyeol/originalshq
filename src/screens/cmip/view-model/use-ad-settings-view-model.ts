@@ -45,7 +45,14 @@ export const useAdSettingsViewModel = () => {
   const [channel, setChannel] = usePersistentState<ChannelFilter>(
     'cmip.adSettings.channel',
     'all',
-    oneOf<ChannelFilter>(['all', 'meta', 'google', 'naver', 'openai']),
+    oneOf<ChannelFilter>([
+      'all',
+      'meta',
+      'google',
+      'naver',
+      'openai',
+      'daangn',
+    ]),
   )
   const [activeOnly, setActiveOnly] = usePersistentState(
     'cmip.adSettings.activeOnly',

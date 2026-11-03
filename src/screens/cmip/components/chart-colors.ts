@@ -4,9 +4,10 @@
  * 순수 함수/데이터라 view-model이 아니라 이 파일로 분리해둔다.
  */
 
-export type ChannelKey = 'combined' | 'meta' | 'google' | 'naver' | 'openai'
+export type ChannelKey =
+  'combined' | 'meta' | 'google' | 'naver' | 'openai' | 'daangn'
 
-// 지금은 Meta/Google/Naver/OpenAI — 당근이 붙으면 이 목록만 늘리면 된다
+// 지금은 Meta/Google/Naver/OpenAI/당근 — 채널이 붙으면 이 목록만 늘리면 된다
 // (CombinedInsight.series가 그 채널 키를 갖게 되는 시점에 맞춰).
 export const CHANNEL_STYLE: Record<ChannelKey, { label: string }> = {
   combined: { label: '전체' },
@@ -14,6 +15,7 @@ export const CHANNEL_STYLE: Record<ChannelKey, { label: string }> = {
   google: { label: 'Google' },
   naver: { label: 'Naver' },
   openai: { label: 'OpenAI' },
+  daangn: { label: '당근' },
 }
 export const CHANNEL_ORDER: readonly ChannelKey[] = [
   'combined',
@@ -21,13 +23,14 @@ export const CHANNEL_ORDER: readonly ChannelKey[] = [
   'google',
   'naver',
   'openai',
+  'daangn',
 ]
 
-// 지표 10개 × 채널 최대 5개 = 최대 50색. dash·투명도로 채널을 구분해봤더니 오히려
+// 지표 10개 × 채널 최대 6개 = 최대 60색. dash·투명도로 채널을 구분해봤더니 오히려
 // 헷갈려서, 지표 고유 색상(hue)은 유지한 채 채널마다 명도/채도만 다르게 바꿔서
 // "같은 지표 계열, 다른 채널"이 색으로 바로 구별되게 한다(전체=원색, Meta=밝게,
 // Google=어둡고 살짝 다른 색조, Naver=그와 또 다른 색조,
-// OpenAI=반대쪽으로 돌린 색조). 채널이 늘어나면
+// OpenAI=반대쪽으로 돌린 색조, 당근=밝고 진하게). 채널이 늘어나면
 // CHANNEL_SHIFT에 한 줄만 추가하면 됨.
 const CHANNEL_SHIFT: Record<
   ChannelKey,
@@ -38,6 +41,7 @@ const CHANNEL_SHIFT: Record<
   google: { hue: 10, saturation: -6, lightness: -15 },
   naver: { hue: -20, saturation: 8, lightness: -5 },
   openai: { hue: 25, saturation: -12, lightness: 6 },
+  daangn: { hue: -35, saturation: 12, lightness: 10 },
 }
 
 function hexToHsl(hex: string): [number, number, number] {

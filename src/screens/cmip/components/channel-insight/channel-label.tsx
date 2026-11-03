@@ -15,6 +15,8 @@ const CHANNEL_TEXT_COLOR: Record<ChannelKey, string> = {
   naver: '#03c75a',
   // OpenAI는 단색 로고라 글자도 글자색 그대로(로고도 글자색을 따른다).
   openai: 'var(--glass-text)',
+  // 당근은 로고가 "당근" 워드마크까지 들어 있어 글자를 따로 그리지 않는다.
+  daangn: '#ff6f0f',
 }
 
 function MetaLogo({
@@ -85,15 +87,51 @@ function OpenaiLogo({
   )
 }
 
+// 당근 로고(assets/daangn_logo.svg) — 왼쪽은 심볼(주황 몸통 + 초록 잎), 오른쪽은
+// "당근" 글자. 원본 viewBox(0 0 203 114)는 오른쪽·아래 여백이 있어 그림 둘레만
+// 남겼다. 심볼만 쓸 때(정사각 표식)는 x 0~58.5만.
+const DAANGN_BODY =
+  'M29.234 36.895C13.09 36.895 0 49.695 0 65.855c0 22.327 29.318 34.175 29.234 34.143-.08.032 29.234-11.816 29.234-34.143 0-16.148-13.089-28.96-29.234-28.96Zm0 40.684A11.069 11.069 0 0 1 18.386 64.34a11.073 11.073 0 0 1 8.702-8.693A11.068 11.068 0 0 1 40.312 66.51a11.07 11.07 0 0 1-11.078 11.088v-.02Z'
+const DAANGN_LEAF =
+  'M35.817 0c-6.823 0-11.574 4.768-12.322 10.4-9.094-2.512-16.22 4.4-16.22 12 0 5.82 3.999 10.52 9.33 12.047 4.299 1.228 12.041.312 12.041.312-.04-1.88 1.692-3.944 4.364-5.824 7.598-5.343 13.54-7.863 14.457-15.151C48.427 6.16 42.767 0 35.817 0Z'
+const DAANGN_LETTERS =
+  'M116.493 46.963c-6.175 1.94-16.865 2.972-26.907 2.972V37.719h20.74v-9.096H78.465V59.6c17.424 0 32.637-2.1 39.06-4.088l-1.032-8.548ZM131.134 25h-11.106v35.61h11.106V49.448h8.958v-9.716h-8.958V25ZM110.506 60.527c-11.766 0-20.396 6.484-20.396 16 0 9.515 8.639 16 20.396 16 11.758 0 20.396-6.489 20.396-16 0-9.512-8.63-16-20.396-16Zm0 23.091c-5.303 0-9.282-2.544-9.282-7.108 0-4.563 3.979-7.103 9.282-7.103s9.282 2.544 9.282 7.103c0 4.56-3.975 7.108-9.282 7.108ZM161.72 65.25h-11.354v24.092h45.128v-9.536H161.72V65.251ZM194.086 27.971h-44.232v9.536h33.082c0 2.368.112 8-.972 14.4h-40.568v9.864h61.588v-9.848H192.01c1.472-8.088 1.892-14.392 2.076-23.952Z'
+
+function DaangnSymbol({ className }: { className: string }) {
+  return (
+    <svg className={className} viewBox="0 0 58.5 100" aria-hidden>
+      <path fill="#FF6F0F" d={DAANGN_BODY} />
+      <path fill="#00A05B" d={DAANGN_LEAF} />
+    </svg>
+  )
+}
+
+// 구글·네이버와 같은 이유로(로고 자체가 "당근" 워드마크) 옆에 텍스트를 따로
+// 안 붙인다.
+function DaangnLogo() {
+  return (
+    <svg
+      className="channel-insight__channel-logo channel-insight__channel-logo--daangn"
+      viewBox="0 0 196 100"
+      aria-hidden
+    >
+      <path fill="#FF6F0F" d={DAANGN_BODY} />
+      <path fill="#00A05B" d={DAANGN_LEAF} />
+      <path fill="#FF6F0F" d={DAANGN_LETTERS} />
+    </svg>
+  )
+}
+
 const CHANNEL_LOGO: Record<ChannelKey, () => ReactElement> = {
   meta: MetaLogo,
   google: GoogleLogo,
   naver: NaverLogo,
   openai: OpenaiLogo,
+  daangn: DaangnLogo,
 }
 
 /** 채널 표시 하나 — 동그란 자리(카드 아바타 등)에 넣는 정사각형 표식. 구글·
- * 네이버 로고는 워드마크라 첫 글자 모양만 쓴다(구글 G, 네이버 N). */
+ * 네이버 로고는 워드마크라 첫 글자 모양만 쓴다(구글 G, 네이버 N). 당근은 심볼만. */
 export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
   if (channelKey === 'meta')
     return (
@@ -101,6 +139,8 @@ export function ChannelMark({ channelKey }: { channelKey: ChannelKey }) {
     )
   if (channelKey === 'openai')
     return <OpenaiLogo className="channel-insight__channel-mark" />
+  if (channelKey === 'daangn')
+    return <DaangnSymbol className="channel-insight__channel-mark" />
   if (channelKey === 'google')
     return (
       <svg
@@ -141,9 +181,9 @@ export function ChannelTile({ channelKey }: { channelKey: ChannelKey }) {
   )
 }
 
-/** 채널 이름(Meta/Google/Naver/OpenAI)을 브랜드 색 + 로고와 함께 보여준다 — 표의 채널별
- * 펼침 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일. Google/Naver는
- * 로고가 이미 워드마크(전체 글자)라 옆에 텍스트를 또 안 붙인다. */
+/** 채널 이름(Meta/Google/Naver/OpenAI/당근)을 브랜드 색 + 로고와 함께 보여준다 — 표의
+ * 채널별 펼침 행, Summary의 "자세히 보기" 채널 카드 둘 다 여기 하나로 통일.
+ * Google/Naver/당근은 로고가 이미 워드마크(전체 글자)라 옆에 텍스트를 또 안 붙인다. */
 export function ChannelLabel({
   channelKey,
   label,

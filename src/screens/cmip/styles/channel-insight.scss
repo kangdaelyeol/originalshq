@@ -453,6 +453,13 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
       width: auto;
       height: 11px;
     }
+
+    // 당근도 심볼 + "당근" 워드마크(196:100)라 같은 규칙. 심볼이 글자보다 커서
+    // 다른 워드마크보다 조금 높게 잡아야 글자 크기가 비슷해 보인다.
+    &--daangn {
+      width: auto;
+      height: 15px;
+    }
   }
 
   &__chevron {

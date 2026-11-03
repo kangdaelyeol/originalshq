@@ -22,7 +22,7 @@ import type { ISODate } from '../types'
  *     작업 없이, 날짜로만 정해진다).
  */
 
-export type AdChannel = 'meta' | 'google' | 'naver' | 'openai'
+export type AdChannel = 'meta' | 'google' | 'naver' | 'openai' | 'daangn'
 export type AdLevel = 'campaign' | 'adset'
 
 /** "meta:adset:1203…" — 채널·단위·플랫폼 ID. 이름은 바뀔 수 있어서 ID로 잇는다. */

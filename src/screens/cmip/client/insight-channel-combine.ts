@@ -1,13 +1,13 @@
 /**
- * Meta(실제) + Google(실제) + Naver(실제) + OpenAI(실제) 인사이트를 "종합/메타/구글/
- * 네이버/OpenAI" 5분할 뷰로 묶는다. total뿐 아니라 campaign/adset 단위까지 같은
- * 5분할을 제공한다.
+ * Meta + Google + Naver + OpenAI + 당근 인사이트를 "종합/메타/구글/네이버/OpenAI/
+ * 당근" 6분할 뷰로 묶는다. total뿐 아니라 campaign/adset 단위까지 같은 6분할을
+ * 제공한다.
  *
  * 캠페인·adset은 이름이 같으면(예: 여러 채널에 같은 이름으로 병행 운영) 그 값을
  * 합산하고, 한쪽 채널에만 있으면 그 채널 값 그대로("combined"도 동일값) 노출한다
  * — 광고 플랫폼끼리 캠페인 ID를 공유하지 않아 이름 말고는 매칭할 키가 없다.
  *
- * 당근 등 채널이 더 늘어나면 이 파일에 그 채널만큼 인자/필드를 추가하는 방식으로
+ * 채널이 더 늘어나면 이 파일에 그 채널만큼 인자/필드를 추가하는 방식으로
  * 확장한다.
  */
 import {
@@ -44,6 +44,7 @@ export interface ChannelSplitSeries {
   google: GroupedInsightSeries
   naver: GroupedInsightSeries
   openai: GroupedInsightSeries
+  daangn: GroupedInsightSeries
 }
 
 export interface CombinedAdset extends ChannelSplitSeries {
@@ -66,8 +67,9 @@ export interface CombinedInsight {
     google: MetricsSummary
     naver: MetricsSummary
     openai: MetricsSummary
+    daangn: MetricsSummary
   }
-  /** 계정 전체(캠페인 구분 없이) byDate/byDayOfWeek/byGroupedWeek — 종합/메타/구글/네이버/OpenAI. */
+  /** 계정 전체(캠페인 구분 없이) byDate/byDayOfWeek/byGroupedWeek — 종합/메타/구글/네이버/OpenAI/당근. */
   series: ChannelSplitSeries
   byCampaign: CombinedCampaign[]
 }
@@ -77,12 +79,17 @@ export interface CombinedInsight {
 // 안 됨"이다. sumMetricsWeighted/mergeByDateWeighted가 이 표시를 보고 네이버의
 // 노출수를 frequency 가중평균 분모에서 제외한다(그대로 두면 종합 frequency가
 // 실제보다 낮게 나온다). Meta/Google은 정상 제공하므로 true. OpenAI Ads API도
-// 도달(reach)을 주지 않아 네이버와 같은 이유로 false.
-const HAS_FREQUENCY: Record<'meta' | 'google' | 'naver' | 'openai', boolean> = {
+// 도달(reach)을 주지 않아 네이버와 같은 이유로 false. 당근은 도달을 주지만 서버
+// 집계(네이버와 같은 행 모양)가 frequency를 계산하지 않아 false.
+const HAS_FREQUENCY: Record<
+  'meta' | 'google' | 'naver' | 'openai' | 'daangn',
+  boolean
+> = {
   meta: true,
   google: true,
   naver: false,
   openai: false,
+  daangn: false,
 }
 
 function uniqueNames<T>(
@@ -174,7 +181,7 @@ function mergeExternalRevenueIntoByDate(
   return merged.sort((a, b) => a.date.localeCompare(b.date))
 }
 
-/** 채널별 시리즈를 종합/메타/구글/네이버/OpenAI 5분할로 묶는다. 한쪽 채널에 없으면
+/** 채널별 시리즈를 종합/메타/구글/네이버/OpenAI/당근 6분할로 묶는다. 한쪽 채널에 없으면
  * (campaign/adset이 그 채널에서 아예 없었던 경우) 빈 시리즈로 취급한다.
  * dateStart/dateEnd는 "combined"의 byGroupedWeek 경계 기준(조회 범위) — Meta
  * capi와 같은 방식으로 잘라야 한다. offlineRevenueByDate/onlineRevenueByDate는
@@ -186,6 +193,7 @@ function combineGroupedSeries(
   google: GroupedInsightSeries | undefined,
   naver: GroupedInsightSeries | undefined,
   openai: GroupedInsightSeries | undefined,
+  daangn: GroupedInsightSeries | undefined,
   dateStart: ISODate,
   dateEnd: ISODate,
   offlineRevenueByDate: readonly OfflineRevenueDateSummary[] = [],
@@ -197,11 +205,13 @@ function combineGroupedSeries(
   const googleSeries = google ?? emptySeries()
   const naverSeries = naver ?? emptySeries()
   const openaiSeries = openai ?? emptySeries()
+  const daangnSeries = daangn ?? emptySeries()
   const adCombinedByDate = mergeByDateWeighted([
     { byDate: metaSeries.byDate, hasFrequency: HAS_FREQUENCY.meta },
     { byDate: googleSeries.byDate, hasFrequency: HAS_FREQUENCY.google },
     { byDate: naverSeries.byDate, hasFrequency: HAS_FREQUENCY.naver },
     { byDate: openaiSeries.byDate, hasFrequency: HAS_FREQUENCY.openai },
+    { byDate: daangnSeries.byDate, hasFrequency: HAS_FREQUENCY.daangn },
   ])
   return {
     combined: seriesFromByDate(
@@ -219,6 +229,7 @@ function combineGroupedSeries(
     google: googleSeries,
     naver: naverSeries,
     openai: openaiSeries,
+    daangn: daangnSeries,
   }
 }
 
@@ -227,17 +238,19 @@ function combineAdsets(
   googleAdsets: readonly AdsetSummary[],
   naverAdsets: readonly AdsetSummary[],
   openaiAdsets: readonly AdsetSummary[],
+  daangnAdsets: readonly AdsetSummary[],
   dateStart: ISODate,
   dateEnd: ISODate,
 ): CombinedAdset[] {
   return uniqueNames(
-    [metaAdsets, googleAdsets, naverAdsets, openaiAdsets],
+    [metaAdsets, googleAdsets, naverAdsets, openaiAdsets, daangnAdsets],
     (a) => a.adsetName,
   ).map((adsetName) => {
     const metaAdset = metaAdsets.find((a) => a.adsetName === adsetName)
     const googleAdset = googleAdsets.find((a) => a.adsetName === adsetName)
     const naverAdset = naverAdsets.find((a) => a.adsetName === adsetName)
     const openaiAdset = openaiAdsets.find((a) => a.adsetName === adsetName)
+    const daangnAdset = daangnAdsets.find((a) => a.adsetName === adsetName)
     return {
       adsetName,
       ...combineGroupedSeries(
@@ -245,6 +258,7 @@ function combineAdsets(
         googleAdset,
         naverAdset,
         openaiAdset,
+        daangnAdset,
         dateStart,
         dateEnd,
       ),
@@ -257,11 +271,18 @@ function combineCampaigns(
   googleCampaigns: readonly CampaignSummary[],
   naverCampaigns: readonly CampaignSummary[],
   openaiCampaigns: readonly CampaignSummary[],
+  daangnCampaigns: readonly CampaignSummary[],
   dateStart: ISODate,
   dateEnd: ISODate,
 ): CombinedCampaign[] {
   return uniqueNames(
-    [metaCampaigns, googleCampaigns, naverCampaigns, openaiCampaigns],
+    [
+      metaCampaigns,
+      googleCampaigns,
+      naverCampaigns,
+      openaiCampaigns,
+      daangnCampaigns,
+    ],
     (c) => c.campaignName,
   ).map((campaignName) => {
     const metaCampaign = metaCampaigns.find(
@@ -276,6 +297,9 @@ function combineCampaigns(
     const openaiCampaign = openaiCampaigns.find(
       (c) => c.campaignName === campaignName,
     )
+    const daangnCampaign = daangnCampaigns.find(
+      (c) => c.campaignName === campaignName,
+    )
     return {
       campaignName,
       ...combineGroupedSeries(
@@ -283,6 +307,7 @@ function combineCampaigns(
         googleCampaign,
         naverCampaign,
         openaiCampaign,
+        daangnCampaign,
         dateStart,
         dateEnd,
       ),
@@ -291,6 +316,7 @@ function combineCampaigns(
         googleCampaign?.adsets ?? [],
         naverCampaign?.adsets ?? [],
         openaiCampaign?.adsets ?? [],
+        daangnCampaign?.adsets ?? [],
         dateStart,
         dateEnd,
       ),
@@ -303,7 +329,7 @@ function combineCampaigns(
  * 그보다 좁아도(예: 목업 보유 기간 제한) byGroupedWeek 경계는 항상 이 범위 기준으로
  * 맞춘다(Meta capi도 그렇게 자르기 때문에 채널 간 경계가 어긋나지 않는다).
  * offlineRevenue(Monday CRM, getOfflineRevenue)와 onlineRevenue(Cafe24,
- * getCafe24Revenue)는 광고 채널에 없는 개념이라 meta/google/naver/openai 어느 쪽에도
+ * getCafe24Revenue)는 광고 채널에 없는 개념이라 meta/google/naver/openai/daangn 어느 쪽에도
  * 안 섞이고 total.combined/series.combined에만 실제 값이 들어간다(캠페인/adset
  * 단위는 항상 0 — 특정 캠페인에 귀속시킬 방법이 없다). */
 export function combineChannelInsights(
@@ -311,6 +337,7 @@ export function combineChannelInsights(
   google: MetaInsightSummary,
   naver: MetaInsightSummary,
   openai: MetaInsightSummary,
+  daangn: MetaInsightSummary,
   dateStart: ISODate,
   dateEnd: ISODate,
   offlineRevenue: OfflineRevenueSummary | null,
@@ -327,6 +354,7 @@ export function combineChannelInsights(
     { metrics: google.total, hasFrequency: HAS_FREQUENCY.google },
     { metrics: naver.total, hasFrequency: HAS_FREQUENCY.naver },
     { metrics: openai.total, hasFrequency: HAS_FREQUENCY.openai },
+    { metrics: daangn.total, hasFrequency: HAS_FREQUENCY.daangn },
   ])
   const combinedOfflineRevenue = offlineRevenue?.total.totalPaid ?? 0
   // paymentAmount는 배송비 포함(카페24 화면 기준) — 위 mergeExternalRevenueIntoByDate
@@ -374,12 +402,14 @@ export function combineChannelInsights(
       google: google.total,
       naver: naver.total,
       openai: openai.total,
+      daangn: daangn.total,
     },
     series: combineGroupedSeries(
       meta,
       google,
       naver,
       openai,
+      daangn,
       dateStart,
       dateEnd,
       offlineRevenue?.byDate ?? [],
@@ -392,6 +422,7 @@ export function combineChannelInsights(
       google.byCampaign ?? [],
       naver.byCampaign ?? [],
       openai.byCampaign ?? [],
+      daangn.byCampaign ?? [],
       dateStart,
       dateEnd,
     ),

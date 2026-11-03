@@ -14,6 +14,11 @@ import {
   summarizeTotal,
 } from '../naver/helper'
 import type { DaangnInsight } from './types'
+import * as logger from 'firebase-functions/logger'
+import {
+  recordAdEntitiesSafely,
+  sightingsFromDaangn,
+} from '../../ad-settings/entities'
 
 export type { DaangnCredentials }
 
@@ -69,13 +74,15 @@ export const getDaangnInsightWithHistory = async (
   )
 }
 
-/** 수동/예약 동기화 공용 — 라이브로 받아 daangnInsightDaily에 upsert한다.
- * 광고 설정 목록(adEntities)에는 화면이 당근을 그릴 수 있게 된 뒤에 넣는다. */
+/** 수동/예약 동기화 공용 — 라이브로 받아 daangnInsightDaily에 upsert하고,
+ * 광고 설정 목록(adEntities)도 넓힌다(openai와 같은 방식). */
 export const syncDaangnInsightRows = async (
   dateStart: string,
   dateEnd: string,
   credentials: DaangnCredentials,
 ): Promise<{ upserted: number }> => {
   const rows = await fetchAllDaangnInsightRows(dateStart, dateEnd, credentials)
-  return upsertDaangnInsightRows(rows)
+  const result = await upsertDaangnInsightRows(rows)
+  await recordAdEntitiesSafely(sightingsFromDaangn(rows), logger.warn)
+  return result
 }

@@ -8,12 +8,12 @@ import { API_BASE } from '@/screens/xtool-lead-manager/constants'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
-/** 가장 이른 상담의 UTM source로 묶은 채널 — meta/google/naver는 UTM이 광고
- * 채널인 고객, other는 UTM은 있지만 광고비를 모으지 않는 곳(chatgpt.com·당근
- * 등), unknown은 UTM이 없는 고객(문의 없이 산 고객, UTM 없이 들어온 문의
+/** 가장 이른 상담의 UTM source로 묶은 채널 — meta/google/naver/openai/daangn은
+ * UTM이 광고 채널인 고객, other는 UTM은 있지만 광고비를 모으지 않는 곳
+ * (chatgpt.com 자연 유입·threads 등), unknown은 UTM이 없는 고객(문의 없이 산 고객, UTM 없이 들어온 문의
  * 포함). 방문체험 보드의 유입경로(영업전환·자연유입)는 쓰지 않는다. */
 export type AttributionChannel =
-  'meta' | 'google' | 'naver' | 'other' | 'unknown'
+  'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown'
 
 /** 고객 1명 — [처음 나타난 날, 채널, UTM source, [결제일, 금액][], 그 UTM
  * 상담의 접수일, 그 UTM 상담의 utm_campaign]. 구매는 날짜별로 합쳐져 있고
@@ -55,6 +55,8 @@ const AD_CHANNEL_SET: ReadonlySet<AttributionChannel> = new Set([
   'meta',
   'google',
   'naver',
+  'openai',
+  'daangn',
 ])
 
 /** 광고 성과로 인정하는 기간(일) — UTM 상담 접수일부터. */

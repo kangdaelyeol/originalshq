@@ -8,9 +8,12 @@ const META_ADSET_NAME = /^(장바구니|트래픽|전환|결제시작)_/
 
 /** UTM source를 광고 채널로 묶는다 — ROAS 하한은 이 값이 광고 채널인 고객만
  * 센다.
- *   · meta / google / naver — UTM이 광고 채널
- *   · other   — UTM은 있지만 광고비를 모으지 않는 곳(chatgpt.com, 당근,
- *               threads 등)
+ *   · meta / google / naver / openai / daangn — UTM이 광고 채널. OpenAI(ChatGPT
+ *     광고)는 'gpt', 당근은 'daangn'으로 잡혀 있다(2026-11-03 실제 값 확인 —
+ *     둘 다 utm_campaign에 광고 이름이 있고 광고 시작 뒤에만 나온다).
+ *   · other   — UTM은 있지만 광고비를 모으지 않는 곳(threads 등). chatgpt.com은
+ *               ChatGPT가 일반 답변 링크에도 붙이는 값이라(광고 전인 6월부터
+ *               있고 캠페인 이름이 없다) 광고로 세지 않는다.
  *   · unknown — UTM이 없음(문의 없이 산 고객, UTM 없이 들어온 문의 포함) */
 export const attributionChannel = (
   utmSource: string | null,
@@ -25,6 +28,8 @@ export const attributionChannel = (
   }
   if (/google|youtube|gdn/.test(value)) return 'google'
   if (/naver/.test(value)) return 'naver'
+  if (value === 'gpt' || /openai|chatgpt_ads/.test(value)) return 'openai'
+  if (/daangn|karrot|당근/.test(value)) return 'daangn'
   return 'other'
 }
 
