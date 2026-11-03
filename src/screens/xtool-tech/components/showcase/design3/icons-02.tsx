@@ -16,10 +16,10 @@ const BACK = trace(5, ARROW_NUDGE)
 const FORTH = trace(5, ARROW_NUDGE.map((v) => -v))
 
 // 에어플레이 → 재생 화면 → 에어플레이. 삼각형이 화면 틈으로 올라갔다(f4~8) 내려오며 받침대로 납작해지고(f16~20),
-// 화면 아래가 닫히며 1.8 내려앉고(f16~22) 가운데에 재생 삼각형이 꼭짓점부터 그려진다(f16~28). f39부터 거꾸로
+// 화면 아래가 닫히며 2 내려앉고(f16~22, 재생 화면 모양은 프레임 맞춤으로 잰 값) 가운데에 재생 삼각형이 꼭짓점부터 그려진다(f16~28). f39부터 거꾸로
 // 지워지고 받침대는 오른끝으로 줄며, 삼각형이 아래에서 떠올라 제자리(f48~54). 덩어리 위치·질량으로 맞춘 근사.
 const AIRPLAY_OPEN = 'M5 17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-1'
-const AIRPLAY_SCREEN = 'M12 18.8H4a2 2 0 0 1-2-2V6.8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8'
+const AIRPLAY_SCREEN = 'M12 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8'
 const AIRPLAY: IconSpec = {
   overflow: true,
   parts: [
@@ -35,12 +35,12 @@ const AIRPLAY: IconSpec = {
     },
     {
       // 받침대 — 삼각형이 납작해진 자리에서 나타나 f44~47에 오른끝으로 줄며 사라진다
-      shape: ['line', { x1: 7, y1: 21.4, x2: 17, y2: 21.4 }],
-      play: play({ x1: [[0, 7], [fr(44), 7, 'linear'], [fr(47.5), 17, 'easeIn'], [fr(47.6), 7, 'linear']], opacity: shownBetween(19.8, 47.5) }),
+      shape: ['line', { x1: 6.37, y1: 21.63, x2: 17.59, y2: 21.63 }],
+      play: play({ x1: [[0, 6.37], [fr(44), 6.37, 'linear'], [fr(47.5), 17.59, 'easeIn'], [fr(47.6), 6.37, 'linear']], opacity: shownBetween(19.8, 47.5) }),
     },
     {
       // 재생 삼각형 — 오른쪽 꼭짓점에서 왼아래 → 위 → 다시 꼭짓점으로 그려지고, 같은 길로 지워진다
-      shape: ['polygon', { points: '15 12 9.3 15.4 9.3 8.6' }],
+      shape: ['polygon', { points: '14.7 11.97 9.16 15.09 9.19 8.99' }],
       play: play({
         pathLength: [[0, 0], [fr(15.5), 0, 'linear'], ...trace(16, [0.04, 0.065, 0.09, 0.15, 0.24, 0.33, 0.41, 0.52, 0.67, 0.78, 0.87, 0.96, 1]), [fr(39), 1, 'linear'], ...trace(40, [0.91, 0.83, 0.76, 0.65, 0.59, 0.46, 0.35, 0.26, 0.24, 0.17, 0.13, 0.09, 0.07, 0.05, 0])],
         opacity: shownBetween(15.6, 53.8),
@@ -488,8 +488,37 @@ export function BookmarkIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="bookmark" spec={BOOKMARK} />
 }
 
-// 펼친 책 — 책과 반대로: 펼친 책이 접혀 덮인 책(-30° 기울기)이 됐다가 다시 펼쳐진다(f8.5~29, 책보다 조금 빨리 덮인다).
-const BOOK_OPEN: IconSpec = { nodes: [], parts: flipBook(BOOK_OPEN_PAGES, BOOK_CLOSED_PAGES, -30, -20, [8.5, 10.5, 12, 25, 26.5, 29]) }
+// 펼친 책 — 왼쪽 쪽이 오른쪽으로 접혀 넘어가며(f9~12) 책째 시계 반대로 기울어 덮인 책(가로 1.11·세로 0.96배, −24.5°)이 되고
+// (f12~14) 머물다가 같은 길을 거꾸로 되짚어 펼쳐진다(f24~30). 덮인 책의 아래 쪽선은 표지보다 0.68 아래.
+// 프레임마다 모형(펼친 책 회전·왼쪽 쪽 가로 배율·불투명, 덮인 책 회전·배율·불투명)을 영상에 맞춰 잰 값.
+// [프레임, 펼친 책 회전, 왼쪽 쪽 배율, 펼친 불투명, 덮인 불투명, 덮인 회전, 덮인 sx, sy]
+const BOOK_OPEN_TRACK: readonly (readonly number[])[] = [[8, 0, 1, 1, 0, -20.6, 0.9, 0.92], [9, -0.75, 0.92, 1, 0, -20.6, 0.9, 0.92], [10, -3.92, 0.63, 1, 0, -20.6, 0.9, 0.92], [11, -13.08, 0.46, 1, 0, -20.6, 0.9, 0.92], [12, -19.85, -0.45, 0.56, 0.92, -20.6, 0.9, 0.92], [13, -22, -0.66, 0.1, 0.96, -23.4, 1.07, 0.95], [14, -22, -0.66, 0, 1, -24.5, 1.11, 0.96], [24, -22, -0.66, 0, 1, -24.5, 1.11, 0.96], [25, -22, -0.66, 0.1, 0.96, -23.4, 1.07, 0.95], [26, -19.85, -0.45, 0.56, 0.92, -20.6, 0.9, 0.92], [27, -13.08, 0.46, 1, 0, -20.6, 0.9, 0.92], [28, -3.92, 0.63, 1, 0, -20.6, 0.9, 0.92], [29, -0.75, 0.92, 1, 0, -20.6, 0.9, 0.92], [30, 0, 1, 1, 0, -20.6, 0.9, 0.92]]
+const bookOpenKeys = (k: number, rest: number): Key[] => [[0, rest], ...BOOK_OPEN_TRACK.map((row): Key => [fr(row[0]), row[k], 'linear'])]
+const BOOK_OPEN: IconSpec = {
+  nodes: [],
+  parts: [
+    {
+      origin: [12, 12],
+      play: play({ rotate: bookOpenKeys(1, 0), opacity: bookOpenKeys(3, 1) }),
+      parts: [
+        { shape: ['path', { d: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z' }], origin: [12, 12], play: play({ scaleX: bookOpenKeys(2, 1) }) },
+        { shape: ['path', { d: 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' }] },
+      ],
+    },
+    {
+      origin: [12, 12],
+      attrs: { opacity: 0 },
+      play: play({ rotate: bookOpenKeys(5, -20.6), opacity: bookOpenKeys(4, 0), x: [[0, -0.28]], y: [[0, 0.09]] }),
+      parts: [
+        {
+          origin: [12, 12],
+          play: play({ scaleX: bookOpenKeys(6, 0.9), scaleY: bookOpenKeys(7, 0.92) }),
+          parts: [{ shape: ['path', { d: 'M4 20.18A2.5 2.5 0 0 1 6.5 17.68H20' }] }, { shape: ['path', { d: 'M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z' }] }],
+        },
+      ],
+    },
+  ],
+}
 
 /** book-open */
 export function BookOpenIcon(props: AnimatedIconProps) {

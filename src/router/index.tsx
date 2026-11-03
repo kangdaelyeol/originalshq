@@ -116,6 +116,8 @@ export const router = createBrowserRouter([
         lazy: xtoolTech('AppLayout'),
         children: [
           { index: true, lazy: xtoolTech('OverviewPage') },
+          // 내 업무 — ?who=<이름>이면 다른 직원의 담당 업무
+          { path: 'my-work', lazy: xtoolTech('MyWorkPage') },
           // 기술지원팀 Monday 보드(메뉴·관리 섹션) — 사이드바에서 온다
           { path: 'boards/:board', lazy: xtoolTech('BoardPage') },
           { path: 'design', lazy: xtoolTech('DesignPage') },

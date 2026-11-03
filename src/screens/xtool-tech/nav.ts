@@ -10,12 +10,13 @@ import {
   Palette,
   Settings,
   Truck,
+  UserRoundCheck,
   Users,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
 import { BOARD_TABS, type TechBoardKey } from './data/tech-boards'
-import { xtPath } from './paths'
+import { MY_WORK_PATH, xtPath } from './paths'
 
 export interface NavItem {
   to: string
@@ -24,6 +25,8 @@ export interface NavItem {
   badge?: string
   /** 관리자만 보이는 메뉴(주소로 들어와도 화면이 막는다) */
   adminOnly?: boolean
+  /** 아래로 직원 목록(하위 메뉴)이 펼쳐지는 메뉴 — 내 업무 */
+  people?: boolean
 }
 
 export interface NavSection {
@@ -53,8 +56,12 @@ const boardItems = (section: 'work' | 'manage'): NavItem[] =>
 export const NAV_SECTIONS: readonly NavSection[] = [
   {
     label: '메뉴',
-    // 개요 + 기술지원팀 업무 보드(BOARD_TABS 순서)
-    items: [{ to: xtPath(), label: '개요', icon: LayoutGrid }, ...boardItems('work')],
+    // 개요 · 내 업무(직원별 담당 업무) + 기술지원팀 업무 보드(BOARD_TABS 순서)
+    items: [
+      { to: xtPath(), label: '개요', icon: LayoutGrid },
+      { to: MY_WORK_PATH, label: '내 업무', icon: UserRoundCheck, people: true },
+      ...boardItems('work'),
+    ],
   },
   {
     label: '관리',

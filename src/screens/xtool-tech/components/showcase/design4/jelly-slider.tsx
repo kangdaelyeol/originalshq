@@ -10,14 +10,16 @@ import {
 } from 'react'
 import { cx } from '../../../lib/cx'
 import { JellyEngine } from './jelly-engine'
-import type { JellyLayers } from './jelly-renderer'
+import type { JellyLayers, JellyMaterial } from './jelly-renderer'
 
 export interface JellySliderHandle {
-  /** 영상 속 끌기(48% → 끝까지 → 34% → 48%, 2.5초)를 처음부터 */
+  /** 영상 속 끌기(48% → 끝까지 → 34% → 48%, 2.1초)를 처음부터 — 영상에서 되짚은 모양 그대로 */
   playDemo: () => void
   stopDemo: () => void
-  /** 영상의 한 프레임(F36~F110)으로 맞춰 멈춘다 — 영상과 나란히 비교할 때 */
+  /** 영상의 한 프레임(F36~F150)으로 맞춰 멈춘다 — 영상과 나란히 비교할 때 */
   seekDemo: (frame: number) => void
+  /** 재질 바꾸기 — 영상 색을 맞춰 볼 때만 */
+  setMaterial: (material: Partial<JellyMaterial>) => void
 }
 
 interface JellySliderProps {
@@ -110,6 +112,7 @@ export function JellySlider({
       playDemo: () => engineRef.current?.playDemo(),
       stopDemo: () => engineRef.current?.stopDemo(),
       seekDemo: (frame) => engineRef.current?.seekDemo(frame),
+      setMaterial: (material) => engineRef.current?.setMaterial(material),
     }),
     [],
   )

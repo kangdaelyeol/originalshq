@@ -14,6 +14,8 @@
   align-items: start;
   max-width: 1320px;
   margin: 0 auto;
+  // 사이드바 접기·펴기 — Design 8과 같은 곡선
+  transition: grid-template-columns 0.35s cubic-bezier(0.33, 1, 0.68, 1);
   // 위아래 여백은 sticky 사이드바의 top 여백과 같아야 한다 — 다르면 끝까지 스크롤했을 때
   // 사이드바가 칸 바닥에 걸려 그 차이만큼 위로 밀려 올라간다.
   padding: 20px 24px;
@@ -52,15 +54,53 @@
 }
 
 // ── 사이드바 ────────────────────────────────────────────────────────────────
-.sidebar {
+// 고정은 바깥 틀이 — 접기 단추가 사이드바(스크롤 상자) 테두리 밖으로 걸쳐야 해서 둘을 나눴다.
+.sidebar-wrap {
   position: sticky;
   top: 20px;
   height: calc(100dvh - 40px);
+  min-width: 0;
+}
+
+.sidebar {
+  height: 100%;
   display: flex;
   flex-direction: column;
   padding: 22px 16px 18px;
   border-radius: var(--radius-card);
-  overflow-y: auto;
+  overflow: hidden auto;
+}
+
+// 펼침/접힘 단추 — 오른쪽 테두리에 가운데가 걸린 흰 원(로고 높이) + 반투명 흰 고리(Design 8 .d8-toggle)
+.sidebar-toggle {
+  position: absolute;
+  top: 28px;
+  right: -14px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  color: #2b2a2c;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.13),
+    0 4px 12px rgba(0, 0, 0, 0.3);
+  transition: top 0.35s cubic-bezier(0.33, 1, 0.68, 1);
+
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 4px rgba(var(--accent-rgb), 0.6),
+      0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
+
+.sidebar-toggle__icon {
+  display: grid;
 }
 
 .sidebar__brand {
@@ -307,14 +347,155 @@
 }
 
 
-// ── 반응형 ──────────────────────────────────────────────────────────────────
-// 좁아지면 사이드바를 아이콘 줄로 접는다(글자는 title 툴팁으로).
-@media (max-width: 1180px) {
-  .shell {
-    grid-template-columns: 76px minmax(0, 1fr);
-    gap: 20px;
+// ── 내 업무: 메뉴 + 직원 목록(Design 8 SidebarSubList) ─────────────────────────
+.nav-people__row {
+  position: relative;
+
+  .nav-item {
+    padding-right: 40px;
+  }
+}
+
+// 오른쪽 갈매기 — 목록만 접고 편다(펼침 0° · 접힘 180°)
+.nav-people__caret {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-3);
+  translate: 0 -50%;
+  transition:
+    color 0.2s,
+    background 0.2s;
+
+  &:hover {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.06);
   }
 
+  &:focus-visible {
+    outline: 2px solid rgba(var(--accent-rgb), 0.6);
+    outline-offset: -2px;
+  }
+}
+
+.nav-people__caret-icon {
+  display: grid;
+}
+
+// 높이는 motion이 0 ↔ auto로 — 줄기는 위로 나와 아이콘 밑까지 잇고(clip-path로 위만 열어 둔다)
+.nav-sub {
+  position: relative;
+  clip-path: inset(-14px -40px 0 -40px);
+}
+
+// 줄기 x = 아이콘 가운데(메뉴 왼쪽 여백 12 + 아이콘 반 8). 맨 아래 가지가 꺾이는 데까지.
+.nav-sub__trunk {
+  position: absolute;
+  top: -12px;
+  bottom: 29px;
+  left: 19.5px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.nav-sub__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 4px;
+}
+
+.nav-sub__btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px 0 48px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  color: var(--text-3);
+  transition:
+    color 0.15s,
+    background 0.15s;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.04);
+    outline: none;
+  }
+
+  &.is-active {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.06);
+
+    .nav-sub__dot {
+      box-shadow: 0 0 10px color-mix(in srgb, var(--dot) 80%, transparent);
+    }
+  }
+}
+
+// 가지 — 줄기에서 둥글게 꺾여 색 점까지
+.nav-sub__branch {
+  position: absolute;
+  top: calc(50% - 9px);
+  left: 19.5px;
+  width: 11px;
+  height: 9px;
+  border-left: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom-left-radius: 8px;
+}
+
+// 색 점 — 둥근 네모 + 같은 색 번짐
+.nav-sub__dot {
+  position: absolute;
+  top: 50%;
+  left: 32px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 2.5px;
+  background: var(--dot);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--dot) 60%, transparent);
+}
+
+.nav-sub__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.nav-sub__count {
+  flex: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-4);
+  font-variant-numeric: tabular-nums;
+}
+
+.nav-sub__note {
+  padding: 6px 10px 6px 48px;
+  font-size: 11.5px;
+  color: var(--text-4);
+}
+
+
+// ── 반응형 ──────────────────────────────────────────────────────────────────
+// 좁아지면 사이드바를 아이콘 줄로 접는다(글자는 title 툴팁으로).
+// 아이콘 줄 — 접기 단추로 접었을 때와 좁은 화면이 같이 쓴다(글자는 title 툴팁으로).
+@mixin sidebar-rail {
   .sidebar {
     align-items: center;
     padding: 18px 10px;
@@ -329,6 +510,8 @@
   .sidebar__section-label,
   .nav-item__label,
   .nav-item__badge,
+  .nav-people__caret,
+  .nav-sub,
   .sidebar__user,
   .sidebar__logout {
     display: none;
@@ -351,9 +534,36 @@
     padding: 0;
   }
 
+  .nav-people__row .nav-item {
+    padding: 0;
+  }
+
   .sidebar__footer {
     justify-content: center;
     padding: 14px 0 0;
+  }
+
+  .sidebar-toggle {
+    top: 24px;
+  }
+}
+
+.shell.is-collapsed {
+  grid-template-columns: 76px minmax(0, 1fr);
+  @include sidebar-rail;
+}
+
+// 좁아지면 늘 아이콘 줄 — 펼칠 자리가 없어서 접기 단추도 숨긴다.
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  @include sidebar-rail;
+
+  .sidebar-toggle {
+    display: none;
   }
 }
 
@@ -377,9 +587,12 @@
     padding: 12px;
   }
 
-  .sidebar {
+  .sidebar-wrap {
     top: 12px;
     height: calc(100dvh - 24px);
+  }
+
+  .sidebar {
     padding: 14px 6px;
   }
 

@@ -20,6 +20,7 @@ export function Design4Showcase() {
     w.__d4Jelly = {
       seek: (frame: number) => slider.current?.seekDemo(frame),
       play: () => slider.current?.playDemo(),
+      material: (m: Parameters<JellySliderHandle['setMaterial']>[0]) => slider.current?.setMaterial(m),
     }
     return () => {
       delete w.__d4Jelly
@@ -54,7 +55,7 @@ export function Design4Showcase() {
       <div className="d4-parts">
         <section className="d4-part">
           <p className="d4-part__name">
-            <code>{'<JellyStill frame>'}</code> 영상 장면 — 같은 물리로 영상 프레임까지 돌린 모습
+            <code>{'<JellyStill frame>'}</code> 영상 장면 — 영상 프레임마다 되짚은 젤리 모양
           </p>
           <div className="d4-part__row">
             {JELLY_SCENES.map(({ frame, caption }) => (

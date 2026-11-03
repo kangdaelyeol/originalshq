@@ -17,15 +17,25 @@ export const ROPE_MAX_X = 0.9
 export const ROPE_LENGTH = ROPE_MAX_X - ROPE_ANCHOR_X
 /** 홈 바닥에 붙어 있을 때 줄 중심 높이 — 띠(반두께 0.04) 밑면이 바닥(-0.06) 바로 위(-0.054)에 오게 */
 export const ROPE_BASE_Y = -0.014
-/** 손잡이 점은 바닥보다 0.08 들려 있다 — 끝이 살짝 고개를 든 모양 */
-export const ROPE_KNOB_Y = ROPE_BASE_Y + 0.08
+/** 손잡이 점은 바닥보다 0.03 들려 있다(원본 0.08) — 영상의 둥근 끝(D)은 홈 안에 거의 평평하게 눕는다 */
+export const ROPE_KNOB_Y = ROPE_BASE_Y + 0.03
 
 const N = ROPE_POINTS
 
 /** 줄 물리 값 — 기본은 원본 예제(TypeGPU) 그대로, 영상에 맞춘 값은 jelly-engine.ts가 넘긴다 */
 export interface RopeParams {
-  /** 줄의 쉬는 길이 ÷ 고정점~끝 거리 — 1보다 작으면 끝까지 끌 때 늘어나고, 밀 때 덜 솟는다 */
-  slack: number
+  /** 고정점 x(홈 왼쪽 끝 쪽) */
+  anchorX: number
+  /**
+   * 줄 길이 = lengthBase + lengthPerSpan × (손잡이 x - 고정점 x). 원본은 1.9로 고정인데, 영상의
+   * 젤리는 밀면 짧고 굵어지고 끌면 길어진다(되짚은 모양의 길이가 34%에서 1.29, 48%에서 1.6, 끝에서 1.8).
+   */
+  lengthBase: number
+  lengthPerSpan: number
+  /** 길이가 늘어날 때 손잡이 자리를 따라가는 시간(초, 0이면 바로) */
+  lengthLag: number
+  /** 길이가 줄어들 때 따라가는 시간(초) — 늘 때보다 느리면 밀 때 혹이 더 높이 솟는다 */
+  lengthLagShrink: number
   /** 이웃 점 사이 길이를 맞추는 세기(원본 0.1) — 작을수록 잘 늘고 줄어든다 */
   stretchStiffness: number
   iterations: number
@@ -48,7 +58,11 @@ export interface RopeParams {
 }
 
 export const TYPEGPU_ROPE: RopeParams = {
-  slack: 1,
+  anchorX: -1,
+  lengthBase: 1.9,
+  lengthPerSpan: 0,
+  lengthLag: 0,
+  lengthLagShrink: 0,
   stretchStiffness: 0.1,
   iterations: 16,
   substeps: 6,
@@ -65,18 +79,29 @@ export const TYPEGPU_ROPE: RopeParams = {
 }
 
 /**
- * 영상에 맞춘 값 — 영상 프레임 13장(F44~F150)의 젤리 윗 테두리를 이 물리로 따라 그린 것과 비교해
- * (손잡이는 프레임마다 영상의 둥근 끝 위치에 맞춤) 오차가 가장 작은 조합을 골랐다(평균 24 → 13px).
- * 원본보다 줄이 20% 짧고 잘 늘어나서(0.015), 밀면 덜 솟고 고정점 가까이에서부터 일어서며,
- * 솟는 힘은 고정점 쪽 1/4 지점이 가장 세다 — 영상처럼 혹이 왼쪽 끝에 붙어 선다.
+ * 영상에 맞춘 값 — 영상 66프레임(F36~F100, F150)마다 젤리 윗 테두리·왼쪽 다리를 재고, 같은 손잡이 길로
+ * 이 물리를 돌려 비교해 골랐다(윗 테두리 평균 차이: 원본 값 18.7px → 5.0px).
+ *  · 줄 길이가 손잡이를 따른다(0.87 + 0.555 × 거리): 밀면 짧고 굵게, 끌면 길게. 늘 때는 바로, 줄 때는
+ *    0.105초 늦게 — 끌면 남는 길이가 홈 위로 활처럼 뜨고(F48~F57), 밀면 혹이 높이 솟는다(F66~F75).
+ *  · 고정점은 홈 왼쪽 끝(-1.02), 굽힘은 고르게 무르고 고정점 쪽 반은 더 무르다 — 혹이 왼쪽 끝에서 바로 선다.
+ *  · 솟는 힘이 세고(90) 고정점 쪽 3/8 지점이 가장 세다. 손잡이 쪽 끝은 바닥에 눕힌다(0.515).
  */
 export const VIDEO_ROPE: RopeParams = {
   ...TYPEGPU_ROPE,
-  slack: 0.8,
-  stretchStiffness: 0.015,
-  bendingStrength: 0.2,
-  archStrength: 4,
-  archPeak: 0.25,
+  anchorX: -1.02,
+  lengthBase: 0.87,
+  lengthPerSpan: 0.555,
+  lengthLag: 0,
+  lengthLagShrink: 0.105,
+  stretchStiffness: 0.075,
+  bendingStrength: 0.0988,
+  bendingExponent: 0.32,
+  bendingSkew: 1,
+  archStrength: 90,
+  archPeak: 0.375,
+  damping: 0.035,
+  endFlatLeft: 0.005,
+  endFlatRight: 0.515,
 }
 
 const smoothstep = (e0: number, e1: number, x: number) => {
@@ -98,20 +123,30 @@ export class JellyRope {
   readonly #prev = new Float32Array(N * 2)
   readonly #invMass = new Float32Array(N)
   readonly #p: RopeParams
-  readonly #restLen: number
+  #restLen = 0
   #target = ROPE_MAX_X
 
   constructor(params: RopeParams = VIDEO_ROPE) {
     this.#p = params
-    this.#restLen = (ROPE_LENGTH * params.slack) / (N - 1)
     this.reset()
+  }
+
+  get params() {
+    return this.#p
+  }
+
+  /** 손잡이 자리에 맞는 마디 길이 */
+  #desiredLen() {
+    const { anchorX, lengthBase, lengthPerSpan } = this.#p
+    return (lengthBase + lengthPerSpan * Math.max(0, this.#target - anchorX)) / (N - 1)
   }
 
   /** 처음 모양 — 고정점에서 오른쪽 끝(100%)까지 곧게 */
   reset() {
+    const a = this.#p.anchorX
     for (let i = 0; i < N; i++) {
       const t = i / (N - 1)
-      const x = ROPE_ANCHOR_X * (1 - t) + ROPE_MAX_X * t
+      const x = a * (1 - t) + ROPE_MAX_X * t
       this.pos[i * 2] = this.#prev[i * 2] = x
       this.pos[i * 2 + 1] = this.#prev[i * 2 + 1] = ROPE_BASE_Y
       this.normals[i * 2] = 0
@@ -119,6 +154,7 @@ export class JellyRope {
       this.#invMass[i] = i === 0 || i === N - 1 ? 0 : 1
     }
     this.#target = ROPE_MAX_X
+    this.#restLen = this.#desiredLen()
     this.#computeNormals()
     this.#computeControlPoints()
   }
@@ -130,6 +166,16 @@ export class JellyRope {
     this.controls.set(other.controls)
     this.#prev.set(other.#prev)
     this.#target = other.#target
+    this.#restLen = other.#restLen
+  }
+
+  /** 점 위치를 바로 정한다(영상에서 되짚은 모양을 재생할 때) — 속도는 0으로 */
+  setPoints(points: ArrayLike<number>) {
+    for (let i = 0; i < N * 2; i++) this.pos[i] = this.#prev[i] = points[i]
+    this.#target = this.pos[(N - 1) * 2]
+    this.#restLen = this.#desiredLen()
+    this.#computeNormals()
+    this.#computeControlPoints()
   }
 
   get target() {
@@ -138,7 +184,8 @@ export class JellyRope {
 
   /** 손잡이를 둘 x — 고정점에서 줄 길이만큼까지만(예제의 setDragX) */
   set target(x: number) {
-    this.#target = Math.min(Math.max(x, ROPE_ANCHOR_X - ROPE_LENGTH), ROPE_ANCHOR_X + ROPE_LENGTH)
+    const a = this.#p.anchorX
+    this.#target = Math.min(Math.max(x, a - ROPE_LENGTH), a + ROPE_LENGTH)
   }
 
   /** 끝에서 두 번째 점 — 둥근 끝의 중심이고, 숫자(%)도 이 점의 x로 정한다 */
@@ -150,7 +197,10 @@ export class JellyRope {
   update(dt: number) {
     if (dt <= 0) return
     const h = dt / this.#p.substeps
-    const compression = Math.max(0, 1 - Math.abs(this.#target - ROPE_ANCHOR_X) / ROPE_LENGTH)
+    const compression = Math.max(0, 1 - Math.abs(this.#target - this.#p.anchorX) / ROPE_LENGTH)
+    const desired = this.#desiredLen()
+    const lag = desired >= this.#restLen ? this.#p.lengthLag : this.#p.lengthLagShrink
+    this.#restLen += lag > 0 ? (desired - this.#restLen) * (1 - Math.exp(-dt / lag)) : desired - this.#restLen
     for (let s = 0; s < this.#p.substeps; s++) {
       this.#integrate(h, compression)
       this.#projectConstraints()
@@ -171,7 +221,7 @@ export class JellyRope {
 
   #pinEnds() {
     const p = this.pos
-    p[0] = ROPE_ANCHOR_X
+    p[0] = this.#p.anchorX
     p[1] = ROPE_BASE_Y
     p[(N - 1) * 2] = this.#target
     p[(N - 1) * 2 + 1] = ROPE_KNOB_Y
@@ -185,7 +235,7 @@ export class JellyRope {
     const damp = 1 - damping
     for (let i = 0; i < N; i++) {
       if (i === 0 || i === N - 1) {
-        const x = i === 0 ? ROPE_ANCHOR_X : this.#target
+        const x = i === 0 ? this.#p.anchorX : this.#target
         const y = i === 0 ? ROPE_BASE_Y : ROPE_KNOB_Y
         p[i * 2] = prev[i * 2] = x
         p[i * 2 + 1] = prev[i * 2 + 1] = y
@@ -323,6 +373,14 @@ export class JellyRope {
         continue
       }
       const t = ((bx - ax) * tby - (by - ay) * tbx) / denom
+      // 구간 안에 굽은 곳이 바뀌는 점(S자)이 있으면 두 접선이 구간 밖에서 만나 곡선이 툭 튀어나온다 —
+      // 출렁일 때 띠 윗면이 꺾여 보이던 까닭. 만나는 점이 구간 안쪽일 때만 쓰고, 아니면 가운데 점.
+      const chord = Math.hypot(bx - ax, by - ay)
+      if (!(t > 0.05 * chord && t < 0.95 * chord)) {
+        c[i * 2] = midX
+        c[i * 2 + 1] = midY
+        continue
+      }
       c[i * 2] = ax + t * tax
       c[i * 2 + 1] = ay + t * tay
     }

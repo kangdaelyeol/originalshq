@@ -1,25 +1,14 @@
 import { AnimatedIcon } from './animated-icon'
 import { fr, play, trace, type Key } from './icon-motion'
-import type { AnimatedIconProps, IconSpec } from './icon-types'
+import type { AnimatedIconProps, IconPart, IconSpec } from './icon-types'
 
 // 영상 8~9줄. 시각은 그 줄 묶음의 주기 시작부터 잰 초(프레임 ÷ 30).
 
 // a~b 프레임 동안만 보이기 / 그동안만 숨기기 — 바꿔 끼우는 도형용
 const shownBetween = (a: number, b: number): Key[] => [[0, 0, 'linear'], [fr(a), 0, 'linear'], [fr(a + 0.1), 1, 'linear'], [fr(b), 1, 'linear'], [fr(b + 0.1), 0, 'linear']]
 const hiddenBetween = (a: number, b: number): Key[] => [[0, 1, 'linear'], [fr(a), 1, 'linear'], [fr(a + 0.1), 0, 'linear'], [fr(b), 0, 'linear'], [fr(b + 0.1), 1, 'linear']]
-// 종이 아이콘 공통 — 접힌 귀가 펴지며 각진 네모(가로 0.8·세로 0.66)로 오그라들었다(f8~13) 다시 펴진다(f22~27)
-const PAGE_SHRINK = { x: [[0, 1], [fr(8), 1, 'linear'], [fr(13), 0.8], [fr(22), 0.8, 'linear'], [fr(27), 1]] as Key[], y: [[0, 1], [fr(8), 1, 'linear'], [fr(13), 0.66], [fr(22), 0.66, 'linear'], [fr(27), 1]] as Key[] }
-const pageBody = (corner: number, end: number): Key[] => {
-  const open = `M${corner} 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V${end}z`, shut = 'M20 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2z'
-  return [[0, open], [fr(8), open, 'linear'], [fr(11.5), shut], [fr(23.5), shut, 'linear'], [fr(27), open]]
-}
-const pageFold = (corner: number, end: number): Key[] => {
-  const open = `${corner} 2 ${corner} ${end} 20 ${end}`
-  return [[0, open], [fr(8), open, 'linear'], [fr(11.5), '20 2 20 2 20 2'], [fr(23.5), '20 2 20 2 20 2', 'linear'], [fr(27), open]]
-}
-const pageWith = (extra: number[]): IconSpec => ({
-  parts: [{ origin: [12, 12], play: play({ scaleX: PAGE_SHRINK.x, scaleY: PAGE_SHRINK.y }), parts: [{ node: 0, play: play({ d: pageBody(14, 8) }) }, { node: 1, play: play({ points: pageFold(14, 8) }) }, { node: extra }] }],
-})
+// 같은 값을 n프레임 동안 그대로
+const hold = (n: number, row: readonly number[]) => Array<readonly number[]>(n).fill(row)
 
 // 펜과 밑줄 — 전체가 (12,18) 기준 0.8로 줄고(f4~8), 연필이 촉을 축으로 81° 반대로 눕으며 오른쪽 끝(촉 x 21)까지
 // 미끄러진다(f8~18). 지나간 자리의 밑줄은 지워지고 왼쪽에 글줄 두 개가 그려진다(f10~17). f24~36에 거꾸로 돌아온다.
@@ -223,17 +212,97 @@ export function FastForwardIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="fast-forward" spec={FAST_FORWARD} />
 }
 
-// 피그마 — 블록들이 위로 접혀 사라지며(f6~12) 알약(원 두 개 붙은 모양)이 되어 원 ↔ 알약으로 통통 튀다가(f13~52)
-// 다시 피그마 블록으로 펼쳐진다(f53~58). 알약 폭을 프레임 장면마다 맞춘 근사.
-const FIGMA_PILL: Key[] = [[0, 10], [fr(13), 10, 'linear'], [fr(17), 5.6], [fr(23), 10], [fr(29), 10], [fr(34), 5.6], [fr(38), 10], [fr(43), 5.6], [fr(46), 10], [fr(49), 5.6], [fr(52), 10]]
+// 피그마 — 아래 물방울이 (12,16) 모서리로 오그라들어 사라지고(f4~8) 가운뎃줄이 가로로 눌려 세로 막대가 되며 내려가는
+// 사이(f8~12) 윗줄 알약이 가운데로 내려온다(f10~13). 알약은 가로로 누운 캡슐이 세로축으로 도는 것처럼 길이가 줄었다
+// 늘었다 하며(원 ↔ 알약) 이음매(반타원)가 이쪽저쪽으로 넘어간다(f13~53). 되돌아갈 때는 막대가 다시 생겨 가운뎃줄로
+// 펴지고(f54~60) 알약이 위로 올라가며(f56~59) 물방울이 모서리에서 다시 자란다(f58~65).
+// 알약 [곧은 반길이, 가운데 x 이동, 가운데 y, 반지름, 이음매 x, 이음매 부풂, 이음매 불투명]은 영상에서 프레임마다 맞춘 값.
+const FIGMA_SPIN: readonly (readonly number[])[] = [
+  [3.32, 0.35, 12.21, 3.5, 11.82, 0.59, 1],
+  [2.61, 0.52, 12.21, 3.51, 10.97, 2.36, 1],
+  [2.12, 0.43, 12.23, 3.5, 11.65, 2.25, 1],
+  [1.24, 0.59, 12.21, 3.48, 12.08, 3.1, 1],
+  [0.38, 0.74, 12.2, 3.5, 12.34, 3.58, 0.7],
+  [0.02, 0.94, 12.2, 3.51, 13.69, 2.93, 0.7],
+  [0.35, 0.85, 12.21, 3.5, 12.5, -2.09, 0.88],
+  [1.24, 0.7, 12.2, 3.5, 13.94, -1.5, 0.91],
+  [2.35, 0.49, 12.21, 3.48, 14.62, 0.73, 1],
+  [3.4, 0.29, 12.21, 3.46, 15.88, 2.1, 0.94],
+  [3.96, 0.12, 12.21, 3.47, 16.92, 2.89, 0.45],
+  [3.87, 0.21, 12.2, 3.46, 16.98, 2.9, 0.39],
+  [2.14, 0.51, 12.22, 3.47, 8.27, -0.58, 0.27],
+  [0.41, 0.75, 12.21, 3.47, 11.23, -0.61, 0.1],
+  [0.26, 0.89, 12.2, 3.49, 11.27, -1.4, 0.56],
+  [0.92, 0.8, 12.2, 3.49, 12.48, -1.89, 0.96],
+  [1.81, 0.64, 12.21, 3.49, 12.73, -0.64, 0.89],
+  [2.54, 0.6, 12.2, 3.5, 13.25, -0.04, 0.94],
+  [2.48, 0.58, 12.2, 3.5, 12.8, 0.65, 0.93],
+  [1.29, 0.69, 12.2, 3.53, 13.37, 1.44, 0.93],
+  [0.35, 0.8, 12.18, 3.47, 12.93, 3.1, 0.83],
+  [0.21, 1.02, 12.2, 3.48, 12.5, 2.81, 0.15],
+  [0.82, 0.9, 12.23, 3.5, 12.6, -1.24, 0.93],
+  [1.77, 0.63, 12.23, 3.5, 14.57, -0.61, 0.86],
+  [2.86, 0.41, 12.23, 3.48, 15.98, 0.73, 0.99],
+  [3.7, 0.17, 12.23, 3.48, 16.4, 1.29, 0.2],
+  [4.1, 0.21, 12.23, 3.48, 16.62, 1.84, 0.15],
+  [3.16, 0.42, 12.22, 3.48, 14.79, 2.75, 0.12],
+  [1.27, 0.68, 12.21, 3.48, 15.93, 0.81, 0.27],
+  [0.23, 0.91, 12.23, 3.49, 10.69, -0.15, 0.19],
+  [0.51, 0.85, 12.23, 3.47, 12.03, -2.11, 0.84],
+  [1.38, 0.78, 12.21, 3.49, 12.71, -1.43, 0.93],
+  [2.29, 0.62, 12.22, 3.48, 12.72, -0.03, 0.92],
+  [2.64, 0.57, 12.22, 3.47, 11.58, 1.8, 0.89],
+  [2.07, 0.65, 12.22, 3.46, 12.21, 1.95, 0.91],
+  [0.77, 0.74, 12.22, 3.49, 12.79, 2.82, 0.93],
+  [0.01, 0.78, 12.2, 3.5, 13.35, 3.13, 0.75],
+  [0.08, 1.03, 12.23, 3.49, 12.76, 2.4, 0.88],
+  [0.06, 1.71, 12.2, 3.52, 11.31, 1.21, 1],
+  [1.02, 1.56, 12.22, 3.48, 9.91, 1.39, 1],
+  [3.01, 0.45, 12.21, 3.49, 12.09, -0.09, 0.99],
+] // f13~53
+const figmaPill = ([len, dx, cy, r]: readonly number[]) => {
+  const x0 = Math.round((12 + dx - len) * 100) / 100, x1 = Math.round((12 + dx + len) * 100) / 100, top = Math.round((cy - r) * 100) / 100, low = Math.round((cy + r) * 100) / 100
+  return `M${x0} ${top}H${x1}A${r} ${r} 0 0 1 ${x1} ${low}H${x0}A${r} ${r} 0 0 1 ${x0} ${top}Z`
+}
+const figmaSeam = ([, , cy, r, x, bulge]: readonly number[]) => {
+  const q = (v: number) => Math.round(v * 100) / 100
+  return `M${x} ${q(cy - r)}C${q(x + 0.5523 * bulge)} ${q(cy - r)} ${q(x + bulge)} ${q(cy - 0.5523 * r)} ${q(x + bulge)} ${cy}S${q(x + 0.5523 * bulge)} ${q(cy + r)} ${x} ${q(cy + r)}`
+}
+// 가운뎃줄(왼쪽 D + 오른쪽 원)을 x=12 기준 가로 sx, 세로 sy로 누르고 가운데를 y=cy로 — 선 굵기가 그대로이게 좌표를 바꾼다
+const figmaMiddle = ([sx, sy, cy]: readonly number[]) => {
+  const q = (v: number) => Math.round(v * 100) / 100
+  const rx = q(3.5 * sx), ry = q(3.5 * sy), top = q(cy - 3.5 * sy), low = q(cy + 3.5 * sy)
+  return [
+    `M${q(12 - 7 * sx)} ${cy}A${rx} ${ry} 0 0 1 ${q(12 - 3.5 * sx)} ${top}H12V${low}H${q(12 - 3.5 * sx)}A${rx} ${ry} 0 0 1 ${q(12 - 7 * sx)} ${cy}z`,
+    `M12 ${cy}A${rx} ${ry} 0 1 1 ${q(12 + 7 * sx)} ${cy}A${rx} ${ry} 0 1 1 12 ${cy}z`,
+  ]
+}
+const FIGMA_MIDDLE_IN = [[1, 1, 12.5], [0.97, 1, 12.53], [0.82, 1, 12.55], [0.38, 1, 13.13], [0.1, 0.84, 16.55], [0, 0.95, 17.58]] // f7~12
+const FIGMA_MIDDLE_OUT = [[0.03, 1.33, 17.98], [0.2, 1.03, 18.91], [0.37, 0.99, 18.2], [0.62, 1, 13.64], [0.83, 1, 12.7], [0.95, 1, 12.52], [1, 1, 12.5]] // f54~60
+// 물방울을 (12,16) 모서리 기준 s배로 — 이것도 좌표로
+const figmaDrop = (k: number) => {
+  const q = (v: number) => Math.round(v * 1000) / 1000
+  return `M${q(12 - 7 * k)} ${q(16 + 3.5 * k)}A${q(3.5 * k)} ${q(3.5 * k)} 0 0 1 ${q(12 - 3.5 * k)} 16H12V${q(16 + 3.5 * k)}A${q(3.5 * k)} ${q(3.5 * k)} 0 1 1 ${q(12 - 7 * k)} ${q(16 + 3.5 * k)}z`
+}
+const middleKeys = (i: number): Key[] => [...trace(7, FIGMA_MIDDLE_IN.map((m) => figmaMiddle(m)[i])), ...trace(54, FIGMA_MIDDLE_OUT.map((m) => figmaMiddle(m)[i]))]
 const FIGMA: IconSpec = {
+  nodes: [
+    ['path', { d: 'M5 5.5A3.5 3.5 0 0 1 8.5 2H12v7H8.5A3.5 3.5 0 0 1 5 5.5z' }],
+    ['path', { d: 'M12 2h3.5a3.5 3.5 0 1 1 0 7H12V2z' }],
+    ['path', { d: figmaMiddle([1, 1, 12.5])[1] }],
+    ['path', { d: figmaDrop(1) }],
+    ['path', { d: figmaMiddle([1, 1, 12.5])[0] }],
+  ],
   parts: [
-    { node: [0, 1, 2, 3, 4], origin: [12, 5.5], play: play({ scaleY: [[0, 1], [fr(6), 1, 'linear'], [fr(12), 0.2], [fr(53), 0.2, 'linear'], [fr(58), 1]], opacity: hiddenBetween(12, 53) }) },
+    { node: [0, 1], play: play({ y: [...trace(9, [0, 0.62, 5.06, 6.51]), ...trace(54, [6.72, 6.54, 5.64, 1.07, 0.14, 0])], opacity: hiddenBetween(12.5, 53.5) }) },
+    { node: 4, play: play({ d: middleKeys(0), opacity: hiddenBetween(12.5, 53.5) }) },
+    { node: 2, play: play({ d: middleKeys(1), opacity: hiddenBetween(12.5, 53.5) }) },
+    { node: 3, play: play({ d: [...trace(4, [1, 0.9, 0.55, 0.12, 0].map(figmaDrop)), ...trace(58, [0.07, 0.1, 0.14, 0.33, 0.54, 0.77, 0.95, 1].map(figmaDrop))], opacity: hiddenBetween(7.5, 57.5) }) },
+    { shape: ['path', { d: figmaPill(FIGMA_SPIN[0]) }], play: play({ d: trace(13, FIGMA_SPIN.map(figmaPill)), opacity: shownBetween(12.5, 53.5) }) },
     {
-      shape: ['rect', { x: 7, y: 9.2, width: 10, height: 5.6, rx: 2.8 }],
-      play: play({ width: FIGMA_PILL, attrX: FIGMA_PILL.map(([t, w, e]) => [t, 12 - Number(w) / 2, e] as Key), opacity: shownBetween(12, 53) }),
+      shape: ['path', { d: figmaSeam(FIGMA_SPIN[0]) }],
+      play: play({ d: trace(13, FIGMA_SPIN.map(figmaSeam)), opacity: [[0, 0, 'linear'], [fr(12.5), 0, 'linear'], ...trace(13, FIGMA_SPIN.map((p) => p[6])), [fr(53.5), FIGMA_SPIN[FIGMA_SPIN.length - 1][6], 'linear'], [fr(53.6), 0, 'linear']] }),
     },
-    { shape: ['line', { x1: 12, y1: 9.4, x2: 12, y2: 14.6 }], play: play({ opacity: [[0, 0], [fr(12.5), 0, 'linear'], [fr(13), 1], [fr(15), 0], [fr(27), 0, 'linear'], [fr(28), 1], [fr(31), 0], [fr(45), 0, 'linear'], [fr(46), 1], [fr(48), 0]] }) },
   ],
 }
 
@@ -242,19 +311,31 @@ export function FigmaIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="figma" spec={FIGMA} />
 }
 
-// 종이 — 귀가 펴지며 작아지고(f8~13) 기울며 아래로 떨어져 창 밖으로 나갔다가(f13~19), 위에서 굴러 들어와(f19~27)
-// 제자리에서 귀가 다시 접힌다(f24~28). 덩어리 위치·기울기 추적 근사.
+// 종이 — 영상의 이 칸은 귀가 (14,8)인 종이(빼기·더하기 종이와 같은 판)다. 귀가 펴지며(f5~12) 0.8로 줄고(f9~11),
+// (12,12) 기준 시계로 기울며 아래로 떨어져 30칸 창 밖으로 나갔다가(f13~18) 위에서 25° 기운 채 내려와(f21~27)
+// 서며 제 크기·귀로 돌아온다(f24~29). 귀·배율·기울기·높이를 프레임마다 맞춘 값(영상, 래스터 모형 맞춤).
+const filePage = (u: number) => {
+  const e = Math.round((14 + 6 * u) * 100) / 100, b = Math.round((8 - 6 * u) * 100) / 100
+  return { d: `M${e} 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V${b}z`, points: `${e} 2 ${e} ${b} 20 ${b}` }
+}
+const FILE_FOLD = [0, 0.05, 0.11, 0.21, 0.22, 0.29, 0.49, 0.75, 0.81, 0.85] // f4~13 (펴짐)
+const FILE_UNFOLD = [0.85, 0.74, 0.39, 0.2, 0.12, 0.07, 0] // f21~27 (다시 접힘)
 const FILE: IconSpec = {
   overflow: true,
+  nodes: [['path', { d: filePage(0).d }], ['polyline', { points: filePage(0).points }]],
   parts: [
     {
       clip: [['rect', { x: -3, y: -3, width: 30, height: 30 }]],
-      play: play({
-        y: [[0, 0], [fr(12), 0, 'linear'], ...trace(13, [0.9, 2.85, 5.95, 9.5, 14, 19, 25]), [fr(19.1), -25, 'linear'], ...trace(20, [-18, -13.5, -9.5, -6.3, -4, -2.1, -0.7, -0.1, 0])],
-        rotate: [[0, 0], [fr(13), 0, 'linear'], ...trace(14, [4, 30, 90, 95, 100, 100]), [fr(19.1), 95, 'linear'], ...trace(20, [95, 90, 85, 75, 12, 5, 2, -3, -2, 0])],
-      }),
       origin: [12, 12],
-      parts: [{ origin: [12, 12], play: play({ scaleX: [[0, 1], [fr(8), 1, 'linear'], [fr(11), 0.8], [fr(25), 0.8, 'linear'], [fr(28), 1]], scaleY: [[0, 1], [fr(8), 1, 'linear'], [fr(11), 0.87], [fr(25), 0.87, 'linear'], [fr(28), 1]] }), parts: [{ node: 0, play: play({ d: [[0, 'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z'], [fr(8), 'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z', 'linear'], [fr(11), 'M20 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2z'], [fr(25), 'M20 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2z', 'linear'], [fr(28), 'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z']] }) }, { node: 1, play: play({ points: [[0, '13 2 13 9 20 9'], [fr(8), '13 2 13 9 20 9', 'linear'], [fr(11), '20 2 20 2 20 2'], [fr(25), '20 2 20 2 20 2', 'linear'], [fr(28), '13 2 13 9 20 9']] }) }] }],
+      play: play({
+        y: [...trace(12, [0, 0.64, 2.8, 7, 13, 20, 28]), [fr(19.5), 28, 'linear'], [fr(19.6), -28, 'linear'], ...trace(21, [-21.6, -15.32, -9.68, -5.07, -2.01, -0.44, 0])],
+        rotate: [...trace(12, [0, 0.26, 2.76, 7.2, 12.4, 18, 22]), [fr(19.5), 23, 'linear'], ...trace(21, [25, 25, 22.9, 20.3, 16, 10.1, 5.27, 1.97, 0])],
+        scale: [...trace(8, [1, 0.98, 0.9, 0.81, 0.8]), ...trace(23, [0.8, 0.8, 0.85, 0.9, 0.95, 0.98, 1])],
+      }),
+      parts: [
+        { node: 0, play: play({ d: [...trace(4, FILE_FOLD.map((u) => filePage(u).d)), ...trace(21, FILE_UNFOLD.map((u) => filePage(u).d))] }) },
+        { node: 1, play: play({ points: [...trace(4, FILE_FOLD.map((u) => filePage(u).points)), ...trace(21, FILE_UNFOLD.map((u) => filePage(u).points))] }) },
+      ],
     },
   ],
 }
@@ -264,24 +345,63 @@ export function FileIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="file" spec={FILE} />
 }
 
-// 빼기 종이 — 귀가 펴지며 네모로 오그라들었다(f8~13) 다시 펴진다(f22~27). 안쪽 빼기도 함께.
-const FILE_MINUS: IconSpec = pageWith([2])
+// 종이 셋(빼기·더하기·글) 공통 — 귀의 접힌 선이 빗변 쪽으로 접혀 들어가 없어지고(f4~9) 종이가 (12,12) 기준 0.8배로
+// 줄며 귀는 작은 빗변만 남는다(f8~12). f22~26에 커지며 빗변이 길어지고 접힌 선이 다시 펴져 나온다(f25~30). 선 굵기는
+// 줄지 않는다(--d3-k). 속 줄은 종이 밖에서 자리·길이를 따로 옮긴다(f8~26). 모두 영상에서 프레임마다 맞춘 값.
+const SHEET_SCALE = trace(8, [1, 0.98, 0.9, 0.815, ...Array<number>(10).fill(0.8), 0.81, 0.86, 0.94, 0.985, 1]) // f8~26
+const SHEET_CUT = [1, 0.92, 0.7, 0.3, 0.21, ...Array<number>(9).fill(0.2), 0.26, 0.54, 0.74, 0.96, 1] // f8~26, 귀 빗변 크기(1 = 14·8 귀)
+const SHEET_TUCK = [0, 0.22, 0.47, 0.67, 0.93, 0.97, ...Array<number>(13).fill(1), 0.75, 0.89, 0.98, 0.94, 0.68, 0.48, 0.23, 0] // f4~30, 접힌 선이 빗변으로 들어간 정도
+const sheetR = (v: number) => Math.round(v * 1000) / 1000
+const sheetBody = (u: number) => `M${sheetR(20 - 6 * u)} 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V${sheetR(2 + 6 * u)}z`
+const sheetFold = (u: number, v: number) => {
+  const c = 20 - 6 * u, e = 2 + 6 * u
+  return `${sheetR(c)} 2 ${sheetR(c + (v * (20 - c)) / 2)} ${sheetR(e - (v * (e - 2)) / 2)} 20 ${sheetR(e)}`
+}
+// 속 줄 하나 — f8~26 프레임마다 [x1, y1, x2, y2]
+const sheetLine = (rows: readonly (readonly number[])[]): IconPart => ({
+  shape: ['line', { x1: rows[0][0], y1: rows[0][1], x2: rows[0][2], y2: rows[0][3] }],
+  play: play({ x1: trace(8, rows.map((r) => r[0])), y1: trace(8, rows.map((r) => r[1])), x2: trace(8, rows.map((r) => r[2])), y2: trace(8, rows.map((r) => r[3])) }),
+})
+const sheet = (lines: readonly (readonly (readonly number[])[])[]): IconSpec => ({
+  nodes: [['path', { d: sheetBody(1) }], ['polyline', { points: sheetFold(1, 0) }]],
+  parts: [
+    {
+      origin: [12, 12],
+      play: play({ scale: SHEET_SCALE, '--d3-k': SHEET_SCALE.map(([t, v, e]) => [t, 1 / Number(v), e] as Key) }),
+      parts: [
+        { node: 0, play: play({ d: trace(8, SHEET_CUT.map(sheetBody)) }) },
+        { node: 1, play: play({ points: trace(4, SHEET_TUCK.map((v, i) => sheetFold(SHEET_CUT[i - 4] ?? 1, v))) }) },
+      ],
+    },
+    ...lines.map(sheetLine),
+  ],
+})
+
+// 빼기 종이 — 빼기가 종이 가운데로 올라가며 4.4 길이로 줄었다(f8~12) 돌아온다(f22~26).
+const FILE_MINUS: IconSpec = sheet([[[9, 15, 15, 15], [9.1, 14.67, 15.03, 14.67], [9.5, 13.55, 14.58, 13.55], [9.42, 12.66, 14.48, 12.66], [9.67, 12.54, 14.29, 12.54], ...hold(9, [9.72, 12.45, 14.28, 12.45]), [9.68, 12.46, 14.28, 12.46], [9.73, 13.22, 14.47, 13.22], [9.15, 14.12, 14.91, 14.12], [9.01, 14.82, 14.99, 14.82], [9, 15, 15, 15]]])
 
 /** file-minus */
 export function FileMinusIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="file-minus" spec={FILE_MINUS} />
 }
 
-// 더하기 종이 — 빼기 종이와 같은 접힘.
-const FILE_PLUS: IconSpec = pageWith([2, 3])
+// 더하기 종이 — 영상의 더하기는 팔이 2.5(Feather는 3)라 그 크기로. 종이 가운데로 올라가며 팔이 1.9로 줄었다 돌아온다.
+const FILE_PLUS: IconSpec = sheet([
+  [[12, 12.5, 12, 17.5], [12, 12.03, 12, 17.32], [12, 11.35, 12, 15.42], [12, 10.88, 12, 14.51], [12, 10.73, 12, 14.35], ...hold(9, [12, 10.71, 12, 14.32]), [12, 10.75, 12, 14.46], [12, 10.94, 12, 15.2], [12, 11.85, 12, 16.3], [12, 12.39, 12, 17.1], [12, 12.5, 12, 17.5]],
+  [[9.5, 15, 14.5, 15], [9.53, 14.66, 14.3, 14.66], [9.79, 13.71, 14.11, 13.71], [10, 12.65, 13.92, 12.65], [9.97, 12.47, 13.82, 12.47], ...hold(9, [10, 12.47, 13.84, 12.47]), [10.02, 12.63, 13.75, 12.63], [9.7, 13.2, 14.15, 13.2], [9.78, 14.09, 14.29, 14.09], [9.61, 14.76, 14.32, 14.76], [9.5, 15, 14.5, 15]],
+])
 
 /** file-plus */
 export function FilePlusIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="file-plus" spec={FILE_PLUS} />
 }
 
-// 글 종이 — 빼기 종이와 같은 접힘(안의 글줄도 함께).
-const FILE_TEXT: IconSpec = pageWith([2, 3, 4])
+// 글 종이 — 글줄 셋이 다시 흘러 짧은 윗줄은 길게, 긴 아랫줄은 짧게 바뀌며(f8~12) 종이 안에 모이고 f22~26에 돌아온다.
+const FILE_TEXT: IconSpec = sheet([
+  [[8, 13, 16, 13], [8.24, 13.01, 15.95, 13.01], [8.59, 12.97, 15.37, 12.97], [8.99, 12.83, 15.23, 12.83], [8.99, 12.82, 15.01, 12.82], ...hold(9, [8.98, 12.83, 14.97, 12.83]), [8.98, 12.83, 14.95, 12.83], [8.62, 12.88, 15.29, 12.88], [8.31, 13.01, 15.77, 13.01], [8.19, 12.99, 15.96, 12.99], [8, 13, 16, 13]],
+  [[8, 17, 16, 17], [8.15, 16.85, 15.44, 16.85], [8.52, 16.49, 12.69, 16.49], [8.99, 16.16, 10.48, 16.16], [8.95, 16.03, 10.23, 16.03], ...hold(9, [8.96, 16.02, 10.21, 16.02]), [9.01, 16.13, 10.46, 16.13], [8.67, 16.31, 11.79, 16.31], [8.26, 16.68, 13.99, 16.68], [8.02, 16.97, 15.66, 16.97], [8, 17, 16, 17]],
+  [[8, 9, 10, 9], [8.28, 9, 10.38, 9], [8.52, 9.25, 12.61, 9.25], [8.82, 9.51, 15.06, 9.51], [9, 9.6, 15.06, 9.6], ...hold(9, [8.99, 9.6, 15.05, 9.6]), [9.01, 9.6, 15.05, 9.6], [8.81, 9.41, 13.91, 9.41], [8.17, 9.21, 11.87, 9.21], [8.18, 9.03, 10.44, 9.03], [8, 9, 10, 9]],
+])
 
 /** file-text */
 export function FileTextIcon(props: AnimatedIconProps) {
@@ -307,16 +427,36 @@ export function FilmIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="film" spec={FILM} />
 }
 
-// 거름망 — 깔때기가 접혀 들며 사라지고(f10~13) 길이가 줄어드는 가로줄 셋(목록 거름)이 그어졌다가(f12~15)
-// 머물고, f42~46에 줄이 걷히며 깔때기가 다시 펴진다.
+// 거름망 — 깔때기가 그린 순서의 끝에서부터 지워지고(f9~16: 오른쪽 빗변 → 기둥 → 왼쪽 빗변 → 윗변 순) 그사이
+// 가로줄 셋이 그어지며 자리를 잡는다(가운데 줄은 오른쪽 빗변 자리에서 왼쪽으로, 아래 줄은 왼쪽에서 오른쪽으로 f11~19,
+// 윗줄은 지워지는 윗변을 따라 왼쪽에서 오른쪽으로 f13~25). f37~45에 줄이 깔때기 자리로 돌아가 붙으며 깔때기가
+// 처음부터 다시 그려진다(f42~47). 줄 [x1, x2, y]와 깔때기 그린 양은 영상에서 프레임마다 맞춘 값.
+const FILTER_TOP: readonly (readonly number[])[] = [[3.7, 8.4, 3.27], [3.98, 9.91, 3.45], [4.15, 10.57, 3.77], [4.51, 11.63, 3.98], [4.69, 12.93, 4.16], [4.85, 14.61, 4.35], [4.85, 16.49, 4.36], [4.99, 17.81, 4.46], [4.99, 18.54, 4.46], [4.98, 19.05, 4.46], [4.98, 19.1, 4.46], [4.98, 19.18, 4.46], ...hold(13, [5, 19.27, 4.45]), [4.84, 19.33, 4.27], [4.65, 19.4, 4.13], [4.27, 20.85, 3.89], [4.09, 21.04, 3.61], [3.79, 21.35, 3.32], [3.49, 20.99, 3.32], [3.42, 21.45, 2.86], [2.73, 21.92, 2.61]] // f13~45
+const FILTER_MID: readonly (readonly number[])[] = [[14.22, 15.62, 10.45], [13.44, 15.46, 10.45], [12.13, 15.41, 10.47], [11.06, 15.05, 10.63], [10.1, 15.08, 10.64], [9.55, 14.95, 10.65], [9.55, 14.84, 10.65], [9.5, 14.79, 10.66], [9.46, 14.74, 10.66], ...hold(18, [9.45, 14.75, 10.66]), [9.43, 14.82, 10.65], [9.32, 14.94, 10.63], [9.53, 14.91, 10.63], [9.68, 15.09, 10.6], [10.62, 15.11, 10.55], [12.04, 15.48, 10.5], [13.56, 15.7, 10.45], [14.58, 15.76, 10.5]] // f11~45
+const FILTER_LOW: readonly (readonly number[])[] = [[10.53, 11.42, 18.52], [10.55, 12.1, 18.35], [10.52, 12.79, 18.15], [10.71, 13.31, 17.92], [10.78, 13.37, 17.73], [10.74, 13.53, 17.58], [10.76, 13.54, 17.5], ...hold(19, [10.77, 13.56, 17.43]), [10.72, 13.58, 17.53], [10.64, 13.63, 17.65], [10.7, 13.56, 17.77], [10.65, 13.17, 18.06], [10.69, 12.95, 18.32], [10.45, 12.23, 18.53]] // f12~43
+const filterLine = (rows: readonly (readonly number[])[], start: number, shown: [number, number]) => ({
+  shape: ['line', { x1: rows[0][0], y1: rows[0][2], x2: rows[0][1], y2: rows[0][2] }] as const,
+  play: play({
+    x1: trace(start, rows.map((r) => r[0])),
+    x2: trace(start, rows.map((r) => r[1])),
+    y1: trace(start, rows.map((r) => r[2])),
+    y2: trace(start, rows.map((r) => r[2])),
+    opacity: shownBetween(...shown),
+  }),
+})
 const FILTER: IconSpec = {
+  nodes: [['path', { d: 'M22 3H2l8 9.46V19l4 2v-8.54L22 3z' }]],
   parts: [
-    { node: 0, origin: [12, 3], play: play({ scaleY: [[0, 1], [fr(10), 1, 'linear'], [fr(13), 0.05], [fr(43), 0.05, 'linear'], [fr(46.5), 1]], opacity: hiddenBetween(13, 43) }) },
-    ...[[4, 20, 7], [7.5, 16.5, 12], [10.5, 13.5, 17]].map(([x1, x2, y], i) => ({
-      shape: ['line', { x1, y1: y, x2, y2: y }] as const,
-      origin: [12, y] as const,
-      play: play({ scaleX: [[0, 0], [fr(11.5 + i), 0, 'linear'], [fr(14.5 + i), 1], [fr(42), 1, 'linear'], [fr(45), 0]], opacity: shownBetween(11.5 + i, 45) }),
-    })),
+    {
+      node: 0,
+      play: play({
+        pathLength: [...trace(8, [1, 1, 0.9, 0.74, 0.5, 0.284, 0.1, 0.03, 0]), ...trace(42, [0, 0.5, 0.74, 0.9, 0.98, 1])],
+        opacity: hiddenBetween(15.5, 42.5),
+      }),
+    },
+    filterLine(FILTER_TOP, 13, [12.5, 45.5]),
+    filterLine(FILTER_MID, 11, [10.5, 45.5]),
+    filterLine(FILTER_LOW, 12, [11.5, 43.5]),
   ],
 }
 
@@ -325,17 +465,22 @@ export function FilterIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="filter" spec={FILTER} />
 }
 
-// 깃발 — 깃대 아래(4,22)를 축으로 오른쪽으로 13° 기울며 깃폭이 출렁이다(f8~45) 선다(f51). 근사.
-const FLAG_WAVE = ['M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z', 'M4 15s1-2 4-2 5 3 8 3 4-2 4-2V3s-1 2-4 2-5-3-8-3-4 2-4 2z', 'M4 15s1 0 4 0 5 1 8 1 4 0 4 0V3s-1 0-4 0-5-1-8-1-4 0-4 0z']
+// 깃발 — 깃폭이 (12,12) 기준 16°쯤 기울며(f8~13) Feather의 S자 물결이 뒤집혔다(f8~16) 되돌고(f20~27) 다시 뒤집혔다
+// (f31~39) 서며(f44~52) 제자리. 깃폭 안쪽 두 꼭짓점(x 8·16)의 높이를 반대로 w만큼 옮기는 물결 — 기울기·물결을 프레임마다
+// 맞춘 값(영상, 래스터 모형 맞춤).
+const FLAG_TILT = [0.52, 2.52, 5.65, 10.23, 14.07, 15.23, 15.57, 15.71, 15.85, 15.85, 15.85, 15.85, 15.85, 15.85, 15.85, 15.6, 15.6, 15.6, 15.6, 15.6, 15.6, 15.6, 15.6, 15.6, 15.65, 15.7, 15.75, 15.75, 15.75, 15.8, 15.8, 15.8, 15.8, 15.75, 15.7, 15.65, 15.6, 15.6, 14.05, 11.7, 8.0, 4.34, 2.07, 0.08, 0] // f8~52
+const FLAG_WAVE = [0.02, 0.12, 0.25, 0.56, 0.86, 1.17, 1.47, 1.73, 1.94, 1.94, 1.94, 1.94, 1.88, 1.75, 1.55, 1.14, 0.81, 0.5, 0.27, 0.06, 0.03, 0.03, 0.03, 0.03, 0.25, 0.48, 0.78, 1.12, 1.48, 1.66, 1.83, 1.97, 1.97, 1.97, 1.91, 1.73, 1.53, 1.34, 1.07, 0.75, 0.46, 0.23, 0.12, 0.01, 0]
+const flagCloth = (w: number) => {
+  const r = (v: number) => Math.round(v * 1000) / 1000
+  return `M4 15S5 ${r(14 + w)} 8 ${r(14 + w)}S13 ${r(16 - w)} 16 ${r(16 - w)}S20 15 20 15L20 3S19 ${r(4 - w)} 16 ${r(4 - w)}S11 ${r(2 + w)} 8 ${r(2 + w)}S4 3 4 3Z`
+}
 const FLAG: IconSpec = {
+  nodes: [['path', { d: flagCloth(0) }], ['line', { x1: 4, y1: 22, x2: 4, y2: 15 }]],
   parts: [
     {
-      origin: [4, 22],
-      play: play({ rotate: [[0, 0], [fr(8), 0, 'linear'], [fr(14), 13], [fr(40), 13, 'linear'], [fr(48), -2], [fr(51), 0]] }),
-      parts: [
-        { node: 0, play: play({ d: [[0, FLAG_WAVE[0]], [fr(10), FLAG_WAVE[0], 'linear'], [fr(16), FLAG_WAVE[1]], [fr(22), FLAG_WAVE[2]], [fr(28), FLAG_WAVE[1]], [fr(34), FLAG_WAVE[2]], [fr(40), FLAG_WAVE[1]], [fr(46), FLAG_WAVE[0]]] }) },
-        { node: 1 },
-      ],
+      origin: [12, 12],
+      play: play({ rotate: trace(7, [0, ...FLAG_TILT]) }),
+      parts: [{ node: 0, play: play({ d: trace(7, [0, ...FLAG_WAVE].map(flagCloth)) }) }, { node: 1 }],
     },
   ],
 }
@@ -345,16 +490,22 @@ export function FlagIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="flag" spec={FLAG} />
 }
 
-// 폴더 — 0.88로 작아지며(f8~12) 앞판이 비스듬히 열려 겹쳐 보였다가(f11~32) 닫히고 제 크기로(f33~38). 근사.
+// 폴더 — 가운데 기준 0.85로 오그라든 뒤(f4~9) 앞판이 열린다: 앞판 윗변이 폴더 윗변(6.9)에서 5로 올라가며 오른쪽 끝이
+// 22.3까지 비스듬히 젖혀지고(f9~16, 아래 끝은 폴더 오른쪽 아래에 붙은 채) 폴더는 그만큼 왼쪽으로 1.4 비켜난다.
+// f29~35에 거꾸로 닫히고 f36~40에 제 크기로. 세 폴더(빈·빼기·더하기)가 같다 — 폴더 배율·이동·앞판 꼭짓점을 프레임마다
+// 맞춘 값(영상, 래스터 모형 맞춤).
+const FOLDER_SCALE: Key[] = [...trace(4, [1, 0.98, 0.945, 0.9, 0.87, 0.85]), ...trace(35, [0.85, 0.87, 0.9, 0.94, 0.98, 1])]
+const FOLDER_SHIFT: Key[] = [...trace(8, [0, -0.19, -0.38, -0.56, -0.84, -1.08, -1.22, -1.37, -1.39, -1.4]), ...trace(28, [-1.4, -1.32, -1.19, -1.06, -0.82, -0.57, -0.37, -0.18, -0.08, -0.04, 0])]
+// 앞판 [윗변 왼끝 x, 윗변 y, 오른쪽 위 x, 아래 끝 x] — 아래 끝 y는 18.8
+const FOLDER_FLAP_OPEN = [[11.08, 6.89, 20.69, 20.21], [10.74, 6.75, 20.89, 20.02], [10.26, 6.42, 21.13, 19.84], [9.93, 5.81, 21.48, 19.56], [9.27, 5.62, 21.77, 19.32], [9.13, 5.31, 22.03, 19.18], [8.98, 5.06, 22.21, 19.03], [8.95, 5.01, 22.26, 19]]
+const FOLDER_FLAP_CLOSE = [[8.95, 5.01, 22.26, 19], [9.03, 5.09, 22.25, 19.08], [9.16, 5.21, 22.02, 19.21], [9.29, 5.55, 21.8, 19.34], [9.6, 5.8, 21.52, 19.58], [10.32, 6.36, 21.29, 19.83], [10.78, 6.77, 20.96, 20.03], [11.04, 6.89, 20.71, 20.22]]
+const flapPoints = ([x0, y, x1, x2]: readonly number[]) => `${x0} ${y} ${x1} ${y} ${x2} 18.8`
 const folderOpen = (inner: number[]): IconSpec => ({
   parts: [
+    { node: [0, ...inner], origin: [12, 12], play: play({ scale: FOLDER_SCALE, x: FOLDER_SHIFT }) },
     {
-      origin: [12, 21],
-      play: play({ scale: [[0, 1], [fr(8), 1, 'linear'], [fr(12), 0.88], [fr(33), 0.88, 'linear'], [fr(38), 1]] }),
-      parts: [
-        { node: [0, ...inner] },
-        { shape: ['path', { d: 'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z' }], origin: [2, 21], play: play({ skewX: [[0, 0], [fr(11), 0, 'linear'], [fr(15), -14], [fr(30), -14, 'linear'], [fr(33), 0]], x: [[0, 0], [fr(11), 0, 'linear'], [fr(15), 1.6], [fr(30), 1.6, 'linear'], [fr(33), 0]], opacity: shownBetween(11, 33) }) },
-      ],
+      shape: ['polyline', { points: flapPoints(FOLDER_FLAP_OPEN[0]) }],
+      play: play({ points: [...trace(9, FOLDER_FLAP_OPEN.map(flapPoints)), ...trace(28, FOLDER_FLAP_CLOSE.map(flapPoints))], opacity: shownBetween(8.9, 35.5) }),
     },
   ],
 })
@@ -379,12 +530,27 @@ export function FolderPlusIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="folder-plus" spec={FOLDER_PLUS} />
 }
 
-// 프레이머 — 로고가 세로축으로 뒤집히며(f8~14) 작은(0.72) Z 모양(위·아래 가로획과 대각선, 양옆 반쪽 변)이 되고,
-// 거울처럼 한 번 뒤집혔다 돌아온 뒤(f28~52) 다시 뒤집혀 로고로 돌아온다(f56~62). 근사.
+// 프레이머 — 꼬리가 아래 막대 쪽으로 접혀 들며(f8~15, f11~12에 확) 로고 전체가 3.5 내려와 Z자 상자가 되고,
+// 가로로 뒤집혀 거울 Z가 됐다(f36~44, f39~40 사이에 0을 지나감) 다시 뒤집히고(f53~61) 마지막에 꼬리를 펴며
+// 올라간다(f64~70). 세로 이동·꼬리 접힘(꼬리 윗변 y 16 기준 세로 배율)·가로 배율을 프레임마다 맞춘 값(영상).
 const FRAMER: IconSpec = {
+  nodes: [
+    ['path', { d: 'M5 16V9h14V2H5l14 14h-7' }],
+    ['path', { d: 'M5 16h7' }],
+    ['path', { d: 'M5 16l7 7v-7' }],
+  ],
   parts: [
-    { node: 0, origin: [12, 12], play: play({ scaleX: [[0, 1], [fr(8), 1, 'linear'], [fr(11), 0.05], [fr(59), 0.05, 'linear'], [fr(62), 1]], opacity: hiddenBetween(11, 59) }) },
-    { shape: ['path', { d: 'M5 4h14L5 20h14M5 4v6M19 14v6' }], origin: [12, 12], play: play({ scaleX: [[0, 0.05], [fr(11), 0.05, 'linear'], [fr(14), 0.72], [fr(28), 0.72, 'linear'], [fr(32), -0.72], [fr(48), -0.72, 'linear'], [fr(52), 0.72], [fr(56), 0.72, 'linear'], [fr(59), 0.05]], scaleY: [[0, 0.72], [fr(14), 0.72, 'linear']], opacity: shownBetween(11, 59) }) },
+    {
+      origin: [12, 12],
+      play: play({
+        y: [...trace(7, [0, 0.08, 0.16, 0.31, 0.65, 2.83, 3.22, 3.34, 3.47]), ...trace(64, [3.47, 3.43, 3.36, 3.31, 3.07, 1.77, 0])],
+        scaleX: [...trace(36, [1, 0.95, 0.85, 0.64, -0.64, -0.85, -0.92, -0.97, -0.99, -1]), ...trace(53, [-1, -0.95, -0.94, -0.84, -0.64, 0.64, 0.85, 0.95, 1])],
+      }),
+      parts: [
+        { node: [0, 1] },
+        { node: 2, origin: [8.5, 16], play: play({ scaleY: [...trace(7, [1, 1, 0.98, 0.95, 0.84, 0.19, 0.07, 0.04, 0]), ...trace(64, [0, 0.01, 0.03, 0.04, 0.12, 0.5, 1])] }) },
+      ],
+    },
   ],
 }
 
@@ -393,9 +559,32 @@ export function FramerIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="framer" spec={FRAMER} />
 }
 
-// 선물 — 0.75로 움츠렸다(f7~11) 1.05로 튀어 커졌다(f17~20) 제 크기(f24). 근사.
+// 선물 — 상자는 (12,12) 기준 0.8배로, 뚜껑·리본은 가로 0.78·세로 0.87배로 움츠러들며(f7~11) 그사이 띠(세로줄)가 상자를
+// 감고 도는 것처럼 왼쪽으로 반 폭만큼 밀려 나가고 다음 띠가 오른쪽 모서리에서 가운데로 들어온다(f7~17). 버티다
+// f18~24에 제 크기로. 배율과 띠 위치(반 폭 비율)는 영상에서 프레임마다 맞춘 값.
+const GIFT_BOX = trace(7, [1, 0.955, 0.895, 0.84, 0.8, 0.8, 0.795, 0.8, 0.8, 0.8, 0.8, 0.8, 0.825, 0.87, 0.93, 0.97, 0.995, 1]) // f7~24
+const GIFT_TOP_X = trace(7, [0.98, 0.95, 0.88, 0.82, 0.78, 0.78, 0.77, 0.78, 0.77, 0.78, 0.78, 0.78, 0.81, 0.85, 0.92, 0.97, 0.99, 1])
+const GIFT_TOP_Y = trace(7, [1, 0.98, 0.95, 0.91, 0.89, 0.88, 0.88, 0.87, 0.88, 0.87, 0.87, 0.87, 0.9, 0.93, 0.97, 0.99, 0.99, 1])
+const GIFT_SLIDE = [0, 0.05, 0.13, 0.27, 0.4, 0.57, 0.74, 0.89, 0.95, 0.98, 1] // f7~17, 반 폭 단위
+// 띠 한 토막 — 반 폭 half만큼 떨어진 자리(next면 오른쪽 모서리)에서 GIFT_SLIDE만큼 왼쪽으로
+const giftBand = (y1: number, y2: number, half: number, next: boolean) => ({
+  shape: ['line', { x1: 12, y1, x2: 12, y2 }] as const,
+  play: play({
+    x: trace(7, GIFT_SLIDE.map((v) => half * ((next ? 1 : 0) - v))),
+    opacity: next ? [[0, 0, 'linear'], [fr(7), 0, 'linear'], [fr(7.1), 1, 'linear']] as Key[] : hiddenBetween(15.9, 69.9),
+  }),
+})
 const GIFT: IconSpec = {
-  parts: [{ node: [0, 1, 2, 3, 4], origin: [12, 22], play: play({ scale: [[0, 1], [fr(7), 1, 'linear'], [fr(11), 0.75], [fr(14), 0.75, 'linear'], [fr(19), 1.05], [fr(24), 1]] }) }],
+  nodes: [
+    ['polyline', { points: '20 12 20 22 4 22 4 12' }],
+    ['rect', { x: 2, y: 7, width: 20, height: 5 }],
+    ['path', { d: 'M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z' }],
+    ['path', { d: 'M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z' }],
+  ],
+  parts: [
+    { origin: [12, 12], play: play({ scale: GIFT_BOX }), parts: [{ node: 0 }, giftBand(12, 22, 8, false), giftBand(12, 22, 8, true)] },
+    { origin: [12, 12], play: play({ scaleX: GIFT_TOP_X, scaleY: GIFT_TOP_Y }), parts: [{ node: [1, 2, 3] }, giftBand(7, 12, 10, false), giftBand(7, 12, 10, true)] },
+  ],
 }
 
 /** gift */
@@ -403,9 +592,39 @@ export function GiftIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="gift" spec={GIFT} />
 }
 
-// 깃허브 — 고양이가 왼쪽으로 기우뚱했다(f8~14) 돌아오고(f22), 한 번 더 살짝 흔든다(f34~40). 근사.
+// 깃허브 — 몸통이 (12,12)를 중심으로 0.9배까지 살짝 움츠러들고(f7~13, f34~40에 제 크기로) 그동안 꼬리가 다리 끝
+// (9,19)을 축으로 위로 말려 올라간다(f8~24: 최대 -16.6°, 길이 0.8배, 끝쪽 굽이가 4.4만큼 더 휨 → f31~40 제자리).
+// 영상에서 프레임마다 잰 값(몸통 배율, 꼬리 [회전°, 길이 배율, 굽이]).
+const GITHUB_BODY = 'M16 22v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22'
+const GITHUB_SCALE = [1, 0.99, 0.97, 0.95, 0.93, 0.91, ...Array<number>(22).fill(0.9), 0.91, 0.93, 0.95, 0.97, 0.99, 1] // f7~40
+const GITHUB_TAIL: readonly (readonly [number, number, number])[] = [
+  [0, 1, 0], [-0.8, 0.98, -0.1], [-1, 0.95, -0.1], [-2.05, 0.93, -0.12], [-3, 0.91, -0.15], [-5, 0.91, -0.22],
+  [-6, 0.9, -0.45], [-7.7, 0.89, -0.63], [-9.55, 0.89, -1.03], [-10.4, 0.89, -1.29], [-10.4, 0.89, -1.29],
+  [-10.4, 0.89, -1.29], [-10.4, 0.89, -1.29], [-10.8, 0.89, -1.43], [-11.45, 0.88, -1.59], [-14.84, 0.86, -2.53],
+  [-15.5, 0.84, -3.13], [-16.6, 0.82, -4.03], [-16.6, 0.81, -4.14], [-16.06, 0.81, -4.48], [-15.7, 0.8, -4.44],
+  [-15.74, 0.8, -4.44], [-15.74, 0.8, -4.44], [-15.74, 0.8, -4.44], [-15.74, 0.8, -4.5], [-14.66, 0.8, -4.26],
+  [-14.6, 0.81, -4.26], [-12.97, 0.81, -3.94], [-9.82, 0.88, -2.84], [-7, 0.9, -1.87], [-4.68, 0.91, -1.33],
+  [-1.9, 0.95, -0.38], [-0.53, 0.97, -0.16], [0, 1, 0],
+] // f7~40
+// 꼬리 'M9 19C4 20.5 4 16.5 2 16'을 (9,19) 기준으로 돌리고 늘인 모양. 몸통 묶음이 함께 줄어드니 길이는 그만큼 나눠 준다.
+const githubTail = ([deg, len, bend]: readonly [number, number, number], bodyScale: number) => {
+  const a = (deg * Math.PI) / 180, k = len / bodyScale
+  const r = (v: number) => Math.round(v * 1000) / 1000
+  const at = (x: number, y: number) => {
+    const dx = (x - 9) * k, dy = (y - 19) * k
+    return `${r(9 + dx * Math.cos(a) - dy * Math.sin(a))} ${r(19 + dx * Math.sin(a) + dy * Math.cos(a))}`
+  }
+  return `M9 19C${at(4, 20.5)} ${at(4, 16.5 + bend)} ${at(2, 16)}`
+}
 const GITHUB: IconSpec = {
-  parts: [{ node: 0, origin: [12, 22], play: play({ rotate: [[0, 0], [fr(8), 0, 'linear'], [fr(12), -8], [fr(17), 4], [fr(22), 0], [fr(34), 0, 'linear'], [fr(37), -3], [fr(40), 0]] }) }],
+  nodes: [['path', { d: githubTail([0, 1, 0], 1) }], ['path', { d: GITHUB_BODY }]],
+  parts: [
+    {
+      origin: [12, 12],
+      play: play({ scale: trace(7, GITHUB_SCALE) }),
+      parts: [{ node: 0, play: play({ d: trace(7, GITHUB_TAIL.map((t, i) => githubTail(t, GITHUB_SCALE[i]))) }) }, { node: 1 }],
+    },
+  ],
 }
 
 /** github */
@@ -413,20 +632,33 @@ export function GithubIcon(props: AnimatedIconProps) {
   return <AnimatedIcon {...props} icon="github" spec={GITHUB} />
 }
 
-// 지구본 — 0.82로 작아져(f2~6) 자오선 두 개가 엇갈려 좁아졌다 넓어지기를 되풀이하며(가로 배율 1 ↔ -1) 공이 도는
-// 것처럼 보이다가(f6~58) 제 크기로 돌아온다(f58~62). 근사.
+// 지구본 — (12,12)를 중심으로 0.8배로 작아지고(f1~9) 공이 경선 다섯 칸(60° 간격, 300°)만큼 왼쪽으로 돈 뒤(f10~52)
+// 제 크기로 돌아온다(f53~61). 영상의 쉬는 모양은 Feather의 렌즈 대신 ±30° 경선 두 개(가로 반지름 5인 반타원)라 그
+// 모양으로 그린다. 경선 하나는 경도 φ일 때 가로로 10·sin φ만큼 부푼 반타원(3차 곡선 둘)이고, 앞쪽 반구(-90°~90°)에
+// 있을 때만 보인다 — 테두리(±90°)에서 켜고 끄니 이음매가 없다. 배율·회전각은 영상에서 프레임마다 맞춘 값.
+const GLOBE_SCALE: Key[] = [[fr(1), 1], ...trace(2, [0.98, 0.95, 0.93, 0.89, 0.86, 0.83, 0.81, 0.795]), [fr(53), 0.795, 'linear'], ...trace(54, [0.81, 0.83, 0.86, 0.9, 0.93, 0.96, 0.98, 1])]
+const GLOBE_TURN = [0, -6, -14.5, -24.1, -32.4, -41.7, -49.7, -60, -73.3, -81.1, -88.6, -95, -101.5, -107.4, -112.7, -116.7, -121.5, -123.5, -130.7, -138.8, -146.6, -153.7, -161.9, -170.2, -177.1, -183.6, -190.7, -198.1, -206.6, -213.9, -221.9, -229.6, -236.8, -241.8, -244.4, -252.1, -258.2, -264.1, -271.1, -278.5, -286.1, -293.8, -300] // f10~52
+const meridianD = (deg: number) => {
+  const b = 10 * Math.sin((Math.max(-90, Math.min(90, deg)) * Math.PI) / 180), k = 0.5523
+  const r = (v: number) => Math.round(v * 1000) / 1000
+  return `M12 2C${r(12 + k * b)} 2 ${r(12 + b)} ${r(12 - 10 * k)} ${r(12 + b)} 12S${r(12 + k * b)} 22 12 22`
+}
+// 쉴 때 경도 rest(°)인 경선 — 앞쪽 반구를 드나드는 순간(프레임 사이는 선형으로 셈)에 켜고 끈다
+const meridian = (rest: number) => {
+  const deg = GLOBE_TURN.map((t) => rest + t)
+  const seen = (d: number) => d > -90 && d < 90
+  const opacity: Key[] = [[0, seen(rest) ? 1 : 0, 'linear']]
+  deg.forEach((d, i) => {
+    if (i === 0 || seen(d) === seen(deg[i - 1])) return
+    const edge = d < deg[i - 1] ? (seen(d) ? 90 : -90) : seen(d) ? -90 : 90
+    const at = 10 + i - 1 + (edge - deg[i - 1]) / (d - deg[i - 1])
+    opacity.push([fr(at - 0.05), seen(d) ? 0 : 1, 'linear'], [fr(at + 0.05), seen(d) ? 1 : 0, 'linear'])
+  })
+  return { shape: ['path', { d: meridianD(rest) }] as const, play: play({ d: trace(10, deg.map(meridianD)), opacity }) }
+}
 const GLOBE: IconSpec = {
-  parts: [
-    {
-      origin: [12, 12],
-      play: play({ scale: [[0, 1], [fr(2), 1, 'linear'], [fr(6), 0.82], [fr(58), 0.82, 'linear'], [fr(62), 1]] }),
-      parts: [
-        { node: [0, 1] },
-        { node: 2, origin: [12, 12], play: play({ scaleX: [[0, 1], [fr(4), 1, 'linear'], [fr(16), -1], [fr(28), 1], [fr(40), -1], [fr(52), 1]] }) },
-        { shape: ['path', { d: 'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' }], origin: [12, 12], play: play({ scaleX: [[0, 0], [fr(4), 0, 'linear'], [fr(10), 1], [fr(22), -1], [fr(34), 1], [fr(46), -1], [fr(52), 0]], opacity: shownBetween(4, 52) }) },
-      ],
-    },
-  ],
+  nodes: [['circle', { cx: 12, cy: 12, r: 10 }], ['line', { x1: 2, y1: 12, x2: 22, y2: 12 }]],
+  parts: [{ origin: [12, 12], play: play({ scale: GLOBE_SCALE }), parts: [{ node: [0, 1] }, ...[-30, 30, 90, 150, 210, 270, 330].map(meridian)] }],
 }
 
 /** globe */

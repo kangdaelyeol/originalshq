@@ -6,7 +6,9 @@ import { DENIED_MESSAGE } from '@/xtool-auth/access'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import { useXtoolSession, type XtoolSession } from '@/xtool-auth/use-xtool-session'
 import { MemberContext } from '../../context/member-context'
+import { cx } from '../../lib/cx'
 import { pageStagger } from '../../lib/motion'
+import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
 import { XT_BASE, xtPath } from '../../paths'
 import { AppBackground } from './app-background'
@@ -35,6 +37,7 @@ export function AppLayout() {
   const navigate = useNavigate()
   const session = useXtoolSession('tech')
   const previousRef = useRef<XtoolSession['status']>('loading')
+  const [collapsed, toggleSidebar] = useSidebarCollapsed()
 
   // 로그인 화면은 lazy라 받는 동안 이 화면이 남아 있다 — 그 사이 상태가 한 번 더 바뀌어도
   // (권한 없음 → 로그아웃) 처음 보낸 안내가 덮이지 않게, 이동은 여기 한 곳에서 이전 상태를 보고 한다.
@@ -59,8 +62,8 @@ export function AppLayout() {
     <MemberContext.Provider value={session.member}>
       <UsageTracking pathname={pathname} />
       <AppBackground />
-      <div className="shell">
-        <Sidebar member={session.member} />
+      <div className={cx('shell', collapsed && 'is-collapsed')}>
+        <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
           <Topbar />
           {/* 경로가 바뀌면 새로 그려서 카드들이 차례로 떠오르게 한다(motion.ts 주석 참고). */}

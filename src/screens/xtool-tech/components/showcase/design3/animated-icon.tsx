@@ -14,6 +14,9 @@ const MOTION_TAGS: Record<IconNode[0], ElementType> = {
   ellipse: motion.ellipse,
 }
 
+/** 부품 굵기 배수를 움직이는 CSS 변수 이름 — 스펙의 play에 이 키로 키프레임을 준다 */
+const THICK_VAR = '--d3-k'
+
 // 스펙은 모듈 상수라 객체가 바뀌지 않는다 — variants를 부품마다 한 번만 만든다.
 const variantCache = new WeakMap<object, Variants>()
 const EMPTY_VARIANTS: Variants = { normal: {}, animate: {} }
@@ -58,8 +61,11 @@ function originStyle(origin: IconPart['origin']): MotionStyle | undefined {
 
 function renderPart(part: IconPart, nodes: readonly IconNode[], key: string, uid: string): ReactNode {
   const variants = variantsOf(part, part.play)
-  // 굵기 배수는 아이콘 굵기(--d3-stroke)에 곱한다 — 쓰는 쪽이 strokeWidth를 바꿔도 비율이 유지된다
-  const thick: MotionStyle | undefined = part.stroke ? { strokeWidth: `calc(var(--d3-stroke) * ${part.stroke})` } : undefined
+  // 굵기 배수는 아이콘 굵기(--d3-stroke)에 곱한다 — 쓰는 쪽이 strokeWidth를 바꿔도 비율이 유지된다.
+  // 재생 중에 굵기가 변하는 부품은 CSS 변수 --d3-k를 키프레임으로 움직이고 그 값을 한 번 더 곱한다.
+  const animThick = !!part.play && THICK_VAR in part.play
+  const thick: MotionStyle | undefined =
+    part.stroke || animThick ? { strokeWidth: `calc(var(--d3-stroke) * ${part.stroke ?? 1}${animThick ? ` * var(${THICK_VAR}, 1)` : ''})` } : undefined
   const style = part.origin || thick ? { ...originStyle(part.origin), ...thick } : undefined
   const ids = part.node === undefined ? [] : typeof part.node === 'number' ? [part.node] : part.node
   const shapes: IconNode[] = ids.map((i) => nodes[i])

@@ -7,7 +7,7 @@ import { ClockIcon, CloudIcon, CloudOffIcon, CodeIcon, CodepenIcon, CoffeeIcon, 
 import { Edit3Icon, ExternalLinkIcon, EyeIcon, EyeOffIcon, FastForwardIcon, FigmaIcon, FileIcon, FileMinusIcon, FilePlusIcon, FileTextIcon, FilmIcon, FilterIcon, FlagIcon, FolderIcon, FolderMinusIcon, FolderPlusIcon, FramerIcon, GiftIcon, GithubIcon, GlobeIcon } from './icons-05'
 import { GridIcon, HeadphonesIcon, HeartIcon, HelpCircleIcon, HomeIcon, ImageIcon, InboxIcon, InfoIcon, InstagramIcon, ItalicIcon, KeyIcon, LayersIcon, LayoutIcon, LifeBuoyIcon, LinkIcon, Link2Icon, LinkedinIcon, ListIcon, LockIcon, LogInIcon } from './icons-06'
 import { LogOutIcon, MailIcon, MaximizeIcon, Maximize2Icon, MenuIcon, MessageCircleIcon, MessageSquareIcon, MetaIcon, MicIcon, MicOffIcon, MinimizeIcon, Minimize2Icon, MinusIcon, MinusCircleIcon, MinusSquareIcon, MoonIcon, MoreHorizontalIcon, MoreVerticalIcon, MoveIcon, MusicIcon } from './icons-07'
-import { Navigation2Icon, NavigationIcon, PackageIcon, PaperclipIcon, PenToolIcon, PercentIcon, PhoneIcon, PhoneCallIcon, PhoneOffIcon, MapPinIcon, PlayIcon, PlayCircleIcon, PlusCircleIcon, PlusSquareIcon, PocketIcon, PowerIcon, PrinterIcon, RadioIcon, RefreshCwIcon, RotateCcwIcon } from './icons-08'
+import { Navigation2Icon, NavigationIcon, PackageIcon, PaperclipIcon, PenToolIcon, PercentIcon, PhoneIcon, PhoneCallIcon, PhoneOffIcon, MapPinIcon, PlayIcon, PlayCircleIcon, PlusCircleIcon, PlusSquareIcon, PocketIcon, PowerIcon, PrinterIcon, RadioIcon, RefreshCcwIcon, RotateCcwIcon } from './icons-08'
 
 export interface BoardIcon {
   /** Feather 이름(영상 속 모양의 출처) */
@@ -196,7 +196,7 @@ export const BOARD_ROWS: readonly (readonly BoardIcon[])[] = [
     { name: 'power', Icon: PowerIcon },
     { name: 'printer', Icon: PrinterIcon },
     { name: 'radio', Icon: RadioIcon },
-    { name: 'refresh-cw', Icon: RefreshCwIcon },
+    { name: 'refresh-ccw', Icon: RefreshCcwIcon },
     { name: 'rotate-ccw', Icon: RotateCcwIcon },
   ],
 ]

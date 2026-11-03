@@ -4,7 +4,6 @@ import { KingCard } from '../components/overview/king-card'
 import { MyWorkCard } from '../components/overview/my-work-card'
 import { ScheduleCard } from '../components/overview/schedule-card'
 import { TeamCard } from '../components/overview/team-card'
-import { useCurrentMember } from '../context/member-context'
 import { buildAttention } from '../data/attention'
 import { buildTeamStatus } from '../data/team-status'
 import type {
@@ -17,7 +16,7 @@ import type {
   RepairRecord,
   TaskRecord,
 } from '../data/tech-boards'
-import { useMondayUsers, useTechBoard } from '../data/tech-boards-store'
+import { useTechBoard } from '../data/tech-boards-store'
 import {
   kingFacts,
   kingPeriod,
@@ -27,6 +26,7 @@ import {
   type KingSources,
   type KingSpan,
 } from '../data/tech-kings'
+import { useMyIdentity } from '../data/use-my-work'
 import { koreaToday, shortDate } from '../lib/dates'
 
 const SPANS: readonly { span: KingSpan; label: string; previous: string }[] = [
@@ -48,16 +48,7 @@ export function OverviewPage() {
   const rentals = useTechBoard('rentals')
   const parts = useTechBoard('parts')
   const requests = useTechBoard('asRequests')
-  const member = useCurrentMember()
-  const users = useMondayUsers()
-
-  // 나 — Monday 담당자 칸의 이름으로 찾는다. 구성원 이메일로 Monday 사용자를 찾아 그 이름을 쓰고,
-  // 못 찾으면 구성원 이름으로 대신한다.
-  const mondayMe = member ? users?.find((u) => u.email.toLowerCase() === member.email.toLowerCase()) : undefined
-  const myNames = useMemo(
-    () => new Set([mondayMe?.name, member?.name].filter((n): n is string => !!n)),
-    [mondayMe?.name, member?.name],
-  )
+  const { names: myNames, linked } = useMyIdentity()
 
   const sources: KingSources = {
     fieldService: (field.board?.records as FieldServiceRecord[] | undefined) ?? null,
@@ -93,7 +84,7 @@ export function OverviewPage() {
       <div className="grid overview-top">
         <MyWorkCard
           names={myNames}
-            linked={!!mondayMe}
+          linked={linked}
           loading={[field, repair, inquiry, task, docs].some((b) => !b.board && !b.error)}
           sources={{
             fieldService: sources.fieldService,

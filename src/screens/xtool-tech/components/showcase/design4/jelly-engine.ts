@@ -2,9 +2,9 @@
 // React와 상관없는 클래스라 컴포넌트(jelly-slider.tsx)는 이벤트를 넘기고 값만 받는다.
 
 import { projectToCanvas, trackXAt } from './jelly-camera'
-import { DEMO_FIRST_FRAME, DEMO_KNOB_PATH, DEMO_LAST_FRAME, DEMO_REST_VALUE, demoKnobAt, demoPercentAt } from './jelly-demo'
+import { DEMO_FIRST_FRAME, DEMO_KNOB_PATH, DEMO_LAST_FRAME, DEMO_REST_VALUE, demoPercentAt, demoShapeAt } from './jelly-demo'
 import { loadJellyFonts } from './jelly-digits'
-import { ALL_LAYERS, JellyRenderer, type JellyLayers } from './jelly-renderer'
+import { ALL_LAYERS, JellyRenderer, type JellyLayers, type JellyMaterial } from './jelly-renderer'
 import { JellyRope, ROPE_KNOB_Y, ROPE_MAX_X } from './jelly-rope'
 
 /** 물리 한 걸음(초) — 화면 주사율과 상관없이 1/60로 고정(영상에 맞춘 물리 값도 이 걸음으로 골랐다) */
@@ -19,14 +19,15 @@ const GRAB_RADIUS = 0.16
 
 const clamp = (x: number, lo: number, hi: number) => Math.min(Math.max(x, lo), hi)
 
-// 값 ↔ 손잡이 x — 영상에서 48%로 멈춘 손잡이(0.1628)와 오른쪽 끝(0.9 = 100%)을 잇는 직선.
-// 0%는 -0.524(영상에서 가장 왼쪽까지 민 -0.229가 숫자로는 30% 남짓).
+// 값 ↔ 손잡이 x — 영상에서 48%로 멈춘 손잡이(F36 모양의 끝)와 오른쪽 끝을 잇는 직선.
+// 오른쪽 끝(100%)은 0.80: 영상에서 끝까지 끈 손잡이(F52)의 둥근 끝이 홈 오른쪽 벽에 닿는 자리.
 const REST_KNOB_X = DEMO_KNOB_PATH[0]
-const KNOB_PER_VALUE = (ROPE_MAX_X - REST_KNOB_X) / (100 - DEMO_REST_VALUE - 0.5)
+export const KNOB_MAX_X = 0.8
+const KNOB_PER_VALUE = (KNOB_MAX_X - REST_KNOB_X) / (100 - DEMO_REST_VALUE - 0.5)
 
 /** 값(0~100) → 손잡이 x — 그 값 구간의 가운데. 100은 끝까지. */
 export const knobXForValue = (value: number) =>
-  value >= 100 ? ROPE_MAX_X : REST_KNOB_X + (value - DEMO_REST_VALUE) * KNOB_PER_VALUE
+  value >= 100 ? KNOB_MAX_X : REST_KNOB_X + (value - DEMO_REST_VALUE) * KNOB_PER_VALUE
 
 /** 손잡이 x → 연속 값(구간 가운데에서 .5) */
 const valueAt = (x: number) => (x - REST_KNOB_X) / KNOB_PER_VALUE + DEMO_REST_VALUE + 0.5
@@ -39,9 +40,13 @@ const LABEL_LAG = 0.09
 
 export const KNOB_MIN_X = knobXForValue(0)
 
-/** 100%에서 그 값까지 끌어다 놓고 4초 기다린 줄 — 영상 첫 장면(48%)과 같은 혹 모양이 된다 */
+/** 100%에서 그 값까지 끌어다 놓고 4초 기다린 줄(영상 첫 장면 값 48%는 영상 모양 그대로) */
 export function settledRope(value: number): JellyRope {
   const rope = new JellyRope()
+  if (value === DEMO_REST_VALUE) {
+    rope.setPoints(demoShapeAt(DEMO_FIRST_FRAME))
+    return rope
+  }
   const target = knobXForValue(value)
   let knob = ROPE_MAX_X
   for (let i = 0; i < 240; i++) {
@@ -62,20 +67,25 @@ const restRope = (value: number) => {
   return rope
 }
 
-/** 영상 프레임까지 끌기를 따라간 줄(정지 화면·되감기용) — `onStep`은 마지막 몇 걸음을 그릴 때 */
+/**
+ * 영상 프레임까지 따라간 줄(정지 화면·되감기용) — 모양은 영상에서 되짚은 것(DEMO_SHAPES)을 그대로
+ * 쓴다. `onStep`은 1/60초마다 불려 마지막 몇 걸음을 그릴 때(TAA 잔상) 쓴다.
+ */
 export function demoRopeAt(
   frame: number,
   onStep?: (rope: JellyRope, stepsLeft: number, frame: number) => void,
 ): JellyRope {
   const rope = new JellyRope()
-  rope.copyFrom(restRope(DEMO_REST_VALUE))
+  rope.setPoints(demoShapeAt(DEMO_FIRST_FRAME))
   const steps = Math.max(0, Math.round(((frame - DEMO_FIRST_FRAME) / VIDEO_FPS) / PHYSICS_STEP))
+  const shape = new Float32Array(rope.pos.length)
   for (let i = 1; i <= steps; i++) {
     const f = DEMO_FIRST_FRAME + i * PHYSICS_STEP * VIDEO_FPS
-    rope.target = demoKnobAt(f)
-    rope.update(PHYSICS_STEP)
+    if (onStep && steps - i >= 16) continue
+    rope.setPoints(demoShapeAt(f, shape))
     onStep?.(rope, steps - i, f)
   }
+  rope.setPoints(demoShapeAt(frame, shape))
   return rope
 }
 
@@ -103,6 +113,8 @@ export class JellyEngine {
   #dragging = false
   #grabOffset = 0
   #demoTime: number | null = null
+  /** 물리를 돌리는 중인지 — 멈추면 끈다(영상에서 되짚은 모양이 저절로 흐트러지지 않게) */
+  #active = false
   /** 바닥에 새긴 숫자(손잡이를 늦게 따라오는 연속 값) */
   #shown: number
   #acc = 0
@@ -153,6 +165,7 @@ export class JellyEngine {
     const v = clamp(Math.round(value), 0, 100)
     this.#stopDemo()
     this.#target = knobXForValue(v)
+    this.#active = true
     this.#commit(v, notify)
     this.#kick()
   }
@@ -176,6 +189,7 @@ export class JellyEngine {
     if (!this.#dragging) return
     this.#dragging = false
     this.#target = knobXForValue(this.#value)
+    this.#active = true
     this.#kick()
   }
 
@@ -190,8 +204,9 @@ export class JellyEngine {
   /** 영상 속 끌기를 처음부터 — 48%에 멈춘 젤리에서 시작한다 */
   playDemo() {
     this.#dragging = false
-    this.#rope.copyFrom(restRope(DEMO_REST_VALUE))
+    this.#rope.setPoints(demoShapeAt(DEMO_FIRST_FRAME))
     this.#knob = this.#target = this.#rope.target
+    this.#active = false
     this.#demoTime = 0
     this.#acc = 0
     this.#shown = DEMO_REST_VALUE + 0.5
@@ -202,6 +217,12 @@ export class JellyEngine {
 
   stopDemo() {
     this.#stopDemo()
+  }
+
+  /** 재질 바꾸기(영상 색 맞출 때만) — 다시 그린다 */
+  setMaterial(material: Partial<JellyMaterial>) {
+    this.#renderer?.setMaterial(material)
+    this.#kick()
   }
 
   /**
@@ -221,6 +242,7 @@ export class JellyEngine {
     this.#knob = this.#target = rope.target
     this.#value = demoPercentAt(frame)
     this.#shown = this.#value + 0.5
+    this.#active = false
   }
 
   dispose() {
@@ -283,7 +305,8 @@ export class JellyEngine {
   }
 
   #setTarget(x: number) {
-    this.#target = clamp(x, KNOB_MIN_X, ROPE_MAX_X)
+    this.#target = clamp(x, KNOB_MIN_X, KNOB_MAX_X)
+    this.#active = true
     this.#commit(valueForKnobX(this.#target), true)
     this.#kick()
   }
@@ -316,20 +339,21 @@ export class JellyEngine {
     this.#acc += dt
     let steps = 0
     while (this.#acc >= PHYSICS_STEP && steps < 6) {
-      this.#step()
+      if (this.#active || this.#demoTime !== null) this.#step()
       this.#acc -= PHYSICS_STEP
       steps++
     }
     if (steps === 6) this.#acc = 0
     this.#renderer?.render(this.#rope, { percent: this.#percent(), layers: this.#layers() })
 
-    const still =
+    const settled =
       this.#demoTime === null &&
       !this.#dragging &&
       Math.abs(this.#target - this.#knob) < 1e-5 &&
       Math.abs(this.#shown - valueAt(this.#knob)) < 0.01 &&
-      this.#rope.motion < 2e-6
-    this.#idle = still ? this.#idle + 1 : 0
+      (!this.#active || this.#rope.motion < 2e-6)
+    if (settled) this.#active = false
+    this.#idle = settled ? this.#idle + 1 : 0
     if (this.#idle < SETTLE_FRAMES && this.#visible && this.#renderer) {
       this.#raf = requestAnimationFrame(this.#tick)
     }
@@ -339,19 +363,20 @@ export class JellyEngine {
     if (this.#demoTime !== null) {
       this.#demoTime += PHYSICS_STEP
       const frame = DEMO_FIRST_FRAME + this.#demoTime * VIDEO_FPS
-      this.#knob = this.#target = demoKnobAt(frame)
+      this.#rope.setPoints(demoShapeAt(frame))
+      this.#knob = this.#target = this.#rope.target
       this.#shown = demoPercentAt(frame) + 0.5
       this.#commit(demoPercentAt(frame), true)
       if (frame >= DEMO_LAST_FRAME) {
+        // 영상 마지막 모양(48%)에서 멈춘다 — 손잡이 자리는 그대로 두고 물리는 끈다
         this.#demoTime = null
-        this.#target = knobXForValue(DEMO_REST_VALUE)
         this.#commit(DEMO_REST_VALUE, true)
         this.#opts.onDemo?.(false)
       }
-    } else {
-      this.#knob += (this.#target - this.#knob) * SMOOTHING
-      this.#shown += (valueAt(this.#knob) - this.#shown) * (1 - Math.exp(-PHYSICS_STEP / LABEL_LAG))
+      return
     }
+    this.#knob += (this.#target - this.#knob) * SMOOTHING
+    this.#shown += (valueAt(this.#knob) - this.#shown) * (1 - Math.exp(-PHYSICS_STEP / LABEL_LAG))
     this.#rope.target = this.#knob
     this.#rope.update(PHYSICS_STEP)
   }

@@ -85,7 +85,7 @@ export function MyWorkCard({ names, sources, loading, linked }: MyWorkCardProps)
   )
 }
 
-function MyWorkRow({ item, today }: { item: MyWorkItem; today: string }) {
+export function MyWorkRow({ item, today }: { item: MyWorkItem; today: string }) {
   const urgency = urgencyText(item, today)
   const detail = [
     item.target && `${item.target.label} ${shortDate(item.target.date)}${item.target.time ? ` ${item.target.time}` : ''}`,
@@ -95,7 +95,7 @@ function MyWorkRow({ item, today }: { item: MyWorkItem; today: string }) {
     .join(' · ')
   return (
     <li>
-      <Link className="my-work__row" to={`${xtPath(`/boards/${item.slug}`)}?item=${item.itemId}`}>
+      <Link className={cx('my-work__row', item.done && 'is-done')} to={`${xtPath(`/boards/${item.slug}`)}?item=${item.itemId}`}>
         <span className="my-work__board">{item.boardLabel}</span>
         <span className="my-work__body">
           <span className="my-work__name">{item.name || '(이름 없음)'}</span>

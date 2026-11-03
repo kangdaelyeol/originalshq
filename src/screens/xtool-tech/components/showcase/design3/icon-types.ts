@@ -17,7 +17,10 @@ export interface IconPart {
   shape?: IconNode
   /** 묶음 안의 부품들 — 묶음 전체 움직임(play) 위에 각자 움직임이 겹친다 */
   parts?: readonly IconPart[]
-  /** 재생 때 키프레임 — motion의 TargetAndTransition(play() 도우미로 만든다) */
+  /**
+   * 재생 때 키프레임 — motion의 TargetAndTransition(play() 도우미로 만든다).
+   * '--d3-k' 키를 주면 선 굵기 배수가 그 값을 따라 변한다(재생 중 굵어지는 도형).
+   */
   play?: TargetAndTransition
   /** 변형 기준점(24 뷰박스 좌표). 없으면 도형 자기 상자의 가운데 */
   origin?: readonly [number, number]
