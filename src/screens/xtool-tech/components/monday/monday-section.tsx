@@ -129,9 +129,11 @@ export function MondaySection(props: MondaySectionProps) {
   }
 
   const commitName = (item: TechItemDoc, label: string) => {
-    // 번호를 떼고 보여 준 이름이면 고친 이름 뒤에 원래 번호를 다시 붙여 Monday에 쓴다.
-    const phones = stripPhone ? splitNamePhone(item.name).phones : ''
-    const name = phones ? `${label} ${phones}` : label
+    // 번호를 떼고 보여 준 이름이면 고친 이름 뒤에 원래 번호를 다시 붙여 Monday에 쓴다 — 고친 이름에
+    // 번호를 직접 적었거나(번호를 바꾼 것), 번호만 있어 떼지 못한 이름이면 적은 그대로 쓴다.
+    const original = stripPhone ? splitNamePhone(item.name) : { label: item.name, phones: '' }
+    const reattach = original.phones && original.label !== item.name && !splitNamePhone(label).phones
+    const name = reattach ? `${label} ${original.phones}` : label
     if (name === item.name) return
     const settle = showPreview(`${item.itemId}:name`, { base: item.name, cell: { text: name, value: null } })
     saveInBackground('update', { boardKey, itemId: item.itemId, name }, name, settle)
@@ -228,7 +230,14 @@ export function MondaySection(props: MondaySectionProps) {
         />
       )}
       {updatesItem && (
-        <UpdatesPanel boardKey={boardKey} itemId={updatesItem.itemId} title={nameOf(updatesItem)} onClose={() => setUpdatesFor(null)} />
+        // key — 다른 항목을 열면 새로 그린다(쓰던 글·답글 대상·늦게 온 응답이 섞이지 않게).
+        <UpdatesPanel
+          key={updatesItem.itemId}
+          boardKey={boardKey}
+          itemId={updatesItem.itemId}
+          title={nameOf(updatesItem)}
+          onClose={() => setUpdatesFor(null)}
+        />
       )}
     </div>
   )

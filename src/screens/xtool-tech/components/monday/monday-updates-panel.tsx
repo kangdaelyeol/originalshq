@@ -44,22 +44,34 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
 
+  // 닫힌 뒤 늦게 온 응답은 버린다.
+  const alive = useRef(true)
+  useEffect(
+    () => () => {
+      alive.current = false
+    },
+    [],
+  )
   const load = useCallback(() => {
     setError(null)
     fetchUpdates(boardKey, itemId)
-      .then(setUpdates)
-      .catch((e: unknown) => setError(errorText(e)))
+      .then((list) => alive.current && setUpdates(list))
+      .catch((e: unknown) => alive.current && setError(errorText(e)))
   }, [boardKey, itemId])
 
   useEffect(() => {
-    setUpdates(null)
     load()
   }, [load])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      // 칸 편집 팝오버가 열려 있으면 그쪽이 먼저 닫힌다.
-      if (e.key === 'Escape' && !document.querySelector('.mon-popover')) onClose()
+      if (e.key !== 'Escape') return
+      // 위에 뜬 것(칸 팝오버·파일 모달·확인 모달)이 먼저 닫힌다. 표의 입력 칸(추가 줄·검색)에서
+      // 누른 Esc는 그 칸 취소라 패널을 닫지 않는다.
+      if (document.querySelector('.mon-popover, .mon-modal, .confirm, .image-viewer')) return
+      const target = e.target as HTMLElement | null
+      if (target?.closest('input, textarea') && !panelRef.current?.contains(target)) return
+      onClose()
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)

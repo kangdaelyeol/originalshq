@@ -1,7 +1,6 @@
 import {
   browserLocalPersistence,
   getAdditionalUserInfo,
-  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   setPersistence,
@@ -22,6 +21,8 @@ export type AuthOutcome =
       cancelled?: boolean
       /** 임시 비밀번호로 들어왔다 — 로그인은 유지한 채 비밀번호 설정 화면으로. */
       setup?: boolean
+      /** 첫 비밀번호는 정했는데 다시 로그인이 실패했다 — 로그인 폼으로. */
+      setupDone?: boolean
     }
 
 const errorCode = (e: unknown): string => (e as { code?: string }).code ?? ''
@@ -62,15 +63,9 @@ async function admit(cred: UserCredential, target: AccessTarget): Promise<AuthOu
     return { ok: false, message: DENIED_MESSAGE['password-setup'], setup: true }
   }
   if (!access.ok) {
-    let message = DENIED_MESSAGE[access.reason]
-    if (access.reason === 'unverified') {
-      // 인증 메일을 못 찾는 경우가 많아 다시 보내 준다(너무 잦으면 Firebase가 막는다 — 그땐 그냥 둔다).
-      const resent = await sendEmailVerification(user).then(
-        () => true,
-        () => false,
-      )
-      if (resent) message = '메일 인증이 아직 안 됐어요. 인증 메일을 다시 보냈으니 링크를 누른 뒤 다시 로그인해 주세요.'
-    }
+    // 인증 안 된 비밀번호 계정에 인증 메일을 다시 보내지 않는다 — 가입이 없어진 지금 그런 계정은
+    // 남이 등록된 이메일로 만든 것일 수 있고, 메일을 받은 직원이 링크를 누르면 그 계정이 인증된다.
+    const message = DENIED_MESSAGE[access.reason]
     // 등록 안 된 Google 계정으로 처음 들어온 거면 인증 목록에 남기지 않는다.
     if (access.reason === 'not-registered' && getAdditionalUserInfo(cred)?.isNewUser) {
       await user.delete().catch(() => undefined)
@@ -110,9 +105,20 @@ export async function completePasswordSetup(password: string, target: AccessTarg
     await setOwnPassword(password)
   } catch (e) {
     const message = e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '') : ''
-    return { ok: false, message: message || '비밀번호를 저장하지 못했어요. 잠시 후 다시 해 주세요.' }
+    // 함수가 문구 없이 실패하면 코드(INTERNAL)만 온다.
+    return {
+      ok: false,
+      message: message && !/^internal$/i.test(message) ? message : '비밀번호를 저장하지 못했어요. 잠시 후 다시 해 주세요.',
+    }
   }
-  return signInWithEmail(email, password, target)
+  const outcome = await signInWithEmail(email, password, target)
+  // 비밀번호는 정해졌는데 다시 로그인만 실패했다(연결·시도 제한) — 설정 폼에 두면 "이미 정했어요"만
+  // 반복되니 로그인 폼으로 돌려보낸다.
+  if (!outcome.ok && !outcome.setup) {
+    await signOut(auth).catch(() => undefined)
+    return { ok: false, message: '새 비밀번호를 정했어요. 새 비밀번호로 다시 로그인해 주세요.', setupDone: true }
+  }
+  return outcome
 }
 
 /** 팝업이 막히지 않게 클릭 처리 안에서 곧바로(await 없이) 불러야 한다. */

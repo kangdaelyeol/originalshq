@@ -24,12 +24,23 @@ export const isWritable = (c: TechColumn) =>
   c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
 
 // ── 연락처 칸 ─────────────────────────────────────────────────────────────────
-// 전화 칸과 제목이 연락처·전화·휴대폰인 글자 칸 — 칠 때는 010-1234-5678로 맞춰 보여 주고,
-// 저장은 숫자만(하이픈 없이) 한다. 리드 매니저가 고객을 번호(숫자)로 찾는다.
-const PHONE_TITLE = /연락처|전화|휴대폰|핸드폰|phone/i
+// 전화 칸과 제목이 연락처·전화번호·휴대폰인 글자 칸 — 칠 때는 010-1234-5678로 맞춰 보여 주고,
+// 저장은 숫자만(하이픈 없이) 한다. 리드 매니저가 고객을 번호(숫자)로 찾는다. 번호 하나로 볼 수
+// 없는 값(번호 두 개·+82·메모가 섞인 글)은 손대지 않고 적힌 그대로 둔다.
+const PHONE_TITLE = /연락처|전화번호|휴대폰|핸드폰|phone/i
 
 export const isPhoneColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean =>
   c.type === 'phone' || (c.type === 'text' && PHONE_TITLE.test(c.title.replace(/\s/g, '')))
+
+/** 번호 하나로 볼 수 있는 값인지 — 숫자·하이픈·공백·괄호·점만, 숫자는 11자리까지(빈 값도 참) */
+export const isPhoneLike = (text: string): boolean =>
+  /^[\d\s().-]*$/.test(text) && text.replace(/\D/g, '').length <= 11
+
+/** 덜 적은 번호 — 숫자가 있지만 9자리가 안 된다(저장하지 않는다). */
+export const isPartialPhone = (text: string): boolean => {
+  const digits = text.replace(/\D/g, '').length
+  return digits > 0 && digits < 9
+}
 
 /** 치는 중인 번호 → 하이픈을 넣은 모양(02 지역번호·10~11자리). 숫자가 아닌 글자는 버린다. */
 export function formatPhoneTyping(value: string): string {
@@ -136,12 +147,14 @@ export function initialState(column: TechColumn, cell: TechCellValue | undefined
         lat: json?.lat != null ? String(json.lat) : '',
         lng: json?.lng != null ? String(json.lng) : '',
       }
-    case 'phone':
-      return formatPhoneTyping(String(json?.phone ?? cell.text ?? ''))
+    case 'phone': {
+      const phone = String(json?.phone ?? cell.text ?? '')
+      return isPhoneLike(phone) ? formatPhoneTyping(phone) : phone
+    }
     case 'email':
       return String(json?.email ?? cell.text ?? '')
     default:
-      return isPhoneColumn(column) ? formatPhoneTyping(cell.text ?? '') : (cell.text ?? '')
+      return isPhoneColumn(column) && isPhoneLike(cell.text ?? '') ? formatPhoneTyping(cell.text ?? '') : (cell.text ?? '')
   }
 }
 
@@ -171,7 +184,9 @@ export function toEditValue(column: TechColumn, state: EditState): TechEditValue
       return (state as string) || null
     default:
       // 연락처는 숫자만 저장한다.
-      return isPhoneColumn(column) ? (state as string).replace(/\D/g, '') : (state as string).trim()
+      return isPhoneColumn(column) && isPhoneLike(state as string)
+        ? (state as string).replace(/\D/g, '')
+        : (state as string).trim()
   }
 }
 

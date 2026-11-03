@@ -21,6 +21,8 @@ interface CopyResult {
   noPhoneCount: number
   noPhone: { itemId: string; name: string }[]
   errors: { itemId: string; name: string; error: string }[]
+  /** 실행 뒤 보드 다시 동기화 결과 — 실패하면 새 칸이 캐시에 없어 webhook 자동 채우기가 안 된다. */
+  sync: { ok: boolean; error: string | null } | null
 }
 
 const formatPhone = (digits: string) =>
@@ -123,6 +125,12 @@ export function PhoneCopyCard() {
             <p className="phone-copy__hint">
               번호가 없어 건너뛸 건: {result.noPhone.map((n) => n.name).join(', ')}
               {result.noPhoneCount > result.noPhone.length && ` 외 ${result.noPhoneCount - result.noPhone.length}건`}
+            </p>
+          )}
+          {result.sync && !result.sync.ok && (
+            <p className="member-form__result member-form__result--crit">
+              복사는 끝났지만 보드 다시 동기화에 실패했어요({result.sync.error ?? '알 수 없음'}). 위 Monday 연동 카드에서
+              "지금 동기화"를 눌러 주세요 — 그래야 새 출장 건의 전화번호가 자동으로 채워져요.
             </p>
           )}
           {result.errors.length > 0 && (

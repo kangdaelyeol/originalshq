@@ -1,4 +1,4 @@
-import { onAuthStateChanged, type User } from 'firebase/auth'
+import { onIdTokenChanged, type User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
 import { checkAccess, type AccessTarget, type DeniedReason } from './access'
 import { isXtoolFirebaseConfigured, xtoolFirebase } from './firebase'
@@ -21,32 +21,45 @@ export function useXtoolSession(target: AccessTarget): XtoolSession {
     if (!isXtoolFirebaseConfigured) return
     let current = 0
     let retry: ReturnType<typeof setTimeout> | undefined
+    // 마지막으로 확인을 끝낸 사람 — 같은 사람이면 다시 확인하는 동안 화면을 비우지 않는다.
+    let checkedUid: string | null = null
     const check = (user: User, ticket: number, attempt: number) => {
       void checkAccess(user, target)
         .then((access) => {
           if (ticket !== current) return
+          checkedUid = user.uid
           setSession(
             access.ok
               ? { status: 'ready', user, member: access.member }
               : { status: 'denied', reason: access.reason, email: user.email ?? '' },
           )
         })
-        .catch(() => {
-          // 명단을 못 읽은 건 대개 잠깐 끊긴 연결이다 — 거절(→ 로그아웃)하지 않고 다시 확인해서
-          // 로그인이 풀리지 않게 한다(1·2·4…초, 최대 30초 간격).
+        .catch((error: { code?: string }) => {
           if (ticket !== current) return
+          // 권한 오류는 다시 해도 같다 — 등록되지 않은 계정으로 본다.
+          if (error?.code === 'permission-denied') {
+            checkedUid = user.uid
+            setSession({ status: 'denied', reason: 'not-registered', email: user.email ?? '' })
+            return
+          }
+          // 그 밖(대개 잠깐 끊긴 연결)은 거절(→ 로그아웃)하지 않고 다시 확인해서 로그인이 풀리지
+          // 않게 한다(1·2·4…초, 최대 30초 간격).
           retry = setTimeout(() => check(user, ticket, attempt + 1), Math.min(30_000, 1000 * 2 ** attempt))
         })
     }
-    const off = onAuthStateChanged(xtoolFirebase().auth, (user) => {
+    // 로그인·로그아웃뿐 아니라 토큰이 바뀔 때도(같은 사람이 다시 로그인 — 첫 비밀번호를 정한 뒤,
+    // 한 시간마다 갱신) 다시 확인한다. onAuthStateChanged는 같은 사람이면 다시 부르지 않아서
+    // 비밀번호를 정한 뒤에도 "비밀번호 설정" 상태에 머물렀다. 갱신 때 정지·권한 변경도 반영된다.
+    const off = onIdTokenChanged(xtoolFirebase().auth, (user) => {
       // 로그인 상태가 빠르게 바뀌면 늦게 끝난 이전 확인 결과는 버린다.
       const ticket = ++current
       clearTimeout(retry)
       if (!user) {
+        checkedUid = null
         setSession({ status: 'signedOut' })
         return
       }
-      setSession({ status: 'loading' })
+      if (user.uid !== checkedUid) setSession({ status: 'loading' })
       check(user, ticket, 0)
     })
     return () => {

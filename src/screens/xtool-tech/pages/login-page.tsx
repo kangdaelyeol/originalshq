@@ -148,9 +148,9 @@ export function LoginPage() {
         return
       }
       signingInRef.current = false
-      if (!outcome.ok && outcome.setup) {
-        setMode('setup')
-        setNote(SETUP_NOTE)
+      if (!outcome.ok && (outcome.setup || outcome.setupDone)) {
+        setMode(outcome.setup ? 'setup' : 'login')
+        setNote(outcome.setup ? SETUP_NOTE : { tone: 'good', text: outcome.message })
         return
       }
       if (!outcome.cancelled) {
@@ -172,14 +172,15 @@ export function LoginPage() {
     }
 
     signingInRef.current = false
-    // 임시 비밀번호로 들어왔다 — 흔들지 않고 모인 조각이 갈라지며 비밀번호 설정 폼으로.
-    if (outcome.setup) {
+    // 임시 비밀번호로 들어왔다 — 흔들지 않고 모인 조각이 갈라지며 비밀번호 설정 폼으로. 첫 비밀번호는
+    // 정했는데 다시 로그인만 실패했으면 로그인 폼으로(새 비밀번호로 다시 로그인).
+    if (outcome.setup || outcome.setupDone) {
       flushSync(() => {
-        setMode('setup')
-        setNote(SETUP_NOTE)
+        setMode(outcome.setup ? 'setup' : 'login')
+        setNote(outcome.setup ? SETUP_NOTE : { tone: 'good', text: outcome.message })
       })
       await choreo.split()
-      unlockAndFocus('password')
+      unlockAndFocus(outcome.setup ? 'password' : 'email')
       return
     }
     // Google 창을 닫은 거면 흔들지 않고 조용히 폼으로 돌아온다.

@@ -18,6 +18,7 @@ import {
   formatPhoneTyping,
   initialState,
   isPhoneColumn,
+  isPhoneLike,
   isWritable,
   sameState,
   toEditValue,
@@ -419,7 +420,9 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
           type={column.type === 'email' ? 'email' : isPhoneColumn(column) ? 'tel' : 'text'}
           value={value as string}
           // 연락처는 치는 대로 010-1234-5678 모양으로(저장은 숫자만 — toEditValue)
-          onChange={(e) => onChange(isPhoneColumn(column) ? formatPhoneTyping(e.target.value) : e.target.value)}
+          onChange={(e) =>
+            onChange(isPhoneColumn(column) && isPhoneLike(value as string) ? formatPhoneTyping(e.target.value) : e.target.value)
+          }
         />
       )
   }

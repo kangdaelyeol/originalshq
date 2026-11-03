@@ -1,7 +1,16 @@
 import { ChevronDown, ChevronRight, LoaderCircle, MessageCircle, MessageCirclePlus } from 'lucide-react'
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import type { TechCellValue, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
-import { formatPhoneTyping, initialState, isPhoneColumn, isWritable, type EditState } from '../../data/tech-edit'
+import {
+  formatPhoneTyping,
+  initialState,
+  isPartialPhone,
+  isPhoneColumn,
+  isPhoneLike,
+  isWritable,
+  type EditState,
+} from '../../data/tech-edit'
+import { pushToast } from '../../data/tech-save-queue'
 import { cx } from '../../lib/cx'
 import { formatInt } from '../../lib/format'
 import { labelColor } from './monday-colors'
@@ -82,6 +91,13 @@ function ResizeHandle({ id, width, onResize }: { id: string; width: number; onRe
         onResize(id, Math.max(MIN_WIDTH, start.current.width + e.clientX - start.current.x))
       }}
       onPointerUp={() => {
+        start.current = null
+      }}
+      // 끌다가 포인터를 놓쳐도(창 밖·취소) 다음 움직임이 너비를 바꾸지 않게
+      onPointerCancel={() => {
+        start.current = null
+      }}
+      onLostPointerCapture={() => {
         start.current = null
       }}
     />
@@ -168,13 +184,6 @@ function SubTable({
 }) {
   const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type) && !SUB_HIDDEN_TYPES.has(c.type))
   const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')}`
-  const [value, setValue] = useState('')
-  const submit = () => {
-    const name = value.trim()
-    if (!name) return
-    onAdd(name)
-    setValue('')
-  }
   return (
     <div className="mon-sub" role="rowgroup" aria-label={`하위 아이템 ${subitems.length}개`} style={{ '--sub-cols': template } as CSSProperties}>
       <span className="mon-sub__trunk" aria-hidden />
@@ -202,23 +211,7 @@ function SubTable({
       ))}
       <div className="mon-sub__row mon-sub__row--item mon-sub__row--add" role="row">
         <div className="mon-cell mon-sub__name" role="rowheader">
-          <input
-            className="mon-add"
-            placeholder={`+ ${nameTitle} 추가`}
-            aria-label={`${nameTitle} 추가`}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onBlur={submit}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                submit()
-              } else if (e.key === 'Escape') {
-                setValue('')
-                e.currentTarget.blur()
-              }
-            }}
-          />
+          <AddInput label={nameTitle} onAdd={onAdd} />
         </div>
       </div>
     </div>
@@ -293,40 +286,59 @@ export function GroupTable(props: GroupTableProps) {
   )
 }
 
-/** 맨 아래 "+ 고객 추가" — 이름만 적고 엔터면 이 그룹에 새 항목을 만든다. */
-function AddRow({ nameTitle, onAdd }: { nameTitle: string; onAdd: (name: string) => void }) {
+/**
+ * "+ 고객 추가" 입력 — 이름만 적고 엔터(또는 바깥 누르기)면 만든다. Esc는 취소 — blur가 같은 차례에
+ * 저장을 부르므로(아직 지우기 전 값) 취소 표시를 ref로 먼저 세운다.
+ */
+function AddInput({ label, onAdd }: { label: string; onAdd: (name: string) => void }) {
   const [value, setValue] = useState('')
+  const cancelled = useRef(false)
   const submit = () => {
     const name = value.trim()
+    if (cancelled.current) {
+      cancelled.current = false
+      return
+    }
     if (!name) return
     onAdd(name)
     setValue('')
   }
   return (
+    <input
+      className="mon-add"
+      placeholder={`+ ${label} 추가`}
+      aria-label={`${label} 추가`}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={submit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          submit()
+        } else if (e.key === 'Escape') {
+          cancelled.current = true
+          setValue('')
+          e.currentTarget.blur()
+        }
+      }}
+    />
+  )
+}
+
+/** 맨 아래 "+ 고객 추가" 줄 — 이 그룹에 새 항목을 만든다. */
+function AddRow({ nameTitle, onAdd }: { nameTitle: string; onAdd: (name: string) => void }) {
+  return (
     <div className="mon-row mon-row--add" role="row">
       <div className="mon-cell mon-cell--name" role="rowheader">
-        <input
-          className="mon-add"
-          placeholder={`+ ${nameTitle} 추가`}
-          aria-label={`${nameTitle} 추가`}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          onBlur={submit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              submit()
-            } else if (e.key === 'Escape') {
-              setValue('')
-              e.currentTarget.blur()
-            }
-          }}
-        />
+        <AddInput label={nameTitle} onAdd={onAdd} />
       </div>
       <div className="mon-cell mon-row__fill" aria-hidden />
     </div>
   )
 }
+
+// 서버가 업데이트를 이 수까지만 센다(functions-xtool monday-api.ts UPDATE_COUNT_LIMIT)
+const UPDATE_COUNT_LIMIT = 20
 
 /** 이름 칸 오른쪽 말풍선 — 업데이트가 있으면 개수 배지, 없으면 +가 붙은 말풍선(Monday). */
 function UpdatesButton({ count, active, label, onClick }: { count: number; active: boolean; label: string; onClick: () => void }) {
@@ -340,7 +352,7 @@ function UpdatesButton({ count, active, label, onClick }: { count: number; activ
       onClick={onClick}
     >
       <Icon size={19} strokeWidth={1.6} aria-hidden />
-      {count > 0 && <span className="mon-updates__count">{count > 99 ? '99+' : count}</span>}
+      {count > 0 && <span className="mon-updates__count">{count >= UPDATE_COUNT_LIMIT ? `${UPDATE_COUNT_LIMIT}+` : count}</span>}
     </button>
   )
 }
@@ -423,6 +435,7 @@ function ItemCell({
   cellOf,
   commitCell,
   openFiles,
+  pending,
 }: GroupTableProps & { item: TechItemDoc; column: TechColumn }) {
   const key = `${item.itemId}:${column.id}`
   const cell = cellOf(item, column)
@@ -440,6 +453,8 @@ function ItemCell({
     }
     if (!writable) return
     if (column.type === 'checkbox') {
+      // 저장 중에 또 누르면 순서가 뒤바뀔 수 있어 끝날 때까지 기다린다.
+      if (pending.has(item.itemId)) return
       const next = !(initialState(column, cell) as boolean)
       commitCell(item, column, { state: next, preview: previewCell(column, next) })
       return
@@ -455,8 +470,16 @@ function ItemCell({
           initial={initial}
           label={column.title}
           inputMode={column.type === 'numbers' ? 'decimal' : isPhoneColumn(column) ? 'tel' : column.type === 'email' ? 'email' : undefined}
-          format={isPhoneColumn(column) ? formatPhoneTyping : undefined}
-          onCommit={(value) => commit({ state: value as EditState, preview: previewCell(column, value) })}
+          // 번호 하나로 적힌 값만 치는 대로 하이픈을 넣는다(번호 두 개 등은 적힌 그대로).
+          format={isPhoneColumn(column) && isPhoneLike(initial) ? formatPhoneTyping : undefined}
+          onCommit={(value) => {
+            if (isPhoneColumn(column) && isPhoneLike(value) && isPartialPhone(value)) {
+              setEditing(null)
+              pushToast({ tone: 'error', title: `${column.title}: 번호를 끝까지 적어 주세요`, message: '9자리가 안 되는 번호는 저장하지 않았어요.' })
+              return
+            }
+            commit({ state: value as EditState, preview: previewCell(column, value) })
+          }}
           onCancel={() => setEditing(null)}
         />
       </div>

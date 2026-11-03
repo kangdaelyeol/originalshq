@@ -117,7 +117,8 @@ export async function uploadProfilePhoto(file: File, me: { email: string; name: 
   const email = normalizeEmail(me.email)
   await setDoc(doc(xtoolFirebase().db, PROFILES, email), {
     email,
-    name: me.name.trim().slice(0, 60),
+    // 규칙이 구성원 이름과 똑같은지 본다 — 다듬지 않고 그대로
+    name: me.name,
     photo: Bytes.fromUint8Array(new Uint8Array(await blob.arrayBuffer())),
     photoType: blob.type,
     updatedAt: serverTimestamp(),

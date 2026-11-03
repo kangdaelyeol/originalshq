@@ -33,8 +33,8 @@ function People({ names }: { names: string[] }) {
   const shown = names.length > 2 ? names.slice(0, 1) : names
   return (
     <span className="mon-people" title={names.join(', ')}>
-      {shown.map((name) => (
-        <PersonAvatar key={name} name={name} photo={photoOf(name)} />
+      {shown.map((name, i) => (
+        <PersonAvatar key={`${name}-${i}`} name={name} photo={photoOf(name)} />
       ))}
       {names.length > 2 && <span className="mon-avatar mon-avatar--more">+{names.length - 1}</span>}
       <span className="sr-only">{names.join(', ')}</span>

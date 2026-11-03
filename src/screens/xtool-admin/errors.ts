@@ -34,5 +34,5 @@ export function functionErrorMessage(e: unknown): string {
   if (code === 'functions/not-found' && !(e as Error).message) return '함수가 아직 배포되지 않았어요.'
   const message = e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '') : ''
   // 함수가 문구 없이 실패하면(internal) 코드만 온다.
-  return message && message !== 'internal' ? message : '처리하지 못했어요. 잠시 후 다시 해 주세요.'
+  return message && !/^internal$/i.test(message) ? message : '처리하지 못했어요. 잠시 후 다시 해 주세요.'
 }

@@ -12,7 +12,7 @@ export const DENIED_MESSAGE: Record<DeniedReason, string> = {
   'not-registered': '등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.',
   disabled: '사용이 정지된 계정이에요. 관리자에게 문의해 주세요.',
   'no-access': '이 페이지를 쓸 권한이 없는 계정이에요. 관리자에게 권한을 요청해 주세요.',
-  unverified: '메일 인증이 아직 안 됐어요. 받은 메일의 인증 링크를 누른 뒤 다시 로그인해 주세요.',
+  unverified: '메일 인증이 안 된 계정이에요. 관리자에게 아이디·비밀번호 발급을 요청해 주세요.',
   'password-setup': '임시 비밀번호로 로그인했어요. 앞으로 쓸 비밀번호를 먼저 정해 주세요.',
 }
 

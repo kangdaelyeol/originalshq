@@ -116,7 +116,7 @@ export function FilesModal({ boardKey, item, column, itemName, onClose }: FilesM
                 return (
                   <li key={f.assetId} className="mon-filecard">
                     <div className="mon-filecard__preview">
-                      {!url && !error ? (
+                      {!url && !error && !map ? (
                         <LoaderCircle size={18} className="is-spinning" aria-hidden />
                       ) : url && f.isImage && !broken.has(f.assetId) ? (
                         <button
