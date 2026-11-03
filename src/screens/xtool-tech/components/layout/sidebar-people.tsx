@@ -6,12 +6,12 @@ import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { useCurrentMember } from '../../context/member-context'
 import { usePhotoOf, useProfilePhoto } from '../../data/tech-profiles'
 import { useMyIdentity, useWorkPeople, useWorkSources } from '../../data/use-my-work'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { personColor } from '../../lib/person-color'
 import type { NavItem } from '../../nav'
 import { MY_WORK_PATH, myWorkPath } from '../../paths'
-import { Avatar } from '../ui/avatar'
+import { Avatar } from '@/ohq-ui/components/avatar'
 
 // Design 8 하위 메뉴와 같은 곡선(0.33, 1, 0.68, 1) — 높이와 갈매기가 함께 움직인다
 const EASE = [0.33, 1, 0.68, 1] as const

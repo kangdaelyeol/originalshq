@@ -4,9 +4,9 @@ import { createPortal } from 'react-dom'
 import type { TechBoardKey, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { checkFile, fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink } from '../../data/tech-files'
 import { clearFilesInBackground, uploadInBackground } from '../../data/tech-save-queue'
-import { usePortalRoot } from '../../lib/portal-root'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ImageViewer, type ViewerImage } from '../board/image-viewer'
-import { ConfirmDialog } from '../ui/confirm-dialog'
+import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 
 const VIDEO = /\.(mp4|mov|m4v|webm)$/i
 

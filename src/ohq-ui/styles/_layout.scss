@@ -1,0 +1,43 @@
+// ── 카드를 늘어놓는 격자 ─────────────────────────────────────────────────────
+// 숫자 카드 넷(kpi)·둘(pair)·넓은 칸+좁은 칸 — 화면이 좁아지면 줄 수를 줄인다.
+.grid {
+  display: grid;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+.grid--kpi {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grid--main-side {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
+.grid--wide-narrow {
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+}
+
+.grid--pair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 1080px) {
+  .grid--kpi {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .grid--main-side,
+  .grid--wide-narrow,
+  .grid--pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .grid--kpi {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

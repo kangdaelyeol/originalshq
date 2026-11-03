@@ -28,9 +28,9 @@ import {
   type EditState,
   type LocationState,
 } from '../../data/tech-edit'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { isComposing } from '../../lib/ime'
-import { Button } from '../ui/button'
+import { Button } from '@/ohq-ui/components/button'
 import { DrawerShell } from './drawer-shell'
 import { FileField } from './item-files'
 import { RelationPicker } from './relation-picker'

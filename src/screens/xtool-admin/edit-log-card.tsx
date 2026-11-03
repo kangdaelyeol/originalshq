@@ -2,8 +2,8 @@ import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestor
 import { Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
-import { StatusPill } from '@/screens/xtool-tech/components/ui/status-pill'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { StatusPill } from '@/ohq-ui/components/status-pill'
 
 // 최근 몇 건까지 실시간으로 받을지 — 더 오래된 기록은 Firestore 콘솔에서 본다.
 const LIMIT = 300

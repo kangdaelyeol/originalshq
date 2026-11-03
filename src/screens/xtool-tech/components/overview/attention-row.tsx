@@ -1,8 +1,8 @@
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import type { AttentionTile } from '../../data/attention'
-import { cx } from '../../lib/cx'
-import { cardEnter } from '../../lib/motion'
+import { cx } from '@/ohq-ui/lib/cx'
+import { cardEnter } from '@/ohq-ui/lib/motion'
 import { xtPath } from '../../paths'
 
 /** 챙겨야 할 것 — 한 줄 요약 카드들. 누르면 그 보드로 간다. 0건이면 흐리게. */

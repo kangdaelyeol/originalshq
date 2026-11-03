@@ -11,9 +11,9 @@ import {
   type EditState,
 } from '../../data/tech-edit'
 import { pushToast } from '../../data/tech-save-queue'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { isComposing } from '../../lib/ime'
-import { formatInt } from '../../lib/format'
+import { formatInt } from '@/ohq-ui/lib/format'
 import { labelColor } from './monday-colors'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'

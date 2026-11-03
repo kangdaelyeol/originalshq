@@ -3,10 +3,10 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { buildSchedule, type ScheduleEvent, type ScheduleSources } from '../../data/schedule'
 import { daysBetween, koreaToday, shortDate } from '../../lib/dates'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { xtPath } from '../../paths'
-import { GlassCard } from '../ui/glass-card'
-import { SegmentedControl } from '../ui/segmented-control'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
 

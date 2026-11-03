@@ -1,7 +1,7 @@
 import { ArrowDownUp, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Plus, Search, X } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'

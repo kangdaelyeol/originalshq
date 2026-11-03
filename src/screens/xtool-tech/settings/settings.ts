@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
-import { DEFAULT_ACCENT, isHexColor } from './accent'
-import { GLASS_DEFAULT, normalizeGlass, type GlassSettings } from './glass'
+import { DEFAULT_ACCENT, isHexColor } from '@/ohq-ui/theme/accent'
+import { GLASS_DEFAULT, normalizeGlass, type GlassSettings } from '@/ohq-ui/theme/glass'
 
 /** 기본으로 들어 있는 배경 */
 export type BuiltInBackground = 'shards' | 'silk' | 'grunge' | 'photo'

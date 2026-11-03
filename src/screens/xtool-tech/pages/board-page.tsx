@@ -5,7 +5,7 @@ import { BoardEditContext, type BoardEditState } from '../components/board/board
 import { ItemEditor } from '../components/board/item-editor'
 import { MondayBoard } from '../components/monday/monday-board'
 import { MondayBoardSkeleton } from '../components/monday/monday-skeleton'
-import { GlassCard } from '../components/ui/glass-card'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
 import { XT_BASE } from '../paths'

@@ -1,4 +1,4 @@
-import { mixHex } from '../../../settings/accent'
+import { mixHex } from '@/ohq-ui/theme/accent'
 import { sampleImage, sampleText, sampleXMark, type TextShape } from './shapes'
 
 // ────────────────────────────────────────────────────────────────────────

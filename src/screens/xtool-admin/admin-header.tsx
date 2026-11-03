@@ -4,7 +4,7 @@ import { signOutXtool } from '@/xtool-auth/auth-actions'
 import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/screens/xtool-tech/components/brand/brand-mark'
-import { Avatar } from '@/screens/xtool-tech/components/ui/avatar'
+import { Avatar } from '@/ohq-ui/components/avatar'
 import { useProfilePhoto } from '@/screens/xtool-tech/data/tech-profiles'
 import { XT_BASE } from '@/screens/xtool-tech/paths'
 

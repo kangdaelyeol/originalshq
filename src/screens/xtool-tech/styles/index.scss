@@ -1,23 +1,22 @@
 @use 'sass:meta';
 
-// base는 자기 안에서 이미 .xtool-tech로 범위를 정한다. 나머지는 이 화면의 루트 아래로만
-// 들어가게 load-css로 감싼다 — originalshq의 다른 화면(cmip·리드 매니저 등)과 클래스 이름이
-// 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
-@use 'base';
+// originalshq 공용 디자인(src/ohq-ui) — 토큰·기본 부품·격자·차트(.ohq-ui 아래). 화면 루트가 ohq-ui와
+// xtool-tech 클래스를 같이 달아서(ThemeRoot) 둘 다 걸린다. 맨 앞에서 불러, 아래 tech 스타일이 같은
+// 우선순위로 덮어쓸 수 있게 한다.
+@use '../../../ohq-ui/styles';
 @use 'monday-palettes' as *;
 @use 'theme-monday' as *;
 
+// tech 화면 스타일 — 이 화면의 루트 아래로만 들어가게 load-css로 감싼다. originalshq의 다른 화면(cmip·리드
+// 매니저 등)과 클래스 이름이 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
 .xtool-tech {
   @include meta.load-css('background');
   @include meta.load-css('layout');
-  @include meta.load-css('components');
-  @include meta.load-css('charts');
   @include meta.load-css('boards');
   @include meta.load-css('monday');
   @include meta.load-css('login');
   @include meta.load-css('notifications');
   @include meta.load-css('settings');
-  @include meta.load-css('showcase');
 }
 
 // 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday가 붙으면 위 스타일을 Monday 모양으로 덮는다.

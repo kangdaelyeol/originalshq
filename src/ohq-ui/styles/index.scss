@@ -1,0 +1,11 @@
+// originalshq 공용 디자인(ohq-ui) 스타일 — 토큰·태그 기본값(base)과 기본 부품·격자·차트. 모두 .ohq-ui
+// 루트(theme/theme-root.tsx) 아래로만 들어간다. 화면 스타일 맨 앞에서 한 번 불러 쓴다
+// (`@use '<경로>/ohq-ui/styles'`) — 먼저 나와야 화면 스타일이 같은 우선순위로 덮어쓸 수 있다.
+@use 'sass:meta';
+@use 'base';
+
+.ohq-ui {
+  @include meta.load-css('layout');
+  @include meta.load-css('components');
+  @include meta.load-css('charts');
+}

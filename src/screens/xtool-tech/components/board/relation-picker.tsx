@@ -3,8 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TechBoardKey, TechItemDoc } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
 import { stageLabel } from '../../data/tech-stage'
-import { cx } from '../../lib/cx'
-import { formatInt } from '../../lib/format'
+import { cx } from '@/ohq-ui/lib/cx'
+import { formatInt } from '@/ohq-ui/lib/format'
 
 export interface PickedItem {
   itemId: string

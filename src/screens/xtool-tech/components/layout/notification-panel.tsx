@@ -3,10 +3,10 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import type { NotificationItem, NotificationKind } from '../../data/notifications'
-import type { Option } from '../../data/types'
-import { cx } from '../../lib/cx'
-import { usePortalRoot } from '../../lib/portal-root'
-import { SegmentedControl } from '../ui/segmented-control'
+import type { Option } from '@/ohq-ui/types'
+import { cx } from '@/ohq-ui/lib/cx'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
 
 const KIND = {
   incident: { icon: CircleX, tone: 'crit', label: '장애' },

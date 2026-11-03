@@ -1,4 +1,4 @@
-@use 'mixins' as *;
+@use '../../../ohq-ui/styles/mixins' as *;
 
 .is-spinning {
   animation: xt-spin 0.9s linear infinite;
@@ -8,10 +8,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-
-.grid--pair {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .side-stack {
@@ -219,75 +215,6 @@
     color: var(--text-1);
     border-color: rgba(255, 255, 255, 0.14);
   }
-}
-
-// ── 가로 막대 목록 ───────────────────────────────────────────────────────────
-.bar-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.bar-list__head {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 6px;
-  font-size: 12.5px;
-}
-
-.bar-list__label {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-2);
-}
-
-.bar-list__value {
-  font-weight: 600;
-  color: var(--text-1);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-
-  small {
-    margin-left: 1px;
-    font-size: 11px;
-    font-weight: 500;
-    color: var(--text-3);
-  }
-}
-
-.bar-list__share {
-  display: inline-block;
-  min-width: 34px;
-  margin-left: 8px;
-  text-align: right;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--text-4);
-}
-
-.bar-list__track {
-  display: block;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.05);
-  overflow: hidden;
-}
-
-.bar-list__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-}
-
-.bar-list__empty {
-  padding: 18px 0;
-  font-size: 12.5px;
-  color: var(--text-3);
-  text-align: center;
 }
 
 // ── 일정 목록(다가오는 방문·마감) ─────────────────────────────────────────────
@@ -530,12 +457,6 @@
 
   a {
     text-decoration: none;
-  }
-}
-
-@media (max-width: 900px) {
-  .grid--pair {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -2258,54 +2179,4 @@
   .attention__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-}
-
-// ── 디자인(부품 카탈로그) ──────────────────────────────────────────────────
-.catalog__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 18px 24px;
-}
-
-.catalog__spec {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-width: 0;
-}
-
-.catalog__name {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 11.5px;
-  color: var(--text-4);
-
-  code {
-    padding: 1px 6px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.06);
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-    color: var(--accent-hi);
-  }
-}
-
-.catalog__demo {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.catalog__w {
-  width: 100%;
-}
-
-.catalog__swatch {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
 }

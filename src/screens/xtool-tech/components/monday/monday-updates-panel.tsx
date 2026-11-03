@@ -7,8 +7,8 @@ import { usePhotoOf } from '../../data/tech-profiles'
 import { dismissToast, pushToast } from '../../data/tech-save-queue'
 import { authorOf, fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from '../../data/tech-updates'
 import { isComposing } from '../../lib/ime'
-import { cx } from '../../lib/cx'
-import { usePortalRoot } from '../../lib/portal-root'
+import { cx } from '@/ohq-ui/lib/cx'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { PersonAvatar } from './monday-cells'
 
 const errorText = (error: unknown) => {

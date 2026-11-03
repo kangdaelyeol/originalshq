@@ -6,10 +6,10 @@ import {
   RecordTable,
   type RecordColumn,
 } from '../../components/board/record-table'
-import { BarList } from '../../components/charts/bar-list'
-import { countBy } from '../../components/charts/chart-utils'
-import { GlassCard } from '../../components/ui/glass-card'
-import { StatCard } from '../../components/ui/stat-card'
+import { BarList } from '@/ohq-ui/charts/bar-list'
+import { countBy } from '@/ohq-ui/charts/chart-utils'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { StatCard } from '@/ohq-ui/components/stat-card'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { RepairRecord, TechBoardDoc } from '../../data/tech-boards'
@@ -24,7 +24,7 @@ import {
   periodRange,
   shortDate,
 } from '../../lib/dates'
-import { formatInt } from '../../lib/format'
+import { formatInt } from '@/ohq-ui/lib/format'
 import { useItemParam } from '../../lib/use-item-param'
 
 type R = RepairRecord

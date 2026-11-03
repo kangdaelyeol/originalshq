@@ -1,8 +1,8 @@
 import { motion, type MotionValue } from 'motion/react'
 import { X } from 'lucide-react'
 import { useId, useMemo, type ReactNode, type RefObject } from 'react'
-import type { ElementSize } from '../../lib/use-element-size'
-import { cx } from '../../lib/cx'
+import type { ElementSize } from '@/ohq-ui/lib/use-element-size'
+import { cx } from '@/ohq-ui/lib/cx'
 import { XMark } from '../brand/brand-mark'
 import { cardPath, PIECE, PIECE_PATH } from './shape'
 

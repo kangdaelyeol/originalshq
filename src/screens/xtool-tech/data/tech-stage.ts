@@ -1,4 +1,4 @@
-import type { Tone } from './types'
+import type { Tone } from '@/ohq-ui/types'
 
 // 진행 단계(Monday 그룹 이름) 해석 — 보드마다 그룹 이름이 달라도 같은 기준으로 본다.
 // functions-xtool/src/monday/tech.ts의 isTechDone·FIRST_STAGE와 같은 규칙.

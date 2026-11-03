@@ -1,4 +1,4 @@
-import type { Tone } from './types'
+import type { Tone } from '@/ohq-ui/types'
 
 export type MemberStatus = 'active' | 'away' | 'inactive'
 

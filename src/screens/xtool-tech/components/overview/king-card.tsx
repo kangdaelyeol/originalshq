@@ -3,8 +3,8 @@ import { motion } from 'motion/react'
 import { useState } from 'react'
 import type { KingDef, KingPeriod, KingResult, KingRow } from '../../data/tech-kings'
 import { shortDate } from '../../lib/dates'
-import { cx } from '../../lib/cx'
-import { cardEnter } from '../../lib/motion'
+import { cx } from '@/ohq-ui/lib/cx'
+import { cardEnter } from '@/ohq-ui/lib/motion'
 
 // 처음에 보여 줄 순위 수 — 나머지는 "외 N명"
 const SHOWN = 5

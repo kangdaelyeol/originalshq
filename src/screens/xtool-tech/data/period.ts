@@ -1,4 +1,4 @@
-import type { Option } from './types'
+import type { Option } from '@/ohq-ui/types'
 
 export type Period = 'today' | '7d' | '30d' | '1y'
 

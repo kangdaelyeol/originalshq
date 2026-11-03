@@ -23,7 +23,7 @@ import { LoginField } from '../components/login/login-field'
 import { useParticleField } from '../components/login/particles/use-particle-field'
 import { useLoginChoreography } from '../components/login/use-login-choreography'
 import { usePointerTilt } from '../components/login/use-pointer-tilt'
-import { cx } from '../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { XT_BASE } from '../paths'
 import { useSettings } from '../settings/settings'
 

@@ -1,9 +1,9 @@
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TeamMemberStatus, WorkBoard } from '../../data/team-status'
 import { usePhotoOf } from '../../data/tech-profiles'
-import { cx } from '../../lib/cx'
-import { Avatar } from '../ui/avatar'
-import { GlassCard } from '../ui/glass-card'
+import { cx } from '@/ohq-ui/lib/cx'
+import { Avatar } from '@/ohq-ui/components/avatar'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
 
 const BOARD_SHORT: Record<WorkBoard, string> = {
   fieldService: '출장',

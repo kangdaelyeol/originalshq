@@ -4,11 +4,11 @@ import { Link } from 'react-router-dom'
 import { buildMyWork, MY_WORK_BOARDS, urgencyText, type MyWorkBoard, type MyWorkItem } from '../../data/my-work'
 import { BOARD_TABS } from '../../data/tech-boards'
 import { koreaToday, shortDate } from '../../lib/dates'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { xtPath } from '../../paths'
 import { StagePill } from '../board/cells'
-import { GlassCard } from '../ui/glass-card'
-import { SegmentedControl } from '../ui/segmented-control'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
 
 // 처음에 보여 줄 줄 수
 const PAGE = 8

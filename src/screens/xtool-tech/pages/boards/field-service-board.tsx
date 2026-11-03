@@ -1,7 +1,7 @@
 import { CalendarClock, CircleCheck, Inbox, Truck } from 'lucide-react'
 import { useCallback } from 'react'
-import { BarList } from '../../components/charts/bar-list'
-import { countBy } from '../../components/charts/chart-utils'
+import { BarList } from '@/ohq-ui/charts/bar-list'
+import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { RecordDrawer, DrawerList } from '../../components/board/record-drawer'
 import {
   RecordTable,
@@ -9,8 +9,8 @@ import {
 } from '../../components/board/record-table'
 import { Assignees, PhoneLink, StagePill } from '../../components/board/cells'
 import { UpcomingList } from '../../components/board/upcoming-list'
-import { GlassCard } from '../../components/ui/glass-card'
-import { StatCard } from '../../components/ui/stat-card'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { StatCard } from '@/ohq-ui/components/stat-card'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { FieldServiceRecord, TechBoardDoc } from '../../data/tech-boards'

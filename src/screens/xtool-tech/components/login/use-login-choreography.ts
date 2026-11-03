@@ -1,6 +1,6 @@
 import { stagger, useAnimate, useMotionValue, type ValueAnimationTransition } from 'motion/react'
 import { useCallback, useEffect, useRef } from 'react'
-import { useElementSize } from '../../lib/use-element-size'
+import { useElementSize } from '@/ohq-ui/lib/use-element-size'
 import { PIECE } from './shape'
 
 const HALF = PIECE / 2

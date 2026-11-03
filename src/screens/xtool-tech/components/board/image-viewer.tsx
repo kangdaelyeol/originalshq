@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, ImageOff, X } from 'lucide-rea
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { usePortalRoot } from '../../lib/portal-root'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 
 export interface ViewerImage {
   key: string

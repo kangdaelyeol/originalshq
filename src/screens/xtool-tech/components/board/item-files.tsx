@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
 import { checkFile, fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink, type TechFileRef } from '../../data/tech-files'
 import { clearFilesInBackground, uploadInBackground } from '../../data/tech-save-queue'
-import { ConfirmDialog } from '../ui/confirm-dialog'
+import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { ImageViewer, type ViewerImage } from './image-viewer'
 
 const VIDEO = /\.(mp4|mov|m4v|webm|avi|mkv)$/i

@@ -1,8 +1,8 @@
 import { Plus } from 'lucide-react'
-import { Avatar } from '../components/ui/avatar'
-import { Button } from '../components/ui/button'
-import { GlassCard } from '../components/ui/glass-card'
-import { StatusPill } from '../components/ui/status-pill'
+import { Avatar } from '@/ohq-ui/components/avatar'
+import { Button } from '@/ohq-ui/components/button'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { StatusPill } from '@/ohq-ui/components/status-pill'
 import { MEMBER_STATUS, TEAM } from '../data/team'
 
 export function TeamPage() {

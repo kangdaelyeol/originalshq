@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechColumn } from '../../data/tech-boards'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
 import { defaultWidth, NAME_WIDTH, visibleColumns } from './monday-values'
 import { useColumnWidths } from './use-monday-prefs'

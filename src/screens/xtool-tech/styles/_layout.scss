@@ -1,8 +1,4 @@
-@use 'mixins' as *;
-
-.glass {
-  @include glass;
-}
+@use '../../../ohq-ui/styles/mixins' as *;
 
 // ── 전체 틀: 왼쪽 고정 사이드바 + 오른쪽 본문 ────────────────────────────────
 .shell {
@@ -33,24 +29,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-}
-
-.grid {
-  display: grid;
-  gap: var(--gap);
-  min-width: 0;
-}
-
-.grid--kpi {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.grid--main-side {
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-}
-
-.grid--wide-narrow {
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
 }
 
 // ── 사이드바 ────────────────────────────────────────────────────────────────
@@ -660,19 +638,6 @@ $fold-text: '.sidebar__brand-text, .sidebar__section-label, .nav-item__label, .n
   }
 }
 
-@media (max-width: 1080px) {
-  .grid--kpi {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 900px) {
-  .grid--main-side,
-  .grid--wide-narrow {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
 @media (max-width: 720px) {
   .shell {
     grid-template-columns: 60px minmax(0, 1fr);
@@ -706,12 +671,6 @@ $fold-text: '.sidebar__brand-text, .sidebar__section-label, .nav-item__label, .n
     flex-wrap: wrap;
     width: 100%;
     margin-left: 0;
-  }
-}
-
-@media (max-width: 560px) {
-  .grid--kpi {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { cx } from '../../lib/cx'
-import { usePortalRoot } from '../../lib/portal-root'
+import { cx } from '@/ohq-ui/lib/cx'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 
 interface DrawerShellProps {
   open: boolean

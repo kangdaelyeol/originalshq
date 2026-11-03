@@ -1,4 +1,4 @@
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 
 export interface MiniListItem {
   key: string

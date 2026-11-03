@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { columnLabel, isAssigneeColumn, withoutLegacyAssignee, type EditState, type LocationState } from '../../data/tech-edit'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { labelColor } from './monday-colors'
 

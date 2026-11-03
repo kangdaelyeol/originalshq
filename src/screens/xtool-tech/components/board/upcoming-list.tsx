@@ -1,5 +1,5 @@
 import { daysBetween, relativeDay } from '../../lib/dates'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 
 export interface UpcomingItem {
   key: string

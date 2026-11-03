@@ -9,9 +9,9 @@ import {
   TEAMS,
   type TeamKey,
 } from '@/xtool-auth/members'
-import { Button } from '@/screens/xtool-tech/components/ui/button'
-import { GlassCard } from '@/screens/xtool-tech/components/ui/glass-card'
-import { TextField } from '@/screens/xtool-tech/components/ui/text-field'
+import { Button } from '@/ohq-ui/components/button'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { TextField } from '@/ohq-ui/components/text-field'
 import { CredentialNote } from './credential-note'
 import { firestoreErrorMessage, functionErrorMessage } from './errors'
 

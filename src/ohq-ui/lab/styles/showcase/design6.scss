@@ -1,0 +1,7 @@
+// Design 6 견본 스타일 — 그 탭을 열 때만 받는다(design-page의 lazy 묶음과 함께). 규칙은 전과 똑같이
+// 라이브러리 루트(.ohq-ui) 아래로만 들어간다.
+@use 'sass:meta';
+
+.ohq-ui {
+  @include meta.load-css('../design6');
+}

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import { cx } from '../lib/cx'
-import { PortalRootContext } from '../lib/portal-root'
-import { accentVars } from './accent'
-import { glassVars, type GlassSettings } from './glass'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { cx } from '@/ohq-ui/lib/cx'
+import type { GlassSettings } from '@/ohq-ui/theme/glass'
+import { ThemeRoot } from '@/ohq-ui/theme/theme-root'
 import {
   DEFAULT_SETTINGS,
   effectiveAccent,
@@ -18,14 +17,12 @@ import {
 const FIGTREE_HREF = 'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap'
 
 /**
- * 설정 상태 + 이 화면의 루트 요소(.xtool-tech). 강조색·유리 값은 CSS 변수로 루트 요소 style에
- * 칠한다 — :root에 쓰면 originalshq의 다른 화면(같은 이름의 --glass-* 등)에 새어 나간다. 첫
- * 렌더부터 저장된 값으로 칠하니, 기본값이 잠깐 보였다 바뀌는 일도 없다.
+ * 설정 상태 + 이 화면의 루트 요소 — 공용 디자인 루트(ThemeRoot, .ohq-ui)에 tech 범위(.xtool-tech)와
+ * Monday 테마 클래스를 붙이고, 고른 강조색·유리 값을 넘긴다. 첫 렌더부터 저장된 값으로 칠하니, 기본값이
+ * 잠깐 보였다 바뀌는 일도 없다.
  */
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<Settings>(loadSettings)
-  // 포털(알림 패널)이 띄워질 곳 — 루트 요소가 붙으면 채워진다.
-  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null)
   const accentInUse = effectiveAccent(settings)
 
   useEffect(() => {
@@ -60,22 +57,15 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     [settings, accentInUse],
   )
 
-  const cssVars = useMemo(
-    () => ({ ...accentVars(accentInUse), ...glassVars(settings.glass) }) as CSSProperties,
-    [accentInUse, settings.glass],
-  )
-
   // Monday 표면 theme-monday + 색(남색은 기본이라 클래스 없음 · mon-light · mon-black)
   const rootClass = cx('xtool-tech', monday && 'theme-monday', monday && settings.mondayPalette !== 'navy' && `mon-${settings.mondayPalette}`)
 
   return (
     <SettingsContext.Provider value={value}>
-      <PortalRootContext.Provider value={rootEl}>
-        {/* Monday 표 레이아웃이면 화면 전체를 Monday 모양으로(theme-monday — styles/_theme-monday.scss). */}
-        <div ref={setRootEl} className={rootClass} style={cssVars}>
-          {children}
-        </div>
-      </PortalRootContext.Provider>
+      {/* Monday 표 레이아웃이면 화면 전체를 Monday 모양으로(theme-monday — styles/_theme-monday.scss). */}
+      <ThemeRoot accent={accentInUse} glass={settings.glass} className={rootClass}>
+        {children}
+      </ThemeRoot>
     </SettingsContext.Provider>
   )
 }

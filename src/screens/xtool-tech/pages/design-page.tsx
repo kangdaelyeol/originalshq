@@ -1,28 +1,19 @@
-import { CircleCheck, Inbox, PackageOpen, Plus, Save, Search, Trash2, Upload, Wrench } from 'lucide-react'
-import { lazy, Suspense, useState, type ComponentType, type ReactNode } from 'react'
+import { Plus, Search, Upload } from 'lucide-react'
+import { Suspense, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
+import { Button } from '@/ohq-ui/components/button'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { CatalogSpec, SHOWCASES, UiCatalog, type ShowcaseKey } from '@/ohq-ui/lab'
 import { Assignees, StagePill } from '../components/board/cells'
 import { ChipPicker, DateTimeInput, LocationInput, MultiSelect } from '../components/board/item-editor'
 import { MiniList } from '../components/board/mini-list'
 import { RecordDrawer } from '../components/board/record-drawer'
 import { RecordTable, type RecordColumn } from '../components/board/record-table'
 import { UpcomingList } from '../components/board/upcoming-list'
-import { AreaChart } from '../components/charts/area-chart'
-import { BarList } from '../components/charts/bar-list'
-import { LatencyBars } from '../components/charts/latency-bars'
-import { CATEGORICAL, SERIES_COMPARE, SERIES_PRIMARY } from '../components/charts/palette'
-import { ShareBar } from '../components/charts/share-bar'
 import { AttentionRow } from '../components/overview/attention-row'
 import { KingCard } from '../components/overview/king-card'
 import { TeamCard } from '../components/overview/team-card'
-import { Avatar } from '../components/ui/avatar'
-import { Button } from '../components/ui/button'
-import { GlassCard } from '../components/ui/glass-card'
-import { RangeField } from '../components/ui/range-field'
-import { SegmentedControl } from '../components/ui/segmented-control'
-import { StatCard } from '../components/ui/stat-card'
-import { StatusPill } from '../components/ui/status-pill'
-import { TextField } from '../components/ui/text-field'
 import { useCurrentMember } from '../context/member-context'
 import type { AttentionTile } from '../data/attention'
 import { KINGS } from '../data/tech-kings'
@@ -31,89 +22,29 @@ import type { LocationState } from '../data/tech-edit'
 import { addDays, koreaToday, shortDate } from '../lib/dates'
 import { XT_BASE } from '../paths'
 
-/** 디자인 — 관리자만(메뉴에서도 숨긴다). 쓰는 부품을 실제로 띄워 보는 카탈로그 + 참고 영상을 옮긴 견본. */
+/**
+ * 디자인 — 관리자만(메뉴에서도 숨긴다). 공용 디자인 라이브러리(src/ohq-ui)의 랩을 띄운다: 공용 부품
+ * 카탈로그(기본 부품)와 참고 영상을 옮긴 견본(D1~D10). tech 화면에서만 쓰는 부품은 "tech 부품"에서 본다.
+ */
 export function DesignPage() {
   const member = useCurrentMember()
   if (!member?.isAdmin) return <Navigate to={XT_BASE} replace />
   return <DesignBoard />
 }
 
-type DesignTab = 'catalog' | 'design1' | 'design2' | 'design3' | 'design4' | 'design5' | 'design6' | 'design7' | 'design8' | 'design9' | 'design10'
+type DesignTab = 'catalog' | 'tech' | ShowcaseKey
 
 const DESIGN_TABS: { value: DesignTab; label: string }[] = [
   { value: 'catalog', label: '기본 부품' },
-  { value: 'design1', label: 'D1' },
-  { value: 'design2', label: 'D2' },
-  { value: 'design3', label: 'D3' },
-  { value: 'design4', label: 'D4' },
-  { value: 'design5', label: 'D5' },
-  { value: 'design6', label: 'D6' },
-  { value: 'design7', label: 'D7' },
-  { value: 'design8', label: 'D8' },
-  { value: 'design9', label: 'D9' },
-  { value: 'design10', label: 'D10' },
+  { value: 'tech', label: 'tech 부품' },
+  ...SHOWCASES.map(({ value, label }) => ({ value, label })),
 ]
-
-// 참고 영상 견본 — 묶음마다 코드와 스타일을 따로 받는다(그 탭을 열 때만). 한 번에 넣으면 기술팀 모두가
-// 관리자만 보는 견본(WebGL 셰이더·아이콘 150개, 스타일 약 110KB 등)까지 받게 된다.
-const SHOWCASES: Record<Exclude<DesignTab, 'catalog'>, ComponentType> = {
-  design1: lazy(() =>
-    Promise.all([import('../components/showcase/design1/design1-showcase'), import('../styles/showcase/design1.scss')]).then(
-      ([m]) => ({ default: m.Design1Showcase }),
-    ),
-  ),
-  design2: lazy(() =>
-    Promise.all([import('../components/showcase/design2/design2-showcase'), import('../styles/showcase/design2.scss')]).then(
-      ([m]) => ({ default: m.Design2Showcase }),
-    ),
-  ),
-  design3: lazy(() =>
-    Promise.all([import('../components/showcase/design3/design3-showcase'), import('../styles/showcase/design3.scss')]).then(
-      ([m]) => ({ default: m.Design3Showcase }),
-    ),
-  ),
-  design4: lazy(() =>
-    Promise.all([import('../components/showcase/design4/design4-showcase'), import('../styles/showcase/design4.scss')]).then(
-      ([m]) => ({ default: m.Design4Showcase }),
-    ),
-  ),
-  design5: lazy(() =>
-    Promise.all([import('../components/showcase/design5/design5-showcase'), import('../styles/showcase/design5.scss')]).then(
-      ([m]) => ({ default: m.Design5Showcase }),
-    ),
-  ),
-  design6: lazy(() =>
-    Promise.all([import('../components/showcase/design6/design6-showcase'), import('../styles/showcase/design6.scss')]).then(
-      ([m]) => ({ default: m.Design6Showcase }),
-    ),
-  ),
-  design7: lazy(() =>
-    Promise.all([import('../components/showcase/design7/design7-showcase'), import('../styles/showcase/design7.scss')]).then(
-      ([m]) => ({ default: m.Design7Showcase }),
-    ),
-  ),
-  design8: lazy(() =>
-    Promise.all([import('../components/showcase/design8/design8-showcase'), import('../styles/showcase/design8.scss')]).then(
-      ([m]) => ({ default: m.Design8Showcase }),
-    ),
-  ),
-  design9: lazy(() =>
-    Promise.all([import('../components/showcase/design9/design9-showcase'), import('../styles/showcase/design9.scss')]).then(
-      ([m]) => ({ default: m.Design9Showcase }),
-    ),
-  ),
-  design10: lazy(() =>
-    Promise.all([import('../components/showcase/design10/design10-showcase'), import('../styles/showcase/design10.scss')]).then(
-      ([m]) => ({ default: m.Design10Showcase }),
-    ),
-  ),
-}
 
 /** 묶음 고르기 — 고른 묶음은 주소(?tab=)에 남겨 새로고침·공유해도 그대로 연다. */
 function DesignBoard() {
   const [params, setParams] = useSearchParams()
   const tab = DESIGN_TABS.find((t) => t.value === params.get('tab'))?.value ?? 'catalog'
-  const Showcase = tab === 'catalog' ? null : SHOWCASES[tab]
+  const Showcase = SHOWCASES.find((s) => s.value === tab)?.Component
   return (
     <>
       <div className="design-tabs">
@@ -124,7 +55,8 @@ function DesignBoard() {
           onChange={(next) => setParams(next === 'catalog' ? {} : { tab: next }, { replace: true })}
         />
       </div>
-      {tab === 'catalog' && <ComponentCatalog />}
+      {tab === 'catalog' && <UiCatalog />}
+      {tab === 'tech' && <TechCatalog />}
       {Showcase && (
         <Suspense fallback={<p className="showcase-stage__pending">불러오는 중이에요…</p>}>
           <Showcase />
@@ -180,96 +112,43 @@ const ATTENTION: AttentionTile[] = [
   { id: 'blockedTask', label: '막힌 업무', caption: '기타업무 "막힘"', slug: 'tasks', count: 0, examples: [], tone: 'warn' },
 ]
 
-const LABELS = ['10/27', '10/28', '10/29', '10/30', '10/31', '11/1', '11/2']
+// ── tech 부품 카탈로그 ──────────────────────────────────────────────────────────
+// 공용 부품(기본 부품 탭 — ohq-ui)이 아니라 tech 화면에서만 쓰는 부품: 보드 칸·편집 칸·개요 카드·기록 표.
 
-// ── 카탈로그 ────────────────────────────────────────────────────────────────
-
-/** 부품 하나 — 이름(코드에서 부르는 이름)과 실제 모습 */
-function Spec({ name, note, children }: { name: string; note?: string; children: ReactNode }) {
-  return (
-    <div className="catalog__spec">
-      <p className="catalog__name">
-        <code>{name}</code>
-        {note && <span>{note}</span>}
-      </p>
-      <div className="catalog__demo">{children}</div>
-    </div>
-  )
-}
-
-function ComponentCatalog() {
-  const [seg, setSeg] = useState<'a' | 'b' | 'c'>('a')
+function TechCatalog() {
   const [chips, setChips] = useState<string[]>(['F2'])
   const [multi, setMulti] = useState<string[]>(['방문 설치'])
   const [date, setDate] = useState({ date: today, time: '14:00' })
-  const [range, setRange] = useState(22)
   const [location, setLocation] = useState<LocationState>({ address: '', detail: '', lat: '', lng: '' })
   const [drawer, setDrawer] = useState<SampleRecord | null>(null)
 
   return (
     <>
-      <GlassCard title="색 · 상태" subtitle="강조색은 설정 화면에서 바꿀 수 있어요">
+      <GlassCard title="보드 칸" subtitle="Monday 그룹·담당자를 그리는 칸">
         <div className="catalog__grid">
-          <Spec name="--accent" note="강조색">
-            <span className="catalog__swatch" style={{ background: 'var(--accent)' }} />
-            <span className="catalog__swatch" style={{ background: 'var(--accent-hi)' }} />
-            <span className="catalog__swatch" style={{ background: 'var(--accent-lo)' }} />
-          </Spec>
-          <Spec name="<StatusPill tone>" note="good · warn · crit · info · neutral">
-            <StatusPill tone="good">정상</StatusPill>
-            <StatusPill tone="warn">주의</StatusPill>
-            <StatusPill tone="crit">위험</StatusPill>
-            <StatusPill tone="info">안내</StatusPill>
-            <StatusPill tone="neutral">기본</StatusPill>
-          </Spec>
-          <Spec name="<StatusPill dot>" note="점 · 깜빡이는 점">
-            <StatusPill tone="good" dot>
-              활성
-            </StatusPill>
-            <StatusPill tone="good" dot="pulse">
-              실시간
-            </StatusPill>
-          </Spec>
-          <Spec name="<StagePill>" note="Monday 그룹 이름으로 색이 정해짐">
+          <CatalogSpec name="<StagePill>" note="Monday 그룹 이름으로 색이 정해짐">
             <StagePill stage="새로 인입된 건 <접수>" status={null} />
             <StagePill stage="현재 진행중인 업무" status={null} />
             <StagePill stage="막힘" status={null} />
             <StagePill stage="완료" status={null} />
-          </Spec>
-          <Spec name="<Avatar>" note="sm · md">
-            <Avatar initials="재민" color="var(--accent)" ink="var(--accent-ink)" />
-            <Avatar initials="도윤" color="rgba(255, 255, 255, 0.14)" size="md" />
-          </Spec>
-          <Spec name="<Assignees>" note="첫 사람 + 나머지 수">
+          </CatalogSpec>
+          <CatalogSpec name="<Assignees>" note="첫 사람 + 나머지 수">
             <Assignees names={['이재민', '손대환', '지상헌']} />
-          </Spec>
+          </CatalogSpec>
         </div>
       </GlassCard>
 
-      <GlassCard title="버튼">
+      <GlassCard title="버튼 · 고르기">
         <div className="catalog__grid">
-          <Spec name="<Button variant=primary>" note="md · sm · 아이콘 · 비활성">
-            <Button icon={Save}>저장</Button>
-            <Button size="sm" icon={Plus}>
-              새로 만들기
-            </Button>
-            <Button disabled>비활성</Button>
-          </Spec>
-          <Spec name="<Button variant=ghost>">
-            <Button variant="ghost">취소</Button>
-            <Button variant="ghost" size="sm" icon={Trash2}>
-              삭제
-            </Button>
-          </Spec>
-          <Spec name=".text-link" note="글자 링크">
+          <CatalogSpec name=".text-link" note="글자 링크">
             <button type="button" className="text-link">
               비밀번호를 잊으셨나요?
             </button>
             <button type="button" className="text-link text-link--accent">
               회원가입
             </button>
-          </Spec>
-          <Spec name=".subitems__add" note="줄 더하기 · 파일 올리기">
+          </CatalogSpec>
+          <CatalogSpec name=".subitems__add" note="줄 더하기 · 파일 올리기">
             <button type="button" className="subitems__add">
               <Plus size={14} aria-hidden />
               품목 추가
@@ -278,54 +157,26 @@ function ComponentCatalog() {
               <Upload size={14} aria-hidden />
               파일 올리기
             </button>
-          </Spec>
-          <Spec name=".icon-button">
+          </CatalogSpec>
+          <CatalogSpec name=".icon-button">
             <button type="button" className="icon-button" aria-label="검색">
               <Search size={16} aria-hidden />
             </button>
-          </Spec>
-        </div>
-      </GlassCard>
-
-      <GlassCard title="토글 · 고르기">
-        <div className="catalog__grid">
-          <Spec name="<SegmentedControl>" note="md(기본) · sm — 하나만 고름, 표시가 미끄러짐">
-            <SegmentedControl
-              ariaLabel="견본"
-              options={[
-                { value: 'a', label: '진행 중 7' },
-                { value: 'b', label: '완료 43' },
-                { value: 'c', label: '전체 50' },
-              ]}
-              value={seg}
-              onChange={setSeg}
-            />
-            <SegmentedControl
-              size="sm"
-              ariaLabel="견본 작게"
-              options={[
-                { value: 'a', label: '배포' },
-                { value: 'b', label: '커밋' },
-                { value: 'c', label: 'PR' },
-              ]}
-              value={seg}
-              onChange={setSeg}
-            />
-          </Spec>
-          <Spec name="<ChipPicker>" note="여러 개 켜고 끄기(담당자·기기)">
+          </CatalogSpec>
+          <CatalogSpec name="<ChipPicker>" note="여러 개 켜고 끄기(담당자·기기)">
             <ChipPicker
               id="catalog-chips"
               options={['F2', 'P2S', 'DTF', 'M1 Ultra', 'S1'].map((v) => ({ value: v, label: v }))}
               selected={chips}
               onChange={setChips}
             />
-          </Spec>
-          <Spec name="<MultiSelect>" note="여러 개 고르는 드롭다운(출장 종류·지역)">
+          </CatalogSpec>
+          <CatalogSpec name="<MultiSelect>" note="여러 개 고르는 드롭다운(출장 종류·지역)">
             <div className="catalog__w">
               <MultiSelect id="catalog-multi" options={['방문 설치', '재방문', '기타']} selected={multi} onChange={setMulti} />
             </div>
-          </Spec>
-          <Spec name=".check" note="체크 상자">
+          </CatalogSpec>
+          <CatalogSpec name=".check" note="체크 상자">
             <label className="check">
               <input type="checkbox" defaultChecked />
               확인함
@@ -334,18 +185,13 @@ function ComponentCatalog() {
               <input type="checkbox" />
               확인 안 함
             </label>
-          </Spec>
+          </CatalogSpec>
         </div>
       </GlassCard>
 
-      <GlassCard title="입력">
+      <GlassCard title="편집 칸">
         <div className="catalog__grid">
-          <Spec name="<TextField>">
-            <div className="catalog__w">
-              <TextField label="이메일" placeholder="name@xtool.co.kr" />
-            </div>
-          </Spec>
-          <Spec name="select.field__input" note="편집 패널 안에서">
+          <CatalogSpec name="select.field__input" note="편집 패널 안에서">
             <div className="catalog__w editor">
               <select className="field__input" defaultValue="수리 중">
                 <option>입고 대기</option>
@@ -353,83 +199,21 @@ function ComponentCatalog() {
                 <option>발송 완료</option>
               </select>
             </div>
-          </Spec>
-          <Spec name="<DateTimeInput>" note="날짜·시각 한 칸 + 시각 없음">
+          </CatalogSpec>
+          <CatalogSpec name="<DateTimeInput>" note="날짜·시각 한 칸 + 시각 없음">
             <div className="catalog__w">
               <DateTimeInput id="catalog-date" title="방문 일정" value={date} onChange={setDate} />
             </div>
-          </Spec>
-          <Spec name="<RangeField>" note="설정의 유리 효과">
-            <div className="catalog__w">
-              <RangeField label="흐림" value={range} min={0} max={40} format={(v) => `${v}px`} onChange={setRange} />
-            </div>
-          </Spec>
-          <Spec name="<LocationInput>" note="카카오 주소 검색(실제로 검색해요)">
+          </CatalogSpec>
+          <CatalogSpec name="<LocationInput>" note="카카오 주소 검색(실제로 검색해요)">
             <div className="catalog__w">
               <LocationInput id="catalog-location" value={location} onChange={setLocation} />
             </div>
-          </Spec>
+          </CatalogSpec>
         </div>
       </GlassCard>
 
-      <div className="grid grid--kpi">
-        <StatCard title="StatCard · blue" value="12건" icon={Inbox} tint="blue" caption="KPI 카드" />
-        <StatCard title="amber" value="3건" icon={Wrench} tint="amber" caption="caption" />
-        <StatCard title="green" value="9대" icon={PackageOpen} tint="green" tag={{ label: '태그', tone: 'good' }} />
-        <StatCard
-          title="violet + delta"
-          value="1.4일"
-          icon={CircleCheck}
-          tint="violet"
-          delta={{ value: '12%', direction: 'down', good: true }}
-        />
-      </div>
-
       <div className="grid grid--pair">
-        <GlassCard title="<BarList>" subtitle="항목별 개수">
-          <BarList
-            items={[
-              { key: 'a', label: '수도권', value: 9 },
-              { key: 'b', label: '경상권', value: 6 },
-              { key: 'c', label: '호남권', value: 3 },
-            ]}
-            ariaLabel="견본 막대"
-          />
-        </GlassCard>
-        <GlassCard title="<ShareBar>" subtitle="비중 막대 + 범례">
-          <ShareBar
-            items={[
-              { key: 'a', label: '기기 오작동', value: 18, color: CATEGORICAL[0] },
-              { key: 'b', label: '사용 방법', value: 12, color: CATEGORICAL[1] },
-              { key: 'c', label: '설정 값', value: 6, color: CATEGORICAL[2] },
-            ]}
-            ariaLabel="견본 비중"
-          />
-        </GlassCard>
-        <GlassCard title="<AreaChart>" subtitle="추이 · 비교 계열">
-          <AreaChart
-            labels={LABELS}
-            series={[
-              { key: 'now', label: '이번 주', color: SERIES_PRIMARY, values: [4, 6, 5, 8, 7, 9, 11] },
-              { key: 'prev', label: '지난주', color: SERIES_COMPARE, values: [3, 4, 6, 5, 6, 7, 6] },
-            ]}
-            height={200}
-            integer
-            ariaLabel="견본 추이"
-          />
-        </GlassCard>
-        <GlassCard title="<LatencyBars>" subtitle="목표선이 있는 가로 막대">
-          <LatencyBars
-            rows={[
-              { key: 'a', label: '출장', value: 3.2 },
-              { key: 'b', label: 'AS', value: 6.4 },
-              { key: 'c', label: '아톡', value: 1.1 },
-            ]}
-            target={5}
-            scale={8}
-            unit="일"
-          />
-        </GlassCard>
         <GlassCard title="<UpcomingList>" subtitle="due(다가오는 날) · since(며칠째)">
           <UpcomingList
             today={today}
@@ -500,9 +284,9 @@ function ComponentCatalog() {
         selectedId={drawer?.itemId}
       />
 
-      <GlassCard title="토스트 · 빈 화면">
+      <GlassCard title="토스트">
         <div className="catalog__grid">
-          <Spec name="pushToast()" note="오른쪽 아래">
+          <CatalogSpec name="pushToast()" note="오른쪽 아래">
             <Button variant="ghost" size="sm" onClick={() => pushToast({ tone: 'success', title: '저장했어요' })}>
               성공
             </Button>
@@ -518,10 +302,7 @@ function ComponentCatalog() {
             >
               실패
             </Button>
-          </Spec>
-          <Spec name=".bar-list__empty" note="비었을 때">
-            <p className="bar-list__empty">이 기간에 접수된 건이 없어요.</p>
-          </Spec>
+          </CatalogSpec>
         </div>
       </GlassCard>
 

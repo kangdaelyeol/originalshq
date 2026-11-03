@@ -10,7 +10,7 @@ import {
   relationColumn,
   type SubRow,
 } from '../../data/tech-subitems'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { RelationPicker } from './relation-picker'
 
 interface SubitemsEditorProps {

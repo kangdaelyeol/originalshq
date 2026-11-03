@@ -5,7 +5,7 @@ import type { TechCellValue, TechColumn } from '../../data/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { isPhoneColumn } from '../../data/tech-edit'
 import { formatPhone } from '../../data/tech-stage'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { personColor } from '../../lib/person-color'
 import { fileCount, isChecked, mondayDate, parseJson, splitText } from './monday-values'
 

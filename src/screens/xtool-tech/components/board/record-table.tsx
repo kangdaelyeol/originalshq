@@ -2,11 +2,11 @@ import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, Plus, Search } from 'luc
 import { useMemo, useState, type ReactNode } from 'react'
 import { usePendingSaves } from '../../data/tech-save-queue'
 import { isDone } from '../../data/tech-stage'
-import { cx } from '../../lib/cx'
+import { cx } from '@/ohq-ui/lib/cx'
 import { useBoardEdit } from './board-edit-context'
-import { Button } from '../ui/button'
-import { GlassCard } from '../ui/glass-card'
-import { SegmentedControl } from '../ui/segmented-control'
+import { Button } from '@/ohq-ui/components/button'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
 
 export interface RecordColumn<T> {
   key: string

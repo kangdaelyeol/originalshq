@@ -3,12 +3,12 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { BackgroundArt } from '../components/backgrounds/background-art'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '../components/brand/brand-mark'
-import { Avatar } from '../components/ui/avatar'
-import { Button } from '../components/ui/button'
-import { ConfirmDialog } from '../components/ui/confirm-dialog'
-import { GlassCard } from '../components/ui/glass-card'
-import { RangeField } from '../components/ui/range-field'
-import { StatusPill } from '../components/ui/status-pill'
+import { Avatar } from '@/ohq-ui/components/avatar'
+import { Button } from '@/ohq-ui/components/button'
+import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
+import { GlassCard } from '@/ohq-ui/components/glass-card'
+import { RangeField } from '@/ohq-ui/components/range-field'
+import { StatusPill } from '@/ohq-ui/components/status-pill'
 import { useCurrentMember } from '../context/member-context'
 import {
   BACKGROUND_ACCEPT,
@@ -20,9 +20,9 @@ import {
 } from '../data/tech-backgrounds'
 import { deleteProfilePhoto, PROFILE_ACCEPT, uploadProfilePhoto, useProfilePhoto } from '../data/tech-profiles'
 import { pushToast } from '../data/tech-save-queue'
-import { cx } from '../lib/cx'
-import { ACCENT_PRESETS, DEFAULT_ACCENT } from '../settings/accent'
-import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '../settings/glass'
+import { cx } from '@/ohq-ui/lib/cx'
+import { ACCENT_PRESETS, DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
+import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '@/ohq-ui/theme/glass'
 import {
   BACKGROUND_OPTIONS,
   isPhotoBackground,
