@@ -15,13 +15,16 @@ import {
   changeColumnValues,
   createItem,
   fetchTechItems,
+  ItemShape,
   moveItemToGroup,
   deleteItem as deleteMondayItem,
+  TechRawItem,
 } from './monday-api'
 import {
   TechBoardKey,
   TechBoardMeta,
   TechChange,
+  TechConflict,
   TechEditInput,
   TechEditLog,
   TechItemDoc,
@@ -33,6 +36,12 @@ export interface Editor {
   uid: string
 }
 
+/** 쓰기 응답·다시 읽기에서 받을 item 모양 — 보드 설정대로 */
+const shapeOf = (source: TechBoardSource): ItemShape => ({
+  subitems: !!source.subitems,
+  updates: !!source.updates,
+})
+
 /** item 몇 개를 Monday에서 다시 읽어 캐시를 맞춘다 — 수정 직후·webhook. 지워진
  * item은 캐시에서 뺀다. 갱신된 문서를 돌려준다(지워졌으면 null). */
 export async function refreshItems(
@@ -43,12 +52,24 @@ export async function refreshItems(
   meta?: TechBoardMeta | null,
 ): Promise<Map<string, TechItemDoc | null>> {
   const boardMeta = meta ?? (await getBoardMeta(db, source.key))
+  const shape = shapeOf(source)
   const items = await fetchTechItems(
     apiKey,
     itemIds,
-    !!source.subitems,
-    !!source.updates,
+    shape.subitems,
+    shape.updates,
   )
+  return saveRawItems(db, source, boardMeta, itemIds, items)
+}
+
+/** Monday에서 받은 item(다시 읽었거나 쓰기 응답에 실려 온 것)을 캐시에 쓴다. */
+async function saveRawItems(
+  db: Firestore,
+  source: TechBoardSource,
+  boardMeta: TechBoardMeta | null,
+  itemIds: string[],
+  items: TechRawItem[],
+): Promise<Map<string, TechItemDoc | null>> {
   const byId = new Map(items.map((item) => [String(item.id), item]))
   const result = new Map<string, TechItemDoc | null>()
   for (const id of itemIds) {
@@ -121,23 +142,86 @@ function diff(
     .filter((change) => change.before !== change.after)
 }
 
-/** 기존 item 고치기 — Monday에 쓰고, 다시 읽어 캐시를 맞추고, 기록을 남긴다. */
+/**
+ * 겹친 칸 — 화면이 고치기 전에 본 값(base)과 지금 캐시가 다르면, 그사이 다른 사람
+ * (또는 Monday)이 바꾼 것이다. 그 칸은 덮어쓰지 않는다.
+ */
+function findConflicts(
+  meta: TechBoardMeta,
+  before: TechItemDoc,
+  base: TechEditInput['base'],
+): TechConflict[] {
+  if (!base) return []
+  const conflicts: TechConflict[] = []
+  if (base.name !== undefined && base.name !== before.name) {
+    conflicts.push({ field: 'name', title: '이름', theirs: before.name })
+  }
+  if (
+    base.groupId !== undefined &&
+    (base.groupId ?? null) !== (before.groupId ?? null)
+  ) {
+    const group = meta.groups.find((g) => g.id === before.groupId)
+    conflicts.push({
+      field: 'group',
+      title: '진행 단계',
+      theirs: group?.title ?? before.groupId,
+    })
+  }
+  for (const [id, seen] of Object.entries(base.columns ?? {})) {
+    const now = before.values[id]?.text ?? ''
+    if (now === seen) continue
+    const title = meta.columns.find((c) => c.id === id)?.title ?? id
+    conflicts.push({ field: id, title, theirs: now || null })
+  }
+  return conflicts
+}
+
+/** 겹친 칸을 뺀 입력 */
+function withoutConflicts(
+  input: TechEditInput,
+  conflicts: TechConflict[],
+): TechEditInput {
+  if (conflicts.length === 0) return input
+  const skip = new Set(conflicts.map((c) => c.field))
+  const columns = Object.fromEntries(
+    Object.entries(input.columns ?? {}).filter(([id]) => !skip.has(id)),
+  )
+  return {
+    ...input,
+    name: skip.has('name') ? undefined : input.name,
+    groupId: skip.has('group') ? undefined : input.groupId,
+    columns,
+  }
+}
+
+export interface UpdateResult {
+  doc: TechItemDoc | null
+  conflicts: TechConflict[]
+}
+
+/**
+ * 기존 item 고치기 — Monday에 쓰고, 캐시를 맞추고, 기록을 남긴다. 마지막 쓰기 응답에
+ * 바뀐 item을 실어 받아 캐시에 바로 쓴다(다시 읽지 않는다 — Monday 왕복 한 번). 하위
+ * 줄을 고쳤으면 부모 item을 다시 읽는다. 다른 사람이 먼저 바꾼 칸은 건너뛰고 알린다.
+ */
 async function applyUpdate(
   db: Firestore,
   apiKey: string,
-  input: TechEditInput,
+  request: TechEditInput,
   editor: Editor,
-): Promise<TechItemDoc | null> {
-  const source = sourceOf(input.boardKey)
-  if (!input.itemId) throw new TechEditError('수정할 항목이 없어요')
+): Promise<UpdateResult> {
+  const source = sourceOf(request.boardKey)
+  if (!request.itemId) throw new TechEditError('수정할 항목이 없어요')
   const [meta, before] = await Promise.all([
     getBoardMeta(db, source.key),
-    getItem(db, input.itemId),
+    getItem(db, request.itemId),
   ])
   if (!meta) throw new TechEditError('보드 정보가 아직 없어요. 동기화 후 다시 해 주세요')
   if (!before || before.boardKey !== source.key) {
     throw new TechEditError('이 보드에 없는 항목이에요')
   }
+  const conflicts = findConflicts(meta, before, request.base)
+  const input = withoutConflicts(request, conflicts)
 
   const columnValues = buildColumnValues(meta.columns, input.columns ?? {})
   const name = input.name?.trim()
@@ -174,21 +258,36 @@ async function applyUpdate(
     ...partial,
   })
 
-  if (Object.keys(columnValues).length > 0) {
-    await changeColumnValues(
+  const hasValues = Object.keys(columnValues).length > 0
+  // 겹친 칸만 있었으면 쓸 게 없다.
+  if (!hasValues && !moveTo && !subPlan) return { doc: before, conflicts }
+
+  // 마지막 쓰기만 바뀐 item을 실어 받는다(하위 줄을 고치면 그 뒤에 다시 읽는다).
+  const shape = shapeOf(source)
+  let raw: TechRawItem | null = null
+  if (hasValues) {
+    raw = await changeColumnValues(
       apiKey,
       source.boardId,
       before.itemId,
       columnValues,
+      moveTo || subPlan ? undefined : shape,
     )
   }
-  if (moveTo) await moveItemToGroup(apiKey, before.itemId, moveTo)
+  if (moveTo) {
+    raw = await moveItemToGroup(
+      apiKey,
+      before.itemId,
+      moveTo,
+      subPlan ? undefined : shape,
+    )
+  }
   if (subPlan) await applySubitems(apiKey, meta, before.itemId, subPlan)
 
-  const after =
-    (await refreshItems(db, apiKey, source, [before.itemId], meta)).get(
-      before.itemId,
-    ) ?? null
+  const saved = raw ?
+    await saveRawItems(db, source, meta, [before.itemId], [raw]) :
+    await refreshItems(db, apiKey, source, [before.itemId], meta)
+  const after = saved.get(before.itemId) ?? null
   const changes = diff(meta, before, after, fields)
   const subChange = subPlan ?
     subitemChange(
@@ -202,7 +301,7 @@ async function applyUpdate(
   if (changes.length > 0) {
     await addEditLog(db, log({ changes, itemName: after?.name ?? before.name }))
   }
-  return after
+  return { doc: after, conflicts }
 }
 
 /** 새 item 만들기 — 이름은 꼭 있어야 한다. */
@@ -225,17 +324,22 @@ async function applyCreate(
     planSubitems(meta, [], { create: input.subitems.create }) :
     null
 
-  const itemId = await createItem(
+  // 만든 item을 응답에 실어 받는다 — 하위 줄을 만들면 그 뒤에 다시 읽는다.
+  const created = await createItem(
     apiKey,
     source.boardId,
     input.groupId ?? null,
     name,
     columnValues,
+    subPlan ? undefined : shapeOf(source),
   )
+  const itemId = created.id
   if (subPlan) await applySubitems(apiKey, meta, itemId, subPlan)
 
-  const after =
-    (await refreshItems(db, apiKey, source, [itemId], meta)).get(itemId) ?? null
+  const saved = created.item ?
+    await saveRawItems(db, source, meta, [itemId], [created.item]) :
+    await refreshItems(db, apiKey, source, [itemId], meta)
+  const after = saved.get(itemId) ?? null
   await addEditLog(db, {
     at: Date.now(),
     action: 'create',
@@ -306,7 +410,7 @@ export async function updateTechItem(
   apiKey: string,
   input: TechEditInput,
   editor: Editor,
-): Promise<TechItemDoc | null> {
+): Promise<UpdateResult> {
   try {
     return await applyUpdate(db, apiKey, input, editor)
   } catch (error) {

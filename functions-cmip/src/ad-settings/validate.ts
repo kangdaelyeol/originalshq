@@ -15,7 +15,10 @@ import type {
 type Result<T> = { ok: true; data: T } | { ok: false; error: string }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
-const ENTITY_KEY = /^(meta|google|naver|openai|daangn):(campaign|adset):[^/@]+$/
+/** 대상 키 — '채널:단위:플랫폼 ID'. 묶음 1·2·3이 채널·단위·ID다(엔드포인트가
+ * 나눠 쓴다). 채널이 늘면 여기 한 곳만 고친다. */
+export const ENTITY_KEY =
+  /^(meta|google|naver|openai|daangn):(campaign|adset):([^/@]+)$/
 const GOAL_KEY = /^[a-z][a-z0-9_]{0,31}$/
 const KPIS: readonly GoalKpi[] = ['cpa', 'roas', 'cpc', 'cpm', 'ctr', 'cvr']
 const FUNNEL: readonly FunnelStage[] = [
@@ -71,6 +74,21 @@ const optionalId = (v: unknown, what: string): string | null => {
   return v
 }
 
+/** 소재 ID 목록 — adCreatives 문서 id(예: meta_video_123). 없으면 빈 배열. */
+const creativeIds = (v: unknown): string[] => {
+  if (v === undefined || v === null) return []
+  if (!Array.isArray(v) || v.length > 50) {
+    throw new Invalid('creativeIds는 소재 ID 50개 이하의 배열이어야 합니다')
+  }
+  const ids = v.map((id) => {
+    if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,120}$/.test(id)) {
+      throw new Invalid('creativeIds에 올바르지 않은 소재 ID가 있습니다')
+    }
+    return id
+  })
+  return [...new Set(ids)]
+}
+
 const isoDate = (v: unknown, what: string): string => {
   // 2026-02-30처럼 넘치는 날짜는 Date가 다음 달로 넘겨 버려서, 되돌린 값이
   // 같은지로 본다.
@@ -115,6 +133,7 @@ const version = (v: unknown): AdSettingVersionInput => {
     conversionGoal: optionalId(x.conversionGoal, 'conversionGoal'),
     budget: budget(x.budget),
     creativeSetId: optionalId(x.creativeSetId, 'creativeSetId'),
+    creativeIds: creativeIds(x.creativeIds),
     targetCpa: optionalNumber(x.targetCpa, 'targetCpa'),
     targetRoas: optionalNumber(x.targetRoas, 'targetRoas'),
     funnelStage: funnelStage as FunnelStage | null,

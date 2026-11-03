@@ -13,6 +13,8 @@ const META = 'techBoardMeta'
 const ITEMS = 'techItems'
 const MISC = 'techMeta'
 const LOGS = 'techEditLogs'
+// item 업데이트(Monday 댓글) 캐시 — 말풍선 패널이 열리자마자 보여 주게(updates.ts).
+const UPDATES = 'techItemUpdates'
 
 // Firestore batch 한 번에 담을 수 있는 쓰기는 500건 — 여유를 두고 끊는다.
 const BATCH_SIZE = 400
@@ -99,7 +101,23 @@ export async function saveItem(db: Firestore, doc: TechItemDoc): Promise<void> {
 }
 
 export async function deleteItem(db: Firestore, itemId: string): Promise<void> {
-  await db.collection(ITEMS).doc(itemId).delete()
+  await Promise.all([
+    db.collection(ITEMS).doc(itemId).delete(),
+    db.collection(UPDATES).doc(itemId).delete(),
+  ])
+}
+
+/** item 업데이트 목록을 캐시에 — 통째로 바꾼다. */
+export async function saveItemUpdates(
+  db: Firestore,
+  key: TechBoardKey,
+  itemId: string,
+  updates: unknown[],
+): Promise<void> {
+  await db
+    .collection(UPDATES)
+    .doc(itemId)
+    .set({ itemId, boardKey: key, updates, syncedAt: Date.now() })
 }
 
 export async function saveMondayUsers(

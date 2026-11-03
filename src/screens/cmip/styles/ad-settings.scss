@@ -708,3 +708,213 @@ textarea.ad-input {
   font-size: 11px;
   color: $text-3;
 }
+
+// ── 소재(creative-picker.tsx) ───────────────────────────────────────────
+// 이 캠페인·광고셋에서 가져온 소재 카드 — 집행 중인 것 먼저, 지난 것은 흐리게.
+
+.ad-creatives {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ad-creatives__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+
+  h4 {
+    margin: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: $text;
+  }
+  > :last-child {
+    margin-left: auto;
+  }
+}
+.ad-creatives__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-creative {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px;
+  border-radius: 16px;
+  background: $fill-1;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &.is-selected {
+    background: $fill-2;
+    box-shadow: inset 0 0 0 2px var(--glass-accent);
+  }
+  &.is-past:not(.is-selected) {
+    opacity: 0.6;
+  }
+}
+.ad-creative__thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  // 세로 영상(9:16)이 대부분이라 그 비율 칸에 담고, 다른 비율은 가운데 맞춘다.
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 11px;
+  background: $fill-2;
+  cursor: zoom-in;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+}
+.ad-creative__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 11.5px;
+  color: $text-3;
+}
+.ad-creative__kind {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  font-size: 10.5px;
+  color: #fff;
+}
+.ad-creative__pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: $text-2;
+  cursor: pointer;
+
+  input {
+    accent-color: var(--glass-accent);
+  }
+}
+.ad-creative__name {
+  overflow: hidden;
+  font-size: 11px;
+  color: $text-3;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+// 소재 크게 보기 — 다른 cmip 모달과 같은 유리 판.
+.ad-creative-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  @include glass.scrim;
+}
+.ad-creative-modal__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: min(100%, 860px);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 20px 22px 22px;
+  @include glass.panel;
+  @include glass.panel-in;
+}
+.ad-creative-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+
+  h4 {
+    margin: 0 0 4px;
+    font-size: 15px;
+    font-weight: 600;
+    color: $text;
+    word-break: break-all;
+  }
+  span {
+    font-size: 12px;
+    color: $text-3;
+  }
+}
+.ad-creative-modal__close {
+  @include glass.icon-button(32px);
+  flex: none;
+  font-size: 13px;
+}
+.ad-creative-modal__original {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 14px;
+  background: #000;
+  object-fit: contain;
+}
+.ad-creative-modal__frames,
+.ad-creative-modal__ads {
+  h5 {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $text;
+
+    span {
+      margin-left: 4px;
+      font-weight: 400;
+      color: $text-3;
+    }
+  }
+  ol,
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+.ad-creative-modal__frames ol {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+  gap: 6px;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 10.5px;
+    color: $text-3;
+    text-align: center;
+  }
+  img {
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    border-radius: 8px;
+    background: $fill-2;
+    object-fit: contain;
+  }
+}
+.ad-creative-modal__ads li {
+  padding: 4px 0;
+  font-size: 12px;
+  color: $text-2;
+  word-break: break-all;
+}

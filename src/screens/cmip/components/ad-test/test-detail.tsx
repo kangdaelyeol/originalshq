@@ -66,7 +66,8 @@ const settingChips = (
       `목표 ${goal ? goalOptionLabel(goal) : fields.conversionGoal}`,
     fields.budget && formatBudget(fields.budget),
     fields.creativeSetId &&
-      `소재 ${sets.find((s) => s.id === fields.creativeSetId)?.name ?? '(지운 셋)'}`,
+      `소재 셋 ${sets.find((s) => s.id === fields.creativeSetId)?.name ?? '(지운 셋)'}`,
+    fields.creativeIds.length > 0 && `소재 ${fields.creativeIds.length}개`,
     fields.targetCpa !== null && `목표 단가 ${won(fields.targetCpa)}`,
     fields.targetRoas !== null &&
       `목표 ROAS ${fields.targetRoas.toLocaleString('ko-KR')}%`,

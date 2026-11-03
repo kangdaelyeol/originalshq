@@ -3,6 +3,7 @@
 // 내려받기는 늘 Node가 하고 ffmpeg는 로컬 파일만 다룬다(fetchHls 참고). 영상은 framePlan 시점마다(첫 3초 촘촘히),
 // 이미지는 한 장. Claude는 영상을 직접 받지 않아서 분석은 이 프레임으로 한다.
 import { execFile } from 'node:child_process'
+import { randomUUID } from 'node:crypto'
 import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -65,6 +66,65 @@ export const isMissingBucket = (err: unknown) =>
  * 소재 하나를 처리한다 — url에서 내려받아 Storage의 adCreatives/{id}/에 원본과
  * frames/를 올린다. 같은 id로 다시 돌리면 덮어쓴다.
  */
+/** 화면에서 볼 주소 — Storage 규칙은 외부 읽기를 다 막아 두고, 파일마다 붙인
+ * 다운로드 토큰으로만 열리게 한다(Firebase 콘솔의 "다운로드 URL"과 같은 방식,
+ * 추측할 수 없는 주소). 광고 소재는 이미 광고로 공개된 이미지·영상이다. */
+const downloadUrl = (bucket: string, path: string, token: string) => {
+  const host = process.env.FIREBASE_STORAGE_EMULATOR_HOST
+  const base = host
+    ? `http://${host}`
+    : 'https://firebasestorage.googleapis.com'
+  return `${base}/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
+}
+
+/** 저장하면서 토큰을 붙이고 그 주소를 돌려준다. */
+async function saveWithUrl(
+  path: string,
+  data: Buffer,
+  contentType: string,
+): Promise<string> {
+  const bucket = getStorage().bucket()
+  const token = randomUUID()
+  await bucket.file(path).save(data, {
+    contentType,
+    resumable: false,
+    metadata: { metadata: { firebaseStorageDownloadTokens: token } },
+  })
+  return downloadUrl(bucket.name, path, token)
+}
+
+/** 주소가 없는(토큰을 붙이기 전에 저장한) 소재에 토큰을 붙여 주소를 채운다 —
+ * 바뀌었으면 새 media, 이미 다 있으면 null. */
+export async function withDownloadUrls(
+  media: CreativeMedia,
+): Promise<CreativeMedia | null> {
+  if (media.originalUrl && media.frames.every((f) => f.url)) return null
+  const bucket = getStorage().bucket()
+  const urlOf = async (path: string) => {
+    const file = bucket.file(path)
+    const [meta] = await file.getMetadata()
+    const existing = String(
+      meta.metadata?.firebaseStorageDownloadTokens ?? '',
+    ).split(',')[0]
+    const token = existing || randomUUID()
+    if (!existing)
+      await file.setMetadata({
+        metadata: { firebaseStorageDownloadTokens: token },
+      })
+    return downloadUrl(bucket.name, path, token)
+  }
+  return {
+    ...media,
+    originalUrl: media.originalUrl ?? (await urlOf(media.originalPath)),
+    frames: await Promise.all(
+      media.frames.map(async (f) => ({
+        ...f,
+        url: f.url ?? (await urlOf(f.path)),
+      })),
+    ),
+  }
+}
+
 /** 파일 주소 — hls면 스트리밍 목록(.m3u8, 당근 영상)이라 ffmpeg로 mp4 한
  * 파일로 받는다. */
 export interface MediaSource {
@@ -230,24 +290,20 @@ export async function processCreativeMedia(
     }
     if (frames.length === 0) throw new Error('프레임을 하나도 뽑지 못했습니다')
 
-    const bucket = getStorage().bucket()
     const base = `adCreatives/${id}`
     const originalPath = `${base}/original.${extOf(contentType)}`
-    await bucket
-      .file(originalPath)
-      .save(body, { contentType, resumable: false })
+    const originalUrl = await saveWithUrl(originalPath, body, contentType)
 
     const uploaded: CreativeFrame[] = []
     for (const [index, frame] of frames.entries()) {
       const data = await readFile(frame.file)
       const size = await probe(frame.file)
       const path = `${base}/frames/${String(index).padStart(2, '0')}.jpg`
-      await bucket
-        .file(path)
-        .save(data, { contentType: 'image/jpeg', resumable: false })
+      const url = await saveWithUrl(path, data, 'image/jpeg')
       uploaded.push({
         t: frame.t,
         path,
+        url,
         width: size.width ?? 0,
         height: size.height ?? 0,
       })
@@ -255,6 +311,7 @@ export async function processCreativeMedia(
 
     return {
       originalPath,
+      originalUrl,
       contentType,
       bytes: body.length,
       width: info.width,

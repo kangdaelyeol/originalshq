@@ -37,6 +37,13 @@ const describe = (
   '소재 셋': fields.creativeSetId
     ? (sets.get(fields.creativeSetId)?.name ?? '(지운 셋)')
     : '',
+  // 고른 소재 — 순서와 상관없이 같은 묶음이면 같은 값(바뀐 날만 구간이 된다).
+  소재: fields.creativeIds.length
+    ? `${fields.creativeIds.length}개 (${[...fields.creativeIds]
+        .sort()
+        .map((id) => id.split('_').pop()?.slice(-6) ?? id)
+        .join(', ')})`
+    : '',
   '목표 단가': fields.targetCpa !== null ? won(fields.targetCpa) : '',
   '목표 ROAS':
     fields.targetRoas !== null

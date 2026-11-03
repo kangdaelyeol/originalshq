@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Segmented, Select } from '@/components/glass'
 import {
   adEntityKey,
@@ -27,7 +27,9 @@ import {
   shortDate,
 } from './labels'
 import { NumberInput } from './number-input'
+import { CreativePicker } from './creative-picker'
 import { ResultMetrics } from './result-metrics'
+import { useAdCreatives } from '../../view-model/use-ad-creatives'
 
 type Funnel = FunnelStage | 'none'
 
@@ -38,6 +40,7 @@ interface Form {
   budgetAmount: string
   budgetPeriod: BudgetPeriod
   creativeSetId: string
+  creativeIds: string[]
   funnelStage: Funnel
   audience: string
   memo: string
@@ -52,6 +55,7 @@ const formOf = (fields: AdSettingFields, effectiveFrom: string): Form => ({
   budgetAmount: fields.budget ? String(fields.budget.amount) : '',
   budgetPeriod: fields.budget?.period ?? 'daily',
   creativeSetId: fields.creativeSetId ?? '',
+  creativeIds: fields.creativeIds,
   funnelStage: fields.funnelStage ?? 'none',
   audience: fields.audience,
   // 바꾼 이유는 장마다 새로 쓴다.
@@ -128,7 +132,8 @@ const Summary = ({
       `목표 ${goals.get(fields.conversionGoal)?.label ?? fields.conversionGoal}`,
     fields.budget && formatBudget(fields.budget),
     fields.creativeSetId &&
-      `소재 ${sets.get(fields.creativeSetId)?.name ?? '(지운 셋)'}`,
+      `소재 셋 ${sets.get(fields.creativeSetId)?.name ?? '(지운 셋)'}`,
+    fields.creativeIds.length > 0 && `소재 ${fields.creativeIds.length}개`,
     fields.funnelStage && `퍼널 ${FUNNEL_LABEL[fields.funnelStage]}`,
   ].filter(Boolean) as string[]
   return chips.length ? (
@@ -179,6 +184,42 @@ export function SettingEditor({
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
 
+  // 소재 — 새 장을 열면 지금 집행 중인 소재를 미리 체크한다(오늘 시작하는 장이
+  // 이미 있으면 그 장의 소재 그대로). 손으로 고르거나 지난 장을 불러온 뒤에는
+  // 건드리지 않는다.
+  const creatives = useAdCreatives(entity.key)
+  const [creativesTouched, setCreativesTouched] = useState(false)
+  const activeCreativeIds =
+    creatives.status === 'ready'
+      ? creatives.creatives.filter((c) => c.active).map((c) => c.id)
+      : null
+  const todayVersion = history.find((v) => v.effectiveFrom === today)
+  const freshForm = (): Form => ({
+    ...formOf(versionAt(history, today) ?? EMPTY_AD_SETTING, today),
+    ...(activeCreativeIds && !todayVersion
+      ? { creativeIds: activeCreativeIds }
+      : {}),
+  })
+  useEffect(() => {
+    if (creativesTouched || todayVersion || !activeCreativeIds) return
+    setForm((prev) =>
+      prev.effectiveFrom === today
+        ? { ...prev, creativeIds: activeCreativeIds }
+        : prev,
+    )
+    // 소재 목록이 처음 도착했을 때 한 번만.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creatives.status])
+  const toggleCreative = (id: string) => {
+    setCreativesTouched(true)
+    setForm((prev) => ({
+      ...prev,
+      creativeIds: prev.creativeIds.includes(id)
+        ? prev.creativeIds.filter((x) => x !== id)
+        : [...prev.creativeIds, id],
+    }))
+  }
+
   const goalMap = new Map(goals.map((g) => [g.key, g]))
   const setMap = new Map(creativeSets.map((s) => [s.id, s]))
   const isAdset = entity.level === 'adset'
@@ -209,6 +250,7 @@ export function SettingEditor({
       conversionGoal: form.conversionGoal || null,
       budget: amount === null ? null : { amount, period: form.budgetPeriod },
       creativeSetId: form.creativeSetId || null,
+      creativeIds: form.creativeIds,
       funnelStage: form.funnelStage === 'none' ? null : form.funnelStage,
       audience: form.audience,
       memo: form.memo,
@@ -260,6 +302,12 @@ export function SettingEditor({
       </header>
 
       <ResultMetrics entityKey={entity.key} today={today} />
+
+      <CreativePicker
+        state={creatives}
+        selected={form.creativeIds}
+        onToggle={toggleCreative}
+      />
 
       <section className="ad-editor__form">
         <div className="ad-editor__date">
@@ -365,11 +413,10 @@ export function SettingEditor({
           <button
             type="button"
             className="ad-button"
-            onClick={() =>
-              setForm(
-                formOf(versionAt(history, today) ?? EMPTY_AD_SETTING, today),
-              )
-            }
+            onClick={() => {
+              setCreativesTouched(false)
+              setForm(freshForm())
+            }}
             disabled={saving}
           >
             되돌리기
@@ -431,12 +478,13 @@ export function SettingEditor({
                     <button
                       type="button"
                       className="ad-button is-small"
-                      onClick={() =>
+                      onClick={() => {
+                        setCreativesTouched(true)
                         setForm({
                           ...formOf(version, version.effectiveFrom),
                           memo: version.memo,
                         })
-                      }
+                      }}
                     >
                       불러오기
                     </button>

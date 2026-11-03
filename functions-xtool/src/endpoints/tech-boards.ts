@@ -21,6 +21,7 @@ import {
   deleteTechItems,
   fetchItemUpdates,
   findTechBoard,
+  refreshItemUpdates,
   deleteBackground,
   fileUrls,
   MAX_FILE_BYTES,
@@ -114,13 +115,14 @@ export const techUpdateItem = onCall(
     async (request: CallableRequest<TechEditInput>) => {
     const editor = await requireMember(request)
     try {
-      const doc = await updateTechItem(
+      const { doc, conflicts } = await updateTechItem(
         db,
         mondayApiKey.value(),
         request.data,
         editor,
       )
-      return { itemId: doc?.itemId ?? null }
+      // conflicts — 다른 사람이 먼저 바꿔서 쓰지 않은 칸(화면이 알리고 덮을지 묻는다)
+      return { itemId: doc?.itemId ?? null, conflicts }
     } catch (error) {
       throw toHttpsError(error)
     }
@@ -371,7 +373,7 @@ export const techDeleteItems = onCall(
 
 // ────────────────────────────────
 // techItemUpdates·techCreateUpdate — item 업데이트(Monday 댓글) 읽기·쓰기. 기술팀만,
-// 업데이트를 세는 보드(출장)의 우리 캐시에 있는 item만.
+// 업데이트를 세는 보드(출장·아톡문의)의 우리 캐시에 있는 item만.
 // ────────────────────────────────
 async function updatesTarget(data: { boardKey?: string; itemId?: string }) {
   const source = findTechBoard({ key: String(data?.boardKey ?? '') })
@@ -393,9 +395,16 @@ export const techItemUpdates = onCall(
     'callable',
     async (request: CallableRequest<{ boardKey: string; itemId: string }>) => {
       await requireMember(request)
-      const { itemId } = await updatesTarget(request.data)
+      const { source, itemId } = await updatesTarget(request.data)
       try {
-        return { updates: await fetchItemUpdates(mondayApiKey.value(), itemId) }
+        // 읽은 목록을 캐시에도 쓴다 — 다음에 패널을 열면 바로 보인다.
+        const updates = await refreshItemUpdates(
+          db,
+          mondayApiKey.value(),
+          source.key,
+          itemId,
+        )
+        return { updates }
       } catch (error) {
         // 읽기라 "저장하지 못했어요"(toHttpsError)가 아니라 읽기 실패로 알린다.
         logger.error('업데이트 읽기 실패:', error)
@@ -449,11 +458,17 @@ export const techCreateUpdate = onCall(
       } catch (error) {
         throw toHttpsError(error)
       }
-      // 말풍선 개수를 바로 맞춘다 — 실패해도 글은 올라갔으니 성공으로 돌려준다(webhook·정기
-      // 동기화가 곧 맞춘다). 실패로 돌려주면 다시 눌러 같은 글이 두 번 올라간다.
-      await refreshItems(db, mondayApiKey.value(), source, [itemId]).catch(
-        (error) => logger.warn(`업데이트 개수 갱신 실패(${itemId}):`, error),
-      )
+      // 말풍선 개수와 업데이트 캐시를 바로 맞춘다 — 실패해도 글은 올라갔으니 성공으로
+      // 돌려준다(webhook·정기 동기화가 곧 맞춘다). 실패로 돌려주면 다시 눌러 같은 글이
+      // 두 번 올라간다.
+      await Promise.all([
+        refreshItems(db, mondayApiKey.value(), source, [itemId]).catch(
+          (error) => logger.warn(`업데이트 개수 갱신 실패(${itemId}):`, error),
+        ),
+        refreshItemUpdates(db, mondayApiKey.value(), source.key, itemId).catch(
+          (error) => logger.warn(`업데이트 캐시 갱신 실패(${itemId}):`, error),
+        ),
+      ])
       return { id }
     },
   ),

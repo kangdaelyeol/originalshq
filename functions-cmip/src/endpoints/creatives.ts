@@ -3,11 +3,13 @@
 import { daangnAdsApiKey, metaAdsId } from '../config'
 import { recordBatchRun } from '../batch-log'
 import {
+  listAdCreatives as listAdCreativesFromDb,
   syncDaangnCreatives as syncDaangnCreativesFromApi,
   syncMetaCreatives as syncMetaCreativesFromApi,
 } from '../creatives'
+import { ENTITY_KEY } from '../ad-settings'
 import { db } from '../data'
-import { endpoint } from '../http'
+import { endpoint, HttpError } from '../http'
 import { scheduledSync } from '../scheduled-sync'
 import { onRequest } from '../trace/functions'
 
@@ -80,3 +82,18 @@ export const syncDaangnCreativesScheduled = scheduledSync({
     },
   ],
 })
+
+/** 캠페인·광고셋 하나의 저장 소재(GET ?entityKey=채널:단위:ID) — 광고 설정
+ * 편집기의 소재 칸. 썸네일 주소가 없는 예전 소재는 처음 열 때 채운다. */
+export const listAdCreatives = onRequest(
+  endpoint(
+    { method: 'GET', fallback: '소재 목록 조회 실패' },
+    async ({ request }) => {
+      const entityKey = String(request.query.entityKey ?? '')
+      if (!ENTITY_KEY.test(entityKey)) {
+        throw new HttpError(400, 'entityKey는 "채널:단위:ID" 모양이어야 합니다')
+      }
+      return { entityKey, creatives: await listAdCreativesFromDb(entityKey) }
+    },
+  ),
+)

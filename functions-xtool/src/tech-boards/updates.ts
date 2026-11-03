@@ -1,8 +1,13 @@
+import { Firestore } from 'firebase-admin/firestore'
 import { fetchMonday } from '../monday/client'
 import { TechEditError } from './errors'
+import { saveItemUpdates } from './firestore'
+import { TechBoardKey } from './types'
 
-// item 업데이트(Monday 댓글) — Monday 표의 말풍선 패널이 그때그때 읽고 쓴다(캐시에는
-// 개수만 둔다 — items.ts updateCount). 쓰기는 우리 API 키 주인 계정으로 올라가서,
+// item 업데이트(Monday 댓글) — Monday 표의 말풍선 패널이 읽고 쓴다. 읽은 목록은
+// techItemUpdates/{itemId}에 캐시해서 패널이 열리자마자 보이고(그 뒤 다시 읽어 맞춘다),
+// 글을 올리거나 Monday에서 업데이트가 바뀌면(webhook) 캐시를 새로 쓴다. 표의 말풍선
+// 개수는 item 캐시(items.ts updateCount). 쓰기는 우리 API 키 주인 계정으로 올라가서,
 // 누가 썼는지 본문 끝에 서명("— 이름 · xtool tech")을 붙이고, 읽을 때 그 서명을
 // 떼어 작성자로 보여 준다.
 
@@ -59,6 +64,18 @@ export async function fetchItemUpdates(
     { ids: [itemId] },
   )
   return (data.items?.[0]?.updates ?? []).map(toUpdate)
+}
+
+/** Monday에서 다시 읽어 캐시에 쓰고 돌려준다. */
+export async function refreshItemUpdates(
+  db: Firestore,
+  apiKey: string,
+  key: TechBoardKey,
+  itemId: string,
+): Promise<TechUpdate[]> {
+  const updates = await fetchItemUpdates(apiKey, itemId)
+  await saveItemUpdates(db, key, itemId, updates)
+  return updates
 }
 
 const escapeHtml = (text: string) =>

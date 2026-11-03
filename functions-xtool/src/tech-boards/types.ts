@@ -199,7 +199,7 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   values: Record<string, TechCellValue>
   /** 하위 아이템(하위 아이템이 있는 보드만, 그 밖에는 빈 배열) */
   subitems: TechSubitemDoc[]
-  /** 업데이트(댓글) 수 — 세는 보드(출장)만 */
+  /** 업데이트(댓글) 수 — 세는 보드(출장·아톡문의)만 */
   updateCount?: number
   createdAt: string | null
   updatedAt: string | null
@@ -248,6 +248,24 @@ export interface TechEditInput {
     update?: TechSubitemEdit[]
     remove?: string[]
   }
+  /** 고치기 전에 화면이 본 값(캐시 글자) — 그사이 다른 사람이 같은 칸을 바꿨으면
+   * 그 칸은 덮어쓰지 않고 conflicts로 돌려준다. 없는 칸은 확인하지 않는다. */
+  base?: TechEditBase
+}
+
+export interface TechEditBase {
+  name?: string
+  groupId?: string | null
+  /** 컬럼 id → 화면이 본 글자 */
+  columns?: Record<string, string>
+}
+
+/** 다른 사람이 먼저 바꿔서 쓰지 않은 칸 — field는 'name' · 'group' · 컬럼 id */
+export interface TechConflict {
+  field: string
+  title: string
+  /** 지금 캐시에 적힌 값(그 사람이 바꾼 값) */
+  theirs: string | null
 }
 
 export interface TechChange {

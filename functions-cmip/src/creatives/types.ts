@@ -22,13 +22,17 @@ export interface CreativeFrame {
   /** 영상 속 시점(초) — 이미지는 0. */
   t: number
   path: string
+  /** 화면에서 볼 주소(다운로드 토큰) — 토큰을 붙이기 전에 저장한 소재는 목록을
+   * 처음 열 때 채운다(withDownloadUrls). */
+  url?: string
   width: number
   height: number
 }
 
 export interface CreativeMedia {
-  /** 원본 파일(Storage 경로). */
+  /** 원본 파일(Storage 경로)과 화면에서 볼 주소. */
   originalPath: string
+  originalUrl?: string
   contentType: string
   bytes: number
   width: number | null

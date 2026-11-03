@@ -21,6 +21,10 @@ export { addBackground, deleteBackground } from './backgrounds'
 export type { BackgroundInput } from './backgrounds'
 export { copyPhonesFromNames } from './phones'
 export type { PhoneCopyResult } from './phones'
-export { createItemUpdate, fetchItemUpdates } from './updates'
+export {
+  createItemUpdate,
+  fetchItemUpdates,
+  refreshItemUpdates,
+} from './updates'
 export type { TechUpdate } from './updates'
 export { refreshItems } from './edits'

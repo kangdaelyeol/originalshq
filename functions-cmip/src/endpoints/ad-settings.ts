@@ -3,6 +3,7 @@ import '../config'
 import * as logger from 'firebase-functions/logger'
 import {
   backfillAdEntities as backfillAdEntitiesFromDb,
+  ENTITY_KEY,
   deleteCreativeSet,
   deleteTest,
   deleteVersion,
@@ -13,6 +14,8 @@ import {
   saveGoal,
   saveVersion,
   validateSaveAdSettings,
+  type AdChannel,
+  type AdLevel,
 } from '../ad-settings'
 import { endpoint, HttpError } from '../http'
 import { onRequest } from '../trace/functions'
@@ -95,14 +98,13 @@ export const getAdEntityDaily = onRequest(
     { method: 'GET', fallback: '일별 성과 조회 실패' },
     async ({ request }) => {
       const entityKey = String(request.query.entityKey ?? '')
-      const match =
-        /^(meta|google|naver|openai):(campaign|adset):([^/@]+)$/.exec(entityKey)
+      const match = ENTITY_KEY.exec(entityKey)
       if (!match) {
         throw new HttpError(400, 'entityKey는 "채널:단위:ID" 모양이어야 합니다')
       }
       const byDate = await readAdEntityDaily(
-        match[1] as 'meta' | 'google' | 'naver' | 'openai',
-        match[2] as 'campaign' | 'adset',
+        match[1] as AdChannel,
+        match[2] as AdLevel,
         match[3],
       )
       return { entityKey, byDate }

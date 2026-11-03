@@ -77,6 +77,16 @@ const itemFields = (withSubitems: boolean, withUpdates = false) => `
   ${withUpdates ? `updates(limit: ${UPDATE_COUNT_LIMIT}) { id }` : ''}
 `
 
+/** 쓰기 응답에 실어 받을 item 모양 — 주면 바뀐 item을 바로 받아 다시 읽지 않는다
+ * (Monday 왕복 한 번). 보드 동기화·다시 읽기와 같은 필드. */
+export interface ItemShape {
+  subitems: boolean
+  updates: boolean
+}
+
+const returned = (shape: ItemShape | undefined) =>
+  shape ? itemFields(shape.subitems, shape.updates) : 'id'
+
 const BOARD_QUERY = `
   query TechBoard($boardId: ID!) {
     boards(ids: [$boardId]) {
@@ -192,50 +202,59 @@ export async function fetchMondayUsers(apiKey: string): Promise<Array<{
   return data.users ?? []
 }
 
-/** 이름·컬럼 값 바꾸기 — 한 번에 여러 칸. */
+/** 이름·컬럼 값 바꾸기 — 한 번에 여러 칸. shape를 주면 바뀐 item을 돌려준다. */
 export async function changeColumnValues(
   apiKey: string,
   boardId: string,
   itemId: string,
   columnValues: Record<string, unknown>,
-): Promise<void> {
-  await fetchMonday(
+  shape?: ItemShape,
+): Promise<TechRawItem | null> {
+  const data = await fetchMonday<{
+    change_multiple_column_values: TechRawItem | null
+  }>(
     apiKey,
     `mutation TechChange($boardId: ID!, $itemId: ID!, $values: JSON!) {
       change_multiple_column_values(
         board_id: $boardId
         item_id: $itemId
         column_values: $values
-      ) { id }
+      ) { ${returned(shape)} }
     }`,
     { boardId, itemId, values: JSON.stringify(columnValues) },
   )
+  return shape ? data.change_multiple_column_values : null
 }
 
-/** 그룹(진행 단계) 옮기기 */
+/** 그룹(진행 단계) 옮기기 — shape를 주면 옮긴 item을 돌려준다. */
 export async function moveItemToGroup(
   apiKey: string,
   itemId: string,
   groupId: string,
-): Promise<void> {
-  await fetchMonday(
+  shape?: ItemShape,
+): Promise<TechRawItem | null> {
+  const data = await fetchMonday<{ move_item_to_group: TechRawItem | null }>(
     apiKey,
     `mutation TechMove($itemId: ID!, $groupId: String!) {
-      move_item_to_group(item_id: $itemId, group_id: $groupId) { id }
+      move_item_to_group(item_id: $itemId, group_id: $groupId) {
+        ${returned(shape)}
+      }
     }`,
     { itemId, groupId },
   )
+  return shape ? data.move_item_to_group : null
 }
 
-/** 새 item — 만든 item id를 돌려준다. */
+/** 새 item — 만든 item id와(shape를 주면) 만든 item. */
 export async function createItem(
   apiKey: string,
   boardId: string,
   groupId: string | null,
   name: string,
   columnValues: Record<string, unknown>,
-): Promise<string> {
-  const data = await fetchMonday<{ create_item: { id: string } }>(
+  shape?: ItemShape,
+): Promise<{ id: string; item: TechRawItem | null }> {
+  const data = await fetchMonday<{ create_item: TechRawItem }>(
     apiKey,
     `mutation TechCreate(
       $boardId: ID!
@@ -248,11 +267,14 @@ export async function createItem(
         group_id: $groupId
         item_name: $name
         column_values: $values
-      ) { id }
+      ) { ${returned(shape)} }
     }`,
     { boardId, groupId, name, values: JSON.stringify(columnValues) },
   )
-  return data.create_item.id
+  return {
+    id: String(data.create_item.id),
+    item: shape ? data.create_item : null,
+  }
 }
 
 export async function createWebhook(

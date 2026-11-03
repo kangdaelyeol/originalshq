@@ -118,6 +118,9 @@ export interface AdSettingFields {
   budget: AdBudget | null
   /** 소재 셋(adCreativeSets의 id). */
   creativeSetId: string | null
+  /** 이 장에서 돌린 소재(adCreatives의 id) — 매체에서 가져왔거나 직접 올린
+   * 이미지·영상. 바뀐 날이 매체별 테스트의 구간이 된다. 예전 장에는 없다(빈 배열). */
+  creativeIds: string[]
   /** 목표 전환 단가(원) — 이보다 비싸면 경고 대상. */
   targetCpa: number | null
   /** 목표 ROAS(%). */

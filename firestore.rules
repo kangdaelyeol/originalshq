@@ -94,6 +94,11 @@ service cloud.firestore {
       allow read: if isXtoolTeamMember('tech');
     }
 
+    // item 업데이트(Monday 댓글) 캐시 — 말풍선 패널이 열리자마자 보여 준다. 쓰기는 함수만.
+    match /techItemUpdates/{itemId} {
+      allow read: if isXtoolTeamMember('tech');
+    }
+
     match /techEditLogs/{logId} {
       allow read: if isXtoolAdmin();
     }

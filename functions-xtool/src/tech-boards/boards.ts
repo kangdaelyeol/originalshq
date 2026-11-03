@@ -23,8 +23,8 @@ export interface TechBoardSource {
   boardId: string
   /** 하위 아이템까지 받을지 — 출장(설치 품목)·AS(청구 부품)만. */
   subitems?: boolean
-  /** 업데이트(댓글) 개수를 셀지 — Monday 표의 말풍선(출장). 읽기·쓰기는
-   * updates.ts가 그때그때 Monday에서 한다. */
+  /** 업데이트(댓글) 개수를 셀지 — Monday 표의 말풍선(출장·아톡문의). 읽기·쓰기는
+   * updates.ts가 한다. 켜면 webhook을 다시 만들어야 업데이트 이벤트를 받는다. */
   updates?: boolean
   /** 연락처 칸 — 'name'이면 item 이름에서, 생략하면 제목으로 추정, null이면
    * 읽지 않는다. 고객 통합의 보드 등록값과 같게 둔다. */
@@ -44,7 +44,7 @@ export const TECH_BOARDS: readonly TechBoardSource[] = [
     phoneColumnId: 'name',
   },
   { key: 'repair', boardId: '5028075613', subitems: true }, // AS 2026
-  { key: 'techInquiry', boardId: '5030892209' }, // 아톡문의
+  { key: 'techInquiry', boardId: '5030892209', updates: true }, // 아톡문의
   { key: 'techTask', boardId: '5025392115', phoneColumnId: null }, // 기타업무
   // tech 페이지 전용 — 고객 통합과 무관.
   { key: 'records', boardId: '5025392066', phoneColumnId: null }, // 자료정리

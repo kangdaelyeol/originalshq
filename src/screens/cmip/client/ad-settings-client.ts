@@ -85,6 +85,8 @@ export interface AdSettingFields {
   /** 소비 설정 비용. */
   budget: AdBudget | null
   creativeSetId: string | null
+  /** 이 장에서 돌린 소재(adCreatives id) — 바뀐 날이 매체별 테스트의 구간이 된다. */
+  creativeIds: string[]
   targetCpa: number | null
   /** 목표 ROAS(%). */
   targetRoas: number | null
@@ -181,6 +183,7 @@ export const EMPTY_AD_SETTING: AdSettingFields = {
   conversionGoal: null,
   budget: null,
   creativeSetId: null,
+  creativeIds: [],
   targetCpa: null,
   targetRoas: null,
   funnelStage: null,
@@ -212,8 +215,16 @@ const call = async <T>(endpoint: string, init?: RequestInit): Promise<T> => {
 
 export const getAdSettings = async (): Promise<AdSettingsSnapshot> => {
   const body = await call<AdSettingsSnapshot>('getAdSettings')
-  // tests는 매체별 테스트와 함께 생겼다 — 그 전 서버 응답에는 없다.
-  return { ...body, tests: body.tests ?? [] }
+  // tests는 매체별 테스트와, creativeIds는 소재 칸과 함께 생겼다 — 그 전 서버
+  // 응답에는 없다.
+  return {
+    ...body,
+    tests: body.tests ?? [],
+    versions: body.versions.map((v) => ({
+      ...v,
+      creativeIds: v.creativeIds ?? [],
+    })),
+  }
 }
 
 /** 저장·삭제 — 응답은 action마다 { version } · { goal } · { set } · { id, deleted }. */
@@ -292,6 +303,7 @@ const fillFrom = (
   conversionGoal: own.conversionGoal ?? parent.conversionGoal,
   budget: own.budget ?? parent.budget,
   creativeSetId: own.creativeSetId ?? parent.creativeSetId,
+  creativeIds: own.creativeIds.length ? own.creativeIds : parent.creativeIds,
   targetCpa: own.targetCpa ?? parent.targetCpa,
   targetRoas: own.targetRoas ?? parent.targetRoas,
   funnelStage: own.funnelStage ?? parent.funnelStage,
@@ -390,3 +402,40 @@ export const findAdEntity = (
           : e.level === 'adset' && e.name === adsetName),
     )
     .sort((a, b) => b.lastSeenDate.localeCompare(a.lastSeenDate))[0] ?? null
+
+// ── 소재 ──────────────────────────────────────────────────────────────────
+
+/** 저장한 소재 하나(listAdCreatives) — 매체에서 가져온 이미지·영상. */
+export interface AdCreativeView {
+  id: string
+  channel: AdChannel
+  kind: 'video' | 'image'
+  /** ready면 원본·프레임이 저장돼 있다. pending은 아직 내려받는 중. */
+  status: 'pending' | 'ready' | 'failed'
+  error: string | null
+  /** 오늘 집행 중인 광고에서 봤는지. */
+  active: boolean
+  lastSeenDate: ISODate
+  /** 이 소재를 쓴 광고(고른 캠페인·광고셋 안의 것만). */
+  ads: { id: string; name: string; adsetId: string }[]
+  media: {
+    width: number | null
+    height: number | null
+    lengthSec: number | null
+    thumbnailUrl: string | null
+    originalUrl: string | null
+    contentType: string
+    /** 분석용 프레임 — 영상 속 시점(초)마다 한 장. */
+    frames: { t: number; url: string | null }[]
+  } | null
+}
+
+/** 캠페인·광고셋 하나의 저장 소재 — 집행 중인 것 먼저. */
+export const listAdCreatives = async (
+  entityKey: AdEntityKey,
+): Promise<AdCreativeView[]> => {
+  const body = await call<{ creatives: AdCreativeView[] }>(
+    `listAdCreatives?${new URLSearchParams({ entityKey }).toString()}`,
+  )
+  return body.creatives
+}

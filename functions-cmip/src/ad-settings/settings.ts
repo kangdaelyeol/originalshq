@@ -82,7 +82,11 @@ export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
       ...(d.data() as CreativeSetDoc),
     })),
     versions: versionsSnap.docs
-      .map((d) => ({ id: d.id, ...(d.data() as AdSettingVersionDoc) }))
+      .map((d) => {
+        const doc = d.data() as AdSettingVersionDoc
+        // creativeIds는 소재 칸이 생기기 전 장에는 없다.
+        return { id: d.id, ...doc, creativeIds: doc.creativeIds ?? [] }
+      })
       .sort(
         (a, b) =>
           a.entityKey.localeCompare(b.entityKey) ||
