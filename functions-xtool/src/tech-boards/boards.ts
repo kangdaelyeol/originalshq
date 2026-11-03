@@ -1,4 +1,4 @@
-import { checked, koreaDate, pick } from '../monday/fields'
+import { checked, koreaDate, pick, squash } from '../monday/fields'
 import {
   toFieldService,
   toRepair,
@@ -6,6 +6,7 @@ import {
   toTechTask,
 } from '../monday/tech'
 import { MondayItem } from '../monday/types'
+import { ASSIGNEE_TITLE } from './assignees'
 import {
   TechAsRequest,
   TechBoardKey,
@@ -70,6 +71,23 @@ const list = (value: string | null): string[] =>
     .map((name) => name.trim())
     .filter(Boolean)
 
+/**
+ * 담당자 — 담당자(엑스툴) 글자 칸이 있으면 그 칸(비었으면 담당자 없음), 아직 없으면 원래
+ * Monday 사람 칸("담당자"). 직원들이 Monday를 떠나도 우리 화면이 쓴 담당자가 기준이 된다
+ * (assignees.ts).
+ */
+const assigneeText = (item: MondayItem): string | null => {
+  const own = Object.values(item.columns).find(
+    (c) => squash(c.title) === squash(ASSIGNEE_TITLE),
+  )
+  return own ? own.text.trim() || null : pick(item, /^담당자$/)
+}
+
+/** 업무 보드 기록의 담당자를 담당자(엑스툴) 칸 기준으로 */
+const withAssignee =
+  <T extends { assignee: string | null }>(convert: (item: MondayItem) => T) =>
+  (item: MondayItem): T => ({ ...convert(item), assignee: assigneeText(item) })
+
 /** 숫자 칸 — 비었거나 숫자가 아니면 null. */
 const num = (value: string | null): number | null => {
   if (value === null) return null
@@ -88,7 +106,7 @@ const link = (value: string | null): string | null =>
 export const toDocTask = (item: MondayItem): TechDocTask => ({
   ...base(item),
   status: pick(item, /^상태$/),
-  assignees: list(pick(item, /^담당자$/)),
+  assignees: list(assigneeText(item)),
   requestedAt: koreaDate(pick(item, /^요청일$/)),
   completedAt: koreaDate(pick(item, /^완료일$/)),
   notionUrl: link(pick(item, /^링크/)),
@@ -129,7 +147,7 @@ export const toRental = (item: MondayItem): TechRental => ({
   ...base(item),
   status: pick(item, /^상태$/),
   serialNumber: pick(item, /일련번호|^SN$/i),
-  assignees: list(pick(item, /^담당자$/)),
+  assignees: list(assigneeText(item)),
   renter: pick(item, /^고객명/),
   renterPhone: pick(item, /^연락처/),
   rentedAt: koreaDate(pick(item, /^대여일자$/)),
@@ -160,10 +178,10 @@ const withPhone =
 const CONVERTERS: {
   [K in TechBoardKey]: (item: MondayItem) => TechBoardRecords[K]
 } = {
-  fieldService: withPhone(toFieldService),
-  repair: withPhone(toRepair),
-  techInquiry: withPhone(toTechInquiry),
-  techTask: withPhone(toTechTask),
+  fieldService: withPhone(withAssignee(toFieldService)),
+  repair: withPhone(withAssignee(toRepair)),
+  techInquiry: withPhone(withAssignee(toTechInquiry)),
+  techTask: withPhone(withAssignee(toTechTask)),
   records: toDocTask,
   asRequests: toAsRequest,
   parts: toPart,

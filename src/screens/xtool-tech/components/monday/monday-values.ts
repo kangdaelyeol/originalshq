@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
-import type { EditState, LocationState } from '../../data/tech-edit'
+import { columnLabel, isAssigneeColumn, withoutLegacyAssignee, type EditState, type LocationState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { labelColor } from './monday-colors'
@@ -15,6 +15,7 @@ const WIDTH_BY_TYPE: Record<string, number> = {
   status: 140,
   dropdown: 150,
   people: 96,
+  assignee: 110,
   date: 116,
   numbers: 100,
   checkbox: 76,
@@ -180,8 +181,15 @@ export const rowKey = (item: TechItemDoc): string => item.localKey ?? item.itemI
 export const groupIdOf = (meta: TechBoardMeta, item: TechItemDoc): string =>
   item.groupId && meta.groups.some((g) => g.id === item.groupId) ? item.groupId : OTHER_GROUP
 
-/** 보드에서 보이는 칸 — 하위 아이템·버튼 칸은 뺀다. */
-export const visibleColumns = (meta: TechBoardMeta): TechColumn[] => meta.columns.filter((c) => !HIDDEN_TYPES.has(c.type))
+/**
+ * 보드에서 보이는 칸 — 하위 아이템·버튼 칸은 뺀다. 담당자(엑스툴) 글자 칸은 "담당자"라는 이름의
+ * 화면 전용 칸 종류('assignee' — 기술팀 이름을 동그라미로 보여 주고 명단에서 고른다)로 바꾸고, 그
+ * 칸이 있으면 원래 Monday 사람 칸("담당자")은 숨긴다.
+ */
+export const visibleColumns = (meta: TechBoardMeta): TechColumn[] =>
+  withoutLegacyAssignee(meta.columns)
+    .filter((c) => !HIDDEN_TYPES.has(c.type))
+    .map((c) => (isAssigneeColumn(c) ? { ...c, title: columnLabel(c), type: 'assignee' } : c))
 
 /** 머리글 정렬 — 1 오름차순 · -1 내림차순 */
 export type MonSort = { columnId: string; dir: 1 | -1 } | null

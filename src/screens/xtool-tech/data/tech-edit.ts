@@ -23,6 +23,27 @@ const WRITABLE_TYPES = new Set([
 export const isWritable = (c: TechColumn) =>
   c.writable || WRITABLE_TYPES.has(c.type) || (c.type === 'board_relation' && !!c.linkedBoardKey)
 
+// ── 담당자(엑스툴) 칸 ──────────────────────────────────────────────────────────
+// 직원들이 Monday를 떠나면 Monday 사람 칸("담당자")에는 담당자를 넣을 수 없어서, 보드마다 따로 만든
+// 글자 칸에 기술팀 구성원 이름을 ", "로 이어 쓴다(서버 tech-boards/assignees.ts). 이 칸이 있는
+// 보드는 원래 사람 칸을 화면에서 숨기고, 이 칸을 "담당자"로 보여 준다.
+const ASSIGNEE_TITLE = '담당자(엑스툴)'
+const compactTitle = (title: string) => title.replace(/\s/g, '')
+
+export const isAssigneeColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean =>
+  c.type === 'text' && compactTitle(c.title) === ASSIGNEE_TITLE
+
+/** 원래 담당자(Monday 사람 칸) */
+const isLegacyAssigneeColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean =>
+  c.type === 'people' && compactTitle(c.title) === '담당자'
+
+/** 담당자(엑스툴) 칸이 있으면 원래 사람 칸은 뺀다. */
+export const withoutLegacyAssignee = <T extends Pick<TechColumn, 'type' | 'title'>>(columns: T[]): T[] =>
+  columns.some(isAssigneeColumn) ? columns.filter((c) => !isLegacyAssigneeColumn(c)) : columns
+
+/** 화면에 보일 칸 이름 — 담당자(엑스툴)는 그냥 "담당자" */
+export const columnLabel = (c: Pick<TechColumn, 'type' | 'title'>): string => (isAssigneeColumn(c) ? '담당자' : c.title)
+
 // ── 연락처 칸 ─────────────────────────────────────────────────────────────────
 // 전화 칸과 제목이 연락처·전화번호·휴대폰인 글자 칸 — 칠 때는 010-1234-5678로 맞춰 보여 주고,
 // 저장은 숫자만(하이픈 없이) 한다. 리드 매니저가 고객을 번호(숫자)로 찾는다. 번호 하나로 볼 수

@@ -64,7 +64,9 @@ export function CellView({ column, cell }: CellViewProps) {
           ))}
         </span>
       )
+    // 담당자(엑스툴, 'assignee')는 기술팀 이름이 글자로 적혀 있다(monday-values visibleColumns).
     case 'people':
+    case 'assignee':
       return <People names={splitText(text)} />
     case 'date':
       return text ? <span className="mon-text">{mondayDate(text)}</span> : null

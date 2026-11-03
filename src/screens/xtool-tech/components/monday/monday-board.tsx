@@ -32,7 +32,7 @@ export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
   const boardRef = useRef<HTMLElement>(null)
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
-  const peopleColumns = useMemo(() => columns.filter((c) => c.type === 'people'), [columns])
+  const peopleColumns = useMemo(() => columns.filter((c) => c.type === 'people' || c.type === 'assignee'), [columns])
 
   const [collapsed, setCollapsed] = useCollapsedGroups(boardKey)
   const [query, setQuery] = useState('')

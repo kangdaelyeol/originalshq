@@ -8,6 +8,7 @@ import { SettingsProvider } from '@/screens/xtool-tech/settings/settings-provide
 import '@/screens/xtool-tech/styles/index.scss'
 import { AdminHeader } from './admin-header'
 import { AdminSignIn } from './admin-sign-in'
+import { AssigneeCopyCard } from './assignee-copy-card'
 import { EditLogCard } from './edit-log-card'
 import { MemberForm } from './member-form'
 import { MembersTable } from './members-table'
@@ -62,6 +63,7 @@ function AdminScreen() {
           <>
             <TechSyncCard />
             <PhoneCopyCard />
+            <AssigneeCopyCard />
           </>
         )}
         {tab === 'logs' && <EditLogCard />}

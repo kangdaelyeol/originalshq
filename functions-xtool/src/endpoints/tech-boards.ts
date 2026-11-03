@@ -12,9 +12,11 @@ import { recordBatchRun } from '../batch-log'
 import { traceRun, traced } from '../cost-trace'
 import {
   addBackground,
+  ASSIGNEE_BOARDS,
   attachFile,
   BackgroundInput,
   clearFiles,
+  copyAssignees,
   copyPhonesFromNames,
   createItemUpdate,
   createTechItem,
@@ -511,6 +513,53 @@ export const techCopyPhones = onCall(
           noPhoneCount: result.noPhone.length,
           targets: result.targets.slice(0, PHONE_LIST_LIMIT),
           noPhone: result.noPhone.slice(0, PHONE_LIST_LIMIT),
+          errors: result.errors.slice(0, PHONE_LIST_LIMIT),
+        }
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techCopyAssignees — 원래 담당자(Monday 사람 칸)를 담당자(엑스툴) 글자 칸으로 복사
+// (관리자, 보드 하나씩). 칸이 없으면 담당자 칸 옆에 만들고, 이미 채워진 건은 건너뛴다.
+// dryRun이면 무엇을 할지만 돌려준다. 시간이 모자라면 remaining을 돌려주고 — 다시 부르면
+// 이어서 쓴다. 다 쓰면 그 보드를 다시 동기화해 새 칸과 담당자를 캐시에 넣는다
+// (tech-boards/assignees.ts).
+// ────────────────────────────────
+export const techCopyAssignees = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS },
+  traced(
+    'techCopyAssignees',
+    'callable',
+    async (
+      request: CallableRequest<{ boardKey?: string; dryRun?: boolean }>,
+    ) => {
+      await requireMember(request, true)
+      const key = String(request.data?.boardKey ?? '')
+      const source = findTechBoard({ key })
+      if (!source || !ASSIGNEE_BOARDS.includes(source.key)) {
+        throw new HttpsError('invalid-argument', '담당자 칸이 있는 보드가 아니에요')
+      }
+      const dryRun = request.data?.dryRun !== false
+      try {
+        const result = await copyAssignees(
+          mondayApiKey.value(),
+          source,
+          dryRun,
+        )
+        const sync = dryRun || result.remaining > 0 ?
+          null :
+          await syncTechBoard(db, mondayApiKey.value(), source)
+        return {
+          ...result,
+          boardKey: source.key,
+          dryRun,
+          sync: sync ? { ok: sync.ok, error: sync.error ?? null } : null,
+          targetCount: result.targets.length,
+          targets: result.targets.slice(0, PHONE_LIST_LIMIT),
           errors: result.errors.slice(0, PHONE_LIST_LIMIT),
         }
       } catch (error) {

@@ -10,17 +10,21 @@ import {
   type TechMondayUser,
 } from '../../data/tech-boards'
 import { useMondayUsers } from '../../data/tech-boards-store'
+import { useTechMembers } from '../../data/tech-members'
 import { createItem, editItem, type CellEdit } from '../../data/tech-outbox'
 import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubRow } from '../../data/tech-subitems'
 import {
+  columnLabel,
   emptyState,
   formatPhoneTyping,
   initialState,
+  isAssigneeColumn,
   isPhoneColumn,
   isPhoneLike,
   isWritable,
   sameState,
   toEditValue,
+  withoutLegacyAssignee,
   type EditState,
   type LocationState,
 } from '../../data/tech-edit'
@@ -101,7 +105,8 @@ interface FormState {
 
 function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'open'>) {
   const users = useMondayUsers()
-  const columns = useMemo(() => meta.columns.filter(isWritable), [meta.columns])
+  // 담당자(엑스툴) 칸이 있으면 원래 Monday 사람 칸("담당자")은 뺀다.
+  const columns = useMemo(() => withoutLegacyAssignee(meta.columns.filter(isWritable)), [meta.columns])
   // 하위 줄을 여기서 고치면, 그걸 끌어와 보여 주는 미러 칸("설치 품목")은 잠금 안내에서 뺀다.
   const subLabelForLock = meta.subitems ? SUBITEM_LABEL[boardKey] : undefined
   const lockedTitles = meta.columns
@@ -145,7 +150,7 @@ function EditorForm({ boardKey, meta, item, onClose }: Omit<ItemEditorProps, 'op
   const rows = layoutRows(columns, [...noteColumns, ...(statusColumn ? [statusColumn] : [])])
 
   const renderColumn = (column: TechColumn) => (
-    <Field key={column.id} label={column.title} changed={!!item && changedColumns.includes(column)}>
+    <Field key={column.id} label={columnLabel(column)} changed={!!item && changedColumns.includes(column)}>
       {(id) => (
         <ColumnInput
           id={id}
@@ -408,6 +413,7 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
       )
     }
     default:
+      if (isAssigneeColumn(column)) return <AssigneePicker id={id} value={value as string} onChange={onChange} />
       return (
         <input
           id={id}
@@ -713,11 +719,9 @@ export function MultiSelect({
 }
 
 /**
- * 담당자 고르기 — Monday 사용자 목록(techMeta/mondayUsers) + 처음 열 때 이미 지정돼 있던 사람.
- * 목록 밖 사람(비활성 등)도 처음 본 것을 기억해 두어, 해제해도 사라지지 않고 다시 켤 수 있다.
- *
- * TODO(예정): 관리자 화면(/admin/xtool)에서 기술팀으로 등록한 구성원은 이 목록에 항상 보이게
- * 한다 — xtoolMembers(이메일)와 Monday 사용자(email)를 이어 붙여 Monday id를 찾는다.
+ * Monday 사람 칸 고르기(담당자가 아닌 칸 — 담당자는 우리 명단에서 고르는 AssigneePicker) — Monday 사용자
+ * 목록(techMeta/mondayUsers) + 처음 열 때 이미 지정돼 있던 사람. 목록 밖 사람(비활성 등)도 처음 본
+ * 것을 기억해 두어, 해제해도 사라지지 않고 다시 켤 수 있다.
  */
 function PeoplePicker({
   id,
@@ -748,6 +752,28 @@ function PeoplePicker({
       onChange={onChange}
       searchable
       empty={users === null ? '사람 목록을 불러오는 중…' : '고를 수 있는 사람이 없어요'}
+    />
+  )
+}
+
+/**
+ * 담당자(엑스툴) 고르기 — 관리자 화면에 등록한 기술팀원 이름에서(Monday 계정과 상관없다). 값은 이름을
+ * ", "로 이은 글자. 처음 적혀 있던 이름(예전 담당자)도 명단에 없어도 남겨 둔다.
+ */
+function AssigneePicker({ id, value, onChange }: { id: string; value: string; onChange: (value: string) => void }) {
+  const members = useTechMembers()
+  const selected = value.split(', ').map((s) => s.trim()).filter(Boolean)
+  const [remembered] = useState(selected)
+  const team = (members ?? []).map((m) => m.name.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'))
+  const options = [...new Set([...remembered, ...team])].map((name) => ({ value: name, label: name }))
+  return (
+    <ChipPicker
+      id={id}
+      options={options}
+      selected={selected}
+      onChange={(names) => onChange(names.join(', '))}
+      searchable
+      empty={members === null ? '기술팀 명단을 불러오는 중…' : '고를 사람이 없어요'}
     />
   )
 }

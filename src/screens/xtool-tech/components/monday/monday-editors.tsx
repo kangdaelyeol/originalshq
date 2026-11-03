@@ -2,6 +2,7 @@ import { Check, Search, X } from 'lucide-react'
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { TechCellValue, TechColumn } from '../../data/tech-boards'
 import { useMondayUsers, useTechBoard } from '../../data/tech-boards-store'
+import { useTechMembers } from '../../data/tech-members'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { initialState, sameState, type EditState, type LocationState } from '../../data/tech-edit'
 import { cx } from '../../lib/cx'
@@ -11,7 +12,7 @@ import { labelColor } from './monday-colors'
 import { PersonAvatar } from './monday-cells'
 import { DatePicker } from './monday-date-picker'
 import { MonPopover } from './monday-popover'
-import { previewCell } from './monday-values'
+import { previewCell, splitText } from './monday-values'
 
 export interface CellCommit {
   state: EditState
@@ -81,6 +82,8 @@ export function CellEditor(props: CellEditorProps) {
       return <DropdownEditor {...props} />
     case 'people':
       return <PeopleEditor {...props} />
+    case 'assignee':
+      return <AssigneeEditor {...props} />
     case 'board_relation':
       return props.column.linkedBoardKey ? <RelationEditor {...props} boardKey={props.column.linkedBoardKey} /> : null
     case 'date':
@@ -209,7 +212,11 @@ function DropdownEditor({ column, cell, anchor, onCommit, onCancel }: CellEditor
   )
 }
 
-/** 담당자 — Monday 사용자 목록에서. 처음부터 지정돼 있던 사람(목록 밖·비활성)도 이름을 지킨다. */
+/**
+ * Monday 사람 칸(담당자가 아닌 칸 — 담당자는 우리 명단에서 고르는 AssigneeEditor) — Monday 사람 칸은
+ * Monday 사용자만 받아서 Monday 사용자 목록에서 고른다. 처음부터 지정돼 있던 사람(목록 밖·비활성)도
+ * 이름을 지킨다.
+ */
 function PeopleEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProps) {
   const users = useMondayUsers()
   const photoOf = usePhotoOf()
@@ -247,6 +254,50 @@ function PeopleEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorPr
         )}
         searchPlaceholder="이름 찾기"
         empty={users === null ? '사람 목록을 불러오는 중…' : '고를 사람이 없어요'}
+      />
+    </MonPopover>
+  )
+}
+
+/**
+ * 담당자(엑스툴) — 관리자 화면에 등록한 기술팀원 중에서 고른다(Monday 계정과 상관없다). 값은 이름을
+ * ", "로 이은 글자. 명단에 없는 이름(예전 담당자)도 처음 적혀 있던 것은 지킨다.
+ */
+function AssigneeEditor({ column, cell, anchor, onCommit, onCancel }: CellEditorProps) {
+  const members = useTechMembers()
+  const photoOf = usePhotoOf()
+  const [initial] = useState(() => splitText(cell?.text ?? ''))
+  const [selected, setSelected] = useState(initial)
+  const options = useMemo(() => {
+    const team = (members ?? [])
+      .map((m) => m.name.trim())
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'ko'))
+    return [...new Set([...initial, ...team])].map((name) => ({ value: name, label: name }))
+  }, [members, initial])
+  return (
+    <MonPopover
+      anchor={anchor}
+      width={260}
+      onClose={(commit) => {
+        if (!commit || sameState(initial, selected)) return onCancel()
+        const text = selected.join(', ')
+        onCommit({ state: text, preview: previewCell(column, text) })
+      }}
+    >
+      <PickList
+        title={column.title}
+        options={options}
+        selected={selected}
+        onChange={setSelected}
+        renderOption={(o) => (
+          <>
+            <PersonAvatar name={o.label} photo={photoOf(o.label)} />
+            {o.label}
+          </>
+        )}
+        searchPlaceholder="이름 찾기"
+        empty={members === null ? '기술팀 명단을 불러오는 중…' : '고를 사람이 없어요'}
       />
     </MonPopover>
   )

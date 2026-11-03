@@ -20,6 +20,7 @@ export { attachFile, clearFiles, fileUrls, MAX_FILE_BYTES } from './files'
 export { addBackground, deleteBackground } from './backgrounds'
 export type { BackgroundInput } from './backgrounds'
 export { copyPhonesFromNames } from './phones'
+export { ASSIGNEE_BOARDS, copyAssignees } from './assignees'
 export type { PhoneCopyResult } from './phones'
 export {
   createItemUpdate,
