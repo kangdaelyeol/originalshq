@@ -8,9 +8,11 @@ import type { DaangnCredentials } from '../channel/daangn/client'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
 import { findActiveDaangnCreatives } from './daangn'
+import { mapLimit } from './list'
 import {
   isMissingBucket,
   processCreativeMedia,
+  withDownloadUrls,
   type MediaSource,
 } from './media'
 import { findActiveMetaCreatives, mediaUrlOf, pageTokensOf } from './meta'
@@ -48,6 +50,8 @@ export interface CreativeSyncResult {
   failed: { id: string; error: string }[]
   /** 아직 처리하지 않은 소재(다음 실행에). */
   pending: number
+  /** 화면용 주소(다운로드 토큰)를 이번에 채운 예전 소재 수. */
+  urlsFilled: number
 }
 
 /** 1) 찾은 소재를 adCreatives에 모은다 — 이미 있는 문서는 한 번에 읽고,
@@ -161,6 +165,35 @@ async function processPending(
   return { processed, failed, pending: pending.length - processed - stopped }
 }
 
+/** 3) 토큰을 붙이기 전에 저장한 그 채널의 소재에 화면용 주소를 채운다 — 화면이
+ * 소재 목록을 처음 열 때 기다리지 않게(listAdCreatives도 없으면 채우지만
+ * 느리다). 다 채운 뒤에는 읽기만 하고 끝난다. */
+async function fillDownloadUrls(
+  channel: CreativeChannel,
+  deadlineMs: number,
+): Promise<number> {
+  const snap = await db
+    .collection(AD_CREATIVES)
+    .where('status', '==', 'ready')
+    .where('channel', '==', channel)
+    .get()
+  const missing = snap.docs
+    .map((d) => d.data() as AdCreative)
+    .filter(
+      (c) =>
+        c.media && !(c.media.originalUrl && c.media.frames.every((f) => f.url)),
+    )
+  let filled = 0
+  await mapLimit(missing, 6, async (creative) => {
+    if (Date.now() > deadlineMs || !creative.media) return
+    const media = await withDownloadUrls(creative.media)
+    if (!media) return
+    await db.collection(AD_CREATIVES).doc(creative.id).update({ media })
+    filled += 1
+  })
+  return filled
+}
+
 /**
  * Meta 소재 동기화. deadlineMs(벽시계 시각)가 가까우면 처리를 멈추고 남은 건
  * 다음 실행에 넘긴다.
@@ -187,6 +220,7 @@ export async function syncMetaCreatives(
     creatives: found.creatives.length,
     ...recorded,
     ...processed,
+    urlsFilled: await fillDownloadUrls('meta', deadlineMs),
   }
 }
 
@@ -214,5 +248,6 @@ export async function syncDaangnCreatives(
     creatives: found.creatives.length,
     ...recorded,
     ...processed,
+    urlsFilled: await fillDownloadUrls('daangn', deadlineMs),
   }
 }

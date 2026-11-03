@@ -94,23 +94,18 @@ async function saveWithUrl(
 }
 
 /** 주소가 없는(토큰을 붙이기 전에 저장한) 소재에 토큰을 붙여 주소를 채운다 —
- * 바뀌었으면 새 media, 이미 다 있으면 null. */
+ * 바뀌었으면 새 media, 이미 다 있으면 null. 파일마다 토큰을 새로 붙이기만
+ * 한다(읽어 보지 않고 — 이 주소를 쓰는 곳은 이 문서뿐이라 덮어써도 된다). */
 export async function withDownloadUrls(
   media: CreativeMedia,
 ): Promise<CreativeMedia | null> {
   if (media.originalUrl && media.frames.every((f) => f.url)) return null
   const bucket = getStorage().bucket()
   const urlOf = async (path: string) => {
-    const file = bucket.file(path)
-    const [meta] = await file.getMetadata()
-    const existing = String(
-      meta.metadata?.firebaseStorageDownloadTokens ?? '',
-    ).split(',')[0]
-    const token = existing || randomUUID()
-    if (!existing)
-      await file.setMetadata({
-        metadata: { firebaseStorageDownloadTokens: token },
-      })
+    const token = randomUUID()
+    await bucket
+      .file(path)
+      .setMetadata({ metadata: { firebaseStorageDownloadTokens: token } })
     return downloadUrl(bucket.name, path, token)
   }
   return {

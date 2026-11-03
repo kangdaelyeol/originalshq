@@ -32,6 +32,23 @@ export interface AdCreativeView {
 
 /** array-contains-any는 값 30개까지라 나눠 묻는다. */
 const IN_LIMIT = 30
+/** 주소를 채울 때 동시에 처리할 소재 수(소재 하나에 파일이 최대 31개). */
+const FILL_CONCURRENCY = 6
+
+/** items를 limit개씩 동시에 돌린다. */
+export async function mapLimit<T>(
+  items: readonly T[],
+  limit: number,
+  run: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0
+  const worker = async () => {
+    while (next < items.length) await run(items[next++])
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(limit, items.length) }, worker),
+  )
+}
 
 const adsetKeysOf = async (entityKey: AdEntityKey): Promise<string[]> => {
   const [channel, level, platformId] = entityKey.split(':')
@@ -59,20 +76,28 @@ export async function listAdCreatives(
 
   const today = todayISO()
   const adsetIds = new Set(keys.map((k) => k.split(':')[2]))
+  // 토큰을 붙이기 전에 저장한 소재 — 주소를 채우고 저장해 둔다(예약 동기화가
+  // 미리 채우므로 보통은 없다). 소재 여러 개를 동시에.
+  const creatives = [...byId.values()]
+  const filledMedia = new Map<string, AdCreative['media']>()
+  await mapLimit(
+    creatives.filter((c) => c.status === 'ready'),
+    FILL_CONCURRENCY,
+    async (creative) => {
+      if (!creative.media) return
+      const filled = await withDownloadUrls(creative.media)
+      if (!filled) return
+      await db
+        .collection(AD_CREATIVES)
+        .doc(creative.id)
+        .update({ media: filled })
+      filledMedia.set(creative.id, filled)
+    },
+  )
+
   const views: AdCreativeView[] = []
-  for (const creative of byId.values()) {
-    let media = creative.media
-    if (creative.status === 'ready' && media) {
-      // 토큰을 붙이기 전에 저장한 소재 — 한 번만 채우고 저장해 둔다.
-      const filled = await withDownloadUrls(media)
-      if (filled) {
-        await db
-          .collection(AD_CREATIVES)
-          .doc(creative.id)
-          .update({ media: filled })
-        media = filled
-      }
-    }
+  for (const creative of creatives) {
+    const media = filledMedia.get(creative.id) ?? creative.media
     views.push({
       id: creative.id,
       channel: creative.channel,
