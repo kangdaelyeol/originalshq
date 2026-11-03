@@ -1,8 +1,6 @@
-import { STAT_FIELDS } from './constants'
 import { addDays, todayISO } from '../utils'
 import {
   fetchAllNaverInsightRows,
-  fetchNaver,
   NaverCredentials,
 } from './client'
 import {
@@ -43,83 +41,6 @@ function summarizeNaverInsight(
     // 같은 도출 방식을 캠페인·adgroup 단위 부분집합에 그대로 적용한 것.
     byCampaign: summarizeByCampaign(data, startDate, endDate),
   }
-}
-
-/**
- * 디버그 전용 — /ncc/campaigns, /ncc/adgroups, /stats 세 응답의 "원본"을 그대로
- * 반환한다. getNaverInsight가 빈 데이터를 돌려줄 때, 세 응답 중 어디서부터
- * 내 가정(배열인지/필드명이 nccCampaignId·name 등인지)이 틀렸는지 눈으로
- * 확인하기 위한 용도 — 문제 확인되면 이 함수와 index.ts의 호출부(엔드포인트)는
- * 지워도 된다. campaigns가 비어 있으면 그 뒤(adgroups/stats)는 아예 안 부른다.
- *
- * NOTE: 캠페인/광고그룹은 "아무거나 첫 번째"가 아니라 status가 ELIGIBLE(운영
- * 중)인 것 중에서 고른다 — PAUSED인 캠페인을 집으면 stats.data가 원래도 비어
- * 있어서, 필드명 검증이 안 된다.
- */
-export async function debugFetchNaverRaw(
-  dateStart: string,
-  dateEnd: string,
-  credentials: NaverCredentials,
-): Promise<{
-  pickedCampaign: unknown
-  pickedAdgroup: unknown
-  statsRaw: unknown
-}> {
-  const campaignsRaw = await fetchNaver<unknown>(
-    '/ncc/campaigns',
-    {},
-    credentials,
-  )
-
-  const pickEligible = (
-    list: unknown,
-  ): Record<string, unknown> | undefined => {
-    if (!Array.isArray(list)) return undefined
-    const rows = list as Record<string, unknown>[]
-    return rows.find((row) => row.status === 'ELIGIBLE') ?? rows[0]
-  }
-
-  const campaign = pickEligible(campaignsRaw)
-  const campaignId = campaign?.nccCampaignId as string | undefined
-
-  const adgroupsRaw = campaignId
-    ? await fetchNaver<unknown>(
-        '/ncc/adgroups',
-        { nccCampaignId: campaignId },
-        credentials,
-      )
-    : null
-
-  const adgroup = pickEligible(adgroupsRaw)
-  const adgroupId = adgroup?.nccAdgroupId as string | undefined
-
-  // 요청한 기간 전체를 한 번에 넣어봐서, /stats가 여러 날짜를 한 번에 내려줄 수
-  // 있는지(그리고 된다면 날짜 필드명이 뭔지)도 같이 확인한다.
-  const statsRaw = adgroupId
-    ? await fetchNaver<unknown>(
-        '/stats',
-        {
-          ids: adgroupId,
-          fields: JSON.stringify(STAT_FIELDS),
-          timeRange: JSON.stringify({ since: dateStart, until: dateEnd }),
-        },
-        credentials,
-      )
-    : null
-
-  return { pickedCampaign: campaign, pickedAdgroup: adgroup, statsRaw }
-}
-
-/** 디버그 전용 — client.ts가 가공까지 마친(집계는 안 된) 인사이트 행 배열을
- * 그대로 반환한다(meta의 debugFetchMetaInsightRaw와 같은 목적 — DB 백필 후
- * 같은 기간 결과를 직접 합산해 대조하는 용도). */
-export async function debugFetchNaverInsightRows(
-  dateStart: string,
-  dateEnd: string,
-  credentials: NaverCredentials,
-): Promise<{ rows: NaverInsight; count: number }> {
-  const rows = await fetchAllNaverInsightRows(dateStart, dateEnd, credentials)
-  return { rows, count: rows.length }
 }
 
 /**

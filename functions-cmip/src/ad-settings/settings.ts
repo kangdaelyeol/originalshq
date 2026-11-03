@@ -3,6 +3,7 @@ import type {
   DocumentData,
 } from 'firebase-admin/firestore'
 import { db } from '../data'
+import { HttpError } from '../http'
 import { adEntitiesCol, listAdEntities } from './entities'
 import type {
   AdEntityDoc,
@@ -93,12 +94,10 @@ export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
   }
 }
 
-export class AdSettingsError extends Error {
-  constructor(
-    message: string,
-    readonly status: number,
-  ) {
-    super(message)
+/** 저장할 수 없는 요청 — HttpError라 saveAdSettings가 그 상태 코드로 응답한다. */
+export class AdSettingsError extends HttpError {
+  constructor(message: string, status: number) {
+    super(status, message)
   }
 }
 

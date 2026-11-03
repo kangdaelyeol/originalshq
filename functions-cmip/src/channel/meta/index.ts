@@ -146,27 +146,3 @@ export const syncMetaInsightRows = async (
   await recordAdEntitiesSafely(sightingsFromMeta(taggedRows), logger.warn)
   return result
 }
-
-/** 디버그 전용 — 실제 Graph API 원본 행을 눈으로 확인/대조하는 용도
- * (cafe24/auth.ts의 debugFetchCafe24OrdersRaw와 같은 목적). 계정별로 몇 건
- * 나왔는지도 같이 보여준다. */
-export const debugFetchMetaInsightRaw = async (
-  dateStart: string,
-  dateEnd: string,
-  accessToken: string,
-): Promise<{
-  rows: DataSetInsight[]
-  count: number
-  countByAccount: Record<string, number>
-}> => {
-  const rowsByAccount = await fetchLiveMetaInsightRowsByAccount(
-    dateStart,
-    dateEnd,
-    accessToken,
-  )
-  const rows = rowsByAccount.flatMap((a) => a.rows)
-  const countByAccount = Object.fromEntries(
-    rowsByAccount.map((a) => [a.adAccountId, a.rows.length]),
-  )
-  return { rows, count: rows.length, countByAccount }
-}

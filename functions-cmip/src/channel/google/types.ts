@@ -57,3 +57,13 @@ export interface AdGroupMetricsRow {
     conversionsValue?: string | number
   }
 }
+
+/** Google Ads API에 붙는 데 필요한 값 — 앱 인증(시크릿 3개)과 어느 계정인지.
+ * loginCustomerId는 관리자(MCC) 계정을 거쳐 들어갈 때만. */
+export interface GoogleAdsAccount {
+  clientId: string
+  clientSecret: string
+  developerToken: string
+  customerId: string
+  loginCustomerId?: string
+}

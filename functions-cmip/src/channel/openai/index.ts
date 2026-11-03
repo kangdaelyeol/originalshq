@@ -1,7 +1,6 @@
 import { addDays, todayISO } from '../utils'
 import {
   fetchAllOpenaiInsightRows,
-  fetchOpenai,
   OpenaiCredentials,
 } from './client'
 import {
@@ -40,55 +39,6 @@ function summarizeOpenaiInsight(
     byGroupedWeek: summarizeByWeek(data, startDate, endDate),
     byCampaign: summarizeByCampaign(data, startDate, endDate),
   }
-}
-
-/** 디버그 전용 — 가공까지 마친(집계는 안 된) 인사이트 행 배열을 그대로
- * 반환한다(debugFetchNaverInsightRows와 같은 목적 — Ads Manager 숫자와 대조). */
-export async function debugFetchOpenaiInsightRows(
-  dateStart: string,
-  dateEnd: string,
-  credentials: OpenaiCredentials,
-): Promise<{ rows: OpenaiInsight; count: number }> {
-  const rows = await fetchAllOpenaiInsightRows(dateStart, dateEnd, credentials)
-  return { rows, count: rows.length }
-}
-
-/** KST 자정의 Unix 초 — 계정 시간대(Asia/Seoul) 하루 경계. */
-const kstMidnightUnix = (date: string): string =>
-  String(Date.parse(`${date}T00:00:00+09:00`) / 1000)
-
-/**
- * 디버그 전용(조회만) — 전환이 왜 0인지 보려고. GET insights의 conversions는
- * 캠페인에 붙인(attached) 전환 이벤트만 "목표 전환"으로 센다(공식 문서: Goal
- * reporting applies going forward from attachment). 그래서
- *   · eventSettings — 계정의 전환 이벤트 설정과 각각이 붙은 캠페인
- *   · conversions — 같은 기간 목표 전환 합계와, 목표 여부와 상관없이 잡힌
- *     이벤트별 건수(attributed_events)
- * 를 같이 돌려준다. 이벤트는 잡히는데 목표 전환이 0이면 캠페인에 안 붙은 것.
- */
-export async function debugFetchOpenaiConversions(
-  dateStart: string,
-  dateEnd: string,
-  credentials: OpenaiCredentials,
-): Promise<{ eventSettings: unknown; conversions: unknown }> {
-  const [eventSettings, conversions] = await Promise.all([
-    fetchOpenai<unknown>('/conversions/event_settings', { limit: '100' }, credentials),
-    fetchOpenai<unknown>('/conversions/insights', {}, credentials, {
-      aggregation_level: 'campaign',
-      time_granularity: 'none',
-      group_by_entity: false,
-      time_ranges: [
-        JSON.stringify({
-          type: 'unix_range',
-          start: kstMidnightUnix(dateStart),
-          // 끝은 포함하지 않는다 — dateEnd 다음 날 자정.
-          end: kstMidnightUnix(addDays(dateEnd, 1)),
-        }),
-      ],
-      include: ['attributed_events'],
-    }),
-  ])
-  return { eventSettings, conversions }
 }
 
 /** getNaverInsightWithHistory와 같은 구조 — 조회 구간을 LIVE_WINDOW_DAYS

@@ -1,5 +1,5 @@
-// Google Ads API 호출 — 라이브 조회(index.ts의 getGoogleInsight/
-// getGoogleAdGroupInsight)와 Firestore 배치 동기화(syncGoogleCampaignInsightRows/
+// Google Ads API 호출 — 라이브 조회(index.ts의 get*InsightWithHistory)와
+// Firestore 배치 동기화(syncGoogleCampaignInsightRows/
 // syncGoogleAdGroupInsightRows) 둘 다 이 파일의 두 fetch 함수를 공유한다
 // (meta/client.ts와 같은 이유 — GAQL 호출/토큰갱신 로직을 한 곳에서만
 // 관리해서 라이브/배치가 서로 다른 결과를 내는 일이 없게).
@@ -7,6 +7,7 @@ import {
   AdGroupMetricsRow,
   AdsMetricsRow,
   GoogleAdGroupInsightRow,
+  GoogleAdsAccount,
   GoogleCampaignInsightRow,
 } from './types'
 
@@ -62,17 +63,13 @@ function buildHeaders(
 export async function fetchGoogleCampaignInsightRows(
   dateStart: string,
   dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
+  account: GoogleAdsAccount,
   refreshToken: string,
-  loginCustomerId?: string,
 ): Promise<(GoogleCampaignInsightRow & { customerId: string })[]> {
-  const accessToken = await getAccessToken(refreshToken, clientId, clientSecret)
-  const cleanCustomerId = customerId.trim().replace(/-/g, '')
+  const accessToken = await getAccessToken(refreshToken, account.clientId, account.clientSecret)
+  const cleanCustomerId = account.customerId.trim().replace(/-/g, '')
   const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`
-  const headers = buildHeaders(accessToken, developerToken, loginCustomerId)
+  const headers = buildHeaders(accessToken, account.developerToken, account.loginCustomerId)
 
   const queryDaily = `
     SELECT
@@ -183,17 +180,13 @@ export async function fetchGoogleCampaignInsightRows(
 export async function fetchGoogleAdGroupInsightRows(
   dateStart: string,
   dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
+  account: GoogleAdsAccount,
   refreshToken: string,
-  loginCustomerId?: string,
 ): Promise<(GoogleAdGroupInsightRow & { customerId: string })[]> {
-  const accessToken = await getAccessToken(refreshToken, clientId, clientSecret)
-  const cleanCustomerId = customerId.trim().replace(/-/g, '')
+  const accessToken = await getAccessToken(refreshToken, account.clientId, account.clientSecret)
+  const cleanCustomerId = account.customerId.trim().replace(/-/g, '')
   const url = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`
-  const headers = buildHeaders(accessToken, developerToken, loginCustomerId)
+  const headers = buildHeaders(accessToken, account.developerToken, account.loginCustomerId)
 
   const query = `
     SELECT

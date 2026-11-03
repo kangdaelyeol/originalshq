@@ -25,8 +25,7 @@ const RATE_LIMIT_RETRY_DELAYS_MS = [1000, 3000, 6000]
 
 /** 인증 헤더를 붙여 GET 요청하고 JSON으로 파싱한다 — 네이버 API 호출부가
  * 전부 이 한 함수를 거친다. 429는 RATE_LIMIT_RETRY_DELAYS_MS만큼 쉬어가며
- * 최대 그 횟수만큼 재시도한다. debugFetchNaverRaw(index.ts)도 원본 응답
- * 확인용으로 이 함수를 그대로 쓴다. */
+ * 최대 그 횟수만큼 재시도한다. */
 export async function fetchNaver<T>(
   uri: string,
   query: Record<string, string>,

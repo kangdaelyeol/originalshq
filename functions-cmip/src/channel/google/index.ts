@@ -11,7 +11,11 @@ import {
   upsertGoogleAdGroupInsightRows,
   upsertGoogleCampaignInsightRows,
 } from './firestore'
-import { GoogleAdGroupInsightRow, GoogleCampaignInsightRow } from './types'
+import {
+  GoogleAdGroupInsightRow,
+  GoogleAdsAccount,
+  GoogleCampaignInsightRow,
+} from './types'
 import * as logger from 'firebase-functions/logger'
 import {
   recordAdEntitiesSafely,
@@ -99,74 +103,24 @@ async function getRefreshToken(brandId: string): Promise<string> {
   return refreshToken
 }
 
-/** 라이브 조회 전용(캠페인 단위) — client.ts의 fetchGoogleCampaignInsightRows를
- * 감싸서 기존 반환 모양({brandId, dateStart, dateEnd, totalCount, rows})을
- * 그대로 유지한다. GoogleTestPanel(디버그 화면)이 이 모양에 직접 의존한다. */
-export async function getGoogleInsight(
-  brandId: string,
-  dateStart: string,
-  dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
-) {
-  const refreshToken = await getRefreshToken(brandId)
-  const rows = await fetchGoogleCampaignInsightRows(
-    dateStart,
-    dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
-    refreshToken,
-    loginCustomerId,
-  )
-  return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
-}
-
-/** 라이브 조회 전용(adGroup=adset 단위) — getGoogleInsight와 동일한 구조. */
-export async function getGoogleAdGroupInsight(
-  brandId: string,
-  dateStart: string,
-  dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
-) {
-  const refreshToken = await getRefreshToken(brandId)
-  const rows = await fetchGoogleAdGroupInsightRows(
-    dateStart,
-    dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
-    refreshToken,
-    loginCustomerId,
-  )
-  return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
-}
-
 /** 조회 구간을 LIVE_WINDOW_DAYS 경계로 쪼개서, 최근 구간은 라이브 API로,
- * 그보다 과거인 구간은 Firestore(googleCampaignInsightDaily)에서 읽은 뒤 두
- * 배열을 이어붙여 그대로 반환한다 — meta/index.ts의
- * getMetaInsightWithHistory와 같은 구조. Google은 백엔드가 집계를 안 하고
- * 가공된 행만 돌려주므로(프론트 google-insight-client.ts가 집계) "요약 함수
- * 재사용" 단계 자체가 필요 없어 Meta보다 더 단순하다 — 행을 이어붙이는 게
- * 곧 최종 반환값이다. */
-export async function getGoogleCampaignInsightWithHistory(
+ * 그보다 과거인 구간은 Firestore에서 읽은 뒤 두 배열을 이어붙여 그대로
+ * 반환한다 — meta/index.ts의 getMetaInsightWithHistory와 같은 구조. Google은
+ * 백엔드가 집계를 안 하고 가공된 행만 돌려주므로(프론트
+ * google-insight-client.ts가 집계) "요약 함수 재사용" 단계 자체가 필요 없어
+ * Meta보다 더 단순하다 — 행을 이어붙이는 게 곧 최종 반환값이다. */
+async function readWithHistory<Row>(
   brandId: string,
   dateStart: string,
   dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
+  account: GoogleAdsAccount,
+  fromDb: (dateStart: string, dateEnd: string) => Promise<Row[]>,
+  fromApi: (
+    dateStart: string,
+    dateEnd: string,
+    account: GoogleAdsAccount,
+    refreshToken: string,
+  ) => Promise<Row[]>,
 ) {
   const today = todayISO()
   const liveStartBoundary = addDays(today, -(LIVE_WINDOW_DAYS - 1))
@@ -179,98 +133,68 @@ export async function getGoogleCampaignInsightWithHistory(
   const needsLive = liveStart <= dateEnd
 
   const [historicalRows, liveRows] = await Promise.all([
-    needsHistorical
-      ? fetchGoogleCampaignInsightRowsFromDb(dateStart, historicalEnd)
-      : Promise.resolve([] as GoogleCampaignInsightRow[]),
+    needsHistorical ? fromDb(dateStart, historicalEnd) : Promise.resolve([]),
     needsLive
-      ? (async () => {
-          const refreshToken = await getRefreshToken(brandId)
-          return fetchGoogleCampaignInsightRows(
+      ? (async () =>
+          fromApi(
             liveStart,
             dateEnd,
-            clientId,
-            clientSecret,
-            developerToken,
-            customerId,
-            refreshToken,
-            loginCustomerId,
-          )
-        })()
-      : Promise.resolve([] as GoogleCampaignInsightRow[]),
+            account,
+            await getRefreshToken(brandId),
+          ))()
+      : Promise.resolve([]),
   ])
 
-  const rows: GoogleCampaignInsightRow[] = [...historicalRows, ...liveRows]
+  const rows: Row[] = [...historicalRows, ...liveRows]
   return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
 }
+
+/** 캠페인 단위 조회 — 최근은 라이브, 과거는 googleCampaignInsightDaily. */
+export const getGoogleCampaignInsightWithHistory = (
+  brandId: string,
+  dateStart: string,
+  dateEnd: string,
+  account: GoogleAdsAccount,
+) =>
+  readWithHistory<GoogleCampaignInsightRow>(
+    brandId,
+    dateStart,
+    dateEnd,
+    account,
+    fetchGoogleCampaignInsightRowsFromDb,
+    fetchGoogleCampaignInsightRows,
+  )
 
 /** getGoogleCampaignInsightWithHistory와 동일 구조의 adGroup 버전. */
-export async function getGoogleAdGroupInsightWithHistory(
+export const getGoogleAdGroupInsightWithHistory = (
   brandId: string,
   dateStart: string,
   dateEnd: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
-) {
-  const today = todayISO()
-  const liveStartBoundary = addDays(today, -(LIVE_WINDOW_DAYS - 1))
-  const historicalEnd =
-    dateEnd < liveStartBoundary ? dateEnd : addDays(liveStartBoundary, -1)
-  const liveStart =
-    dateStart > liveStartBoundary ? dateStart : liveStartBoundary
-
-  const needsHistorical = dateStart <= historicalEnd
-  const needsLive = liveStart <= dateEnd
-
-  const [historicalRows, liveRows] = await Promise.all([
-    needsHistorical
-      ? fetchGoogleAdGroupInsightRowsFromDb(dateStart, historicalEnd)
-      : Promise.resolve([] as GoogleAdGroupInsightRow[]),
-    needsLive
-      ? (async () => {
-          const refreshToken = await getRefreshToken(brandId)
-          return fetchGoogleAdGroupInsightRows(
-            liveStart,
-            dateEnd,
-            clientId,
-            clientSecret,
-            developerToken,
-            customerId,
-            refreshToken,
-            loginCustomerId,
-          )
-        })()
-      : Promise.resolve([] as GoogleAdGroupInsightRow[]),
-  ])
-
-  const rows: GoogleAdGroupInsightRow[] = [...historicalRows, ...liveRows]
-  return { brandId, dateStart, dateEnd, totalCount: rows.length, rows }
-}
+  account: GoogleAdsAccount,
+) =>
+  readWithHistory<GoogleAdGroupInsightRow>(
+    brandId,
+    dateStart,
+    dateEnd,
+    account,
+    fetchGoogleAdGroupInsightRowsFromDb,
+    fetchGoogleAdGroupInsightRows,
+  )
 
 /** 수동/스케줄 동기화 공용(캠페인) — 라이브로 fetch해서
  * Firestore(googleCampaignInsightDaily)에 upsert한다. */
 export async function syncGoogleCampaignInsightRows(
+  brandId: string,
   dateStart: string,
   dateEnd: string,
-  brandId: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
+  account: GoogleAdsAccount,
 ): Promise<{ upserted: number }> {
   const refreshToken = await getRefreshToken(brandId)
   const rows = await fetchGoogleCampaignInsightRows(
     dateStart,
     dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
+    account,
     refreshToken,
-    loginCustomerId,
   )
   const result = await upsertGoogleCampaignInsightRows(rows)
   // 캠페인 목록(광고 설정 화면)도 같이 넓힌다.
@@ -280,78 +204,20 @@ export async function syncGoogleCampaignInsightRows(
 
 /** 수동/스케줄 동기화 공용(adGroup). */
 export async function syncGoogleAdGroupInsightRows(
+  brandId: string,
   dateStart: string,
   dateEnd: string,
-  brandId: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
+  account: GoogleAdsAccount,
 ): Promise<{ upserted: number }> {
   const refreshToken = await getRefreshToken(brandId)
   const rows = await fetchGoogleAdGroupInsightRows(
     dateStart,
     dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
+    account,
     refreshToken,
-    loginCustomerId,
   )
   const result = await upsertGoogleAdGroupInsightRows(rows)
   // 캠페인·광고그룹 목록(광고 설정 화면)도 같이 넓힌다.
   await recordAdEntitiesSafely(sightingsFromGoogleAdGroups(rows), logger.warn)
   return result
-}
-
-/** 디버그 전용 — 실제 Google Ads API 원본(가공은 됐지만 배치되지 않은) 행을
- * 눈으로 확인/대조하는 용도(cafe24의 debugFetchCafe24OrdersRaw와 같은 목적). */
-export async function debugFetchGoogleCampaignRaw(
-  dateStart: string,
-  dateEnd: string,
-  brandId: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
-): Promise<{ rows: GoogleCampaignInsightRow[]; count: number }> {
-  const refreshToken = await getRefreshToken(brandId)
-  const rows = await fetchGoogleCampaignInsightRows(
-    dateStart,
-    dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
-    refreshToken,
-    loginCustomerId,
-  )
-  return { rows, count: rows.length }
-}
-
-export async function debugFetchGoogleAdGroupRaw(
-  dateStart: string,
-  dateEnd: string,
-  brandId: string,
-  clientId: string,
-  clientSecret: string,
-  developerToken: string,
-  customerId: string,
-  loginCustomerId?: string,
-): Promise<{ rows: GoogleAdGroupInsightRow[]; count: number }> {
-  const refreshToken = await getRefreshToken(brandId)
-  const rows = await fetchGoogleAdGroupInsightRows(
-    dateStart,
-    dateEnd,
-    clientId,
-    clientSecret,
-    developerToken,
-    customerId,
-    refreshToken,
-    loginCustomerId,
-  )
-  return { rows, count: rows.length }
 }
