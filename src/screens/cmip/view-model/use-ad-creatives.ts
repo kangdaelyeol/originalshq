@@ -27,6 +27,32 @@ const load = (key: AdEntityKey) => {
   return request
 }
 
+/** 이 화면에서 바뀐 소재(분석·올리기·지우기)를 받아 둔 목록에도 반영한다 —
+ * 편집기를 닫았다 다시 열어도 보이게. 바뀐 소재가 없는 목록은 그대로 둔다. */
+export const changeCachedCreatives = (
+  change: (creatives: AdCreativeView[]) => AdCreativeView[],
+) => {
+  for (const [key, request] of requests) requests.set(key, request.then(change))
+}
+
+/** 방금 올린 소재 — 올린 대상의 목록 앞에 넣고, 같이 보일 수 있는 다른
+ * 대상(광고셋에 올리면 그 캠페인)의 목록은 다음에 열 때 다시 받는다. */
+export const addCachedCreative = (
+  key: AdEntityKey,
+  creative: AdCreativeView,
+) => {
+  for (const k of [...requests.keys()]) if (k !== key) requests.delete(k)
+  const request = requests.get(key)
+  if (request)
+    requests.set(
+      key,
+      request.then((list) => [
+        creative,
+        ...list.filter((c) => c.id !== creative.id),
+      ]),
+    )
+}
+
 /** 캠페인·광고셋 하나의 저장 소재(listAdCreatives). */
 export const useAdCreatives = (key: AdEntityKey): AdCreativesState => {
   const [state, setState] = useState<{

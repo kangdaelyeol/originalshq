@@ -1,12 +1,18 @@
 // 광고 소재 엔드포인트 — 집행 중인 광고의 소재(이미지·영상)를 매체에서 가져와
-// 원본과 분석용 프레임을 Storage에 모은다(creatives/). 지금은 Meta·당근.
+// 원본과 분석용 프레임을 Storage에 모은다(creatives/). 매체에서 가져오는 것은
+// Meta·당근이고, 나머지는 광고 설정 화면에서 직접 올린다.
 import { anthropicApiKey, daangnAdsApiKey, metaAdsId } from '../config'
 import { recordBatchRun } from '../batch-log'
 import {
   analyzeCreative as analyzeCreativeWithClaude,
+  deleteUploadedCreative,
+  finishCreativeUpload as finishCreativeUploadFromStorage,
   listAdCreatives as listAdCreativesFromDb,
+  startCreativeUpload as openCreativeUploadSession,
   syncDaangnCreatives as syncDaangnCreativesFromApi,
   syncMetaCreatives as syncMetaCreativesFromApi,
+  UPLOAD_ID,
+  validateStartUpload,
 } from '../creatives'
 import { ENTITY_KEY } from '../ad-settings'
 import { db } from '../data'
@@ -116,5 +122,51 @@ export const analyzeCreative = onRequest(
       }
       return analyzeCreativeWithClaude(creativeId, anthropicApiKey.value())
     },
+  ),
+)
+
+const uploadIdOf = (body: unknown) => {
+  const { creativeId } = (body ?? {}) as { creativeId?: unknown }
+  if (typeof creativeId !== 'string' || !UPLOAD_ID.test(creativeId)) {
+    throw new HttpError(400, '직접 올린 소재의 creativeId가 필요합니다')
+  }
+  return creativeId
+}
+
+/** 직접 올리기 1단계(POST { entityKey, fileName, contentType, size }) — Storage
+ * 업로드 세션 주소를 준다. 화면은 그 주소로 파일을 PUT하고 2단계를 부른다. */
+export const startCreativeUpload = onRequest(
+  endpoint(
+    {
+      method: 'POST',
+      validate: (request) => validateStartUpload(request.body),
+      fallback: '올리기를 시작하지 못했습니다',
+    },
+    ({ request, data, adminEmail }) => {
+      // 세션 주소는 이 Origin에서만 CORS가 열린다(브라우저가 직접 올린다).
+      const origin = request.get('origin') ?? ''
+      if (!/^https?:\/\/[^/]+$/.test(origin)) {
+        throw new HttpError(400, '브라우저 화면에서만 올릴 수 있습니다')
+      }
+      return openCreativeUploadSession(data, adminEmail ?? '', origin)
+    },
+  ),
+)
+
+/** 직접 올리기 2단계(POST { creativeId }) — 올라온 파일에서 프레임을 뽑고 소재
+ * 문서를 만들어 돌려준다. 영상이면 수십 초 걸린다. */
+export const finishCreativeUpload = onRequest(
+  { timeoutSeconds: 300, memory: MEMORY },
+  endpoint(
+    { method: 'POST', fallback: '올린 소재를 처리하지 못했습니다' },
+    ({ request }) => finishCreativeUploadFromStorage(uploadIdOf(request.body)),
+  ),
+)
+
+/** 직접 올린 소재 지우기(POST { creativeId }) — 저장한 장에 들어 있으면 409. */
+export const deleteCreativeUpload = onRequest(
+  endpoint(
+    { method: 'POST', fallback: '소재를 지우지 못했습니다' },
+    ({ request }) => deleteUploadedCreative(uploadIdOf(request.body)),
   ),
 )

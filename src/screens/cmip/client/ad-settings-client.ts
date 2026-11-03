@@ -405,19 +405,25 @@ export const findAdEntity = (
 
 // ── 소재 ──────────────────────────────────────────────────────────────────
 
-/** 저장한 소재 하나(listAdCreatives) — 매체에서 가져온 이미지·영상. */
+/** 저장한 소재 하나(listAdCreatives) — 매체에서 가져왔거나 직접 올린
+ * 이미지·영상. */
 export interface AdCreativeView {
   id: string
+  /** 보일 이름 — 쓴 광고 이름, 직접 올린 것은 파일 이름. */
+  name: string
   channel: AdChannel
   kind: 'video' | 'image'
   /** ready면 원본·프레임이 저장돼 있다. pending은 아직 내려받는 중. */
   status: 'pending' | 'ready' | 'failed'
   error: string | null
-  /** 오늘 집행 중인 광고에서 봤는지. */
+  /** 오늘 집행 중인 광고에서 봤는지 — 직접 올린 것은 늘 false(매체가 알려
+   * 주지 않는다). */
   active: boolean
   lastSeenDate: ISODate
   /** 이 소재를 쓴 광고(고른 캠페인·광고셋 안의 것만). */
   ads: { id: string; name: string; adsetId: string }[]
+  /** 화면에서 직접 올린 소재 — 매체에서 가져온 것은 null. */
+  upload: { fileName: string; uploadedBy: string; at: number } | null
   media: {
     width: number | null
     height: number | null
@@ -471,6 +477,79 @@ export const listAdCreatives = async (
 /** 소재 하나를 분석한다(수십 초, 비용이 든다) — 결과는 소재 문서에도 남는다. */
 export const analyzeCreative = (creativeId: string) =>
   call<CreativeAnalysis>('analyzeCreative', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creativeId }),
+  })
+
+/** 직접 올릴 수 있는 형식·크기 — 서버(creatives/upload.ts)와 같은 선. */
+export const CREATIVE_UPLOAD_TYPES: Record<string, 'video' | 'image'> = {
+  'image/jpeg': 'image',
+  'image/png': 'image',
+  'image/webp': 'image',
+  'image/gif': 'image',
+  'video/mp4': 'video',
+  'video/quicktime': 'video',
+  'video/webm': 'video',
+}
+export const CREATIVE_UPLOAD_MAX_MB = { video: 200, image: 30 } as const
+
+/**
+ * 소재 파일 하나를 직접 올린다 — 서버가 연 Storage 업로드 세션으로 파일을 바로
+ * 보내고(함수를 거치지 않아 큰 영상도 된다), 다 오르면 서버가 프레임을 뽑아
+ * 소재를 만든다. onProgress는 보낸 비율(0~1), 1이 된 뒤 처리에 수십 초 걸린다.
+ */
+export const uploadAdCreative = async (
+  entityKey: AdEntityKey,
+  file: File,
+  onProgress: (sent: number) => void,
+): Promise<AdCreativeView> => {
+  const { creativeId, uploadUrl } = await call<{
+    creativeId: string
+    uploadUrl: string
+  }>('startCreativeUpload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      entityKey,
+      fileName: file.name,
+      contentType: file.type,
+      size: file.size,
+    }),
+  })
+  // fetch는 올린 비율을 알려 주지 않아 XMLHttpRequest로 보낸다.
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', uploadUrl)
+    xhr.setRequestHeader('Content-Type', file.type)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded / e.total)
+    }
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(
+            new CallableError(
+              `파일을 올리지 못했습니다(HTTP ${xhr.status})`,
+              xhr.status,
+            ),
+          )
+    xhr.onerror = () =>
+      reject(
+        new CallableError('파일을 올리지 못했습니다(연결이 끊겼습니다)', 0),
+      )
+    xhr.send(file)
+  })
+  return call<AdCreativeView>('finishCreativeUpload', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ creativeId }),
+  })
+}
+
+/** 직접 올린 소재를 지운다 — 저장한 장에 들어 있으면 서버가 거절한다(409). */
+export const deleteAdCreativeUpload = (creativeId: string) =>
+  call<{ deleted: string }>('deleteCreativeUpload', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ creativeId }),

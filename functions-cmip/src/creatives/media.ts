@@ -46,30 +46,28 @@ const probe = async (file: string) => {
   }
 }
 
-const extOf = (contentType: string) =>
-  contentType.includes('png')
-    ? 'png'
-    : contentType.includes('webp')
-      ? 'webp'
-      : contentType.includes('mp4')
-        ? 'mp4'
-        : contentType.startsWith('video/')
-          ? 'video'
-          : 'jpg'
+const EXTENSIONS: Record<string, string> = {
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+  'video/mp4': 'mp4',
+  'video/quicktime': 'mov',
+  'video/webm': 'webm',
+}
+
+export const extOf = (contentType: string) =>
+  EXTENSIONS[contentType.split(';')[0].trim()] ??
+  (contentType.startsWith('video/') ? 'video' : 'jpg')
 
 /** 기본 Storage 버킷이 없어서 난 오류인지 — 콘솔에서 Storage를 안 켰으면 모든
  * 소재가 같은 이유로 실패하므로, 소재마다 실패를 세지 않고 실행을 멈춘다. */
 export const isMissingBucket = (err: unknown) =>
   err instanceof Error && /bucket does not exist/i.test(err.message)
 
-/**
- * 소재 하나를 처리한다 — url에서 내려받아 Storage의 adCreatives/{id}/에 원본과
- * frames/를 올린다. 같은 id로 다시 돌리면 덮어쓴다.
- */
 /** 화면에서 볼 주소 — Storage 규칙은 외부 읽기를 다 막아 두고, 파일마다 붙인
  * 다운로드 토큰으로만 열리게 한다(Firebase 콘솔의 "다운로드 URL"과 같은 방식,
  * 추측할 수 없는 주소). 광고 소재는 이미 광고로 공개된 이미지·영상이다. */
-const downloadUrl = (bucket: string, path: string, token: string) => {
+export const downloadUrl = (bucket: string, path: string, token: string) => {
   const host = process.env.FIREBASE_STORAGE_EMULATOR_HOST
   const base = host
     ? `http://${host}`
@@ -121,12 +119,11 @@ export async function withDownloadUrls(
 }
 
 /** 파일 주소 — hls면 스트리밍 목록(.m3u8, 당근 영상)이라 ffmpeg로 mp4 한
- * 파일로 받는다. */
-export interface MediaSource {
-  url: string
-  lengthSec: number | null
-  hls?: boolean
-}
+ * 파일로 받는다. storagePath는 이미 Storage에 있는 원본(직접 올린 소재) — 그
+ * 자리를 원본으로 쓰고 다시 저장하지 않는다. */
+export type MediaSource =
+  | { url: string; lengthSec: number | null; hls?: boolean }
+  | { storagePath: string }
 
 /** 목록을 받는다 — 당근 재생 주소는 서명된 다른 주소로 넘어가므로(301), 조각
  * 주소는 넘어간 뒤의 최종 주소(res.url)를 기준으로 만들어야 한다. */
@@ -195,12 +192,46 @@ async function fetchHls(
   return { ext }
 }
 
-/** 원본을 임시 폴더에 받는다 — 일반 파일은 그대로, HLS는 스트림을 복사해 mp4로. */
+/** 받은 원본 — stored는 이미 Storage에 있는 원본(직접 올린 소재)의 자리. */
+interface Downloaded {
+  input: string
+  contentType: string
+  bytes: number
+  stored: { path: string; url: string } | null
+}
+
+/** 원본을 임시 폴더에 받는다 — 일반 파일은 그대로, HLS는 스트림을 복사해 mp4로,
+ * Storage 파일은 그 파일을. */
 async function download(
   dir: string,
   kind: CreativeKind,
   source: MediaSource,
-): Promise<{ input: string; body: Buffer; contentType: string }> {
+): Promise<Downloaded> {
+  if ('storagePath' in source) {
+    const bucket = getStorage().bucket()
+    const file = bucket.file(source.storagePath)
+    const [metadata] = await file.getMetadata()
+    const contentType = metadata.contentType ?? 'application/octet-stream'
+    const input = join(dir, `original.${extOf(contentType)}`)
+    await file.download({ destination: input })
+    // 올리기를 열 때 토큰을 붙여 두었다(upload.ts) — 없으면 지금 붙인다.
+    let token = String(metadata.metadata?.firebaseStorageDownloadTokens ?? '')
+    if (!token) {
+      token = randomUUID()
+      await file.setMetadata({
+        metadata: { firebaseStorageDownloadTokens: token },
+      })
+    }
+    return {
+      input,
+      contentType,
+      bytes: Number(metadata.size ?? 0),
+      stored: {
+        path: source.storagePath,
+        url: downloadUrl(bucket.name, source.storagePath, token),
+      },
+    }
+  }
   if (source.hls) {
     // 조각은 Node가 받고 ffmpeg에는 로컬 파일만 준다 — 운영(리눅스)의 정적
     // 빌드 ffmpeg는 네트워크 주소를 직접 열면 이름 찾기(DNS)에서 죽는다
@@ -230,8 +261,12 @@ async function download(
         `HLS 영상 변환 실패 — ${stderr.split('\n').pop() || '알 수 없는 오류'}`,
       )
     }
-    const body = await readFile(input)
-    return { input, body, contentType: 'video/mp4' }
+    return {
+      input,
+      contentType: 'video/mp4',
+      bytes: (await stat(input)).size,
+      stored: null,
+    }
   }
   const res = await fetch(source.url)
   if (!res.ok) throw new Error(`파일 내려받기 실패(HTTP ${res.status})`)
@@ -243,9 +278,13 @@ async function download(
   const body = Buffer.from(await res.arrayBuffer())
   const input = join(dir, `original.${extOf(contentType)}`)
   await writeFile(input, body)
-  return { input, body, contentType }
+  return { input, contentType, bytes: body.length, stored: null }
 }
 
+/**
+ * 소재 하나를 처리한다 — 원본을 받아 Storage의 adCreatives/{id}/에 원본과
+ * frames/를 올린다. 같은 id로 다시 돌리면 덮어쓴다.
+ */
 export async function processCreativeMedia(
   id: string,
   kind: CreativeKind,
@@ -253,8 +292,12 @@ export async function processCreativeMedia(
 ): Promise<CreativeMedia> {
   const dir = await mkdtemp(join(tmpdir(), 'creative-'))
   try {
-    const { input, body, contentType } = await download(dir, kind, source)
-    const knownLengthSec = source.lengthSec
+    const { input, contentType, bytes, stored } = await download(
+      dir,
+      kind,
+      source,
+    )
+    const knownLengthSec = 'lengthSec' in source ? source.lengthSec : null
     const info = await probe(input)
     const lengthSec =
       kind === 'video' ? (knownLengthSec ?? info.lengthSec) : null
@@ -279,15 +322,25 @@ export async function processCreativeMedia(
         '3',
         '-y',
         file,
-      ])
+      ]).catch((err: { stderr?: string }) => {
+        // 명령 줄 전체 대신 ffmpeg가 남긴 첫 오류 한 줄만(직접 올린 소재는 이
+        // 문구가 화면에 그대로 보인다).
+        const line = err.stderr?.trim().split('\n')[0]
+        throw new Error(
+          `프레임 추출 실패 — ${line || '이미지·영상 파일이 아니거나 손상됐습니다'}`,
+        )
+      })
       // 영상 끝을 넘은 시점이면 파일이 안 생긴다 — 건너뛴다.
       if (await stat(file).catch(() => null)) frames.push({ t, file })
     }
     if (frames.length === 0) throw new Error('프레임을 하나도 뽑지 못했습니다')
 
     const base = `adCreatives/${id}`
-    const originalPath = `${base}/original.${extOf(contentType)}`
-    const originalUrl = await saveWithUrl(originalPath, body, contentType)
+    const originalPath =
+      stored?.path ?? `${base}/original.${extOf(contentType)}`
+    const originalUrl =
+      stored?.url ??
+      (await saveWithUrl(originalPath, await readFile(input), contentType))
 
     const uploaded: CreativeFrame[] = []
     for (const [index, frame] of frames.entries()) {
@@ -308,7 +361,7 @@ export async function processCreativeMedia(
       originalPath,
       originalUrl,
       contentType,
-      bytes: body.length,
+      bytes,
       width: info.width,
       height: info.height,
       lengthSec,

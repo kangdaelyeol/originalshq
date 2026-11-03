@@ -119,7 +119,10 @@ const ratioOf = (w: number | null, h: number | null) => {
  * videoInput과 같은 이름의 값). */
 const inputsOf = (creative: AdCreative): ComposeInputs => {
   const media = creative.media!
-  const name = Object.values(creative.ads)[0]?.name || creative.id
+  const name =
+    Object.values(creative.ads)[0]?.name ||
+    creative.upload?.fileName ||
+    creative.id
   const ratio = ratioOf(media.width, media.height)
   const frames = media.frames.length
   return {

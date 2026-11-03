@@ -185,13 +185,20 @@ export function SettingEditor({
     setForm((prev) => ({ ...prev, [key]: value }))
 
   // 소재 — 새 장을 열면 지금 집행 중인 소재를 미리 체크한다(오늘 시작하는 장이
-  // 이미 있으면 그 장의 소재 그대로). 손으로 고르거나 지난 장을 불러온 뒤에는
-  // 건드리지 않는다.
+  // 이미 있으면 그 장의 소재 그대로). 직접 올린 소재는 매체가 집행 여부를 알려
+  // 주지 않아서, 지난 장에서 골랐으면 계속 고른다. 손으로 고르거나 지난 장을
+  // 불러온 뒤에는 건드리지 않는다.
   const creatives = useAdCreatives(entity.key)
   const [creativesTouched, setCreativesTouched] = useState(false)
+  const lastCreativeIds = versionAt(history, today)?.creativeIds ?? []
   const activeCreativeIds =
     creatives.status === 'ready'
-      ? creatives.creatives.filter((c) => c.active).map((c) => c.id)
+      ? creatives.creatives
+          .filter(
+            (c) =>
+              c.active || (c.upload !== null && lastCreativeIds.includes(c.id)),
+          )
+          .map((c) => c.id)
       : null
   const todayVersion = history.find((v) => v.effectiveFrom === today)
   const freshForm = (): Form => ({
@@ -304,9 +311,24 @@ export function SettingEditor({
       <ResultMetrics entityKey={entity.key} today={today} />
 
       <CreativePicker
+        entityKey={entity.key}
         state={creatives}
         selected={form.creativeIds}
         onToggle={toggleCreative}
+        onUploaded={(id) => {
+          setCreativesTouched(true)
+          setForm((prev) =>
+            prev.creativeIds.includes(id)
+              ? prev
+              : { ...prev, creativeIds: [...prev.creativeIds, id] },
+          )
+        }}
+        onDeleted={(id) =>
+          setForm((prev) => ({
+            ...prev,
+            creativeIds: prev.creativeIds.filter((x) => x !== id),
+          }))
+        }
       />
 
       <section className="ad-editor__form">

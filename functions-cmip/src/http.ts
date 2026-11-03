@@ -59,6 +59,8 @@ export const endpoint =
       request: Request
       response: Response
       data: T
+      /** 로그인한 관리자 메일 — public이면 null. */
+      adminEmail: string | null
     }) => Promise<unknown>,
   ) =>
   (request: Request, response: Response): void =>
@@ -70,12 +72,14 @@ export const endpoint =
           return
         }
 
+        let adminEmail: string | null = null
         if (!options.public) {
           const auth = await checkAdmin(request)
           if (!auth.ok) {
             response.status(auth.status).send({ error: auth.error })
             return
           }
+          adminEmail = auth.email
         }
 
         let data = undefined as T
@@ -88,7 +92,7 @@ export const endpoint =
           data = validation.data
         }
 
-        const body = await run({ request, response, data })
+        const body = await run({ request, response, data, adminEmail })
         if (body !== undefined && !response.headersSent) {
           response.status(200).send(body)
         }

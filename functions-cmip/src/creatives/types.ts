@@ -1,4 +1,6 @@
-// 광고 소재(adCreatives) — 매체(Meta·당근)에서 가져온(앞으로는 직접 올린)
+import type { AdChannel } from '../ad-settings/types'
+
+// 광고 소재(adCreatives) — 매체(Meta·당근)에서 가져왔거나 화면에서 직접 올린
 // 이미지·영상 한 개. 문서 하나가 파일 하나다: 같은 영상을 여러 광고에 썼으면
 // 문서는 하나고 ads에 광고가 모인다. 원본과 분석용 프레임은 Storage(adCreatives/{id}/…)에 둔다.
 
@@ -6,7 +8,8 @@ export const AD_CREATIVES = 'adCreatives'
 
 export type CreativeKind = 'video' | 'image'
 
-export type CreativeChannel = 'meta' | 'daangn'
+/** 매체에서 가져오는 것은 Meta·당근뿐이고, 직접 올리기는 어느 채널이든. */
+export type CreativeChannel = AdChannel
 
 /** 처리 상태 — 새로 발견하면 pending, 내려받아 프레임까지 뽑으면 ready. 실패하면
  * 다음 실행에 다시 시도하고, MAX_ATTEMPTS번 실패하면 failed로 멈춘다. */
@@ -64,7 +67,8 @@ export interface FoundCreative {
 }
 
 export interface AdCreative extends FoundCreative {
-  /** 광고셋별로 찾으려고 — '{채널}:adset:{ID}'(광고 설정의 entityKey와 같은 꼴). */
+  /** 광고셋별로 찾으려고 — '{채널}:adset:{ID}'(광고 설정의 entityKey와 같은 꼴).
+   * 직접 올린 소재는 올린 대상의 키 하나(캠페인 키일 수도 있다). */
   adsetKeys: string[]
   firstSeenAt: number
   /** 마지막으로 집행 중인 광고에서 본 날(KST). */
@@ -73,6 +77,15 @@ export interface AdCreative extends FoundCreative {
   attempts: number
   error: string | null
   media: CreativeMedia | null
+  /** 화면에서 직접 올린 소재(upload.ts) — 매체에서 가져온 것은 없다. 매체가
+   * 집행 여부를 알려 주지 않아 lastSeenDate는 올린 날로 멈춰 있다. */
+  upload?: CreativeUpload
   /** 마지막 분석(analyze.ts) — 분석하기 전에는 없다. */
   analysis?: import('./analyze').CreativeAnalysis
+}
+
+export interface CreativeUpload {
+  fileName: string
+  uploadedBy: string
+  at: number
 }

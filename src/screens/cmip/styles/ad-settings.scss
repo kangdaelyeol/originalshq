@@ -857,6 +857,17 @@ textarea.ad-input {
     color: $text-3;
   }
 }
+.ad-creative-modal__delete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+
+  .ad-results__note {
+    margin: 0 auto 0 0;
+  }
+}
 .ad-creative-modal__close {
   @include glass.icon-button(32px);
   flex: none;
