@@ -90,15 +90,8 @@ export function CellView({ column, cell }: CellViewProps) {
       ) : null
     }
     case 'phone':
-      // Monday 전화 칸처럼 국기 + 파란 번호
-      return text ? (
-        <span className="mon-phone">
-          <span className="mon-phone__flag" aria-hidden>
-            🇰🇷
-          </span>
-          <span className="mon-text">{formatPhone(text) ?? text}</span>
-        </span>
-      ) : null
+      // 글자 칸과 같은 모양 — 010-1234-5678
+      return text ? <span className="mon-text">{formatPhone(text) ?? text}</span> : null
     case 'file': {
       const count = fileCount(cell)
       return count > 0 ? (

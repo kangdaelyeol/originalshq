@@ -397,7 +397,13 @@ export const techItemUpdates = onCall(
       try {
         return { updates: await fetchItemUpdates(mondayApiKey.value(), itemId) }
       } catch (error) {
-        throw toHttpsError(error)
+        // 읽기라 "저장하지 못했어요"(toHttpsError)가 아니라 읽기 실패로 알린다.
+        logger.error('업데이트 읽기 실패:', error)
+        const message = error instanceof Error ? error.message : String(error)
+        throw new HttpsError(
+          'internal',
+          `Monday에서 업데이트를 읽지 못했어요: ${message}`,
+        )
       }
     },
   ),

@@ -11,7 +11,11 @@ import { cx } from '../../lib/cx'
 import { usePortalRoot } from '../../lib/portal-root'
 import { PersonAvatar } from './monday-cells'
 
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
+const errorText = (error: unknown) => {
+  const message = (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
+  // 함수가 문구 없이 실패하면 코드(internal)만 온다.
+  return message && !/^internal$/i.test(message) ? message : 'Monday와 연결하지 못했어요. 잠시 후 다시 해 주세요.'
+}
 
 /** 2026-09-02T05:30:00Z → "9월 2일 14:30" (한국 시각) */
 function whenText(iso: string | null): string {

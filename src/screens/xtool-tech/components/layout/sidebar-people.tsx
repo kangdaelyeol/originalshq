@@ -1,9 +1,9 @@
 import { ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { buildWorkPeople } from '../../data/my-work'
-import { useMyIdentity, useWorkSources } from '../../data/use-my-work'
+import { useCurrentMember } from '../../context/member-context'
+import { useMyIdentity, useWorkPeople, useWorkSources } from '../../data/use-my-work'
 import { cx } from '../../lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { personColor } from '../../lib/person-color'
@@ -83,9 +83,12 @@ export function SidebarPeopleItem({ item, collapsed }: { item: NavItem; collapse
 function PeopleList() {
   const { pathname, search } = useLocation()
   const me = useMyIdentity()
+  // 기술팀이 아닌 관리자는 개인 보드("나")가 없다 — 직원 목록만.
+  const isTech = useCurrentMember()?.teams.tech === true
   const { sources, loading } = useWorkSources()
   const today = koreaToday()
-  const people = useMemo(() => buildWorkPeople(sources, today), [sources, today])
+  // /admin/xtool에서 기술팀으로 등록한 사람만
+  const people = useWorkPeople(sources, today)
 
   const who = pathname.startsWith(MY_WORK_PATH) ? new URLSearchParams(search).get('who') : undefined
   const viewingMe = who === null || (!!who && me.names.has(who))
@@ -97,7 +100,9 @@ function PeopleList() {
       <span className="nav-sub__trunk" aria-hidden />
       <ul className="nav-sub__list" aria-label="직원별 업무">
         {/* 사람마다 이름으로 정한 색, 나는 강조색 */}
-        <PersonRow to={myWorkPath()} label={me.name ? `나 · ${me.name}` : '나'} color="var(--accent)" count={myOpen} active={viewingMe} />
+        {isTech && (
+          <PersonRow to={myWorkPath()} label={me.name ? `나 · ${me.name}` : '나'} color="var(--accent)" count={myOpen} active={viewingMe} />
+        )}
         {others.map((p) => (
           <PersonRow key={p.name} to={myWorkPath(p.name)} label={p.name} color={personColor(p.name)} count={p.open} active={who === p.name} />
         ))}

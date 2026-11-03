@@ -1,16 +1,17 @@
 import { AlarmClock, CircleCheck, Hourglass, ListTodo, Search } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { MondayMyWork } from '../components/monday/monday-my-work'
 import { MyWorkRow } from '../components/overview/my-work-card'
 import { GlassCard } from '../components/ui/glass-card'
 import { SegmentedControl } from '../components/ui/segmented-control'
 import { StatCard } from '../components/ui/stat-card'
+import { useCurrentMember } from '../context/member-context'
 import { usePeriod } from '../context/period-context'
-import { buildMyWork, buildWorkPeople, MY_WORK_BOARDS, type MyWorkBoard } from '../data/my-work'
+import { buildMyWork, MY_WORK_BOARDS, type MyWorkBoard } from '../data/my-work'
 import { PERIOD_COMPARE } from '../data/period'
 import { BOARD_TABS } from '../data/tech-boards'
-import { useMyIdentity, useWorkSources } from '../data/use-my-work'
+import { useMyIdentity, useWorkPeople, useWorkSources } from '../data/use-my-work'
 import { daysBetween, inRange, koreaToday, periodRange } from '../lib/dates'
 import { myWorkPath } from '../paths'
 import { useSettings } from '../settings/settings'
@@ -43,10 +44,13 @@ export function MyWorkPage() {
   const today = koreaToday()
 
   const who = params.get('who')
-  const mine = !who || me.names.has(who)
-  const names = useMemo(() => (mine ? me.names : new Set([who!])), [mine, me.names, who])
+  // 기술팀이 아닌 관리자는 개인 보드가 없다 — 내 업무로 오면 첫 기술팀원의 보드를 보여 준다.
+  const isTech = useCurrentMember()?.teams.tech === true
+  const mine = isTech && (!who || me.names.has(who))
+  const names = useMemo(() => (mine ? me.names : new Set(who ? [who] : [])), [mine, me.names, who])
   const items = useMemo(() => buildMyWork(sources, names, today, { includeDone: true }), [sources, names, today])
-  const people = useMemo(() => buildWorkPeople(sources, today), [sources, today])
+  // 고를 수 있는 직원 — /admin/xtool에서 기술팀으로 등록한 사람만
+  const people = useWorkPeople(sources, today)
 
   const [state, setState] = useState<State>('open')
   const [board, setBoard] = useState<'' | MyWorkBoard>('')
@@ -76,9 +80,13 @@ export function MyWorkPage() {
 
   // 고를 수 있는 사람 — 나는 맨 위, 지금 보는 사람이 목록에 없어도(최근 90일 밖) 넣는다.
   const myName = me.name
-  const others = people.map((p) => p.name).filter((n) => !me.names.has(n))
+  const others = people.map((p) => p.name).filter((n) => !isTech || !me.names.has(n))
+  const firstPerson = others[0]
+  useEffect(() => {
+    if (!isTech && !who && firstPerson) navigate(myWorkPath(firstPerson), { replace: true })
+  }, [isTech, who, firstPerson, navigate])
   if (who && !mine && !others.includes(who)) others.unshift(who)
-  const title = mine ? '내 담당 업무' : `${who}님 담당 업무`
+  const title = mine ? '내 담당 업무' : who ? `${who}님 담당 업무` : '직원 업무'
 
   // Monday 표 레이아웃 — 숫자 카드 없이 보드마다 Monday 표로(칸을 바로 고친다).
   if (layout === 'monday') {
@@ -95,7 +103,7 @@ export function MyWorkPage() {
         entries={entries}
         loading={loading}
         personLabel={mine ? meLabel : (who ?? '')}
-        people={[{ value: null, label: meLabel }, ...others.map((name) => ({ value: name, label: name }))]}
+        people={[...(isTech ? [{ value: null, label: meLabel }] : []), ...others.map((name) => ({ value: name, label: name }))]}
         onPerson={(next) => navigate(myWorkPath(next))}
         state={state}
         onState={setState}
@@ -135,7 +143,7 @@ export function MyWorkPage() {
           <label className="record-select">
             <span className="sr-only">직원</span>
             <select value={mine ? '' : (who ?? '')} onChange={(e) => navigate(myWorkPath(e.target.value || null))}>
-              <option value="">{myName ? `나 (${myName})` : '나'}</option>
+              {isTech && <option value="">{myName ? `나 (${myName})` : '나'}</option>}
               {others.map((name) => (
                 <option key={name} value={name}>
                   {name}

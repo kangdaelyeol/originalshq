@@ -16,7 +16,7 @@ interface RawUpdate {
   id: string
   text_body: string | null
   created_at: string | null
-  creator: { id: string; name: string; photo_thumb_small: string | null } | null
+  creator: { id: string; name: string } | null
   replies?: RawUpdate[]
 }
 
@@ -34,7 +34,7 @@ const toUpdate = (raw: RawUpdate): TechUpdate => ({
   text: raw.text_body ?? '',
   createdAt: raw.created_at,
   creator: raw.creator
-    ? { name: raw.creator.name, photo: raw.creator.photo_thumb_small }
+    ? { name: raw.creator.name, photo: null }
     : null,
   replies: (raw.replies ?? []).map(toUpdate),
 })
@@ -44,7 +44,9 @@ export async function fetchItemUpdates(
   apiKey: string,
   itemId: string,
 ): Promise<TechUpdate[]> {
-  const fields = 'id text_body created_at creator { id name photo_thumb_small }'
+  // 작성자 사진은 받지 않는다 — Monday User에 photo_thumb_small 같은 필드가 없어 질의가
+  // 통째로 거절됐다. 화면은 우리 프로필 사진(설정)을 쓰고, 없으면 이니셜.
+  const fields = 'id text_body created_at creator { id name }'
   const data = await fetchMonday<{
     items: Array<{ updates: RawUpdate[] | null }> | null
   }>(

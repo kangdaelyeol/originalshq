@@ -1444,21 +1444,6 @@ $sub-row: 34px;
   }
 }
 
-// ── 전화 칸 ─────────────────────────────────────────────────────────────────
-.mon-phone {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  color: var(--mon-link);
-}
-
-.mon-phone__flag {
-  flex: none;
-  font-size: 15px;
-  line-height: 1;
-}
-
 // ── 이름 칸 오른쪽 말풍선(업데이트) ─────────────────────────────────────────────
 .mon-updates {
   position: relative;

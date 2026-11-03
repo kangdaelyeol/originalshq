@@ -489,6 +489,18 @@
     &::placeholder {
       color: var(--text-4);
     }
+
+    // 브라우저 자동완성(저장된 이메일)이 칠하는 배경 — 입력 칸만 다른 색 상자로 떠 보여서 지운다.
+    // 이 배경은 CSS로 덮어쓸 수 없어, 바뀌는 데 아주 오래 걸리게 해 사실상 칠해지지 않게 한다.
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--text-1);
+      caret-color: var(--text-1);
+      transition:
+        background-color 600000s 0s,
+        color 600000s 0s;
+    }
   }
 }
 

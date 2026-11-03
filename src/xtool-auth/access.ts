@@ -25,7 +25,8 @@ export async function checkAccess(user: User, target: AccessTarget): Promise<Acc
   const member = await getMember(user.email)
   if (!member) return { ok: false, reason: 'not-registered' }
   if (member.status !== 'active') return { ok: false, reason: 'disabled' }
-  const allowed = target === 'admin' ? member.isAdmin : member.teams[target] === true
+  // 관리자는 팀 페이지 모두에 들어간다(규칙·함수도 관리자를 허용한다).
+  const allowed = member.isAdmin || (target !== 'admin' && member.teams[target] === true)
   if (!allowed) return { ok: false, reason: 'no-access' }
   // 관리자가 발급한 임시 비밀번호로 들어왔으면 자기 비밀번호부터 — 그동안은 규칙이 데이터를 막는다.
   if (member.mustChangePassword) return { ok: false, reason: 'password-setup' }
