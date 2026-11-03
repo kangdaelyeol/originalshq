@@ -188,6 +188,30 @@
     margin-bottom: 12px;
   }
 
+  // ── 출장업무 전화번호 칸 ──────────────────────────────────────────────────
+  .phone-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .phone-copy__summary {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .phone-copy__hint {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  .phone-copy__table {
+    max-height: 360px;
+    overflow: auto;
+  }
+
   // ── 임시 비밀번호 ─────────────────────────────────────────────────────────
   .member-form__password {
     display: flex;

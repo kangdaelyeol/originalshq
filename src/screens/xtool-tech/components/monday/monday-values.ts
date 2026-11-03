@@ -143,7 +143,7 @@ export const INLINE_TYPES = new Set(['text', 'numbers', 'phone', 'email'])
 
 /** 이름 칸 머리글 — Monday 이름 칸 제목은 캐시에 없어서 보드마다 정한다. */
 export const NAME_TITLE: Record<TechBoardKey, string> = {
-  fieldService: '고객',
+  fieldService: '클라이언트',
   repair: '고객',
   records: '업무',
   techInquiry: '고객',

@@ -41,7 +41,12 @@ export async function refreshItems(
   meta?: TechBoardMeta | null,
 ): Promise<Map<string, TechItemDoc | null>> {
   const boardMeta = meta ?? (await getBoardMeta(db, source.key))
-  const items = await fetchTechItems(apiKey, itemIds, !!source.subitems)
+  const items = await fetchTechItems(
+    apiKey,
+    itemIds,
+    !!source.subitems,
+    !!source.updates,
+  )
   const byId = new Map(items.map((item) => [String(item.id), item]))
   const result = new Map<string, TechItemDoc | null>()
   for (const id of itemIds) {

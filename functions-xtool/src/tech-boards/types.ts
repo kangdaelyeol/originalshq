@@ -199,6 +199,8 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   values: Record<string, TechCellValue>
   /** 하위 아이템(하위 아이템이 있는 보드만, 그 밖에는 빈 배열) */
   subitems: TechSubitemDoc[]
+  /** 업데이트(댓글) 수 — 세는 보드(출장)만 */
+  updateCount?: number
   createdAt: string | null
   updatedAt: string | null
   /** 우리가 이 문서를 마지막으로 쓴 시각(ms) */

@@ -11,6 +11,7 @@ import { AdminSignIn } from './admin-sign-in'
 import { EditLogCard } from './edit-log-card'
 import { MemberForm } from './member-form'
 import { MembersTable } from './members-table'
+import { PhoneCopyCard } from './phone-copy-card'
 import { TechSyncCard } from './tech-sync-card'
 import './admin.scss'
 
@@ -57,7 +58,12 @@ function AdminScreen() {
             <MembersTable selfEmail={session.member.email} />
           </>
         )}
-        {tab === 'monday' && <TechSyncCard />}
+        {tab === 'monday' && (
+          <>
+            <TechSyncCard />
+            <PhoneCopyCard />
+          </>
+        )}
         {tab === 'logs' && <EditLogCard />}
       </motion.main>
     </div>

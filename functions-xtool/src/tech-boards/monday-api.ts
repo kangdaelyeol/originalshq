@@ -18,6 +18,8 @@ export interface TechRawItem extends RawMondayItem {
   column_values: Array<RawMondayItem['column_values'][number] & {
     value: string | null
   }>
+  /** 업데이트(댓글) id — 업데이트 개수를 세는 보드에서만 받는다. */
+  updates?: Array<{ id: string }>
 }
 
 export interface TechRawBoard {
@@ -53,7 +55,10 @@ const COLUMN_VALUE_FIELDS = `
   ... on BoardRelationValue { display_value }
 `
 
-const itemFields = (withSubitems: boolean) => `
+// 업데이트 개수를 셀 때 받는 최대 수 — 말풍선 배지에 쓴다(넘으면 그 수로 보인다).
+const UPDATE_COUNT_LIMIT = 100
+
+const itemFields = (withSubitems: boolean, withUpdates = false) => `
   id
   name
   url
@@ -68,6 +73,7 @@ const itemFields = (withSubitems: boolean) => `
     name
     column_values { ${COLUMN_VALUE_FIELDS} column { title } }
   }` : ''}
+  ${withUpdates ? `updates(limit: ${UPDATE_COUNT_LIMIT}) { id }` : ''}
 `
 
 const BOARD_QUERY = `
@@ -86,6 +92,7 @@ export async function fetchTechBoard(
   apiKey: string,
   boardId: string,
   withSubitems: boolean,
+  withUpdates = false,
 ): Promise<TechRawBoard> {
   const meta = await fetchMonday<{
     boards: Array<Omit<TechRawBoard, 'items'>> | null
@@ -104,7 +111,7 @@ export async function fetchTechBoard(
       boards(ids: [$boardId]) {
         items_page(limit: $limit) {
           cursor
-          items { ${itemFields(withSubitems)} }
+          items { ${itemFields(withSubitems, withUpdates)} }
         }
       }
     }`,
@@ -122,7 +129,7 @@ export async function fetchTechBoard(
       `query TechNext($cursor: String!, $limit: Int!) {
         next_items_page(cursor: $cursor, limit: $limit) {
           cursor
-          items { ${itemFields(withSubitems)} }
+          items { ${itemFields(withSubitems, withUpdates)} }
         }
       }`,
       { cursor, limit: PAGE_SIZE },
@@ -154,11 +161,12 @@ export async function fetchTechItems(
   apiKey: string,
   itemIds: string[],
   withSubitems: boolean,
+  withUpdates = false,
 ): Promise<TechRawItem[]> {
   const data = await fetchMonday<{ items: TechRawItem[] | null }>(
     apiKey,
     `query TechItemsById($ids: [ID!]) {
-      items(ids: $ids) { ${itemFields(withSubitems)} }
+      items(ids: $ids) { ${itemFields(withSubitems, withUpdates)} }
     }`,
     { ids: itemIds },
   )

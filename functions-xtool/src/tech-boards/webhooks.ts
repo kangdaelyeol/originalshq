@@ -4,6 +4,7 @@ import { findTechBoard, TECH_BOARDS } from './boards'
 import { refreshItems } from './edits'
 import { getBoardMeta, saveBoardMeta } from './firestore'
 import { createWebhook, deleteWebhook } from './monday-api'
+import { fillPhoneFromName, PHONE_COPY } from './phones'
 
 // Monday webhook — Monday에서 직접 고친 내용을 몇 초 안에 캐시에 반영한다.
 // 내용(값)은 믿지 않는다: "이 보드의 이 item이 바뀌었다"만 보고 Monday에서 다시
@@ -27,6 +28,18 @@ const SUBITEM_EVENTS = [
   'subitem_deleted',
 ]
 
+// 새로 만들었거나 이름을 바꾼 item — 전화번호 칸 채우기(phones.ts)를 본다. Monday가
+// 보내는 type은 구독 이름과 달라서(create_pulse·update_name) 둘 다 받는다.
+const NAME_EVENT_TYPES = new Set([
+  'create_pulse',
+  'create_item',
+  'update_name',
+  'change_name',
+])
+
+// 업데이트(댓글)를 세는 보드만 — 달리거나 지워지면 그 item을 다시 읽어 개수를 맞춘다.
+const UPDATE_EVENTS = ['create_update', 'edit_update', 'delete_update']
+
 export interface MondayWebhookEvent {
   type?: string
   boardId?: number | string
@@ -48,7 +61,22 @@ export async function handleWebhookEvent(
   )
   const source = findTechBoard({ boardId })
   if (!source || !/^\d+$/.test(itemId)) return 'ignored'
-  await refreshItems(db, apiKey, source, [itemId])
+  const meta = await getBoardMeta(db, source.key)
+  const refreshed = await refreshItems(db, apiKey, source, [itemId], meta)
+  const doc = refreshed.get(itemId)
+  // 하위 아이템 이벤트(parentItemId)는 부모 이름이 바뀐 게 아니라 빼고 본다.
+  if (
+    doc &&
+    meta &&
+    PHONE_COPY[source.key] &&
+    !event.parentItemId &&
+    NAME_EVENT_TYPES.has(String(event.type ?? ''))
+  ) {
+    // 채우면 Monday가 change_column_value를 다시 보내서 캐시는 그때 맞춰진다.
+    await fillPhoneFromName(apiKey, source, meta.columns, doc).catch((error) =>
+      logger.warn(`전화번호 칸 채우기 실패(${itemId}):`, error),
+    )
+  }
   return 'refreshed'
 }
 
@@ -66,7 +94,11 @@ export async function setupTechWebhooks(
         logger.warn(`webhook 삭제 실패(${source.key} ${id}):`, error),
       )
     }
-    const events = [...ITEM_EVENTS, ...(source.subitems ? SUBITEM_EVENTS : [])]
+    const events = [
+      ...ITEM_EVENTS,
+      ...(source.subitems ? SUBITEM_EVENTS : []),
+      ...(source.updates ? UPDATE_EVENTS : []),
+    ]
     // 보드 안의 이벤트는 동시에 만든다 — Monday가 만들 때마다 우리 주소로 확인
     // 요청(challenge)을 보내서, 하나씩 하면 보드 9개에 1분 반이 걸린다.
     const settled = await Promise.allSettled(

@@ -140,9 +140,8 @@ function SummaryCell({ column, items, cellOf }: { column: TechColumn; items: Tec
   return <div className="mon-cell mon-summary__cell" />
 }
 
-// 하위 표에 안 그리는 칸 — 생성 로그·수정 시각, 이름과 같은 값을 서버가 맞춰 적는 "품명"
-const SUB_HIDDEN_TYPES = new Set(['creation_log', 'last_updated'])
-const isSubNameMirror = (c: TechColumn) => c.type === 'text' && c.title.replace(/\s/g, '') === '품명'
+// 하위 표에 안 그리는 칸 — 생성 로그
+const SUB_HIDDEN_TYPES = new Set(['creation_log'])
 const SUB_NAME_WIDTH = 340
 const SUB_WIDTH = 130
 
@@ -162,7 +161,7 @@ function SubTable({
   nameTitle: string
   onAdd: (name: string) => void
 }) {
-  const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type) && !SUB_HIDDEN_TYPES.has(c.type) && !isSubNameMirror(c))
+  const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type) && !SUB_HIDDEN_TYPES.has(c.type))
   const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')}`
   const [value, setValue] = useState('')
   const submit = () => {

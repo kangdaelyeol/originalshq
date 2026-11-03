@@ -23,6 +23,9 @@ export interface TechBoardSource {
   boardId: string
   /** 하위 아이템까지 받을지 — 출장(설치 품목)·AS(청구 부품)만. */
   subitems?: boolean
+  /** 업데이트(댓글) 개수를 셀지 — Monday 표의 말풍선(출장). 읽기·쓰기는
+   * updates.ts가 그때그때 Monday에서 한다. */
+  updates?: boolean
   /** 연락처 칸 — 'name'이면 item 이름에서, 생략하면 제목으로 추정, null이면
    * 읽지 않는다. 고객 통합의 보드 등록값과 같게 둔다. */
   phoneColumnId?: string | null
@@ -37,6 +40,7 @@ export const TECH_BOARDS: readonly TechBoardSource[] = [
     key: 'fieldService',
     boardId: '5025392073', // 출장업무 2026
     subitems: true,
+    updates: true,
     phoneColumnId: 'name',
   },
   { key: 'repair', boardId: '5028075613', subitems: true }, // AS 2026

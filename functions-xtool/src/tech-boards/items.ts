@@ -53,6 +53,9 @@ export function toItemDocs(
       record,
       values,
       subitems,
+      ...(source.updates
+        ? { updateCount: items[i].updates?.length ?? 0 }
+        : {}),
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     }

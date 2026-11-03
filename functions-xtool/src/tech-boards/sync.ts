@@ -20,14 +20,19 @@ export interface TechBoardsSyncSummary {
 
 /** 보드 하나를 Monday에서 다시 읽어 컬럼·그룹·item을 맞춘다. 실패하면 저장된
  * 것은 두고 실패 결과만 남긴다(일시적인 오류가 "전부 삭제"로 이어지지 않게). */
-async function syncTechBoard(
+export async function syncTechBoard(
   db: Firestore,
   apiKey: string,
   source: TechBoardSource,
 ): Promise<TechSyncResult> {
   const startedAt = Date.now()
   try {
-    const raw = await fetchTechBoard(apiKey, source.boardId, !!source.subitems)
+    const raw = await fetchTechBoard(
+      apiKey,
+      source.boardId,
+      !!source.subitems,
+      !!source.updates,
+    )
     const docs = toItemDocs(source, raw, raw.items, Date.now())
     const { written, deleted } = await replaceBoardItems(
       db,
