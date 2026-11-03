@@ -28,3 +28,47 @@ export const createVoiceAgentSession = (input: TestCallInput) =>
     'AI 상담원 연결을 준비하지 못했습니다',
     postJson(input),
   )
+
+/** 판정 칸 — functions-xtool voice-call/analyze.ts CallJudgmentSchema와 같은 모양. */
+export interface VoiceCallJudgment {
+  summary: string
+  device: string
+  purpose: string
+  materials: string[]
+  budget: string
+  payment: string
+  timing: string
+  visit: string
+  visitRegion: string
+  visitTime: string
+  decisionMaker: string
+  interest: '높음' | '보통' | '낮음'
+  interestReason: string
+  outcome: string
+  callbackTime: string
+  needsHuman: boolean
+}
+
+/** 통화 기록 calls/{callId} — functions-xtool voice-call/types.ts CallRecord. */
+export interface VoiceCallRecord {
+  callId: string
+  startedAt: number
+  endedAt: number
+  endReason: string
+  transcript: { role: 'agent' | 'customer'; text: string; at: number }[]
+  /** 구간별 지연(ms), 턴마다 하나씩. 예전 기록에는 없다. */
+  latency?: {
+    endOfUtteranceMs: number[]
+    llmTtftMs: number[]
+    ttsTtfbMs: number[]
+  }
+  status: 'saved' | 'analyzed' | 'analysis_failed'
+  result?: VoiceCallJudgment
+  analysisError?: string
+}
+
+export const getVoiceCall = (callId: string) =>
+  requestJson<VoiceCallRecord>(
+    `getVoiceCall?callId=${encodeURIComponent(callId)}`,
+    '통화 결과를 불러오지 못했습니다',
+  )

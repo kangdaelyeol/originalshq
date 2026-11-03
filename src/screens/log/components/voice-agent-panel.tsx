@@ -13,6 +13,7 @@ import {
   type TestCallInput,
   type VoiceAgentSession,
 } from '../client/voice-agent-client'
+import { VoiceCallResult } from './voice-call-result'
 
 /** 처음 열었을 때의 가상 고객 — 에이전트 레포의 SAMPLE_CALL과 같다. */
 const SAMPLE_CALL: TestCallInput = {
@@ -52,6 +53,8 @@ export function VoiceAgentPanel() {
   const [session, setSession] = useState<VoiceAgentSession | null>(null)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // 방금 끝난 통화 — 끝나면 결과(요약·판정)를 아래에 보여 준다.
+  const [lastCallId, setLastCallId] = useState<string | null>(null)
 
   const set = <K extends keyof TestCallInput>(
     key: K,
@@ -61,6 +64,7 @@ export function VoiceAgentPanel() {
   const start = async () => {
     setStarting(true)
     setError(null)
+    setLastCallId(null)
     const res = await createVoiceAgentSession(form)
     setStarting(false)
     if (!res.ok) {
@@ -68,6 +72,11 @@ export function VoiceAgentPanel() {
       return
     }
     setSession(res.data)
+  }
+
+  const end = () => {
+    if (session) setLastCallId(session.roomName)
+    setSession(null)
   }
 
   return (
@@ -83,11 +92,7 @@ export function VoiceAgentPanel() {
         </div>
         <div className="batch-log__controls">
           {session ? (
-            <button
-              type="button"
-              className="batch-log__refresh"
-              onClick={() => setSession(null)}
-            >
+            <button type="button" className="batch-log__refresh" onClick={end}>
               통화 끝내기
             </button>
           ) : (
@@ -174,12 +179,16 @@ export function VoiceAgentPanel() {
           token={session.participantToken}
           connect
           audio
-          onDisconnected={() => setSession(null)}
+          onDisconnected={end}
           onError={(e) => setError(e.message)}
         >
           <RoomAudioRenderer />
           <Conversation />
         </LiveKitRoom>
+      )}
+
+      {!session && lastCallId && (
+        <VoiceCallResult key={lastCallId} callId={lastCallId} />
       )}
     </>
   )
