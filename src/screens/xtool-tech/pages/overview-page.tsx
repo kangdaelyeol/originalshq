@@ -48,7 +48,7 @@ export function OverviewPage() {
   const rentals = useTechBoard('rentals')
   const parts = useTechBoard('parts')
   const requests = useTechBoard('asRequests')
-  const { names: myNames, linked } = useMyIdentity()
+  const { names: myNames } = useMyIdentity()
 
   const sources: KingSources = {
     fieldService: (field.board?.records as FieldServiceRecord[] | undefined) ?? null,
@@ -84,7 +84,6 @@ export function OverviewPage() {
       <div className="grid overview-top">
         <MyWorkCard
           names={myNames}
-          linked={linked}
           loading={[field, repair, inquiry, task, docs].some((b) => !b.board && !b.error)}
           sources={{
             fieldService: sources.fieldService,

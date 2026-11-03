@@ -2,7 +2,6 @@ import { Bytes, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc 
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
 import { normalizeEmail } from '@/xtool-auth/members'
-import { useMondayUsers } from './tech-boards-store'
 
 // 프로필 사진(설정 > 프로필 사진) — 본인이 올리고, 팀 모두가 담당자 동그라미 등에서 본다.
 // 사진은 화면에서 정사각형으로 잘라 작게 줄여 xtoolProfiles/{이메일}에 bytes로 넣는다(규칙이
@@ -66,22 +65,14 @@ export function useProfilePhoto(email: string | null | undefined): string | unde
   return email ? all?.get(normalizeEmail(email))?.url : undefined
 }
 
-/**
- * 이름 → 사진. 표의 담당자 칸은 Monday 사용자 이름이라 Monday 사용자 이메일로 잇고, 없으면
- * 구성원 이름(사진을 올릴 때 남긴 이름)으로 찾는다.
- */
+/** 이름 → 사진 — 사진을 올릴 때 남긴 구성원 이름으로 찾는다(Monday 사용자 계정은 쓰지 않는다). */
 export function usePhotoOf(): (name: string) => string | undefined {
   const all = useProfiles()
-  const users = useMondayUsers()
   return useMemo(() => {
     const byName = new Map<string, string>()
     for (const profile of all?.values() ?? []) if (profile.name) byName.set(profile.name, profile.url)
-    for (const user of users ?? []) {
-      const url = all?.get(normalizeEmail(user.email))?.url
-      if (url) byName.set(user.name, url)
-    }
     return (name: string) => byName.get(name)
-  }, [all, users])
+  }, [all])
 }
 
 const canvasBlob = (canvas: HTMLCanvasElement, type: string, quality: number) =>

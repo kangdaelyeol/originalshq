@@ -16,18 +16,16 @@ const PAGE = 8
 type Filter = 'all' | MyWorkBoard
 
 interface MyWorkCardProps {
-  /** Monday 담당자 칸에서 나를 찾을 이름들(Monday 사용자 이름 · 구성원 이름) */
+  /** 담당자 칸에서 나를 찾을 이름들 — 구성원 이름 */
   names: ReadonlySet<string>
   sources: Parameters<typeof buildMyWork>[0]
   loading: boolean
-  /** Monday 사용자와 이메일로 이어졌는지 — 아니면 구성원 이름으로만 찾는다 */
-  linked: boolean
 }
 
 const labelOf = (key: MyWorkBoard) => BOARD_TABS.find((t) => t.key === key)?.label ?? key
 
 /** 나의 진행 중 업무 — 보드별로 거르고, 누르면 그 보드의 상세가 열린다. */
-export function MyWorkCard({ names, sources, loading, linked }: MyWorkCardProps) {
+export function MyWorkCard({ names, sources, loading }: MyWorkCardProps) {
   const [filter, setFilter] = useState<Filter>('all')
   const [limit, setLimit] = useState(PAGE)
   const today = koreaToday()
@@ -67,7 +65,6 @@ export function MyWorkCard({ names, sources, loading, linked }: MyWorkCardProps)
       {!loading && items.length === 0 ? (
         <p className="bar-list__empty">
           진행 중인 담당 업무가 없어요.
-          {!linked && ' (Monday 계정과 이메일로 이어지지 않아 구성원 이름으로 찾았어요 — 이름이 Monday와 다르면 안 보일 수 있어요)'}
         </p>
       ) : (
         <ul className="my-work__list">

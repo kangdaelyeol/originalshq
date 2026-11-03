@@ -167,8 +167,6 @@ export function MyWorkPage() {
         {!loading && shown.length === 0 ? (
           <p className="bar-list__empty">
             {items.length === 0 ? '담당 업무가 없어요.' : '조건에 맞는 업무가 없어요.'}
-            {mine && !me.linked && items.length === 0 &&
-              ' (Monday 계정과 이메일로 이어지지 않아 구성원 이름으로 찾았어요 — 이름이 Monday와 다르면 안 보일 수 있어요)'}
           </p>
         ) : (
           <ul className="my-work__list">
