@@ -1,0 +1,477 @@
+@use 'tokens' as *;
+
+// ── 물 차트(D7) ──────────────────────────────────────────────────────────────────
+// 막대 = 유리에 파인 홈(D7 track) 안의 알약 채움. 채움은 홈의 두 배 길이로 왼쪽을 숨기고 transform으로만 옮긴다
+// (길이를 바꾸지 않아 레이아웃이 없고, 끝의 둥근 모양도 찌그러지지 않는다 — charts/use-water-fill.ts).
+
+// 색 채움 — 위가 밝고 아래가 짙은 알약(D7 표시 알약 #555358 → #2b292e처럼 둥근 몸)
+@mixin w-fill-color {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--w-fill) 80%, #fff),
+    var(--w-fill) 55%,
+    color-mix(in srgb, var(--w-fill) 78%, #000)
+  );
+}
+
+// 무늬(빗금) — dataviz: 무늬는 접근성 설정·인쇄일 때만, 45°·135°만, 같은 굵기·진하기(tone-on-tone 흰 32%).
+// 색 채움 위에 겹친다(채움은 w-fill-color와 같다)
+@mixin w-hatch($angle) {
+  background:
+    repeating-linear-gradient($angle, rgba(255, 255, 255, 0.32) 0 1.5px, transparent 1.5px 5px),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--w-fill) 80%, #fff),
+      var(--w-fill) 55%,
+      color-mix(in srgb, var(--w-fill) 78%, #000)
+    );
+}
+
+// ── 홈 막대 ───────────────────────────────────────────────────────────────────
+// md 12px(D7 홈 23px의 k 0.52) · sm 10px(k 0.43). 채움은 2px 안쪽 — 홈 테두리가 둘레에 남는다.
+.water-bar {
+  --w-bar-inset: 2px;
+
+  @include w-groove(0.52);
+  position: relative;
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+
+  &--sm {
+    @include w-groove(0.43);
+    height: 10px;
+  }
+}
+
+.water-bar__clip {
+  position: absolute;
+  inset: var(--w-bar-inset);
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.water-bar__fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  border-radius: 999px;
+  background: $w-dark;
+  transform: translateX(-100%);
+
+  &.is-color {
+    @include w-fill-color;
+  }
+}
+
+// 채움과 같은 좌표(홈 안쪽 2px부터)
+.water-bar__over {
+  position: absolute;
+  inset: 0 var(--w-bar-inset);
+  pointer-events: none;
+}
+
+// 목표선 — 흰 2px(D7 흰 테두리) + 옅은 어두운 가장자리: 홈 위에서도 어두운 채움 위에서도 보인다
+.water-bar__target {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: #fff;
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+// ── 막대 목록 ─────────────────────────────────────────────────────────────────
+.water-bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.water-bar-list__head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 7px;
+  font-size: 12.5px;
+}
+
+.water-bar-list__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: $w-ink;
+}
+
+.water-bar-list__value {
+  font-weight: 700;
+  color: $w-ink;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+
+  small {
+    margin-left: 1px;
+    font-size: 11px;
+    font-weight: 500;
+    color: $w-ink-2;
+  }
+}
+
+.water-bar-list__share {
+  display: inline-block;
+  min-width: 34px;
+  margin-left: 8px;
+  text-align: right;
+  font-size: 11px;
+  font-weight: 500;
+  color: $w-ink-2;
+}
+
+// ── 목표선 막대 ────────────────────────────────────────────────────────────────
+.water-latency {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.water-latency__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.water-latency__label {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 12px;
+  color: $w-ink-2;
+}
+
+.water-latency__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: $w-ink;
+  font-variant-numeric: tabular-nums;
+}
+
+// ── 비중 막대 ─────────────────────────────────────────────────────────────────
+// 16px 홈(k 0.7), 조각은 2.5px 안쪽. 조각 사이 2px 틈 = 위 조각이 오른쪽으로 2px 비킨 그림자(홈 바닥 색).
+.water-share {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.water-share__bar {
+  @include w-groove(0.7);
+  position: relative;
+  height: 16px;
+  border-radius: 999px;
+}
+
+.water-share__clip {
+  position: absolute;
+  inset: 2.5px;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.water-share__seg {
+  @include w-fill-color;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  border-radius: 999px;
+  box-shadow: 2px 0 0 0 #b2b0b5;
+  transform: translateX(-100%);
+  transition: opacity $w-quick;
+
+  &.is-last {
+    box-shadow: none;
+  }
+
+  &.is-dimmed {
+    opacity: 0.38;
+  }
+}
+
+.water-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.water-legend__row {
+  @include w-focus;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  transition: background-color $w-quick;
+
+  &.is-active {
+    background-color: $w-chip;
+  }
+}
+
+.water-legend__swatch {
+  @include w-fill-color;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.water-legend__label {
+  flex: 1;
+  min-width: 0;
+  color: $w-ink-2;
+}
+
+.water-legend__value {
+  font-weight: 650;
+  color: $w-ink;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+// ── 툴팁(작은 유리 판) ─────────────────────────────────────────────────────────
+// D7 유리 테두리(k 0.5)·낮은 그림자(lift 0.25)에 불투명한 밝은 유리 속(D7 단추 속처럼 — 차트 선 위에서도 글자가
+// 읽히게). 나타날 때 55ms, 사라질 때 30ms(WATER_REVEAL.fade·out).
+.water-tip {
+  @include w-glass(0.5, 0.25);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  min-width: 112px;
+  padding: 9px 12px 10px;
+  border-radius: 14px;
+  background: radial-gradient(ellipse closest-side, rgb(224, 222, 227), rgb(214, 212, 217));
+  font-size: 12px;
+  color: $w-ink-2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 30ms linear;
+
+  &.is-on {
+    opacity: 1;
+    transition-duration: 55ms;
+  }
+}
+
+.water-tip--above {
+  top: auto;
+  bottom: calc(100% + 10px);
+}
+
+.water-tip__label {
+  margin: 0 0 5px;
+  font-size: 11px;
+  color: $w-ink-2;
+}
+
+.water-tip__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+
+  strong {
+    font-weight: 700;
+    color: $w-ink;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// (load-css 안에서는 `& + &`가 루트까지 두 번 붙어 깨진다 — 따로 적는다)
+.water-tip__row + .water-tip__row {
+  margin-top: 4px;
+}
+
+.water-tip__key {
+  @include w-fill-color;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+// 선 계열 열쇠 — 짧은 선(흰 선도 보이게 옅은 테두리)
+.water-tip__key--line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+}
+
+// ── 선 + 면 차트 ───────────────────────────────────────────────────────────────
+.water-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.water-area__box {
+  @include w-focus;
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  touch-action: pan-y;
+}
+
+.water-area__grid,
+.water-area__series {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+
+// 격자 — 흰 실선(벽의 어두운 격자선과 헷갈리지 않게, D7 흰 테두리 색)
+.water-area__grid line {
+  stroke: rgba(255, 255, 255, 0.6);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+
+.water-area__grid text {
+  fill: $w-ink-2;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.water-area__x text {
+  transition: opacity $w-quick;
+
+  &.is-under {
+    opacity: 0;
+  }
+}
+
+// 선 끝 이름표(계열 넷 이상) — 이름은 글자 색(계열 색 아님), 끌어 잇는 선만 계열 색 1px
+.water-area__ends line {
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.water-area__line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+// 기준선 — 흰 1px
+.water-area__cross {
+  position: absolute;
+  left: -0.5px;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.9);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 30ms linear;
+
+  &.is-on {
+    opacity: 1;
+    transition-duration: 55ms;
+  }
+}
+
+// x축의 고른 칸 — D7 표시 알약(어두운 알약·흰 글자), 0.1초 동안 진해진다(F82 29% → F85 100%)
+.water-area__pill {
+  @include w-indicator;
+  @include w-on-dark;
+  position: absolute;
+  left: 0;
+  display: grid;
+  place-items: center;
+  height: 20px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 30ms linear;
+
+  &.is-on {
+    opacity: 1;
+    transition: opacity 0.1s ease-out;
+  }
+}
+
+.water-area__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin: 0;
+  padding: 0 0 0 44px;
+  list-style: none;
+  font-size: 12px;
+  color: $w-ink-2;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+// 대비 높이기·인쇄 — 비중 조각과 범례 칸에 빗금을 덧댄다. 이웃 조각은 늘 다른 방향(45° · 135°를 번갈아),
+// "기타"(무채 회색 꼬리)는 무늬 없이. 기본 화면에는 깔지 않는다(D7 유리 위 장식이 되지 않게)
+@media (prefers-contrast: more), print {
+  .water-share__seg,
+  .water-legend__swatch {
+    @include w-hatch(45deg);
+  }
+
+  .water-share__seg:nth-child(even),
+  .water-legend__row:nth-child(even) .water-legend__swatch {
+    @include w-hatch(135deg);
+  }
+
+  .water-share__seg.is-other,
+  .water-legend__row.is-other .water-legend__swatch {
+    @include w-fill-color;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .water-share__seg,
+  .water-legend__row,
+  .water-area__x text {
+    transition: none;
+  }
+}

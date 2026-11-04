@@ -1,5 +1,5 @@
 import { Plus, Search, Upload } from 'lucide-react'
-import { Suspense, useState } from 'react'
+import { lazy, Suspense, useState, type ComponentType } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
@@ -25,6 +25,7 @@ import { XT_BASE } from '../paths'
 /**
  * 디자인 — 관리자만(메뉴에서도 숨긴다). 공용 디자인 라이브러리(src/ohq-ui)의 랩을 띄운다: 공용 부품
  * 카탈로그(기본 부품)와 참고 영상을 옮긴 견본(D1~D10). tech 화면에서만 쓰는 부품은 "tech 부품"에서 본다.
+ * "물 · 기본"은 D7 물 디자인으로 다시 만든 공용 부품 묶음(ohq-ui/water).
  */
 export function DesignPage() {
   const member = useCurrentMember()
@@ -32,11 +33,21 @@ export function DesignPage() {
   return <DesignBoard />
 }
 
-type DesignTab = 'catalog' | 'tech' | ShowcaseKey
+type DesignTab = 'catalog' | 'tech' | 'water' | ShowcaseKey
+
+// 물 디자인(D7) 부품 — 견본처럼 그 탭을 열 때만 받는다(코드·스타일)
+const WATER_TABS: { value: DesignTab; label: string; Component: ComponentType }[] = [
+  {
+    value: 'water',
+    label: '물 · 기본',
+    Component: lazy(() => import('@/ohq-ui/water/catalog').then((m) => ({ default: m.WaterCatalog }))),
+  },
+]
 
 const DESIGN_TABS: { value: DesignTab; label: string }[] = [
   { value: 'catalog', label: '기본 부품' },
   { value: 'tech', label: 'tech 부품' },
+  ...WATER_TABS.map(({ value, label }) => ({ value, label })),
   ...SHOWCASES.map(({ value, label }) => ({ value, label })),
 ]
 
@@ -44,7 +55,7 @@ const DESIGN_TABS: { value: DesignTab; label: string }[] = [
 function DesignBoard() {
   const [params, setParams] = useSearchParams()
   const tab = DESIGN_TABS.find((t) => t.value === params.get('tab'))?.value ?? 'catalog'
-  const Showcase = SHOWCASES.find((s) => s.value === tab)?.Component
+  const Showcase = [...WATER_TABS, ...SHOWCASES].find((s) => s.value === tab)?.Component
   return (
     <>
       <div className="design-tabs">

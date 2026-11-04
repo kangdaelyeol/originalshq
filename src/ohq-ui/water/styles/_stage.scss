@@ -1,0 +1,25 @@
+@use 'tokens' as *;
+
+// ── 물 무대(D7 d7-scene) ──────────────────────────────────────────────────────
+// 타일 465×196, 격자선 2px(왼쪽·위), 타일 밝기 3×3 반복(TILE_SHADE, G 채널 차 ÷ 197 = 검은 막 투명도).
+// 그러데이션은 무대 상자 크기에 맞춘다 — 긴 카탈로그에서도 같은 밝기 폭(227 → 172).
+.water-stage {
+  --w-tile-w: 465px;
+  --w-tile-h: 196px;
+
+  position: relative;
+  isolation: isolate;
+  padding: 40px clamp(16px, 4vw, 56px) 64px;
+  border-radius: var(--radius-card, 18px);
+  overflow: hidden;
+  // 격자선 → 타일 밝기(3×3: [-1 0 -7 / -12.5 0 -7 / -12 -6.6 -10.4]) → 사선 그러데이션
+  background:
+    linear-gradient(90deg, $w-line 2px, transparent 2px) 0 0 / var(--w-tile-w) var(--w-tile-h),
+    linear-gradient(180deg, $w-line 2px, transparent 2px) 0 0 / var(--w-tile-w) var(--w-tile-h),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1395' height='588'%3E%3Cg fill='%23000'%3E%3Crect width='465' height='196' opacity='.005'/%3E%3Crect x='930' width='465' height='196' opacity='.036'/%3E%3Crect y='196' width='465' height='196' opacity='.063'/%3E%3Crect x='930' y='196' width='465' height='196' opacity='.036'/%3E%3Crect y='392' width='465' height='196' opacity='.061'/%3E%3Crect x='465' y='392' width='465' height='196' opacity='.034'/%3E%3Crect x='930' y='392' width='465' height='196' opacity='.053'/%3E%3C/g%3E%3C/svg%3E")
+      0 0 / calc(var(--w-tile-w) * 3) calc(var(--w-tile-h) * 3),
+    linear-gradient(135deg, $w-stage-hi, $w-stage-lo);
+  font-family: $w-font;
+  color: $w-ink;
+  -webkit-font-smoothing: antialiased;
+}

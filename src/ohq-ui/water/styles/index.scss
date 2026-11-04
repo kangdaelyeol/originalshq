@@ -1,0 +1,13 @@
+// 물 디자인(D7) 부품 스타일 — 물 부품을 쓰는 곳에서만 받는다(water/index.ts가 불러온다). 규칙은 모두
+// 라이브러리 루트(.ohq-ui) 아래로만 들어간다. 토큰·믹스인은 _tokens.scss(부품 스타일이 @use).
+@use 'sass:meta';
+@use 'tokens' as *;
+
+.ohq-ui {
+  @include w-vars;
+  @include meta.load-css('stage');
+  @include meta.load-css('catalog');
+  @include meta.load-css('controls');
+  @include meta.load-css('surfaces');
+  @include meta.load-css('charts');
+}

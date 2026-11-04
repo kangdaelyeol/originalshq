@@ -1,0 +1,569 @@
+@use 'tokens' as *;
+
+// ── 물 판·숫자·빈 상태·불러오는 중(D7) ─────────────────────────────────────────────
+// 판은 SVG 필터 대신 w-glass(그림자 목록)로 한 번 칠하고 다시 칠하지 않는다. 움직이는 것(숫자 띠·빛·떠오름)은
+// transform·opacity만 써서 합성 단계에서 움직인다. 스프링 곡선은 _tokens.scss w-spring()(D7 이름 → linear()).
+
+// ── 차례로 나타나기 ──────────────────────────────────────────────────────────────
+// D7 펼침 — 아이콘이 왼쪽부터 21ms 간격으로 55ms 동안 진해진다(F82 Activity 20% → F86 Voice 100%,
+// WATER_REVEAL.stagger·fade). 줄마다 style="--w-i: 차례"를 준다. D7은 다섯 개라, 긴 목록은 열두째부터 같이 나온다
+// (마지막 줄이 0.25초 안에 시작 — 30줄이면 0.6초나 기다리지 않게).
+.water-reveal {
+  animation: water-surf-reveal 55ms linear both;
+  animation-delay: calc(min(var(--w-i, 0), 12) * 21ms);
+}
+
+@keyframes water-surf-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+// ── 유리 판 ───────────────────────────────────────────────────────────────────
+// 그림자 높이(lift) — D7 유리(lift 1)는 21·44·36·20px(27%)로 떠 있는 메뉴 알약(높이 87px)의 그림자라, 카드
+// 사이 20px(--gap)·카탈로그 22px 틈에 두면 아래 카드까지 100px 번져 이웃 유리 너머로 비친다(유리가 투명하다).
+// low 0.3: 6·13·11·6px(8%) — 그림자 50% 선이 카드 아래 19px로 틈 안에 들고, 끝(30px)도 이웃 카드 위에서는 5%
+// 아래로 옅다. raised 0.55: 12·24·20·11px(15%) — 둘레가 40px 넘게 빈, 홀로 선 판(빈 화면·불러오는 중).
+// flat 0: 판 안의 판(그림자 없이 테두리만).
+.water-card {
+  @include w-glass(1, 0.3);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px 24px 24px;
+  border-radius: 22px;
+  font-family: $w-font;
+  color: $w-ink;
+
+  &--raised {
+    @include w-glass(1, 0.55);
+  }
+
+  &--flat {
+    @include w-glass(1, 0);
+  }
+}
+
+.water-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 18px;
+}
+
+.water-card__heading {
+  min-width: 0;
+}
+
+.water-card__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+  color: $w-ink;
+}
+
+.water-card__title--lg {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.water-card__subtitle {
+  margin: 3px 0 0;
+  font-size: 12px;
+  color: $w-ink-2;
+}
+
+.water-card__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+// 불러오는 중 — 유리 위로 사선 빛 한 줄(D7 버튼 왼쪽 아래 사선 윤광: 흰 50%·흐림 2.4 → 판 크기라 20%로 넓게).
+// 앞 64%는 판을 가로지르고 나머지는 쉰다. 빛은 판 하나에 ::before 하나 — transform만 움직여 다시 칠하지 않는다.
+.water-card__sheen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -60%;
+    width: 60%;
+    background: linear-gradient(105deg, transparent 18%, rgba(255, 255, 255, 0.22) 50%, transparent 82%);
+    animation: water-surf-sheen 2.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  }
+}
+
+// 판 왼쪽 밖(0) → 오른쪽 밖(판 너비 160% = 빛 너비의 266.7%)
+@keyframes water-surf-sheen {
+  0% {
+    transform: translateX(0);
+  }
+
+  64%,
+  100% {
+    transform: translateX(266.67%);
+  }
+}
+
+// ── 숫자 카드 ─────────────────────────────────────────────────────────────────
+.water-stat {
+  padding: 18px 20px 20px;
+  transition: transform w-dur(move) w-ease(move);
+
+  // 2px 떠오름 — D7 move 스프링(3% 넘침). transform이라 판을 다시 칠하지 않는다
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.water-stat__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.water-stat__title {
+  margin: 0;
+  padding-top: 2px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: $w-ink-2;
+}
+
+// 아이콘 — D7 불투명 유리 단추(지름 121px → 36px, k 0.3) 속 흰 아이콘(D7 아이콘 그림자 0.08em)
+.water-stat__icon {
+  @include w-solid(0.3);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: #fff;
+
+  svg {
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.16));
+  }
+
+  // tint — 장식 색(회색 벽에 맞춰 채도를 낮춘 상태 점 색 계열)
+  &.is-blue {
+    color: $w-info;
+  }
+
+  &.is-violet {
+    color: #6f5fae;
+  }
+
+  &.is-green {
+    color: $w-ok;
+  }
+
+  &.is-amber {
+    color: $w-warn;
+  }
+
+  &[class*='is-'] svg {
+    filter: none;
+  }
+}
+
+.water-stat__value {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: $w-ink;
+}
+
+.water-stat__foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 22px;
+  margin-top: 14px;
+}
+
+.water-stat__caption {
+  font-size: 11.5px;
+  color: $w-ink-2;
+}
+
+// ── 굴리는 숫자 ───────────────────────────────────────────────────────────────
+// 칸 = 새 숫자 글자(보이지 않게, 너비·기준선) + 띠(0~9 다섯 바퀴, 한 칸 1.15em = roll.ts ROLL_CELL).
+// 위아래만 자른다 — 굴러가는 넓은 숫자가 옆 칸에 조금 걸쳐도 잘리지 않게.
+.water-number {
+  white-space: nowrap;
+}
+
+.water-number__col {
+  position: relative;
+  display: inline-block;
+  line-height: 1.15em;
+  clip-path: inset(0 -0.6em);
+}
+
+.water-number__size {
+  visibility: hidden;
+}
+
+.water-number__strip {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  line-height: 1.15em;
+  text-align: center;
+  white-space: pre;
+  transform: translate(-50%, 0);
+}
+
+// ── 증감 · 상태 표시 ───────────────────────────────────────────────────────────
+// D7 안 고른 칩(반투명 흰 알약 199 → 215) 위 짙은 글자. 좋아짐·나빠짐·상태는 화살표·점 색으로만.
+.water-delta,
+.water-flag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  border-radius: 999px;
+  background: $w-chip;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: $w-ink;
+  white-space: nowrap;
+}
+
+.water-delta {
+  gap: 3px;
+  padding: 0 8px 0 6px;
+  font-variant-numeric: tabular-nums;
+
+  svg {
+    flex: none;
+  }
+
+  &.is-good svg {
+    color: $w-ok;
+  }
+
+  &.is-bad svg {
+    color: $w-crit;
+  }
+}
+
+.water-flag {
+  --w-dot: #{$w-ink-3};
+
+  gap: 6px;
+  padding: 0 9px 0 8px;
+
+  &.is-good {
+    --w-dot: #{$w-ok};
+  }
+
+  &.is-warn {
+    --w-dot: #{$w-warn};
+  }
+
+  &.is-crit {
+    --w-dot: #{$w-crit};
+  }
+
+  &.is-info {
+    --w-dot: #{$w-info};
+  }
+}
+
+.water-flag__dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--w-dot);
+}
+
+// ── 빈 상태 ───────────────────────────────────────────────────────────────────
+.water-empty {
+  margin: 0;
+  font-family: $w-font;
+  text-align: center;
+}
+
+.water-empty--sm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 18px 0;
+  font-size: 12.5px;
+  color: $w-ink-2;
+}
+
+.water-empty__bead {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  overflow: visible;
+}
+
+.water-empty--md {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 40px 20px;
+}
+
+// D7 불투명 유리 단추(121px → 56px, k 0.46) + 떠 있는 그림자(D7 유리 그림자 × 0.23)
+.water-empty__well {
+  @include w-solid(0.46);
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  color: #fff;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    box-shadow:
+      4.8px 10.1px 8.3px 4.6px rgba(0, 0, 0, 0.13),
+      0 0 5.5px rgba(0, 0, 0, 0.06);
+    pointer-events: none;
+  }
+}
+
+.water-empty__icon {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.16));
+}
+
+.water-empty__drop {
+  width: 26px;
+  height: 26px;
+  overflow: visible;
+}
+
+.water-empty__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: $w-ink;
+}
+
+.water-empty__text {
+  max-width: 380px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: $w-ink-2;
+}
+
+.water-empty__action {
+  margin-top: 6px;
+}
+
+// ── 불러오는 중 ───────────────────────────────────────────────────────────────
+// 블록 = 유리에 파인 빈 홈(D7 track 23px 기준 k = 높이 ÷ 23). 크기는 tech 보드 스켈레톤(.mon-skel)과 같다.
+.water-skel {
+  @include w-groove(0.43);
+  display: block;
+  flex: none;
+  max-width: 100%;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.water-skel--title {
+  @include w-groove(0.7);
+  height: 16px;
+}
+
+.water-skel--circle {
+  @include w-groove(1);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.water-skel--pill {
+  @include w-groove(0.96);
+  height: 22px;
+}
+
+.water-skel--block {
+  @include w-groove(0.8);
+  border-radius: 12px;
+}
+
+.water-skeleton {
+  gap: 16px;
+}
+
+.water-skeleton--bare {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  border-radius: 14px;
+}
+
+.water-skeleton__list,
+.water-skeleton__bars,
+.water-skeleton__stat,
+.water-skeleton__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.water-skeleton__list {
+  gap: 14px;
+}
+
+.water-skeleton__bars {
+  gap: 13px;
+}
+
+.water-skeleton__stat {
+  gap: 12px;
+}
+
+.water-skeleton__text {
+  gap: 10px;
+}
+
+.water-skeleton__item,
+.water-skeleton__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.water-skeleton__row {
+  justify-content: space-between;
+}
+
+.water-skeleton__lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.water-skeleton__bar {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+// ── 카탈로그 견본 배치(물 · 기본 탭에서만 쓴다) ──────────────────────────────────────
+// 판 사이는 화면과 같은 20px(--gap) — 그림자가 이웃 판에 얼마나 비치는지 실제 간격으로 본다.
+.water-surf-demo-grid,
+.water-surf-demo-kpi,
+.water-surf-demo-pair {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+}
+
+.water-surf-demo-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.water-surf-demo-kpi {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+}
+
+.water-surf-demo-pair {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+}
+
+.water-surf-demo-fill {
+  flex: 1 1 280px;
+  align-self: stretch;
+}
+
+.water-surf-demo-bars {
+  display: grid;
+  gap: 14px;
+  width: 100%;
+}
+
+.water-surf-demo-text {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: $w-ink-2;
+}
+
+.water-surf-demo-big {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  color: $w-ink;
+}
+
+.water-surf-demo-buttons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+// 견본 단추 — D7 효과 칩(Bounce 57×26.5, 반투명 흰 알약 · 글자 #69676c)
+.water-surf-demo {
+  @include w-reset-button;
+  @include w-focus;
+  height: 26.5px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: $w-chip;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: $w-ink-2;
+  transition: background-color $w-quick;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.45);
+  }
+}
+
+// ── 동작 줄이기 — 나타나기·빛·떠오름 없이 ─────────────────────────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .water-reveal {
+    animation: none;
+  }
+
+  .water-card__sheen::before {
+    animation: none;
+    opacity: 0;
+  }
+
+  .water-stat {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}

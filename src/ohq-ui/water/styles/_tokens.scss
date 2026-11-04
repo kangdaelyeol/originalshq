@@ -1,0 +1,266 @@
+// 물 디자인(D7) 토큰·믹스인 — CSS를 내보내지 않는다. 부품 스타일이 `@use '<경로>/water/styles/tokens' as *;`로
+// 가져다 쓴다. 값의 출처는 lab/styles/_design7.scss와 lab/showcase/design7(영상 프레임 F에서 잰 값).
+// $k는 크기 배율 — D7 값은 표시 알약 높이 50.5px 기준이라, 36px 부품은 0.713처럼 줄여 쓴다.
+@use 'sass:list';
+@use 'sass:map';
+@use 'sass:math';
+@use 'sass:meta';
+
+$w-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', 'Apple SD Gothic Neo', 'Pretendard Variable',
+  Pretendard, Arial, sans-serif;
+
+// 바탕(무대)
+$w-stage: #c7c5ca;
+$w-stage-hi: rgb(227, 225, 230);
+$w-stage-lo: rgb(172, 170, 175);
+$w-line: rgba(0, 0, 0, 0.165);
+
+// 글자 — 밝은 벽 위(진함 순)
+$w-ink: #3f3e43;
+$w-ink-2: #55545a;
+$w-ink-3: #69676c;
+
+// 어두운 알약(고른 것) — 표시 알약 위 #555358 → 아래 #2b292e, 효과 칩 #605e63 → #3f3d42 92% → #353338
+$w-dark: linear-gradient(180deg, #555358, #2b292e);
+$w-dark-chip: linear-gradient(180deg, #605e63, #3f3d42 92%, #353338);
+$w-dark-shadow: 0 0.35em 0.8em rgba(0, 0, 0, 0.26);
+
+// 반투명 흰 알약(안 고른 칩) — 199 → 215
+$w-chip: rgba(255, 255, 255, 0.28);
+
+// 움직임 — 칩 색 바뀜 0.1s(F356 → F359), 아이콘 커짐 0.1s
+$w-quick: 0.1s ease-out;
+// 1-(1-u)² — 표시 알약이 제자리에서 진해지는 곡선(F82 29% → F85 100%, WATER_REVEAL.indicator 0.1s)
+$w-ease-shade: cubic-bezier(0.333, 0.667, 0.667, 1);
+
+// ── 스프링 → CSS linear() ─────────────────────────────────────────────────────────
+// D7 감쇠 스프링(water/motion.ts WATER_SPRING·spring과 같은 값·식)을 CSS 이징으로 옮긴다 — 단순한 움직임(누름·
+// 전환)은 rAF 없이 합성 단계에서 돈다. 길이는 남은 흔들림이 처음 거리의 1/2000 아래로 줄 때까지(motion.ts
+// springSettle과 같은 기준), 점은 촘촘히(200칸) 잰 곡선에서 세로 오차 $tol(0.002) 안으로 줄여 남긴다.
+
+/// D7 스프링 이름 → (감쇠비 ζ, 고유진동수 ω rad/s)
+$w-springs: (
+  move: (0.72, 26),
+  extend: (0.5, 34),
+  detach: (0.45, 36),
+  wobble: (0.3, 46),
+  gather: (0.6, 47),
+  swell: (0.35, 20),
+  trail: (1, 24),
+  indicator: (0.65, 30.5),
+);
+
+/// 멈춘 상태에서 출발한 스프링의 자리(0 → 1) — $t초 뒤
+@function w-spring-at($t, $zeta, $omega) {
+  @if $t <= 0 {
+    @return 0;
+  }
+  @if $zeta >= 1 {
+    @return 1 - math.pow(math.$e, -$omega * $t) * (1 + $omega * $t);
+  }
+  $root: math.sqrt(1 - $zeta * $zeta);
+  $wd: $omega * $root;
+  @return 1 - math.pow(math.$e, -$zeta * $omega * $t) *
+    (math.cos($wd * $t) + math.div($zeta, $root) * math.sin($wd * $t));
+}
+
+// 꺾은선 줄이기(Ramer–Douglas–Peucker) — ($a, $b] 사이에서 남길 점 번호
+@function _w-rdp($ys, $a, $b, $tol) {
+  $ya: list.nth($ys, $a);
+  $yb: list.nth($ys, $b);
+  $dmax: 0;
+  $imax: $a;
+  @if $b - $a > 1 {
+    @for $i from $a + 1 through $b - 1 {
+      $d: math.abs(list.nth($ys, $i) - ($ya + ($yb - $ya) * math.div($i - $a, $b - $a)));
+      @if $d > $dmax {
+        $dmax: $d;
+        $imax: $i;
+      }
+    }
+  }
+  @if $dmax <= $tol {
+    @return ($b,);
+  }
+  @return list.join(_w-rdp($ys, $a, $imax, $tol), _w-rdp($ys, $imax, $b, $tol), $separator: comma);
+}
+
+@function _w-curve($zeta, $omega, $dur, $tol) {
+  $n: 200;
+  $sec: $dur;
+  @if $dur == null {
+    $sec: math.div(math.log(2000), math.min(1, $zeta) * $omega);
+  }
+  @if math.unit($sec) == 's' {
+    $sec: math.div($sec, 1s);
+  } @else if math.unit($sec) == 'ms' {
+    $sec: math.div($sec, 1000ms);
+  }
+  $ys: ();
+  @for $i from 0 through $n {
+    $y: 1;
+    @if $i < $n {
+      $y: w-spring-at(math.div($sec * $i, $n), $zeta, $omega);
+    }
+    $ys: list.append($ys, $y, $separator: comma);
+  }
+  $stops: (0,);
+  @each $i in _w-rdp($ys, 1, $n + 1, $tol) {
+    @if $i == $n + 1 {
+      $stops: list.append($stops, 1, $separator: comma);
+    } @else {
+      $y: math.div(math.round(list.nth($ys, $i) * 1000), 1000);
+      $p: math.div(math.round(math.div($i - 1, $n) * 1000), 10);
+      $stops: list.append($stops, $y #{$p}#{'%'}, $separator: comma);
+    }
+  }
+  @return (ease: linear(#{$stops}), dur: math.div(math.round($sec * 1000), 1000) * 1s);
+}
+
+/// 이름 붙은 D7 스프링 곡선 — 처음 불러올 때 한 번만 잰다
+$w-spring-curves: ();
+@each $name, $zw in $w-springs {
+  $w-spring-curves: map.merge($w-spring-curves, ($name: _w-curve(list.nth($zw, 1), list.nth($zw, 2), null, 0.002)));
+}
+
+/// 스프링 → (ease: linear(…), dur: 초). $spring은 D7 이름(move·extend·detach·wobble·gather·swell·trail·
+/// indicator) 또는 감쇠비 ζ(그때는 $omega도). $dur를 주면 그 길이로 자른다(끝 점은 1).
+/// 예: w-spring(move) · w-spring(0.72, 26) · w-spring(move, $dur: 0.45s)
+@function w-spring($spring, $omega: null, $dur: null, $tol: 0.002) {
+  @if meta.type-of($spring) == 'string' {
+    @if not map.has-key($w-springs, $spring) {
+      @error 'w-spring: 모르는 스프링 이름 #{$spring} — #{map.keys($w-springs)}';
+    }
+    @if $dur == null and $tol == 0.002 {
+      @return map.get($w-spring-curves, $spring);
+    }
+    $zw: map.get($w-springs, $spring);
+    @return _w-curve(list.nth($zw, 1), list.nth($zw, 2), $dur, $tol);
+  }
+  @return _w-curve($spring, $omega, $dur, $tol);
+}
+
+/// 스프링 이징만 — `transition: transform w-dur(move) w-ease(move)`
+@function w-ease($spring, $omega: null, $dur: null) {
+  @return map.get(w-spring($spring, $omega, $dur), ease);
+}
+
+/// 스프링 길이만(초)
+@function w-dur($spring, $omega: null, $dur: null) {
+  @return map.get(w-spring($spring, $omega, $dur), dur);
+}
+
+// 상태 점 색(글자색 아님 — 회색 벽 위 대비가 낮으니 점·막대에만 쓰고 글자는 $w-ink 계열)
+$w-ok: #3c8a63;
+$w-warn: #c08a2e;
+$w-crit: #c2504a;
+$w-info: #4a72b8;
+
+/// 유리 상자 — D7 유리 필터(water/glass.tsx WaterGlassFilter)를 box-shadow로 옮긴 것. 가만히 있는 상자에 쓴다
+/// (필터보다 훨씬 싸다). 같은 k·같은 모양의 필터와 단면이 맞게 보정했다(필터 ↔ CSS를 바꿔 끼워도 이음매가 없게):
+/// - 필터는 테두리 띠를 모양 안에서만 흐려 왼쪽 위 가장자리 첫 화소가 덜 진하다 → 흰빛을 얇게 얹는다
+/// - 깎기(feMorphology)는 사각 커널이라 둘레선이 45°에서 √2배(1.41px) — 오른쪽 아래 흰 테두리 위에서 보인다 →
+///   곧은 변 0.25px·45° 1.41px인 띠(오프셋 −2.8px, spread −2.55px)
+/// - 깎기 반지름·오프셋은 장치 화소로 반올림된다 → 둘레선 1px 아래로 내려가지 않고, 오프셋은 장치 화소
+///   (--w-dpx: 배율 2 0.5px · 배율 1 1px, w-vars)로 맞춘다
+/// 단면 최대 오차(밝기, k 1·0.7·0.5 알약·카드): 배율 2 61 → 20 · 배율 1 36 → 15, 안쪽 그림자 3 안쪽.
+/// 떨어지는 그림자는 lift만큼 줄인다(크기 + 진하기 — 필터는 크기만 줄인다)
+@mixin w-glass($k: 1, $lift: 1) {
+  $q: var(--w-dpx, 0.5px);
+  background: rgba(0, 0, 0, 0.026);
+  box-shadow:
+    inset 0 0 (1px * $k) rgba(255, 255, 255, 0.35),
+    inset -2.8px -2.8px 0 -2.55px rgba(0, 0, 0, 0.14),
+    inset round(1.7px * $k, $q) round(1.9px * $k, $q) (1.1px * $k) rgba(0, 0, 0, 0.62),
+    inset 0 0 0 max(1px, 1px * $k) rgba(0, 0, 0, 0.24),
+    inset round(-3.4px * $k, $q) round(-3.4px * $k, $q) (1.4px * $k) rgba(255, 255, 255, 0.9),
+    inset round(-2px * $k, $q) round(-5.5px * $k, $q) (2.8px * $k) rgba(255, 255, 255, 0.3),
+    inset (7px * $k) (13px * $k) (16px * $k) rgba(0, 0, 0, 0.24),
+    (21px * $k * $lift) (44px * $k * $lift) (36px * $k * $lift) (20px * $k * $lift) rgba(0, 0, 0, 0.27 * min(1, $lift)),
+    0 0 (24px * $k * $lift) rgba(0, 0, 0, 0.13 * min(1, $lift));
+}
+
+/** 홈(D7 track) — 유리 안에 파인 길 */
+@mixin w-groove($k: 1) {
+  background: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    inset 0 (2px * $k) 0 rgba(0, 0, 0, 0.3),
+    inset 0 0 0 (1.4px * $k) rgba(0, 0, 0, 0.16),
+    inset 0 (5px * $k) (6px * $k) rgba(0, 0, 0, 0.05);
+}
+
+/**
+ * 불투명 유리 단추(D7 접힌 버튼 속) — 가운데 196 → 가장자리 183, 왼쪽 위 안쪽 그림자, 2px 어두운 테두리,
+ * 오른쪽 아래 흰 테두리. 둥근 모양 기준(radial)이라 알약에는 $shape: ellipse
+ */
+@mixin w-solid($k: 1, $shape: circle closest-side) {
+  background: radial-gradient(
+    $shape,
+    rgb(194, 192, 197) 0%,
+    rgb(188, 186, 191) 70%,
+    rgb(185, 183, 188) 85%,
+    rgb(181, 179, 184) 100%
+  );
+  box-shadow:
+    inset (-3.4px * $k) (-3.4px * $k) (1.8px * $k) rgba(255, 255, 255, 0.9),
+    inset (1.5px * $k) (1.7px * $k) (0.6px * $k) rgba(0, 0, 0, 0.45),
+    inset 0 0 (0.5px * $k) (0.5px * $k) rgba(0, 0, 0, 0.15),
+    inset (-5.5px * $k) (-5.5px * $k) (3.5px * $k) (-1px * $k) rgba(255, 255, 255, 0.18),
+    inset (10px * $k) (11px * $k) (14px * $k) (1px * $k) rgba(0, 0, 0, 0.14);
+}
+
+/** 고른 것 뒤 어두운 알약(D7 indicator) */
+@mixin w-indicator {
+  background: $w-dark;
+  box-shadow: $w-dark-shadow;
+}
+
+/** 어두운 알약 위 흰 글자 — 아래로 번지는 그림자(D7 라벨) */
+@mixin w-on-dark {
+  color: #fff;
+  text-shadow:
+    0 0.06em 0.12em rgba(0, 0, 0, 0.28),
+    0 0 0.04em rgba(0, 0, 0, 0.12);
+}
+
+/** 키보드 초점 — 흰 고리(D7 버튼) */
+@mixin w-focus($w: 2px) {
+  outline: none;
+
+  &:focus-visible {
+    box-shadow: 0 0 0 $w rgba(255, 255, 255, 0.85);
+  }
+}
+
+/** 탭 했을 때 회색 번쩍임 끄기 등 단추 기본값 */
+@mixin w-reset-button {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/** 루트에 거는 CSS 변수(styles/index.scss가 .ohq-ui에 건다) */
+@mixin w-vars {
+  // 장치 화소 한 칸 — 유리 테두리 오프셋을 필터처럼 화소에 맞춘다(w-glass)
+  --w-dpx: 0.5px;
+
+  @media (max-resolution: 1.49dppx) {
+    --w-dpx: 1px;
+  }
+
+  --w-font: #{$w-font};
+  --w-stage: #{$w-stage};
+  --w-ink: #{$w-ink};
+  --w-ink-2: #{$w-ink-2};
+  --w-ink-3: #{$w-ink-3};
+  --w-chip: #{$w-chip};
+  --w-ok: #{$w-ok};
+  --w-warn: #{$w-warn};
+  --w-crit: #{$w-crit};
+  --w-info: #{$w-info};
+}

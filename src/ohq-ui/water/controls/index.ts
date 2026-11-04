@@ -1,0 +1,16 @@
+// 물 부품(controls) — 단추·고르기·입력. 기존 부품(components/*)과 같은 props로 바꿔 끼울 수 있고, 물 디자인에만
+// 있는 옵션(effect·groove·loading 등)을 더했다. 스타일은 styles/_controls.scss(water/index.ts가 불러온다).
+export { WaterSegmented } from './segmented'
+export { WaterChips } from './chips'
+export { WaterButton } from './button'
+export { WaterIconButton } from './icon-button'
+export { WaterSwitch } from './switch'
+export { WaterCheck, WaterRadio } from './check'
+export { WaterTextField } from './text-field'
+export { WaterRange } from './range'
+export { WaterStatusPill } from './status-pill'
+export { WaterAvatar } from './avatar'
+export { WaterDialog } from './dialog'
+export { WaterDialogEngine, dialogClosePose, dialogOpenPose, type DialogBox, type DialogPose } from './dialog-motion'
+export { rovingIndex } from './keys'
+export type { WaterEffect, WaterIcon, WaterOption } from './types'
