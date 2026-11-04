@@ -18,9 +18,12 @@ export interface AddressResult {
 }
 
 interface KakaoAddressDoc {
+  /** 찾은 주소 — 도로명으로 찾으면 도로명, 지번으로 찾으면 지번 */
   address_name: string
   x: string
   y: string
+  /** 지번 주소 — 도로명으로 찾아도 따로 들어 있다 */
+  address: { address_name: string } | null
   road_address: { address_name: string } | null
 }
 
@@ -54,13 +57,18 @@ export async function searchAddress(
   if (q.length < 2) throw new TechEditError('두 글자 이상 적어 주세요')
   const addresses = await kakao<KakaoAddressDoc>(apiKey, 'address.json', q)
   if (addresses.length > 0) {
-    return addresses.map((doc) => ({
-      label: doc.road_address?.address_name ?? doc.address_name,
-      address: doc.road_address?.address_name ?? doc.address_name,
-      jibun: doc.road_address ? doc.address_name : null,
-      lat: doc.y,
-      lng: doc.x,
-    }))
+    return addresses.map((doc) => {
+      const main = doc.road_address?.address_name ?? doc.address_name
+      // 지번은 address 쪽 — address_name은 찾은 주소라 도로명으로 찾으면 도로명이 한 번 더 나온다
+      const lot = doc.address?.address_name ?? null
+      return {
+        label: main,
+        address: main,
+        jibun: lot && lot !== main ? lot : null,
+        lat: doc.y,
+        lng: doc.x,
+      }
+    })
   }
   const places = await kakao<KakaoPlaceDoc>(apiKey, 'keyword.json', q)
   return places.map((doc) => ({
