@@ -6,8 +6,9 @@
 import { adEntityKey } from '../ad-settings/types'
 import { searchGoogleAds } from '../channel/google/client'
 import type { GoogleAdsAccount } from '../channel/google/types'
+import { addDays, todayISO } from '../channel/utils/dates'
 import { budgetOf, join, positiveOrNull, reading, won } from './format'
-import type { PlatformReading } from './types'
+import type { PastChangeReading, PlatformReading } from './types'
 
 interface CampaignRow {
   campaign?: {
@@ -288,6 +289,267 @@ export async function readGoogleSettings(
         },
       ),
     )
+  }
+  return out
+}
+
+// ── 지난 변경(change_event) ──────────────────────────────────────────────
+//
+// 확인한 것(2026-11-04, 지난 30일 70건): old_resource·new_resource에는 바뀐 칸만
+// 들어 있고(값 하나만 골라 받기는 안 된다 — UNRECOGNIZED_FIELD), changed_fields는
+// "amountMicros,period"처럼 쉼표로 이은 camelCase 경로다. 캠페인·광고그룹을 새로
+// 만든 날의 조건 추가는 처음 설정이라 변경으로 치지 않는다. 시각은 계정
+// 시간대(한국) 그대로 온다.
+
+type Obj = Record<string, unknown>
+
+interface ChangeEventRow {
+  changeEvent?: {
+    resourceName?: string
+    changeDateTime?: string
+    changeResourceType?: string
+    resourceChangeOperation?: string
+    changedFields?: string
+    oldResource?: Obj
+    newResource?: Obj
+    campaign?: string
+    adGroup?: string
+  }
+}
+
+/** "customers/1/campaigns/2" → "2". */
+const lastId = (resourceName: string | undefined) =>
+  resourceName?.split('/').pop() || null
+
+/** 점으로 이은 경로의 값. */
+const at = (o: unknown, path: string): unknown =>
+  path
+    .split('.')
+    .reduce<unknown>(
+      (v, key) =>
+        v !== null && typeof v === 'object' ? (v as Obj)[key] : undefined,
+      o,
+    )
+
+/** 조건 자원에서 종류 — 값이 든 하위 칸(audience·ageRange·keyword …)의 이름. */
+const CRITERION_META = new Set([
+  'resourceName',
+  'status',
+  'criterionId',
+  'adGroup',
+  'campaign',
+  'negative',
+  'bidModifier',
+  'displayName',
+  'type',
+  'systemServingStatus',
+  'approvalStatus',
+  'effectiveCpcBidMicros',
+])
+const criterionLabel = (c: Obj) => {
+  const key = Object.keys(c).find((k) => !CRITERION_META.has(k))
+  if (!key) return null
+  const type = key.replace(/[A-Z]/g, (m) => `_${m}`).toUpperCase()
+  if (type === 'AGE_RANGE') {
+    const v = AGE[String(at(c, 'ageRange.type'))]
+    return v ? `연령 ${v}` : '연령'
+  }
+  if (type === 'GENDER') {
+    const v = GENDER[String(at(c, 'gender.type'))]
+    return v ? `성별 ${v}` : '성별'
+  }
+  return CRITERION_LABEL.get(type) ?? type
+}
+
+/** 지난 30일 예산·입찰·목표·타기팅 조건 변경. */
+export async function readGooglePastChanges(
+  account: GoogleAdsAccount,
+  refreshToken: string,
+): Promise<PastChangeReading[]> {
+  const today = todayISO()
+  const rows = await searchGoogleAds<ChangeEventRow>(
+    `
+    SELECT change_event.resource_name, change_event.change_date_time,
+      change_event.change_resource_type, change_event.resource_change_operation,
+      change_event.changed_fields, change_event.old_resource,
+      change_event.new_resource, change_event.campaign, change_event.ad_group
+    FROM change_event
+    WHERE change_event.change_date_time >= '${addDays(today, -29)}'
+      AND change_event.change_date_time <= '${addDays(today, 1)}'
+      AND change_event.change_resource_type IN ('CAMPAIGN_BUDGET', 'CAMPAIGN',
+        'AD_GROUP', 'CAMPAIGN_CRITERION', 'AD_GROUP_CRITERION')
+    ORDER BY change_event.change_date_time ASC
+    LIMIT 10000`,
+    account,
+    refreshToken,
+  )
+
+  const out: PastChangeReading[] = []
+  // 새로 만든 날 — 그 날의 조건 추가는 처음 설정이다.
+  const createdOn = new Set<string>()
+  // 조건 추가·삭제는 대상·날짜마다 한 줄로 모은다.
+  const criteria = new Map<
+    string,
+    {
+      reading: Omit<PastChangeReading, 'change'>
+      at: number
+      date: string
+      counts: Map<string, number>
+    }
+  >()
+
+  for (const row of rows) {
+    const e = row.changeEvent
+    if (!e?.changeDateTime || !e.resourceName) continue
+    // 계정 시간대(한국) 시각 — 날짜는 앞 10글자 그대로.
+    const date = e.changeDateTime.slice(0, 10)
+    const time = Date.parse(
+      `${e.changeDateTime.replace(' ', 'T').slice(0, 23)}+09:00`,
+    )
+    if (!Number.isFinite(time)) continue
+    const campaignId = lastId(e.campaign)
+    const adGroupId = lastId(e.adGroup)
+    const type = e.changeResourceType
+    const op = e.resourceChangeOperation
+    const target =
+      type === 'AD_GROUP' || type === 'AD_GROUP_CRITERION'
+        ? adGroupId && {
+            entityKey: adEntityKey('google', 'adset', adGroupId),
+            channel: 'google' as const,
+            level: 'adset' as const,
+            platformId: adGroupId,
+            name: '',
+          }
+        : campaignId && {
+            entityKey: adEntityKey('google', 'campaign', campaignId),
+            channel: 'google' as const,
+            level: 'campaign' as const,
+            platformId: campaignId,
+            name: '',
+          }
+    if (!target) continue
+    if (op === 'CREATE' && (type === 'CAMPAIGN' || type === 'AD_GROUP')) {
+      createdOn.add(`${target.entityKey}@${date}`)
+      continue
+    }
+    const push = (
+      field: PastChangeReading['change']['field'],
+      before: PastChangeReading['change']['before'],
+      after: PastChangeReading['change']['after'],
+    ) =>
+      out.push({
+        ...target,
+        change: {
+          id: `google:${e.resourceName}:${field}`,
+          at: time,
+          date,
+          field,
+          before,
+          after,
+          summary: false,
+        },
+      })
+    const fields = (e.changedFields ?? '').split(',').filter(Boolean)
+    const res = (side: 'oldResource' | 'newResource', key: string) =>
+      (e[side]?.[key] ?? {}) as Obj
+
+    if (type === 'CAMPAIGN_BUDGET' && op === 'UPDATE') {
+      const budget = (o: Obj) =>
+        o.totalAmountMicros
+          ? budgetOf(micros(o.totalAmountMicros as string), 'lifetime')
+          : budgetOf(micros(o.amountMicros as string), 'daily')
+      if (fields.some((f) => /amountMicros/i.test(f)))
+        push(
+          'budget',
+          budget(res('oldResource', 'campaignBudget')),
+          budget(res('newResource', 'campaignBudget')),
+        )
+      continue
+    }
+    if (type === 'CAMPAIGN' && op === 'UPDATE') {
+      const before = res('oldResource', 'campaign')
+      const after = res('newResource', 'campaign')
+      const label = (o: Obj) => {
+        const code = o.biddingStrategyType as string | undefined
+        return code ? (BIDDING[code] ?? code) : ''
+      }
+      if (fields.includes('biddingStrategyType'))
+        push('bidding', label(before), label(after))
+      const cpa = (o: Obj) =>
+        micros(at(o, 'maximizeConversions.targetCpaMicros') as string) ??
+        micros(at(o, 'targetCpa.targetCpaMicros') as string)
+      if (fields.some((f) => /targetCpaMicros$/.test(f)))
+        push('targetCpa', cpa(before), cpa(after))
+      const roas = (o: Obj) =>
+        roasPercent(at(o, 'maximizeConversionValue.targetRoas') as number) ??
+        roasPercent(at(o, 'targetRoas.targetRoas') as number)
+      if (fields.some((f) => /targetRoas$/.test(f)))
+        push('targetRoas', roas(before), roas(after))
+      continue
+    }
+    if (type === 'AD_GROUP' && op === 'UPDATE') {
+      const before = res('oldResource', 'adGroup')
+      const after = res('newResource', 'adGroup')
+      const cpc = (o: Obj) => {
+        const n = micros(o.cpcBidMicros as string)
+        return n === null ? '' : `최대 CPC ${won(n)}`
+      }
+      if (fields.includes('cpcBidMicros'))
+        push('bidding', cpc(before), cpc(after))
+      if (fields.includes('targetCpaMicros'))
+        push(
+          'targetCpa',
+          micros(before.targetCpaMicros as string),
+          micros(after.targetCpaMicros as string),
+        )
+      if (fields.includes('targetRoas'))
+        push(
+          'targetRoas',
+          roasPercent(before.targetRoas as number),
+          roasPercent(after.targetRoas as number),
+        )
+      continue
+    }
+    if (
+      (type === 'AD_GROUP_CRITERION' || type === 'CAMPAIGN_CRITERION') &&
+      (op === 'CREATE' || op === 'REMOVE')
+    ) {
+      const key =
+        type === 'AD_GROUP_CRITERION' ? 'adGroupCriterion' : 'campaignCriterion'
+      const c = res(op === 'CREATE' ? 'newResource' : 'oldResource', key)
+      const label = criterionLabel(c)
+      if (!label) continue
+      const what = `${op === 'CREATE' ? '추가' : '삭제'} ${label}${c.negative ? ' 제외' : ''}`
+      const group = criteria.get(`${target.entityKey}@${date}`) ?? {
+        reading: target,
+        at: time,
+        date,
+        counts: new Map<string, number>(),
+      }
+      group.counts.set(what, (group.counts.get(what) ?? 0) + 1)
+      criteria.set(`${target.entityKey}@${date}`, group)
+    }
+  }
+
+  for (const [key, group] of criteria) {
+    if (createdOn.has(key)) continue
+    // 추가 먼저, 그다음 삭제.
+    const text = [...group.counts]
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([what, n]) => (n > 1 ? `${what} ${n}개` : what))
+      .join(' · ')
+    out.push({
+      ...group.reading,
+      change: {
+        id: `google:${key}:criteria:${text}`,
+        at: group.at,
+        date: group.date,
+        field: 'audience',
+        before: null,
+        after: `조건 ${text}`,
+        summary: true,
+      },
+    })
   }
   return out
 }

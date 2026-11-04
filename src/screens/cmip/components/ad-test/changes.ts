@@ -11,6 +11,7 @@ import {
   type CreativeSet,
   type PlatformSetting,
   type PlatformSettingFields,
+  type PlatformSettingValue,
 } from '../../client'
 import { addDays } from '../../utils'
 import {
@@ -22,6 +23,20 @@ import {
 } from '../ad-settings/labels'
 
 type PlatformByEntity = ReadonlyMap<AdEntityKey, PlatformSetting>
+
+const NO_PLATFORM: PlatformSettingFields = {
+  budget: null,
+  bidding: '',
+  targetCpa: null,
+  targetRoas: null,
+  audience: '',
+}
+
+/** 매체 설정 칸 하나의 값을 글자로(지난 변경은 칸 하나만 안다). */
+const pastValue = (
+  field: keyof PlatformSettingFields,
+  value: PlatformSettingValue,
+) => platformValue({ ...NO_PLATFORM, [field]: value }, field)
 
 /** 설정이 바뀐 날 하나 — 그 날 적용 중인 설정(광고셋은 캠페인 것과 합친 값)을
  * 전날과 견준 칸들. */
@@ -186,32 +201,52 @@ export function settingEvents(
         ]
       : []),
   ]
-  for (const [setting, source, prefix] of platformSources) {
-    const history = setting?.history ?? []
-    history.forEach((entry, i) => {
-      if (i === 0 || entry.changed.length === 0) return
-      const changes = entry.changed.map((key) => ({
-        label: `${prefix} ${PLATFORM_FIELD_LABEL[key]}`,
-        before: platformValue(history[i - 1], key) || '없음',
-        after: platformValue(entry, key) || '없음',
-      }))
-      const same = events.find((e) => e.date === entry.from)
-      if (same) {
-        same.changes.push(...changes)
-        if (!same.platform.includes(source)) same.platform.push(source)
-        return
-      }
-      const fields = settingAt(entity, byEntity, entry.from)
-      events.push({
-        date: entry.from,
+  /** 그 날 사건에 매체 변경 칸을 더한다 — 같은 칸이 그 날 또 바뀌었으면 처음
+   * 전 값과 마지막 후 값만 남긴다. */
+  const addPlatform = (
+    date: string,
+    source: 'campaign' | 'adset',
+    change: SettingEvent['changes'][number],
+  ) => {
+    let event = events.find((e) => e.date === date)
+    if (!event) {
+      const fields = settingAt(entity, byEntity, date)
+      event = {
+        date,
         sources: [],
-        changes,
+        changes: [],
         memo: '',
         first: false,
         // 장은 그대로라 소재도 그대로다.
         creatives: { before: fields.creativeIds, after: fields.creativeIds },
-        platform: [source],
+        platform: [],
+      }
+      events.push(event)
+    }
+    const same = event.changes.find((c) => c.label === change.label)
+    if (same) same.after = change.after
+    else event.changes.push(change)
+    if (!event.platform.includes(source)) event.platform.push(source)
+  }
+  for (const [setting, source, prefix] of platformSources) {
+    const label = (key: keyof PlatformSettingFields) =>
+      `${prefix} ${PLATFORM_FIELD_LABEL[key]}`
+    // 처음 읽은 날 전 — 매체 변경 기록에서 읽은 바뀐 칸만(시각 순).
+    for (const c of setting?.pastChanges ?? [])
+      addPlatform(c.date, source, {
+        label: label(c.field),
+        before: c.summary ? '' : pastValue(c.field, c.before) || '없음',
+        after: pastValue(c.field, c.after) || '없음',
       })
+    const history = setting?.history ?? []
+    history.forEach((entry, i) => {
+      if (i === 0 || entry.changed.length === 0) return
+      for (const key of entry.changed)
+        addPlatform(entry.from, source, {
+          label: label(key),
+          before: platformValue(history[i - 1], key) || '없음',
+          after: platformValue(entry, key) || '없음',
+        })
     })
   }
   return events.sort((a, b) => a.date.localeCompare(b.date))
@@ -244,11 +279,16 @@ export const platformFieldsAt = (
   }
 }
 
-/** 구간 메모 기본값 — 그 날 바뀐 칸을 짧게("예산 일 3만원 → 5만원"). */
+/** 구간 메모 기본값 — 그 날 바뀐 칸을 짧게("예산 일 3만원 → 5만원"). 전 값을
+ * 모르는 칸(매체 타기팅 조건 추가 등)은 바뀐 내용만. */
 export const summarizeChanges = (event: SettingEvent): string =>
   event.changes
     .slice(0, 2)
-    .map((c) => `${c.label} ${c.before} → ${c.after}`)
+    .map((c) =>
+      c.before
+        ? `${c.label} ${c.before} → ${c.after}`
+        : `${c.label} ${c.after}`,
+    )
     .join(', ') +
   (event.changes.length > 2 ? ` 외 ${event.changes.length - 2}` : '')
 

@@ -243,7 +243,13 @@ export const summarizeRun = (run: BatchRun): string => {
     case 'naver-settings':
     case 'openai-settings':
     case 'daangn-settings':
-      return `대상 ${num(result.entities)}개 · 처음 읽음 ${num(result.added)} · 바뀜 ${num(result.changed)}`
+      return [
+        `대상 ${num(result.entities)}개 · 처음 읽음 ${num(result.added)} · 바뀜 ${num(result.changed)}`,
+        // 네이버·당근은 매체 변경 기록이 없어 이 값이 없다.
+        result.pastAdded !== undefined && `지난 변경 ${num(result.pastAdded)}`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
     case 'google-insights': {
       const campaign = result.campaignResult as Record<string, unknown>
       const adGroup = result.adGroupResult as Record<string, unknown>

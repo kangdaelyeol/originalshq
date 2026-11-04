@@ -184,6 +184,26 @@ export interface PlatformSettingEntry extends PlatformSettingFields {
   changed: (keyof PlatformSettingFields)[]
 }
 
+export type PlatformSettingValue =
+  PlatformSettingFields[keyof PlatformSettingFields]
+
+/** 매체의 변경 기록(Meta 활동·Google change_event·OpenAI audit_logs)에서 읽은
+ * 지난 변경 하나 — 그때의 설정 전체는 모르고 바뀐 칸만 안다. 매체 설정을 처음
+ * 읽은 날(history[0]) 전의 것만 둔다(그 뒤는 history가 잡는다). */
+export interface PlatformPastChange {
+  /** 매체 기록에서 만든 id — 다시 읽어도 한 번만 넣는다. */
+  id: string
+  /** 바뀐 시각(ms)과 그 날(KST). */
+  at: number
+  date: ISODate
+  field: keyof PlatformSettingFields
+  /** 바뀌기 전·후 값(칸 모양 그대로, 예산은 AdBudget) — null은 "없음". */
+  before: PlatformSettingValue
+  after: PlatformSettingValue
+  /** 전 값을 모르고 after가 바뀐 내용을 적은 글이다(타기팅 조건 추가·삭제). */
+  summary: boolean
+}
+
 /** adPlatformSettings/{entityKey} — 대상 하나의 매체 설정 기록. 동기화 때마다
  * 읽어 마지막 줄과 다르면 한 줄 더한다(같은 날 또 바뀌면 그 날 줄을 고친다). */
 export interface PlatformSettingDoc {
@@ -192,10 +212,13 @@ export interface PlatformSettingDoc {
   level: AdLevel
   platformId: string
   name: string
-  /** 날짜 순. */
+  /** 날짜 순 — 지난 변경만 있고 지금은 집행하지 않는 대상은 비어 있다. */
   history: PlatformSettingEntry[]
-  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 더 읽지 않아 멈춘다. */
-  lastSeenDate: ISODate
+  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 더 읽지 않아 멈춘다(읽은 적이
+   * 없으면 빈 글자). */
+  lastSeenDate: ISODate | ''
+  /** 지난 변경(시각 순) — 이 필드가 생기기 전 문서에는 없다. */
+  pastChanges?: PlatformPastChange[]
 }
 
 export type PlatformSetting = PlatformSettingDoc

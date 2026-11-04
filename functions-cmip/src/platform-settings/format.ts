@@ -58,3 +58,7 @@ export const reading = (
     ...fields,
   },
 })
+
+/** 시각(ms) → 한국 날짜. */
+export const kstDate = (ms: number) =>
+  new Date(ms + 9 * 3_600_000).toISOString().slice(0, 10)

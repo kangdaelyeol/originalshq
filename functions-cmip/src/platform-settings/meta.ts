@@ -3,8 +3,17 @@
 import { adEntityKey } from '../ad-settings/types'
 import { META_AD_ACCOUNT_IDS } from '../channel/meta'
 import { listAll } from '../creatives/meta'
-import { budgetOf, join, positiveOrNull, reading, won } from './format'
-import type { PlatformReading } from './types'
+import type { AdBudget, AdLevel } from '../ad-settings/types'
+import {
+  budgetOf,
+  join,
+  kstDate,
+  plain,
+  positiveOrNull,
+  reading,
+  won,
+} from './format'
+import type { PastChangeReading, PlatformReading } from './types'
 
 interface Named {
   id?: string
@@ -184,5 +193,162 @@ export async function readMetaSettings(
       )
     }
   }
+  return out
+}
+
+// ── 지난 변경(활동 기록) ─────────────────────────────────────────────────
+//
+// 확인한 것(2026-11-04, 지난 30일): category로 거르면 예산(update_ad_set_budget
+// 12건)·입찰(update_ad_set_bid_strategy 8건)·타기팅(update_ad_set_target_spec
+// 19건)만 온다(거르지 않으면 광고 켜기·끄기가 4시간에 200건). 활동 기록은
+// 광고셋을 CAMPAIGN, 캠페인을 CAMPAIGN_GROUP이라 부른다. extra_data는 JSON 글:
+//   · 예산 — old_value.old_value / new_value.new_value(원), additional_value(기준 글)
+//   · 입찰 전략 — old_value / new_value(코드), additional_value.old_value/new_value(금액)
+//   · 타기팅 — old_value / new_value가 [{ content: "연령:", children: [...] }] 목록
+
+interface RawActivity {
+  event_type?: string
+  event_time?: string
+  object_id?: string
+  object_type?: string
+  object_name?: string
+  extra_data?: string
+}
+
+type Obj = Record<string, unknown>
+
+const PAST_CATEGORIES = ['BUDGET', 'BID', 'TARGETING'] as const
+
+/** 활동 기록의 입찰 전략 코드 — API(bid_strategy)와 이름이 달라 글자로 가린다. */
+const bidStrategyLabel = (code: unknown): string => {
+  const text = plain(code)
+  if (!text) return ''
+  if (/COST_CAP/.test(text)) return '비용 한도'
+  if (/BID_CAP/.test(text)) return '입찰가 한도'
+  if (/ROAS/.test(text)) return '최소 ROAS'
+  if (/LOWEST_COST/.test(text)) return '최저 비용'
+  return text
+}
+
+const inner = (value: unknown, key: string): unknown =>
+  value !== null && typeof value === 'object' ? (value as Obj)[key] : value
+
+/** 타기팅 목록 → "연령" → "25세 - 54세" 같은 줄들. */
+const targetLines = (value: unknown): Map<string, string> => {
+  const out = new Map<string, string>()
+  if (!Array.isArray(value)) return out
+  for (const line of value as Obj[]) {
+    const key = plain(line?.content).replace(/[:：]\s*$/, '')
+    if (key) out.set(key, plain(line?.children))
+  }
+  return out
+}
+
+/** 활동 하나 → 지난 변경(모르는 모양이면 null). */
+const pastChangeOf = (a: RawActivity): PastChangeReading | null => {
+  const level: AdLevel | null =
+    a.object_type === 'CAMPAIGN'
+      ? 'adset'
+      : a.object_type === 'CAMPAIGN_GROUP'
+        ? 'campaign'
+        : null
+  if (!level || !a.object_id || !a.event_type || !a.event_time) return null
+  let extra: Obj
+  try {
+    extra = JSON.parse(a.extra_data ?? '') as Obj
+  } catch {
+    return null
+  }
+  // "+0000" 꼴 시간대를 "+00:00"으로.
+  const at = Date.parse(a.event_time.replace(/([+-]\d{2})(\d{2})$/, '$1:$2'))
+  if (!Number.isFinite(at)) return null
+  const base = {
+    entityKey: adEntityKey('meta', level, a.object_id),
+    channel: 'meta' as const,
+    level,
+    platformId: a.object_id,
+    name: a.object_name ?? '',
+  }
+  const change = (
+    field: PastChangeReading['change']['field'],
+    before: PastChangeReading['change']['before'],
+    after: PastChangeReading['change']['after'],
+  ): PastChangeReading => ({
+    ...base,
+    change: {
+      id: `meta:${a.event_type}:${a.object_id}:${at}`,
+      at,
+      date: kstDate(at),
+      field,
+      before,
+      after,
+      summary: false,
+    },
+  })
+
+  if (/^update_(ad_set|campaign)_budget$/.test(a.event_type)) {
+    const basis = `${plain(inner(extra.old_value, 'additional_value'))} ${plain(
+      inner(extra.new_value, 'additional_value'),
+    )}`
+    const period: AdBudget['period'] = /총|평생|lifetime/i.test(basis)
+      ? 'lifetime'
+      : 'daily'
+    return change(
+      'budget',
+      budgetOf(inner(extra.old_value, 'old_value') as number, period),
+      budgetOf(inner(extra.new_value, 'new_value') as number, period),
+    )
+  }
+  if (a.event_type === 'update_ad_set_bid_strategy') {
+    const amount = (key: string) =>
+      positiveOrNull(inner(extra.additional_value, key) as number)
+    const label = (code: unknown, key: string) => {
+      const n = amount(key)
+      return join([bidStrategyLabel(code), n !== null && won(n)])
+    }
+    return change(
+      'bidding',
+      label(extra.old_value, 'old_value'),
+      label(extra.new_value, 'new_value'),
+    )
+  }
+  if (/^update_ad(_set)?_targets?_spec$/.test(a.event_type)) {
+    const before = targetLines(extra.old_value)
+    const after = targetLines(extra.new_value)
+    const keys = [...new Set([...before.keys(), ...after.keys()])].filter(
+      (k) => before.get(k) !== after.get(k),
+    )
+    if (keys.length === 0) return null
+    const side = (lines: Map<string, string>) =>
+      keys.map((k) => `${k} ${lines.get(k) || '없음'}`).join(' · ')
+    return change('audience', side(before), side(after))
+  }
+  return null
+}
+
+/** 지난 30일 예산·입찰·타기팅 변경 — 계정 두 개 모두. */
+export async function readMetaPastChanges(
+  accessToken: string,
+): Promise<PastChangeReading[]> {
+  const since = String(Math.floor(Date.now() / 1000) - 30 * 86400)
+  const out: PastChangeReading[] = []
+  for (const accountId of META_AD_ACCOUNT_IDS)
+    for (const category of PAST_CATEGORIES) {
+      const activities = await listAll<RawActivity>(
+        `act_${accountId}/activities`,
+        {
+          fields:
+            'event_type,event_time,object_id,object_type,object_name,extra_data',
+          category,
+          since,
+          limit: '200',
+        },
+        accessToken,
+      )
+      for (const a of activities) {
+        const found = pastChangeOf(a)
+        if (found) out.push(found)
+      }
+    }
   return out
 }

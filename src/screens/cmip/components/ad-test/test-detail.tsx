@@ -284,7 +284,12 @@ export function TestDetail({ vm }: { vm: Vm }) {
                           {segment.event.changes.map((change) => (
                             <li key={change.label}>
                               <span>{change.label}</span>
-                              <em>{change.before}</em> → <b>{change.after}</b>
+                              {change.before && (
+                                <>
+                                  <em>{change.before}</em> →{' '}
+                                </>
+                              )}
+                              <b>{change.after}</b>
                             </li>
                           ))}
                         </ul>

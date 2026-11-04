@@ -141,6 +141,23 @@ export interface PlatformSettingEntry extends PlatformSettingFields {
   changed: (keyof PlatformSettingFields)[]
 }
 
+export type PlatformSettingValue =
+  PlatformSettingFields[keyof PlatformSettingFields]
+
+/** 매체 변경 기록(Meta 활동·Google change_event·OpenAI audit_logs)에서 읽은 지난
+ * 변경 — 처음 읽은 날 전의 것만, 바뀐 칸만 안다. */
+export interface PlatformPastChange {
+  id: string
+  at: number
+  date: ISODate
+  field: keyof PlatformSettingFields
+  /** null은 "없음". */
+  before: PlatformSettingValue
+  after: PlatformSettingValue
+  /** 전 값을 모르고 after가 바뀐 내용을 적은 글이다(타기팅 조건 추가·삭제). */
+  summary: boolean
+}
+
 /** 대상 하나의 매체 설정 기록 — 바뀐 날마다 한 줄(날짜 순). */
 export interface PlatformSetting {
   entityKey: AdEntityKey
@@ -148,9 +165,12 @@ export interface PlatformSetting {
   level: AdLevel
   platformId: string
   name: string
+  /** 지난 변경만 있고 지금은 집행하지 않는 대상은 비어 있다. */
   history: PlatformSettingEntry[]
-  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 멈춘다. */
-  lastSeenDate: ISODate
+  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 멈춘다(읽은 적 없으면 빈 글자). */
+  lastSeenDate: ISODate | ''
+  /** 지난 변경(시각 순) — 이 필드가 생기기 전 문서에는 없다. */
+  pastChanges?: PlatformPastChange[]
 }
 
 /** 매체별 테스트의 구간 하나. */
