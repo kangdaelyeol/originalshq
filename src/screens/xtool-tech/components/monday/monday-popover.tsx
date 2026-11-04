@@ -75,12 +75,16 @@ export function MonPopover({ anchor, width, onClose, escapeCommits = true, class
     }
   }, [anchor, escapeCommits])
 
-  // 처음 열릴 때 첫 입력 칸(없으면 첫 버튼)으로
+  // 처음 열릴 때 첫 입력 칸(없으면 첫 버튼)으로 — 자리를 잡아 보이게 된 뒤에 한 번(숨겨진 동안에는
+  // visibility: hidden이라 초점이 들어가지 않는다)
+  const focused = useRef(false)
   useEffect(() => {
+    if (!pos || focused.current) return
+    focused.current = true
     const el = ref.current
     const first = el?.querySelector<HTMLElement>('input:not([type="checkbox"]), textarea') ?? el?.querySelector<HTMLElement>('button')
     first?.focus({ preventScroll: true })
-  }, [])
+  }, [pos])
 
   return createPortal(
     <div
