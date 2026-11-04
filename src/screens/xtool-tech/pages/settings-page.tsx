@@ -3,12 +3,10 @@ import { useRef, useState, type CSSProperties } from 'react'
 import { BackgroundArt } from '@/ohq-ui/backgrounds/background-art'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/ohq-ui/brand/brand-mark'
-import { Avatar } from '@/ohq-ui/components/avatar'
-import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { RangeField } from '@/ohq-ui/components/range-field'
 import { StatusPill } from '@/ohq-ui/components/status-pill'
+import { Avatar, Button, GlassCard } from '../components/layout-parts'
 import { useCurrentMember } from '../context/member-context'
 import {
   BACKGROUND_ACCEPT,
@@ -29,16 +27,36 @@ import type { ThemeName } from '@/ohq-ui/theme/theme-root'
 
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
 
-/** 보드 화면 모양 — 대시보드: 유리 판에 카드·차트(기본) · Monday 표: Monday 테마에 그룹별 표, 칸을 눌러 바로 고친다. */
+/**
+ * 보드 화면 모양 — 대시보드: 유리 판에 카드·차트(기본) · Monday 표: Monday 테마에 그룹별 표, 칸을 눌러 바로 고친다 ·
+ * 물: 대시보드와 같은 배치를 D7 물 부품으로(water-layout).
+ */
 const LAYOUT_OPTIONS: readonly { value: ThemeName; label: string; description: string }[] = [
   { value: 'glass', label: '대시보드', description: '숫자 카드·차트와 목록 — 처음부터 쓰던 화면' },
   { value: 'monday', label: 'Monday 표', description: 'Monday처럼 그룹별 표 — 칸을 눌러 바로 고쳐요' },
+  { value: 'water', label: '물', description: '밝은 유리 벽 위 물 부품 — 고르면 물처럼 미끄러져요' },
 ]
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
 const CUSTOM_COMMIT_MS = 120
 
-/** 레이아웃 견본 — 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표. */
+/** 레이아웃 견본 — 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표, 물은 유리 알약과 유리 판. */
 function LayoutArt({ layout }: { layout: ThemeName }) {
+  if (layout === 'water') {
+    return (
+      <span className="layout-art layout-art--water" aria-hidden>
+        <span className="layout-art__pill">
+          <i />
+          <i />
+          <i />
+        </span>
+        <span className="layout-art__glass">
+          <i />
+          <i />
+          <i />
+        </span>
+      </span>
+    )
+  }
   if (layout === 'glass') {
     return (
       <span className="layout-art layout-art--dashboard" aria-hidden>
@@ -265,6 +283,7 @@ export function SettingsPage() {
   }
 
   const monday = theme === 'monday'
+  const water = theme === 'water'
   return (
     <>
       <ProfilePhotoCard />
@@ -327,9 +346,16 @@ export function SettingsPage() {
             수 있어요.
           </p>
         )}
+        {water && (
+          <p className="accent-picker__note">
+            <Info size={14} aria-hidden />
+            물에서는 화면 전체가 밝은 유리 벽이라 배경·강조색·유리 효과를 쓰지 않아요. 대시보드로 바꾸면 다시 고를 수
+            있어요.
+          </p>
+        )}
       </GlassCard>
 
-      {!monday && (
+      {!monday && !water && (
         <>
           <GlassCard
             title="배경"

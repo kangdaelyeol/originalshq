@@ -1,0 +1,110 @@
+@use '../../../../ohq-ui/water/styles/tokens' as *;
+
+// ── 물 화면 안의 지금 화면 글자(index.scss가 루트 .xtool-tech.theme-water 아래로 건다) ─────────────────────
+// 보드·개요·내 업무·팀 화면은 부품만 물로 바꿔 끼우고(components/layout-parts) 나머지 글자·목록은 지금 마크업
+// 그대로다. 그 색은 공용 토큰(--text-*·--line·--accent·상태 색)으로 칠해져 있어서, 물 화면 본문과 물 서랍
+// 안에서만 토큰을 밝은 벽용으로 바꾼다. 수정 패널(ItemEditor)·디자인 화면(.wl-page--native)은 어두운 유리
+// 그대로라 바꾸지 않는다.
+@mixin wl-ink-tokens {
+  --text-1: #{$w-ink};
+  --text-2: #{$w-ink-2};
+  --text-3: #{$w-ink-3};
+  --text-4: #6f6d72;
+  --line: rgba(63, 62, 67, 0.12);
+  // 강조(오늘·임박)는 진한 잉크 — 강조색 녹색은 밝은 벽 위 대비가 1.5:1이라 쓰지 않는다
+  --accent: #{$w-ink};
+  --accent-rgb: 63, 62, 67;
+  --accent-ink: #fff;
+  // 상태 글자 — 밝은 벽(#c7c5ca) 위 4.5:1 넘게 한 단계 진하게(점·막대의 $w-ok 등보다 진하다)
+  --good: #285c41;
+  --warn: #6e4b0e;
+  --crit: #8f2f2b;
+  --info: #2d4c80;
+}
+
+.wl-page:not(.wl-page--native),
+.water-drawer {
+  @include wl-ink-tokens;
+}
+
+// 디자인 화면 — 부품 견본은 저마다의 바탕이 있어 어두운 판 위에 그대로 둔다
+.wl-page--native {
+  padding: 24px;
+  border-radius: 24px;
+  background: #0b0b0d;
+  color: var(--text-1);
+  color-scheme: dark;
+}
+
+// 불러오는 중·못 불러옴(보드 화면) — 아이콘 칸은 불투명 유리 단추
+.wl-page .empty__icon {
+  color: $w-ink-2;
+  background: none;
+  @include w-solid(0.8);
+}
+
+// 줄 목록(내 업무·일정) — 유리 위 옅은 흰 줄
+.wl-page {
+  .my-work__row,
+  .schedule__event {
+    background: rgba(255, 255, 255, 0.2);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.36);
+    }
+  }
+
+  .my-work__board {
+    background: rgba(63, 62, 67, 0.07);
+  }
+
+  .record-more {
+    border-color: transparent;
+    background-color: $w-chip;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+
+    &:hover {
+      border-color: transparent;
+      background-color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  // 검색·고르기(내 업무 거르기) — 반투명 흰 알약
+  .record-search,
+  .record-select select {
+    border-color: transparent;
+    background-color: $w-chip;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    color: $w-ink;
+  }
+
+  .record-search:focus-within,
+  .record-select select:focus {
+    border-color: transparent;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+      0 0 0 2px rgba(255, 255, 255, 0.85);
+  }
+
+  .record-select select {
+    color-scheme: light;
+  }
+
+  .table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  // 설정 견본 칸(레이아웃·색) — 옅은 흰 판, 고른 칸은 토큰(--accent-rgb = 잉크)이 고리를 칠한다
+  .glass-preset {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.14);
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    &.is-selected {
+      border-color: rgba(63, 62, 67, 0.7);
+    }
+  }
+}

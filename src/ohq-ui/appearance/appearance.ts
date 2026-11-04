@@ -4,7 +4,7 @@ import { GLASS_DEFAULT, normalizeGlass, type GlassSettings } from '../theme/glas
 import { MONDAY_PALETTES, type MondayPalette } from '../theme/monday'
 import type { ThemeName } from '../theme/theme-root'
 
-// 외관 설정 — 판 모양(유리·Monday)과 그 색, 강조색, 유리 효과, 배경. 이 브라우저에 저장해 두고 originalshq의
+// 외관 설정 — 판 모양(유리·Monday·물)과 그 색, 강조색, 유리 효과, 배경. 이 브라우저에 저장해 두고 originalshq의
 // 화면들(기술팀 보드·관리 화면 등)이 같은 모양으로 그린다(AppearanceProvider). 고르는 화면(설정)은 각 앱이 그린다.
 
 /** 기본으로 들어 있는 배경 */
@@ -28,7 +28,10 @@ export const BACKGROUND_OPTIONS: readonly BackgroundOption[] = [
 ]
 
 export interface Appearance {
-  /** 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(화면도 Monday식 배치를 고를 수 있다) */
+  /**
+   * 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(화면도 Monday식 배치를 고를 수 있다) · water: D7 물
+   * (화면 틀·부품을 물 부품으로)
+   */
   theme: ThemeName
   /** Monday 테마의 색 */
   mondayPalette: MondayPalette
@@ -51,11 +54,11 @@ export const DEFAULT_APPEARANCE: Appearance = {
 }
 
 // 저장 위치·모양 — 처음 기술팀 보드(xtool-tech)에서 쓰던 그대로 둔다(이미 저장된 값을 계속 읽게). 판 모양은
-// 그때의 필드(layout: 'dashboard' | 'monday')로 저장한다.
+// 그때의 필드(layout: 'dashboard' | 'monday')로 저장한다 — 물은 'water'를 더했다.
 const STORAGE_KEY = 'xtool-tech:settings'
 
 interface StoredAppearance extends Omit<Appearance, 'theme'> {
-  layout: 'dashboard' | 'monday'
+  layout: 'dashboard' | 'monday' | 'water'
 }
 
 /** 이 브라우저에 저장된 외관 — 없거나 깨졌거나 저장소를 못 쓰면 기본값. */
@@ -67,7 +70,7 @@ export function loadAppearance(): Appearance {
     const sharedId = typeof parsed.sharedBackgroundId === 'string' && parsed.sharedBackgroundId ? parsed.sharedBackgroundId : null
     const shared = parsed.background === 'shared' && sharedId !== null
     return {
-      theme: parsed.layout === 'monday' ? 'monday' : 'glass',
+      theme: parsed.layout === 'monday' || parsed.layout === 'water' ? parsed.layout : 'glass',
       mondayPalette: MONDAY_PALETTES.some((o) => o.value === parsed.mondayPalette)
         ? (parsed.mondayPalette as MondayPalette)
         : DEFAULT_APPEARANCE.mondayPalette,
@@ -86,7 +89,7 @@ export function loadAppearance(): Appearance {
 }
 
 export function saveAppearance({ theme, ...rest }: Appearance): void {
-  const stored: StoredAppearance = { layout: theme === 'monday' ? 'monday' : 'dashboard', ...rest }
+  const stored: StoredAppearance = { layout: theme === 'glass' ? 'dashboard' : theme, ...rest }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(stored))
   } catch {

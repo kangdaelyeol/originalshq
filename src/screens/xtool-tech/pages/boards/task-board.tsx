@@ -1,16 +1,17 @@
 import { CircleCheck, CircleDashed, ListTodo, OctagonAlert } from 'lucide-react'
 import { useCallback } from 'react'
-import { Assignees, StagePill } from '../../components/board/cells'
-import { RecordDrawer } from '../../components/board/record-drawer'
 import {
+  Assignees,
+  BarList,
+  GlassCard,
+  RecordDrawer,
   RecordTable,
-  type RecordColumn,
-} from '../../components/board/record-table'
-import { UpcomingList } from '../../components/board/upcoming-list'
-import { BarList } from '@/ohq-ui/charts/bar-list'
+  StagePill,
+  StatCard,
+  UpcomingList,
+} from '../../components/layout-parts'
+import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { StatCard } from '@/ohq-ui/components/stat-card'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { TaskRecord, TechBoardDoc } from '../../data/tech-boards'

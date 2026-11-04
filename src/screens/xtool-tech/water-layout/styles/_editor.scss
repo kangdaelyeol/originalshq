@@ -1,0 +1,104 @@
+@use '../../../../ohq-ui/water/styles/tokens' as *;
+
+// ── 물 서랍 안의 수정 패널(ItemEditor — 지금 마크업, index.scss가 루트 .xtool-tech.theme-water 아래로 건다) ──
+// 서랍 틀(WaterDrawerShell)과 고르기 칸(물 칩·다중 선택·날짜·주소)은 물 부품으로 바뀌고, 나머지 입력 칸·하위 줄·
+// 연결 고르기는 지금 마크업이다. 글자색은 토큰(_pages.scss)이 바꾸고, 여기는 어두운 유리에 맞춘 바탕·테두리를
+// 물 입력 칸(WaterTextField — 40px 유리 알약, 초점 흰 고리)과 같게 다시 칠한다.
+.water-drawer {
+  .icon-button {
+    color: $w-ink-2;
+
+    &:hover {
+      color: $w-ink;
+      background: rgba(255, 255, 255, 0.32);
+    }
+  }
+
+  .field__label {
+    font-weight: 600;
+    color: $w-ink-2;
+  }
+
+  .field__badge {
+    background: rgba(63, 62, 67, 0.1);
+    color: $w-ink;
+  }
+
+  .field__input,
+  .relation-picker__trigger {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    font: 500 14px/1.2 $w-font;
+    color: $w-ink;
+    @include w-glass(0.46, 0.2);
+
+    &::placeholder {
+      color: $w-ink-3;
+    }
+
+    &:focus,
+    &:focus-visible {
+      outline: 2px solid rgba(255, 255, 255, 0.85);
+      outline-offset: 0;
+    }
+  }
+
+  textarea.field__input {
+    min-height: 96px;
+    padding: 12px 16px;
+    border-radius: 18px;
+    line-height: 1.5;
+    resize: vertical;
+  }
+
+  select.field__input {
+    appearance: none;
+    padding-right: 36px;
+    background-image:
+      linear-gradient(45deg, transparent 50%, $w-ink-3 50%),
+      linear-gradient(135deg, $w-ink-3 50%, transparent 50%);
+    background-position:
+      calc(100% - 19px) 50%,
+      calc(100% - 15px) 50%;
+    background-size: 4px 4px;
+    background-repeat: no-repeat;
+    color-scheme: light;
+
+    option {
+      background: #e9e8ec;
+      color: $w-ink;
+    }
+  }
+
+  // 바뀐 칸 — 진한 잉크 얇은 고리
+  .field--changed .field__input {
+    outline: 1.5px solid rgba(63, 62, 67, 0.42);
+    outline-offset: -1.5px;
+  }
+
+  .editor__locked {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  .subitems__add {
+    border-color: rgba(63, 62, 67, 0.28);
+
+    &:hover {
+      border-color: rgba(63, 62, 67, 0.5);
+    }
+  }
+
+  // 연결 고르기 목록 — 서랍 위에 뜨는 밝은 판
+  .relation-picker__list {
+    border-color: rgba(255, 255, 255, 0.55);
+    background: rgba(233, 232, 236, 0.97);
+    box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.35);
+  }
+
+  .relation-picker__option:hover,
+  .relation-picker__option.is-on {
+    background: rgba(63, 62, 67, 0.07);
+  }
+}

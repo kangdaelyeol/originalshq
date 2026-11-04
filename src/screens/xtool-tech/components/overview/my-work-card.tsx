@@ -6,9 +6,7 @@ import { BOARD_TABS } from '../../data/tech-boards'
 import { koreaToday, shortDate } from '../../lib/dates'
 import { cx } from '@/ohq-ui/lib/cx'
 import { xtPath } from '../../paths'
-import { StagePill } from '../board/cells'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { GlassCard, SegmentedControl, StagePill } from '../layout-parts'
 
 // 처음에 보여 줄 줄 수
 const PAGE = 8

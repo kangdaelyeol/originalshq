@@ -30,7 +30,8 @@ import {
 } from '../../data/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
 import { isComposing } from '../../lib/ime'
-import { Button } from '@/ohq-ui/components/button'
+import { useWaterLayout } from '../../water-layout/load'
+import { Button } from '../layout-parts'
 import { DrawerShell } from './drawer-shell'
 import { FileField } from './item-files'
 import { RelationPicker } from './relation-picker'
@@ -90,10 +91,12 @@ interface ItemEditorProps {
 /** 항목 편집·생성 — 상세 패널 위에 겹쳐 뜬다. 저장을 누르면 바로 닫히고 요청은 뒤에서 간다
  * (tech-save-queue — 진행·실패는 토스트). 바뀐 값은 실시간 구독으로 들어온다. */
 export function ItemEditor({ open, boardKey, meta, item, onClose }: ItemEditorProps) {
+  // 설정 > 레이아웃 "물"이면 물 서랍(같은 props) — 편집 칸도 물 부품으로 바꿔 끼운다(ColumnInput)
+  const Shell = useWaterLayout()?.WaterDrawerShell ?? DrawerShell
   return (
-    <DrawerShell open={open} onClose={onClose} labelledBy="editor-title" layer="top" contentKey={item?.itemId ?? 'new'}>
+    <Shell open={open} onClose={onClose} labelledBy="editor-title" layer="top" contentKey={item?.itemId ?? 'new'}>
       {open && <EditorForm boardKey={boardKey} meta={meta} item={item} onClose={onClose} />}
-    </DrawerShell>
+    </Shell>
   )
 }
 
@@ -351,6 +354,11 @@ interface ColumnInputProps {
 }
 
 function ColumnInput({ id, column, value, onChange, users, currentText }: ColumnInputProps) {
+  // 물 레이아웃이면 같은 props의 물 부품(components/water/board)
+  const water = useWaterLayout()
+  const Multi = water?.WaterMultiSelect ?? MultiSelect
+  const DateTime = water?.WaterDateTimeInput ?? DateTimeInput
+  const Location = water?.WaterLocationInput ?? LocationInput
   switch (column.type) {
     case 'long_text':
       return (
@@ -377,7 +385,7 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
     case 'dropdown': {
       const selected = value as string[]
       const options = [...(column.options ?? []), ...selected.filter((v) => !column.options?.includes(v))]
-      return <MultiSelect id={id} options={options} selected={selected} onChange={onChange} />
+      return <Multi id={id} options={options} selected={selected} onChange={onChange} />
     }
     case 'people':
       return <PeoplePicker id={id} selected={value as string[]} onChange={onChange} users={users} currentText={currentText} />
@@ -389,9 +397,9 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
         </label>
       )
     case 'date':
-      return <DateTimeInput id={id} title={column.title} value={value as { date: string; time: string }} onChange={onChange} />
+      return <DateTime id={id} title={column.title} value={value as { date: string; time: string }} onChange={onChange} />
     case 'location':
-      return <LocationInput id={id} value={value as LocationState} onChange={onChange} />
+      return <Location id={id} value={value as LocationState} onChange={onChange} />
     case 'board_relation':
       // 가리키는 보드가 우리 캐시에 있는 연결 칸만 여기 온다(그 밖은 잠금).
       return column.linkedBoardKey ? (
@@ -744,8 +752,9 @@ function PeoplePicker({
   const fromUsers = (users ?? []).map((u) => ({ value: u.id, label: u.name }))
   const known = new Set(fromUsers.map((o) => o.value))
   const options = [...remembered.filter((o) => !known.has(o.value)), ...fromUsers]
+  const Chips = useWaterLayout()?.WaterChipPicker ?? ChipPicker
   return (
-    <ChipPicker
+    <Chips
       id={id}
       options={options}
       selected={selected}
@@ -766,8 +775,9 @@ function AssigneePicker({ id, value, onChange }: { id: string; value: string; on
   const [remembered] = useState(selected)
   const team = (members ?? []).map((m) => m.name.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'ko'))
   const options = [...new Set([...remembered, ...team])].map((name) => ({ value: name, label: name }))
+  const Chips = useWaterLayout()?.WaterChipPicker ?? ChipPicker
   return (
-    <ChipPicker
+    <Chips
       id={id}
       options={options}
       selected={selected}

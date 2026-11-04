@@ -12,6 +12,7 @@ import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
 import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
+import { WaterBackdrop, WaterShellGate } from '../../water-layout/water-gate'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
 import { Toaster } from './toaster'
@@ -61,7 +62,20 @@ export function AppLayout() {
   }, [session, navigate])
 
   // 로그인 확인 중·로그인 화면으로 넘어가는 중 — 배경만 깔아 두어 깜빡임 없이.
-  if (session.status !== 'ready') return <AppBackground />
+  if (session.status !== 'ready') return theme === 'water' ? <WaterBackdrop /> : <AppBackground />
+
+  // 설정 > 레이아웃 "물" — 화면 틀(무대·사이드바·상단바)을 물 묶음으로 그린다(물을 고른 사람만 받는다).
+  if (theme === 'water') {
+    return (
+      <MemberContext.Provider value={session.member}>
+        <UsageTracking pathname={pathname} />
+        <WaterShellGate member={session.member} collapsed={collapsed} onToggle={toggleSidebar}>
+          {outlet}
+        </WaterShellGate>
+        <ScrollRestoration />
+      </MemberContext.Provider>
+    )
+  }
 
   return (
     <MemberContext.Provider value={session.member}>

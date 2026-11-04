@@ -1,0 +1,625 @@
+@use '../../../../ohq-ui/water/styles/tokens' as *;
+
+// ── 물 사이드바(water-sidebar.tsx) ────────────────────────────────────────────
+// 유리 판(카드와 같은 w-glass 1·0.3) 위 메뉴 줄. 지금 보는 메뉴 뒤 어두운 표시 알약(D7 indicator)은 엔진이
+// 자리·높이·늘어남을 style로 고치고, 알약을 따라가는 창 안의 흰 메뉴로 지나가는 줄이 희게 보인다.
+// 접기·펴기는 셸 칸 폭(move 스프링)을 따라 글자가 0.12초에 사라진다.
+$fold: w-dur(move) w-ease(move);
+$row: 38px;
+
+// 고정은 바깥 틀이 — 접기 단추가 사이드바(스크롤 상자) 테두리 밖으로 걸쳐야 해서 둘을 나눴다
+.wl-sidebar-wrap {
+  position: sticky;
+  top: 20px;
+  height: calc(100dvh - 40px);
+  min-width: 0;
+}
+
+.wl-sidebar {
+  height: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 10px 14px;
+  border-radius: 22px;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  @include w-glass(1, 0.3);
+}
+
+// 로고 — 어두운 알약(D7 표시 알약) 위 흰 X
+.wl-sidebar__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 7px 20px;
+}
+
+.wl-brand {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  @include w-indicator;
+}
+
+.wl-brand__x {
+  width: 17px;
+  height: 17px;
+  color: #fff;
+  filter: drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.3));
+}
+
+.wl-sidebar__brand-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  white-space: nowrap;
+
+  strong {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: $w-ink;
+  }
+
+  span {
+    margin-top: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    color: $w-ink-3;
+  }
+}
+
+// ── 메뉴 ──
+// 여백(padding)을 두지 않는다 — 알약·창(absolute)과 줄(흐름)의 기준이 같아야 창 안의 흰 메뉴가 제자리에 온다
+.wl-nav {
+  position: relative;
+  flex: 1 0 auto;
+  min-height: 0;
+}
+
+.wl-nav__list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wl-nav__section + .wl-nav__section {
+  margin-top: 16px;
+  border-top: 1px solid transparent;
+  transition:
+    margin $fold,
+    padding $fold,
+    border-color $fold;
+}
+
+.wl-nav__section-label {
+  max-height: 20px;
+  margin: 0 0 6px;
+  padding: 0 12px;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.06em;
+  color: $w-ink-3;
+  white-space: nowrap;
+  transition:
+    opacity 0.12s,
+    visibility 0s,
+    max-height $fold,
+    margin $fold;
+}
+
+.wl-nav__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: $row;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: $w-ink-2;
+  text-decoration: none;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    color $w-quick,
+    padding $fold;
+  @include w-focus;
+
+  &:hover:not(.is-active) {
+    color: $w-ink;
+  }
+}
+
+.wl-nav__face {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  width: 100%;
+}
+
+// 고른 줄은 바깥 줄에서도 흰 글자 — 흰 겹을 얹어 opacity만 바꾼다(D7 고르기 .water-seg__face--on과 같은 방법)
+.wl-nav__face--on {
+  position: absolute;
+  inset: 0;
+  padding: 0 12px;
+  opacity: 0;
+  transition: opacity $w-quick;
+  @include w-on-dark;
+
+  .is-active > & {
+    opacity: 1;
+  }
+}
+
+// 흰 겹이 다 떠오르면(0.1s) 밑의 잉크 글자는 감춘다 — 가장자리가 비치지 않게. 풀 때는 곧바로 다시 보인다
+.wl-nav__face--ink {
+  transition: opacity 0s;
+
+  .is-active > & {
+    opacity: 0;
+    transition: opacity 0s linear 0.1s;
+  }
+}
+
+.wl-nav__icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.wl-nav__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    opacity 0.12s,
+    visibility 0s;
+}
+
+.wl-nav__badge {
+  margin-left: auto;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: $w-chip;
+}
+
+// 누른 자리에서 퍼지는 물결(useWaterRipple) — 줄 위에 겹친다
+.wl-nav__ripple {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+// 표시 알약 — 위 #555358 → 아래 #2b292e + 아래로 번지는 그림자. 자리·높이·늘어남은 엔진이 style에 쓴다
+.wl-nav__indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  will-change: transform;
+  @include w-indicator;
+  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.26);
+}
+
+// 줄(흐름)은 알약 위에
+.wl-nav__list {
+  position: relative;
+  z-index: 1;
+}
+
+// 알약을 따라가는 창 — 같은 모양으로 따라가며 그 안만 흰 메뉴
+.wl-nav__window {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2;
+  overflow: hidden;
+  border-radius: 999px;
+  pointer-events: none;
+  will-change: transform;
+  contain: strict;
+}
+
+.wl-nav__indicator.is-hidden,
+.wl-nav__window.is-hidden {
+  visibility: hidden;
+}
+
+.wl-nav__inner {
+  position: absolute;
+  top: 0;
+}
+
+// 흰 겹·창 안의 한 벌은 그림일 뿐 — 글자를 끌어 고를 때 같은 메뉴 이름이 두 번 잡히지 않게
+.wl-nav__face--on,
+.wl-nav__window {
+  user-select: none;
+}
+
+// 창 안의 흰 한 벌 — 메뉴 글자만 흰색으로 보이고, 묶음 이름·직원 목록·갈매기는 자리만 차지한다
+.wl-nav__list.is-on {
+  .wl-nav__item {
+    color: #fff;
+  }
+
+  .wl-nav__face {
+    @include w-on-dark;
+  }
+
+  .wl-nav__section-label,
+  .wl-people__sub {
+    visibility: hidden;
+  }
+}
+
+// ── 내 업무 아래 직원 목록 ──
+.wl-people__row {
+  position: relative;
+
+  // 갈매기 자리(오른쪽 34px)는 글자가 비켜 간다
+  .wl-nav__item {
+    padding-right: 38px;
+  }
+}
+
+.wl-people__caret {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-top: -13px;
+  border-radius: 50%;
+  color: $w-ink-3;
+  transition:
+    color $w-quick,
+    opacity 0.12s,
+    visibility 0s;
+  @include w-reset-button;
+  @include w-focus;
+
+  &:hover {
+    color: $w-ink;
+  }
+
+  // 내 업무를 보는 중이면 알약 위라 흰색
+  .is-active ~ & {
+    color: rgba(255, 255, 255, 0.82);
+  }
+}
+
+.wl-people__caret-icon {
+  transform: rotate(180deg);
+  transition: transform $fold;
+
+  .is-open & {
+    transform: none;
+  }
+}
+
+// 펼침 — 줄 높이 0fr ↔ 1fr(extend 스프링). 창 안의 흰 한 벌도 같은 규칙이라 같은 프레임에 움직인다
+.wl-people__sub {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows w-dur(extend) w-ease(extend);
+
+  .is-open > & {
+    grid-template-rows: 1fr;
+  }
+}
+
+.wl-people__clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.wl-people__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 4px;
+  padding: 0 0 0 22px;
+  list-style: none;
+
+  // 아이콘 밑 줄기
+  &::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    bottom: 14px;
+    left: 19.5px;
+    width: 1.5px;
+    border-radius: 1px;
+    background: rgba(63, 62, 67, 0.16);
+  }
+}
+
+.wl-people__btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: $w-ink-2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    color $w-quick,
+    background-color $w-quick;
+  @include w-focus;
+
+  &:hover {
+    color: $w-ink;
+  }
+
+  // 보고 있는 사람 — 반투명 흰 알약(D7 안 고른 칩)
+  &.is-active {
+    color: $w-ink;
+    background-color: $w-chip;
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+      0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+}
+
+.wl-people__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wl-people__count {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  color: $w-ink-2;
+  background: rgba(63, 62, 67, 0.08);
+}
+
+.wl-people__note {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: $w-ink-3;
+}
+
+// ── 아래 사용자 ──
+.wl-sidebar__footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 4px 0 5px;
+  border-top: 1px solid rgba(63, 62, 67, 0.12);
+}
+
+.wl-sidebar__avatar {
+  flex: none;
+}
+
+.wl-sidebar__user {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  white-space: nowrap;
+  transition:
+    opacity 0.12s,
+    visibility 0s;
+
+  strong,
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  span {
+    font-size: 11.5px;
+    color: $w-ink-3;
+  }
+}
+
+.wl-sidebar__tool {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: $w-ink-2;
+  background-color: $w-chip;
+  transition:
+    color $w-quick,
+    background-color $w-quick,
+    opacity 0.12s,
+    visibility 0s;
+  @include w-reset-button;
+  @include w-focus;
+
+  &:hover {
+    color: $w-ink;
+    background-color: rgba(255, 255, 255, 0.45);
+  }
+}
+
+// 펼침/접힘 단추 — 오른쪽 테두리에 걸친 작은 유리 단추, 갈매기는 펼침 0° · 접힘 180°
+.wl-sidebar-toggle {
+  position: absolute;
+  top: 28px;
+  right: -13px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: $w-ink-2;
+  @include w-reset-button;
+  @include w-solid(0.52);
+  @include w-focus;
+  transition: transform 0.1s ease-out;
+
+  &:hover {
+    color: $w-ink;
+    transform: scale(1.08);
+  }
+
+  &:active {
+    transform: scale(0.92);
+  }
+}
+
+.wl-sidebar-toggle__icon {
+  transition: transform $fold;
+
+  .wl-shell.is-collapsed & {
+    transform: rotate(180deg);
+  }
+}
+
+// ── 접힘(아이콘 줄) ──
+@mixin wl-rail {
+  .wl-nav__label,
+  .wl-nav__badge,
+  .wl-sidebar__brand-text,
+  .wl-sidebar__user,
+  .wl-sidebar__tool,
+  .wl-people__caret {
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 0.12s,
+      visibility 0s 0.12s;
+  }
+
+  .wl-nav__section-label {
+    visibility: hidden;
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    transition:
+      opacity 0.12s,
+      visibility 0s 0.12s,
+      max-height $fold,
+      margin $fold;
+  }
+
+  // 묶음 이름 대신 가는 선으로 나눈다
+  .wl-nav__section + .wl-nav__section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top-color: rgba(63, 62, 67, 0.12);
+  }
+
+  .wl-nav__list.is-on .wl-nav__section {
+    border-top-color: transparent;
+  }
+
+  // 아이콘(16px)을 칸(56px) 가운데로 — 표시 알약은 줄 폭 그대로라 아이콘을 감싼다
+  .wl-nav__item,
+  .wl-nav__face--on {
+    padding: 0 20px;
+  }
+
+  .wl-sidebar__brand {
+    padding-left: 9px;
+  }
+
+  .wl-sidebar__footer {
+    padding-left: 9px;
+  }
+
+  .wl-people__row .wl-nav__item {
+    padding-right: 20px;
+  }
+}
+
+.wl-shell.is-collapsed {
+  @include wl-rail;
+}
+
+@media (max-width: 1180px) {
+  .wl-shell {
+    @include wl-rail;
+  }
+
+  .wl-sidebar-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .wl-sidebar-wrap {
+    top: 12px;
+    height: calc(100dvh - 24px);
+  }
+
+  .wl-sidebar {
+    padding: 14px 6px;
+  }
+
+  .wl-sidebar__brand,
+  .wl-sidebar__footer {
+    padding-left: 5px;
+  }
+
+  .wl-brand {
+    width: 36px;
+    height: 36px;
+  }
+
+  // 칸 48px — 아이콘(16px)을 가운데로
+  .wl-nav__item,
+  .wl-nav__face--on,
+  .wl-people__row .wl-nav__item {
+    padding: 0 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-people__sub,
+  .wl-people__caret-icon,
+  .wl-sidebar-toggle__icon {
+    transition: none;
+  }
+}

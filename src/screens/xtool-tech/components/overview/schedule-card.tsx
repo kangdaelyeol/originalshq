@@ -5,8 +5,7 @@ import { buildSchedule, type ScheduleEvent, type ScheduleSources } from '../../d
 import { daysBetween, koreaToday, shortDate } from '../../lib/dates'
 import { cx } from '@/ohq-ui/lib/cx'
 import { xtPath } from '../../paths'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { GlassCard, SegmentedControl } from '../layout-parts'
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
 

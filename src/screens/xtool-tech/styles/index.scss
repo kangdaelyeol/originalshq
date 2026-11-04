@@ -15,6 +15,7 @@
   @include meta.load-css('login');
   @include meta.load-css('notifications');
   @include meta.load-css('settings');
+  @include meta.load-css('water-boot');
 }
 
 // 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday(+ mon-light · mon-black)가 붙으면 위 스타일을 Monday 모양으로

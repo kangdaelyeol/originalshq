@@ -1,9 +1,7 @@
 import { useMemo } from 'react'
-import { AttentionRow } from '../components/overview/attention-row'
-import { KingCard } from '../components/overview/king-card'
+import { AttentionRow, KingCard, TeamCard } from '../components/layout-parts'
 import { MyWorkCard } from '../components/overview/my-work-card'
 import { ScheduleCard } from '../components/overview/schedule-card'
-import { TeamCard } from '../components/overview/team-card'
 import { buildAttention } from '../data/attention'
 import { buildTeamStatus } from '../data/team-status'
 import type {

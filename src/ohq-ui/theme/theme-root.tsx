@@ -5,8 +5,11 @@ import { accentVars } from './accent'
 import { glassVars, type GlassSettings } from './glass'
 import { FIGTREE_HREF, type MondayPalette } from './monday'
 
-/** 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(styles/themes) */
-export type ThemeName = 'glass' | 'monday'
+/**
+ * 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(styles/themes) · water: D7 물(연회색 유리 벽 위 물
+ * 부품 — 화면 틀과 부품은 앱이 물 부품으로 바꿔 그린다)
+ */
+export type ThemeName = 'glass' | 'monday' | 'water'
 
 interface ThemeRootProps {
   /** 강조색(#rrggbb) — 밝은·어두운 단계와 그 위 글자색은 여기서 만든다(theme/accent.ts). */
@@ -43,8 +46,8 @@ export function ThemeRoot({ accent, glass, theme = 'glass', palette = 'navy', cl
     document.head.append(link)
   }, [monday])
 
-  // Monday 테마는 theme-monday + 색(남색은 기본이라 클래스 없음 · mon-light · mon-black)
-  const themeClass = monday && cx('theme-monday', palette !== 'navy' && `mon-${palette}`)
+  // Monday 테마는 theme-monday + 색(남색은 기본이라 클래스 없음 · mon-light · mon-black), 물은 theme-water
+  const themeClass = monday ? cx('theme-monday', palette !== 'navy' && `mon-${palette}`) : theme === 'water' && 'theme-water'
   return (
     <PortalRootContext.Provider value={rootEl}>
       <div ref={setRootEl} className={cx('ohq-ui', themeClass, className)} style={style}>

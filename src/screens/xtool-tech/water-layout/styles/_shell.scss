@@ -1,0 +1,102 @@
+@use '../../../../ohq-ui/water/styles/tokens' as *;
+
+// ── 물 레이아웃 틀(water-shell.tsx) ───────────────────────────────────────────
+// 지금 레이아웃(.shell — styles/_layout.scss)과 같은 칸: 사이드바 256px(접으면 76px) + 본문, 가운데 1320px.
+// 무대(D7 유리 타일 벽)는 화면에 붙박이로 깔고 그 위에 사이드바·본문을 얹는다.
+.wl-shell {
+  --wl-gap: 20px;
+
+  position: relative;
+  // 무대(z-index -1)가 이 상자 맨 아래에 깔리게 — 본문·사이드바는 그 위
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 256px minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  max-width: 1320px;
+  margin: 0 auto;
+  // 위아래 여백은 sticky 사이드바의 top 여백과 같아야 한다(지금 레이아웃 주석 참고)
+  padding: 20px 24px;
+  font-family: $w-font;
+  color: $w-ink;
+  -webkit-font-smoothing: antialiased;
+  // 접기·펴기 — D7 move 스프링(ζ0.72·ω26)
+  transition: grid-template-columns w-dur(move) w-ease(move);
+
+  &.is-collapsed {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+}
+
+// 물 무대 — 화면 전체에 붙박이(스크롤해도 그대로라 다시 칠하지 않는다). 무늬·그러데이션은 공용 .water-stage
+.wl-shell .wl-stage {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  padding: 0;
+  border-radius: 0;
+  pointer-events: none;
+}
+
+.wl-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wl-gap);
+}
+
+// 본문 — 경로가 바뀌면 새로 그려(key) 6px 아래에서 move 스프링으로 떠오르고, 0.18초에 진해진다. transform·
+// opacity만이라 합성 단계에서 돈다. 끝나면 transform이 없어져(none) 안의 고정 요소 기준이 바뀌지 않는다.
+.wl-page {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wl-gap);
+  animation:
+    wl-page-fade 0.18s ease-out both,
+    wl-page-rise w-dur(move) w-ease(move) both;
+}
+
+@keyframes wl-page-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes wl-page-rise {
+  from {
+    transform: translateY(6px);
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+// 좁아지면 늘 아이콘 줄 — 펼칠 자리가 없어서 접기 단추도 숨긴다(지금 레이아웃과 같은 폭).
+@media (max-width: 1180px) {
+  .wl-shell,
+  .wl-shell.is-collapsed {
+    grid-template-columns: 76px minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 720px) {
+  .wl-shell,
+  .wl-shell.is-collapsed {
+    grid-template-columns: 60px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wl-shell {
+    transition: none;
+  }
+
+  .wl-page {
+    animation: wl-page-fade 0.12s ease-out both;
+  }
+}

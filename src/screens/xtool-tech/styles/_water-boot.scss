@@ -1,0 +1,9 @@
+// 설정 > 레이아웃 "물" — 물 레이아웃 묶음(water-layout)을 받는 동안 깔아 두는 바탕. 물 무대(D7)와 같은 밝기의
+// 사선 그러데이션이라, 받는 동안 어두운 기본 바탕(--bg)이 비치거나 깜빡이지 않는다. 무대 무늬(타일)는 묶음이
+// 받아지면 셸(.wl-shell)이 그린다.
+.wl-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(135deg, rgb(227, 225, 230), rgb(172, 170, 175));
+}

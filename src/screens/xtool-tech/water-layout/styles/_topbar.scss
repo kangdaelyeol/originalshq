@@ -1,0 +1,65 @@
+@use '../../../../ohq-ui/water/styles/tokens' as *;
+
+// ── 물 상단바(water-topbar.tsx) ───────────────────────────────────────────────
+// 유리 판 없이 무대 위에 바로 — 왼쪽 제목(지금 레이아웃의 TopbarTitle), 오른쪽 저장 표시·기간 고르기.
+.wl-topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 46px;
+  padding: 0 2px 0 6px;
+
+  .topbar-title {
+    min-width: 0;
+
+    h1 {
+      margin: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 21px;
+      font-weight: 700;
+      letter-spacing: -0.015em;
+      color: $w-ink;
+    }
+  }
+}
+
+.wl-topbar__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+}
+
+// 저장 표시 — 반투명 흰 알약(D7 안 고른 칩)
+.wl-topbar .sync-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: $w-ink-2;
+  background-color: $w-chip;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+
+  &.is-saving {
+    color: $w-ink;
+  }
+}
+
+@media (max-width: 720px) {
+  .wl-topbar {
+    flex-wrap: wrap;
+  }
+
+  .wl-topbar__controls {
+    flex-wrap: wrap;
+    width: 100%;
+    margin-left: 0;
+  }
+}
