@@ -1,4 +1,5 @@
 import type { Option } from '@/ohq-ui/types'
+import { MY_WORK_PATH, xtPath } from '../paths'
 
 export type Period = 'today' | '7d' | '30d' | '1y'
 
@@ -8,6 +9,13 @@ export const PERIOD_OPTIONS: readonly Option<Period>[] = [
   { value: '30d', label: '30일' },
   { value: '1y', label: '1년' },
 ]
+
+/**
+ * 상단바에 기간 고르기를 보일 화면 — 보드·내 업무에서만(숫자 카드의 "… 완료"가 이 기간을 센다). 대시보드 상단바와
+ * 물 상단바가 같이 쓴다. Monday 표 판 머리말은 숫자 카드가 없어 상단바가 따로 뺀다.
+ */
+export const showsPeriodPicker = (pathname: string): boolean =>
+  pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH)
 
 /** 직전 기간과 비교할 때 쓰는 이름 — 차트 범례와 KPI 캡션에 들어간다. */
 export const PERIOD_COMPARE: Record<Period, { current: string; previous: string }> = {
