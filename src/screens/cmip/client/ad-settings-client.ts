@@ -117,6 +117,40 @@ export interface AdSettingsSnapshot {
   versions: AdSettingVersion[]
   /** 매체별 테스트 — 최근 저장 순. */
   tests: AdTest[]
+  /** 매체에서 읽은 설정 기록(자동) — 대상마다 하나. */
+  platform: PlatformSetting[]
+}
+
+/** 매체에서 읽은 설정 — 장(손으로 적는 설정)과 따로 쌓인다(서버
+ * platform-settings). 매체에 없는 칸은 null(빈 글자). */
+export interface PlatformSettingFields {
+  /** 광고셋이 캠페인 예산을 쓰면(Meta CBO, Google) null. */
+  budget: AdBudget | null
+  /** 입찰·최적화 한 줄. */
+  bidding: string
+  targetCpa: number | null
+  targetRoas: number | null
+  /** 타기팅 한 줄. */
+  audience: string
+}
+
+export interface PlatformSettingEntry extends PlatformSettingFields {
+  /** 이 값을 처음 본 날 — 다음 줄의 날 전날까지. */
+  from: ISODate
+  /** 바로 앞 줄에서 바뀐 칸 — 처음 읽은 줄은 비어 있다(변경이 아니라 기준). */
+  changed: (keyof PlatformSettingFields)[]
+}
+
+/** 대상 하나의 매체 설정 기록 — 바뀐 날마다 한 줄(날짜 순). */
+export interface PlatformSetting {
+  entityKey: AdEntityKey
+  channel: AdChannel
+  level: AdLevel
+  platformId: string
+  name: string
+  history: PlatformSettingEntry[]
+  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 멈춘다. */
+  lastSeenDate: ISODate
 }
 
 /** 매체별 테스트의 구간 하나. */
@@ -215,11 +249,12 @@ const call = async <T>(endpoint: string, init?: RequestInit): Promise<T> => {
 
 export const getAdSettings = async (): Promise<AdSettingsSnapshot> => {
   const body = await call<AdSettingsSnapshot>('getAdSettings')
-  // tests는 매체별 테스트와, creativeIds는 소재 칸과 함께 생겼다 — 그 전 서버
-  // 응답에는 없다.
+  // tests는 매체별 테스트와, creativeIds는 소재 칸과, platform은 매체 설정
+  // 기록과 함께 생겼다 — 그 전 서버 응답에는 없다.
   return {
     ...body,
     tests: body.tests ?? [],
+    platform: body.platform ?? [],
     versions: body.versions.map((v) => ({
       ...v,
       creativeIds: v.creativeIds ?? [],
@@ -291,6 +326,20 @@ export const versionAt = (
   for (const v of history ?? []) {
     if (v.effectiveFrom > date) break
     found = v
+  }
+  return found
+}
+
+/** 그 날의 매체 설정 줄 — 그 날 전에 읽은 적이 없으면 null(처음 읽은 날보다
+ * 앞이거나 기록이 없다). */
+export const platformAt = (
+  setting: PlatformSetting | undefined,
+  date: ISODate,
+): PlatformSettingEntry | null => {
+  let found: PlatformSettingEntry | null = null
+  for (const entry of setting?.history ?? []) {
+    if (entry.from > date) break
+    found = entry
   }
   return found
 }

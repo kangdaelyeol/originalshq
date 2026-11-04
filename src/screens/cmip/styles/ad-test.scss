@@ -416,6 +416,13 @@
   line-height: 1.5;
   color: $text-2;
 }
+// 그 구간을 연 날의 매체 설정(자동 기록) — 손으로 넣은 칸 배지보다 옅게.
+.ad-test-period__platform {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: $text-3;
+}
 .ad-test-period__chips {
   display: flex;
   flex-wrap: wrap;

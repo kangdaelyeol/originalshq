@@ -27,6 +27,7 @@ export * from './endpoints/daangn'
 export * from './endpoints/cafe24'
 export * from './endpoints/ad-settings'
 export * from './endpoints/creatives'
+export * from './endpoints/platform-settings'
 
 const corsHandler = cors({ origin: true })
 

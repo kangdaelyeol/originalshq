@@ -27,7 +27,7 @@ interface OpenaiAd extends OpenaiObject {
 const isActive = (o: OpenaiObject) => o.status === 'active'
 
 /** 목록을 끝까지 — has_more면 last_id를 after로 넘긴다. */
-async function listAll<T>(
+export async function listAll<T>(
   path: string,
   query: Record<string, string>,
   credentials: OpenaiCredentials,

@@ -17,6 +17,7 @@ import {
   KPI_LABEL,
   formatBudget,
   goalOptionLabel,
+  platformLine,
   shortDate,
   won,
 } from '../ad-settings/labels'
@@ -224,7 +225,7 @@ export function TestDetail({ vm }: { vm: Vm }) {
         <>
           <Section
             title="구간"
-            hint="광고 설정의 장 하나가 구간 하나 — 설정이 바뀐 날마다 새 구간"
+            hint="광고 설정의 장이나 매체 설정이 바뀐 날마다 새 구간"
           >
             <ol className="ad-test-periods">
               {segments.map((segment, i) => {
@@ -271,6 +272,9 @@ export function TestDetail({ vm }: { vm: Vm }) {
                             캠페인 설정 변경
                           </span>
                         )}
+                      {!!segment.event?.platform.length && (
+                        <span className="ad-badge is-platform">매체 변경</span>
+                      )}
                     </div>
                     {segment.event ? (
                       segment.event.first ? (
@@ -303,6 +307,12 @@ export function TestDetail({ vm }: { vm: Vm }) {
                           </span>
                         ))}
                       </span>
+                    )}
+                    {segment.platform && (
+                      <p className="ad-test-period__platform">
+                        매체 ·{' '}
+                        {platformLine(segment.platform) || '읽은 값 없음'}
+                      </p>
                     )}
                     <SegmentCreatives
                       segment={segment}

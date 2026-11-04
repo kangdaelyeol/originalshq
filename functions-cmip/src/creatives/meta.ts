@@ -61,7 +61,7 @@ const mediaOf = (c: RawCreative): { kind: CreativeKind; mediaId: string }[] => {
 }
 
 /** 페이지를 끝까지 따라가며 받는다(paging.next는 토큰이 붙은 전체 주소). */
-async function listAll<T>(
+export async function listAll<T>(
   path: string,
   params: Record<string, string>,
   accessToken: string,

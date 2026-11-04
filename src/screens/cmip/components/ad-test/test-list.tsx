@@ -69,9 +69,13 @@ export function TestList({
         <ul className="ad-test-list__items">
           {shown.map((target, i) => {
             const { entity } = target
+            // 광고셋 자신의 장·매체 설정은 그대로고 캠페인 것만 바뀌었다.
             const inherited =
               entity.level === 'adset' &&
-              target.events.every((e) => !e.sources.includes('adset'))
+              target.events.every(
+                (e) =>
+                  !e.sources.includes('adset') && !e.platform.includes('adset'),
+              )
             return (
               <li
                 key={entity.key}

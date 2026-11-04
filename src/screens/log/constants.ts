@@ -123,6 +123,56 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     recordingSince: '2026-11-04T17:00:00+09:00',
   },
   {
+    id: 'meta-settings',
+    label: 'Meta 설정',
+    description:
+      '집행 중인 캠페인·광고셋의 예산·입찰·타기팅을 읽어, 바뀐 날을 광고 설정의 매체 기록에 쌓습니다.',
+    codebase: 'cmip',
+    functionName: 'syncPlatformSettingsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'google-settings',
+    label: 'Google Ads 설정',
+    description:
+      '집행 중인 캠페인·광고그룹의 예산·입찰 전략·목표 CPA/ROAS·타기팅 조건을 읽어, 바뀐 날을 광고 설정의 매체 기록에 쌓습니다.',
+    codebase: 'cmip',
+    functionName: 'syncPlatformSettingsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'naver-settings',
+    label: '네이버 설정',
+    description:
+      '노출 가능한 캠페인·광고그룹의 하루 예산·입찰가·노출 대상을 읽어, 바뀐 날을 광고 설정의 매체 기록에 쌓습니다.',
+    codebase: 'cmip',
+    functionName: 'syncPlatformSettingsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'openai-settings',
+    label: 'OpenAI 설정',
+    description:
+      '집행 중인 캠페인·광고그룹의 일 예산·입찰·지역·맥락 힌트를 읽어, 바뀐 날을 광고 설정의 매체 기록에 쌓습니다.',
+    codebase: 'cmip',
+    functionName: 'syncPlatformSettingsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'daangn-settings',
+    label: '당근 설정',
+    description:
+      '켜진 광고그룹의 예산·입찰·타기팅을 읽어, 바뀐 날을 광고 설정의 매체 기록에 쌓습니다.',
+    codebase: 'cmip',
+    functionName: 'syncPlatformSettingsScheduled',
+    timeoutSeconds: 300,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
     id: 'google-insights',
     label: 'Google Ads 인사이트',
     description: '최근 14일 캠페인·광고그룹 성과를 다시 읽어 저장합니다.',

@@ -50,8 +50,9 @@ export type PickerChannel = 'all' | AdChannel
 /**
  * "매체별 테스트" 탭 — 광고 설정의 장(이력)이 곧 구간이다. 설정이 바뀐 날마다
  * 구간이 새로 시작하고, 구간마다 그 동안의 성과를 견준다(광고셋은 비워 둔 칸이
- * 따르는 캠페인 설정의 변경도 구간이 된다). 여기서는 구간을 따로 나누거나
- * 저장하지 않는다 — 설정을 고치면(광고 설정 탭) 구간도 바뀐다.
+ * 따르는 캠페인 설정의 변경도, 매체에서 읽은 예산·입찰·타기팅이 바뀐 날도 구간이
+ * 된다). 여기서는 구간을 따로 나누거나 저장하지 않는다 — 설정을 고치면(광고
+ * 설정 탭) 구간도 바뀐다.
  */
 export const useAdTestViewModel = () => {
   const [snapshot, setSnapshot] = useState<AdSettingsSnapshot | null>(null)
@@ -122,6 +123,11 @@ export const useAdTestViewModel = () => {
     () => new Map((snapshot?.entities ?? []).map((e) => [e.key, e])),
     [snapshot],
   )
+  // 매체 설정 기록(자동) — 바뀐 날도 구간 경계가 된다.
+  const platform = useMemo(
+    () => new Map((snapshot?.platform ?? []).map((p) => [p.entityKey, p])),
+    [snapshot],
+  )
 
   // 왼쪽 목록 — 설정 이력이 있는 대상만, 최근에 바뀐 것부터.
   const targets = useMemo<TestTarget[]>(() => {
@@ -133,6 +139,7 @@ export const useAdTestViewModel = () => {
           byEntity,
           snapshot.goals,
           snapshot.creativeSets,
+          platform,
         )
         const past = events.filter((e) => e.date <= today)
         return {
@@ -149,7 +156,7 @@ export const useAdTestViewModel = () => {
           (b.lastChange ?? '').localeCompare(a.lastChange ?? '') ||
           a.entity.name.localeCompare(b.entity.name),
       )
-  }, [snapshot, byEntity, today])
+  }, [snapshot, byEntity, platform, today])
 
   const entity = selectedKey ? (entityByKey.get(selectedKey) ?? null) : null
   const campaign =
@@ -170,14 +177,14 @@ export const useAdTestViewModel = () => {
   const { segments, scheduled } = useMemo(
     () =>
       entity
-        ? settingSegments(entity, byEntity, events, {
+        ? settingSegments(entity, byEntity, events, platform, {
             today,
             firstDay: days[0]?.date ?? null,
             lastDay: days[days.length - 1]?.date ?? null,
             withBaseline,
           })
         : { segments: [], scheduled: [] },
-    [entity, byEntity, events, today, days, withBaseline],
+    [entity, byEntity, events, platform, today, days, withBaseline],
   )
   const metrics = useMemo(
     () => segments.map((s) => segmentMetrics(days, s.start, s.end)),

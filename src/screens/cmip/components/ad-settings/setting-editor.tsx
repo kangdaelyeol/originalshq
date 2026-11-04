@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Segmented, Select } from '@/components/glass'
 import {
   adEntityKey,
+  platformAt,
   settingAt,
   versionAt,
   versionStatus,
@@ -15,6 +16,8 @@ import {
   type ConversionGoal,
   type CreativeSet,
   type FunnelStage,
+  type PlatformSetting,
+  type PlatformSettingEntry,
   type SaveAdSettingsRequest,
 } from '../../client'
 import { addDays } from '../../utils'
@@ -24,6 +27,8 @@ import {
   FUNNEL_LABEL,
   formatBudget,
   goalOptionLabel,
+  platformLine,
+  platformValue,
   shortDate,
 } from './labels'
 import { NumberInput } from './number-input'
@@ -66,6 +71,22 @@ const formOf = (fields: AdSettingFields, effectiveFrom: string): Form => ({
     landingUrl: fields.landingUrl,
   },
 })
+
+/** 새 장의 칸을 매체 값으로 — 매체가 준 칸만(광고셋이 캠페인 예산을 쓰면
+ * 예산 칸은 그대로 비어 캠페인 것을 따른다). */
+const withPlatform = (form: Form, now: PlatformSettingEntry | null): Form =>
+  now
+    ? {
+        ...form,
+        ...(now.budget
+          ? {
+              budgetAmount: String(now.budget.amount),
+              budgetPeriod: now.budget.period,
+            }
+          : {}),
+        ...(now.audience ? { audience: now.audience } : {}),
+      }
+    : form
 
 const numberOrNull = (text: string): number | null => {
   const n = Number(text.replace(/,/g, ''))
@@ -160,6 +181,7 @@ export function SettingEditor({
   entity,
   campaign,
   byEntity,
+  platform,
   goals,
   creativeSets,
   today,
@@ -170,6 +192,8 @@ export function SettingEditor({
   /** 광고셋이면 소속 캠페인(목록에 있으면). */
   campaign: AdEntity | null
   byEntity: ReadonlyMap<AdEntityKey, AdSettingVersion[]>
+  /** 매체에서 읽은 설정 기록(자동). */
+  platform: ReadonlyMap<AdEntityKey, PlatformSetting>
   goals: readonly ConversionGoal[]
   creativeSets: readonly CreativeSet[]
   today: string
@@ -177,9 +201,31 @@ export function SettingEditor({
   send: (request: SaveAdSettingsRequest, done: string) => Promise<boolean>
 }) {
   const history = byEntity.get(entity.key) ?? []
-  const [form, setForm] = useState<Form>(() =>
-    formOf(versionAt(history, today) ?? EMPTY_AD_SETTING, today),
-  )
+  const todayVersion = history.find((v) => v.effectiveFrom === today)
+  // 매체에서 읽은 오늘 값 — 하루 넘게 못 읽었으면(꺼졌으면) 칸을 채우지 않고
+  // 보여 주기만 한다.
+  const platformSetting = platform.get(entity.key)
+  const platformNow = platformAt(platformSetting, today)
+  const platformFresh =
+    !!platformSetting && platformSetting.lastSeenDate >= addDays(today, -1)
+  // 광고셋이 캠페인 예산을 쓰면(Meta CBO·Google) 예산은 캠페인 기록에 있다.
+  const parentPlatform =
+    entity.level === 'adset'
+      ? platformAt(
+          platform.get(
+            adEntityKey(entity.channel, 'campaign', entity.campaignId),
+          ),
+          today,
+        )
+      : null
+  // 새 장(오늘 시작하는 장이 아직 없을 때)은 매체 값으로 예산·오디언스를 채운다.
+  const startForm = () => {
+    const base = formOf(versionAt(history, today) ?? EMPTY_AD_SETTING, today)
+    return todayVersion || !platformFresh
+      ? base
+      : withPlatform(base, platformNow)
+  }
+  const [form, setForm] = useState<Form>(startForm)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const set = <K extends keyof Form>(key: K, value: Form[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -200,9 +246,8 @@ export function SettingEditor({
           )
           .map((c) => c.id)
       : null
-  const todayVersion = history.find((v) => v.effectiveFrom === today)
   const freshForm = (): Form => ({
-    ...formOf(versionAt(history, today) ?? EMPTY_AD_SETTING, today),
+    ...startForm(),
     ...(activeCreativeIds && !todayVersion
       ? { creativeIds: activeCreativeIds }
       : {}),
@@ -249,6 +294,19 @@ export function SettingEditor({
   const sameDay = history.find((v) => v.effectiveFrom === form.effectiveFrom)
   const validDate = /^\d{4}-\d{2}-\d{2}$/.test(form.effectiveFrom)
   const amount = numberOrNull(form.budgetAmount)
+  /** 칸 아래 매체 값 — 칸과 같으면 언제부터인지만, 다르면 매체 값을. */
+  const platformHint = (key: 'budget' | 'audience', current: string) => {
+    const value = platformNow ? platformValue(platformNow, key) : ''
+    if (!platformNow || !value)
+      return key === 'budget' && parentPlatform?.budget
+        ? `매체: 캠페인 예산 ${formatBudget(parentPlatform.budget)}`
+        : null
+    return value === current
+      ? `매체 값(${shortDate(platformNow.from, today)}부터)`
+      : `매체: ${value}`
+  }
+  const hints = (...parts: (string | null)[]) =>
+    parts.filter(Boolean).join(' · ') || null
 
   const save = async () => {
     const version: AdSettingVersionInput = {
@@ -352,6 +410,19 @@ export function SettingEditor({
           </span>
         </div>
 
+        {platformNow && (
+          <p className="ad-editor__platform">
+            <span className="ad-badge is-platform">매체</span>
+            <span>
+              {shortDate(platformNow.from, today)}부터 ·{' '}
+              {platformLine(platformNow) || '읽은 값 없음'}
+              {!platformFresh &&
+                platformSetting &&
+                ` · ${shortDate(platformSetting.lastSeenDate, today)}까지 읽음(지금은 집행 중이 아님)`}
+            </span>
+          </p>
+        )}
+
         <div className="ad-editor__grid">
           <Field
             label="전환 목표"
@@ -371,7 +442,15 @@ export function SettingEditor({
           <Field
             label="소비 설정 비용"
             custom
-            hint={inherit(parent?.budget && formatBudget(parent.budget))}
+            hint={hints(
+              inherit(parent?.budget && formatBudget(parent.budget)),
+              platformHint(
+                'budget',
+                amount === null
+                  ? ''
+                  : formatBudget({ amount, period: form.budgetPeriod }),
+              ),
+            )}
           >
             <span className="ad-field__row">
               <Segmented
@@ -412,7 +491,11 @@ export function SettingEditor({
               role="buttons"
             />
           </Field>
-          <Field label="타깃 오디언스" wide>
+          <Field
+            label="타깃 오디언스"
+            wide
+            hint={platformHint('audience', form.audience)}
+          >
             <input
               className="ad-input"
               placeholder="관심사·연령·리타깃 등"

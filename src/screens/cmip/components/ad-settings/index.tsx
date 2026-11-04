@@ -130,6 +130,7 @@ export function AdSettingsPanel() {
                     entity={selected}
                     campaign={selectedCampaign}
                     byEntity={vm.byEntity}
+                    platform={vm.platform}
                     goals={vm.snapshot.goals}
                     creativeSets={vm.snapshot.creativeSets}
                     today={vm.today}

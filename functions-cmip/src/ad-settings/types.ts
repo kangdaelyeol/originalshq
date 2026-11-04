@@ -157,7 +157,48 @@ export interface AdSettingsSnapshot {
   creativeSets: CreativeSet[]
   versions: AdSettingVersion[]
   tests: AdTest[]
+  platform: PlatformSetting[]
 }
+
+// ── 매체 설정(자동) ──────────────────────────────────────────────────────
+
+/** 매체에서 읽은 설정 — 장(손으로 적는 설정)과 따로 쌓는다. 화면이 장 칸과
+ * 견주고, 바뀐 날을 매체별 테스트의 구간 경계로 쓴다. 매체에 없는 칸은 null(빈
+ * 글자). 글자 칸은 바뀌었는지 견주는 값이라 늘 같은 순서로 만든다. */
+export interface PlatformSettingFields {
+  /** 매체에 걸린 예산 — 광고셋이 캠페인 예산을 쓰면(Meta CBO, Google) null. */
+  budget: AdBudget | null
+  /** 입찰·최적화 한 줄(예: '전환 최적화 · 비용 한도 30,000원'). */
+  bidding: string
+  /** 매체에 건 목표 전환 단가(원)·목표 ROAS(%). */
+  targetCpa: number | null
+  targetRoas: number | null
+  /** 타기팅 한 줄(지역·연령·성별·관심사 …). */
+  audience: string
+}
+
+export interface PlatformSettingEntry extends PlatformSettingFields {
+  /** 이 값을 처음 본 날(KST) — 다음 줄의 날 전날까지. */
+  from: ISODate
+  /** 바로 앞 줄에서 바뀐 칸 — 처음 읽은 줄은 비어 있다(변경이 아니라 기준). */
+  changed: (keyof PlatformSettingFields)[]
+}
+
+/** adPlatformSettings/{entityKey} — 대상 하나의 매체 설정 기록. 동기화 때마다
+ * 읽어 마지막 줄과 다르면 한 줄 더한다(같은 날 또 바뀌면 그 날 줄을 고친다). */
+export interface PlatformSettingDoc {
+  entityKey: AdEntityKey
+  channel: AdChannel
+  level: AdLevel
+  platformId: string
+  name: string
+  /** 날짜 순. */
+  history: PlatformSettingEntry[]
+  /** 마지막으로 집행 중인 것을 읽은 날 — 꺼지면 더 읽지 않아 멈춘다. */
+  lastSeenDate: ISODate
+}
+
+export type PlatformSetting = PlatformSettingDoc
 
 // ── 매체별 테스트 ────────────────────────────────────────────────────────
 

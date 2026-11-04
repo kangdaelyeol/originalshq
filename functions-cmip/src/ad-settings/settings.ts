@@ -4,6 +4,7 @@ import type {
 } from 'firebase-admin/firestore'
 import { db } from '../data'
 import { HttpError } from '../http'
+import { AD_PLATFORM_SETTINGS } from '../platform-settings/types'
 import { adEntitiesCol, listAdEntities } from './entities'
 import type {
   AdEntityDoc,
@@ -20,6 +21,7 @@ import type {
   CreativeSet,
   CreativeSetDoc,
   CreativeSetInput,
+  PlatformSettingDoc,
 } from './types'
 
 const versionsCol = (): CollectionReference<DocumentData> =>
@@ -66,14 +68,22 @@ async function listGoals(): Promise<ConversionGoal[]> {
 
 /** 화면이 한 번에 받는 전부 — 목록·목표·소재 셋·설정 기록(수백 건 수준). */
 export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
-  const [entities, goals, creativeSetsSnap, versionsSnap, testsSnap] =
-    await Promise.all([
-      listAdEntities(),
-      listGoals(),
-      creativeSetsCol().get(),
-      versionsCol().get(),
-      testsCol().get(),
-    ])
+  const [
+    entities,
+    goals,
+    creativeSetsSnap,
+    versionsSnap,
+    testsSnap,
+    platformSnap,
+  ] = await Promise.all([
+    listAdEntities(),
+    listGoals(),
+    creativeSetsCol().get(),
+    versionsCol().get(),
+    testsCol().get(),
+    // 매체 설정 기록(platform-settings) — 자동으로 쌓이고 여기서는 읽기만.
+    db.collection(AD_PLATFORM_SETTINGS).get(),
+  ])
   return {
     entities,
     goals,
@@ -95,6 +105,7 @@ export async function getAdSettingsSnapshot(): Promise<AdSettingsSnapshot> {
     tests: testsSnap.docs
       .map((d) => ({ id: d.id, ...(d.data() as AdTestDoc) }))
       .sort((a, b) => b.updatedAt - a.updatedAt),
+    platform: platformSnap.docs.map((d) => d.data() as PlatformSettingDoc),
   }
 }
 

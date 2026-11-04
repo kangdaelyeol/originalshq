@@ -4,6 +4,7 @@ import type {
   CreativeFormat,
   FunnelStage,
   GoalKpi,
+  PlatformSettingFields,
 } from '../../client'
 
 // 광고 설정 화면이 같이 쓰는 이름·표기.
@@ -59,6 +60,47 @@ export const won = (v: number) => `${Math.round(v).toLocaleString()}원`
 
 export const formatBudget = (budget: AdBudget) =>
   `${BUDGET_PERIOD_LABEL[budget.period]} ${won(budget.amount)}`
+
+/** 매체 설정 칸 이름 — 바뀐 칸 문구에서 "매체 예산"처럼 장 칸과 가른다. */
+export const PLATFORM_FIELD_LABEL: Record<keyof PlatformSettingFields, string> =
+  {
+    budget: '예산',
+    bidding: '입찰',
+    targetCpa: '목표 CPA',
+    targetRoas: '목표 ROAS',
+    audience: '타기팅',
+  }
+
+/** 매체 설정 한 칸을 글자로 — 없으면 빈 글자. */
+export const platformValue = (
+  fields: PlatformSettingFields,
+  key: keyof PlatformSettingFields,
+): string => {
+  switch (key) {
+    case 'budget':
+      return fields.budget ? formatBudget(fields.budget) : ''
+    case 'targetCpa':
+      return fields.targetCpa !== null ? won(fields.targetCpa) : ''
+    case 'targetRoas':
+      return fields.targetRoas !== null
+        ? `${fields.targetRoas.toLocaleString('ko-KR')}%`
+        : ''
+    default:
+      return fields[key]
+  }
+}
+
+/** 매체 설정 한 줄 — 예산 · 입찰 · 목표 · 타기팅(있는 칸만). */
+export const platformLine = (fields: PlatformSettingFields) =>
+  (['budget', 'bidding', 'targetCpa', 'targetRoas', 'audience'] as const)
+    .map((key) => {
+      const value = platformValue(fields, key)
+      return value && key.startsWith('target')
+        ? `${PLATFORM_FIELD_LABEL[key]} ${value}`
+        : value
+    })
+    .filter(Boolean)
+    .join(' · ')
 
 /** "10/30" — 연도는 올해가 아니면 붙인다. */
 export const shortDate = (iso: string, today: string) =>

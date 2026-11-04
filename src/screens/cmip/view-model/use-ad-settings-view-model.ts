@@ -87,6 +87,11 @@ export const useAdSettingsViewModel = () => {
     () => new Map((snapshot?.entities ?? []).map((e) => [e.key, e])),
     [snapshot],
   )
+  // 매체에서 읽은 설정 기록(자동) — 편집기가 새 장 칸을 채우고 값을 보여 준다.
+  const platform = useMemo(
+    () => new Map((snapshot?.platform ?? []).map((p) => [p.entityKey, p])),
+    [snapshot],
+  )
 
   // 캠페인 → 광고셋 트리. 검색어·채널·"돌고 있는 것만"에 맞는 광고셋이 있으면
   // 캠페인도 남긴다(캠페인 이름이 맞으면 광고셋을 전부 보인다).
@@ -179,6 +184,7 @@ export const useAdSettingsViewModel = () => {
     tree,
     coverage,
     byEntity,
+    platform,
     entityByKey,
     selected,
     expanded,

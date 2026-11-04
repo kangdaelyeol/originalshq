@@ -238,6 +238,12 @@ export const summarizeRun = (run: BatchRun): string => {
         `처리 ${num(result.processed)} · 실패 ${num(failed.length)} · 남음 ${num(result.pending)}`,
       ].join(' · ')
     }
+    case 'meta-settings':
+    case 'google-settings':
+    case 'naver-settings':
+    case 'openai-settings':
+    case 'daangn-settings':
+      return `대상 ${num(result.entities)}개 · 처음 읽음 ${num(result.added)} · 바뀜 ${num(result.changed)}`
     case 'google-insights': {
       const campaign = result.campaignResult as Record<string, unknown>
       const adGroup = result.adGroupResult as Record<string, unknown>

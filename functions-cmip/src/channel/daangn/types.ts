@@ -16,6 +16,16 @@ export interface DaangnGroupApi {
   campaignId: string
   campaignTitle: string
   liveStatusType: 'ON' | 'OFF' | 'DELETED'
+  /** 설정 칸(platform-settings) — 2026-11-03 조회에서 본 모양. */
+  budget?: { type?: string; amount?: { value?: string; currency?: string } }
+  bidAmount?: number
+  biddingType?: string
+  targetRegionIds?: number[]
+  targetRegionOption?: string
+  targetDemographic?: { targetAge?: string[]; targetGender?: string[] }
+  targetPlatform?: string
+  targetInterestCategoryIds?: unknown[]
+  targetCustomAudiences?: unknown[]
 }
 
 /** POST /v1/performance 원소(timeGranularity=DAY). duration은 그 날의 시작
