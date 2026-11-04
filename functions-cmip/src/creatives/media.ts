@@ -11,6 +11,7 @@ import { promisify } from 'node:util'
 import { getStorage } from 'firebase-admin/storage'
 import ffmpegPath from 'ffmpeg-static'
 import { FRAME_LONG_SIDE, framePlan } from '../creative-analysis'
+import { mapLimit } from './map-limit'
 import type { CreativeFrame, CreativeKind, CreativeMedia } from './types'
 
 const run = promisify(execFile)
@@ -18,6 +19,11 @@ const run = promisify(execFile)
 // 함수 메모리 안의 임시 폴더에 받으므로 너무 큰 파일은 받지 않는다(지금 Meta
 // 영상은 1~4MB).
 const MAX_BYTES = 200 * 1024 * 1024
+
+/** 프레임을 동시에 뽑을 수 — ffmpeg는 CPU를 쓰므로 함수의 CPU 수(endpoints의
+ * CPU)만큼. Storage에 올리기는 기다리는 시간이 대부분이라 더 많이. */
+const EXTRACT_CONCURRENCY = 2
+const UPLOAD_CONCURRENCY = 8
 
 const ffmpeg = () => {
   if (!ffmpegPath) throw new Error('ffmpeg 실행 파일을 찾지 못했습니다')
@@ -44,6 +50,31 @@ const probe = async (file: string) => {
     width: size ? Number(size[1]) : null,
     height: size ? Number(size[2]) : null,
   }
+}
+
+/** JPEG 머리말(SOF)에서 크기를 읽는다 — 프레임마다 ffmpeg를 다시 띄우지
+ * 않으려고. 못 읽으면 0. */
+const jpegSize = (data: Buffer) => {
+  let i = 2
+  while (i + 9 < data.length) {
+    if (data[i] !== 0xff || data[i + 1] === 0xff) {
+      i += 1
+      continue
+    }
+    const marker = data[i + 1]
+    // C0~CF 중 C4(허프만 표)·C8·CC(산술 부호 표)를 뺀 것이 SOF다.
+    if (
+      marker >= 0xc0 &&
+      marker <= 0xcf &&
+      ![0xc4, 0xc8, 0xcc].includes(marker)
+    )
+      return {
+        width: data.readUInt16BE(i + 7),
+        height: data.readUInt16BE(i + 5),
+      }
+    i += 2 + data.readUInt16BE(i + 2)
+  }
+  return { width: 0, height: 0 }
 }
 
 const EXTENSIONS: Record<string, string> = {
@@ -304,8 +335,10 @@ export async function processCreativeMedia(
 
     // 프레임 — 시점마다 한 장(-ss를 -i 앞에 두면 그 근처로 바로 건너뛴다).
     const times = kind === 'video' ? framePlan(lengthSec ?? 0) : [0]
-    const frames: { t: number; file: string }[] = []
-    for (const [index, t] of times.entries()) {
+    const extracted: ({ t: number; file: string } | null)[] = times.map(
+      () => null,
+    )
+    await mapLimit(times, EXTRACT_CONCURRENCY, async (t, index) => {
       const file = join(dir, `frame-${index}.jpg`)
       const args =
         kind === 'video'
@@ -331,31 +364,38 @@ export async function processCreativeMedia(
         )
       })
       // 영상 끝을 넘은 시점이면 파일이 안 생긴다 — 건너뛴다.
-      if (await stat(file).catch(() => null)) frames.push({ t, file })
-    }
+      if (await stat(file).catch(() => null)) extracted[index] = { t, file }
+    })
+    const frames = extracted.filter((f) => f !== null)
     if (frames.length === 0) throw new Error('프레임을 하나도 뽑지 못했습니다')
 
     const base = `adCreatives/${id}`
     const originalPath =
       stored?.path ?? `${base}/original.${extOf(contentType)}`
-    const originalUrl =
-      stored?.url ??
-      (await saveWithUrl(originalPath, await readFile(input), contentType))
-
-    const uploaded: CreativeFrame[] = []
-    for (const [index, frame] of frames.entries()) {
-      const data = await readFile(frame.file)
-      const size = await probe(frame.file)
-      const path = `${base}/frames/${String(index).padStart(2, '0')}.jpg`
-      const url = await saveWithUrl(path, data, 'image/jpeg')
-      uploaded.push({
-        t: frame.t,
-        path,
-        url,
-        width: size.width ?? 0,
-        height: size.height ?? 0,
+    // 원본과 프레임을 같이 올린다(하나씩 올리면 소재마다 수십 번 기다린다).
+    const uploads: (() => Promise<void>)[] = []
+    let originalUrl = stored?.url ?? ''
+    if (!stored)
+      uploads.push(async () => {
+        originalUrl = await saveWithUrl(
+          originalPath,
+          await readFile(input),
+          contentType,
+        )
       })
-    }
+    const uploaded: CreativeFrame[] = []
+    for (const [index, frame] of frames.entries())
+      uploads.push(async () => {
+        const data = await readFile(frame.file)
+        const path = `${base}/frames/${String(index).padStart(2, '0')}.jpg`
+        uploaded[index] = {
+          t: frame.t,
+          path,
+          url: await saveWithUrl(path, data, 'image/jpeg'),
+          ...jpegSize(data),
+        }
+      })
+    await mapLimit(uploads, UPLOAD_CONCURRENCY, (upload) => upload())
 
     return {
       originalPath,

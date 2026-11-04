@@ -21,14 +21,21 @@ import { scheduledSync } from '../scheduled-sync'
 import { onRequest } from '../trace/functions'
 
 // 영상을 내려받아 ffmpeg로 프레임을 뽑아서 메모리·시간을 넉넉히 준다. 제한
-// 시간 90초 전에 처리를 멈추고 남은 소재는 다음 실행에 넘긴다.
+// 시간 90초 전에 처리를 멈추고 남은 소재는 다음 실행에 넘긴다. CPU는 프레임을
+// 둘씩 뽑으려고 두 개(media.ts EXTRACT_CONCURRENCY).
 const TIMEOUT_SECONDS = 540
 const MEMORY = '2GiB'
+const CPU = 2
 const deadline = () => Date.now() + (TIMEOUT_SECONDS - 90) * 1000
 
 /** 수동 실행(POST) — 결과는 /log에도 남는다. */
 export const syncMetaCreatives = onRequest(
-  { secrets: [metaAdsId], timeoutSeconds: TIMEOUT_SECONDS, memory: MEMORY },
+  {
+    secrets: [metaAdsId],
+    timeoutSeconds: TIMEOUT_SECONDS,
+    memory: MEMORY,
+    cpu: CPU,
+  },
   endpoint({ method: 'POST', fallback: 'Meta 소재 동기화 실패' }, () =>
     recordBatchRun(
       db,
@@ -43,6 +50,7 @@ export const syncMetaCreativesScheduled = scheduledSync({
   windowDays: 0,
   timeoutSeconds: TIMEOUT_SECONDS,
   memory: MEMORY,
+  cpu: CPU,
   jobs: [
     {
       job: 'meta-creatives',
@@ -58,6 +66,7 @@ export const syncDaangnCreatives = onRequest(
     secrets: [daangnAdsApiKey],
     timeoutSeconds: TIMEOUT_SECONDS,
     memory: MEMORY,
+    cpu: CPU,
   },
   endpoint({ method: 'POST', fallback: '당근 소재 동기화 실패' }, () =>
     recordBatchRun(
@@ -77,6 +86,7 @@ export const syncDaangnCreativesScheduled = scheduledSync({
   windowDays: 0,
   timeoutSeconds: TIMEOUT_SECONDS,
   memory: MEMORY,
+  cpu: CPU,
   jobs: [
     {
       job: 'daangn-creatives',
@@ -156,7 +166,7 @@ export const startCreativeUpload = onRequest(
 /** 직접 올리기 2단계(POST { creativeId }) — 올라온 파일에서 프레임을 뽑고 소재
  * 문서를 만들어 돌려준다. 영상이면 수십 초 걸린다. */
 export const finishCreativeUpload = onRequest(
-  { timeoutSeconds: 300, memory: MEMORY },
+  { timeoutSeconds: 300, memory: MEMORY, cpu: CPU },
   endpoint(
     { method: 'POST', fallback: '올린 소재를 처리하지 못했습니다' },
     ({ request }) => finishCreativeUploadFromStorage(uploadIdOf(request.body)),

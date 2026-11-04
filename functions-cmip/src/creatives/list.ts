@@ -6,6 +6,7 @@
 import { adEntitiesCol, type AdEntityKey } from '../ad-settings'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
+import { mapLimit } from './map-limit'
 import { withDownloadUrls } from './media'
 import type { CreativeAnalysis } from './analyze'
 import { AD_CREATIVES, type AdCreative } from './types'
@@ -42,21 +43,6 @@ export interface AdCreativeView {
 const IN_LIMIT = 30
 /** 주소를 채울 때 동시에 처리할 소재 수(소재 하나에 파일이 최대 31개). */
 const FILL_CONCURRENCY = 6
-
-/** items를 limit개씩 동시에 돌린다. */
-export async function mapLimit<T>(
-  items: readonly T[],
-  limit: number,
-  run: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0
-  const worker = async () => {
-    while (next < items.length) await run(items[next++])
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, worker),
-  )
-}
 
 /** 찾을 키 — 광고셋은 그 키, 캠페인은 캠페인 키(직접 올린 것)와 그 광고셋 키들. */
 const adsetKeysOf = async (entityKey: AdEntityKey): Promise<string[]> => {

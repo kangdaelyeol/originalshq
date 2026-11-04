@@ -56,9 +56,10 @@ export const scheduledSync = (options: {
   /** 다시 받을 최근 일수 — 기간을 쓰지 않는 작업(소재 동기화 등)이면 0. */
   windowDays: number
   jobs: ScheduledJob[]
-  /** 기본 300초 · 256MiB(전역 기본값). */
+  /** 기본 300초 · 256MiB · CPU 1개(전역 기본값). */
   timeoutSeconds?: number
   memory?: MemoryOption
+  cpu?: number
 }) =>
   onSchedule(
     {
@@ -67,6 +68,7 @@ export const scheduledSync = (options: {
       secrets: options.secrets,
       timeoutSeconds: options.timeoutSeconds ?? 300,
       ...(options.memory ? { memory: options.memory } : {}),
+      ...(options.cpu ? { cpu: options.cpu } : {}),
     },
     async (event) => {
       const range = recentRange(options.windowDays)

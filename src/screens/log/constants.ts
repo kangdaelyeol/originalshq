@@ -76,7 +76,7 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     id: 'meta-creatives',
     label: 'Meta 소재',
     description:
-      '집행 중인 광고의 소재(이미지·영상)를 찾아 원본과 분석용 프레임을 Storage에 모읍니다. 새 소재는 제한 시간 안에서 한 번에 60개까지 처리하고, 남은 것은 다음 실행에 이어 합니다.',
+      '집행 중인 광고의 소재(이미지·영상)를 찾아 원본과 분석용 프레임을 Storage에 모읍니다. 새 소재는 제한 시간 안에서 처리하고, 남은 것은 다음 실행에 이어 합니다.',
     codebase: 'cmip',
     functionName: 'syncMetaCreativesScheduled',
     timeoutSeconds: 540,

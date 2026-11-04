@@ -8,7 +8,7 @@ import type { DaangnCredentials } from '../channel/daangn/client'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
 import { findActiveDaangnCreatives } from './daangn'
-import { mapLimit } from './list'
+import { mapLimit } from './map-limit'
 import {
   isMissingBucket,
   processCreativeMedia,
@@ -31,7 +31,11 @@ export * from './upload'
 /** 한 번 실행에 처리(내려받기·프레임)할 최대 소재 수 — 나머지는 다음 실행에.
  * 제한 시간(deadlineMs)이 먼저 오면 그 전에 멈춘다. 이미지는 하나에 1초 남짓,
  * 영상은 프레임 수만큼 더 걸린다. */
-const PROCESS_PER_RUN = 60
+const PROCESS_PER_RUN = 200
+/** 소재를 동시에 처리할 수 — 한 소재가 ffmpeg로 CPU를 쓰는 동안 다른 소재는
+ * 내려받거나 Storage에 올린다(한 개씩이면 2026-11-03 22시 실행이 30개에
+ * 457초, 소재당 15초). */
+const PROCESS_CONCURRENCY = 3
 /** 이만큼 실패하면 failed로 멈춘다(그 전까지는 다음 실행에 다시 시도). */
 const MAX_ATTEMPTS = 3
 
@@ -133,36 +137,47 @@ async function processPending(
 
   let processed = 0
   let stopped = 0
+  // Storage 버킷이 없으면 모든 소재가 같은 이유로 실패한다 — 남은 소재는
+  // 시작하지 않고 실행을 멈춘다.
+  let missingBucket = false
   const failed: CreativeSyncResult['failed'] = []
-  for (const creative of pending.slice(0, PROCESS_PER_RUN)) {
-    if (Date.now() > deadlineMs) break
-    const ref = db.collection(AD_CREATIVES).doc(creative.id)
-    try {
-      const source = await sourceOf(creative)
-      const media = await processCreativeMedia(
-        creative.id,
-        creative.kind,
-        source,
-      )
-      await ref.update({ status: 'ready', media, error: null })
-      processed += 1
-    } catch (err) {
-      if (isMissingBucket(err))
-        throw new Error(
-          'Storage 버킷이 없습니다 — Firebase 콘솔에서 Storage를 켜 주세요',
+  await mapLimit(
+    pending.slice(0, PROCESS_PER_RUN),
+    PROCESS_CONCURRENCY,
+    async (creative) => {
+      if (missingBucket || Date.now() > deadlineMs) return
+      const ref = db.collection(AD_CREATIVES).doc(creative.id)
+      try {
+        const source = await sourceOf(creative)
+        const media = await processCreativeMedia(
+          creative.id,
+          creative.kind,
+          source,
         )
-      const error = err instanceof Error ? err.message : String(err)
-      const attempts = creative.attempts + 1
-      logger.warn(`소재 처리 실패(${creative.id}, ${attempts}번째):`, error)
-      await ref.update({
-        attempts,
-        error,
-        status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',
-      })
-      failed.push({ id: creative.id, error })
-      if (attempts >= MAX_ATTEMPTS) stopped += 1
-    }
-  }
+        await ref.update({ status: 'ready', media, error: null })
+        processed += 1
+      } catch (err) {
+        if (isMissingBucket(err)) {
+          missingBucket = true
+          return
+        }
+        const error = err instanceof Error ? err.message : String(err)
+        const attempts = creative.attempts + 1
+        logger.warn(`소재 처리 실패(${creative.id}, ${attempts}번째):`, error)
+        await ref.update({
+          attempts,
+          error,
+          status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending',
+        })
+        failed.push({ id: creative.id, error })
+        if (attempts >= MAX_ATTEMPTS) stopped += 1
+      }
+    },
+  )
+  if (missingBucket)
+    throw new Error(
+      'Storage 버킷이 없습니다 — Firebase 콘솔에서 Storage를 켜 주세요',
+    )
   // 실패해도 MAX_ATTEMPTS 전이면 다시 시도할 거라 남은 것에 든다.
   return { processed, failed, pending: pending.length - processed - stopped }
 }
