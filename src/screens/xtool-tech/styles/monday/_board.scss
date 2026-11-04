@@ -1,0 +1,66 @@
+// ── 판(Monday 표 보드 화면 틀) ─────────────────────────────────────────────────
+.shell.is-wide {
+  max-width: none;
+}
+
+.mon-board {
+  display: flex;
+  flex-direction: column;
+  // 화면 높이(위아래 여백만 뺀다 — 상단바는 판 안 머리말로 들어온다). 표는 자기 안에서
+  // 위아래·옆으로 스크롤된다(Monday처럼).
+  height: calc(100dvh - 40px);
+  min-height: 480px;
+  overflow: hidden;
+  border: 1px solid var(--mon-overlay);
+  border-radius: 16px;
+  background: var(--mon-bg);
+  color: var(--mon-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+// 판과 판에서 띄우는 것(팝오버·업데이트 패널·파일 모달·선택 바)의 글자는 모두 500 — 굵게
+// 나오는 태그(strong·제목·표 머리)도 판 굵기를 따른다.
+:is(.mon-board, .mon-popover, .mon-panel, .mon-modal, .mon-selbar) :where(strong, b, h1, h2, h3, h4, th) {
+  font-weight: inherit;
+}
+
+// ── 머리말(상단바가 판 안으로) · 보기 탭 ──────────────────────────────────────────
+.mon-board__head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 64px;
+  padding: 14px 24px 4px;
+
+  .topbar-title h1 {
+    margin: 0;
+    color: var(--mon-text);
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .topbar__controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+  }
+
+  .icon-button__badge {
+    font-weight: 500;
+  }
+}
+
+.mon-board__views {
+  display: flex;
+  margin: 0 24px;
+  border-bottom: 1px solid var(--mon-line);
+
+  .mon-tab {
+    height: 36px;
+    padding: 0 6px;
+    line-height: 34px;
+  }
+}

@@ -1,0 +1,195 @@
+@use 'base' as *;
+
+// ── 주소 ──────────────────────────────────────────────────────────────────────
+.water-address {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.water-address__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font: 500 13px/1.45 $w-font;
+  color: $w-ink;
+
+  svg {
+    color: $w-ink-2;
+  }
+
+  small {
+    font-size: 11px;
+    color: $wb-warn-ink;
+  }
+
+  &--empty {
+    color: $w-ink-3;
+  }
+}
+
+.water-address__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .water-address__query {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .water-button {
+    flex: none;
+  }
+}
+
+.water-address__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: $wb-crit-ink;
+
+  svg {
+    flex: none;
+  }
+}
+
+// 결과 — 벽 위 D7 유리(거의 투명, 테두리·그림자로만 선다). 나타날 때 6px 위에서 표시 알약 스프링(ζ0.65·ω30.5,
+// 7% 넘침)으로 내려앉으며 0.1초 동안 진해지고(1-(1-u)²), 걷힐 때 15ms 뒤 30ms 동안 흐려진다(D7 접힘 F23).
+// 움직이는 것은 transform·opacity뿐이라 합성 단계에서 돈다
+.water-address__results {
+  @include w-glass(0.7, 0.35);
+  border-radius: 14px;
+  animation:
+    water-address-drop w-dur(indicator) w-ease(indicator) both,
+    wb-reveal 0.1s $w-ease-shade both;
+
+  &.is-closing {
+    pointer-events: none;
+    animation: water-address-out 30ms linear 15ms both;
+  }
+}
+
+.water-address__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+// 짚은 줄 뒤 반투명 흰 알약 — 스프링으로 따라간다(WaterIndicatorEngine 세로, 옆 찌그러짐 squash 0.06).
+// 걷힐 때 15ms 뒤 30ms, 나타날 때 0.1s(D7 칩)
+.water-address__hilite {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  height: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transition: opacity 0.03s linear 0.015s;
+  pointer-events: none;
+  will-change: transform;
+
+  &.is-shown {
+    opacity: 1;
+    transition: opacity $w-quick;
+  }
+}
+
+// 줄 — 12ms 뒤부터 21ms 간격으로 55ms씩 진해진다(D7 아이콘: 표시 알약보다 12ms 늦게, WATER_REVEAL).
+// 긴 주소: 이름은 한 줄(…), 도로명 주소는 두 줄까지, 지번은 한 줄 — 다 보려면 마우스를 올린다(title)
+.water-address__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  animation: wb-reveal 55ms linear both;
+  animation-delay: calc(12ms + var(--i, 0) * 21ms);
+
+  & + & {
+    box-shadow: inset 0 1px 0 $wb-rule;
+  }
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+
+  span,
+  small {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: $w-ink-2;
+  }
+}
+
+.water-address__none {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: $w-ink-2;
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $w-ink;
+    overflow-wrap: anywhere;
+  }
+}
+
+@keyframes water-address-drop {
+  from {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes water-address-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes wb-reveal {
+  from {
+    opacity: 0;
+  }
+}

@@ -1,0 +1,107 @@
+@use 'base' as *;
+
+// ── 기본 부품을 쓰는 자리 ─────────────────────────────────────────────────────
+// 입력은 기본 부품 WaterTextField(water-field) — 이름은 편집 칸이 바깥에 달거나 원래 보이지 않던 자리라
+// 읽기용으로만 남긴다(보이는 이름 줄을 접는다)
+.water-board-quiet-label {
+  gap: 0;
+
+  .water-field__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+// 고르기 칸(select) — 기본 부품에 없어 로컬. 모양은 WaterTextField 칸(water-field__box: 40px 유리 알약,
+// w-glass 0.46·0.2, 글자 13.5px)과 같게, 오른쪽에 아래 화살표
+$wb-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2369676c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+.water-board-select {
+  flex: none;
+}
+
+.water-board-select__input {
+  @include w-glass(0.46, 0.2);
+  display: block;
+  width: 100%;
+  min-width: 140px;
+  height: 40px;
+  padding: 0 36px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background-image: $wb-chevron;
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-size: 12px;
+  font: 500 13.5px/1 $w-font;
+  color: $w-ink;
+  color-scheme: light;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+  }
+
+  // 초점 — 기본 부품 입력과 같은 흰 2px 고리(유리 그림자는 outline이라 덮지 않는다)
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 0;
+  }
+}
+
+// 담당자 — 기본 부품 WaterAvatar(xs 20px)를 겹친다. 겹친 사이는 밝은 테로 가른다
+.water-assignees {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1 $w-font;
+  color: $w-ink-2;
+
+  &--empty {
+    color: $w-ink-3;
+  }
+}
+
+.water-assignees__stack {
+  display: inline-flex;
+
+  .water-avatar {
+    margin-left: -5px;
+    box-shadow:
+      0 0 0 1.5px rgba(231, 229, 234, 0.92),
+      0 2px 5px rgba(0, 0, 0, 0.2);
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+.water-assignees__more {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: $w-chip;
+  font: 700 10.5px/1 $w-font;
+  color: $w-ink-2;
+}
+
+.water-phone {
+  color: $w-ink-2;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-color: rgba(63, 62, 67, 0.25);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: $w-ink;
+  }
+}

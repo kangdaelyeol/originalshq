@@ -1,0 +1,249 @@
+@use 'base' as *;
+
+// ── 여러 개 고르는 드롭다운 ───────────────────────────────────────────────────
+.water-multi {
+  position: relative;
+  min-width: 0;
+}
+
+// 칸 — 글자 뒤에 기본 부품 입력의 유리 알약(water-field__box, 40px)을 따로 층으로 깐다. 초점 고리는 그 층의
+// 흰 고리(::after)를 키보드로 왔을 때만 켠다
+.water-multi__trigger {
+  @include w-reset-button;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 16px;
+  border-radius: 999px;
+  font: 500 13.5px/1 $w-font;
+  color: $w-ink;
+  text-align: left;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible > .water-multi__glass::after {
+    opacity: 1;
+  }
+}
+
+.water-multi__trigger > .water-multi__glass {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  height: auto;
+  padding: 0;
+  cursor: inherit;
+}
+
+.water-multi__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-empty {
+    color: $w-ink-3;
+  }
+}
+
+// 화살표는 move 스프링으로 돈다(CSS linear()로 옮긴 같은 곡선)
+.water-multi__chevron {
+  flex: none;
+  color: $w-ink-3;
+  // move 스프링(ζ0.72·ω26, 3.8% 넘침)을 0.45초 CSS 곡선으로(기반 w-ease — 참 스프링과 0.0023 안)
+  transition: transform 0.45s w-ease(move, $dur: 0.45s);
+
+  .is-open > & {
+    transform: rotate(180deg);
+  }
+}
+
+// 팝오버 — 단추 끝에 붙어 있다(높이 0). 단추 쪽은 잘라서 유리가 단추 속에서 흘러나오는 것처럼 보인다
+// (위로 펼치면 반대). 유리 자리는 엔진이 쓴다(GAP 10px — multi-select.tsx).
+.water-multi-pop {
+  @extend %wb-surface;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 80;
+  height: 0;
+  pointer-events: none;
+}
+
+// 움직이는 동안의 물 모양(칸 + 팝오버 한 덩어리) — 엔진이 보였다 숨긴다. 칸 유리도 그동안 이 SVG가 그린다
+.water-multi-goo {
+  position: absolute;
+  display: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+// 물 모양 미리 데우기 — 같은 필터를 눈에 안 보이게(0.002) 잠깐 그려 GPU가 셰이더를 미리 만들게 한다.
+// 0이면 크롬이 그리기를 건너뛰어 데워지지 않는다
+.water-multi-warm {
+  position: fixed;
+  left: 0;
+  top: 0;
+  opacity: 0.002;
+  pointer-events: none;
+}
+
+// 멈춘 팝오버 유리 — 칸과 같은 물(w-glass 0.46·0.2, 물 모양 SVG와 같은 값)에 불투명 속
+// 칸 끝(0)에서 자르는 상자 — 아래로 펼치면 0부터 아래, 위로 펼치면 0까지 위. 옆·먼 쪽은 그림자 몫을 남긴다
+.water-multi-pop__clip {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: 0;
+  height: 1200px;
+  overflow: hidden;
+  pointer-events: none;
+
+  [data-dir='up'] > & {
+    top: -1200px;
+  }
+}
+
+.water-multi-pop__glass {
+  @include wb-panel(0.46, 0.2);
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 0;
+  height: 0;
+  border-radius: 14px;
+  will-change: transform;
+
+  [data-dir='up'] & {
+    top: 1200px;
+  }
+}
+
+// 멈춘 팝오버에만 더하는 옅은 그림자 한 겹 — 유리와 같은 자리(엔진이 같은 transform·height를 쓴다). 진하기도
+// 엔진이 쓴다: 물 모양(SVG) 동안은 0, CSS 유리로 바꿔 낀 뒤 0.12초에 들어오고 접힐 때는 목이 생기기 전에 빠진다
+.water-multi-pop__float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+// 내용 — 멈춘 유리와 같은 자리(칸 끝에서 GAP 10px)
+.water-multi-pop__content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+
+  [data-dir='up'] > & {
+    top: auto;
+    bottom: 10px;
+  }
+}
+
+// 키보드·마우스가 가리키는 항목 뒤 밝은 알약 — D7 표시 알약 스프링으로 따라간다(엔진이 높이·자리를 쓴다)
+.water-multi-pop__hilite {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 0;
+  height: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  // 걷힐 때 — 내용과 같이 0.015s 뒤 0.03s(D7 접힘), 나타날 때 0.1s
+  transition: opacity 0.03s linear 0.015s;
+  pointer-events: none;
+
+  &.is-shown {
+    opacity: 1;
+    transition: opacity 0.1s ease-out;
+  }
+}
+
+.water-multi-pop__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.water-multi-pop__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font: 500 13px/1.25 $w-font;
+  color: $w-ink-2;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+
+  &.is-on {
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 1.5px rgba(63, 62, 67, 0.55);
+  }
+}
+
+// 체크 — 기본 부품 WaterCheck를 모양으로만(누르기는 항목이 받는다)
+.water-multi-pop__check {
+  pointer-events: none;
+}
+
+.water-multi-pop__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.water-multi-pop__clear {
+  @include w-reset-button;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $w-ink-2;
+  box-shadow: inset 0 1px 0 $wb-rule;
+
+  &:hover {
+    color: $w-ink;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  &.is-hidden {
+    visibility: hidden;
+  }
+
+  @include wb-focus;
+}

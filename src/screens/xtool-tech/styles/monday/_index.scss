@@ -1,0 +1,18 @@
+// Monday 표 레이아웃(설정 > 레이아웃 "Monday 표") — Monday 보드 화면을 따라 한다. 색은 모두
+// --mon-* 변수(_monday-palettes.scss — 남색·라이트·블랙)로, 화면 루트에 칠해져 표와 팝오버(루트에
+// 띄운다)가 같이 쓴다.
+//
+// styles/index.scss가 .xtool-tech 아래로 불러온다(load-css). 차례가 곧 덮어쓰는 차례라 순서를 바꾸지 않는다.
+// 설정 화면의 레이아웃·Monday 색상 견본은 ../_settings-swatches.scss.
+@use 'board';
+@use 'toolbar';
+@use 'table';
+@use 'subitems';
+@use 'popover';
+@use 'date-picker';
+@use 'sort';
+@use 'my-work';
+@use 'updates';
+@use 'files-modal';
+@use 'selection';
+@use 'skeleton';

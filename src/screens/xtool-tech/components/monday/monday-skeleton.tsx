@@ -6,7 +6,7 @@ import { defaultWidth, NAME_WIDTH, visibleColumns } from './monday-values'
 import { useColumnWidths } from './use-monday-prefs'
 
 // 불러오는 중(스켈레톤) — sample/skeleton처럼 내용이 올 자리에 둥근 회색 블록을 같은 배치로 그리고,
-// 빛줄기 하나가 모든 블록을 한꺼번에 지나간다(_monday.scss .mon-skel). 표는 진짜 표와 같은 줄
+// 빛줄기 하나가 모든 블록을 한꺼번에 지나간다(styles/monday/_skeleton.scss .mon-skel). 표는 진짜 표와 같은 줄
 // 높이·칸 너비라 데이터가 오면 그 자리가 그대로 채워진다.
 
 /** 보드 정보가 아직 없을 때의 칸 — 업무 보드에 흔한 모양 */

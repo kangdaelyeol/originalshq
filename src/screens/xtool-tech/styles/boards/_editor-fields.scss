@@ -1,0 +1,176 @@
+// ── 편집 칸 배치 · 날짜+시각 · 여러 개 고르는 드롭다운 ───────────────────────
+.editor__row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+
+  &--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.dt-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 6px;
+
+  input {
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+
+    &:disabled {
+      color: var(--text-4);
+      cursor: not-allowed;
+    }
+  }
+
+  input {
+    flex: 1;
+  }
+
+  &:focus-within {
+    border-color: rgba(var(--accent-rgb), 0.55);
+    background: rgba(0, 0, 0, 0.3);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.14);
+  }
+}
+
+.dt-field {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .dt-input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.dt-field__notime {
+  flex: none;
+  font-size: 12px;
+}
+
+.dt-input__clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-4);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
+
+.multi-select {
+  position: relative;
+}
+
+.multi-select__trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding-right: 32px;
+  text-align: left;
+  cursor: pointer;
+  // select 칸과 같은 아래 화살표
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+    linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 19px,
+    calc(100% - 13px) 19px;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+}
+
+.multi-select__value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-empty {
+    color: var(--text-4);
+  }
+}
+
+.multi-select__list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(24, 25, 29, 0.98);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.8);
+}
+
+.multi-select__option,
+.multi-select__clear {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+  }
+}
+
+.multi-select__option.is-on {
+  color: var(--text-1);
+}
+
+.multi-select__check {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: var(--accent-ink);
+
+  .is-on & {
+    border-color: transparent;
+    background: var(--accent);
+  }
+}
+
+.multi-select__clear {
+  justify-content: center;
+  margin-top: 2px;
+  border-top: 1px solid var(--line);
+  border-radius: 0 0 7px 7px;
+  font-size: 12px;
+  color: var(--text-3);
+}

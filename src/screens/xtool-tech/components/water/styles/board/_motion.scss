@@ -1,0 +1,15 @@
+// ── 동작 줄이기 ──────────────────────────────────────────────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .water-address__results,
+  .water-address__option {
+    animation: none;
+  }
+
+  .water-address__hilite {
+    transition: none;
+  }
+
+  .water-multi__chevron {
+    transition: none;
+  }
+}

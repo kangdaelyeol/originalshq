@@ -1,0 +1,55 @@
+// ── 머리글 정렬 단추 — 위 테두리에 반쯤 걸친 작은 원(Monday) ──────────────────────
+.mon-sort {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--mon-sort-bg);
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.15s;
+
+  path {
+    fill: var(--mon-text-2);
+  }
+
+  &:hover path {
+    fill: var(--mon-text);
+  }
+
+  &.is-asc,
+  &.is-desc {
+    opacity: 1;
+  }
+
+  &.is-asc .mon-sort__up,
+  &.is-desc .mon-sort__down {
+    fill: #fff;
+  }
+
+  &.is-asc .mon-sort__down,
+  &.is-desc .mon-sort__up {
+    fill: var(--mon-muted);
+  }
+}
+
+.mon-row--head .mon-cell:hover,
+.mon-row--head .mon-cell:focus-within {
+  background: var(--mon-hover);
+
+  .mon-sort {
+    opacity: 1;
+  }
+}
+
+// 이름 칸 머리글은 가운데 정렬이라 단추도 칸 가운데
+.mon-row--head .mon-cell--name .mon-sort {
+  left: calc(50% - 3px);
+}

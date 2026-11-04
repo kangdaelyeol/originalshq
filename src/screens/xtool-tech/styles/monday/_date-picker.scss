@@ -1,0 +1,209 @@
+// ── 날짜 칸 달력(Monday 날짜 팝오버) ─────────────────────────────────────────
+.mon-date {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 10px 8px;
+}
+
+.mon-date__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mon-date__today {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--mon-text-2);
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+}
+
+.mon-date__clock {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+
+  &.is-on {
+    color: var(--mon-link);
+  }
+}
+
+.mon-date__inputs {
+  display: flex;
+  gap: 6px;
+}
+
+.mon-date__text,
+.mon-date__time {
+  min-width: 0;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--mon-text-2);
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font: inherit;
+  outline: none;
+
+  &:focus {
+    border-color: var(--mon-primary);
+  }
+
+  &::selection {
+    background: var(--mon-line-strong);
+  }
+}
+
+.mon-date__text {
+  flex: 1;
+}
+
+.mon-date__time {
+  width: 112px;
+  color-scheme: dark;
+
+  // 시계 단추는 빼고 글자만(위 시계 단추로 켜고 끈다)
+  &::-webkit-calendar-picker-indicator {
+    display: none;
+  }
+}
+
+.mon-date__nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mon-date__select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+
+  select {
+    height: 30px;
+    padding: 0 26px 0 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text);
+    font: inherit;
+    appearance: none;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--mon-overlay);
+    }
+
+    option {
+      background: var(--mon-pop);
+    }
+  }
+
+  svg {
+    position: absolute;
+    right: 8px;
+    pointer-events: none;
+  }
+}
+
+.mon-date__arrows {
+  display: flex;
+  margin-left: auto;
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text);
+
+    &:hover {
+      background: var(--mon-overlay);
+    }
+  }
+}
+
+.mon-date__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 4px;
+}
+
+.mon-date__weekday {
+  height: 30px;
+  color: var(--mon-text-2);
+  font-size: 13px;
+  line-height: 30px;
+  text-align: center;
+}
+
+.mon-date__day {
+  justify-self: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font: inherit;
+
+  &:hover {
+    background: var(--mon-overlay-strong);
+  }
+
+  &.is-outside {
+    color: var(--mon-muted);
+  }
+
+  &.is-today:not(.is-selected) {
+    color: var(--mon-link);
+    font-weight: 500;
+  }
+
+  &.is-selected {
+    background: var(--mon-primary);
+    color: #fff;
+  }
+}
+
+.mon-date__footer {
+  margin: 2px -10px 0;
+  padding: 8px 10px 0;
+  border-top: 1px solid var(--mon-line);
+  text-align: center;
+
+  button {
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 4px;
+    background: none;
+    color: var(--mon-text-2);
+
+    &:hover {
+      background: var(--mon-overlay);
+      color: var(--mon-text);
+    }
+  }
+}

@@ -1,0 +1,53 @@
+@use 'base' as *;
+
+// ── 날짜·시각 ─────────────────────────────────────────────────────────────────
+// 좁으면(날짜·시각 글자가 다 안 들어가면) "시각 없음"이 아래 줄로 내려간다
+.water-dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+// 칸 — 기본 부품 입력의 유리 알약(water-field__box)·글자(water-field__input)를 빌려 날짜 입력과 지우기를 넣었다
+.water-dt > .water-dt__box {
+  flex: 1 1 236px;
+  min-width: 0;
+  padding-right: 8px;
+
+  input {
+    color-scheme: light;
+  }
+
+  input::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+}
+
+.water-dt__notime {
+  flex: none;
+  white-space: nowrap;
+}
+
+.water-dt__clear {
+  @include w-reset-button;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: $w-ink-3;
+  transition:
+    background-color $w-quick,
+    color $w-quick;
+
+  &:hover {
+    color: $w-ink;
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
+  @include wb-focus;
+}

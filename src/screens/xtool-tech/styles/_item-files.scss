@@ -1,5 +1,5 @@
 // ── 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세 패널 ItemFiles · 수정 패널 FileField) ──────────────────────
-// 썸네일·목록 자체는 _boards.scss 그대로(어두운 유리). 색은 토큰(--text-*·--accent-rgb·--crit)과 currentColor만 써서,
+// 썸네일·목록 자체는 boards/_files.scss 그대로(어두운 유리). 색은 토큰(--text-*·--accent-rgb·--crit)과 currentColor만 써서,
 // 물 레이아웃의 수정 패널(물 서랍 안 — 토큰이 밝은 벽용으로 바뀐다)에서도 그대로 맞는다.
 // 규칙(진행·실패·다시 시도·놓을 자리)은 components/board/use-file-column.ts — Monday 표·물 파일 칸과 같다.
 

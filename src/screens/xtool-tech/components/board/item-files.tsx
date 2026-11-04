@@ -12,7 +12,7 @@ import { uploadLabel, uploadPercent, useFileColumn, useFileDrop, type FileUpload
 
 // 파일 칸(대시보드) — 상세 패널의 파일(ItemFiles)과 수정 패널의 파일 칸(FileField). 올리기·끌어다 놓기·진행·
 // 실패 시 다시 시도·모두 지우기는 세 레이아웃(대시보드·Monday 표·물)이 같은 규칙(use-file-column.ts)과 같은 길
-// (data/tech-file-actions.ts)을 쓴다. 스타일은 styles/_boards.scss(썸네일·목록)·styles/_item-files.scss(올리기).
+// (data/tech-file-actions.ts)을 쓴다. 스타일은 styles/boards/_files.scss(썸네일·목록)·styles/_item-files.scss(올리기).
 
 const VIDEO = /\.(mp4|mov|m4v|webm|avi|mkv)$/i
 

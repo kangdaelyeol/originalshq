@@ -1,0 +1,17 @@
+// ── 공용 — 도는 아이콘 · 세로로 쌓기 ──────────────────────────────────────────────
+.is-spinning {
+  animation: xt-spin 0.9s linear infinite;
+}
+
+@keyframes xt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}

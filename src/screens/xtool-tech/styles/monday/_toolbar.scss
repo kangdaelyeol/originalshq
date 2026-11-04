@@ -1,0 +1,115 @@
+// ── 위 도구 줄 ──────────────────────────────────────────────────────────────
+.mon-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 14px 24px 4px;
+}
+
+.mon-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  margin-right: 14px;
+  padding: 0 14px 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--mon-primary);
+  color: #fff;
+  font-weight: 500;
+
+  &:hover {
+    background: var(--mon-primary-hi);
+  }
+}
+
+.mon-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+
+  &.is-on {
+    background: var(--mon-tool-on);
+  }
+}
+
+.mon-tool-group {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+
+  &.is-on {
+    background: var(--mon-tool-on);
+
+    .mon-tool {
+      background: none;
+    }
+  }
+}
+
+.mon-tool__clear {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 5px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: var(--mon-overlay-strong);
+    color: var(--mon-text);
+  }
+}
+
+.mon-search {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 240px;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--mon-primary);
+  border-radius: 4px;
+  color: var(--mon-text-2);
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: none;
+    color: var(--mon-text);
+    outline: none;
+  }
+
+  button {
+    display: grid;
+    place-items: center;
+    padding: 2px;
+    border: 0;
+    background: none;
+    color: var(--mon-text-2);
+  }
+}
+
+.mon-toolbar__count {
+  margin-left: auto;
+  color: var(--mon-text-2);
+  font-size: 13px;
+}

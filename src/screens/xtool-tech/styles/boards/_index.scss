@@ -1,0 +1,15 @@
+// 대시보드(유리) 보드 화면 — 기록 표·일정 목록·상세·편집·하위 줄·짧은 목록·파일. styles/index.scss가
+// .xtool-tech 아래로 불러온다(load-css). 차례가 곧 덮어쓰는 차례라 순서를 바꾸지 않는다. 개요 카드는
+// ../_overview.scss, 저장 알림(토스트)은 ../_toast.scss.
+@use 'base';
+@use 'record-table';
+@use 'upcoming';
+@use 'drawer';
+@use 'editor';
+@use 'address';
+@use 'table-sort';
+@use 'record-row';
+@use 'editor-fields';
+@use 'subitems';
+@use 'mini-list';
+@use 'files';

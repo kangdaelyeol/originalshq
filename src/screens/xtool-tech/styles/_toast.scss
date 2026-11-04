@@ -1,0 +1,87 @@
+// ── 저장 알림(토스트) ────────────────────────────────────────────────────────
+.toaster {
+  position: fixed;
+  z-index: 70;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: min(380px, calc(100vw - 40px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 12px 12px 14px;
+  border-radius: 14px;
+  background-color: rgba(22, 23, 27, calc(var(--glass-opacity) + 0.3));
+  pointer-events: auto;
+}
+
+.toast__icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-3);
+
+  .toast--success & {
+    color: var(--good);
+  }
+
+  .toast--error & {
+    color: var(--crit);
+  }
+}
+
+.toast--error {
+  border-color: rgba(248, 113, 113, 0.35);
+}
+
+.toast__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.toast__message {
+  margin-top: 3px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-3);
+  word-break: break-word;
+}
+
+.toast__action {
+  margin-top: 6px;
+  font-size: 12px;
+}
+
+.toast__close {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-4);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.06);
+  }
+}

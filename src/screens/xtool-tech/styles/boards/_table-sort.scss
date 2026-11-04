@@ -1,0 +1,38 @@
+// ── 표 머리글 정렬 ──────────────────────────────────────────────────────────
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+
+  &:hover,
+  &.is-active {
+    color: var(--text-1);
+  }
+
+  &.is-active svg {
+    color: var(--accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--accent-rgb), 0.6);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+.th-sort__idle {
+  opacity: 0.35;
+  transition: opacity 0.15s;
+
+  .th-sort:hover & {
+    opacity: 0.8;
+  }
+}

@@ -1,0 +1,19 @@
+// tech 물 부품(D7) — 보드 칸·편집 칸·기록 표·서랍·토스트(components/water/board). 규칙은 .xtool-tech 아래로
+// 들어간다(styles/index.scss가 감싼다). 값의 출처는 D7(lab/styles/_design7.scss · ohq-ui/water/styles/_tokens.scss,
+// 주석의 F는 영상 프레임). 움직임(스프링)은 board/*-engine.ts가 rAF로 그리고, 여기에는 멈춘 모양·색과 짧은
+// 전환만 있다.
+//
+// 섹션마다 partial — 여기서는 load-css 대신 @use로 잇는다. 여러 파일이 바탕(base)의 %wb-surface를 @extend하는데,
+// @use면 바탕이 한 번만 나와 원래처럼 한 규칙으로 묶인다. 차례가 곧 덮어쓰는 차례라 순서를 바꾸지 않는다.
+@use 'base';
+@use 'fields';
+@use 'buttons';
+@use 'chips';
+@use 'multi-select';
+@use 'date-time';
+@use 'address';
+@use 'record-table';
+@use 'drawer';
+@use 'toast';
+@use 'catalog';
+@use 'motion';

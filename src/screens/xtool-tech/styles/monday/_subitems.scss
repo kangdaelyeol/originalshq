@@ -1,0 +1,128 @@
+// 하위 아이템 — 줄 아래로 들여 펼친다. 이름 칸 갈매기 밑에서 내려오는 줄기에서 줄마다 둥글게
+// 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 체크박스 16·여백 2·간격 6
+// + 갈매기 반 폭 10.
+$sub-trunk: 49.5px;
+$sub-indent: 76px;
+$sub-row: 34px;
+
+.mon-sub {
+  // 표를 옆으로 스크롤해도 하위 표는 이름 칸처럼 왼쪽에 붙어 있는다(부모 줄 갈매기 밑 그대로).
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: max-content;
+  padding: 12px 0 14px $sub-indent;
+}
+
+.mon-sub__trunk {
+  position: absolute;
+  top: 0;
+  // 마지막 줄의 가지가 꺾이는 데서 끝난다 — 그 줄 가지가 나머지를 그린다.
+  bottom: 14px + $sub-row;
+  left: $sub-trunk;
+  border-left: 1px solid var(--mon-line-strong);
+}
+
+.mon-sub__row {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--sub-cols);
+
+  .mon-cell {
+    height: $sub-row;
+    font-size: 13.5px;
+  }
+}
+
+// 줄마다 줄기에서 둥글게 꺾여 들어오는 가지
+.mon-sub__row--item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -($sub-indent - $sub-trunk);
+  width: $sub-indent - $sub-trunk - 1px;
+  height: 50%;
+  border-bottom: 1px solid var(--mon-line-strong);
+  border-left: 1px solid var(--mon-line-strong);
+  border-bottom-left-radius: 8px;
+  pointer-events: none;
+}
+
+.mon-sub__row--head .mon-cell {
+  border-top: 1px solid var(--mon-line);
+}
+
+// 이름 칸 — 왼쪽에 옅은 그룹 색 막대
+.mon-sub__name.mon-cell {
+  justify-content: flex-start;
+  padding-left: 12px;
+  border-left: 6px solid color-mix(in srgb, var(--group) 45%, var(--mon-cell));
+  text-align: left;
+}
+
+.mon-sub__row--head .mon-sub__name.mon-cell {
+  justify-content: center;
+  border-top-left-radius: 6px;
+}
+
+.mon-sub__row--item:hover > .mon-cell:not(.mon-cell--status) {
+  background: var(--mon-hover);
+}
+
+// 줄 이름 칸 — 이름 단추 글자가 "+ 추가" 칸 글자와 줄을 맞추게 여백을 줄이고, 오른쪽에 "⋯"
+.mon-sub__row--item .mon-sub__name.mon-cell {
+  gap: 4px;
+  padding-right: 4px;
+  padding-left: 7px;
+}
+
+// 보기만 하는 이름(만드는 중인 줄)도 단추 글자 자리에
+.mon-sub__label {
+  padding: 0 5px;
+}
+
+.mon-sub__name .mon-input {
+  height: 26px;
+  border-radius: 3px;
+}
+
+// 이름 칸 오른쪽 "⋯"(이름 바꾸기·삭제) — 줄에 올리거나 포커스가 들어오면 보인다(Monday).
+.mon-sub__more {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+  opacity: 0;
+
+  &:hover,
+  &.is-active {
+    background: var(--mon-overlay-strong);
+    color: var(--mon-text);
+  }
+}
+
+.mon-sub__row--item:hover .mon-sub__more,
+.mon-sub__row--item:focus-within .mon-sub__more,
+.mon-sub__more.is-active {
+  opacity: 1;
+}
+
+// 올려 볼 수 없는 화면(터치)에서는 늘 보인다.
+@media (hover: none) {
+  .mon-sub__more {
+    opacity: 1;
+  }
+}
+
+.mon-sub__row--add .mon-sub__name.mon-cell {
+  grid-column: 1 / -1;
+  padding-left: 6px;
+  border-bottom-left-radius: 6px;
+}

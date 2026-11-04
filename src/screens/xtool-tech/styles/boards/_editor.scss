@@ -1,0 +1,152 @@
+@use '../../../../ohq-ui/styles/mixins' as *;
+
+// ── 편집 패널 ───────────────────────────────────────────────────────────────
+.drawer-scrim--top {
+  z-index: 62;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.drawer--top {
+  z-index: 63;
+  width: min(500px, calc(100vw - 24px));
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.editor {
+  gap: 16px;
+
+  .field__input {
+    width: 100%;
+  }
+
+  select.field__input {
+    appearance: none;
+    padding-right: 32px;
+    background-image: linear-gradient(45deg, transparent 50%, var(--text-3) 50%),
+      linear-gradient(135deg, var(--text-3) 50%, transparent 50%);
+    background-position:
+      calc(100% - 17px) 19px,
+      calc(100% - 13px) 19px;
+    background-size: 4px 4px;
+    background-repeat: no-repeat;
+    cursor: pointer;
+
+    option {
+      background: #1b1c1f;
+    }
+  }
+}
+
+.field__textarea {
+  height: auto;
+  min-height: 96px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.field__required {
+  color: var(--crit);
+}
+
+.field__badge {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(var(--accent-rgb), 0.16);
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--accent-hi);
+}
+
+.field--changed .field__input {
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.editor__sub {
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+.editor__date,
+.editor__pair {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .field__input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .text-link {
+    flex: none;
+  }
+}
+
+.editor__pair {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.editor__check {
+  height: 42px;
+}
+
+.editor__locked {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-3);
+
+  svg {
+    flex: none;
+    margin-top: 2px;
+  }
+}
+
+.editor__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.editor__error {
+  flex: 1 1 100%;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--crit);
+}
+
+.chip-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chip-picker__chips {
+  @include toggle-set;
+  align-self: flex-start;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.chip-picker__empty {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.chip-toggle {
+  @include toggle-option;
+}

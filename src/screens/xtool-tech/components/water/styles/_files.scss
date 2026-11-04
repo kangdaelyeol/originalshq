@@ -7,9 +7,9 @@
 // (ripple.ts). 올리는 중인 파일은 홈 막대(WaterBar)가 extend 스프링으로 차오른다.
 // 이 파일은 .xtool-tech 아래로 들어간다(load-css) — `.x &`·`& + &`처럼 &를 뒤에 쓰면 루트까지 붙어 깨진다.
 
-// 회색 판 위 글자 대비 4.5:1이 되게 어둡게 한 빨강(서랍 판 196 위) — _board.scss $wb-crit-ink와 같은 값
+// 회색 판 위 글자 대비 4.5:1이 되게 어둡게 한 빨강(서랍 판 196 위) — board/_base.scss $wb-crit-ink와 같은 값
 $wf-crit-ink: #9e3b36;
-// 칸 사이 가는 선(벽 격자선 16.5%보다 옅게) — _board.scss $wb-rule과 같은 값
+// 칸 사이 가는 선(벽 격자선 16.5%보다 옅게) — board/_base.scss $wb-rule과 같은 값
 $wf-rule: rgba(0, 0, 0, 0.085);
 
 .water-files-stack {

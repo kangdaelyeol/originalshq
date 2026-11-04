@@ -1,0 +1,64 @@
+// ── 짧은 목록(재고 부족·중복 SN) ─────────────────────────────────────────────
+.mini-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.05);
+    outline: none;
+  }
+}
+
+.mini-list__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-list__title,
+.mini-list__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-list__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.mini-list__meta {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+
+.mini-list__value {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+
+  &.is-alert {
+    color: var(--crit);
+  }
+}

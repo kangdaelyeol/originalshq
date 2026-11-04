@@ -1,0 +1,180 @@
+// ── 설정 > 레이아웃 견본 ────────────────────────────────────────────────────
+.layout-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 260px));
+  gap: 10px;
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(2, minmax(0, 280px));
+  }
+
+  @media (max-width: 720px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.layout-art {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 96px;
+  padding: 10px;
+  overflow: hidden;
+  border-radius: 10px;
+
+  i {
+    display: block;
+  }
+}
+
+.layout-art--dashboard {
+  background: #101114;
+
+  .layout-art__kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
+
+    i {
+      height: 22px;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: inset 2px 0 0 rgba(var(--accent-rgb), 0.8);
+    }
+  }
+
+  .layout-art__card {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+
+    i {
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.18);
+
+      &:nth-child(2) {
+        width: 70%;
+      }
+
+      &:nth-child(3) {
+        width: 45%;
+        background: rgba(var(--accent-rgb), 0.7);
+      }
+    }
+  }
+}
+
+.layout-art--monday {
+  gap: 7px;
+  background: #18192d;
+
+  .layout-art__group {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border-left: 3px solid var(--group);
+  }
+
+  .layout-art__row {
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr 1fr;
+    gap: 1px;
+
+    i {
+      height: 11px;
+      background: #2b2c44;
+    }
+  }
+}
+
+// 물(D7) — 연회색 벽 위 유리 알약(첫 칸에 어두운 표시 알약)과 유리 판. 실제 부품(ohq-ui/water)은 물 묶음에만
+// 있어서, 견본은 그 모양만 같은 값으로 그린다.
+.layout-art--water {
+  gap: 8px;
+  background: linear-gradient(135deg, rgb(227, 225, 230), rgb(172, 170, 175));
+
+  .layout-art__pill {
+    display: flex;
+    gap: 3px;
+    width: 68%;
+    padding: 3px;
+    border-radius: 999px;
+    box-shadow:
+      inset 1px 1.1px 0.8px rgba(0, 0, 0, 0.5),
+      inset -1.6px -1.6px 1px rgba(255, 255, 255, 0.9),
+      2px 4px 6px rgba(0, 0, 0, 0.12);
+
+    i {
+      flex: 1;
+      height: 13px;
+      border-radius: 999px;
+
+      &:first-child {
+        background: linear-gradient(180deg, #555358, #2b292e);
+        box-shadow: 0 1.5px 3px rgba(0, 0, 0, 0.26);
+      }
+    }
+  }
+
+  .layout-art__glass {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 9px;
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.026);
+    box-shadow:
+      inset 1px 1.1px 0.8px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.16),
+      inset -1.6px -1.6px 1px rgba(255, 255, 255, 0.85),
+      3px 6px 8px rgba(0, 0, 0, 0.14);
+
+    i {
+      height: 5px;
+      border-radius: 3px;
+      background: rgba(63, 62, 67, 0.3);
+
+      &:nth-child(2) {
+        width: 70%;
+      }
+
+      &:nth-child(3) {
+        width: 45%;
+        background: rgba(63, 62, 67, 0.55);
+      }
+    }
+  }
+}
+
+// ── 설정 > Monday 색상 견본 ──────────────────────────────────────────────────────
+.palette-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 160px));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.palette-tile__art {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  height: 52px;
+  padding: 8px;
+  border: 1px solid rgba(128, 128, 128, 0.3);
+  border-radius: 8px;
+
+  i {
+    display: block;
+    height: 10px;
+    border-radius: 2px;
+  }
+}

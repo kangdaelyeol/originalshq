@@ -1,0 +1,109 @@
+@use '../../../../ohq-ui/styles/mixins' as *;
+
+// ── 주소 검색 칸 ─────────────────────────────────────────────────────────────
+.address-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.address-input__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-1);
+
+  svg {
+    color: var(--accent);
+  }
+
+  small {
+    font-size: 11px;
+    color: var(--warn);
+  }
+
+  &--empty {
+    color: var(--text-4);
+  }
+}
+
+.address-input__search {
+  display: flex;
+  gap: 8px;
+
+  .field__input {
+    flex: 1;
+    min-width: 0;
+  }
+
+  // 검색 버튼 — 입력 칸과 같은 높이로(버튼 기본 높이는 입력보다 낮다)
+  .button {
+    flex: none;
+    height: auto;
+  }
+}
+
+.address-input__results {
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  overflow-y: auto;
+  border-radius: 10px;
+  @include well;
+
+  li + li {
+    border-top: 1px solid var(--line);
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 0;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    // 짚은 줄(↑↓·마우스 — 마우스도 짚은 줄을 옮겨 한 줄만 밝다)
+    &.is-active,
+    &:focus-visible {
+      background: rgba(255, 255, 255, 0.05);
+      outline: none;
+    }
+
+    strong {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    span,
+    small {
+      font-size: 11.5px;
+      color: var(--text-3);
+    }
+  }
+}
+
+.address-input__none {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  font-size: 12.5px;
+  color: var(--text-3);
+
+  strong {
+    font-weight: 600;
+    color: var(--text-2);
+  }
+}
+
+// 오류 문구 뒤 "다시 찾기"
+.address-input__retry {
+  margin-left: 8px;
+}

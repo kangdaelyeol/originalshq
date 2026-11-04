@@ -10,11 +10,17 @@
 // 매니저 등)과 클래스 이름이 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
 .xtool-tech {
   @include meta.load-css('layout');
+  // 저장 알림(토스트) — 화면 틀(components/layout/toaster.tsx)
+  @include meta.load-css('toast');
+  // 대시보드 보드 화면(boards/ — 기록 표·상세·편집·하위 줄·파일 …)
   @include meta.load-css('boards');
+  // 개요 카드(기술팀 왕·나의 진행 중 업무·일정·챙겨야 할 것·팀 현황)
+  @include meta.load-css('overview');
   // 내 업무 서랍 이름 위 보드 이름 링크("보드에서 보기")
   @include meta.load-css('board-host');
   // 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세·수정 패널) — 썸네일·목록(boards) 뒤에
   @include meta.load-css('item-files');
+  // Monday 표 레이아웃(monday/ — 판·도구 줄·표·팝오버·업데이트·파일 모달·선택 막대 …)
   @include meta.load-css('monday');
   // Monday 표 보드 위 요약 줄(숫자 칸·기간 탭) — 도구 줄 탭(monday .mon-tabs) 뒤에
   @include meta.load-css('monday-numbers');
@@ -22,6 +28,8 @@
   @include meta.load-css('monday-files');
   @include meta.load-css('login');
   @include meta.load-css('notifications');
+  // 설정 > 레이아웃 견본 · Monday 색상 견본 — 설정 화면 스타일 앞에
+  @include meta.load-css('settings-swatches');
   @include meta.load-css('settings');
   @include meta.load-css('water-boot');
 }

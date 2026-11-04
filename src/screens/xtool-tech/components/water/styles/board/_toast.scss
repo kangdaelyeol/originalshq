@@ -1,0 +1,126 @@
+@use 'base' as *;
+
+// ── 토스트 ────────────────────────────────────────────────────────────────────
+.water-toaster {
+  @extend %wb-surface;
+  position: fixed;
+  z-index: 70;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  width: min(380px, calc(100vw - 40px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+// 견본 상자 안에 그릴 때
+.water-toaster--inline {
+  position: absolute;
+  z-index: 3;
+  right: 18px;
+  bottom: 18px;
+  width: min(360px, calc(100% - 36px));
+}
+
+// 알약 — 유리(엔진이 폭을 쓴다)는 오른쪽 끝(동그라미)에 붙어 왼쪽으로 뻗는다
+.water-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 11px 11px 13px;
+  pointer-events: auto;
+}
+
+.water-toast__glass {
+  @include wb-panel(0.9, 0.55);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: 23px;
+}
+
+.water-toast__icon,
+.water-toast__body,
+.water-toast__close,
+.water-toast__close-space {
+  position: relative;
+  z-index: 1;
+}
+
+.water-toast__fx {
+  z-index: 2;
+}
+
+.water-toast__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: $w-ink-2;
+
+  .water-toast--success & {
+    color: $w-ok;
+  }
+
+  .water-toast--error & {
+    color: $w-crit;
+  }
+}
+
+.water-toast__body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.water-toast__title {
+  font: 600 13px/1.4 $w-font;
+  color: $w-ink;
+}
+
+.water-toast__message {
+  margin-top: 3px;
+  font: 500 12px/1.5 $w-font;
+  color: $w-ink-2;
+  word-break: break-word;
+}
+
+.water-toast__action {
+  margin-top: 6px;
+}
+
+.water-toast__close,
+.water-toast__close-space {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.water-toast__close {
+  @include w-reset-button;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: $w-ink-3;
+  transition:
+    background-color $w-quick,
+    color $w-quick;
+
+  &:hover {
+    color: $w-ink;
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
+  @include wb-focus;
+}

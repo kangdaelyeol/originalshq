@@ -1,0 +1,135 @@
+// ── 기록 표 줄 — 저장 중 표시 · 줄 고르기 · 고르기 막대 · 말풍선 ─────────────────────────
+.record-row__saving {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+// 줄 고르기(체크) — 고르면 아래 고르기 막대(.selbar)에서 이동·삭제
+.record-table__check {
+  width: 36px;
+  padding-right: 0;
+
+  input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    vertical-align: middle;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+}
+
+// 고르기 막대 — 화면 아래 가운데에 뜬다(Monday 표 선택 막대와 같은 기능)
+.selbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 16px;
+  border-radius: 16px;
+  transform: translateX(-50%);
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+}
+
+.selbar__count {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.selbar__label {
+  margin-right: 6px;
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.selbar__menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.selbar__menu-title {
+  margin: 4px 10px 6px;
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.selbar__menu-item {
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text-1);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    background: rgba(255, 255, 255, 0.08);
+    outline: none;
+  }
+}
+
+// 말풍선(업데이트 수) — 이름 칸 옆. 없으면 줄에 올리거나 초점이 올 때만 "쓰기" 아이콘이 보인다
+.record-row__updates {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 999px;
+  vertical-align: top;
+  background: rgba(255, 255, 255, 0.08);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    opacity 0.15s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--text-1);
+  }
+
+  &:focus-visible {
+    outline: 2px solid rgba(var(--accent-rgb), 0.6);
+    outline-offset: 2px;
+  }
+
+  &.is-empty {
+    background: none;
+    color: var(--text-4);
+  }
+
+  .record-row:not(:hover) &.is-empty:not(:focus-visible) {
+    opacity: 0;
+  }
+}

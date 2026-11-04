@@ -1,0 +1,475 @@
+// ── 표 ──────────────────────────────────────────────────────────────────────
+.mon-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 24px 40px;
+}
+
+.mon-empty {
+  padding: 40px 0;
+  color: var(--mon-text-2);
+  text-align: center;
+}
+
+.mon-group {
+  // 칸이 화면보다 넓으면 그만큼 늘어나 옆으로 스크롤된다.
+  width: max-content;
+  min-width: 100%;
+  margin-top: 26px;
+
+  &:first-child {
+    margin-top: 10px;
+  }
+
+  &.is-collapsed {
+    margin-top: 14px;
+  }
+}
+
+// 그룹 제목 줄 — 위로 스크롤하면 맨 위에 붙고 칸 머리글이 그 바로 아래에 붙는다(어느 그룹을 보고
+// 있는지 늘 보이게). 줄은 표 너비만큼 바탕을 칠해 지나가는 줄을 가리고, 안의 글자는 옆으로 밀어도
+// 왼쪽에 붙는다. 다음 그룹이 올라오면 그 그룹 제목으로 바뀐다(sticky가 그룹 안에서만).
+$group-title-h: 40px;
+
+.mon-group__title {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: $group-title-h;
+  background: var(--mon-bg);
+  // 판 왼쪽 여백(.mon-scroll padding)까지 덮는다.
+  box-shadow: -24px 0 0 var(--mon-bg);
+}
+
+.mon-group__title-inner {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  height: 100%;
+}
+
+.mon-group__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--group);
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+}
+
+.mon-group__count {
+  color: var(--mon-text-2);
+  font-size: 13px;
+}
+
+.mon-row {
+  display: grid;
+  grid-template-columns: var(--mon-cols);
+}
+
+.mon-cell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border-right: 1px solid var(--mon-line);
+  border-bottom: 1px solid var(--mon-line);
+  background: var(--mon-cell);
+  text-align: center;
+
+  &.is-left {
+    justify-content: flex-start;
+    text-align: left;
+  }
+}
+
+.mon-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 이름 칸 — 왼쪽에 그룹 색 막대, 옆으로 스크롤해도 붙어 있다.
+.mon-cell--name {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0 8px 0 10px;
+  border-left: 6px solid var(--group);
+  text-align: left;
+  // 표 왼쪽 여백(.mon-scroll padding)으로 지나가는 칸이 비치지 않게 판 바탕색으로 덮는다.
+  box-shadow: -24px 0 0 var(--mon-bg);
+}
+
+.mon-cell--end {
+  border-right: 0;
+}
+
+.mon-row--head {
+  position: sticky;
+  top: $group-title-h;
+  // 제목 줄(5) 위 — 위 테두리에 걸친 정렬 동그라미가 제목 줄에 가려지지 않게
+  z-index: 6;
+
+  .mon-cell {
+    border-top: 1px solid var(--mon-line);
+    color: var(--mon-text);
+    font-size: 14px;
+
+    &:hover .mon-resize {
+      opacity: 1;
+    }
+  }
+
+  .mon-cell--name {
+    z-index: 4;
+    justify-content: center;
+    border-top-left-radius: 8px;
+  }
+}
+
+.mon-resize {
+  position: absolute;
+  top: 6px;
+  right: -3px;
+  bottom: 6px;
+  z-index: 1;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--mon-primary);
+  opacity: 0;
+  cursor: col-resize;
+  touch-action: none;
+  transition: opacity 0.15s;
+}
+
+.mon-row:not(.mon-row--head):not(.mon-summary):hover > .mon-cell:not(.mon-cell--status) {
+  background: var(--mon-hover);
+}
+
+// 이름 칸 뒤를 한 칸으로 채우는 줄("+ 추가")
+.mon-row__fill {
+  grid-column: 2 / -1;
+  border-right: 0;
+}
+
+// 고칠 수 있는 칸 — 올려도 테두리는 없다(줄 바탕만 밝아진다).
+.mon-cell.is-writable {
+  cursor: pointer;
+}
+
+.mon-cell:focus-visible,
+.mon-cell.is-active {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--mon-primary);
+}
+
+.mon-cell.is-editing {
+  padding: 0;
+}
+
+.mon-input {
+  width: 100%;
+  height: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--mon-primary);
+  background: var(--mon-bg);
+  color: var(--mon-text);
+  font: inherit;
+  text-align: inherit;
+  outline: none;
+
+  .mon-cell--name & {
+    height: 28px;
+    border-radius: 3px;
+  }
+}
+
+// 이름 칸 안
+.mon-expand {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover:not(:disabled) {
+    background: var(--mon-overlay-strong);
+    color: var(--mon-text);
+  }
+
+  // 하위 아이템이 없으면 줄에 올렸을 때만 흐리게(눌러서 첫 줄을 추가한다)
+  &.is-empty {
+    opacity: 0;
+  }
+
+  // 펼친 줄 — 갈매기만 밝게(테두리 상자는 체크박스처럼 보여서 뺐다)
+  &[aria-expanded='true'] {
+    color: var(--mon-text);
+  }
+}
+
+.mon-row:hover .mon-expand.is-empty {
+  opacity: 0.6;
+}
+
+.mon-name {
+  min-width: 0;
+  padding: 2px 4px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: text;
+}
+
+.mon-subcount {
+  flex: none;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--mon-badge);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+// 칸 종류별
+.mon-cell--status {
+  background: var(--label);
+  color: #fff;
+  font-weight: 500;
+
+  // Monday처럼 오른쪽 위 모서리가 접힌 표시(테두리 아님)
+  &.is-writable:hover::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(225deg, rgba(0, 0, 0, 0.28) 0 7px, transparent 7px);
+    pointer-events: none;
+  }
+}
+
+.mon-status__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-chips {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mon-chip {
+  flex: none;
+  max-width: 100%;
+  height: 24px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid var(--mon-bg);
+  border-radius: 4px;
+  background: var(--mon-chip);
+  color: var(--mon-text);
+  font-size: 13px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mon-people {
+  display: inline-flex;
+  align-items: center;
+}
+
+.mon-avatar {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--mon-cell);
+  border-radius: 50%;
+  background: var(--avatar);
+  color: #fff;
+  font-size: 10.5px;
+  // 이니셜은 작은 글자라 판 굵기(500)보다 굵게
+  font-weight: 600;
+  letter-spacing: -0.02em;
+
+  & + & {
+    margin-left: -8px;
+  }
+}
+
+.mon-avatar.has-photo {
+  overflow: hidden;
+  background: var(--mon-badge);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.mon-avatar--more {
+  background: var(--mon-badge);
+  font-size: 11px;
+}
+
+.mon-people__empty {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1.5px solid var(--mon-person-empty);
+  border-radius: 50%;
+  color: var(--mon-person-empty);
+}
+
+.mon-check {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--mon-control);
+  border-radius: 3px;
+
+  &.is-on {
+    color: #00c875;
+  }
+}
+
+.mon-location {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+
+  svg {
+    flex: none;
+  }
+}
+
+.mon-link {
+  color: var(--mon-link);
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.mon-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mon-text-2);
+}
+
+// "+ 고객 추가"
+.mon-row--add .mon-cell--name {
+  border-left-color: color-mix(in srgb, var(--group) 45%, transparent);
+  border-bottom-left-radius: 8px;
+}
+
+.mon-add {
+  width: min(100%, 320px);
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: none;
+  color: var(--mon-text);
+  outline: none;
+
+  &::placeholder {
+    color: var(--mon-text-2);
+  }
+
+  &:focus {
+    border-color: var(--mon-primary);
+  }
+}
+
+.mon-more {
+  position: sticky;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  height: 34px;
+  padding: 0 16px;
+  color: var(--mon-text-2);
+  font-size: 13px;
+}
+
+// 그룹 바닥 요약 줄
+.mon-summary .mon-cell {
+  height: 36px;
+  border-bottom: 1px solid var(--mon-line);
+  background: none;
+}
+
+// 옆으로 스크롤하면 요약 칸이 이 밑으로 지나간다 — 판 바탕색으로 가린다.
+.mon-summary__lead.mon-cell {
+  border: 0;
+  background: var(--mon-bg);
+}
+
+.mon-summary .mon-cell:nth-child(2) {
+  border-left: 1px solid var(--mon-line);
+}
+
+.mon-battery {
+  display: flex;
+  width: 100%;
+  height: 24px;
+  overflow: hidden;
+
+  span {
+    min-width: 2px;
+    background: var(--label);
+  }
+}
+
+.mon-summary__sum {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+
+  small {
+    color: var(--mon-text-2);
+    font-size: 11px;
+  }
+}
