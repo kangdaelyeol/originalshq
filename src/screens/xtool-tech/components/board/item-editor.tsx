@@ -29,6 +29,7 @@ import {
   type LocationState,
 } from '../../data/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
+import { addressErrorText } from '../../lib/address-error'
 import { isComposing } from '../../lib/ime'
 import { useWaterLayout } from '../../water-layout/load'
 import { Button } from '../layout-parts'
@@ -489,33 +490,91 @@ export function ChipPicker({ id, options, selected, onChange, searchable, empty 
   )
 }
 
+/** 결과 목록에서 짚은 줄 — 없으면 -1. 키보드로 옮겼으면 그 줄이 보이게 굴린다 */
+const NO_ADDRESS_POINTER = { index: -1, keyboard: false }
+
 /** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다).
- * 상세 주소(동·호수 등)는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다. */
+ * 상세 주소(동·호수 등)는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다.
+ * 결과는 입력 칸에서 ↑↓(끝에서 돈다)로 짚고 엔터로 넣는다(combobox) — Esc는 목록만 닫는다(편집 판·Monday
+ * 팝오버는 그대로). 늦게 온 옛 검색은 버리고, 함수가 보낸 오류 문구는 그대로 보인다(물 주소 칸과 같은 기능). */
 export function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<AddressResult[] | null>(null)
+  /** 결과를 찾은 말 — 빈 결과 안내에 쓴다 */
+  const [searched, setSearched] = useState('')
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pointer, setPointer] = useState(NO_ADDRESS_POINTER)
+  /** 초점이 주소 칸 안에 있는지 — 있을 때만 Esc를 목록이 가져간다(밖에 있으면 편집 판·팝오버가 닫힌다) */
+  const [focusIn, setFocusIn] = useState(false)
+  /** 나중에 보낸 검색만 받는다(앞의 것이 늦게 와도 덮지 않게) */
+  const request = useRef(0)
   const hasCoords = Boolean(value.lat && value.lng)
+  const listId = `${id}-results`
+  const options = results && results.length > 0 ? results : null
+  const active = options ? pointer.index : -1
+
+  // 키보드로 옮긴 줄이 목록 밖이면 보이게 굴린다
+  useEffect(() => {
+    if (pointer.keyboard && pointer.index >= 0) {
+      document.getElementById(`${listId}-${pointer.index}`)?.scrollIntoView({ block: 'nearest' })
+    }
+  }, [pointer, listId])
+
+  const closeResults = () => {
+    setResults(null)
+    setPointer(NO_ADDRESS_POINTER)
+  }
 
   const search = async () => {
-    if (query.trim().length < 2) {
+    const q = query.trim()
+    if (q.length < 2) {
       setError('두 글자 이상 적어 주세요.')
       return
     }
+    const n = ++request.current
     setSearching(true)
     setError(null)
     try {
-      setResults(await searchAddress(query))
+      const list = await searchAddress(q)
+      if (n !== request.current) return
+      setResults(list)
+      setSearched(q)
+      setPointer(NO_ADDRESS_POINTER)
     } catch (e) {
-      setError(e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '') : '주소를 찾지 못했어요.')
+      if (n !== request.current) return
+      closeResults()
+      setError(addressErrorText(e))
     } finally {
-      setSearching(false)
+      if (n === request.current) setSearching(false)
     }
   }
 
+  const pick = (r: AddressResult) => {
+    // 주소를 바꿔도 적어 둔 상세 주소는 남긴다.
+    onChange({ address: r.address, detail: value.detail, lat: r.lat, lng: r.lng })
+    setQuery('')
+    closeResults()
+  }
+
   return (
-    <div className="address-input">
+    <div
+      className="address-input"
+      onFocus={() => setFocusIn(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusIn(false)
+      }}
+      onKeyDown={(e) => {
+        // 목록만 닫는다 — 잡기 단계로 듣는 편집 판(DrawerShell top)·Monday 팝오버는 [data-popover-open]을 보고
+        // 양보하고, 거품 단계로 듣는 아래 판(편집 판 밑의 상세 판 — 이 목록이 자기 안에 없어 양보하지 않는다)까지
+        // 가서 같이 닫히지 않게 여기서 막는다.
+        if (e.key === 'Escape' && results) {
+          e.preventDefault()
+          e.stopPropagation()
+          closeResults()
+        }
+      }}
+    >
       {value.address ? (
         <p className="address-input__current">
           <MapPin size={14} aria-hidden />
@@ -544,13 +603,28 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           className="field__input"
           placeholder={value.address ? '다른 주소로 바꾸기 — 도로명·지번이나 장소 이름' : '도로명·지번 주소나 장소 이름'}
           value={query}
+          role="combobox"
+          aria-autocomplete="none"
+          aria-expanded={Boolean(options)}
+          aria-controls={options ? listId : undefined}
+          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
-            // 편집 폼 전체가 저장되지 않게 — 엔터는 주소 검색.
+            // 편집 폼 전체가 저장되지 않게 — 엔터는 짚은 주소 넣기, 짚은 줄이 없으면 주소 검색.
             if (e.key === 'Enter') {
               e.preventDefault()
-              // 한글 조합 중 엔터는 확정된 뒤 한 번 더 오니 그때 검색한다.
-              if (!isComposing(e)) void search()
+              // 한글 조합 중 엔터는 확정된 뒤 한 번 더 오니 그때 한다.
+              if (isComposing(e)) return
+              const r = options && active >= 0 ? options[active] : undefined
+              if (r) pick(r)
+              else void search()
+              return
+            }
+            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && options) {
+              e.preventDefault()
+              const n = options.length
+              const next = e.key === 'ArrowDown' ? (active + 1) % n : active <= 0 ? n - 1 : active - 1
+              setPointer({ index: next, keyboard: true })
             }
           }}
         />
@@ -558,20 +632,49 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           {searching ? '찾는 중…' : '검색'}
         </Button>
       </div>
-      {error && <p className="editor__error">{error}</p>}
-      {results && (
-        <ul className="address-input__results">
-          {results.length === 0 && <li className="address-input__none">검색 결과가 없어요.</li>}
-          {results.map((r) => (
-            <li key={`${r.lat},${r.lng},${r.label}`}>
+      {error && (
+        <p className="editor__error" role="alert">
+          {error}
+          {query.trim().length >= 2 && (
+            <button type="button" className="text-link address-input__retry" onClick={() => void search()}>
+              다시 찾기
+            </button>
+          )}
+        </p>
+      )}
+      {/* 펼쳐 있고 초점이 칸 안이면 data-popover-open — 편집 판·Monday 팝오버가 Esc를 이 목록에 양보한다 */}
+      {results && !options && (
+        <div className="address-input__results" role="status" data-popover-open={focusIn ? '' : undefined}>
+          <p className="address-input__none">
+            <strong>‘{searched}’에 맞는 주소가 없어요</strong>
+            <span>도로명·지번 주소나 건물 이름으로 다시 찾아 보세요.</span>
+          </p>
+        </div>
+      )}
+      {options && (
+        <ul
+          id={listId}
+          className="address-input__results"
+          role="listbox"
+          aria-label={`검색 결과 ${options.length}개`}
+          data-popover-open={focusIn ? '' : undefined}
+          onMouseLeave={() => setPointer(NO_ADDRESS_POINTER)}
+        >
+          {options.map((r, i) => (
+            <li key={`${r.lat},${r.lng},${r.label}`} role="presentation">
               <button
                 type="button"
-                onClick={() => {
-                  // 주소를 바꿔도 적어 둔 상세 주소는 남긴다.
-                  onChange({ address: r.address, detail: value.detail, lat: r.lat, lng: r.lng })
-                  setResults(null)
-                  setQuery('')
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
+                tabIndex={-1}
+                className={i === active ? 'is-active' : undefined}
+                // 입력 칸 초점을 그대로 둔다(↑↓·엔터를 계속 받게)
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseMove={() => {
+                  if (i !== active) setPointer({ index: i, keyboard: false })
                 }}
+                onClick={() => pick(r)}
               >
                 <strong>{r.label}</strong>
                 {r.label !== r.address && <span>{r.address}</span>}

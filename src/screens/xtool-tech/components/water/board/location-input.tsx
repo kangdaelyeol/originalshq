@@ -2,6 +2,7 @@ import { AlertCircle, MapPin, Search } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { searchAddress, type AddressResult } from '../../../data/tech-boards'
 import type { LocationState } from '../../../data/tech-edit'
+import { addressErrorText } from '../../../lib/address-error'
 import { isComposing } from '../../../lib/ime'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterButton, WaterTextField } from '@/ohq-ui/water/controls'
@@ -15,17 +16,6 @@ interface WaterLocationInputProps {
   onChange: (value: LocationState) => void
   /** 주소 검색 — 기본은 카카오(searchAddress). 카탈로그 견본처럼 가짜로 바꿔 끼울 때만 준다 */
   search?: (query: string) => Promise<AddressResult[]>
-}
-
-/**
- * 서버 오류 → 읽을 말. 함수가 보낸 한국어 메시지("주소를 찾지 못했어요…")는 그대로 쓰고, 연결 끊김·에뮬레이터
- * (함수 없음)처럼 메시지가 "internal"·"unavailable" 같은 코드 낱말뿐이면 바꿔 쓴다
- */
-function errorText(e: unknown): string {
-  const message = e instanceof Error ? e.message.replace(/\s*\[\d+\]$/, '').trim() : ''
-  const bare = /^(functions\/)?(internal|unavailable|deadline-exceeded|unknown|not-found)$/i
-  if (!message || bare.test(message)) return '주소 검색이 지금 안 돼요. 잠시 뒤 다시 찾아 주세요.'
-  return message
 }
 
 /**
@@ -47,6 +37,8 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
   const active = pointer.index
   /** 걷히는 중 — 사라지는 움직임(15ms 뒤 30ms)이 끝나면 목록을 내린다 */
   const [closing, setClosing] = useState(false)
+  /** 초점이 주소 칸 안에 있는지 — 있을 때만 Esc를 목록이 가져간다(밖에 있으면 서랍이 닫힌다) */
+  const [focusIn, setFocusIn] = useState(false)
   /** 나중에 보낸 검색만 받는다(앞의 것이 늦게 와도 덮지 않게) */
   const request = useRef(0)
   const reduced = useReducedMotion()
@@ -87,7 +79,7 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
       if (n !== request.current) return
       setResults(null)
       setClosing(false)
-      setError(errorText(e))
+      setError(addressErrorText(e))
     } finally {
       if (n === request.current) setSearching(false)
     }
@@ -117,17 +109,27 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
       e.preventDefault()
       const n = options.length
       point(e.key === 'ArrowDown' ? (active + 1) % n : active <= 0 ? n - 1 : active - 1, true)
-      return
-    }
-    // 목록만 걷는다 — 서랍은 [data-popover-open]을 보고 Esc를 양보한다
-    if (e.key === 'Escape' && open) {
-      e.preventDefault()
-      close()
     }
   }
 
   return (
-    <div className="water-address">
+    <div
+      className="water-address"
+      onFocus={() => setFocusIn(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusIn(false)
+      }}
+      onKeyDown={(e) => {
+        // 목록만 걷는다 — 잡기 단계로 듣는 서랍(top)은 [data-popover-open]을 보고 양보하고, 거품 단계로 듣는
+        // 아래 서랍(편집 서랍 밑의 상세 서랍 — 이 목록이 자기 안에 없어 양보하지 않는다)까지 가서 같이 닫히지
+        // 않게 여기서 막는다
+        if (e.key === 'Escape' && open) {
+          e.preventDefault()
+          e.stopPropagation()
+          close()
+        }
+      }}
+    >
       {value.address ? (
         <p className="water-address__current">
           <MapPin size={14} aria-hidden />
@@ -181,6 +183,7 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
           searched={searched}
           pointer={pointer}
           closing={closing}
+          holdsEscape={focusIn}
           onPick={pick}
           onPoint={(i) => point(i, false)}
           onClosed={closed}
@@ -205,6 +208,8 @@ interface AddressResultsProps {
   searched: string
   pointer: Pointer
   closing: boolean
+  /** 초점이 주소 칸 안 — 이때만 data-popover-open을 달아 서랍이 Esc를 양보한다 */
+  holdsEscape: boolean
   onPick: (r: AddressResult) => void
   onPoint: (i: number) => void
   onClosed: () => void
@@ -221,6 +226,7 @@ function AddressResults({
   searched,
   pointer,
   closing,
+  holdsEscape,
   onPick,
   onPoint,
   onClosed,
@@ -263,7 +269,7 @@ function AddressResults({
   return (
     <div
       className={cx('water-address__results', closing && 'is-closing', empty && 'water-address__results--empty')}
-      data-popover-open={closing ? undefined : ''}
+      data-popover-open={closing || !holdsEscape ? undefined : ''}
       onAnimationEnd={(e) => {
         if (closing && e.target === e.currentTarget) onClosed()
       }}

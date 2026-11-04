@@ -60,6 +60,8 @@ export function MonPopover({ anchor, width, onClose, escapeCommits = true, class
     }
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
+      // 팝오버 안의 펼친 목록(주소 검색 결과 등)이 있으면 그것만 닫히게 양보한다(편집 판 DrawerShell과 같은 규칙).
+      if (ref.current?.querySelector('[data-popover-open]')) return
       e.stopPropagation()
       onCloseRef.current(escapeCommits)
       anchor.focus()

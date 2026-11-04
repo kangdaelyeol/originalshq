@@ -686,7 +686,8 @@
     text-align: left;
     cursor: pointer;
 
-    &:hover,
+    // 짚은 줄(↑↓·마우스 — 마우스도 짚은 줄을 옮겨 한 줄만 밝다)
+    &.is-active,
     &:focus-visible {
       background: rgba(255, 255, 255, 0.05);
       outline: none;
@@ -706,9 +707,22 @@
 }
 
 .address-input__none {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   padding: 12px;
   font-size: 12.5px;
   color: var(--text-3);
+
+  strong {
+    font-weight: 600;
+    color: var(--text-2);
+  }
+}
+
+// 오류 문구 뒤 "다시 찾기"
+.address-input__retry {
+  margin-left: 8px;
 }
 
 // ── 표 머리글 정렬 ──────────────────────────────────────────────────────────

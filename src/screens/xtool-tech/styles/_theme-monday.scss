@@ -178,6 +178,12 @@ $primary: var(--mon-primary);
     background: $surface;
   }
 
+  // 주소 결과에서 짚은 줄 — 메뉴와 같은 Monday 덮개 색(라이트에서도 보이게)
+  .address-input__results button.is-active,
+  .address-input__results button:focus-visible {
+    background: var(--mon-overlay);
+  }
+
   // 설정 타일 — 선택은 Monday 선택 색
   .bg-tile,
   .glass-preset {
