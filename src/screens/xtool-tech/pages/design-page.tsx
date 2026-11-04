@@ -25,7 +25,7 @@ import { XT_BASE } from '../paths'
 /**
  * 디자인 — 관리자만(메뉴에서도 숨긴다). 공용 디자인 라이브러리(src/ohq-ui)의 랩을 띄운다: 공용 부품
  * 카탈로그(기본 부품)와 참고 영상을 옮긴 견본(D1~D10). tech 화면에서만 쓰는 부품은 "tech 부품"에서 본다.
- * "물 · 기본"은 D7 물 디자인으로 다시 만든 공용 부품 묶음(ohq-ui/water).
+ * "물 · 기본"·"물 · tech"는 D7 물 디자인으로 다시 만든 부품 묶음(ohq-ui/water, components/water).
  */
 export function DesignPage() {
   const member = useCurrentMember()
@@ -33,7 +33,7 @@ export function DesignPage() {
   return <DesignBoard />
 }
 
-type DesignTab = 'catalog' | 'tech' | 'water' | ShowcaseKey
+type DesignTab = 'catalog' | 'tech' | 'water' | 'water-tech' | ShowcaseKey
 
 // 물 디자인(D7) 부품 — 견본처럼 그 탭을 열 때만 받는다(코드·스타일)
 const WATER_TABS: { value: DesignTab; label: string; Component: ComponentType }[] = [
@@ -41,6 +41,11 @@ const WATER_TABS: { value: DesignTab; label: string; Component: ComponentType }[
     value: 'water',
     label: '물 · 기본',
     Component: lazy(() => import('@/ohq-ui/water/catalog').then((m) => ({ default: m.WaterCatalog }))),
+  },
+  {
+    value: 'water-tech',
+    label: '물 · tech',
+    Component: lazy(() => import('../components/water/catalog').then((m) => ({ default: m.TechWaterCatalog }))),
   },
 ]
 

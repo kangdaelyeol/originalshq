@@ -1,0 +1,1456 @@
+@use '../../../../../ohq-ui/water/styles/tokens' as *;
+
+// tech 물 부품(D7) — 보드 칸·편집 칸·기록 표·서랍·토스트(components/water/board). 규칙은 .xtool-tech 아래로
+// 들어간다(styles/index.scss가 감싼다). 값의 출처는 D7(lab/styles/_design7.scss · ohq-ui/water/styles/_tokens.scss,
+// 주석의 F는 영상 프레임). 움직임(스프링)은 board/*-engine.ts가 rAF로 그리고, 여기에는 멈춘 모양·색과 짧은
+// 전환만 있다.
+
+// ── 공용 바탕 ────────────────────────────────────────────────────────────────
+
+// 불투명 유리 속 — 팝오버·서랍·토스트는 아래 내용을 가리니 D7 따로 선 단추 속(.d7-menu__solid 가운데 194 →
+// 가장자리 181)과 같은 밝기로 채운다. 판이 넓어 둥근(radial) 대신 왼쪽 위가 밝은 사선(무대와 같은 방향).
+$wb-fill: linear-gradient(150deg, rgb(203, 201, 206), rgb(189, 187, 192));
+// 칸 사이 가는 선(벽 격자선 16.5%보다 옅게)
+$wb-rule: rgba(0, 0, 0, 0.085);
+// 어두운 알약 위 흐린 글자
+$wb-on-dark-2: rgba(255, 255, 255, 0.72);
+// 회색 벽 위 상태 글자(점 색 $w-*를 글자 대비 4.5:1이 되게 어둡게)
+$wb-crit-ink: #9e3b36;
+$wb-warn-ink: #7d5a17;
+$wb-ok-ink: #2c6b4b;
+$wb-info-ink: #34588f;
+
+/// 불투명 유리 판 — D7 유리 테두리·그림자(w-glass) + 속 채움
+@mixin wb-panel($k: 1, $lift: 1) {
+  @include w-glass($k, $lift);
+  background: $wb-fill;
+}
+
+/// 입력 칸 — D7 홈(w-groove: 위 2px 진한 테두리 · 둘레 1.4px · 위쪽 안쪽 그림자)을 밝은 바탕에(글자 대비)
+@mixin wb-well {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow:
+    inset 0 2px 0 rgba(0, 0, 0, 0.17),
+    inset 0 0 0 1.2px rgba(0, 0, 0, 0.15),
+    inset 0 5px 6px rgba(0, 0, 0, 0.05);
+}
+
+/// 초점 고리 — D7 흰 고리(w-focus)에 바깥 잉크 테를 둘러 밝은 벽 위에서도 보이게. $base는 원래 그림자
+@mixin wb-focus($base: null) {
+  outline: none;
+
+  &:focus-visible {
+    @if $base {
+      box-shadow:
+        $base,
+        0 0 0 2px rgba(255, 255, 255, 0.92),
+        0 0 0 3.5px rgba(63, 62, 67, 0.62);
+    } @else {
+      box-shadow:
+        0 0 0 2px rgba(255, 255, 255, 0.92),
+        0 0 0 3.5px rgba(63, 62, 67, 0.62);
+    }
+  }
+}
+
+// 포털로 띄우는 것(팝오버·서랍·토스트)은 무대 밖이라 글꼴·글자색을 따로 준다
+%wb-surface {
+  font-family: $w-font;
+  color: $w-ink;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+// ── 기본 부품을 쓰는 자리 ─────────────────────────────────────────────────────
+// 입력은 기본 부품 WaterTextField(water-field) — 이름은 편집 칸이 바깥에 달거나 원래 보이지 않던 자리라
+// 읽기용으로만 남긴다(보이는 이름 줄을 접는다)
+.water-board-quiet-label {
+  gap: 0;
+
+  .water-field__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+// 고르기 칸(select) — 기본 부품에 없어 로컬. 모양은 WaterTextField 칸(water-field__box: 40px 유리 알약,
+// w-glass 0.46·0.2, 글자 13.5px)과 같게, 오른쪽에 아래 화살표
+$wb-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2369676c' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+.water-board-select {
+  flex: none;
+}
+
+.water-board-select__input {
+  @include w-glass(0.46, 0.2);
+  display: block;
+  width: 100%;
+  min-width: 140px;
+  height: 40px;
+  padding: 0 36px 0 16px;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  background-image: $wb-chevron;
+  background-repeat: no-repeat;
+  background-position: right 15px center;
+  background-size: 12px;
+  font: 500 13.5px/1 $w-font;
+  color: $w-ink;
+  color-scheme: light;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+  }
+
+  // 초점 — 기본 부품 입력과 같은 흰 2px 고리(유리 그림자는 outline이라 덮지 않는다)
+  &:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 0;
+  }
+}
+
+// 담당자 — 기본 부품 WaterAvatar(xs 20px)를 겹친다. 겹친 사이는 밝은 테로 가른다
+.water-assignees {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1 $w-font;
+  color: $w-ink-2;
+
+  &--empty {
+    color: $w-ink-3;
+  }
+}
+
+.water-assignees__stack {
+  display: inline-flex;
+
+  .water-avatar {
+    margin-left: -5px;
+    box-shadow:
+      0 0 0 1.5px rgba(231, 229, 234, 0.92),
+      0 2px 5px rgba(0, 0, 0, 0.2);
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+.water-assignees__more {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: $w-chip;
+  font: 700 10.5px/1 $w-font;
+  color: $w-ink-2;
+}
+
+.water-phone {
+  color: $w-ink-2;
+  font-variant-numeric: tabular-nums;
+  text-decoration: underline;
+  text-decoration-color: rgba(63, 62, 67, 0.25);
+  text-underline-offset: 3px;
+
+  &:hover {
+    color: $w-ink;
+  }
+}
+
+// ── 글자 링크 · 더하기 · 단추 ─────────────────────────────────────────────────
+.water-text-link {
+  @include w-reset-button;
+  margin: -2px -4px;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: $w-ink-2;
+  text-decoration: underline;
+  text-decoration-color: rgba(63, 62, 67, 0.28);
+  text-underline-offset: 3px;
+  transition:
+    color $w-quick,
+    text-decoration-color $w-quick;
+
+  &:hover {
+    color: $w-ink;
+    text-decoration-color: currentColor;
+  }
+
+  &--accent {
+    font-weight: 700;
+    color: $w-ink;
+    text-decoration-color: rgba(63, 62, 67, 0.55);
+  }
+
+  @include wb-focus;
+}
+
+// 줄 더하기 — D7 홈(유리 안에 파인 길) 알약, 누르면 물결
+.water-add {
+  @include w-reset-button;
+  @include w-groove;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 17px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  color: $w-ink;
+  transition: background-color $w-quick;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.085);
+  }
+
+  &:active {
+    background-color: rgba(0, 0, 0, 0.16);
+  }
+
+  @include wb-focus(
+    (
+      inset 0 2px 0 rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1.4px rgba(0, 0, 0, 0.16),
+      inset 0 5px 6px rgba(0, 0, 0, 0.05)
+    )
+  );
+}
+
+// 물결 층(부품 위에 겹친 SVG — 물결은 SVG 안에서 잘린다)
+.water-add__fx,
+.water-chip-picker__fx,
+.water-record-table__fx,
+.water-toast__fx {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+// ── 여러 개 고르기(칩) ────────────────────────────────────────────────────────
+.water-chip-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+// 칩 묶음 — 기본 부품 칩 모양(water-chips md: 글자 11px · 높이 26.5px · 사이 4.5px)에 많으면 위아래로 넘긴다
+.water-chip-picker__chips {
+  display: flex;
+  max-height: 168px;
+  overflow-y: auto;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+.water-chip-picker__empty {
+  font-size: 12px;
+  color: $w-ink-3;
+}
+
+// ── 여러 개 고르는 드롭다운 ───────────────────────────────────────────────────
+.water-multi {
+  position: relative;
+  min-width: 0;
+}
+
+// 칸 — 글자 뒤에 기본 부품 입력의 유리 알약(water-field__box, 40px)을 따로 층으로 깐다. 초점 고리는 그 층의
+// 흰 고리(::after)를 키보드로 왔을 때만 켠다
+.water-multi__trigger {
+  @include w-reset-button;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  padding: 0 14px 0 16px;
+  border-radius: 999px;
+  font: 500 13.5px/1 $w-font;
+  color: $w-ink;
+  text-align: left;
+
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible > .water-multi__glass::after {
+    opacity: 1;
+  }
+}
+
+.water-multi__trigger > .water-multi__glass {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  height: auto;
+  padding: 0;
+  cursor: inherit;
+}
+
+.water-multi__value {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.is-empty {
+    color: $w-ink-3;
+  }
+}
+
+// 화살표는 move 스프링으로 돈다(CSS linear()로 옮긴 같은 곡선)
+.water-multi__chevron {
+  flex: none;
+  color: $w-ink-3;
+  // move 스프링(ζ0.72·ω26, 3.8% 넘침)을 0.45초 CSS 곡선으로(기반 w-ease — 참 스프링과 0.0023 안)
+  transition: transform 0.45s w-ease(move, $dur: 0.45s);
+
+  .is-open > & {
+    transform: rotate(180deg);
+  }
+}
+
+// 팝오버 — 단추 끝에 붙어 있다(높이 0). 단추 쪽은 잘라서 유리가 단추 속에서 흘러나오는 것처럼 보인다
+// (위로 펼치면 반대). 유리 자리는 엔진이 쓴다(GAP 10px — multi-select.tsx).
+.water-multi-pop {
+  @extend %wb-surface;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 80;
+  height: 0;
+  pointer-events: none;
+}
+
+// 움직이는 동안의 물 모양(칸 + 팝오버 한 덩어리) — 엔진이 보였다 숨긴다. 칸 유리도 그동안 이 SVG가 그린다
+.water-multi-goo {
+  position: absolute;
+  display: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+// 물 모양 미리 데우기 — 같은 필터를 눈에 안 보이게(0.002) 잠깐 그려 GPU가 셰이더를 미리 만들게 한다.
+// 0이면 크롬이 그리기를 건너뛰어 데워지지 않는다
+.water-multi-warm {
+  position: fixed;
+  left: 0;
+  top: 0;
+  opacity: 0.002;
+  pointer-events: none;
+}
+
+// 멈춘 팝오버 유리 — 칸과 같은 물(w-glass 0.46·0.2, 물 모양 SVG와 같은 값)에 불투명 속
+// 칸 끝(0)에서 자르는 상자 — 아래로 펼치면 0부터 아래, 위로 펼치면 0까지 위. 옆·먼 쪽은 그림자 몫을 남긴다
+.water-multi-pop__clip {
+  position: absolute;
+  left: -40px;
+  right: -40px;
+  top: 0;
+  height: 1200px;
+  overflow: hidden;
+  pointer-events: none;
+
+  [data-dir='up'] > & {
+    top: -1200px;
+  }
+}
+
+.water-multi-pop__glass {
+  @include wb-panel(0.46, 0.2);
+  position: absolute;
+  left: 40px;
+  right: 40px;
+  top: 0;
+  height: 0;
+  border-radius: 14px;
+  will-change: transform;
+
+  [data-dir='up'] & {
+    top: 1200px;
+  }
+}
+
+// 멈춘 팝오버에만 더하는 옅은 그림자 한 겹 — 유리와 같은 자리(엔진이 같은 transform·height를 쓴다). 진하기도
+// 엔진이 쓴다: 물 모양(SVG) 동안은 0, CSS 유리로 바꿔 낀 뒤 0.12초에 들어오고 접힐 때는 목이 생기기 전에 빠진다
+.water-multi-pop__float {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+
+// 내용 — 멈춘 유리와 같은 자리(칸 끝에서 GAP 10px)
+.water-multi-pop__content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 10px;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  pointer-events: auto;
+
+  [data-dir='up'] > & {
+    top: auto;
+    bottom: 10px;
+  }
+}
+
+// 키보드·마우스가 가리키는 항목 뒤 밝은 알약 — D7 표시 알약 스프링으로 따라간다(엔진이 높이·자리를 쓴다)
+.water-multi-pop__hilite {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  top: 0;
+  height: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  // 걷힐 때 — 내용과 같이 0.015s 뒤 0.03s(D7 접힘), 나타날 때 0.1s
+  transition: opacity 0.03s linear 0.015s;
+  pointer-events: none;
+
+  &.is-shown {
+    opacity: 1;
+    transition: opacity 0.1s ease-out;
+  }
+}
+
+.water-multi-pop__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.water-multi-pop__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  font: 500 13px/1.25 $w-font;
+  color: $w-ink-2;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+
+  &.is-on {
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 1.5px rgba(63, 62, 67, 0.55);
+  }
+}
+
+// 체크 — 기본 부품 WaterCheck를 모양으로만(누르기는 항목이 받는다)
+.water-multi-pop__check {
+  pointer-events: none;
+}
+
+.water-multi-pop__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.water-multi-pop__clear {
+  @include w-reset-button;
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 32px;
+  margin-top: 4px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $w-ink-2;
+  box-shadow: inset 0 1px 0 $wb-rule;
+
+  &:hover {
+    color: $w-ink;
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  &.is-hidden {
+    visibility: hidden;
+  }
+
+  @include wb-focus;
+}
+
+// ── 날짜·시각 ─────────────────────────────────────────────────────────────────
+// 좁으면(날짜·시각 글자가 다 안 들어가면) "시각 없음"이 아래 줄로 내려간다
+.water-dt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+// 칸 — 기본 부품 입력의 유리 알약(water-field__box)·글자(water-field__input)를 빌려 날짜 입력과 지우기를 넣었다
+.water-dt > .water-dt__box {
+  flex: 1 1 236px;
+  min-width: 0;
+  padding-right: 8px;
+
+  input {
+    color-scheme: light;
+  }
+
+  input::-webkit-calendar-picker-indicator {
+    opacity: 0.55;
+    cursor: pointer;
+  }
+}
+
+.water-dt__notime {
+  flex: none;
+  white-space: nowrap;
+}
+
+.water-dt__clear {
+  @include w-reset-button;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: $w-ink-3;
+  transition:
+    background-color $w-quick,
+    color $w-quick;
+
+  &:hover {
+    color: $w-ink;
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
+  @include wb-focus;
+}
+
+// ── 주소 ──────────────────────────────────────────────────────────────────────
+.water-address {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.water-address__current {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font: 500 13px/1.45 $w-font;
+  color: $w-ink;
+
+  svg {
+    color: $w-ink-2;
+  }
+
+  small {
+    font-size: 11px;
+    color: $wb-warn-ink;
+  }
+
+  &--empty {
+    color: $w-ink-3;
+  }
+}
+
+.water-address__search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .water-address__query {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .water-button {
+    flex: none;
+  }
+}
+
+.water-address__error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: $wb-crit-ink;
+
+  svg {
+    flex: none;
+  }
+}
+
+// 결과 — 벽 위 D7 유리(거의 투명, 테두리·그림자로만 선다). 나타날 때 6px 위에서 표시 알약 스프링(ζ0.65·ω30.5,
+// 7% 넘침)으로 내려앉으며 0.1초 동안 진해지고(1-(1-u)²), 걷힐 때 15ms 뒤 30ms 동안 흐려진다(D7 접힘 F23).
+// 움직이는 것은 transform·opacity뿐이라 합성 단계에서 돈다
+.water-address__results {
+  @include w-glass(0.7, 0.35);
+  border-radius: 14px;
+  animation:
+    water-address-drop w-dur(indicator) w-ease(indicator) both,
+    wb-reveal 0.1s $w-ease-shade both;
+
+  &.is-closing {
+    pointer-events: none;
+    animation: water-address-out 30ms linear 15ms both;
+  }
+}
+
+.water-address__list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  max-height: 220px;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+// 짚은 줄 뒤 반투명 흰 알약 — 스프링으로 따라간다(WaterIndicatorEngine 세로, 옆 찌그러짐 squash 0.06).
+// 걷힐 때 15ms 뒤 30ms, 나타날 때 0.1s(D7 칩)
+.water-address__hilite {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 0;
+  height: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  opacity: 0;
+  transition: opacity 0.03s linear 0.015s;
+  pointer-events: none;
+  will-change: transform;
+
+  &.is-shown {
+    opacity: 1;
+    transition: opacity $w-quick;
+  }
+}
+
+// 줄 — 12ms 뒤부터 21ms 간격으로 55ms씩 진해진다(D7 아이콘: 표시 알약보다 12ms 늦게, WATER_REVEAL).
+// 긴 주소: 이름은 한 줄(…), 도로명 주소는 두 줄까지, 지번은 한 줄 — 다 보려면 마우스를 올린다(title)
+.water-address__option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  animation: wb-reveal 55ms linear both;
+  animation-delay: calc(12ms + var(--i, 0) * 21ms);
+
+  & + & {
+    box-shadow: inset 0 1px 0 $wb-rule;
+  }
+
+  strong,
+  small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  span {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+
+  span,
+  small {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: $w-ink-2;
+  }
+}
+
+.water-address__none {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: $w-ink-2;
+
+  strong {
+    font-size: 13px;
+    font-weight: 600;
+    color: $w-ink;
+    overflow-wrap: anywhere;
+  }
+}
+
+@keyframes water-address-drop {
+  from {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes water-address-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes wb-reveal {
+  from {
+    opacity: 0;
+  }
+}
+
+// ── 기록 표 ──────────────────────────────────────────────────────────────────
+// 판 — 벽 위 D7 유리(거의 투명). 그림자는 판이 커서 반쯤으로
+.water-record {
+  @include w-glass(1, 0.5);
+  position: relative;
+  min-width: 0;
+  padding: 20px 22px 18px;
+  border-radius: 24px;
+  color: $w-ink;
+}
+
+.water-record__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.water-record__title {
+  font: 700 16px/1.3 $w-font;
+  color: $w-ink;
+  word-break: keep-all;
+}
+
+.water-record__count {
+  margin-top: 2px;
+  font: 500 12px/1.2 $w-font;
+  color: $w-ink-2;
+}
+
+.water-record__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.water-record__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.water-record__search {
+  flex: 1 1 240px;
+  max-width: 340px;
+}
+
+// 표 — 고른 줄 뒤 어두운 표시 알약은 따로 층(will-change)이라 움직여도 줄들은 다시 칠하지 않는다.
+.water-record-table {
+  margin: 0 -10px;
+  padding: 0 10px 2px;
+  overflow-x: auto;
+  scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+}
+
+.water-record-table__inner {
+  position: relative;
+  width: max-content;
+  min-width: 100%;
+}
+
+// 표시 알약(D7 LiquidIndicator) — 나타날 때 0.1초(F82 29% → F85 100%, 1 − (1 − t)²),
+// 걷힐 때 0.015초 뒤 0.03초(접힘 F23 — WATER_REVEAL.out)
+.water-record-table__indicator {
+  @include w-indicator;
+  // 그림자 0.35em·0.8em을 D7 크기(1em = 영상 10px — 3.5px·8px)로
+  font-size: 10px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 0;
+  border-radius: 999px;
+  opacity: 0;
+  transition: opacity 0.03s linear 0.015s;
+  will-change: transform;
+  pointer-events: none;
+
+  &.is-shown {
+    opacity: 1;
+    transition: opacity 0.1s cubic-bezier(0.333, 0.667, 0.667, 1);
+  }
+}
+
+.water-record-table__table {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font: 500 12.5px/1.35 $w-font;
+  color: $w-ink;
+
+  th {
+    padding: 0 14px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: $w-ink-2;
+    text-align: left;
+    white-space: nowrap;
+    box-shadow: inset 0 -1px 0 $wb-rule;
+  }
+
+  td {
+    padding: 11px 14px;
+    white-space: nowrap;
+    vertical-align: middle;
+    box-shadow: inset 0 -1px 0 $wb-rule;
+    transition: color 0.1s ease-out;
+  }
+
+  th:first-child,
+  td:first-child {
+    padding-left: 18px;
+  }
+
+  th:last-child,
+  td:last-child {
+    padding-right: 18px;
+  }
+
+  tbody tr:last-child td {
+    box-shadow: none;
+  }
+
+  // 기존 칸 클래스(보드들이 칸 정의에 쓴다) — 회색 벽 위 잉크색으로(흐린 글자도 4.5:1 넘게 ink-2)
+  .table__muted {
+    color: $w-ink-2;
+  }
+
+  .table__mono {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 11.5px;
+  }
+
+  .table__strong {
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  .cell-wide {
+    width: 40%;
+  }
+
+  .cell-person {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    strong {
+      font-size: 13px;
+      font-weight: 600;
+      color: $w-ink;
+    }
+
+    small {
+      font-size: 11px;
+      color: $w-ink-2;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+
+  .cell-title {
+    display: block;
+    max-width: 420px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  .cell-clip {
+    display: block;
+    max-width: 340px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: $w-ink-2;
+  }
+
+  .cell-date {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+
+    small {
+      font-size: 11px;
+      font-weight: 600;
+      color: $wb-info-ink;
+    }
+  }
+
+  .cell-alert {
+    font-weight: 600;
+    color: $wb-crit-ink;
+  }
+
+  .cell-warn {
+    font-weight: 600;
+    color: $wb-warn-ink;
+  }
+
+  .cell-ok {
+    font-weight: 600;
+    color: $wb-ok-ink;
+  }
+}
+
+.water-record-table__row {
+  cursor: pointer;
+
+  // 가리킨 줄 — 반투명 흰(고른 줄은 알약이 뒤에 있어 칠하지 않는다)
+  &:hover:not(.is-selected) td {
+    background-color: rgba(255, 255, 255, 0.16);
+  }
+
+  // 고른 줄 — 알약이 닿을 즈음(0.05초 뒤) 흰 글자로
+  &.is-selected td {
+    color: #fff;
+    text-shadow: 0 0.06em 0.12em rgba(0, 0, 0, 0.28);
+    transition: color 0.1s ease-out 0.05s;
+  }
+
+  &.is-selected {
+    .table__muted,
+    .cell-person small,
+    .cell-clip,
+    .water-assignees,
+    .water-assignees__more {
+      color: $wb-on-dark-2;
+    }
+
+    .table__strong,
+    .cell-person strong,
+    .cell-title,
+    .cell-alert,
+    .cell-warn,
+    .cell-ok,
+    .cell-date small {
+      color: #fff;
+    }
+
+    // 기본 부품 상태 알약·아바타도 어두운 알약 위 모양으로
+    .water-pill,
+    .water-assignees__more {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+    }
+
+    .water-avatar {
+      box-shadow:
+        0 0 0 1.5px rgba(70, 68, 73, 0.95),
+        0 2px 5px rgba(0, 0, 0, 0.2);
+    }
+  }
+}
+
+.water-record-table__open {
+  @include w-reset-button;
+  display: block;
+  margin: -4px -8px;
+  padding: 4px 8px;
+  border-radius: 10px;
+  text-align: left;
+
+  @include wb-focus;
+
+  .is-selected &:focus-visible {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92);
+  }
+}
+
+.water-record-table__saving {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: $wb-info-ink;
+
+  .is-selected & {
+    color: #fff;
+  }
+}
+
+.water-record-table__empty {
+  padding: 28px 0 !important;
+  text-align: center;
+  color: $w-ink-3;
+}
+
+.water-record-table__fx {
+  z-index: 2;
+}
+
+// 정렬 머리글
+.water-record-table__sort {
+  @include w-reset-button;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -3px -6px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  letter-spacing: inherit;
+  transition: color $w-quick;
+
+  &:hover,
+  &.is-active {
+    color: $w-ink;
+  }
+
+  @include wb-focus;
+}
+
+.water-record-table__sort-idle {
+  opacity: 0.4;
+  transition: opacity $w-quick;
+
+  .water-record-table__sort:hover & {
+    opacity: 0.85;
+  }
+}
+
+// 더 보기 — 홈 알약
+.water-record__more {
+  @include w-reset-button;
+  @include w-groove;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  margin-top: 12px;
+  border-radius: 18px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: $w-ink;
+
+  span {
+    font-weight: 500;
+    color: $w-ink-2;
+  }
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.085);
+  }
+
+  @include wb-focus(
+    (
+      inset 0 2px 0 rgba(0, 0, 0, 0.3),
+      inset 0 0 0 1.4px rgba(0, 0, 0, 0.16),
+      inset 0 5px 6px rgba(0, 0, 0, 0.05)
+    )
+  );
+}
+
+// ── 서랍 ──────────────────────────────────────────────────────────────────────
+// 막 — 서랍이 들어온 만큼 짙어진다(엔진이 opacity를 쓴다). 화면 전체라 따로 층에 둬서 짙어지는 동안
+// 다시 칠하지 않게(컴포지터가 불투명도만 바꾼다)
+.water-drawer-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(32, 31, 35, 0.34);
+  opacity: 0;
+  will-change: opacity;
+}
+
+.water-drawer-scrim--top {
+  z-index: 62;
+  background: rgba(32, 31, 35, 0.24);
+}
+
+.water-drawer {
+  @extend %wb-surface;
+  @include wb-panel(1, 1);
+  position: fixed;
+  z-index: 61;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  width: min(460px, calc(100vw - 24px));
+  border-radius: 24px;
+
+  &:focus {
+    outline: none;
+  }
+}
+
+.water-drawer--top {
+  z-index: 63;
+  width: min(500px, calc(100vw - 24px));
+}
+
+.water-drawer__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 22px 20px 16px 24px;
+  box-shadow: inset 0 -1px 0 $wb-rule;
+}
+
+.water-drawer__heading {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.water-drawer__eyebrow {
+  font: 600 11.5px/1.2 $w-font;
+  color: $w-ink-2;
+}
+
+.water-drawer__title {
+  font: 700 19px/1.35 $w-font;
+  color: $w-ink;
+  word-break: keep-all;
+}
+
+.water-drawer__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 16px 24px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.water-drawer__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  font: 500 13px/1.45 $w-font;
+}
+
+.water-drawer__field {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 12px;
+
+  dt {
+    color: $w-ink-2;
+  }
+
+  dd {
+    margin: 0;
+    color: $w-ink;
+    word-break: break-word;
+
+    a {
+      color: $wb-info-ink;
+    }
+  }
+}
+
+.water-drawer__section h3 {
+  margin-bottom: 8px;
+  font: 600 11px/1.2 $w-font;
+  letter-spacing: 0.06em;
+  color: $w-ink-2;
+}
+
+// 긴 글 — D7 홈(파인 칸)
+.water-drawer__text {
+  @include wb-well;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font: 500 13px/1.6 $w-font;
+  color: $w-ink-2;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.water-drawer__list {
+  display: flex;
+  flex-direction: column;
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    box-shadow: inset 0 -1px 0 $wb-rule;
+    font-size: 12.5px;
+    color: $w-ink-2;
+
+    small {
+      color: $w-ink-3;
+    }
+  }
+}
+
+// ── 토스트 ────────────────────────────────────────────────────────────────────
+.water-toaster {
+  @extend %wb-surface;
+  position: fixed;
+  z-index: 70;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  width: min(380px, calc(100vw - 40px));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+// 견본 상자 안에 그릴 때
+.water-toaster--inline {
+  position: absolute;
+  z-index: 3;
+  right: 18px;
+  bottom: 18px;
+  width: min(360px, calc(100% - 36px));
+}
+
+// 알약 — 유리(엔진이 폭을 쓴다)는 오른쪽 끝(동그라미)에 붙어 왼쪽으로 뻗는다
+.water-toast {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 11px 11px 13px;
+  pointer-events: auto;
+}
+
+.water-toast__glass {
+  @include wb-panel(0.9, 0.55);
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: 23px;
+}
+
+.water-toast__icon,
+.water-toast__body,
+.water-toast__close,
+.water-toast__close-space {
+  position: relative;
+  z-index: 1;
+}
+
+.water-toast__fx {
+  z-index: 2;
+}
+
+.water-toast__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: $w-ink-2;
+
+  .water-toast--success & {
+    color: $w-ok;
+  }
+
+  .water-toast--error & {
+    color: $w-crit;
+  }
+}
+
+.water-toast__body {
+  flex: 1;
+  min-width: 0;
+  padding-top: 3px;
+}
+
+.water-toast__title {
+  font: 600 13px/1.4 $w-font;
+  color: $w-ink;
+}
+
+.water-toast__message {
+  margin-top: 3px;
+  font: 500 12px/1.5 $w-font;
+  color: $w-ink-2;
+  word-break: break-word;
+}
+
+.water-toast__action {
+  margin-top: 6px;
+}
+
+.water-toast__close,
+.water-toast__close-space {
+  flex: none;
+  width: 24px;
+  height: 24px;
+}
+
+.water-toast__close {
+  @include w-reset-button;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: $w-ink-3;
+  transition:
+    background-color $w-quick,
+    color $w-quick;
+
+  &:hover {
+    color: $w-ink;
+    background-color: rgba(255, 255, 255, 0.4);
+  }
+
+  @include wb-focus;
+}
+
+// ── 카탈로그 견본 자리(디자인 화면 "물 · tech") ──────────────────────────────────
+.water-board-demo-w {
+  width: min(320px, 100%);
+}
+
+.water-board-demo-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.water-board-demo-full {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  min-width: 0;
+}
+
+.water-board-demo-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+}
+
+.water-board-demo-note {
+  font-size: 12px;
+  color: $w-ink-2;
+}
+
+// 토스트 견본 상자 — 벽에 파인 넓은 홈, 토스트는 이 안 오른쪽 아래에 뜬다
+.water-board-demo-toasts {
+  position: relative;
+  background: rgba(0, 0, 0, 0.05);
+  box-shadow:
+    inset 0 2px 0 rgba(0, 0, 0, 0.14),
+    inset 0 0 0 1.4px rgba(0, 0, 0, 0.1),
+    inset 0 6px 10px rgba(0, 0, 0, 0.05);
+  min-height: 280px;
+  padding: 16px;
+  border-radius: 22px;
+}
+
+// ── 동작 줄이기 ──────────────────────────────────────────────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .water-address__results,
+  .water-address__option {
+    animation: none;
+  }
+
+  .water-address__hilite {
+    transition: none;
+  }
+
+  .water-multi__chevron {
+    transition: none;
+  }
+}

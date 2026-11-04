@@ -1,0 +1,9 @@
+// tech 물 부품(D7) 스타일 — 디자인 화면 "물 · tech" 탭을 열 때만 받는다(catalog.tsx). 공용 물 부품 스타일
+// (ohq-ui/water)은 따로 받고, 여기는 tech에서만 쓰는 부품 — 규칙은 .xtool-tech 아래로만.
+@use 'sass:meta';
+
+.xtool-tech {
+  @include meta.load-css('overview');
+  @include meta.load-css('board');
+  @include meta.load-css('files');
+}
