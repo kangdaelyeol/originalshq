@@ -17,6 +17,7 @@ import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { cx } from '@/ohq-ui/lib/cx'
 import { isComposing } from '../../lib/ime'
 import { formatInt } from '@/ohq-ui/lib/format'
+import { DELETE_CONFIRM_MESSAGE } from '../board/record-selection'
 import { labelColor } from './monday-colors'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'
@@ -340,7 +341,7 @@ function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onComm
       <ConfirmDialog
         open={confirming !== null}
         title={`'${confirming?.sub.name ?? ''}' 줄을 지울까요?`}
-        message="Monday 휴지통으로 가요. 30일 안에는 Monday에서 되살릴 수 있어요."
+        message={DELETE_CONFIRM_MESSAGE}
         confirmLabel="삭제"
         onCancel={() => {
           confirming?.anchor.focus()

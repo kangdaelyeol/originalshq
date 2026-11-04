@@ -3,10 +3,11 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { TechBoardKey } from '../../data/tech-boards'
 import { useTechBoard } from '../../data/tech-boards-store'
-import { deleteItems, moveItems } from '../../data/tech-outbox'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
+import { DELETE_CONFIRM_MESSAGE } from '../board/record-selection'
+import { useSelectionActions } from '../board/use-selection-actions'
 import { groupColor } from './monday-colors'
 import { MonPopover } from './monday-popover'
 import { selectedByBoard, SelectionContext, selectionKey, type SelectionState } from './monday-selection'
@@ -46,26 +47,17 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
  * 선택 막대 — 줄을 고르면 화면 아래 가운데에 뜬다(Monday). "N 고객명 선택"과 우리가 할 수
  * 있는 것만: 그룹 이동(한 보드만 골랐을 때), 삭제(Monday 휴지통), 닫기. 복제·내보내기·보관함·
  * 변환 등 Monday의 나머지는 우리에게 없어서 뺐다. 옮기기·지우기는 표에 바로 보이고(저장 대기열)
- * Monday에는 뒤에서 쓴다.
+ * Monday에는 뒤에서 쓴다. 하는 일은 대시보드·물 고르기 막대와 같은 useSelectionActions(여러 보드는 보드마다
+ * 지운다) — 옮긴 뒤에도 고른 채로 둔다.
  */
 function SelectionBar({ state }: { state: SelectionState }) {
   const root = usePortalRoot()
-  const byBoard = selectedByBoard(state.selected)
-  const boards = [...byBoard.keys()]
-  const single = boards.length === 1 ? boards[0] : null
-  const count = state.selected.size
-  const [moveAnchor, setMoveAnchor] = useState<HTMLElement | null>(null)
-  const [confirming, setConfirming] = useState(false)
+  const actions = useSelectionActions({ byBoard: selectedByBoard(state.selected), clear: state.clear, keepAfterMove: true })
+  const { count, moveAnchor } = actions
+  const single = actions.moveBoard
 
   if (!root || count === 0) return null
   const noun = single ? NAME_TITLE[single] : '항목'
-
-  const remove = () => {
-    setConfirming(false)
-    // 표에서 바로 빠진다 — 실패한 것은 다시 보인다(선택은 풀린 채로).
-    for (const [boardKey, ids] of byBoard) deleteItems(boardKey, ids)
-    state.clear()
-  }
 
   return createPortal(
     <>
@@ -78,13 +70,13 @@ function SelectionBar({ state }: { state: SelectionState }) {
               type="button"
               className={cx('mon-selbar__action', moveAnchor && 'is-on')}
               aria-haspopup="dialog"
-              onClick={(e) => setMoveAnchor(moveAnchor ? null : e.currentTarget)}
+              onClick={(e) => actions.toggleMove(e.currentTarget)}
             >
               <ArrowRight size={18} aria-hidden />
               이동
             </button>
           )}
-          <button type="button" className="mon-selbar__action" onClick={() => setConfirming(true)}>
+          <button type="button" className="mon-selbar__action" onClick={actions.askDelete}>
             <Trash2 size={18} aria-hidden />
             삭제
           </button>
@@ -95,51 +87,41 @@ function SelectionBar({ state }: { state: SelectionState }) {
         </button>
       </div>
       {single && moveAnchor && (
-        <MoveMenu
-          boardKey={single}
-          itemIds={byBoard.get(single) ?? []}
-          anchor={moveAnchor}
-          onClose={() => setMoveAnchor(null)}
-        />
+        <MoveMenu boardKey={single} anchor={moveAnchor} onClose={actions.closeMove} onMove={actions.move} />
       )}
       <ConfirmDialog
-        open={confirming}
+        open={actions.confirming}
         title={`${count}건을 지울까요?`}
-        message="Monday 휴지통으로 가요. 30일 안에는 Monday에서 되살릴 수 있어요."
+        message={DELETE_CONFIRM_MESSAGE}
         confirmLabel="삭제"
-        onCancel={() => setConfirming(false)}
-        onConfirm={remove}
+        onCancel={actions.cancelDelete}
+        onConfirm={actions.confirmDelete}
       />
     </>,
     root,
   )
 }
 
-/** 그룹(진행 단계) 고르기 — 고르면 선택한 항목을 모두 그 그룹으로 옮긴다. */
+/** 그룹(진행 단계) 고르기 — 고르면 선택한 항목을 모두 그 그룹으로 옮긴다(onMove). */
 function MoveMenu({
   boardKey,
-  itemIds,
   anchor,
   onClose,
+  onMove,
 }: {
   boardKey: TechBoardKey
-  itemIds: string[]
   anchor: HTMLElement
   onClose: () => void
+  onMove: (groupId: string) => void
 }) {
   const { meta } = useTechBoard(boardKey)
-  // 새 그룹에 바로 보이고, 실패한 것은 원래 그룹으로 돌아간다.
-  const move = (groupId: string) => {
-    onClose()
-    moveItems(boardKey, itemIds, groupId)
-  }
   return (
     <MonPopover anchor={anchor} width={260} onClose={onClose}>
       <p className="mon-menu__title">어느 그룹으로 옮길까요</p>
       <ul className="mon-menu">
         {(meta?.groups ?? []).map((g, i) => (
           <li key={g.id}>
-            <button type="button" className="mon-menu__item" onClick={() => move(g.id)}>
+            <button type="button" className="mon-menu__item" onClick={() => onMove(g.id)}>
               <span className="mon-selbar__dot" style={{ background: groupColor(i) }} aria-hidden />
               {g.title}
             </button>
