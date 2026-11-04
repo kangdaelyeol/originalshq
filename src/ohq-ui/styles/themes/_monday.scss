@@ -1,0 +1,188 @@
+// Monday 테마(기본 부품) — 루트(.ohq-ui)에 theme-monday가 붙으면(ThemeRoot theme="monday") 유리·배경 대신
+// Monday 다크 모드의 판·선·버튼·입력 모양으로 덮어쓴다. 색은 Monday 캡처(sample/monday-1~4)에서 잰 값 —
+// 모두 --mon-* 변수(_monday-palettes.scss — 남색·라이트·블랙). 여기서는 라이브러리 부품만 덮는다 — 화면 틀
+// (사이드바·상단바 등)은 그 화면 스타일이 같은 theme-monday 클래스로 덮는다(xtool-tech _theme-monday.scss).
+
+$page: var(--mon-page);
+$surface: var(--mon-surface);
+$line: var(--mon-line);
+$line-strong: var(--mon-line-strong);
+$control: var(--mon-control);
+$primary: var(--mon-primary);
+$primary-hi: var(--mon-primary-hi);
+
+@mixin theme-monday {
+  // Monday 글꼴 — 한글은 이 중에 없어 마지막 sans-serif(운영체제 한글 글꼴)로 나온다. Figtree는
+  // ThemeRoot가 Google Fonts에서 불러온다.
+  --font-sans: Figtree, Roboto, 'Noto Sans Hebrew', 'Noto Kufi Arabic', 'Noto Sans JP', sans-serif;
+  --bg: #{$page};
+  --text-1: var(--mon-text);
+  --text-2: var(--mon-text-soft);
+  --text-3: var(--mon-text-2);
+  --text-4: var(--mon-text-4);
+  --line: #{$line};
+  --good: #00c875;
+  --warn: #fdab3d;
+  --crit: #e2445c;
+  --info: #579bfc;
+  --radius-card: 12px;
+  --radius-control: 4px;
+
+  background: $page;
+
+  // ── 바탕 — 배경 그림 대신 Monday 바탕색 ──────────────────────────────────────
+  .app-bg {
+    display: none;
+  }
+
+  // ── 판: 유리 효과를 끄고 Monday 판으로 ──────────────────────────────────────
+  .glass {
+    border: 1px solid transparent;
+    background: $surface;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  // 카드는 바탕과 같은 색에 테두리(Monday 설정 화면의 카드)
+  .card,
+  .stat-card {
+    border-color: $line;
+    background: $page;
+
+    &:hover {
+      border-color: $line-strong;
+      box-shadow: none;
+    }
+  }
+
+  .card__title {
+    font-weight: 600;
+  }
+
+  // ── 버튼 ───────────────────────────────────────────────────────────────────
+  .button {
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .button--primary {
+    border-color: transparent;
+    background: $primary;
+    box-shadow: none;
+    color: #fff;
+
+    &:hover {
+      background: $primary-hi;
+      box-shadow: none;
+      filter: none;
+    }
+  }
+
+  // 보조 버튼 — Monday 테두리 버튼("새 역할")
+  .button--ghost {
+    border-color: $control;
+    background: transparent;
+    color: var(--text-1);
+
+    &:hover {
+      border-color: $control;
+      background: var(--mon-overlay);
+    }
+
+    &.button--sm {
+      border-radius: 4px;
+    }
+  }
+
+  // ── 입력 ───────────────────────────────────────────────────────────────────
+  .field__input {
+    border: 1px solid $control;
+    border-radius: 4px;
+    // 선택 칸의 갈매기(background-image)는 남긴다
+    background-color: transparent;
+    box-shadow: none;
+
+    &:hover {
+      border-color: var(--text-2);
+    }
+
+    &:focus,
+    &:focus-within {
+      border-color: $primary;
+      box-shadow: none;
+    }
+  }
+
+  .check input {
+    border-color: $control;
+    border-radius: 3px;
+    background: transparent;
+  }
+
+  // 탭(기간·상태 고르기) — Monday 탭처럼 밑줄
+  .segmented--segmented {
+    padding: 0;
+    border: 0;
+    border-bottom: 1px solid $line;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+
+    .segmented__option {
+      border-radius: 0;
+    }
+
+    .segmented__thumb {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: inset 0 -2px 0 $primary;
+    }
+  }
+
+  .segmented--chips .segmented__option {
+    border-radius: 4px;
+  }
+
+  // ── 작은 부품 ──────────────────────────────────────────────────────────────
+  .pill {
+    border-radius: 4px;
+  }
+
+  .avatar {
+    border-radius: 50%;
+    background: var(--avatar);
+    box-shadow: none;
+  }
+
+  .icon-chip {
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  .table th {
+    color: var(--text-2);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .table td {
+    border-bottom-color: $line;
+  }
+
+  // 확인 모달 — Monday 대화 상자
+  .confirm__card {
+    border-color: $line;
+    border-radius: 8px;
+    background: var(--mon-pop);
+    box-shadow: 0 20px 60px var(--mon-shadow);
+  }
+
+  .confirm__danger {
+    border-radius: 4px;
+    background: #d83a52;
+  }
+}

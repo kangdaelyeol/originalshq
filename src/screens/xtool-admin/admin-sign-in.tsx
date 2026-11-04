@@ -10,9 +10,9 @@ import {
 } from '@/xtool-auth/auth-actions'
 import { MIN_PASSWORD } from '@/xtool-auth/members'
 import type { XtoolSession } from '@/xtool-auth/use-xtool-session'
-import { BrandMark } from '@/screens/xtool-tech/components/brand/brand-mark'
-import { GoogleMark } from '@/screens/xtool-tech/components/login/brand-marks'
-import { LoginField } from '@/screens/xtool-tech/components/login/login-field'
+import { BrandMark } from '@/ohq-ui/brand/brand-mark'
+import { GoogleMark } from '@/ohq-ui/brand/google-mark'
+import { LoginField } from '@/ohq-ui/auth/login-field'
 import { xtPath } from '@/screens/xtool-tech/paths'
 
 type Props = { session: Exclude<XtoolSession, { status: 'ready' } | { status: 'loading' }> }

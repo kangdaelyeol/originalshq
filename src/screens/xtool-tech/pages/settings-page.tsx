@@ -1,8 +1,8 @@
 import { Camera, Check, ImagePlus, Info, LoaderCircle, Pipette, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useRef, useState, type CSSProperties } from 'react'
-import { BackgroundArt } from '../components/backgrounds/background-art'
+import { BackgroundArt } from '@/ohq-ui/backgrounds/background-art'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import { BrandMark } from '../components/brand/brand-mark'
+import { BrandMark } from '@/ohq-ui/brand/brand-mark'
 import { Avatar } from '@/ohq-ui/components/avatar'
 import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
@@ -23,22 +23,23 @@ import { pushToast } from '../data/tech-save-queue'
 import { cx } from '@/ohq-ui/lib/cx'
 import { ACCENT_PRESETS, DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
 import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '@/ohq-ui/theme/glass'
-import {
-  BACKGROUND_OPTIONS,
-  isPhotoBackground,
-  LAYOUT_OPTIONS,
-  MONDAY_PALETTES,
-  useSettings,
-  type BoardLayout,
-} from '../settings/settings'
+import { MONDAY_PALETTES } from '@/ohq-ui/theme/monday'
+import { BACKGROUND_OPTIONS, isPhotoBackground, useAppearance } from '@/ohq-ui/appearance/appearance'
+import type { ThemeName } from '@/ohq-ui/theme/theme-root'
 
 const KIND_LABEL = { default: '기본', texture: '텍스처', photo: '사진' } as const
+
+/** 보드 화면 모양 — 대시보드: 유리 판에 카드·차트(기본) · Monday 표: Monday 테마에 그룹별 표, 칸을 눌러 바로 고친다. */
+const LAYOUT_OPTIONS: readonly { value: ThemeName; label: string; description: string }[] = [
+  { value: 'glass', label: '대시보드', description: '숫자 카드·차트와 목록 — 처음부터 쓰던 화면' },
+  { value: 'monday', label: 'Monday 표', description: 'Monday처럼 그룹별 표 — 칸을 눌러 바로 고쳐요' },
+]
 // 직접 고르기 — 색 고르는 창을 끄는 동안 매번 배경을 다시 그리면 버벅여서, 손을 멈춘 뒤 반영한다.
 const CUSTOM_COMMIT_MS = 120
 
 /** 레이아웃 견본 — 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표. */
-function LayoutArt({ layout }: { layout: BoardLayout }) {
-  if (layout === 'dashboard') {
+function LayoutArt({ layout }: { layout: ThemeName }) {
+  if (layout === 'glass') {
     return (
       <span className="layout-art layout-art--dashboard" aria-hidden>
         <span className="layout-art__kpis">
@@ -220,8 +221,8 @@ function SharedTile({
 
 export function SettingsPage() {
   const {
-    layout,
-    setLayout,
+    theme,
+    setTheme,
     mondayPalette,
     setMondayPalette,
     background,
@@ -234,7 +235,7 @@ export function SettingsPage() {
     setAccent,
     setGlass,
     reset,
-  } = useSettings()
+  } = useAppearance()
   const member = useCurrentMember()
   const shared = useSharedBackgrounds()
   const sharedUrl = useSharedBackgroundUrl(background === 'shared' ? sharedBackgroundId : null)
@@ -263,7 +264,7 @@ export function SettingsPage() {
       .finally(() => setUploading(false))
   }
 
-  const monday = layout === 'monday'
+  const monday = theme === 'monday'
   return (
     <>
       <ProfilePhotoCard />
@@ -271,7 +272,7 @@ export function SettingsPage() {
       <GlassCard title="레이아웃" subtitle="보드 화면(출장업무·AS 등)의 모양이에요. 고른 모양은 이 브라우저에 저장돼요.">
         <div className="layout-options" role="radiogroup" aria-label="레이아웃">
           {LAYOUT_OPTIONS.map((option) => {
-            const selected = option.value === layout
+            const selected = option.value === theme
             return (
               <button
                 key={option.value}
@@ -279,7 +280,7 @@ export function SettingsPage() {
                 role="radio"
                 aria-checked={selected}
                 className={cx('glass-preset', 'layout-tile', selected && 'is-selected')}
-                onClick={() => setLayout(option.value)}
+                onClick={() => setTheme(option.value)}
               >
                 <LayoutArt layout={option.value} />
                 <span className="glass-preset__label">

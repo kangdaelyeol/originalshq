@@ -9,7 +9,7 @@ import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
 import { XT_BASE } from '../paths'
-import { useSettings } from '../settings/settings'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { AsRequestsBoard } from './boards/as-requests-board'
 import { FieldServiceBoard } from './boards/field-service-board'
 import { InquiryBoard } from './boards/inquiry-board'
@@ -30,7 +30,7 @@ export function BoardPage() {
 
 function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['key']; label: string }) {
   const state = useTechBoard(tabKey)
-  const { layout } = useSettings()
+  const { theme } = useAppearance()
   // 편집 패널 — itemId가 null이면 새로 만들기, editing 자체가 null이면 닫힘.
   const [editing, setEditing] = useState<{ itemId: string | null } | null>(null)
   const openEditor = useCallback((itemId: string | null) => setEditing({ itemId }), [])
@@ -64,7 +64,7 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   }
   if (!state.board || !editContext) {
     // Monday 표는 표 모양 그대로 블록을 그려 둔다(스켈레톤).
-    if (layout === 'monday') return <MondayBoardSkeleton boardKey={tabKey} meta={state.meta} />
+    if (theme === 'monday') return <MondayBoardSkeleton boardKey={tabKey} meta={state.meta} />
     return (
       <GlassCard className="empty">
         <LoaderCircle size={22} className="is-spinning" aria-hidden />
@@ -80,7 +80,7 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   )
   // 설정 > 레이아웃 "Monday 표" — 보드 칸·그룹을 Monday 그대로 늘어놓고 칸을 눌러 바로 고친다
   // (편집 패널 없이 — 파일은 파일 칸 모달, 업데이트는 말풍선 패널).
-  if (layout === 'monday') return <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
+  if (theme === 'monday') return <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
   return (
     <BoardEditContext.Provider value={editContext}>
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}

@@ -1,0 +1,24 @@
+// originalshq 공용 디자인 테마 — 루트(.ohq-ui)에 theme-monday가 붙으면 Monday 모양·색(남색 기본 · mon-light ·
+// mon-black)으로 덮는다(ThemeRoot theme="monday" palette=...). 화면 스타일 맨 뒤에서 불러 쓴다
+// (`@include meta.load-css('<경로>/ohq-ui/styles/themes')`) — 같은 우선순위의 화면 스타일보다 뒤에 와야 테마가
+// 이긴다.
+@use 'monday-palettes' as *;
+@use 'monday' as *;
+
+.ohq-ui.theme-monday {
+  @include palette-navy;
+  @include theme-monday;
+}
+
+.ohq-ui.theme-monday.mon-light {
+  @include palette-light;
+
+  // 밝은 판 위 스크롤바
+  :where(*) {
+    scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
+  }
+}
+
+.ohq-ui.theme-monday.mon-black {
+  @include palette-black;
+}

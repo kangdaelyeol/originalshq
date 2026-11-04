@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { useId, useMemo, type ReactNode, type RefObject } from 'react'
 import type { ElementSize } from '@/ohq-ui/lib/use-element-size'
 import { cx } from '@/ohq-ui/lib/cx'
-import { XMark } from '../brand/brand-mark'
+import { XMark } from '@/ohq-ui/brand/brand-mark'
 import { cardPath, PIECE, PIECE_PATH } from './shape'
 
 interface LoginCardProps {

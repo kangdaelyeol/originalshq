@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { mixHex } from '@/ohq-ui/theme/accent'
+import { mixHex } from '../theme/accent'
 import { round1, seededRandom } from './seeded'
 
 // 실크 웨이브 — 받아 둔 보라 비단 물결 텍스처를 벡터로 다시 그린 것(원본 이미지는 쓰지 않아 지웠다).

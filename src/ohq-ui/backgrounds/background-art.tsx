@@ -1,5 +1,5 @@
-import workshopPhoto from '../../assets/bg/bg-picture-1.webp'
-import type { BackgroundKind } from '../../settings/settings'
+import workshopPhoto from './assets/bg-picture-1.webp'
+import type { BackgroundKind } from '../appearance/appearance'
 import { Grunge } from './grunge'
 import { SilkWaves } from './silk-waves'
 

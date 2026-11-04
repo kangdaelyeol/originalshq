@@ -10,7 +10,7 @@ import { cx } from '@/ohq-ui/lib/cx'
 import { SIDEBAR_TOGGLE_KEY } from '../../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS } from '../../nav'
 import { XT_BASE } from '../../paths'
-import { BrandMark } from '../brand/brand-mark'
+import { BrandMark } from '@/ohq-ui/brand/brand-mark'
 import { Avatar } from '@/ohq-ui/components/avatar'
 import { SidebarPeopleItem } from './sidebar-people'
 

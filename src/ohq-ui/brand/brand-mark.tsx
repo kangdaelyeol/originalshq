@@ -1,4 +1,4 @@
-import { cx } from '@/ohq-ui/lib/cx'
+import { cx } from '../lib/cx'
 import { X_BOX, X_POLYGONS } from './x-shape'
 
 /** xTool의 X — 꼭짓점은 x-shape.ts(앱 아이콘에서 딴 값). 색은 currentColor. */

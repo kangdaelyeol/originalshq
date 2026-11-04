@@ -1,0 +1,374 @@
+// ── 로그인 폼 부품 ──────────────────────────────────────────────────────────────
+// 아이콘 입력칸(auth/login-field.tsx)·알림 줄·제출 단추·소셜 로그인·구분선·체크 상자·글자 링크. 기술팀 보드의
+// 로그인 카드와 관리 화면의 로그인 판이 같이 쓴다(카드·연출은 각 화면 스타일).
+.login-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid;
+  font-size: 12.5px;
+  line-height: 1.45;
+
+  svg {
+    flex: none;
+    margin-top: 1px;
+  }
+
+  &--good {
+    color: var(--good);
+    background: rgba(74, 222, 128, 0.08);
+    border-color: rgba(74, 222, 128, 0.24);
+  }
+
+  &--info {
+    color: var(--info);
+    background: rgba(96, 165, 250, 0.08);
+    border-color: rgba(96, 165, 250, 0.24);
+  }
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.login-field__label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.login-field__control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 46px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.26);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  color: var(--text-3);
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    box-shadow 0.2s,
+    color 0.2s;
+
+  &:focus-within {
+    color: var(--accent-hi);
+    border-color: rgba(var(--accent-rgb), 0.6);
+    background: rgba(0, 0, 0, 0.32);
+    box-shadow:
+      0 0 0 4px rgba(var(--accent-rgb), 0.14),
+      0 0 26px -8px rgba(var(--accent-rgb), 0.6);
+  }
+
+  svg {
+    flex: none;
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    font-size: 14px;
+    color: var(--text-1);
+
+    &::placeholder {
+      color: var(--text-4);
+    }
+
+    // 브라우저 자동완성(저장된 이메일)이 칠하는 배경 — 입력 칸만 다른 색 상자로 떠 보여서 지운다.
+    // 이 배경은 CSS로 덮어쓸 수 없어, 바뀌는 데 아주 오래 걸리게 해 사실상 칠해지지 않게 한다.
+    &:-webkit-autofill,
+    &:-webkit-autofill:hover,
+    &:-webkit-autofill:focus {
+      -webkit-text-fill-color: var(--text-1);
+      caret-color: var(--text-1);
+      transition:
+        background-color 600000s 0s,
+        color 600000s 0s;
+    }
+  }
+}
+
+.login-field--error .login-field__control {
+  color: var(--crit);
+  border-color: rgba(248, 113, 113, 0.55);
+  background: rgba(127, 29, 29, 0.2);
+
+  &:focus-within {
+    color: var(--crit);
+    border-color: rgba(248, 113, 113, 0.8);
+    box-shadow:
+      0 0 0 4px rgba(248, 113, 113, 0.15),
+      0 0 26px -8px rgba(239, 68, 68, 0.6);
+  }
+}
+
+.login-field__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--crit);
+
+  svg {
+    flex: none;
+    margin-top: 2px;
+  }
+}
+
+.login-field__toggle {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-right: -6px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+  transition:
+    color 0.2s,
+    background 0.2s;
+
+  &:hover {
+    color: var(--text-1);
+    background: rgba(255, 255, 255, 0.07);
+  }
+}
+
+.login-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.login-error {
+  margin-top: -6px;
+  font-size: 12px;
+  color: var(--crit);
+}
+
+.login-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12.5px;
+}
+
+.login-row--end {
+  justify-content: flex-end;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    appearance: none;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    background: rgba(0, 0, 0, 0.25);
+    cursor: pointer;
+    transition:
+      background 0.2s,
+      border-color 0.2s,
+      box-shadow 0.2s;
+
+    &::after {
+      content: '';
+      width: 9px;
+      height: 5px;
+      border: 2px solid var(--accent-ink);
+      border-top: 0;
+      border-right: 0;
+      transform: translateY(-1px) rotate(-45deg) scale(0);
+      transition: transform 0.15s;
+    }
+
+    &:checked {
+      border-color: transparent;
+      background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+      box-shadow: 0 0 12px -2px rgba(var(--accent-rgb), 0.75);
+
+      &::after {
+        transform: translateY(-1px) rotate(-45deg) scale(1);
+      }
+    }
+  }
+}
+
+.text-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-weight: 500;
+
+  &:hover {
+    color: #fff;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  &--accent {
+    color: var(--accent-hi);
+    font-weight: 700;
+  }
+}
+
+// 주요 버튼 — 대시보드 강조 버튼과 같은 색에, hover 때 빛이 한 번 훑고 지나간다.
+.login-submit {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: var(--accent-ink);
+  font-size: 14.5px;
+  font-weight: 700;
+  background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
+  box-shadow:
+    0 14px 30px -12px rgba(var(--accent-rgb), 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
+  transition:
+    transform 0.15s,
+    filter 0.2s,
+    box-shadow 0.2s;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 -60%;
+    width: 50%;
+    background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    transform: skewX(-20deg);
+    transition: left 0.6s ease;
+  }
+
+  &:hover {
+    filter: brightness(1.06);
+    box-shadow:
+      0 16px 34px -12px rgba(var(--accent-rgb), 1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.34);
+
+    &::before {
+      left: 120%;
+    }
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 14px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-4);
+
+  &::before,
+  &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+  }
+}
+
+.login-social {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+
+  &--single {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.social-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.18);
+  }
+
+  svg {
+    width: 17px;
+    height: 17px;
+  }
+}
+
+.login-switch {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  text-align: center;
+  gap: 6px;
+  margin-top: 20px;
+  font-size: 12.5px;
+  color: var(--text-3);
+}
+
+@media (max-width: 480px) {
+  .login-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

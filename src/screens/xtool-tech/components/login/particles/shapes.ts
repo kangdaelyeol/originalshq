@@ -1,4 +1,4 @@
-import { X_BOX, X_POLYGONS } from '../../brand/x-shape'
+import { X_BOX, X_POLYGONS } from '@/ohq-ui/brand/x-shape'
 
 // 입자가 모일 모양 — 모두 "모델 좌표"(가운데 0, 글자 폭 = 1)로 돌려준다. 실제 크기·위치·
 // 회전은 ParticleField가 매 프레임 입힌다.

@@ -17,15 +17,15 @@ import { isXtoolFirebaseConfigured, xtoolFirebase } from '@/xtool-auth/firebase'
 import { MIN_PASSWORD, normalizeEmail } from '@/xtool-auth/members'
 import xtoolLogoUrl from '../assets/symbols/xtool-logo-text.png'
 import { AppBackground } from '../components/layout/app-background'
-import { GoogleMark } from '../components/login/brand-marks'
+import { GoogleMark } from '@/ohq-ui/brand/google-mark'
 import { LoginCard } from '../components/login/login-card'
-import { LoginField } from '../components/login/login-field'
+import { LoginField } from '@/ohq-ui/auth/login-field'
 import { useParticleField } from '../components/login/particles/use-particle-field'
 import { useLoginChoreography } from '../components/login/use-login-choreography'
 import { usePointerTilt } from '../components/login/use-pointer-tilt'
 import { cx } from '@/ohq-ui/lib/cx'
 import { XT_BASE } from '../paths'
-import { useSettings } from '../settings/settings'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 
 // setup — 관리자가 발급한 임시 비밀번호로 처음 들어온 사람이 자기 비밀번호를 정한다.
 type Mode = 'login' | 'setup' | 'reset'
@@ -63,7 +63,7 @@ export function LoginPage() {
   const location = useLocation()
   const notice = (location.state as LoginLocationState | null)?.notice
   const reduceMotion = useReducedMotion()
-  const { accentInUse } = useSettings()
+  const { accentInUse } = useAppearance()
   const tilt = usePointerTilt()
   const choreo = useLoginChoreography()
   const [mode, setMode] = useState<Mode>('login')

@@ -11,7 +11,7 @@ import { pageStagger } from '@/ohq-ui/lib/motion'
 import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
 import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
-import { useSettings } from '../../settings/settings'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
 import { Toaster } from './toaster'
@@ -39,7 +39,7 @@ export function AppLayout() {
   const session = useXtoolSession('tech')
   const previousRef = useRef<XtoolSession['status']>('loading')
   const [collapsed, toggleSidebar] = useSidebarCollapsed()
-  const { layout } = useSettings()
+  const { theme } = useAppearance()
 
   // 로그인 화면은 lazy라 받는 동안 이 화면이 남아 있다 — 그 사이 상태가 한 번 더 바뀌어도
   // (권한 없음 → 로그아웃) 처음 보낸 안내가 덮이지 않게, 이동은 여기 한 곳에서 이전 상태를 보고 한다.
@@ -68,11 +68,11 @@ export function AppLayout() {
       <UsageTracking pathname={pathname} />
       <AppBackground />
       {/* Monday 표는 칸이 많아 화면 폭을 다 쓴다(is-wide). */}
-      <div className={cx('shell', collapsed && 'is-collapsed', layout === 'monday' && 'is-wide')}>
+      <div className={cx('shell', collapsed && 'is-collapsed', theme === 'monday' && 'is-wide')}>
         <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
           {/* Monday 표의 보드·내 업무는 상단바가 표 판 안에 들어간다(MondayBoard·MondayMyWork). */}
-          {!(layout === 'monday' && (pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH))) && <Topbar />}
+          {!(theme === 'monday' && (pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH))) && <Topbar />}
           {/* 경로가 바뀌면 새로 그려서 카드들이 차례로 떠오르게 한다(motion.ts 주석 참고). */}
           <motion.div key={pathname} className="page" variants={pageStagger} initial="hidden" animate="show">
             {outlet}

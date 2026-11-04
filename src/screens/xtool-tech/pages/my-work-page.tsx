@@ -14,7 +14,7 @@ import { BOARD_TABS } from '../data/tech-boards'
 import { useMyIdentity, useWorkPeople, useWorkSources } from '../data/use-my-work'
 import { daysBetween, inRange, koreaToday, periodRange } from '../lib/dates'
 import { myWorkPath } from '../paths'
-import { useSettings } from '../settings/settings'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 
 // 처음에 보여 줄 줄 수
 const PAGE = 20
@@ -40,7 +40,7 @@ export function MyWorkPage() {
   const me = useMyIdentity()
   const { sources, loading } = useWorkSources()
   const { period } = usePeriod()
-  const { layout } = useSettings()
+  const { theme } = useAppearance()
   const today = koreaToday()
 
   const who = params.get('who')
@@ -89,7 +89,7 @@ export function MyWorkPage() {
   const title = mine ? '내 담당 업무' : who ? `${who}님 담당 업무` : '직원 업무'
 
   // Monday 표 레이아웃 — 숫자 카드 없이 보드마다 Monday 표로(칸을 바로 고친다).
-  if (layout === 'monday') {
+  if (theme === 'monday') {
     const entries = new Map<MyWorkBoard, Set<string>>()
     for (const item of items) {
       if (state !== 'all' && (state === 'done') !== item.done) continue

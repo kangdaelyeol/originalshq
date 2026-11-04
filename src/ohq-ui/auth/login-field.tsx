@@ -1,6 +1,6 @@
 import { CircleAlert, Eye, EyeOff, type LucideIcon } from 'lucide-react'
 import { useId, useState, type InputHTMLAttributes } from 'react'
-import { cx } from '@/ohq-ui/lib/cx'
+import { cx } from '../lib/cx'
 
 interface LoginFieldProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   label: string

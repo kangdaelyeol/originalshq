@@ -2,14 +2,15 @@
 // 직사각형을 무작위 직선으로 계속 잘라 볼록 다각형 조각을 만들고, 조각마다
 // 기울기(빛을 받는 정도)에 따라 명암·광택·하이라이트 엣지를 준다. 시드가
 // 고정이라 다시 돌려도 같은 그림이 나온다.
-//   node src/screens/xtool-tech/scripts/generate-background.mjs  →  public/xtool-tech/bg-shards.svg
+//   node src/ohq-ui/backgrounds/generate-shards.mjs  →  public/xtool-tech/bg-shards.svg
+// (주소 /xtool-tech/bg-shards.svg는 처음 쓰던 그대로 — styles/_backgrounds.scss의 블랙 파편이 읽는다)
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const W = 2400
 const H = 1500
 const SEED = 20261030
-const OUT = fileURLToPath(new URL('../../../../public/xtool-tech/bg-shards.svg', import.meta.url))
+const OUT = fileURLToPath(new URL('../../../public/xtool-tech/bg-shards.svg', import.meta.url))
 
 // 조각 사이 틈(검은 균열) 폭 범위(px).
 const GAP_MIN = 2.5

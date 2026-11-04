@@ -1,15 +1,10 @@
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
+import { ScreenBackground } from '@/ohq-ui/backgrounds/screen-background'
 import { useSharedBackgroundUrl } from '../../data/tech-backgrounds'
-import { useSettings } from '../../settings/settings'
-import { BackgroundArt } from '../backgrounds/background-art'
 
-/** 화면 뒤에 고정된 배경 — 설정에서 고른 배경을, 지금 쓰는 강조색으로 칠한다.
- * 유리 카드가 이걸 흐려서 비추는 게 핵심이라, 여기 색·빛이 곧 "유리 느낌"의 재료다. */
+/** 화면 배경 — 공용 배경(ScreenBackground)에, 팀이 공유한 사진을 골랐으면 그 주소를 찾아 넘긴다. */
 export function AppBackground() {
-  const { background, sharedBackgroundId, accentInUse } = useSettings()
+  const { background, sharedBackgroundId } = useAppearance()
   const photoUrl = useSharedBackgroundUrl(background === 'shared' ? sharedBackgroundId : null)
-  return (
-    <div className="app-bg" aria-hidden>
-      <BackgroundArt kind={background} accent={accentInUse} photoUrl={photoUrl} />
-    </div>
-  )
+  return <ScreenBackground photoUrl={photoUrl} />
 }

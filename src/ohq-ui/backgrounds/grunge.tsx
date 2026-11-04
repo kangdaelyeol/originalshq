@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { mixHex } from '@/ohq-ui/theme/accent'
+import { mixHex } from '../theme/accent'
 import { round1, seededRandom } from './seeded'
 
 // 그런지 — 받아 둔 그런지 텍스처와 같은 분위기(천 결 · 긁힘 · 얼룩)를 직접 생성한다.

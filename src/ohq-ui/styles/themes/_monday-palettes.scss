@@ -1,6 +1,6 @@
-// Monday 색상(설정 > 레이아웃 > Monday 색상) — 남색(기본) · 라이트 · 블랙. 레이아웃은 같고 색만 다르다.
-// 값은 Monday 캡처에서 잰 것(남색: sample/monday-1~4, 라이트·블랙: 출장업무 보드 캡처). 화면 루트
-// (.xtool-tech.theme-monday)에 칠해서 표·사이드바·카드·팝오버(루트에 띄운다)가 같이 쓴다.
+// Monday 테마의 색 — 남색(기본) · 라이트 · 블랙. 모양은 같고 색만 다르다(ThemeRoot palette).
+// 값은 Monday 캡처에서 잰 것(남색: sample/monday-1~4, 라이트·블랙: 출장업무 보드 캡처). 디자인 루트
+// (.ohq-ui.theme-monday)에 칠해서 부품·화면 틀·팝오버(루트에 띄운다)가 같이 쓴다.
 
 // 남색 — Monday 다크
 @mixin palette-navy {

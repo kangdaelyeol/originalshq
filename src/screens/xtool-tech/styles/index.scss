@@ -4,13 +4,11 @@
 // xtool-tech 클래스를 같이 달아서(ThemeRoot) 둘 다 걸린다. 맨 앞에서 불러, 아래 tech 스타일이 같은
 // 우선순위로 덮어쓸 수 있게 한다.
 @use '../../../ohq-ui/styles';
-@use 'monday-palettes' as *;
 @use 'theme-monday' as *;
 
 // tech 화면 스타일 — 이 화면의 루트 아래로만 들어가게 load-css로 감싼다. originalshq의 다른 화면(cmip·리드
 // 매니저 등)과 클래스 이름이 겹쳐도(.table, .empty 등) 서로 영향을 주지 않는다.
 .xtool-tech {
-  @include meta.load-css('background');
   @include meta.load-css('layout');
   @include meta.load-css('boards');
   @include meta.load-css('monday');
@@ -19,29 +17,18 @@
   @include meta.load-css('settings');
 }
 
-// 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday가 붙으면 위 스타일을 Monday 모양으로 덮는다.
-// 색은 Monday 색상(남색 기본 · mon-light · mon-black)의 --mon-* 변수.
+// 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday(+ mon-light · mon-black)가 붙으면 위 스타일을 Monday 모양으로
+// 덮는다. 색·글꼴과 기본 부품은 공용 디자인 테마, 화면 틀은 tech 테마(_theme-monday.scss). 둘 다 맨 뒤에 와야
+// 같은 우선순위의 위 스타일보다 이긴다.
+@include meta.load-css('../../../ohq-ui/styles/themes');
+
 .xtool-tech.theme-monday {
-  @include palette-navy;
   @include theme-monday;
 }
 
-.xtool-tech.theme-monday.mon-light {
-  @include palette-light;
-
-  // 밝은 판 위 스크롤바
-  :where(*) {
-    scrollbar-color: rgba(0, 0, 0, 0.22) transparent;
-  }
-
-  // 흰 바탕 위 흰 원(사이드바 접기 단추)이 묻히지 않게 테두리·그림자
-  .sidebar-toggle {
-    box-shadow:
-      0 0 0 1px var(--mon-line),
-      0 2px 8px rgba(29, 36, 69, 0.14);
-  }
-}
-
-.xtool-tech.theme-monday.mon-black {
-  @include palette-black;
+// 흰 바탕 위 흰 원(사이드바 접기 단추)이 묻히지 않게 테두리·그림자
+.xtool-tech.theme-monday.mon-light .sidebar-toggle {
+  box-shadow:
+    0 0 0 1px var(--mon-line),
+    0 2px 8px rgba(29, 36, 69, 0.14);
 }

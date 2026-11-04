@@ -1,11 +1,10 @@
 import { motion, MotionConfig } from 'motion/react'
 import { useState } from 'react'
 import { useXtoolSession } from '@/xtool-auth/use-xtool-session'
-import { AppBackground } from '@/screens/xtool-tech/components/layout/app-background'
+import { AppearanceProvider } from '@/ohq-ui/appearance/appearance-provider'
 import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
 import { pageStagger } from '@/ohq-ui/lib/motion'
-import { SettingsProvider } from '@/screens/xtool-tech/settings/settings-provider'
-import '@/screens/xtool-tech/styles/index.scss'
+import { AdminBackground } from './admin-background'
 import { AdminHeader } from './admin-header'
 import { AdminSignIn } from './admin-sign-in'
 import { AssigneeCopyCard } from './assignee-copy-card'
@@ -18,15 +17,16 @@ import './admin.scss'
 
 /**
  * /admin/xtool — xtool 팀 페이지(기술팀, 앞으로 영업팀·콜백팀)에 들어올 수 있는 사람을 등록하고
- * 팀별 권한·관리자·정지를 바꾼다. 기술팀 보드와 같은 유리 부품·배경·설정(강조색·유리)을 쓴다.
+ * 팀별 권한·관리자·정지를 바꾼다. 화면 바탕은 공용 디자인(src/ohq-ui)만으로 — 외관 설정(강조색·유리·테마·배경)은
+ * 기술팀 보드와 같이 쓴다.
  */
 export default function XtoolAdminRoot() {
   return (
     <MotionConfig reducedMotion="user">
-      <SettingsProvider>
-        <AppBackground />
+      <AppearanceProvider className="xtool-admin">
+        <AdminBackground />
         <AdminScreen />
-      </SettingsProvider>
+      </AppearanceProvider>
     </MotionConfig>
   )
 }

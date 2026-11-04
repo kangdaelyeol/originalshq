@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import { BrandMark } from '@/screens/xtool-tech/components/brand/brand-mark'
+import { BrandMark } from '@/ohq-ui/brand/brand-mark'
 import { Avatar } from '@/ohq-ui/components/avatar'
 import { useProfilePhoto } from '@/screens/xtool-tech/data/tech-profiles'
 import { XT_BASE } from '@/screens/xtool-tech/paths'
@@ -14,7 +14,7 @@ export function AdminHeader({ member }: { member: XtoolMember }) {
     <header className="glass admin-header">
       <div className="admin-header__brand">
         <BrandMark />
-        <div className="sidebar__brand-text">
+        <div className="admin-header__brand-text">
           <strong>xtool admin</strong>
           <span>구성원 · 권한</span>
         </div>
@@ -27,13 +27,13 @@ export function AdminHeader({ member }: { member: XtoolMember }) {
       </nav>
       <div className="admin-header__user" title={member.email}>
         <Avatar initials={initialsOf(member.name, member.email)} color="var(--accent)" ink="var(--accent-ink)" photo={photo} />
-        <div className="sidebar__user">
+        <div className="admin-header__who">
           <strong>{member.name || member.email}</strong>
           <span>{member.email}</span>
         </div>
         <button
           type="button"
-          className="sidebar__logout"
+          className="admin-header__logout"
           onClick={() => void signOutXtool()}
           aria-label="로그아웃"
           title="로그아웃"
