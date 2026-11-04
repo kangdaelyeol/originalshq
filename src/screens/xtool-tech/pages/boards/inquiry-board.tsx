@@ -1,9 +1,3 @@
-import {
-  CircleCheck,
-  Hourglass,
-  MessageCircle,
-  MessagesSquare,
-} from 'lucide-react'
 import { useCallback } from 'react'
 import {
   Assignees,
@@ -20,16 +14,17 @@ import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { InquiryRecord, TechBoardDoc } from '../../data/tech-boards'
-import { formatPhone, isDone, splitNames } from '../../data/tech-stage'
+import { formatPhone, splitNames } from '../../data/tech-stage'
 import {
   byDateAsc,
   byDateDesc,
-  inRange,
   koreaToday,
   periodRange,
   shortDate,
 } from '../../lib/dates'
 import { useItemParam } from '../../lib/use-item-param'
+import { inquiryKpis, receivedIn } from './inquiry-kpis'
+import type { BoardDrawerProps } from './registry'
 
 type R = InquiryRecord
 
@@ -49,8 +44,6 @@ const searchOf = (r: R) =>
 const deviceOf = (r: R) =>
   [r.deviceSeries, r.device].filter((v) => v && v !== '기타').join(' · ') ||
   null
-const isWaiting = (r: R) => /신규|1차/.test(r.stage ?? '')
-const isLong = (r: R) => /장기/.test(r.stage ?? '')
 
 const COLUMNS: RecordColumn<R>[] = [
   {
@@ -109,41 +102,19 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
   const { period } = usePeriod()
   const [selectedId, setSelectedId] = useItemParam()
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
-  const { current } = periodRange(period, koreaToday())
+  const today = koreaToday()
+  const { current } = periodRange(period, today)
   const names = PERIOD_COMPARE[period]
 
   const records = doc.records
-  const open = records.filter((r) => !isDone(r))
-  const received = records.filter((r) => inRange(r.receivedAt, current))
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
+  const received = receivedIn(records, current)
 
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard
-          title="응대 대기"
-          value={`${open.filter(isWaiting).length}건`}
-          icon={MessageCircle}
-          tint="blue"
-        />
-        <StatCard
-          title="상담 진행 중"
-          value={`${open.filter((r) => !isWaiting(r) && !isLong(r)).length}건`}
-          icon={MessagesSquare}
-          tint="amber"
-        />
-        <StatCard
-          title="장기 상담"
-          value={`${open.filter(isLong).length}건`}
-          icon={Hourglass}
-          tint="violet"
-        />
-        <StatCard
-          title={`${names.current} 접수`}
-          value={`${received.length}건`}
-          icon={CircleCheck}
-          tint="green"
-        />
+        {inquiryKpis(doc, period, today).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <RecordTable
@@ -182,38 +153,47 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
         </GlassCard>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                { label: '기기', value: deviceOf(selected) },
-                { label: '문의 종류', value: selected.type },
-                { label: '접수일', value: shortDate(selected.receivedAt) },
-                {
-                  label: '담당자',
-                  value: assigneesOf(selected).join(', ') || null,
-                },
-                {
-                  label: '연락처',
-                  value: selected.phone ? (
-                    <PhoneLink phone={selected.phone} />
-                  ) : null,
-                },
-              ]
-            : []
-        }
-        texts={
-          selected
-            ? [
-                { label: '문의 내용', text: selected.content },
-                { label: '해결 방안', text: selected.resolution },
-              ]
-            : []
-        }
-      />
+      <InquiryDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** 아톡문의 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다. eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function InquiryDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'techInquiry'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId) ?? null
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              { label: '기기', value: deviceOf(selected) },
+              { label: '문의 종류', value: selected.type },
+              { label: '접수일', value: shortDate(selected.receivedAt) },
+              {
+                label: '담당자',
+                value: assigneesOf(selected).join(', ') || null,
+              },
+              {
+                label: '연락처',
+                value: selected.phone ? (
+                  <PhoneLink phone={selected.phone} />
+                ) : null,
+              },
+            ]
+          : []
+      }
+      texts={
+        selected
+          ? [
+              { label: '문의 내용', text: selected.content },
+              { label: '해결 방안', text: selected.resolution },
+            ]
+          : []
+      }
+    >
+    </RecordDrawer>
   )
 }

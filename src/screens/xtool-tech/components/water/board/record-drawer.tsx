@@ -30,8 +30,8 @@ interface WaterRecordDrawerProps {
     stage: string | null
     status: string | null
   } | null
-  /** 이름 위 한 줄(보드 이름 등) */
-  eyebrow: string
+  /** 이름 위 한 줄(보드 이름 등) — 내 업무에서는 그 보드로 가는 링크 */
+  eyebrow: ReactNode
   fields?: readonly WaterDrawerField[]
   /** 긴 글(증상·문의 내용 등) — 비어 있는 건 빼고 보여 준다. */
   texts?: readonly { label: string; text: string | null }[]

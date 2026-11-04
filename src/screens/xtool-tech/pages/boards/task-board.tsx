@@ -1,4 +1,3 @@
-import { CircleCheck, CircleDashed, ListTodo, OctagonAlert } from 'lucide-react'
 import { useCallback } from 'react'
 import {
   Assignees,
@@ -13,26 +12,18 @@ import {
 import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
-import { PERIOD_COMPARE } from '../../data/period'
 import type { TaskRecord, TechBoardDoc } from '../../data/tech-boards'
-import { isBlocked, isDone, isNew, splitNames } from '../../data/tech-stage'
-import {
-  byDateAsc,
-  byDateDesc,
-  inRange,
-  isoToKoreaDate,
-  koreaToday,
-  periodRange,
-  shortDate,
-} from '../../lib/dates'
+import { isDone, splitNames } from '../../data/tech-stage'
+import { byDateAsc, byDateDesc, koreaToday, shortDate } from '../../lib/dates'
 import { useItemParam } from '../../lib/use-item-param'
+import type { BoardDrawerProps } from './registry'
+import { doneOn, taskKpis } from './task-kpis'
 
 type R = TaskRecord
 
 const assigneesOf = (r: R) => splitNames(r.assignee)
 const searchOf = (r: R) =>
   [r.name, r.requester, r.assignee, r.details].join(' ')
-const doneOn = (r: R) => r.completedAt ?? isoToKoreaDate(r.updatedAt)
 
 const COLUMNS: RecordColumn<R>[] = [
   {
@@ -94,49 +85,20 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
   const [selectedId, setSelectedId] = useItemParam()
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
   const today = koreaToday()
-  const { current } = periodRange(period, today)
-  const names = PERIOD_COMPARE[period]
 
   const records = doc.records
   const open = records.filter((r) => !isDone(r))
-  const blocked = open.filter(isBlocked)
-  const working = open.filter((r) => !isNew(r) && !isBlocked(r))
-  const doneInPeriod = records.filter(
-    (r) => isDone(r) && inRange(doneOn(r), current),
-  )
   // 마감일은 거의 안 적어서(45건 중 6건) 요청일이 오래된 순으로 챙긴다.
   const oldest = open
     .filter((r) => r.requestedAt)
     .sort((a, b) => byDateAsc(a.requestedAt, b.requestedAt))
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard
-          title="진행 전"
-          value={`${open.filter(isNew).length}건`}
-          icon={CircleDashed}
-          tint="blue"
-        />
-        <StatCard
-          title="진행 중"
-          value={`${working.length}건`}
-          icon={ListTodo}
-          tint="amber"
-        />
-        <StatCard
-          title="막힘"
-          value={`${blocked.length}건`}
-          icon={OctagonAlert}
-          tint="violet"
-        />
-        <StatCard
-          title={`${names.current} 완료`}
-          value={`${doneInPeriod.length}건`}
-          icon={CircleCheck}
-          tint="green"
-        />
+        {taskKpis(doc, period, today).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <RecordTable
@@ -194,48 +156,57 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
         </GlassCard>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                {
-                  label: '요청',
-                  value: splitNames(selected.requester).join(', ') || null,
-                },
-                {
-                  label: '담당자',
-                  value: assigneesOf(selected).join(', ') || null,
-                },
-                {
-                  label: '요청일',
-                  value: selected.requestedAt
-                    ? shortDate(selected.requestedAt)
-                    : null,
-                },
-                {
-                  label: '시작일',
-                  value: selected.startedAt
-                    ? shortDate(selected.startedAt)
-                    : null,
-                },
-                {
-                  label: '마감일',
-                  value: selected.dueAt ? shortDate(selected.dueAt) : null,
-                },
-                {
-                  label: '완료일',
-                  value: selected.completedAt
-                    ? shortDate(selected.completedAt)
-                    : null,
-                },
-              ]
-            : []
-        }
-        texts={selected ? [{ label: '상세내용', text: selected.details }] : []}
-      />
+      <TaskDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** 기타업무 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다. eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function TaskDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'techTask'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId) ?? null
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              {
+                label: '요청',
+                value: splitNames(selected.requester).join(', ') || null,
+              },
+              {
+                label: '담당자',
+                value: assigneesOf(selected).join(', ') || null,
+              },
+              {
+                label: '요청일',
+                value: selected.requestedAt
+                  ? shortDate(selected.requestedAt)
+                  : null,
+              },
+              {
+                label: '시작일',
+                value: selected.startedAt
+                  ? shortDate(selected.startedAt)
+                  : null,
+              },
+              {
+                label: '마감일',
+                value: selected.dueAt ? shortDate(selected.dueAt) : null,
+              },
+              {
+                label: '완료일',
+                value: selected.completedAt
+                  ? shortDate(selected.completedAt)
+                  : null,
+              },
+            ]
+          : []
+      }
+      texts={selected ? [{ label: '상세내용', text: selected.details }] : []}
+    >
+    </RecordDrawer>
   )
 }

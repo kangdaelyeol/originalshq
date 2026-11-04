@@ -1,19 +1,16 @@
-import { Barcode, Boxes, Link2, PackagePlus } from 'lucide-react'
 import { useCallback, useMemo } from 'react'
 import { BarList, GlassCard, MiniList, RecordDrawer, RecordTable, StatCard } from '../../components/layout-parts'
 import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
-import { PERIOD_COMPARE } from '../../data/period'
 import type { SerialRecord, TechBoardDoc } from '../../data/tech-boards'
-import { byDateDesc, inRange, koreaToday, periodRange, shortDate } from '../../lib/dates'
+import { byDateDesc, koreaToday, shortDate } from '../../lib/dates'
 import { useItemParam } from '../../lib/use-item-param'
+import type { BoardDrawerProps } from './registry'
+import { isTemplate, linkCount, serialsKpis, visibleSerials } from './serials-kpis'
 
 type R = SerialRecord
 
-// Monday 보드의 빈 템플릿 줄
-const isTemplate = (r: R) => /^새로운\s*serial\s*number$/i.test(r.name.trim())
-const linkCount = (r: R) => r.links.fieldService.length + r.links.repair.length + r.links.rental.length
 const noAssignees = () => []
 const searchOf = (r: R) =>
   [r.serialNumber, r.device, r.notes, ...r.links.fieldService, ...r.links.repair, ...r.links.rental].join(' ')
@@ -40,25 +37,21 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
   const { period } = usePeriod()
   const [selectedId, setSelectedId] = useItemParam()
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
-  const { current } = periodRange(period, koreaToday())
-  const names = PERIOD_COMPARE[period]
 
-  const records = useMemo(() => doc.records.filter((r) => !isTemplate(r)), [doc.records])
+  const records = useMemo(() => visibleSerials(doc.records), [doc.records])
   // 같은 SN이 둘 이상이면 중복 — 보드의 "중복 SN" 그룹도 함께 본다.
   const duplicates = useMemo(() => {
     const counts = countBy(records.map((r) => r.serialNumber))
     const repeated = new Set(counts.filter((c) => c.value > 1).map((c) => c.label))
     return records.filter((r) => repeated.has(r.serialNumber) || /중복/.test(r.stage ?? ''))
   }, [records])
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard title="전체 SN" value={`${records.length}대`} icon={Barcode} tint="blue" />
-        <StatCard title="기기 종류" value={`${new Set(records.map((r) => r.device).filter(Boolean)).size}종`} icon={Boxes} tint="violet" />
-        <StatCard title={`${names.current} 입고`} value={`${records.filter((r) => inRange(r.receivedAt, current)).length}대`} icon={PackagePlus} tint="green" />
-        <StatCard title="연결 기록 있음" value={`${records.filter((r) => linkCount(r) > 0).length}대`} icon={Link2} tint="amber" />
+        {serialsKpis(doc, period, koreaToday()).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <RecordTable
@@ -91,23 +84,32 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
         </GlassCard>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                { label: '기기', value: selected.device },
-                { label: '입고일', value: selected.receivedAt ? shortDate(selected.receivedAt) : null },
-                { label: '출장 기록', value: selected.links.fieldService.join(', ') || null },
-                { label: 'AS 기록', value: selected.links.repair.join(', ') || null },
-                { label: '대여품', value: selected.links.rental.join(', ') || null },
-              ]
-            : []
-        }
-        texts={selected ? [{ label: '비고', text: selected.notes }] : []}
-      />
+      <SerialsDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** SN 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다(빈 템플릿 줄은 열지 않는다). eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function SerialsDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'serials'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId && !isTemplate(r)) ?? null
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              { label: '기기', value: selected.device },
+              { label: '입고일', value: selected.receivedAt ? shortDate(selected.receivedAt) : null },
+              { label: '출장 기록', value: selected.links.fieldService.join(', ') || null },
+              { label: 'AS 기록', value: selected.links.repair.join(', ') || null },
+              { label: '대여품', value: selected.links.rental.join(', ') || null },
+            ]
+          : []
+      }
+      texts={selected ? [{ label: '비고', text: selected.notes }] : []}
+    >
+    </RecordDrawer>
   )
 }

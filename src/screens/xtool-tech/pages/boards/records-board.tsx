@@ -1,4 +1,3 @@
-import { CircleCheck, FileText, ListTodo, Timer } from 'lucide-react'
 import { useCallback } from 'react'
 import {
   Assignees,
@@ -12,18 +11,11 @@ import {
 import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
-import { PERIOD_COMPARE } from '../../data/period'
 import type { DocTaskRecord, TechBoardDoc } from '../../data/tech-boards'
-import { isDone } from '../../data/tech-stage'
-import {
-  byDateDesc,
-  daysBetween,
-  inRange,
-  koreaToday,
-  periodRange,
-  shortDate,
-} from '../../lib/dates'
+import { byDateDesc, koreaToday, shortDate } from '../../lib/dates'
 import { useItemParam } from '../../lib/use-item-param'
+import { recordsKpis } from './records-kpis'
+import type { BoardDrawerProps } from './registry'
 
 type R = DocTaskRecord
 
@@ -73,47 +65,15 @@ export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
   const { period } = usePeriod()
   const [selectedId, setSelectedId] = useItemParam()
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
-  const { current } = periodRange(period, koreaToday())
-  const names = PERIOD_COMPARE[period]
 
   const records = doc.records
-  const open = records.filter((r) => !isDone(r))
-  const done = records.filter(isDone)
-  const spans = done
-    .filter((r) => r.requestedAt && r.completedAt)
-    .map((r) => daysBetween(r.requestedAt!, r.completedAt!))
-  const avgDays = spans.length
-    ? spans.reduce((sum, n) => sum + n, 0) / spans.length
-    : null
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard
-          title="진행 중"
-          value={`${open.length}건`}
-          icon={ListTodo}
-          tint="amber"
-        />
-        <StatCard
-          title="완료"
-          value={`${done.length}건`}
-          icon={CircleCheck}
-          tint="green"
-        />
-        <StatCard
-          title={`${names.current} 요청`}
-          value={`${records.filter((r) => inRange(r.requestedAt, current)).length}건`}
-          icon={FileText}
-          tint="blue"
-        />
-        <StatCard
-          title="평균 소요"
-          value={avgDays !== null ? `${avgDays.toFixed(1)}일` : '—'}
-          icon={Timer}
-          tint="violet"
-        />
+        {recordsKpis(doc, period, koreaToday()).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <div className="grid grid--main-side">
@@ -146,46 +106,55 @@ export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
         </div>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                {
-                  label: '담당자',
-                  value: selected.assignees.join(', ') || null,
-                },
-                {
-                  label: '요청일',
-                  value: selected.requestedAt
-                    ? shortDate(selected.requestedAt)
-                    : null,
-                },
-                {
-                  label: '완료일',
-                  value: selected.completedAt
-                    ? shortDate(selected.completedAt)
-                    : null,
-                },
-                {
-                  label: '노션',
-                  value: selected.notionUrl ? (
-                    <a
-                      href={selected.notionUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      문서 열기
-                    </a>
-                  ) : null,
-                },
-              ]
-            : []
-        }
-        texts={selected ? [{ label: '상세내용', text: selected.details }] : []}
-      />
+      <RecordsDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** 자료정리 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다. eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function RecordsDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'records'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId) ?? null
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              {
+                label: '담당자',
+                value: selected.assignees.join(', ') || null,
+              },
+              {
+                label: '요청일',
+                value: selected.requestedAt
+                  ? shortDate(selected.requestedAt)
+                  : null,
+              },
+              {
+                label: '완료일',
+                value: selected.completedAt
+                  ? shortDate(selected.completedAt)
+                  : null,
+              },
+              {
+                label: '노션',
+                value: selected.notionUrl ? (
+                  <a
+                    href={selected.notionUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    문서 열기
+                  </a>
+                ) : null,
+              },
+            ]
+          : []
+      }
+      texts={selected ? [{ label: '상세내용', text: selected.details }] : []}
+    >
+    </RecordDrawer>
   )
 }

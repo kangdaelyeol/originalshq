@@ -1,14 +1,14 @@
-import { ClipboardPen, Inbox, Paperclip, SquareCheck } from 'lucide-react'
 import { useCallback } from 'react'
 import { BarList, GlassCard, PhoneLink, RecordDrawer, RecordTable, StatCard } from '../../components/layout-parts'
 import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
-import { PERIOD_COMPARE } from '../../data/period'
 import type { AsRequestRecord, TechBoardDoc } from '../../data/tech-boards'
 import { formatPhone } from '../../data/tech-stage'
-import { byDateDesc, inRange, koreaToday, periodRange, shortDate } from '../../lib/dates'
+import { byDateDesc, koreaToday, shortDate } from '../../lib/dates'
 import { useItemParam } from '../../lib/use-item-param'
+import { asRequestsKpis } from './as-requests-kpis'
+import type { BoardDrawerProps } from './registry'
 
 type R = AsRequestRecord
 
@@ -52,26 +52,15 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
   const { period } = usePeriod()
   const [selectedId, setSelectedId] = useItemParam()
   const close = useCallback(() => setSelectedId(null), [setSelectedId])
-  const { current, previous } = periodRange(period, koreaToday())
-  const names = PERIOD_COMPARE[period]
 
   const records = doc.records
-  const received = records.filter((r) => inRange(r.receivedAt, current))
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard title="전체 신청" value={`${records.length}건`} icon={ClipboardPen} tint="blue" caption="AS 신청서 보드 전체" />
-        <StatCard
-          title={`${names.current} 신청`}
-          value={`${received.length}건`}
-          icon={Inbox}
-          tint="green"
-          caption={`${names.previous} ${records.filter((r) => inRange(r.receivedAt, previous)).length}건`}
-        />
-        <StatCard title="확인사항 미체크" value={`${records.filter((r) => !r.agreed).length}건`} icon={SquareCheck} tint="amber" caption="신청자가 확인사항에 동의 안 함" />
-        <StatCard title="첨부 있음" value={`${records.filter((r) => r.attachmentCount > 0).length}건`} icon={Paperclip} tint="violet" caption="사진·파일을 올린 신청" />
+        {asRequestsKpis(doc, period, koreaToday()).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <RecordTable
@@ -96,26 +85,35 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
         </GlassCard>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                { label: '기기', value: selected.device },
-                { label: '기종', value: selected.model },
-                { label: '구매일', value: selected.purchasedAt ? shortDate(selected.purchasedAt) : null },
-                { label: '구매 경로', value: selected.purchaseChannel },
-                { label: '접수일', value: selected.receivedAt ? shortDate(selected.receivedAt) : null },
-                { label: '연락처', value: selected.phone ? <PhoneLink phone={selected.phone} /> : null },
-                { label: '주소', value: selected.address },
-                { label: '확인사항', value: selected.agreed ? '확인함' : '체크 안 함' },
-              ]
-            : []
-        }
-        texts={selected ? [{ label: '증상 설명', text: selected.symptom }] : []}
-      />
+      <AsRequestsDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** AS 신청서 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다. eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function AsRequestsDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'asRequests'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId) ?? null
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              { label: '기기', value: selected.device },
+              { label: '기종', value: selected.model },
+              { label: '구매일', value: selected.purchasedAt ? shortDate(selected.purchasedAt) : null },
+              { label: '구매 경로', value: selected.purchaseChannel },
+              { label: '접수일', value: selected.receivedAt ? shortDate(selected.receivedAt) : null },
+              { label: '연락처', value: selected.phone ? <PhoneLink phone={selected.phone} /> : null },
+              { label: '주소', value: selected.address },
+              { label: '확인사항', value: selected.agreed ? '확인함' : '체크 안 함' },
+            ]
+          : []
+      }
+      texts={selected ? [{ label: '증상 설명', text: selected.symptom }] : []}
+    >
+    </RecordDrawer>
   )
 }

@@ -1,4 +1,3 @@
-import { CircleCheck, PackageOpen, Send, Wrench } from 'lucide-react'
 import { useCallback } from 'react'
 import {
   Assignees,
@@ -16,19 +15,20 @@ import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
 import type { RepairRecord, TechBoardDoc } from '../../data/tech-boards'
-import { formatPhone, isDone, isNew, splitNames } from '../../data/tech-stage'
+import { formatPhone, isDone, splitNames } from '../../data/tech-stage'
 import {
   byDateAsc,
   byDateDesc,
   daysBetween,
   inRange,
-  isoToKoreaDate,
   koreaToday,
   periodRange,
   shortDate,
 } from '../../lib/dates'
 import { formatInt } from '@/ohq-ui/lib/format'
 import { useItemParam } from '../../lib/use-item-param'
+import type { BoardDrawerProps } from './registry'
+import { doneOn, repairKpis } from './repair-kpis'
 
 type R = RepairRecord
 
@@ -43,9 +43,6 @@ const searchOf = (r: R) =>
     r.result,
     r.assignee,
   ].join(' ')
-const doneOn = (r: R) => r.completedAt ?? isoToKoreaDate(r.updatedAt)
-const isShipping = (r: R) => /발송/.test(r.stage ?? '')
-
 /** 접수부터 지금(완료면 완료일)까지 날 수 */
 const ageOf = (r: R, today: string): number | null =>
   r.receivedAt
@@ -123,14 +120,7 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
 
   const records = doc.records
   const open = records.filter((r) => !isDone(r))
-  const waiting = open.filter(isNew)
-  const shipping = open.filter(isShipping)
-  const repairing = open.filter((r) => !isNew(r) && !isShipping(r))
-  const doneInPeriod = records.filter(
-    (r) => isDone(r) && inRange(doneOn(r), current),
-  )
   const received = records.filter((r) => inRange(r.receivedAt, current))
-  const selected = records.find((r) => r.itemId === selectedId) ?? null
 
   const workload = countBy(
     open.flatMap((r) => (assigneesOf(r).length ? assigneesOf(r) : [null])),
@@ -140,30 +130,9 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
   return (
     <>
       <div className="grid grid--kpi">
-        <StatCard
-          title="입고 대기"
-          value={`${waiting.length}건`}
-          icon={PackageOpen}
-          tint="blue"
-        />
-        <StatCard
-          title="수리 중"
-          value={`${repairing.length}건`}
-          icon={Wrench}
-          tint="amber"
-        />
-        <StatCard
-          title="발송 대기"
-          value={`${shipping.length}건`}
-          icon={Send}
-          tint="green"
-        />
-        <StatCard
-          title={`${names.current} 완료`}
-          value={`${doneInPeriod.length}건`}
-          icon={CircleCheck}
-          tint="violet"
-        />
+        {repairKpis(doc, period, today).map(({ key, ...card }) => (
+          <StatCard key={key} {...card} />
+        ))}
       </div>
 
       <RecordTable
@@ -202,64 +171,73 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
         </GlassCard>
       </div>
 
-      <RecordDrawer
-        record={selected}
-        eyebrow={doc.name}
-        onClose={close}
-        fields={
-          selected
-            ? [
-                { label: '기기', value: selected.device },
-                { label: 'SN', value: selected.serialNumber },
-                { label: '접수일', value: shortDate(selected.receivedAt) },
-                {
-                  label: '완료일',
-                  value: selected.completedAt
-                    ? shortDate(selected.completedAt)
-                    : null,
-                },
-                {
-                  label: '담당자',
-                  value: assigneesOf(selected).join(', ') || null,
-                },
-                {
-                  label: '연락처',
-                  value: selected.phone ? (
-                    <PhoneLink phone={selected.phone} />
-                  ) : null,
-                },
-                { label: '주소', value: selected.address },
-              ]
-            : []
-        }
-        texts={
-          selected
-            ? [
-                { label: '증상', text: selected.symptom },
-                { label: '수리 내역(결과)', text: selected.result },
-              ]
-            : []
-        }
-      >
-        {selected && selected.parts.length > 0 && (
-          <DrawerList
-            title={`청구 부품·공임 — 합계 ${formatInt(selected.amount)}원`}
-          >
-            {selected.parts.map((part, i) => (
-              <li key={i}>
-                <span>
-                  {part.part ?? part.name}
-                  {part.sku && <small> · {part.sku}</small>}
-                </span>
-                <span className="drawer__list-meta">
-                  {part.quantity !== null ? `${part.quantity}개 · ` : ''}
-                  {formatInt(part.total)}원
-                </span>
-              </li>
-            ))}
-          </DrawerList>
-        )}
-      </RecordDrawer>
+      <RepairDrawer doc={doc} selectedId={selectedId} onClose={close} />
     </>
+  )
+}
+
+/** AS 상세 서랍 — 보드 화면과 내 업무(registry)가 같이 연다. eyebrow를 주면 보드 이름 대신 그것을 쓴다. */
+export function RepairDrawer({ doc, selectedId, onClose, eyebrow }: BoardDrawerProps<'repair'>) {
+  const selected = doc.records.find((r) => r.itemId === selectedId) ?? null
+  const parts = selected && selected.parts.length > 0 && (
+    <DrawerList
+      title={`청구 부품·공임 — 합계 ${formatInt(selected.amount)}원`}
+    >
+      {selected.parts.map((part, i) => (
+        <li key={i}>
+          <span>
+            {part.part ?? part.name}
+            {part.sku && <small> · {part.sku}</small>}
+          </span>
+          <span className="drawer__list-meta">
+            {part.quantity !== null ? `${part.quantity}개 · ` : ''}
+            {formatInt(part.total)}원
+          </span>
+        </li>
+      ))}
+    </DrawerList>
+  )
+  return (
+    <RecordDrawer
+      record={selected}
+      eyebrow={eyebrow ?? doc.name}
+      onClose={onClose}
+      fields={
+        selected
+          ? [
+              { label: '기기', value: selected.device },
+              { label: 'SN', value: selected.serialNumber },
+              { label: '접수일', value: shortDate(selected.receivedAt) },
+              {
+                label: '완료일',
+                value: selected.completedAt
+                  ? shortDate(selected.completedAt)
+                  : null,
+              },
+              {
+                label: '담당자',
+                value: assigneesOf(selected).join(', ') || null,
+              },
+              {
+                label: '연락처',
+                value: selected.phone ? (
+                  <PhoneLink phone={selected.phone} />
+                ) : null,
+              },
+              { label: '주소', value: selected.address },
+            ]
+          : []
+      }
+      texts={
+        selected
+          ? [
+              { label: '증상', text: selected.symptom },
+              { label: '수리 내역(결과)', text: selected.result },
+            ]
+          : []
+      }
+    >
+      {parts}
+    </RecordDrawer>
   )
 }
