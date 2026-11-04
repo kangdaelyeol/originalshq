@@ -1,6 +1,6 @@
 import type { AdChannel } from '../ad-settings/types'
 
-// 광고 소재(adCreatives) — 매체(Meta·당근)에서 가져왔거나 화면에서 직접 올린
+// 광고 소재(adCreatives) — 매체에서 가져왔거나 화면에서 직접 올린
 // 이미지·영상 한 개. 문서 하나가 파일 하나다: 같은 영상을 여러 광고에 썼으면
 // 문서는 하나고 ads에 광고가 모인다. 원본과 분석용 프레임은 Storage(adCreatives/{id}/…)에 둔다.
 
@@ -8,7 +8,8 @@ export const AD_CREATIVES = 'adCreatives'
 
 export type CreativeKind = 'video' | 'image'
 
-/** 매체에서 가져오는 것은 Meta·당근뿐이고, 직접 올리기는 어느 채널이든. */
+/** 매체에서 가져오기·직접 올리기 둘 다 어느 채널이든(Google YouTube 영상처럼
+ * 매체가 파일을 주지 않는 것은 직접 올린다). */
 export type CreativeChannel = AdChannel
 
 /** 처리 상태 — 새로 발견하면 pending, 내려받아 프레임까지 뽑으면 ready. 실패하면
@@ -48,19 +49,20 @@ export interface CreativeMedia {
 
 /** 매체에서 찾은 소재 하나 — 문서 id 기준으로 광고를 모은 것. */
 export interface FoundCreative {
-  /** '{채널}_{kind}_{mediaId}' — 예: 'meta_video_123', 'daangn_video_ab12'. */
+  /** '{채널}_{kind}_{mediaId}' — 예: 'meta_video_123', 'daangn_video_ab12',
+   * 'google_image_456'. */
   id: string
   channel: CreativeChannel
   kind: CreativeKind
   /** 매체의 파일 ID — Meta는 영상 ID·이미지 hash, 당근은 영상 스트림 ID·이미지
-   * 주소의 해시. */
+   * 주소의 해시, Google은 에셋 ID, 네이버는 이미지 주소의 해시, OpenAI는 file_id. */
   mediaId: string
   /** 파일을 받을 때 필요한 것 — Meta 이미지는 광고 계정(adimages), Meta 영상은
-   * 페이지 토큰. 당근은 광고 계정 ID만(주소가 sourceUrl에 있다). */
+   * 페이지 토큰. 나머지는 광고 계정 ID만(OpenAI는 키가 계정을 정해 비어 있다). */
   accountId: string
   pageId: string | null
-  /** 찾을 때 이미 아는 파일 주소(당근) — Meta는 받을 때마다 새로 묻는다(임시
-   * 주소라). */
+  /** 찾을 때 이미 아는 파일 주소(당근·Google·네이버) — Meta·OpenAI는 받을 때마다
+   * 새로 묻는다(임시 주소라). */
   sourceUrl?: string | null
   /** 이 소재를 쓴 광고(광고·소재 ID → 이름·광고셋·캠페인). */
   ads: Record<string, CreativeAd>

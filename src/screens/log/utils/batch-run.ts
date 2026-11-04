@@ -228,7 +228,10 @@ export const summarizeRun = (run: BatchRun): string => {
       ].join(' · ')
     }
     case 'meta-creatives':
-    case 'daangn-creatives': {
+    case 'daangn-creatives':
+    case 'google-creatives':
+    case 'naver-creatives':
+    case 'openai-creatives': {
       const failed = (result.failed as unknown[] | undefined) ?? []
       return [
         `소재 ${num(result.creatives)}개 (새 ${num(result.newCreatives)})`,

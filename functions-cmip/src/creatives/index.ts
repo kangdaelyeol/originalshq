@@ -1,13 +1,18 @@
-// 광고 소재 동기화 — 매체(Meta·당근)에서 집행 중인 광고의 소재를 찾아
-// adCreatives에 모으고, 아직 처리하지 않은 소재를 몇 개씩 내려받아 프레임을
-// 뽑는다(media.ts).
+// 광고 소재 동기화 — 매체(Meta·당근·Google·네이버·OpenAI)에서 집행 중인 광고의
+// 소재를 찾아 adCreatives에 모으고, 아직 처리하지 않은 소재를 몇 개씩 내려받아
+// 프레임을 뽑는다(media.ts).
 // 쓰기를 줄이려고, 이미 있는 소재는 광고가 늘었거나 날짜가 바뀐 경우에만 고친다.
 import type { WriteBatch } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
 import type { DaangnCredentials } from '../channel/daangn/client'
+import { getRefreshToken } from '../channel/google'
+import type { GoogleAdsAccount } from '../channel/google/types'
+import type { NaverCredentials } from '../channel/naver/client'
+import type { OpenaiCredentials } from '../channel/openai/client'
 import { todayISO } from '../channel/utils/dates'
 import { db } from '../data'
 import { findActiveDaangnCreatives } from './daangn'
+import { findActiveGoogleCreatives } from './google'
 import { mapLimit } from './map-limit'
 import {
   isMissingBucket,
@@ -16,6 +21,8 @@ import {
   type MediaSource,
 } from './media'
 import { findActiveMetaCreatives, mediaUrlOf, pageTokensOf } from './meta'
+import { findActiveNaverCreatives } from './naver'
+import { findActiveOpenaiCreatives, openaiImageUrlOf } from './openai'
 import {
   AD_CREATIVES,
   type AdCreative,
@@ -211,6 +218,35 @@ async function fillDownloadUrls(
   return filled
 }
 
+/** 찾은 소재를 모으고(1) 처리하고(2) 주소를 채운다(3) — 채널마다 찾는 법과
+ * 받을 주소를 정하는 법(prepare)만 다르다. */
+async function syncFound(
+  channel: CreativeChannel,
+  found: { ads: number; creatives: FoundCreative[] },
+  deadlineMs: number,
+  prepare: Parameters<typeof processPending>[2],
+): Promise<CreativeSyncResult> {
+  const recorded = await recordFound(found.creatives)
+  const processed = await processPending(channel, deadlineMs, prepare)
+  return {
+    ads: found.ads,
+    creatives: found.creatives.length,
+    ...recorded,
+    ...processed,
+    urlsFilled: await fillDownloadUrls(channel, deadlineMs),
+  }
+}
+
+/** 찾을 때 받아 둔 주소(sourceUrl)로 받는다 — 당근(영상은 HLS)·Google·네이버. */
+const fromSourceUrl = async () => async (creative: AdCreative) => {
+  if (!creative.sourceUrl) throw new Error('파일 주소가 없습니다')
+  return {
+    url: creative.sourceUrl,
+    lengthSec: null,
+    hls: creative.channel === 'daangn' && creative.kind === 'video',
+  }
+}
+
 /**
  * Meta 소재 동기화. deadlineMs(벽시계 시각)가 가까우면 처리를 멈추고 남은 건
  * 다음 실행에 넘긴다.
@@ -219,10 +255,9 @@ export async function syncMetaCreatives(
   accessToken: string,
   deadlineMs: number,
 ): Promise<CreativeSyncResult> {
-  const found = await findActiveMetaCreatives(accessToken)
-  const recorded = await recordFound(found.creatives)
-  const processed = await processPending(
+  return syncFound(
     'meta',
+    await findActiveMetaCreatives(accessToken),
     deadlineMs,
     async (pending) => {
       // 영상은 페이지 토큰으로만 파일 주소가 온다(meta.ts 참고).
@@ -232,13 +267,6 @@ export async function syncMetaCreatives(
       return (creative) => mediaUrlOf(creative, accessToken, pageTokens)
     },
   )
-  return {
-    ads: found.ads,
-    creatives: found.creatives.length,
-    ...recorded,
-    ...processed,
-    urlsFilled: await fillDownloadUrls('meta', deadlineMs),
-  }
 }
 
 /** 당근 소재 동기화 — 주소는 찾을 때 받아 둔 것(sourceUrl). 영상은 HLS다. */
@@ -246,25 +274,54 @@ export async function syncDaangnCreatives(
   credentials: DaangnCredentials,
   deadlineMs: number,
 ): Promise<CreativeSyncResult> {
-  const found = await findActiveDaangnCreatives(credentials)
-  const recorded = await recordFound(found.creatives)
-  const processed = await processPending(
+  return syncFound(
     'daangn',
+    await findActiveDaangnCreatives(credentials),
     deadlineMs,
-    async () => async (creative) => {
-      if (!creative.sourceUrl) throw new Error('파일 주소가 없습니다')
-      return {
-        url: creative.sourceUrl,
-        lengthSec: null,
-        hls: creative.kind === 'video',
-      }
-    },
+    fromSourceUrl,
   )
-  return {
-    ads: found.ads,
-    creatives: found.creatives.length,
-    ...recorded,
-    ...processed,
-    urlsFilled: await fillDownloadUrls('daangn', deadlineMs),
-  }
+}
+
+/** Google 소재 동기화 — 이미지 에셋만(YouTube 영상은 파일을 받을 수 없다).
+ * 주소는 찾을 때 받아 둔 원본 주소. */
+export async function syncGoogleCreatives(
+  brandId: string,
+  account: GoogleAdsAccount,
+  deadlineMs: number,
+): Promise<CreativeSyncResult> {
+  return syncFound(
+    'google',
+    await findActiveGoogleCreatives(account, await getRefreshToken(brandId)),
+    deadlineMs,
+    fromSourceUrl,
+  )
+}
+
+/** 네이버 소재 동기화 — 이미지 소재만(문구 광고는 모으지 않는다). */
+export async function syncNaverCreatives(
+  credentials: NaverCredentials,
+  deadlineMs: number,
+): Promise<CreativeSyncResult> {
+  return syncFound(
+    'naver',
+    await findActiveNaverCreatives(credentials),
+    deadlineMs,
+    fromSourceUrl,
+  )
+}
+
+/** OpenAI 소재 동기화 — 이미지 주소는 받을 때마다 광고를 물어 새로 받는다. */
+export async function syncOpenaiCreatives(
+  credentials: OpenaiCredentials,
+  deadlineMs: number,
+): Promise<CreativeSyncResult> {
+  return syncFound(
+    'openai',
+    await findActiveOpenaiCreatives(credentials),
+    deadlineMs,
+    async () => async (creative) => ({
+      url: await openaiImageUrlOf(creative, credentials),
+      lengthSec: null,
+    }),
+  )
 }

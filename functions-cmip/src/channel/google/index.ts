@@ -94,7 +94,7 @@ export async function exchangeAndSaveGoogleTokens(
     )
 }
 
-async function getRefreshToken(brandId: string): Promise<string> {
+export async function getRefreshToken(brandId: string): Promise<string> {
   const brandDoc = await db.collection('brands').doc(brandId).get()
   const refreshToken = brandDoc.data()?.googleAds?.refreshToken
   if (!refreshToken) {

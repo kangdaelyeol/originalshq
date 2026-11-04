@@ -55,6 +55,38 @@ function buildHeaders(
   return headers
 }
 
+/** GAQL 하나를 searchStream으로 돌려 행을 모두 받는다 — 지표가 아닌 조회
+ * (소재 찾기 creatives/google.ts 등)에 쓴다. */
+export async function searchGoogleAds<Row>(
+  query: string,
+  account: GoogleAdsAccount,
+  refreshToken: string,
+): Promise<Row[]> {
+  const accessToken = await getAccessToken(
+    refreshToken,
+    account.clientId,
+    account.clientSecret,
+  )
+  const cleanCustomerId = account.customerId.trim().replace(/-/g, '')
+  const response = await fetch(
+    `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}/customers/${cleanCustomerId}/googleAds:searchStream`,
+    {
+      method: 'POST',
+      headers: buildHeaders(
+        accessToken,
+        account.developerToken,
+        account.loginCustomerId,
+      ),
+      body: JSON.stringify({ query }),
+    },
+  )
+  if (!response.ok) {
+    throw new Error(`Google Ads API 호출 실패: ${await response.text()}`)
+  }
+  const chunks = (await response.json()) as Array<{ results?: Row[] }>
+  return chunks.flatMap((chunk) => chunk.results ?? [])
+}
+
 /** 캠페인 단위 행 — GAQL `FROM campaign` 쿼리(일별 지표) +
  * `FROM campaign`(frequency 전용, segments.date 없이 조회 기간 전체 평균 하나)
  * 두 쿼리를 병렬 호출해 합친다(예전 getGoogleInsight 본문 그대로, 반환

@@ -441,8 +441,9 @@ export function CreativePicker({
 
       {creatives.length === 0 ? (
         <p className="ad-results__note">
-          이 대상의 소재가 없습니다. Meta·당근 소재는 하루 여섯 번 자동으로
-          가져오고, Google·네이버·OpenAI 소재는 직접 올려 주세요.
+          이 대상의 소재가 없습니다. 매체의 이미지·영상 소재는 하루 여섯 번
+          자동으로 가져옵니다 — 매체가 파일을 주지 않는 Google YouTube 영상과
+          문구뿐인 검색 광고는 직접 올려 주세요.
         </p>
       ) : (
         <ul className="ad-creatives__grid">

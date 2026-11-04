@@ -93,6 +93,36 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     recordingSince: '2026-11-04T09:00:00+09:00',
   },
   {
+    id: 'google-creatives',
+    label: 'Google 소재',
+    description:
+      '집행 중인 광고에 붙은 이미지 에셋을 찾아 원본과 분석용 프레임을 Storage에 모읍니다. YouTube 영상은 매체가 파일을 주지 않아 모으지 않습니다.',
+    codebase: 'cmip',
+    functionName: 'syncGoogleCreativesScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'naver-creatives',
+    label: '네이버 소재',
+    description:
+      '집행 중인 광고그룹의 이미지 소재(쇼핑 상품·콘텐츠·브랜드검색 광고, 이미지 확장소재)를 찾아 원본과 분석용 프레임을 Storage에 모읍니다. 문구뿐인 광고는 모으지 않습니다.',
+    codebase: 'cmip',
+    functionName: 'syncNaverCreativesScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
+    id: 'openai-creatives',
+    label: 'OpenAI 소재',
+    description:
+      '집행 중인 ChatGPT 광고(채팅 카드)의 이미지를 찾아 원본과 분석용 프레임을 Storage에 모읍니다.',
+    codebase: 'cmip',
+    functionName: 'syncOpenaiCreativesScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-04T17:00:00+09:00',
+  },
+  {
     id: 'google-insights',
     label: 'Google Ads 인사이트',
     description: '최근 14일 캠페인·광고그룹 성과를 다시 읽어 저장합니다.',
