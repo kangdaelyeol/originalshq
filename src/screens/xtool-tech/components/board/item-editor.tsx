@@ -1,14 +1,6 @@
 import { Check, Lock, MapPin, Save, Search, X } from 'lucide-react'
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
-import {
-  searchAddress,
-  type AddressResult,
-  type TechBoardKey,
-  type TechBoardMeta,
-  type TechColumn,
-  type TechItemDoc,
-  type TechMondayUser,
-} from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc, TechMondayUser } from '../../data/tech-boards'
 import { useMondayUsers } from '../../data/tech-boards-store'
 import { useTechMembers } from '../../data/tech-members'
 import { createItem, editItem, type CellEdit } from '../../data/tech-outbox'
@@ -29,14 +21,13 @@ import {
   type LocationState,
 } from '../../data/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
-import { addressErrorText } from '../../lib/error-text'
-import { isComposing } from '../../lib/ime'
 import { useWaterLayout } from '../../water-layout/load'
 import { Button } from '../layout-parts'
 import { DrawerShell } from './drawer-shell'
 import { FileField } from './item-files'
 import { RelationPicker } from './relation-picker'
 import { SubitemsEditor } from './subitems-editor'
+import { useAddressSearch } from './use-address-search'
 
 // 편집 칸에서 아예 안 보이는 타입 — 버튼·item id·하위 아이템 칸 등 값이 아닌 것.
 const HIDDEN_TYPES = new Set(['button', 'item_id', 'subtasks', 'last_updated', 'creation_log', 'auto_number'])
@@ -490,29 +481,14 @@ export function ChipPicker({ id, options, selected, onChange, searchable, empty 
   )
 }
 
-/** 결과 목록에서 짚은 줄 — 없으면 -1. 키보드로 옮겼으면 그 줄이 보이게 굴린다 */
-const NO_ADDRESS_POINTER = { index: -1, keyboard: false }
-
 /** 주소 칸 — 검색해서 고르면 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다).
  * 상세 주소(동·호수 등)는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다.
  * 결과는 입력 칸에서 ↑↓(끝에서 돈다)로 짚고 엔터로 넣는다(combobox) — Esc는 목록만 닫는다(편집 판·Monday
- * 팝오버는 그대로). 늦게 온 옛 검색은 버리고, 함수가 보낸 오류 문구는 그대로 보인다(물 주소 칸과 같은 기능). */
+ * 팝오버는 그대로). 늦게 온 옛 검색은 버리고, 함수가 보낸 오류 문구는 그대로 보인다. 검색·고르기는 물 주소
+ * 칸과 같이 쓴다(useAddressSearch). */
 export function LocationInput({ id, value, onChange }: { id: string; value: LocationState; onChange: (value: LocationState) => void }) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<AddressResult[] | null>(null)
-  /** 결과를 찾은 말 — 빈 결과 안내에 쓴다 */
-  const [searched, setSearched] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [pointer, setPointer] = useState(NO_ADDRESS_POINTER)
-  /** 초점이 주소 칸 안에 있는지 — 있을 때만 Esc를 목록이 가져간다(밖에 있으면 편집 판·팝오버가 닫힌다) */
-  const [focusIn, setFocusIn] = useState(false)
-  /** 나중에 보낸 검색만 받는다(앞의 것이 늦게 와도 덮지 않게) */
-  const request = useRef(0)
-  const hasCoords = Boolean(value.lat && value.lng)
-  const listId = `${id}-results`
-  const options = results && results.length > 0 ? results : null
-  const active = options ? pointer.index : -1
+  const address = useAddressSearch({ id, value, onChange })
+  const { query, results, searched, searching, error, pointer, active, options, listId, hasCoords } = address
 
   // 키보드로 옮긴 줄이 목록 밖이면 보이게 굴린다
   useEffect(() => {
@@ -521,66 +497,14 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
     }
   }, [pointer, listId])
 
-  const closeResults = () => {
-    setResults(null)
-    setPointer(NO_ADDRESS_POINTER)
-  }
-
-  const search = async () => {
-    const q = query.trim()
-    if (q.length < 2) {
-      setError('두 글자 이상 적어 주세요.')
-      return
-    }
-    const n = ++request.current
-    setSearching(true)
-    setError(null)
-    try {
-      const list = await searchAddress(q)
-      if (n !== request.current) return
-      setResults(list)
-      setSearched(q)
-      setPointer(NO_ADDRESS_POINTER)
-    } catch (e) {
-      if (n !== request.current) return
-      closeResults()
-      setError(addressErrorText(e))
-    } finally {
-      if (n === request.current) setSearching(false)
-    }
-  }
-
-  const pick = (r: AddressResult) => {
-    // 주소를 바꿔도 적어 둔 상세 주소는 남긴다.
-    onChange({ address: r.address, detail: value.detail, lat: r.lat, lng: r.lng })
-    setQuery('')
-    closeResults()
-  }
-
   return (
-    <div
-      className="address-input"
-      onFocus={() => setFocusIn(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusIn(false)
-      }}
-      onKeyDown={(e) => {
-        // 목록만 닫는다 — 잡기 단계로 듣는 편집 판(DrawerShell top)·Monday 팝오버는 [data-popover-open]을 보고
-        // 양보하고, 거품 단계로 듣는 아래 판(편집 판 밑의 상세 판 — 이 목록이 자기 안에 없어 양보하지 않는다)까지
-        // 가서 같이 닫히지 않게 여기서 막는다.
-        if (e.key === 'Escape' && results) {
-          e.preventDefault()
-          e.stopPropagation()
-          closeResults()
-        }
-      }}
-    >
+    <div className="address-input" {...address.fieldProps}>
       {value.address ? (
         <p className="address-input__current">
           <MapPin size={14} aria-hidden />
           <span>{value.address}</span>
           {!hasCoords && <small>(좌표 없음 — 다시 검색해 고르면 저장할 수 있어요)</small>}
-          <button type="button" className="text-link" onClick={() => onChange({ address: '', detail: '', lat: '', lng: '' })}>
+          <button type="button" className="text-link" onClick={address.clear}>
             지우기
           </button>
         </p>
@@ -594,7 +518,7 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           aria-label="상세 주소"
           value={value.detail}
           disabled={!hasCoords}
-          onChange={(e) => onChange({ ...value, detail: e.target.value })}
+          onChange={(e) => address.setDetail(e.target.value)}
         />
       )}
       <div className="address-input__search">
@@ -608,35 +532,18 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           aria-expanded={Boolean(options)}
           aria-controls={options ? listId : undefined}
           aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            // 편집 폼 전체가 저장되지 않게 — 엔터는 짚은 주소 넣기, 짚은 줄이 없으면 주소 검색.
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              // 한글 조합 중 엔터는 확정된 뒤 한 번 더 오니 그때 한다.
-              if (isComposing(e)) return
-              const r = options && active >= 0 ? options[active] : undefined
-              if (r) pick(r)
-              else void search()
-              return
-            }
-            if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && options) {
-              e.preventDefault()
-              const n = options.length
-              const next = e.key === 'ArrowDown' ? (active + 1) % n : active <= 0 ? n - 1 : active - 1
-              setPointer({ index: next, keyboard: true })
-            }
-          }}
+          onChange={(e) => address.setQuery(e.target.value)}
+          onKeyDown={address.onInputKeyDown}
         />
-        <Button variant="ghost" icon={Search} onClick={() => void search()} disabled={searching}>
+        <Button variant="ghost" icon={Search} onClick={() => void address.run()} disabled={searching}>
           {searching ? '찾는 중…' : '검색'}
         </Button>
       </div>
       {error && (
         <p className="editor__error" role="alert">
           {error}
-          {query.trim().length >= 2 && (
-            <button type="button" className="text-link address-input__retry" onClick={() => void search()}>
+          {address.canRetry && (
+            <button type="button" className="text-link address-input__retry" onClick={() => void address.run()}>
               다시 찾기
             </button>
           )}
@@ -644,7 +551,7 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
       )}
       {/* 펼쳐 있고 초점이 칸 안이면 data-popover-open — 편집 판·Monday 팝오버가 Esc를 이 목록에 양보한다 */}
       {results && !options && (
-        <div className="address-input__results" role="status" data-popover-open={focusIn ? '' : undefined}>
+        <div className="address-input__results" role="status" data-popover-open={address.holdsEscape ? '' : undefined}>
           <p className="address-input__none">
             <strong>‘{searched}’에 맞는 주소가 없어요</strong>
             <span>도로명·지번 주소나 건물 이름으로 다시 찾아 보세요.</span>
@@ -657,8 +564,8 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           className="address-input__results"
           role="listbox"
           aria-label={`검색 결과 ${options.length}개`}
-          data-popover-open={focusIn ? '' : undefined}
-          onMouseLeave={() => setPointer(NO_ADDRESS_POINTER)}
+          data-popover-open={address.holdsEscape ? '' : undefined}
+          onMouseLeave={() => address.point(-1)}
         >
           {options.map((r, i) => (
             <li key={`${r.lat},${r.lng},${r.label}`} role="presentation">
@@ -672,9 +579,9 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
                 // 입력 칸 초점을 그대로 둔다(↑↓·엔터를 계속 받게)
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseMove={() => {
-                  if (i !== active) setPointer({ index: i, keyboard: false })
+                  if (i !== active) address.point(i)
                 }}
-                onClick={() => pick(r)}
+                onClick={() => address.pick(r)}
               >
                 <strong>{r.label}</strong>
                 {r.label !== r.address && <span>{r.address}</span>}

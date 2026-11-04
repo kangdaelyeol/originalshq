@@ -1,9 +1,8 @@
 import { AlertCircle, MapPin, Search } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
-import { searchAddress, type AddressResult } from '../../../data/tech-boards'
+import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
+import type { AddressResult } from '../../../data/tech-boards'
 import type { LocationState } from '../../../data/tech-edit'
-import { addressErrorText } from '../../../lib/error-text'
-import { isComposing } from '../../../lib/ime'
+import { useAddressSearch, type AddressPointer } from '../../board/use-address-search'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterButton, WaterTextField } from '@/ohq-ui/water/controls'
 import { useReducedMotion, useWaterIndicator } from '@/ohq-ui/water/hooks'
@@ -23,119 +22,23 @@ interface WaterLocationInputProps {
  * 써진다). 상세 주소는 고른 주소 뒤에 붙어 "{주소}, {상세주소}"로 저장된다 — 기존 LocationInput과 같은 동작.
  * 입력·단추는 기본 부품(WaterTextField · WaterButton glass) — 이름은 편집 칸이 바깥에 달아 칸 이름은 읽기용만
  * 둔다. 결과는 유리 목록이 살짝 내려앉으며 나타나고(표시 알약 스프링) 줄은 D7 차례(21ms 간격 55ms)로 진해진다.
- * ↑↓로 고르고 엔터로 넣는다(입력 칸에서 — combobox), Esc는 목록만 걷는다(서랍은 그대로).
+ * ↑↓로 고르고 엔터로 넣는다(입력 칸에서 — combobox), Esc는 목록만 걷는다(서랍은 그대로). 검색·고르기는
+ * 대시보드 주소 칸과 같이 쓴다(useAddressSearch) — 물은 걷히는 움직임(fade)과 짚은 시각(waterClock)만 더한다.
  */
-export function WaterLocationInput({ id, value, onChange, search = searchAddress }: WaterLocationInputProps) {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<AddressResult[] | null>(null)
-  /** 결과를 찾은 말 — 빈 결과 문구에 쓴다 */
-  const [searched, setSearched] = useState('')
-  const [searching, setSearching] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  /** ↑↓·마우스로 짚은 줄(없으면 -1)과 짚은 시각·방법 — 키보드면 그 줄이 보이게 굴린다 */
-  const [pointer, setPointer] = useState<Pointer>(NO_POINTER)
-  const active = pointer.index
-  /** 걷히는 중 — 사라지는 움직임(15ms 뒤 30ms)이 끝나면 목록을 내린다 */
-  const [closing, setClosing] = useState(false)
-  /** 초점이 주소 칸 안에 있는지 — 있을 때만 Esc를 목록이 가져간다(밖에 있으면 서랍이 닫힌다) */
-  const [focusIn, setFocusIn] = useState(false)
-  /** 나중에 보낸 검색만 받는다(앞의 것이 늦게 와도 덮지 않게) */
-  const request = useRef(0)
+export function WaterLocationInput({ id, value, onChange, search }: WaterLocationInputProps) {
   const reduced = useReducedMotion()
-  const listId = `${id}-results`
-  const hasCoords = Boolean(value.lat && value.lng)
-  const open = results !== null && !closing
-  const options = open && results.length > 0 ? results : null
-
-  const closed = () => {
-    setResults(null)
-    setClosing(false)
-    setPointer(NO_POINTER)
-  }
-  // 동작 줄이기면 바로 내린다(사라지는 움직임이 없다)
-  const close = () => {
-    if (results === null) return
-    if (reduced) closed()
-    else setClosing(true)
-  }
-
-  const run = async () => {
-    const q = query.trim()
-    if (q.length < 2) {
-      setError('두 글자 이상 적어 주세요.')
-      return
-    }
-    const n = ++request.current
-    setSearching(true)
-    setError(null)
-    try {
-      const list = await search(q)
-      if (n !== request.current) return
-      setResults(list)
-      setSearched(q)
-      setPointer(NO_POINTER)
-      setClosing(false)
-    } catch (e) {
-      if (n !== request.current) return
-      setResults(null)
-      setClosing(false)
-      setError(addressErrorText(e))
-    } finally {
-      if (n === request.current) setSearching(false)
-    }
-  }
-
-  const pick = (r: AddressResult) => {
-    // 주소를 바꿔도 적어 둔 상세 주소는 남긴다.
-    onChange({ address: r.address, detail: value.detail, lat: r.lat, lng: r.lng })
-    setQuery('')
-    close()
-  }
-
-  const point = (index: number, keyboard: boolean) => setPointer({ index, at: waterClock(), keyboard })
-
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      // 편집 폼 전체가 저장되지 않게 — 엔터는 짚은 주소 넣기, 없으면 주소 검색.
-      e.preventDefault()
-      // 한글 조합 중 엔터는 확정된 뒤 한 번 더 오니 그때 한다.
-      if (isComposing(e)) return
-      const r = options && active >= 0 ? options[active] : undefined
-      if (r) pick(r)
-      else void run()
-      return
-    }
-    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && options) {
-      e.preventDefault()
-      const n = options.length
-      point(e.key === 'ArrowDown' ? (active + 1) % n : active <= 0 ? n - 1 : active - 1, true)
-    }
-  }
+  // 동작 줄이기면 바로 내린다(사라지는 움직임이 없다). 걷히는 움직임은 15ms 뒤 30ms
+  const address = useAddressSearch({ id, value, onChange, search, fade: !reduced, clock: waterClock })
+  const { query, results, searched, searching, error, pointer, active, options, closing, listId, hasCoords } = address
 
   return (
-    <div
-      className="water-address"
-      onFocus={() => setFocusIn(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusIn(false)
-      }}
-      onKeyDown={(e) => {
-        // 목록만 걷는다 — 잡기 단계로 듣는 서랍(top)은 [data-popover-open]을 보고 양보하고, 거품 단계로 듣는
-        // 아래 서랍(편집 서랍 밑의 상세 서랍 — 이 목록이 자기 안에 없어 양보하지 않는다)까지 가서 같이 닫히지
-        // 않게 여기서 막는다
-        if (e.key === 'Escape' && open) {
-          e.preventDefault()
-          e.stopPropagation()
-          close()
-        }
-      }}
-    >
+    <div className="water-address" {...address.fieldProps}>
       {value.address ? (
         <p className="water-address__current">
           <MapPin size={14} aria-hidden />
           <span>{value.address}</span>
           {!hasCoords && <small>(좌표 없음 — 다시 검색해 고르면 저장할 수 있어요)</small>}
-          <WaterTextLink onClick={() => onChange({ address: '', detail: '', lat: '', lng: '' })}>지우기</WaterTextLink>
+          <WaterTextLink onClick={address.clear}>지우기</WaterTextLink>
         </p>
       ) : (
         <p className="water-address__current water-address__current--empty">주소 없음 — 아래에서 검색해 골라 주세요</p>
@@ -147,7 +50,7 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
           placeholder="상세 주소(동·호수, 층 등)"
           value={value.detail}
           disabled={!hasCoords}
-          onChange={(e) => onChange({ ...value, detail: e.target.value })}
+          onChange={(e) => address.setDetail(e.target.value)}
         />
       )}
       <div className="water-address__search">
@@ -161,11 +64,11 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
           aria-autocomplete="none"
           aria-expanded={Boolean(options)}
           aria-controls={options ? listId : undefined}
-          aria-activedescendant={options && active >= 0 ? `${listId}-${active}` : undefined}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
+          aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+          onChange={(e) => address.setQuery(e.target.value)}
+          onKeyDown={address.onInputKeyDown}
         />
-        <WaterButton variant="glass" icon={Search} onClick={() => void run()} loading={searching}>
+        <WaterButton variant="glass" icon={Search} onClick={() => void address.run()} loading={searching}>
           {searching ? '찾는 중…' : '검색'}
         </WaterButton>
       </div>
@@ -173,7 +76,7 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
         <p className="water-address__error" role="alert">
           <AlertCircle size={14} aria-hidden />
           <span>{error}</span>
-          {query.trim().length >= 2 && <WaterTextLink onClick={() => void run()}>다시 찾기</WaterTextLink>}
+          {address.canRetry && <WaterTextLink onClick={() => void address.run()}>다시 찾기</WaterTextLink>}
         </p>
       )}
       {results && (
@@ -183,30 +86,22 @@ export function WaterLocationInput({ id, value, onChange, search = searchAddress
           searched={searched}
           pointer={pointer}
           closing={closing}
-          holdsEscape={focusIn}
-          onPick={pick}
-          onPoint={(i) => point(i, false)}
-          onClosed={closed}
+          holdsEscape={address.holdsEscape}
+          onPick={address.pick}
+          onPoint={(i) => address.point(i)}
+          onClosed={address.closed}
         />
       )}
     </div>
   )
 }
 
-interface Pointer {
-  index: number
-  /** 짚은 시각(waterClock) — 강조 알약이 그때부터 스프링으로 간다 */
-  at: number
-  keyboard: boolean
-}
-
-const NO_POINTER: Pointer = { index: -1, at: 0, keyboard: false }
-
 interface AddressResultsProps {
   listId: string
   results: AddressResult[]
   searched: string
-  pointer: Pointer
+  /** 짚은 줄 — 걷히는 중에도 그대로 둔다(사라지는 동안 강조가 남게). at부터 강조 알약이 스프링으로 간다 */
+  pointer: AddressPointer
   closing: boolean
   /** 초점이 주소 칸 안 — 이때만 data-popover-open을 달아 서랍이 Esc를 양보한다 */
   holdsEscape: boolean
