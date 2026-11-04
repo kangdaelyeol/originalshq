@@ -1,5 +1,5 @@
 import { ArrowDownUp, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Plus, Search, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
@@ -22,13 +22,16 @@ interface MondayBoardProps {
   boardKey: TechBoardKey
   meta: TechBoardMeta
   items: TechItemDoc[]
+  /** 보기 탭 아래·도구 줄 위에 넣을 것 — 보드 화면이 숫자 요약 줄(MondayNumbers)을 준다. */
+  summary?: ReactNode
 }
 
 /**
  * Monday 표 레이아웃(보드 화면) — 위 도구 줄(새 항목·검색·사람·정렬·모두 접기)과 보드 한 장
- * 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다.
+ * 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다. summary가 있으면 보기 탭과
+ * 도구 줄 사이에 넣는다.
  */
-export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
+export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps) {
   const boardRef = useRef<HTMLElement>(null)
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
@@ -69,6 +72,7 @@ export function MondayBoard({ boardKey, meta, items }: MondayBoardProps) {
       <nav className="mon-board__views" aria-label="보기">
         <span className="mon-tab is-on">메인 테이블</span>
       </nav>
+      {summary}
       <div className="mon-toolbar">
         <button
           type="button"

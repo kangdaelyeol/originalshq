@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechColumn } from '../../data/tech-boards'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
@@ -105,7 +105,16 @@ function SkeletonTable({
  * 보드 화면을 불러오는 중 — 머리말(보드 이름은 이미 안다)과 보기 탭은 그대로, 도구 줄과 표는
  * 블록으로. 보드 정보(칸)가 먼저 와 있으면 그 칸 종류·너비(내가 줄인 너비까지)대로 그린다.
  */
-export function MondayBoardSkeleton({ boardKey, meta }: { boardKey: TechBoardKey; meta: TechBoardMeta | null }) {
+export function MondayBoardSkeleton({
+  boardKey,
+  meta,
+  summary,
+}: {
+  boardKey: TechBoardKey
+  meta: TechBoardMeta | null
+  /** 보기 탭 아래 요약 줄 자리(MondayBoard summary와 같은 자리) — 다 불러온 순간 표가 밀리지 않게 */
+  summary?: ReactNode
+}) {
   const [widths] = useColumnWidths(boardKey)
   const columns = meta
     ? visibleColumns(meta).map((c) => ({ type: c.type, width: widths[c.id] ?? defaultWidth(c) }))
@@ -116,6 +125,7 @@ export function MondayBoardSkeleton({ boardKey, meta }: { boardKey: TechBoardKey
       <nav className="mon-board__views" aria-label="보기">
         <span className="mon-tab is-on">메인 테이블</span>
       </nav>
+      {summary}
       <div className="mon-toolbar" aria-hidden>
         <Block className="mon-skel--button" />
         <Block className="mon-skel--tool" />

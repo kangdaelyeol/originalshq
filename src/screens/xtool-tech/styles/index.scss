@@ -14,6 +14,8 @@
   // 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세·수정 패널) — 썸네일·목록(boards) 뒤에
   @include meta.load-css('item-files');
   @include meta.load-css('monday');
+  // Monday 표 보드 위 요약 줄(숫자 칸·기간 탭) — 도구 줄 탭(monday .mon-tabs) 뒤에
+  @include meta.load-css('monday-numbers');
   // Monday 표 파일 모달의 끌어다 놓기·진행 — 모달(monday) 뒤에
   @include meta.load-css('monday-files');
   @include meta.load-css('login');

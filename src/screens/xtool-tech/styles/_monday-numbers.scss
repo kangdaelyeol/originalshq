@@ -1,0 +1,159 @@
+// Monday 표 보드 위 요약 줄(MondayNumbers) — 대시보드 숫자 카드와 같은 숫자를 Monday 숫자 위젯처럼 작은 칸
+// (이름 + 큰 숫자)으로. 판의 보기 탭 아래·도구 줄 위에 들어간다. 색은 모두 --mon-* 변수(남색·라이트·블랙 —
+// ohq-ui _monday-palettes.scss), 이름 앞 점은 Monday 라벨 색(대시보드 카드 아이콘의 색조를 옮긴 것).
+
+.mon-numbers {
+  flex: none;
+  padding: 12px 24px 0;
+}
+
+.mon-numbers__head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  height: 32px;
+}
+
+// 접고 펴기 — 그룹 제목(.mon-group__toggle)처럼 갈매기 + 이름
+.mon-numbers__toggle {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font-size: 15px;
+  font-weight: 500;
+
+  svg {
+    color: var(--mon-text-2);
+    transition: transform 0.15s;
+  }
+
+  &[aria-expanded='false'] svg {
+    transform: rotate(-90deg);
+  }
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+}
+
+// 접었을 때 — 숫자만 한 줄로(넘치면 말줄임)
+.mon-numbers__brief {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--mon-text-2);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  strong {
+    color: var(--mon-text);
+  }
+
+  span + span::before {
+    content: '·';
+    margin: 0 8px;
+    color: var(--mon-text-4);
+  }
+}
+
+// 기간 — 도구 줄 탭(.mon-tabs)과 같은 밑줄 탭, 머리 줄 오른쪽 끝에
+.mon-numbers__period.mon-tabs {
+  align-self: auto;
+  margin: 0 0 0 auto;
+}
+
+.mon-numbers__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 숫자 칸 — 표 칸과 같은 판 색에 선. 위에 이름, 아래 큰 숫자, 설명이 있으면 그 밑에
+.mon-number {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 16px 14px;
+  border: 1px solid var(--mon-line);
+  border-radius: 8px;
+  background: var(--mon-cell);
+}
+
+.mon-number__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--mon-text-2);
+  font-size: 13px;
+  white-space: nowrap;
+
+  &::before {
+    content: '';
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--tint);
+  }
+}
+
+.mon-number__value {
+  color: var(--mon-text);
+  font-size: 28px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-number__caption {
+  overflow: hidden;
+  color: var(--mon-text-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+// 대시보드 카드 색조 → Monday 라벨 색(monday-colors.ts의 그룹 색과 같은 값)
+.mon-number.is-blue {
+  --tint: #579bfc;
+}
+
+.mon-number.is-violet {
+  --tint: #a25ddc;
+}
+
+.mon-number.is-green {
+  --tint: #00c875;
+}
+
+.mon-number.is-amber {
+  --tint: #fdab3d;
+}
+
+// 좁은 화면 — 두 칸씩
+@media (max-width: 900px) {
+  .mon-numbers__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+// 불러오는 중(MondayNumbers loading) — 진짜 칸과 같은 글자를 투명하게 둔 빈 블록(스켈레톤 빛줄기 .mon-skel)
+.mon-numbers__ghost {
+  display: inline-block;
+  height: auto;
+  color: transparent;
+}

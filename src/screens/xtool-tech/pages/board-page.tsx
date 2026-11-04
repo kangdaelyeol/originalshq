@@ -4,10 +4,13 @@ import { Navigate, useParams } from 'react-router-dom'
 import { BoardEditContext, type BoardEditState } from '../components/board/board-edit-context'
 import { ItemEditor } from '../components/board/item-editor'
 import { MondayBoard } from '../components/monday/monday-board'
+import { MondayNumbers } from '../components/monday/monday-numbers'
 import { MondayBoardSkeleton } from '../components/monday/monday-skeleton'
 import { GlassCard } from '../components/layout-parts'
+import { usePeriod } from '../context/period-context'
 import { BOARD_TABS, type TechBoardDoc } from '../data/tech-boards'
 import { useTechBoard } from '../data/tech-boards-store'
+import { koreaToday } from '../lib/dates'
 import { XT_BASE } from '../paths'
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { AsRequestsBoard } from './boards/as-requests-board'
@@ -15,6 +18,7 @@ import { FieldServiceBoard } from './boards/field-service-board'
 import { InquiryBoard } from './boards/inquiry-board'
 import { PartsBoard } from './boards/parts-board'
 import { RecordsBoard } from './boards/records-board'
+import { boardDef } from './boards/registry'
 import { RentalsBoard } from './boards/rentals-board'
 import { SerialsBoard } from './boards/serials-board'
 import { RepairBoard } from './boards/repair-board'
@@ -31,6 +35,7 @@ export function BoardPage() {
 function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['key']; label: string }) {
   const state = useTechBoard(tabKey)
   const { theme } = useAppearance()
+  const { period } = usePeriod()
   // 편집 패널 — itemId가 null이면 새로 만들기, editing 자체가 null이면 닫힘.
   const [editing, setEditing] = useState<{ itemId: string | null } | null>(null)
   const openEditor = useCallback((itemId: string | null) => setEditing({ itemId }), [])
@@ -64,7 +69,15 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
   }
   if (!state.board || !editContext) {
     // Monday 표는 표 모양 그대로 블록을 그려 둔다(스켈레톤).
-    if (theme === 'monday') return <MondayBoardSkeleton boardKey={tabKey} meta={state.meta} />
+    if (theme === 'monday') {
+      return (
+        <MondayBoardSkeleton
+          boardKey={tabKey}
+          meta={state.meta}
+          summary={<MondayNumbers boardKey={tabKey} cards={[]} loading />}
+        />
+      )
+    }
     return (
       <GlassCard className="empty">
         <LoaderCircle size={22} className="is-spinning" aria-hidden />
@@ -79,8 +92,18 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
     <ItemEditor open={editing !== null} boardKey={tabKey} meta={editContext.meta} item={editingItem} onClose={closeEditor} />
   )
   // 설정 > 레이아웃 "Monday 표" — 보드 칸·그룹을 Monday 그대로 늘어놓고 칸을 눌러 바로 고친다
-  // (편집 패널 없이 — 파일은 파일 칸 모달, 업데이트는 말풍선 패널).
-  if (theme === 'monday') return <MondayBoard boardKey={tabKey} meta={editContext.meta} items={state.items ?? []} />
+  // (편집 패널 없이 — 파일은 파일 칸 모달, 업데이트는 말풍선 패널). 숫자 카드는 대시보드와 같은 정의를
+  // 보기 탭 아래 요약 줄로 — 기간도 그 줄에서 고른다.
+  if (theme === 'monday') {
+    return (
+      <MondayBoard
+        boardKey={tabKey}
+        meta={editContext.meta}
+        items={state.items ?? []}
+        summary={<MondayNumbers boardKey={tabKey} cards={boardDef(tabKey).kpis(doc, period, koreaToday())} />}
+      />
+    )
+  }
   return (
     <BoardEditContext.Provider value={editContext}>
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}
