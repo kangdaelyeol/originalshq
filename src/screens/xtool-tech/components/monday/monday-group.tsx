@@ -246,7 +246,8 @@ interface SubTableProps {
  * 하위 아이템(출장 설치 품목·AS 청구 부품) — Monday처럼 줄 아래로 들여 펼친다. 왼쪽 줄기에서
  * 줄마다 둥글게 꺾인 가지가 나오고, 맨 아래 "+ 품목명 추가"로 이름만 적어 새 줄을 만든다(바로
  * 보이고 뒤에서 만든다). 칸·이름은 항목 줄처럼 눌러서 그 자리에서 고치고(대시보드 편집 패널과
- * 같은 칸만), 이름 칸 오른쪽 "⋯"에서 이름 바꾸기·삭제.
+ * 같은 칸만), 이름 칸 오른쪽 "⋯"에서 이름 바꾸기·삭제. 부품 연결 칸이 있는 보드(AS)는 대시보드처럼 이름을
+ * 손으로 고치지 않는다 — 부품을 고르면 이름이 따라간다("⋯"에는 삭제만).
  */
 function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onCommitCell, onCommitName, onRemove }: SubTableProps) {
   const subitems = item.subitems ?? []
@@ -254,8 +255,9 @@ function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onComm
   const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')}`
   // 고칠 수 있는 칸 — 대시보드 편집 패널과 같은 규칙(품명은 서버가 이름·수량으로 맞춘다)
   const editable = new Set(editableSubColumns(columns).map((c) => c.id))
-  // 연결 칸(AS 부품명)은 줄마다 하나만 잇는다.
+  // 연결 칸(AS 부품명)은 줄마다 하나만 잇는다. 이 칸이 있으면 이름은 부품을 따라가서 손으로 고치지 않는다.
   const relationId = relationColumn(columns)?.id
+  const commitName = relationId ? undefined : onCommitName
   // "⋯" 메뉴를 연 줄 · 지울지 묻는 줄 — anchor는 그 줄의 "⋯" 단추(그만두면 포커스를 돌려준다)
   const [menu, setMenu] = useState<{ sub: TechSubitemDoc; anchor: HTMLElement } | null>(null)
   const [confirming, setConfirming] = useState<{ sub: TechSubitemDoc; anchor: HTMLElement } | null>(null)
@@ -285,10 +287,10 @@ function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onComm
           editing={editing}
           setEditing={setEditing}
           onCommitCell={onCommitCell}
-          onCommitName={onCommitName}
+          onCommitName={commitName}
           menuOpen={menu?.sub.id === sub.id}
           onMenu={
-            onCommitName || onRemove
+            commitName || onRemove
               ? (anchor) => setMenu((m) => (m?.sub.id === sub.id ? null : { sub, anchor }))
               : undefined
           }
@@ -302,7 +304,7 @@ function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onComm
       {menu && (
         <MonPopover anchor={menu.anchor} width={200} onClose={() => setMenu(null)}>
           <ul className="mon-menu" aria-label={`${menu.sub.name} 메뉴`}>
-            {onCommitName && (
+            {commitName && (
               <li>
                 <button
                   type="button"
@@ -401,7 +403,16 @@ function SubRow({ sub, columns, editable, relationId, nameTitle, editing, setEdi
             {sub.name}
           </button>
         ) : (
-          <span className="mon-text mon-sub__label" title={draft ? `${sub.name} — 만드는 중이에요` : sub.name}>
+          <span
+            className="mon-text mon-sub__label"
+            title={
+              draft
+                ? `${sub.name} — 만드는 중이에요`
+                : relationId
+                  ? `${sub.name} — 부품을 고르면 이름이 따라가요`
+                  : sub.name
+            }
+          >
             {sub.name}
           </span>
         )}
@@ -412,7 +423,7 @@ function SubRow({ sub, columns, editable, relationId, nameTitle, editing, setEdi
             aria-label={`${sub.name} 메뉴`}
             aria-haspopup="dialog"
             aria-expanded={menuOpen}
-            title="이름 바꾸기 · 삭제"
+            title={onCommitName ? '이름 바꾸기 · 삭제' : '삭제'}
             onClick={(e) => onMenu(e.currentTarget)}
           >
             <Ellipsis size={16} aria-hidden />
