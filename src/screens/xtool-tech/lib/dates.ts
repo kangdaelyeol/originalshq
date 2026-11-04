@@ -8,6 +8,12 @@ const KST_OFFSET_MS = 9 * 60 * 60 * 1000
 /** 오늘(한국 날짜) */
 export const koreaToday = (): string => new Date(Date.now() + KST_OFFSET_MS).toISOString().slice(0, 10)
 
+/** 한국 지금 시각 — 날짜(YYYY-MM-DD)와 시각(HH:MM). 편집 판(새 항목 접수일·날짜 칸 시각 켜기)이 쓴다 */
+export const koreaNow = (): { date: string; time: string } => {
+  const iso = new Date(Date.now() + KST_OFFSET_MS).toISOString()
+  return { date: iso.slice(0, 10), time: iso.slice(11, 16) }
+}
+
 /** date에서 days일 더한 날(음수면 뺀 날). */
 export const addDays = (date: string, days: number): string =>
   new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS).toISOString().slice(0, 10)
