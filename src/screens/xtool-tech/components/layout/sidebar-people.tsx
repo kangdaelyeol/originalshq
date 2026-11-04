@@ -3,11 +3,8 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import { useCurrentMember } from '../../context/member-context'
-import { usePhotoOf, useProfilePhoto } from '../../data/tech-profiles'
-import { useMyIdentity, useWorkPeople, useWorkSources } from '../../data/use-my-work'
+import { useSidebarPeople } from '../../data/use-my-work'
 import { cx } from '@/ohq-ui/lib/cx'
-import { koreaToday } from '../../lib/dates'
 import { personColor } from '../../lib/person-color'
 import type { NavItem } from '../../nav'
 import { MY_WORK_PATH, myWorkPath } from '../../paths'
@@ -82,25 +79,9 @@ export function SidebarPeopleItem({ item, collapsed }: { item: NavItem; collapse
   )
 }
 
-/** 직원 목록 — 펼쳤을 때만 그려서, 닫혀 있으면 보드를 구독하지 않는다. 나는 맨 위. */
+/** 직원 목록 — 펼쳤을 때만 그려서, 닫혀 있으면 보드를 구독하지 않는다. 나는 맨 위(물 사이드바와 같은 목록 — useSidebarPeople). */
 function PeopleList() {
-  const { pathname, search } = useLocation()
-  const me = useMyIdentity()
-  const member = useCurrentMember()
-  // 기술팀이 아닌 관리자는 개인 보드("나")가 없다 — 직원 목록만.
-  const isTech = member?.teams.tech === true
-  // 내 사진은 이메일로, 다른 사람은 이름으로(담당자 동그라미와 같은 방법)
-  const myPhoto = useProfilePhoto(member?.email)
-  const photoOf = usePhotoOf()
-  const { sources, loading } = useWorkSources()
-  const today = koreaToday()
-  // /admin/xtool에서 기술팀으로 등록한 사람만
-  const people = useWorkPeople(sources, today)
-
-  const who = pathname.startsWith(MY_WORK_PATH) ? new URLSearchParams(search).get('who') : undefined
-  const viewingMe = who === null || (!!who && me.names.has(who))
-  const myOpen = people.filter((p) => me.names.has(p.name)).reduce((sum, p) => sum + p.open, 0)
-  const others = people.filter((p) => !me.names.has(p.name))
+  const { me, isTech, myPhoto, photoOf, loading, who, viewingMe, myOpen, others } = useSidebarPeople()
 
   return (
     <>

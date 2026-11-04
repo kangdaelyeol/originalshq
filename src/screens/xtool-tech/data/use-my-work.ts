@@ -1,9 +1,13 @@
 import { useMemo } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useCurrentMember } from '../context/member-context'
+import { koreaToday } from '../lib/dates'
+import { MY_WORK_PATH } from '../paths'
 import { buildWorkPeople, type MyWorkSources, type WorkPerson } from './my-work'
 import type { DocTaskRecord, FieldServiceRecord, InquiryRecord, RentalRecord, RepairRecord, TaskRecord } from './tech-boards'
 import { useTechBoard } from './tech-boards-store'
 import { useTechMembers } from './tech-members'
+import { usePhotoOf, useProfilePhoto } from './tech-profiles'
 
 export interface MyIdentity {
   /** 담당자 칸에서 나를 찾을 이름들 — 구성원 이름 */
@@ -59,4 +63,30 @@ export function useWorkPeople(sources: MyWorkSources, today: string): WorkPerson
       .map((name) => ({ name, open: openOf.get(name) ?? 0 }))
       .sort((a, b) => b.open - a.open || a.name.localeCompare(b.name, 'ko'))
   }, [sources, today, team])
+}
+
+/**
+ * 사이드바 "내 업무" 아래 직원 목록 — 대시보드·Monday 표 사이드바(SidebarPeopleItem)와 물 사이드바(WaterSidebar)가
+ * 같이 쓴다. 모양은 저마다 그리고, 누가 나오는지·건수·지금 보는 사람은 여기 하나다. 나는 맨 위(기술팀일 때만).
+ */
+export function useSidebarPeople() {
+  const { pathname, search } = useLocation()
+  const me = useMyIdentity()
+  const member = useCurrentMember()
+  // 기술팀이 아닌 관리자는 개인 보드("나")가 없다 — 직원 목록만.
+  const isTech = member?.teams.tech === true
+  // 내 사진은 이메일로, 다른 사람은 이름으로(담당자 동그라미와 같은 방법)
+  const myPhoto = useProfilePhoto(member?.email)
+  const photoOf = usePhotoOf()
+  const { sources, loading } = useWorkSources()
+  const today = koreaToday()
+  // /admin/xtool에서 기술팀으로 등록한 사람만
+  const people = useWorkPeople(sources, today)
+
+  // 지금 보는 사람 — 내 업무 화면의 ?who=(없으면 나), 다른 화면이면 아무도 아니다
+  const who = pathname.startsWith(MY_WORK_PATH) ? new URLSearchParams(search).get('who') : undefined
+  const viewingMe = who === null || (!!who && me.names.has(who))
+  const myOpen = people.filter((p) => me.names.has(p.name)).reduce((sum, p) => sum + p.open, 0)
+  const others = people.filter((p) => !me.names.has(p.name))
+  return { me, isTech, myPhoto, photoOf, loading, who, viewingMe, myOpen, others }
 }

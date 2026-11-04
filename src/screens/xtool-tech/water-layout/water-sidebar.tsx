@@ -11,10 +11,8 @@ import { useReducedMotion, useWaterIndicator, useWaterRipple } from '@/ohq-ui/wa
 import type { IndicatorPose } from '@/ohq-ui/water/indicator'
 import { round3, waterClock } from '@/ohq-ui/water/motion'
 import { pressPoint, rippleAt } from '@/ohq-ui/water/ripple'
-import { useCurrentMember } from '../context/member-context'
-import { usePhotoOf, useProfilePhoto } from '../data/tech-profiles'
-import { useMyIdentity, useWorkPeople, useWorkSources } from '../data/use-my-work'
-import { koreaToday } from '../lib/dates'
+import { useProfilePhoto } from '../data/tech-profiles'
+import { useSidebarPeople } from '../data/use-my-work'
 import { personColor } from '../lib/person-color'
 import { SIDEBAR_TOGGLE_KEY } from '../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS, type NavItem } from '../nav'
@@ -379,25 +377,9 @@ function PeopleItem({
   )
 }
 
-/** 직원 목록 — 나는 맨 위. */
+/** 직원 목록 — 나는 맨 위(대시보드 사이드바와 같은 목록 — useSidebarPeople). */
 function PeopleList({ on }: { on: boolean }) {
-  const { pathname, search } = useLocation()
-  const me = useMyIdentity()
-  const member = useCurrentMember()
-  // 기술팀이 아닌 관리자는 개인 보드("나")가 없다 — 직원 목록만.
-  const isTech = member?.teams.tech === true
-  // 내 사진은 이메일로, 다른 사람은 이름으로(담당자 동그라미와 같은 방법)
-  const myPhoto = useProfilePhoto(member?.email)
-  const photoOf = usePhotoOf()
-  const { sources, loading } = useWorkSources()
-  const today = koreaToday()
-  // /admin/xtool에서 기술팀으로 등록한 사람만
-  const people = useWorkPeople(sources, today)
-
-  const who = pathname.startsWith(MY_WORK_PATH) ? new URLSearchParams(search).get('who') : undefined
-  const viewingMe = who === null || (!!who && me.names.has(who))
-  const myOpen = people.filter((p) => me.names.has(p.name)).reduce((sum, p) => sum + p.open, 0)
-  const others = people.filter((p) => !me.names.has(p.name))
+  const { me, isTech, myPhoto, photoOf, loading, who, viewingMe, myOpen, others } = useSidebarPeople()
 
   return (
     <ul className="wl-people__list" aria-label={on ? undefined : '직원별 업무'}>
