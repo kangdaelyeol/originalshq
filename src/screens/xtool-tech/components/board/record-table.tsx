@@ -1,7 +1,9 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, Plus, Search } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, MessageCircle, MessageCirclePlus, Plus, Search } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { usePendingSaves } from '../../data/tech-save-queue'
 import { isDone } from '../../data/tech-stage'
+import { UPDATE_BOARDS } from '../../data/use-item-updates'
+import { useItemParam } from '../../lib/use-item-param'
 import { cx } from '@/ohq-ui/lib/cx'
 import { useBoardEdit } from './board-edit-context'
 import { Button } from '@/ohq-ui/components/button'
@@ -80,6 +82,10 @@ export function RecordTable<T extends RecordLike>({
 }: RecordTableProps<T>) {
   const edit = useBoardEdit()
   const saving = usePendingSaves()
+  const [, openItem] = useItemParam()
+  // 말풍선 보드(출장업무·아톡문의)는 이름 칸 옆에 업데이트 수 — 누르면 서랍이 업데이트 탭으로 열린다
+  const updateCountOf =
+    edit && UPDATE_BOARDS.has(edit.boardKey) ? (itemId: string) => edit.itemOf(itemId)?.updateCount ?? 0 : null
   const [view, setView] = useState<View>(progress ? 'open' : 'all')
   const [assignee, setAssignee] = useState('')
   const [query, setQuery] = useState('')
@@ -291,23 +297,31 @@ export function RecordTable<T extends RecordLike>({
                 {columns.map((column, i) => (
                   <td key={column.key} className={column.className}>
                     {i === 0 ? (
-                      // 키보드로도 열 수 있게 첫 칸은 버튼으로(줄 전체 클릭은 마우스용).
-                      <button
-                        type="button"
-                        className="record-row__open"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onSelect(record)
-                        }}
-                      >
-                        {column.cell(record)}
-                        {saving.has(record.itemId) && (
-                          <span className="record-row__saving" title="Monday에 저장하는 중">
-                            <LoaderCircle size={12} className="is-spinning" aria-hidden />
-                            저장 중
-                          </span>
+                      <>
+                        {/* 키보드로도 열 수 있게 첫 칸은 버튼으로(줄 전체 클릭은 마우스용). */}
+                        <button
+                          type="button"
+                          className="record-row__open"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onSelect(record)
+                          }}
+                        >
+                          {column.cell(record)}
+                          {saving.has(record.itemId) && (
+                            <span className="record-row__saving" title="Monday에 저장하는 중">
+                              <LoaderCircle size={12} className="is-spinning" aria-hidden />
+                              저장 중
+                            </span>
+                          )}
+                        </button>
+                        {updateCountOf && (
+                          <UpdatesBadge
+                            count={updateCountOf(record.itemId)}
+                            onOpen={() => openItem(record.itemId, 'updates')}
+                          />
                         )}
-                      </button>
+                      </>
                     ) : (
                       column.cell(record)
                     )}
@@ -329,5 +343,26 @@ export function RecordTable<T extends RecordLike>({
         </button>
       )}
     </GlassCard>
+  )
+}
+
+/** 말풍선(업데이트 수) — 누르면 상세 서랍이 업데이트 탭으로 열린다(Monday 표 말풍선과 같은 기능) */
+function UpdatesBadge({ count, onOpen }: { count: number; onOpen: () => void }) {
+  const Icon = count ? MessageCircle : MessageCirclePlus
+  const label = count ? `업데이트 ${count}개` : '업데이트 쓰기'
+  return (
+    <button
+      type="button"
+      className={cx('record-row__updates', !count && 'is-empty')}
+      aria-label={label}
+      title={label}
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen()
+      }}
+    >
+      <Icon size={14} aria-hidden />
+      {count > 0 && <span>{count}</span>}
+    </button>
   )
 }

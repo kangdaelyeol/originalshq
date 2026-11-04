@@ -1,0 +1,171 @@
+@use '../../../../../ohq-ui/water/styles/tokens' as *;
+
+// 상세 서랍(물)의 "정보 · 업데이트" 탭과 업데이트(WaterItemUpdates) — 기능은 Monday 표 말풍선 패널과 같다.
+// 쓰기 칸은 물 입력 칸과 같은 유리(둥근 상자), 업데이트는 그림자 없는 유리 판(판 안의 판).
+.water-drawer__tabs {
+  padding: 2px 24px 6px;
+}
+
+.water-updates {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.water-updates__composer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.water-updates__box {
+  border-radius: 18px;
+  @include w-glass(0.46, 0.2);
+
+  &:focus-within {
+    outline: 2px solid rgba(255, 255, 255, 0.85);
+    outline-offset: 0;
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    min-height: 84px;
+    padding: 12px 16px;
+    border: 0;
+    background: none;
+    resize: vertical;
+    font: 500 14px/1.5 $w-font;
+    color: $w-ink;
+    outline: none;
+
+    &::placeholder {
+      color: $w-ink-3;
+    }
+  }
+}
+
+.water-updates__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: $w-ink-3;
+}
+
+.water-updates__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: $w-ink-2;
+
+  // 밝은 벽 위 4.5:1 넘는 붉은 글자(물 화면 --crit과 같다)
+  &.is-error {
+    color: #8f2f2b;
+  }
+}
+
+.water-updates__link {
+  @include w-reset-button;
+  @include w-focus;
+  font-weight: 600;
+  color: $w-ink;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.water-updates__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.water-update {
+  padding: 12px 14px;
+  border-radius: 16px;
+  @include w-glass(0.6, 0);
+
+  &.is-pending {
+    opacity: 0.6;
+  }
+}
+
+.water-update__author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+
+  strong {
+    font-weight: 600;
+    color: $w-ink;
+  }
+
+  time,
+  .water-update__pending {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: auto;
+    font-size: 11.5px;
+    color: $w-ink-3;
+  }
+}
+
+.water-update__text {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: $w-ink-2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.water-update__replies {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid rgba(63, 62, 67, 0.14);
+  list-style: none;
+
+  .is-pending {
+    opacity: 0.6;
+  }
+}
+
+.water-update__reply-toggle {
+  @include w-reset-button;
+  @include w-focus;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: $w-ink-3;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: $w-ink;
+  }
+}
+
+.water-update__reply {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.water-update__reply-box {
+  flex: 1;
+  min-width: 0;
+}

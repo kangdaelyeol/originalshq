@@ -223,4 +223,4 @@ export function splitNamePhone(name: string): { label: string; phones: string } 
 }
 
 /** 업데이트(Monday 댓글) 말풍선이 있는 보드 — 서버 TECH_BOARDS의 updates와 같게 */
-export const UPDATE_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService', 'techInquiry'])
+export { UPDATE_BOARDS } from '../../data/use-item-updates'

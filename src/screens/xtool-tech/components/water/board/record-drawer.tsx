@@ -1,11 +1,14 @@
 import { PenLine, X } from 'lucide-react'
 import { useId, useMemo, type ReactNode } from 'react'
 import { useBoardEdit } from '../../board/board-edit-context'
-import { WaterButton, WaterIconButton } from '@/ohq-ui/water/controls'
+import { WaterButton, WaterIconButton, WaterSegmented } from '@/ohq-ui/water/controls'
+import { UPDATE_BOARDS } from '../../../data/use-item-updates'
+import { useItemPanel, type ItemPanel } from '../../../lib/use-item-param'
 import { WaterStagePill } from './cells'
 import { WaterDrawerShell } from './drawer-shell'
-import { techFileActions, type WaterFileActions } from './file-actions'
+import { techFileActions, type TechFileActions } from '../../../data/tech-file-actions'
 import { WaterItemFiles } from './water-item-files'
+import { WaterItemUpdates } from './water-item-updates'
 
 export interface WaterDrawerField {
   label: string
@@ -31,12 +34,13 @@ interface WaterRecordDrawerProps {
    * 물에만 — 파일 칸의 올리기·비우기(끌어다 놓기 포함). 기본은 이 보드의 Monday 올리기(편집할 수 있는 보드일 때,
    * 기존 편집 패널 FileField와 같은 길·토스트). null이면 기존 ItemFiles처럼 보기만, 견본은 가짜를 넘긴다
    */
-  fileActions?: WaterFileActions | null
+  fileActions?: TechFileActions | null
 }
 
 /**
  * 기록 상세(물) — 오른쪽 유리 서랍. 기존 RecordDrawer와 같은 props·내용이고, 보드가 편집을 허락하면
  * "수정"으로 편집 패널을 겹쳐 연다. 머리·칸 줄·글 묶음은 서랍이 닿은 뒤 차례로 나타난다([data-water-reveal]).
+ * 말풍선 보드(출장업무·아톡문의)는 "정보 · 업데이트" 탭(물 고르기) — 업데이트는 WaterItemUpdates.
  */
 export function WaterRecordDrawer({
   record,
@@ -57,6 +61,10 @@ export function WaterRecordDrawer({
   )
   const files =
     fileActions === undefined ? realFiles : (fileActions ?? undefined)
+  const [panel, setPanel] = useItemPanel()
+  const updatesBoard = !!boardKey && UPDATE_BOARDS.has(boardKey)
+  const tab: ItemPanel = updatesBoard ? panel : 'info'
+  const count = item?.updateCount ?? 0
   return (
     <WaterDrawerShell
       open={record !== null}
@@ -92,48 +100,76 @@ export function WaterRecordDrawer({
             />
           </header>
 
-          <div className="water-drawer__body">
-            {fields.length > 0 && (
-              <dl className="water-drawer__fields">
-                {fields.map((field) => (
-                  <div
-                    key={field.label}
-                    className="water-drawer__field"
+          {updatesBoard && (
+            <div className="water-drawer__tabs" data-water-reveal>
+              <WaterSegmented
+                ariaLabel="상세 보기"
+                size="sm"
+                options={[
+                  { value: 'info' as ItemPanel, label: '정보' },
+                  {
+                    value: 'updates' as ItemPanel,
+                    label: count ? `업데이트 ${count}` : '업데이트',
+                  },
+                ]}
+                value={tab}
+                onChange={setPanel}
+              />
+            </div>
+          )}
+
+          {tab === 'updates' && boardKey ? (
+            <div className="water-drawer__body">
+              <WaterItemUpdates
+                key={record.itemId}
+                boardKey={boardKey}
+                itemId={record.itemId}
+              />
+            </div>
+          ) : (
+            <div className="water-drawer__body">
+              {fields.length > 0 && (
+                <dl className="water-drawer__fields">
+                  {fields.map((field) => (
+                    <div
+                      key={field.label}
+                      className="water-drawer__field"
+                      data-water-reveal
+                    >
+                      <dt>{field.label}</dt>
+                      <dd>{field.value ?? '—'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              {texts
+                .filter((t) => t.text)
+                .map((t) => (
+                  <section
+                    key={t.label}
+                    className="water-drawer__section"
                     data-water-reveal
                   >
-                    <dt>{field.label}</dt>
-                    <dd>{field.value ?? '—'}</dd>
-                  </div>
+                    <h3>{t.label}</h3>
+                    <p className="water-drawer__text">{t.text}</p>
+                  </section>
                 ))}
-              </dl>
-            )}
 
-            {texts
-              .filter((t) => t.text)
-              .map((t) => (
-                <section
-                  key={t.label}
-                  className="water-drawer__section"
-                  data-water-reveal
-                >
-                  <h3>{t.label}</h3>
-                  <p className="water-drawer__text">{t.text}</p>
-                </section>
-              ))}
+              {children && (
+                <div className="water-drawer__extra" data-water-reveal>
+                  {children}
+                </div>
+              )}
 
-            {children && (
-              <div className="water-drawer__extra" data-water-reveal>
-                {children}
-              </div>
-            )}
-
-            {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. 물 판: 올리기·끌어다 놓기·비우기 */}
-            {edit && item && (
-              <div data-water-reveal>
-                <WaterItemFiles meta={edit.meta} item={item} actions={files} />
-              </div>
-            )}
-          </div>
+              {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. 물 판: 올리기·끌어다 놓기·비우기 */}
+              {edit && item && (
+                <div data-water-reveal>
+                  <WaterItemFiles meta={edit.meta} item={item} actions={files} />
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
     </WaterDrawerShell>

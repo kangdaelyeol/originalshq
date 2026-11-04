@@ -1,55 +1,14 @@
 import { CornerDownRight, LoaderCircle, X } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useCurrentMember } from '../../context/member-context'
 import type { TechBoardKey } from '../../data/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
-import { dismissToast, pushToast } from '../../data/tech-save-queue'
-import { authorOf, fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from '../../data/tech-updates'
+import { authorOf, type TechUpdate } from '../../data/tech-updates'
+import { isPendingUpdate, updateWhenText, useItemUpdates } from '../../data/use-item-updates'
 import { isComposing } from '../../lib/ime'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { PersonAvatar } from './monday-cells'
-
-const errorText = (error: unknown) => {
-  const message = (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
-  // 함수가 문구 없이 실패하면 코드(internal)만 온다.
-  return message && !/^internal$/i.test(message) ? message : 'Monday와 연결하지 못했어요. 잠시 후 다시 해 주세요.'
-}
-
-/** 2026-09-02T05:30:00Z → "9월 2일 14:30" (한국 시각) */
-function whenText(iso: string | null): string {
-  if (!iso) return ''
-  const k = new Date(Date.parse(iso) + 9 * 3600_000).toISOString()
-  const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
-  const year = k.slice(0, 4) === today.slice(0, 4) ? '' : `${k.slice(0, 4)}년 `
-  return `${year}${Number(k.slice(5, 7))}월 ${Number(k.slice(8, 10))}일 ${k.slice(11, 16)}`
-}
-
-/** 올린(올리는 중인) 글 — 서버 목록에 그 id가 들어오면 서버 것을 보여 준다. */
-interface Post {
-  update: TechUpdate
-  parentId?: string
-  /** 올라간 뒤의 업데이트 id */
-  realId?: string
-}
-
-/** 서버 목록 + 아직 목록에 없는 내 글(새 글은 맨 위, 답글은 그 글 아래) */
-function mergePosts(server: TechUpdate[], posts: Post[]): TechUpdate[] {
-  const known = new Set(server.flatMap((u) => [u.id, ...u.replies.map((r) => r.id)]))
-  const open = posts
-    .filter((p) => !(p.realId && known.has(p.realId)))
-    .map((p) => ({ ...p, update: p.realId ? { ...p.update, id: p.realId } : p.update }))
-  if (open.length === 0) return server
-  const top = open.filter((p) => !p.parentId).reverse().map((p) => p.update)
-  return [
-    ...top,
-    ...server.map((u) => {
-      const replies = open.filter((p) => p.parentId === u.id).map((p) => p.update)
-      return replies.length ? { ...u, replies: [...u.replies, ...replies] } : u
-    }),
-  ]
-}
 
 interface UpdatesPanelProps {
   boardKey: TechBoardKey
@@ -67,66 +26,12 @@ interface UpdatesPanelProps {
  */
 export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelProps) {
   const root = usePortalRoot()
-  const member = useCurrentMember()
   const photoOf = usePhotoOf()
-  // 서버 목록(캐시 또는 함수로 읽은 것) — 내 글은 posts에 따로 두고 합쳐 보여 준다.
-  const [server, setServer] = useState<TechUpdate[] | null>(null)
-  const [posts, setPosts] = useState<Post[]>([])
-  const [error, setError] = useState<string | null>(null)
-  // 캐시를 구독하고 있는지 — 못 읽으면(규칙 배포 전) 글을 올린 뒤 함수로 다시 읽는다.
-  const live = useRef(false)
-  // "불러오는 중"은 늦어질 때만 — 캐시는 보통 바로 와서 깜빡이지 않게.
-  const [slow, setSlow] = useState(false)
-  useEffect(() => {
-    const timer = setTimeout(() => setSlow(true), 400)
-    return () => clearTimeout(timer)
-  }, [])
+  // 읽기·쓰기는 세 레이아웃이 같이 쓰는 훅 — 여기는 Monday 모양만 그린다.
+  const { updates, loaded, error, slow, me, load, send } = useItemUpdates(boardKey, itemId)
   const [draft, setDraft] = useState('')
-  // 올리는 중인 글의 임시 id
-  const tempId = useRef(0)
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const panelRef = useRef<HTMLElement>(null)
-
-  // 닫힌 뒤 늦게 온 응답은 버린다.
-  const alive = useRef(true)
-  useEffect(() => {
-    // 개발 모드(StrictMode)는 effect를 정리했다 다시 돌린다 — 다시 돌 때 되살린다.
-    alive.current = true
-    return () => {
-      alive.current = false
-    }
-  }, [])
-  const load = useCallback(() => {
-    fetchUpdates(boardKey, itemId)
-      .then((list) => {
-        if (!alive.current) return
-        setError(null)
-        setServer(list)
-      })
-      .catch((e: unknown) => alive.current && setError(errorText(e)))
-  }, [boardKey, itemId])
-
-  useEffect(
-    () =>
-      watchCachedUpdates(
-        itemId,
-        (list) => {
-          live.current = true
-          if (list) setServer(list)
-        },
-        () => {
-          live.current = false
-        },
-      ),
-    [itemId],
-  )
-
-  // 캐시는 바로 보이고, Monday에서 다시 읽어 맞춘다(그사이 webhook을 놓쳤어도).
-  useEffect(() => {
-    load()
-  }, [load])
-
-  const updates = useMemo(() => (server ? mergePosts(server, posts) : posts.length ? mergePosts([], posts) : null), [server, posts])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -145,49 +50,6 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   useEffect(() => {
     panelRef.current?.querySelector<HTMLTextAreaElement>('.mon-composer textarea')?.focus()
   }, [itemId])
-
-  const me = member?.name || member?.email || ''
-
-  /**
-   * 올리기 — 목록에 바로 넣어 보여 주고(흐리게, "올리는 중") 요청은 뒤에서. 올라가면 서버가 캐시를
-   * 새로 써서 그 글이 목록에 들어오고, 실패하면 뺀 뒤 토스트에 "다시 시도"를 붙인다.
-   */
-  const send = (text: string, parentId?: string): boolean => {
-    const body = text.trim()
-    if (!body) return false
-    const temp: TechUpdate = {
-      id: `temp-${++tempId.current}`,
-      // 서명을 붙여 두면 작성자(나)로 보인다(authorOf).
-      text: `${body}\n\n— ${me || '나'} · xtool tech`,
-      createdAt: new Date().toISOString(),
-      creator: null,
-      replies: [],
-    }
-    setPosts((list) => [...list, { update: temp, parentId }])
-    postUpdate(boardKey, itemId, body, parentId)
-      .then((id) => {
-        if (!alive.current) return
-        setPosts((list) => list.map((p) => (p.update.id === temp.id ? { ...p, realId: id } : p)))
-        // 캐시를 못 읽으면 함수로 다시 읽어 맞춘다.
-        if (!live.current) load()
-      })
-      .catch((e: unknown) => {
-        if (alive.current) setPosts((list) => list.filter((p) => p.update.id !== temp.id))
-        const toastId: number = pushToast({
-          tone: 'error',
-          title: '업데이트를 올리지 못했어요',
-          message: errorText(e),
-          action: {
-            label: '다시 시도',
-            run: () => {
-              dismissToast(toastId)
-              send(body, parentId)
-            },
-          },
-        })
-      })
-    return true
-  }
 
   return createPortal(
     <aside ref={panelRef} className="mon-panel" role="dialog" aria-label={`${title} 업데이트`}>
@@ -236,7 +98,7 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
         {error && (
           <p className="mon-panel__note mon-panel__note--error" role="alert">
             {/* 캐시가 있으면 그걸 보여 주고 있다 — 최신이 아닐 수 있다는 것만 알린다. */}
-            {server ? 'Monday에서 다시 읽지 못해 저장된 목록을 보여 주고 있어요.' : error}
+            {loaded ? 'Monday에서 다시 읽지 못해 저장된 목록을 보여 주고 있어요.' : error}
             <button type="button" onClick={load}>
               다시 불러오기
             </button>
@@ -270,9 +132,6 @@ export function UpdatesPanel({ boardKey, itemId, title, onClose }: UpdatesPanelP
   )
 }
 
-/** 올리는 중인 글(아직 서버에 없다) */
-const isPending = (update: TechUpdate) => update.id.startsWith('temp-')
-
 function Author({ update, photoOf, small }: { update: TechUpdate; photoOf: (name: string) => string | undefined; small?: boolean }) {
   const { author, viaApp } = authorOf(update)
   const photo = photoOf(author) ?? (viaApp ? undefined : (update.creator?.photo ?? undefined))
@@ -280,13 +139,13 @@ function Author({ update, photoOf, small }: { update: TechUpdate; photoOf: (name
     <div className={small ? 'mon-update__author is-small' : 'mon-update__author'}>
       <PersonAvatar name={author} photo={photo} />
       <strong>{author}</strong>
-      {isPending(update) ? (
+      {isPendingUpdate(update) ? (
         <span className="mon-update__pending">
           <LoaderCircle size={12} className="is-spinning" aria-hidden />
           올리는 중
         </span>
       ) : (
-        <time dateTime={update.createdAt ?? undefined}>{whenText(update.createdAt)}</time>
+        <time dateTime={update.createdAt ?? undefined}>{updateWhenText(update.createdAt)}</time>
       )}
     </div>
   )
@@ -309,14 +168,14 @@ function UpdateCard({
 }) {
   const [reply, setReply] = useState('')
   return (
-    <article className={cx('mon-update', isPending(update) && 'is-pending')}>
+    <article className={cx('mon-update', isPendingUpdate(update) && 'is-pending')}>
       <Author update={update} photoOf={photoOf} />
       <p className="mon-update__text">{authorOf(update).text}</p>
 
       {update.replies.length > 0 && (
         <ul className="mon-update__replies">
           {update.replies.map((r) => (
-            <li key={r.id} className={cx(isPending(r) && 'is-pending')}>
+            <li key={r.id} className={cx(isPendingUpdate(r) && 'is-pending')}>
               <Author update={r} photoOf={photoOf} small />
               <p className="mon-update__text">{authorOf(r).text}</p>
             </li>

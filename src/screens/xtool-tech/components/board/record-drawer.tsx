@@ -1,9 +1,13 @@
 import { PenLine, X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { UPDATE_BOARDS } from '../../data/use-item-updates'
+import { useItemPanel, type ItemPanel } from '../../lib/use-item-param'
 import { useBoardEdit } from './board-edit-context'
 import { StagePill } from './cells'
 import { DrawerShell } from './drawer-shell'
 import { ItemFiles } from './item-files'
+import { ItemUpdates } from './item-updates'
 
 export interface DrawerField {
   label: string
@@ -22,9 +26,16 @@ interface RecordDrawerProps {
   onClose: () => void
 }
 
-/** 기록 상세 — 오른쪽 유리 패널. 보드가 편집을 허락하면 "수정"으로 편집 패널을 겹쳐 연다. */
+/**
+ * 기록 상세 — 오른쪽 유리 패널. 보드가 편집을 허락하면 "수정"으로 편집 패널을 겹쳐 연다. 말풍선 보드(출장업무·
+ * 아톡문의)는 "정보 · 업데이트" 탭 — 업데이트는 Monday 표 말풍선 패널과 같은 기능(ItemUpdates).
+ */
 export function RecordDrawer({ record, eyebrow, fields = [], texts = [], children, onClose }: RecordDrawerProps) {
   const edit = useBoardEdit()
+  const [panel, setPanel] = useItemPanel()
+  const updatesBoard = !!edit && UPDATE_BOARDS.has(edit.boardKey)
+  const tab: ItemPanel = updatesBoard ? panel : 'info'
+  const count = (record && edit?.itemOf(record.itemId)?.updateCount) || 0
   return (
     <DrawerShell open={record !== null} onClose={onClose} labelledBy="drawer-title" contentKey={record?.itemId}>
       {record && (
@@ -48,33 +59,53 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
             </button>
           </header>
 
-          <div className="drawer__body">
-            {fields.length > 0 && (
-              <dl className="drawer__fields">
-                {fields.map((field) => (
-                  <div key={field.label} className="drawer__field">
-                    <dt>{field.label}</dt>
-                    <dd>{field.value ?? '—'}</dd>
-                  </div>
+          {updatesBoard && (
+            <div className="drawer__tabs">
+              <SegmentedControl
+                ariaLabel="상세 보기"
+                size="sm"
+                options={[
+                  { value: 'info' as ItemPanel, label: '정보' },
+                  { value: 'updates' as ItemPanel, label: count ? `업데이트 ${count}` : '업데이트' },
+                ]}
+                value={tab}
+                onChange={setPanel}
+              />
+            </div>
+          )}
+
+          {tab === 'updates' && edit ? (
+            <div className="drawer__body">
+              <ItemUpdates key={record.itemId} boardKey={edit.boardKey} itemId={record.itemId} />
+            </div>
+          ) : (
+            <div className="drawer__body">
+              {fields.length > 0 && (
+                <dl className="drawer__fields">
+                  {fields.map((field) => (
+                    <div key={field.label} className="drawer__field">
+                      <dt>{field.label}</dt>
+                      <dd>{field.value ?? '—'}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+
+              {texts
+                .filter((t) => t.text)
+                .map((t) => (
+                  <section key={t.label} className="drawer__section">
+                    <h3>{t.label}</h3>
+                    <p className="drawer__text">{t.text}</p>
+                  </section>
                 ))}
-              </dl>
-            )}
 
-            {texts
-              .filter((t) => t.text)
-              .map((t) => (
-                <section key={t.label} className="drawer__section">
-                  <h3>{t.label}</h3>
-                  <p className="drawer__text">{t.text}</p>
-                </section>
-              ))}
+              {children}
 
-            {children}
-
-            {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. */}
-            {edit && edit.itemOf(record.itemId) && <ItemFiles meta={edit.meta} item={edit.itemOf(record.itemId)!} />}
-          </div>
-
+              {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. */}
+              {edit && edit.itemOf(record.itemId) && <ItemFiles meta={edit.meta} item={edit.itemOf(record.itemId)!} />}
+            </div>
+          )}
         </>
       )}
     </DrawerShell>

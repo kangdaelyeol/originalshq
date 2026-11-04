@@ -3,6 +3,8 @@ import {
   ArrowUp,
   ArrowUpDown,
   LoaderCircle,
+  MessageCircle,
+  MessageCirclePlus,
   Plus,
   Search,
 } from 'lucide-react'
@@ -18,6 +20,8 @@ import {
 } from 'react'
 import { usePendingSaves } from '../../../data/tech-save-queue'
 import { isDone } from '../../../data/tech-stage'
+import { UPDATE_BOARDS } from '../../../data/use-item-updates'
+import { useItemParam } from '../../../lib/use-item-param'
 import { useBoardEdit } from '../../board/board-edit-context'
 import type { RecordColumn } from '../../board/record-table'
 import { cx } from '@/ohq-ui/lib/cx'
@@ -101,6 +105,13 @@ export function WaterRecordTable<T extends RecordLike>({
   const edit = useBoardEdit()
   const saving = usePendingSaves()
   const reduced = useReducedMotion()
+  const [, openItem] = useItemParam()
+  // 말풍선 보드(출장업무·아톡문의)는 이름 칸 옆에 업데이트 수 — 누르면 서랍이 업데이트 탭으로 열린다
+  const updatesBoard = !!edit && UPDATE_BOARDS.has(edit.boardKey)
+  const openUpdates = useCallback(
+    (record: RecordLike) => openItem(record.itemId, 'updates'),
+    [openItem],
+  )
   const [view, setView] = useState<View>(progress ? 'open' : 'all')
   const [assignee, setAssignee] = useState('')
   const [query, setQuery] = useState('')
@@ -494,8 +505,14 @@ export function WaterRecordTable<T extends RecordLike>({
                   columns={columns}
                   selected={record.itemId === selectedId}
                   saving={saving.has(record.itemId)}
+                  updateCount={
+                    updatesBoard
+                      ? (edit?.itemOf(record.itemId)?.updateCount ?? 0)
+                      : null
+                  }
                   onPick={onPick}
                   onKey={onKey}
+                  onUpdates={openUpdates}
                 />
               ))}
             </tbody>
@@ -528,8 +545,11 @@ interface RecordRowProps<T extends RecordLike> {
   columns: readonly RecordColumn<T>[]
   selected: boolean
   saving: boolean
+  /** 업데이트 수 — 말풍선 보드가 아니면 null(말풍선을 그리지 않는다) */
+  updateCount: number | null
   onPick: (record: T, e: MouseEvent) => void
   onKey: (e: KeyboardEvent<HTMLButtonElement>, index: number) => void
+  onUpdates: (record: T) => void
 }
 
 /** 줄 하나 — memo라 고른 줄이 바뀌어도 그 두 줄만 다시 그린다(수백 줄 표에서 한 번에 다 그리지 않게) */
@@ -539,8 +559,10 @@ function RecordRowView<T extends RecordLike>({
   columns,
   selected,
   saving,
+  updateCount,
   onPick,
   onKey,
+  onUpdates,
 }: RecordRowProps<T>) {
   return (
     <tr
@@ -552,28 +574,60 @@ function RecordRowView<T extends RecordLike>({
       {columns.map((column, i) => (
         <td key={column.key} className={column.className}>
           {i === 0 ? (
-            // 키보드로도 열 수 있게 첫 칸은 버튼으로(줄 전체 클릭은 마우스용).
-            <button
-              type="button"
-              className="water-record-table__open"
-              aria-haspopup="dialog"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPick(record, e)
-              }}
-              onKeyDown={(e) => onKey(e, index)}
-            >
-              {column.cell(record)}
-              {saving && (
-                <span
-                  className="water-record-table__saving"
-                  title="Monday에 저장하는 중"
+            <>
+              {/* 키보드로도 열 수 있게 첫 칸은 버튼으로(줄 전체 클릭은 마우스용). */}
+              <button
+                type="button"
+                className="water-record-table__open"
+                aria-haspopup="dialog"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onPick(record, e)
+                }}
+                onKeyDown={(e) => onKey(e, index)}
+              >
+                {column.cell(record)}
+                {saving && (
+                  <span
+                    className="water-record-table__saving"
+                    title="Monday에 저장하는 중"
+                  >
+                    <LoaderCircle
+                      size={12}
+                      className="is-spinning"
+                      aria-hidden
+                    />
+                    저장 중
+                  </span>
+                )}
+              </button>
+              {updateCount !== null && (
+                <button
+                  type="button"
+                  className={cx(
+                    'water-record-table__updates',
+                    !updateCount && 'is-empty',
+                  )}
+                  aria-label={
+                    updateCount ? `업데이트 ${updateCount}개` : '업데이트 쓰기'
+                  }
+                  title={
+                    updateCount ? `업데이트 ${updateCount}개` : '업데이트 쓰기'
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onUpdates(record)
+                  }}
                 >
-                  <LoaderCircle size={12} className="is-spinning" aria-hidden />
-                  저장 중
-                </span>
+                  {updateCount ? (
+                    <MessageCircle size={14} aria-hidden />
+                  ) : (
+                    <MessageCirclePlus size={14} aria-hidden />
+                  )}
+                  {updateCount > 0 && <span>{updateCount}</span>}
+                </button>
               )}
-            </button>
+            </>
           ) : (
             column.cell(record)
           )}
