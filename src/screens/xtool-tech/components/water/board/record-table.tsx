@@ -23,6 +23,7 @@ import { isDone } from '../../../data/tech-stage'
 import { UPDATE_BOARDS } from '../../../data/use-item-updates'
 import { useItemParam } from '../../../lib/use-item-param'
 import { useBoardEdit } from '../../board/board-edit-context'
+import { useRecordSelection } from '../../board/record-selection'
 import type { RecordColumn } from '../../board/record-table'
 import { cx } from '@/ohq-ui/lib/cx'
 import type { WaterDropEffect } from '@/ohq-ui/water/fx'
@@ -34,10 +35,12 @@ import {
 import { waterClock } from '@/ohq-ui/water/motion'
 import {
   WaterButton,
+  WaterCheck,
   WaterChips,
   WaterTextField,
 } from '@/ohq-ui/water/controls'
 import { RECORD_PAGE, compareValues, type SortDir } from './record-sort'
+import { WaterSelectionBar } from './water-selection-bar'
 
 type View = 'open' | 'done' | 'all'
 
@@ -111,6 +114,14 @@ export function WaterRecordTable<T extends RecordLike>({
   const openUpdates = useCallback(
     (record: RecordLike) => openItem(record.itemId, 'updates'),
     [openItem],
+  )
+  // 줄 고르기(물 체크) — 고르면 아래에 이동·삭제 막대(Monday 표 선택 막대와 같은 기능). 고칠 수 있는 보드만
+  const ids = useMemo(() => records.map((r) => r.itemId), [records])
+  const selection = useRecordSelection(ids)
+  const setSelected = selection.set
+  const pickBox = useCallback(
+    (itemId: string, on: boolean) => setSelected([itemId], on),
+    [setSelected],
   )
   const [view, setView] = useState<View>(progress ? 'open' : 'all')
   const [assignee, setAssignee] = useState('')
@@ -430,6 +441,15 @@ export function WaterRecordTable<T extends RecordLike>({
           <table className="water-record-table__table">
             <thead>
               <tr>
+                {edit && (
+                  <th scope="col" className="water-record-table__check">
+                    <PickAll
+                      ids={visible.map((r) => r.itemId)}
+                      selected={selection.selected}
+                      onChange={setSelected}
+                    />
+                  </th>
+                )}
                 {columns.map((column) => {
                   const active = sort?.key === column.key ? sort.dir : null
                   return (
@@ -486,7 +506,7 @@ export function WaterRecordTable<T extends RecordLike>({
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={columns.length}
+                    colSpan={columns.length + (edit ? 1 : 0)}
                     className="water-record-table__empty"
                   >
                     {query || assignee
@@ -510,6 +530,8 @@ export function WaterRecordTable<T extends RecordLike>({
                       ? (edit?.itemOf(record.itemId)?.updateCount ?? 0)
                       : null
                   }
+                  picked={edit ? selection.selected.has(record.itemId) : null}
+                  onPickBox={pickBox}
                   onPick={onPick}
                   onKey={onKey}
                   onUpdates={openUpdates}
@@ -525,6 +547,15 @@ export function WaterRecordTable<T extends RecordLike>({
           />
         </div>
       </div>
+
+      {edit && (
+        <WaterSelectionBar
+          boardKey={edit.boardKey}
+          meta={edit.meta}
+          selected={selection.selected}
+          onClear={selection.clear}
+        />
+      )}
 
       {rows.length > limit && (
         <button
@@ -547,6 +578,9 @@ interface RecordRowProps<T extends RecordLike> {
   saving: boolean
   /** 업데이트 수 — 말풍선 보드가 아니면 null(말풍선을 그리지 않는다) */
   updateCount: number | null
+  /** 체크했는지 — 고를 수 없는 표면 null(체크 칸을 그리지 않는다) */
+  picked: boolean | null
+  onPickBox: (itemId: string, on: boolean) => void
   onPick: (record: T, e: MouseEvent) => void
   onKey: (e: KeyboardEvent<HTMLButtonElement>, index: number) => void
   onUpdates: (record: T) => void
@@ -560,6 +594,8 @@ function RecordRowView<T extends RecordLike>({
   selected,
   saving,
   updateCount,
+  picked,
+  onPickBox,
   onPick,
   onKey,
   onUpdates,
@@ -571,6 +607,19 @@ function RecordRowView<T extends RecordLike>({
       aria-current={selected || undefined}
       onClick={(e) => onPick(record, e)}
     >
+      {picked !== null && (
+        <td
+          className="water-record-table__check"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <WaterCheck
+            size="sm"
+            aria-label="이 줄 고르기"
+            checked={picked}
+            onChange={(e) => onPickBox(record.itemId, e.target.checked)}
+          />
+        </td>
+      )}
       {columns.map((column, i) => (
         <td key={column.key} className={column.className}>
           {i === 0 ? (
@@ -638,3 +687,27 @@ function RecordRowView<T extends RecordLike>({
 }
 
 const RecordRow = memo(RecordRowView) as typeof RecordRowView
+
+/** 보이는 줄 전체 고르기 — 일부만 골랐으면 가로줄(indeterminate) */
+function PickAll({
+  ids,
+  selected,
+  onChange,
+}: {
+  ids: string[]
+  selected: ReadonlySet<string>
+  onChange: (ids: readonly string[], on: boolean) => void
+}) {
+  const picked = ids.filter((id) => selected.has(id)).length
+  const all = ids.length > 0 && picked === ids.length
+  return (
+    <WaterCheck
+      size="sm"
+      aria-label={all ? '보이는 줄 고르기 해제' : '보이는 줄 모두 고르기'}
+      checked={all}
+      indeterminate={picked > 0 && !all}
+      disabled={ids.length === 0}
+      onChange={() => onChange(ids, !all)}
+    />
+  )
+}

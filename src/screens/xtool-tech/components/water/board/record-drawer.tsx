@@ -1,7 +1,14 @@
-import { PenLine, X } from 'lucide-react'
-import { useId, useMemo, type ReactNode } from 'react'
+import { PenLine, Trash2, X } from 'lucide-react'
+import { useId, useMemo, useState, type ReactNode } from 'react'
 import { useBoardEdit } from '../../board/board-edit-context'
-import { WaterButton, WaterIconButton, WaterSegmented } from '@/ohq-ui/water/controls'
+import { DELETE_CONFIRM_MESSAGE } from '../../board/record-selection'
+import {
+  WaterButton,
+  WaterDialog,
+  WaterIconButton,
+  WaterSegmented,
+} from '@/ohq-ui/water/controls'
+import { deleteItems } from '../../../data/tech-outbox'
 import { UPDATE_BOARDS } from '../../../data/use-item-updates'
 import { useItemPanel, type ItemPanel } from '../../../lib/use-item-param'
 import { WaterStagePill } from './cells'
@@ -65,6 +72,7 @@ export function WaterRecordDrawer({
   const updatesBoard = !!boardKey && UPDATE_BOARDS.has(boardKey)
   const tab: ItemPanel = updatesBoard ? panel : 'info'
   const count = item?.updateCount ?? 0
+  const [confirming, setConfirming] = useState(false)
   return (
     <WaterDrawerShell
       open={record !== null}
@@ -91,6 +99,14 @@ export function WaterRecordDrawer({
               >
                 수정
               </WaterButton>
+            )}
+            {edit && (
+              <WaterIconButton
+                icon={Trash2}
+                label="삭제"
+                size="sm"
+                onClick={() => setConfirming(true)}
+              />
             )}
             <WaterIconButton
               icon={X}
@@ -169,6 +185,22 @@ export function WaterRecordDrawer({
                 </div>
               )}
             </div>
+          )}
+
+          {edit && (
+            <WaterDialog
+              open={confirming}
+              title="이 항목을 지울까요?"
+              message={DELETE_CONFIRM_MESSAGE}
+              confirmLabel="삭제"
+              tone="danger"
+              onCancel={() => setConfirming(false)}
+              onConfirm={() => {
+                setConfirming(false)
+                deleteItems(edit.boardKey, [record.itemId])
+                onClose()
+              }}
+            />
           )}
         </>
       )}

@@ -6,6 +6,8 @@ import { UPDATE_BOARDS } from '../../data/use-item-updates'
 import { useItemParam } from '../../lib/use-item-param'
 import { cx } from '@/ohq-ui/lib/cx'
 import { useBoardEdit } from './board-edit-context'
+import { useRecordSelection } from './record-selection'
+import { RecordSelectionBar } from './record-selection-bar'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
@@ -93,6 +95,9 @@ export function RecordTable<T extends RecordLike>({
   const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null)
   // 단계 칸은 이름이 아니라 Monday 그룹 순서(신규 → … → 완료)로 정렬한다.
   const groupOrder = edit?.meta.groups.map((g) => g.title)
+  // 줄 고르기(체크) — 고르면 아래에 이동·삭제 막대(Monday 표 선택 막대와 같은 기능). 고칠 수 있는 보드만
+  const ids = useMemo(() => records.map((r) => r.itemId), [records])
+  const selection = useRecordSelection(ids)
 
   const openCount = records.filter((r) => !isDone(r)).length
   const viewOptions = [
@@ -224,6 +229,15 @@ export function RecordTable<T extends RecordLike>({
         <table className="table record-table">
           <thead>
             <tr>
+              {edit && (
+                <th scope="col" className="record-table__check">
+                  <PickAll
+                    ids={rows.slice(0, limit).map((r) => r.itemId)}
+                    selected={selection.selected}
+                    onChange={selection.set}
+                  />
+                </th>
+              )}
               {columns.map((column) => {
                 const active = sort?.key === column.key ? sort.dir : null
                 return (
@@ -276,7 +290,7 @@ export function RecordTable<T extends RecordLike>({
           <tbody>
             {rows.length === 0 && (
               <tr>
-                <td colSpan={columns.length} className="table__empty">
+                <td colSpan={columns.length + (edit ? 1 : 0)} className="table__empty">
                   {query || assignee
                     ? '조건에 맞는 기록이 없어요.'
                     : view === 'open'
@@ -294,6 +308,16 @@ export function RecordTable<T extends RecordLike>({
                 )}
                 onClick={() => onSelect(record)}
               >
+                {edit && (
+                  <td className="record-table__check" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label="이 줄 고르기"
+                      checked={selection.selected.has(record.itemId)}
+                      onChange={(e) => selection.set([record.itemId], e.target.checked)}
+                    />
+                  </td>
+                )}
                 {columns.map((column, i) => (
                   <td key={column.key} className={column.className}>
                     {i === 0 ? (
@@ -333,6 +357,15 @@ export function RecordTable<T extends RecordLike>({
         </table>
       </div>
 
+      {edit && (
+        <RecordSelectionBar
+          boardKey={edit.boardKey}
+          meta={edit.meta}
+          selected={selection.selected}
+          onClear={selection.clear}
+        />
+      )}
+
       {rows.length > limit && (
         <button
           type="button"
@@ -343,6 +376,32 @@ export function RecordTable<T extends RecordLike>({
         </button>
       )}
     </GlassCard>
+  )
+}
+
+/** 보이는 줄 전체 고르기 — 일부만 골랐으면 가운데 줄(indeterminate) */
+function PickAll({
+  ids,
+  selected,
+  onChange,
+}: {
+  ids: string[]
+  selected: ReadonlySet<string>
+  onChange: (ids: readonly string[], on: boolean) => void
+}) {
+  const picked = ids.filter((id) => selected.has(id)).length
+  const all = ids.length > 0 && picked === ids.length
+  return (
+    <input
+      type="checkbox"
+      aria-label={all ? '보이는 줄 고르기 해제' : '보이는 줄 모두 고르기'}
+      checked={all}
+      ref={(el) => {
+        if (el) el.indeterminate = picked > 0 && !all
+      }}
+      disabled={ids.length === 0}
+      onChange={() => onChange(ids, !all)}
+    />
   )
 }
 

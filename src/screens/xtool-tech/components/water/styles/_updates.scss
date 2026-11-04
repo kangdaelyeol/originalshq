@@ -169,3 +169,78 @@
   flex: 1;
   min-width: 0;
 }
+
+// 고르기 막대(물, WaterSelectionBar) — 화면 아래 가운데 떠 있는 유리 알약. 고른 수는 어두운 알약(D7 표시 알약),
+// 옮길 단계는 막대 위로 펼치는 유리 판
+.water-selbar {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 55;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px 7px 10px;
+  border-radius: 999px;
+  transform: translateX(-50%);
+  font-family: $w-font;
+  color: $w-ink;
+  @include w-glass(1, 0.55);
+  // 표 위에 떠서 — 비치지 않게 벽 밝기로 거의 불투명하게(유리 테두리·그림자는 그대로)
+  background-color: rgba(214, 212, 217, 0.94);
+}
+
+.water-selbar__count {
+  display: grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  @include w-indicator;
+  @include w-on-dark;
+}
+
+.water-selbar__label {
+  margin-right: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: $w-ink-2;
+}
+
+.water-selbar__menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  padding: 6px;
+  border-radius: 18px;
+  @include w-glass(0.8, 0.55);
+  background-color: rgba(222, 220, 225, 0.96);
+}
+
+.water-selbar__menu-title {
+  margin: 4px 10px 6px;
+  font-size: 12px;
+  color: $w-ink-3;
+}
+
+.water-selbar__menu-item {
+  @include w-reset-button;
+  @include w-focus;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  color: $w-ink;
+  transition: background-color $w-quick;
+
+  &:hover {
+    background-color: $w-chip;
+  }
+}

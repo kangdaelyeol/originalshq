@@ -1,6 +1,8 @@
-import { PenLine, X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import { PenLine, Trash2, X } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
+import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { deleteItems } from '../../data/tech-outbox'
 import { UPDATE_BOARDS } from '../../data/use-item-updates'
 import { useItemPanel, type ItemPanel } from '../../lib/use-item-param'
 import { useBoardEdit } from './board-edit-context'
@@ -8,6 +10,7 @@ import { StagePill } from './cells'
 import { DrawerShell } from './drawer-shell'
 import { ItemFiles } from './item-files'
 import { ItemUpdates } from './item-updates'
+import { DELETE_CONFIRM_MESSAGE } from './record-selection'
 
 export interface DrawerField {
   label: string
@@ -27,7 +30,8 @@ interface RecordDrawerProps {
 }
 
 /**
- * 기록 상세 — 오른쪽 유리 패널. 보드가 편집을 허락하면 "수정"으로 편집 패널을 겹쳐 연다. 말풍선 보드(출장업무·
+ * 기록 상세 — 오른쪽 유리 패널. 보드가 편집을 허락하면 "수정"으로 편집 패널을 겹쳐 열고, 휴지통으로 지운다
+ * (Monday 휴지통 — 확인을 받는다). 말풍선 보드(출장업무·
  * 아톡문의)는 "정보 · 업데이트" 탭 — 업데이트는 Monday 표 말풍선 패널과 같은 기능(ItemUpdates).
  */
 export function RecordDrawer({ record, eyebrow, fields = [], texts = [], children, onClose }: RecordDrawerProps) {
@@ -36,6 +40,7 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
   const updatesBoard = !!edit && UPDATE_BOARDS.has(edit.boardKey)
   const tab: ItemPanel = updatesBoard ? panel : 'info'
   const count = (record && edit?.itemOf(record.itemId)?.updateCount) || 0
+  const [confirming, setConfirming] = useState(false)
   return (
     <DrawerShell open={record !== null} onClose={onClose} labelledBy="drawer-title" contentKey={record?.itemId}>
       {record && (
@@ -52,6 +57,11 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
               <button type="button" className="button button--ghost button--sm" onClick={() => edit.openEditor(record.itemId)}>
                 <PenLine size={13} aria-hidden />
                 수정
+              </button>
+            )}
+            {edit && (
+              <button type="button" className="icon-button" aria-label="삭제" title="삭제" onClick={() => setConfirming(true)}>
+                <Trash2 size={15} aria-hidden />
               </button>
             )}
             <button type="button" className="icon-button" aria-label="닫기" onClick={onClose}>
@@ -105,6 +115,21 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
               {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. */}
               {edit && edit.itemOf(record.itemId) && <ItemFiles meta={edit.meta} item={edit.itemOf(record.itemId)!} />}
             </div>
+          )}
+
+          {edit && (
+            <ConfirmDialog
+              open={confirming}
+              title="이 항목을 지울까요?"
+              message={DELETE_CONFIRM_MESSAGE}
+              confirmLabel="삭제"
+              onCancel={() => setConfirming(false)}
+              onConfirm={() => {
+                setConfirming(false)
+                deleteItems(edit.boardKey, [record.itemId])
+                onClose()
+              }}
+            />
           )}
         </>
       )}

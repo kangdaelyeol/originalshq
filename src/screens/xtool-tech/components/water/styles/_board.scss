@@ -1054,6 +1054,12 @@ $wb-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' w
   }
 }
 
+// 줄 고르기(물 체크) — 고르면 아래 고르기 막대(.water-selbar)에서 이동·삭제
+.water-record-table__check {
+  width: 40px;
+  padding-right: 0;
+}
+
 // 말풍선(업데이트 수) — 이름 칸 옆 반투명 흰 알약(D7 안 고른 칩). 없으면 줄에 올리거나 초점이 올 때만 "쓰기"
 // 아이콘이 보인다. 고른 줄(어두운 알약 위)에서는 흰 글자
 .water-record-table__updates {
