@@ -342,6 +342,9 @@ const ConsultationCard = ({
           .join(' / ')}
       />
     </dl>
+    {record.inquiryMessage && (
+      <p className="monday_notes">고객 문의 — {record.inquiryMessage}</p>
+    )}
     {record.notes && <p className="monday_notes">{record.notes}</p>}
   </RecordCard>
 )

@@ -79,6 +79,7 @@ const toConsultation = (item: MondayItem): MondayConsultation => ({
   closedAt: pick(item, /^상담마감일$/),
   probability: pick(item, /^구매확률$/),
   notes: pick(item, /^상담내역$/),
+  inquiryMessage: pick(item, /^고객문의상세내용$/),
   visitConfirmed: checked(item, /^방문체험확정$/),
   quoteIssued: checked(item, /^견적서발행$/),
   callbackDates: callbackDates(item),
