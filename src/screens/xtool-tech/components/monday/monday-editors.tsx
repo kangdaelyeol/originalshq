@@ -1,6 +1,6 @@
 import { Check, Search, X } from 'lucide-react'
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
-import type { TechCellValue, TechColumn } from '../../data/tech-boards'
+import type { TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { useMondayUsers, useTechBoard } from '../../data/tech-boards-store'
 import { useTechMembers } from '../../data/tech-members'
 import { usePhotoOf } from '../../data/tech-profiles'
@@ -18,6 +18,8 @@ export interface CellCommit {
   state: EditState
   /** 저장이 끝나기 전 칸에 보여 줄 값 */
   preview: TechCellValue
+  /** 연결 칸에서 고른 항목 — 하위 아이템 부품을 고르면 줄 이름·금액을 맞춘다. */
+  picked?: TechItemDoc[]
 }
 
 interface InlineInputProps {
@@ -71,6 +73,8 @@ interface CellEditorProps {
   anchor: HTMLElement
   onCommit: (commit: CellCommit) => void
   onCancel: () => void
+  /** 연결 칸에 하나만 잇는다(AS 청구 부품 줄) — 고르면 바로 저장한다. */
+  single?: boolean
 }
 
 /** 팝오버로 고치는 칸 — 타입마다 Monday처럼 고르는 모양이 다르다. */
@@ -304,7 +308,7 @@ function AssigneeEditor({ column, cell, anchor, onCommit, onCancel }: CellEditor
 }
 
 /** 연결 칸 — 가리키는 보드(우리 캐시)의 항목을 이름으로 찾아 잇는다. */
-function RelationEditor({ column, cell, anchor, onCommit, onCancel, boardKey }: CellEditorProps & { boardKey: NonNullable<TechColumn['linkedBoardKey']> }) {
+function RelationEditor({ column, cell, anchor, onCommit, onCancel, single, boardKey }: CellEditorProps & { boardKey: NonNullable<TechColumn['linkedBoardKey']> }) {
   const board = useTechBoard(boardKey)
   const [initial] = useState(() => initialState(column, cell) as string[])
   const [selected, setSelected] = useState(initial)
@@ -319,21 +323,22 @@ function RelationEditor({ column, cell, anchor, onCommit, onCancel, boardKey }: 
     return [...missing, ...fromBoard]
   }, [board.items, cell, initial])
   const nameOf = (id: string) => options.find((o) => o.value === id)?.label ?? `#${id}`
+  const save = (ids: string[]) =>
+    sameState(initial, ids)
+      ? onCancel()
+      : onCommit({
+          state: ids,
+          preview: previewCell(column, ids, ids.map(nameOf)),
+          picked: (board.items ?? []).filter((item) => ids.includes(item.itemId)),
+        })
   return (
-    <MonPopover
-      anchor={anchor}
-      width={300}
-      onClose={(commit) =>
-        commit && !sameState(initial, selected)
-          ? onCommit({ state: selected, preview: previewCell(column, selected, selected.map(nameOf)) })
-          : onCancel()
-      }
-    >
+    <MonPopover anchor={anchor} width={300} onClose={(commit) => (commit ? save(selected) : onCancel())}>
       <PickList
         title={column.title}
         options={options}
         selected={selected}
-        onChange={setSelected}
+        // 하나만 잇는 칸은 고르면(빼면) 바로 저장하고 닫는다.
+        onChange={single ? (next) => save(next.filter((id) => !selected.includes(id))) : setSelected}
         searchPlaceholder="항목 찾기"
         empty={board.items === null ? '불러오는 중…' : '찾는 항목이 없어요'}
       />

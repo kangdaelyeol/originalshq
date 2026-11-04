@@ -42,11 +42,16 @@ export interface PendingEdit {
   groupId?: string
   columns?: Record<string, CellEdit>
   subitems?: TechEditInput['subitems']
+  /** 고친 하위 아이템 칸에 저장 전 보여 줄 값 — 하위 아이템 id → 칸 id → 값(없는 칸은 캐시 값 그대로) */
+  subitemPreviews?: Record<string, Record<string, TechCellValue>>
   /** 겹침 확인 없이 덮어쓰기("내 값으로 덮기") */
   force?: boolean
 }
 
-/** 먼저 보여 주는 값 하나 — 열쇠는 'name' · 'group' · 'c:<칸 id>' · 's:<번호>'(새 하위 아이템) */
+/**
+ * 먼저 보여 주는 값 하나 — 열쇠는 'name' · 'group' · 'c:<칸 id>' · 's:<번호>'(새 하위 아이템) ·
+ * 'sn:<id>'·'sc:<id>:<칸 id>'·'sd:<id>'(하위 아이템 이름·칸·지우기)
+ */
 interface Patch {
   value: TechCellValue | string
   seq: number
@@ -192,12 +197,26 @@ function notify(title: string, message: string, actionLabel: string, retry: () =
 
 const cellKey = (cell: TechCellValue | undefined) => `${cell?.text ?? ''}\u0000${cell?.value ?? ''}`
 
+/** 고친·지운 하위 아이템 열쇠 — 'sn:<id>' 이름 · 'sc:<id>:<칸 id>' 칸 · 'sd:<id>' 지우기 */
+const isSubEdit = (field: string) => /^s[ncd]:/.test(field)
+
+/** 고친·지운 하위 아이템 열쇠 → 종류(sn·sc·sd)·하위 아이템·칸 id */
+function subField(field: string, raw: TechItemDoc | undefined) {
+  const [kind, subId, columnId = ''] = field.split(':')
+  return { kind, subId, columnId, sub: raw?.subitems?.find((s) => s.id === subId) }
+}
+
 /** 캐시에 지금 적힌 값(열쇠 하나) */
 function rawText(field: string, raw: TechItemDoc | undefined): string {
   if (!raw) return ''
   if (field === 'name') return raw.name
   if (field === 'group') return raw.groupId ?? ''
   if (field.startsWith('c:')) return cellKey(raw.values[field.slice(2)])
+  if (isSubEdit(field)) {
+    const { kind, subId, columnId, sub } = subField(field, raw)
+    if (kind === 'sd') return sub ? subId : ''
+    return kind === 'sn' ? (sub?.name ?? '') : cellKey(sub?.values[columnId])
+  }
   return (raw.subitems ?? []).map((sub) => sub.id).join(',')
 }
 
@@ -214,6 +233,12 @@ function sameAsRaw(field: string, patch: Patch, raw: TechItemDoc | undefined): b
   if (field === 'name') return raw.name === patch.value
   if (field === 'group') return raw.groupId === patch.value
   if (field.startsWith('c:')) return (raw.values[field.slice(2)]?.text ?? '') === (patch.value as TechCellValue).text
+  if (isSubEdit(field)) {
+    const { kind, columnId, sub } = subField(field, raw)
+    if (kind === 'sd') return !sub
+    if (kind === 'sn') return sub?.name === patch.value
+    return (sub?.values[columnId]?.text ?? '') === (patch.value as TechCellValue).text
+  }
   return false
 }
 
@@ -289,21 +314,49 @@ function patched(item: TechItemDoc, s: ItemState | undefined, localKey: string |
   const values = { ...item.values }
   let { name, groupId } = item
   const subs: TechSubitemDoc[] = []
+  // 고친 하위 아이템(id → 덮을 이름·칸) · 지운 하위 아이템 id
+  const subEdits = new Map<string, { name?: string; values: Record<string, TechCellValue> }>()
+  const subGone = new Set<string>()
   for (const [field, patch] of s.patches) {
     if (field === 'name') name = patch.value as string
     else if (field === 'group') groupId = patch.value as string
     else if (field.startsWith('c:')) values[field.slice(2)] = patch.value as TechCellValue
-    else subs.push({ id: `${s.key}:${field}`, name: patch.value as string, values: {} })
+    else if (field.startsWith('s:')) subs.push({ id: `${s.key}:${field}`, name: patch.value as string, values: {} })
+    else {
+      const { kind, subId, columnId } = subField(field, undefined)
+      if (kind === 'sd') subGone.add(subId)
+      else {
+        const edit = subEdits.get(subId) ?? { values: {} }
+        if (kind === 'sn') edit.name = patch.value as string
+        else edit.values[columnId] = patch.value as TechCellValue
+        subEdits.set(subId, edit)
+      }
+    }
   }
+  const subitems =
+    subs.length || subEdits.size || subGone.size
+      ? [
+          ...(item.subitems ?? [])
+            .filter((sub) => !subGone.has(sub.id))
+            .map((sub) => {
+              const edit = subEdits.get(sub.id)
+              return edit ? { ...sub, name: edit.name ?? sub.name, values: { ...sub.values, ...edit.values } } : sub
+            }),
+          ...subs,
+        ]
+      : null
   return {
     ...item,
     name,
     groupId,
     values,
-    ...(subs.length ? { subitems: [...(item.subitems ?? []), ...subs] } : {}),
+    ...(subitems ? { subitems } : {}),
     ...(localKey ? { localKey } : {}),
   }
 }
+
+/** 만드는 중인 하위 아이템(아직 Monday id가 없다) — 다 만들어지기 전에는 고치거나 지울 수 없다. */
+export const isDraftSubitem = (id: string): boolean => /:s:\d+$/.test(id)
 
 /** 아직 캐시에 없는 새 항목 — 표에 그릴 모양만(record는 비어 있다, draft) */
 function draftDoc(s: ItemState): TechItemDoc {
@@ -363,10 +416,12 @@ function mergeSubitems(
   if (!b) return a
   const update = new Map((a.update ?? []).map((u) => [u.id, u]))
   for (const u of b.update ?? []) update.set(u.id, { ...update.get(u.id), ...u, columns: { ...update.get(u.id)?.columns, ...u.columns } })
+  const remove = [...new Set([...(a.remove ?? []), ...(b.remove ?? [])])]
   return {
     create: [...(a.create ?? []), ...(b.create ?? [])],
-    update: [...update.values()],
-    remove: [...new Set([...(a.remove ?? []), ...(b.remove ?? [])])],
+    // 지울 줄은 고치지 않는다 — 서버는 지운 뒤에 고치므로 같이 보내면 실패한다.
+    update: [...update.values()].filter((u) => !u.id || !remove.includes(u.id)),
+    remove,
   }
 }
 
@@ -378,7 +433,7 @@ function mergeInto(s: ItemState, out: Outgoing, edit: PendingEdit, label: string
     // 고치기 전에 본 값 — 이 칸을 처음 고칠 때만 싣는다. 이어 고친 것(아직 저장 중인 내 값 위)은
     // 앞 요청이 이미 확인했다.
     const chained = s.patches.has(field) || s.inFlight?.seqs.has(field) || out.base.has(field)
-    if (raw && !edit.force && !chained && !field.startsWith('s:')) out.base.set(field, baseText(field, raw))
+    if (raw && !edit.force && !chained && !field.startsWith('s:') && !isSubEdit(field)) out.base.set(field, baseText(field, raw))
     const seq = ++seqNo
     out.seqs.set(field, seq)
     if (value === undefined) {
@@ -404,6 +459,13 @@ function mergeInto(s: ItemState, out: Outgoing, edit: PendingEdit, label: string
   if (edit.subitems) {
     out.subitems = mergeSubitems(out.subitems, edit.subitems)
     for (const sub of edit.subitems.create ?? []) if (sub.name) show(`s:${++subNo}`, sub.name)
+    // 고친·지운 하위 아이템도 바로 보인다(칸은 미리 보기를 준 것만).
+    for (const sub of edit.subitems.update ?? []) {
+      if (!sub.id) continue
+      if (sub.name !== undefined) show(`sn:${sub.id}`, sub.name)
+      for (const id of Object.keys(sub.columns ?? {})) show(`sc:${sub.id}:${id}`, edit.subitemPreviews?.[sub.id]?.[id])
+    }
+    for (const id of edit.subitems.remove ?? []) show(`sd:${id}`, id)
   }
 }
 
@@ -420,7 +482,24 @@ function editFrom(s: ItemState | undefined, out: Outgoing, only?: ReadonlySet<st
   for (const [id, value] of Object.entries(out.columns)) {
     if (take(`c:${id}`)) edit.columns![id] = { value, preview: out.previews.get(`c:${id}`) as TechCellValue | undefined }
   }
-  if (out.subitems && !only) edit.subitems = out.subitems
+  if (out.subitems && !only) {
+    // 하위 아이템도 그 뒤에 또 고친 이름·칸은 빼고, 칸 미리 보기를 다시 건다.
+    const update = (out.subitems.update ?? []).flatMap((u) => {
+      const columns = Object.fromEntries(Object.entries(u.columns ?? {}).filter(([id]) => take(`sc:${u.id}:${id}`)))
+      const name = u.name !== undefined && take(`sn:${u.id}`) ? u.name : undefined
+      if (name === undefined && Object.keys(columns).length === 0) return []
+      return [{ id: u.id, ...(name !== undefined ? { name } : {}), columns }]
+    })
+    const { create = [], remove = [] } = out.subitems
+    if (create.length || update.length || remove.length) edit.subitems = { create, update, remove }
+    const previews: NonNullable<PendingEdit['subitemPreviews']> = {}
+    for (const [field, value] of out.previews) {
+      if (!field.startsWith('sc:')) continue
+      const { subId, columnId } = subField(field, undefined)
+      previews[subId] = { ...previews[subId], [columnId]: value as TechCellValue }
+    }
+    edit.subitemPreviews = previews
+  }
   return edit
 }
 

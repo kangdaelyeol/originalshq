@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState, type CSSProperties } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc } from '../../data/tech-boards'
-import { toEditValue } from '../../data/tech-edit'
+import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
+import { initialState, toEditValue } from '../../data/tech-edit'
 import { createItem, editItem } from '../../data/tech-outbox'
+import { priceColumn, relationColumn } from '../../data/tech-subitems'
 import { cx } from '@/ohq-ui/lib/cx'
 import { groupColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
@@ -13,6 +14,7 @@ import {
   NAME_WIDTH,
   OTHER_GROUP,
   PHONE_IN_NAME_BOARDS,
+  previewCell,
   rowKey,
   sortValue,
   splitNamePhone,
@@ -105,6 +107,56 @@ export function MondaySection(props: MondaySectionProps) {
     editItem(boardKey, item.itemId, { subitems: { create: [{ name }] } }, `${nameOf(item)} · ${name}`)
   }
 
+  // 하위 아이템 고치기·지우기 — 항목 칸처럼 바로 보이고 뒤에서 쓴다. 고칠 칸·연결 칸·금액 칸은
+  // 대시보드 편집 패널과 같은 규칙(tech-subitems).
+  const subColumns = meta.subitems?.columns ?? null
+  const updateSubitem = (item: TechItemDoc, sub: TechSubitemDoc, name: string | undefined, cells: [TechColumn, CellCommit][]) => {
+    editItem(
+      boardKey,
+      item.itemId,
+      {
+        subitems: {
+          update: [
+            {
+              id: sub.id,
+              ...(name !== undefined ? { name } : {}),
+              columns: Object.fromEntries(cells.map(([c, { state }]) => [c.id, toEditValue(c, state)])),
+            },
+          ],
+        },
+        subitemPreviews: { [sub.id]: Object.fromEntries(cells.map(([c, { preview }]) => [c.id, preview])) },
+      },
+      `${nameOf(item)} · ${name ?? sub.name}`,
+    )
+  }
+
+  const commitSubCell = (item: TechItemDoc, sub: TechSubitemDoc, column: TechColumn, commit: CellCommit) => {
+    const cells: [TechColumn, CellCommit][] = [[column, commit]]
+    let name: string | undefined
+    // 부품(연결 칸)을 고르면 줄 이름은 고른 부품 이름, 금액이 비어 있으면 부품 비용으로 채운다.
+    const part = column.id === relationColumn(subColumns ?? [])?.id ? commit.picked?.[0] : undefined
+    if (part) {
+      const record = part.record as { name?: string; cost?: unknown }
+      const partName = (record.name || part.name).trim()
+      if (partName && partName !== sub.name) name = partName
+      const price = priceColumn(subColumns ?? [])
+      if (price && typeof record.cost === 'number' && !initialState(price, sub.values[price.id])) {
+        const cost = String(record.cost)
+        cells.push([price, { state: cost, preview: previewCell(price, cost) }])
+      }
+    }
+    updateSubitem(item, sub, name, cells)
+  }
+
+  const commitSubName = (item: TechItemDoc, sub: TechSubitemDoc, name: string) => {
+    if (name !== sub.name) updateSubitem(item, sub, name, [])
+  }
+
+  // 지우기 — 줄이 바로 빠지고 Monday 휴지통으로 보낸다(실패하면 다시 보인다).
+  const removeSubitem = (item: TechItemDoc, sub: TechSubitemDoc) => {
+    editItem(boardKey, item.itemId, { subitems: { remove: [sub.id] } }, `${nameOf(item)} · ${sub.name} 삭제`)
+  }
+
   const groups: MonGroup[] = useMemo(() => {
     const sortColumn = sort && sort.columnId !== 'name' ? columns.find((c) => c.id === sort.columnId) : null
     const valueOf = (item: TechItemDoc) => (sortColumn ? sortValue(sortColumn, item.values[sortColumn.id]) : item.name)
@@ -160,9 +212,12 @@ export function MondaySection(props: MondaySectionProps) {
           openFiles={(item, column) => setFilesFor({ itemId: rowKey(item), columnId: column.id })}
           addItem={allowAdd ? addItem : null}
           addSubitem={addSubitem}
+          commitSubCell={commitSubCell}
+          commitSubName={commitSubName}
+          removeSubitem={removeSubitem}
           openUpdates={UPDATE_BOARDS.has(boardKey) ? (item) => setUpdatesFor(rowKey(item)) : null}
           updatesOpenFor={updatesFor}
-          subColumns={meta.subitems?.columns ?? null}
+          subColumns={subColumns}
           subNameTitle={SUB_NAME_TITLE[boardKey] ?? '하위 아이템'}
           expanded={expanded}
           toggleExpanded={(itemId) =>

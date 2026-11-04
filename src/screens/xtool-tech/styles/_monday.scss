@@ -731,6 +731,58 @@ $sub-row: 34px;
   background: var(--mon-hover);
 }
 
+// 줄 이름 칸 — 이름 단추 글자가 "+ 추가" 칸 글자와 줄을 맞추게 여백을 줄이고, 오른쪽에 "⋯"
+.mon-sub__row--item .mon-sub__name.mon-cell {
+  gap: 4px;
+  padding-right: 4px;
+  padding-left: 7px;
+}
+
+// 보기만 하는 이름(만드는 중인 줄)도 단추 글자 자리에
+.mon-sub__label {
+  padding: 0 5px;
+}
+
+.mon-sub__name .mon-input {
+  height: 26px;
+  border-radius: 3px;
+}
+
+// 이름 칸 오른쪽 "⋯"(이름 바꾸기·삭제) — 줄에 올리거나 포커스가 들어오면 보인다(Monday).
+.mon-sub__more {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+  opacity: 0;
+
+  &:hover,
+  &.is-active {
+    background: var(--mon-overlay-strong);
+    color: var(--mon-text);
+  }
+}
+
+.mon-sub__row--item:hover .mon-sub__more,
+.mon-sub__row--item:focus-within .mon-sub__more,
+.mon-sub__more.is-active {
+  opacity: 1;
+}
+
+// 올려 볼 수 없는 화면(터치)에서는 늘 보인다.
+@media (hover: none) {
+  .mon-sub__more {
+    opacity: 1;
+  }
+}
+
 .mon-sub__row--add .mon-sub__name.mon-cell {
   grid-column: 1 / -1;
   padding-left: 6px;
