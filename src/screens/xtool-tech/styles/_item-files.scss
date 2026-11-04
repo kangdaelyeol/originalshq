@@ -1,0 +1,209 @@
+// ── 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세 패널 ItemFiles · 수정 패널 FileField) ──────────────────────
+// 썸네일·목록 자체는 _boards.scss 그대로(어두운 유리). 색은 토큰(--text-*·--accent-rgb·--crit)과 currentColor만 써서,
+// 물 레이아웃의 수정 패널(물 서랍 안 — 토큰이 밝은 벽용으로 바뀐다)에서도 그대로 맞는다.
+// 규칙(진행·실패·다시 시도·놓을 자리)은 components/board/use-file-column.ts — Monday 표·물 파일 칸과 같다.
+
+// 상세 패널의 칸 하나 — 제목 줄에 단추(모두 지우기·올리기), 놓을 자리는 칸 위에 겹친다
+.file-section {
+  position: relative;
+}
+
+.file-section__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  margin-bottom: 8px;
+
+  h3 {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+  }
+}
+
+// 빈 칸(올리기가 있을 때만 보인다) — 놓을 자리 안내
+.file-section__hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 56px;
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-control);
+  font-size: 12px;
+  color: var(--text-4);
+}
+
+// 지우는 동안 — 지워질 파일을 흐리게
+.file-section.is-clearing {
+  .file-thumbs,
+  .file-list {
+    opacity: 0.45;
+    transition: opacity 0.2s;
+  }
+}
+
+// 놓을 자리 — 파일을 끌고 들어오면 칸(수정 패널은 파일 칸) 위에 점선 자리가 뜬다
+.file-section.is-droppable,
+.file-field.is-droppable {
+  position: relative;
+}
+
+.file-drop {
+  position: absolute;
+  inset: -6px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1.5px dashed rgba(var(--accent-rgb), 0.7);
+  border-radius: 14px;
+  background: rgba(var(--accent-rgb), 0.1);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+}
+
+// 흐림은 뜰 때만 — 평소에는 아무것도 그리지 않는다
+.file-section.is-dragging > .file-drop,
+.file-field.is-dragging > .file-drop {
+  opacity: 1;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+// 칸 안 진행 막대 — 바탕은 글자색을 옅게(어두운 유리·밝은 벽 둘 다), 채움은 강조색. transform만 움직인다
+.file-progress {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 72px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  color: var(--text-1);
+  background: color-mix(in srgb, currentColor 14%, transparent);
+
+  > span {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgb(var(--accent-rgb));
+    transform-origin: left center;
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+// 올리는 중인 사진 — 이 기기 미리보기를 흐리게, 막대는 아래에
+.file-thumb.is-pending {
+  position: relative;
+  cursor: default;
+
+  img {
+    opacity: 0.55;
+  }
+
+  &:hover img {
+    transform: none;
+  }
+
+  .file-progress {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    left: 8px;
+    width: auto;
+    background: rgba(0, 0, 0, 0.45);
+  }
+}
+
+.file-thumb.is-failed {
+  border-color: color-mix(in srgb, var(--crit) 55%, transparent);
+
+  img {
+    opacity: 0.3;
+    filter: grayscale(1);
+  }
+}
+
+.file-thumb__fail {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.32);
+}
+
+// 다시 시도·닫기 — 작은 아이콘 단추
+.file-act {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+  color: var(--text-2);
+
+  &:hover {
+    color: var(--text-1);
+    background: color-mix(in srgb, currentColor 14%, transparent);
+  }
+}
+
+.file-thumb__fail .file-act {
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.45);
+}
+
+// 올리는 중인 문서 한 줄(상세 패널 목록·수정 패널 목록) — 이름 · 막대 · %
+.file-pending {
+  align-items: center;
+
+  .file-pending__name {
+    flex: 1;
+
+    > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.file-pending__pct {
+  min-width: 56px;
+  text-align: right;
+}
+
+.file-pending__fail {
+  flex: none;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--crit);
+}
+
+.file-field__uploads {
+  li {
+    min-height: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .file-progress > span,
+  .file-drop,
+  .file-section.is-clearing .file-thumbs,
+  .file-section.is-clearing .file-list {
+    transition: none;
+  }
+}

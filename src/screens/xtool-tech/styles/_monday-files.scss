@@ -1,0 +1,148 @@
+// ── Monday 표 파일 모달의 끌어다 놓기·올리는 중(FilesModal) ──────────────────────────────────────────────
+// 모달·카드 자체는 _monday.scss 그대로. 색은 --mon-* 변수(남색·라이트·블랙 팔레트)만 쓴다. 규칙(진행·실패·
+// 다시 시도·놓을 자리)은 components/board/use-file-column.ts — 대시보드·물 파일 칸과 같다.
+
+.mon-modal__card {
+  position: relative;
+}
+
+// 빈 칸 — 누르면 고르기, 끌어다 놓아도 된다(Monday의 빈 파일 칸처럼 점선 상자)
+.mon-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 180px;
+  padding: 24px;
+  border: 1px dashed var(--mon-line-strong);
+  border-radius: 8px;
+  background: none;
+  color: var(--mon-text);
+  font-size: 14px;
+
+  svg {
+    color: var(--mon-primary);
+  }
+
+  small {
+    color: var(--mon-text-2);
+    font-size: 12px;
+  }
+
+  &:hover {
+    border-color: var(--mon-primary);
+    background: var(--mon-overlay);
+  }
+}
+
+// 놓을 자리 — 파일을 모달로 끌고 들어오면 카드 전체에 파란 점선 자리가 뜬다
+.mon-modal__drop {
+  position: absolute;
+  inset: 8px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2px dashed var(--mon-primary);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--mon-selected-row) 88%, transparent);
+  color: var(--mon-text);
+  font-size: 16px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease-out;
+
+  svg {
+    color: var(--mon-primary);
+  }
+}
+
+.mon-modal__card.is-dragging > .mon-modal__drop {
+  opacity: 1;
+}
+
+// 올리는 중인 카드 — 미리보기를 흐리게, 미리보기 아래에 파란 막대
+.mon-filecard.is-pending .mon-filecard__preview img {
+  opacity: 0.6;
+}
+
+.mon-filecard.is-failed {
+  border-color: color-mix(in srgb, var(--mon-danger-text) 55%, var(--mon-line));
+
+  .mon-filecard__preview img {
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+}
+
+.mon-filecard__bar {
+  position: relative;
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  background: var(--mon-overlay-strong);
+
+  > span {
+    position: absolute;
+    inset: 0;
+    background: var(--mon-primary);
+    transform-origin: left center;
+    transition: transform 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+}
+
+.mon-filecard__state {
+  flex: none;
+  color: var(--mon-text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.mon-filecard.is-failed .mon-filecard__state {
+  color: var(--mon-danger-text);
+}
+
+.mon-filecard__act {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: var(--mon-overlay);
+    color: var(--mon-text);
+  }
+}
+
+.mon-filecard__error {
+  margin: -2px 10px 8px;
+  overflow: hidden;
+  color: var(--mon-danger-text);
+  font-size: 12px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mon-modal__clear:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mon-modal__drop,
+  .mon-filecard__bar > span {
+    transition: none;
+  }
+}

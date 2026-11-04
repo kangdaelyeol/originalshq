@@ -1,5 +1,5 @@
 import { FileText, Film, Image as ImageIcon, ImageOff, LoaderCircle, RotateCcw, Trash2, Upload, X } from 'lucide-react'
-import { useEffect, useRef, useState, type CSSProperties, type DragEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterBar } from '@/ohq-ui/water/charts/water-bar'
 import { WaterButton, WaterDialog, WaterIconButton } from '@/ohq-ui/water/controls'
@@ -7,8 +7,8 @@ import { useReducedMotion, useWaterRipple } from '@/ohq-ui/water/hooks'
 import { rippleAt } from '@/ohq-ui/water/ripple'
 import { WaterFlag } from '@/ohq-ui/water/surfaces/water-flag'
 import type { TechBoardMeta, TechColumn, TechItemDoc } from '../../../data/tech-boards'
+import type { TechFileActions } from '../../../data/tech-file-actions'
 import {
-  checkFile,
   fetchFileLinks,
   FILE_ACCEPT,
   filesOf,
@@ -16,7 +16,7 @@ import {
   type TechFileRef,
 } from '../../../data/tech-files'
 import { ImageViewer, type ViewerImage } from '../../board/image-viewer'
-import type { WaterFileActions, WaterFileTarget } from './file-actions'
+import { uploadLabel, useFileColumn, useFileDrop, type FileUpload } from '../../board/use-file-column'
 
 const VIDEO = /\.(mp4|mov|m4v|webm|avi|mkv)$/i
 
@@ -30,34 +30,6 @@ const FileIcon = ({ name, isImage }: { name: string; isImage: boolean }) =>
   )
 
 const messageOf = (e: unknown) => (e instanceof Error ? e.message : String(e))
-// 진행률은 이만큼 늘 때만 다시 그린다(XHR progress가 촘촘해도 React를 덜 그리게) — 막대가 스프링으로 이어 준다
-const PROGRESS_STEP = 0.02
-// 다 올린 것이 실시간 갱신으로 목록에 들어오기를 기다리는 시간 — 늦으면 그냥 지운다(토스트가 이미 알렸다)
-const DONE_HOLD_MS = 6000
-
-let nextPendingId = 1
-
-/** 올리는 중인 파일 하나 */
-interface Pending {
-  id: number
-  file: File
-  isImage: boolean
-  /** 사진이면 이 기기 안 미리보기(object URL) */
-  preview: string | null
-  ratio: number
-  state: 'up' | 'done' | 'fail'
-  error?: string
-}
-
-const percentOf = (p: Pending) => (p.state === 'done' ? 100 : Math.min(99, Math.round(p.ratio * 100)))
-const pendingLabel = (p: Pending) =>
-  p.state === 'fail'
-    ? '올리기 실패'
-    : p.state === 'done'
-      ? '올렸어요'
-      : p.ratio >= 0.999
-        ? '붙이는 중…'
-        : `${percentOf(p)}%`
 
 /**
  * 사진 썸네일 — 누르면 크게 보기. 주소를 받기 전에는 빈 홈 + 도는 표시, 못 그리는 형식(HEIC 등)은 확장자.
@@ -109,13 +81,13 @@ function Thumb({
 }
 
 /** 올리는 중인 사진 — 이 기기 미리보기 위에 홈 막대가 차오른다(extend 스프링). 실패면 다시 시도·닫기 */
-function PendingThumb({ p, onRetry, onDismiss }: { p: Pending; onRetry: () => void; onDismiss: () => void }) {
+function PendingThumb({ p, onRetry, onDismiss }: { p: FileUpload; onRetry: () => void; onDismiss: () => void }) {
   const failed = p.state === 'fail'
   return (
     <div
       className={cx('water-files__thumb', 'water-reveal', 'is-pending', failed && 'is-failed')}
       role="group"
-      aria-label={`${p.file.name} — ${pendingLabel(p)}`}
+      aria-label={`${p.file.name} — ${uploadLabel(p)}`}
       title={failed ? `${p.file.name}: ${p.error}` : p.file.name}
     >
       {p.preview && <img src={p.preview} alt="" />}
@@ -134,7 +106,7 @@ function PendingThumb({ p, onRetry, onDismiss }: { p: Pending; onRetry: () => vo
 }
 
 /** 올리는 중인 문서·동영상 한 줄 — 이름 · 홈 막대 · % (실패면 빨간 점 + 다시 시도·닫기) */
-function PendingRow({ p, onRetry, onDismiss }: { p: Pending; onRetry: () => void; onDismiss: () => void }) {
+function PendingRow({ p, onRetry, onDismiss }: { p: FileUpload; onRetry: () => void; onDismiss: () => void }) {
   const failed = p.state === 'fail'
   return (
     <li className={cx('water-files__row', 'water-reveal', 'is-pending', failed && 'is-failed')}>
@@ -153,7 +125,7 @@ function PendingRow({ p, onRetry, onDismiss }: { p: Pending; onRetry: () => void
       ) : (
         <>
           <WaterBar value={p.ratio} size="sm" className="water-files__bar" />
-          <span className="water-files__pct">{pendingLabel(p)}</span>
+          <span className="water-files__pct">{uploadLabel(p)}</span>
         </>
       )}
     </li>
@@ -169,7 +141,7 @@ interface ColumnProps {
   broken: ReadonlySet<string>
   onBroken: (assetId: string) => void
   onView: (assetId: string) => void
-  actions?: WaterFileActions
+  actions?: TechFileActions
 }
 
 /**
@@ -178,133 +150,16 @@ interface ColumnProps {
  * 비우기(actions.clear)가 있으면 "모두 지우기"(확인 대화상자 — Monday엔 파일 하나만 지우기가 없다).
  */
 function FileColumn({ itemId, column, files, links, error, broken, onBroken, onView, actions }: ColumnProps) {
-  const upload = actions?.upload
-  const clear = actions?.clear
   const reduced = useReducedMotion()
-  const [pending, setPending] = useState<Pending[]>([])
-  const [problem, setProblem] = useState<string | null>(null)
-  const [dragging, setDragging] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [clearing, setClearing] = useState<{ busy: boolean; error: string | null }>({ busy: false, error: null })
-  const [status, setStatus] = useState('')
   const input = useRef<HTMLInputElement>(null)
   const zone = useRef<HTMLElement>(null)
-  const depth = useRef(0)
-  const previews = useRef(new Map<number, string>())
-  const timers = useRef(new Set<number>())
   const { ref: rippleRef, engine: ripple } = useWaterRipple()
-  const target: WaterFileTarget = { itemId, columnId: column.id, label: column.title }
-  // 칸이 처음 그려질 때 있던 파일 — 이것만 차례로 진해진다(나중에 올린 것은 올리던 자리에 바로 선다)
-  const [initial] = useState(() => new Set(files.map((f) => f.assetId)))
-
-  // 떼어질 때 — 미리보기 주소를 돌려주고 기다리던 타이머를 끈다
-  useEffect(() => {
-    const urls = previews.current
-    const waits = timers.current
-    return () => {
-      urls.forEach((url) => URL.revokeObjectURL(url))
-      urls.clear()
-      waits.forEach((t) => window.clearTimeout(t))
-      waits.clear()
-    }
-  }, [])
-
-  const remove = (id: number) => {
-    const url = previews.current.get(id)
-    if (url) URL.revokeObjectURL(url)
-    previews.current.delete(id)
-    setPending((list) => list.filter((x) => x.id !== id))
-  }
-
-  const start = (file: File) => {
-    if (!upload) return
-    const id = nextPendingId++
-    const isImage = file.type.startsWith('image/')
-    const preview = isImage ? URL.createObjectURL(file) : null
-    if (preview) previews.current.set(id, preview)
-    setPending((list) => [...list, { id, file, isImage, preview, ratio: 0, state: 'up' }])
-    const patch = (next: Partial<Pending>) =>
-      setPending((list) => list.map((x) => (x.id === id ? { ...x, ...next } : x)))
-    let shown = 0
-    upload(target, file, (ratio) => {
-      if (ratio - shown < PROGRESS_STEP && ratio < 1) return
-      shown = ratio
-      patch({ ratio })
-    }).then(
-      () => {
-        patch({ ratio: 1, state: 'done' })
-        setStatus(`${file.name} 올렸어요`)
-        const t = window.setTimeout(() => {
-          timers.current.delete(t)
-          remove(id)
-        }, DONE_HOLD_MS)
-        timers.current.add(t)
-      },
-      (e: unknown) => {
-        patch({ state: 'fail', error: messageOf(e) })
-        setStatus(`${file.name} 올리기에 실패했어요: ${messageOf(e)}`)
-      },
-    )
-  }
-
-  // 고른·놓은 파일 — 기존 FileField와 같은 검사(형식·10MB), 걸린 것만 글로 알린다
-  const pick = (list: FileList | null) => {
-    if (!list || !upload) return
-    const problems: string[] = []
-    for (const file of Array.from(list)) {
-      const reason = checkFile(file)
-      if (reason) problems.push(reason)
-      else start(file)
-    }
-    setProblem(problems.length ? problems.join(' / ') : null)
-    if (input.current) input.current.value = ''
-  }
-
-  const retry = (p: Pending) => {
-    remove(p.id)
-    start(p.file)
-  }
-
-  const runClear = () => {
-    setConfirming(false)
-    if (!clear) return
-    setClearing({ busy: true, error: null })
-    clear(target).then(
-      () => {
-        setClearing({ busy: false, error: null })
-        setStatus(`${column.title} 칸을 모두 지웠어요`)
-      },
-      (e: unknown) => setClearing({ busy: false, error: messageOf(e) }),
-    )
-  }
-
-  // 끌어다 놓기 — 파일을 끌 때만 받는다. 안쪽 요소를 지날 때도 켜진 채로 있게 들어오고 나간 횟수를 센다
-  const hasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes('Files')
-  const dropHandlers = upload
-    ? {
-        onDragEnter: (e: DragEvent<HTMLElement>) => {
-          if (!hasFiles(e)) return
-          e.preventDefault()
-          depth.current += 1
-          setDragging(true)
-        },
-        onDragOver: (e: DragEvent<HTMLElement>) => {
-          if (!hasFiles(e)) return
-          e.preventDefault()
-          e.dataTransfer.dropEffect = 'copy'
-        },
-        // 나갈 때는 무엇을 끄는지 묻지 않는다 — 끌기를 그만두거나 밖에서 놓아도 놓을 자리가 남지 않게
-        onDragLeave: () => {
-          if (depth.current === 0) return
-          depth.current -= 1
-          if (depth.current === 0) setDragging(false)
-        },
-        onDrop: (e: DragEvent<HTMLElement>) => {
-          if (!hasFiles(e)) return
-          e.preventDefault()
-          depth.current = 0
-          setDragging(false)
-          // 놓은 자리에서 D7 물결 두 겹(반지름 22 → 초속 525px, 0.3초) — 칸 크기 그대로, 배율 0.75
+  // 올리기·비우기·실패·다시 시도 — 세 레이아웃의 파일 칸이 같이 쓰는 규칙(components/board/use-file-column.ts)
+  const col = useFileColumn({ itemId, columnId: column.id, label: column.title }, actions, files)
+  // 끌어다 놓기 — 놓은 자리에서 D7 물결 두 겹(반지름 22 → 초속 525px, 0.3초) — 칸 크기 그대로, 배율 0.75
+  const drop = useFileDrop(
+    col.canUpload
+      ? (list, e) => {
           const svg = rippleRef.current
           const el = zone.current
           if (svg && el && !reduced) {
@@ -313,29 +168,26 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
               scale: 0.75,
             })
           }
-          pick(e.dataTransfer.files)
-        },
-      }
-    : {}
-
-  const names = new Set(files.map((f) => f.name))
-  // 다 올린 것은 새 파일이 목록에 들어오면 그 썸네일로 넘긴다(Monday 주소가 올 때까지 미리보기를 이어 쓴다).
-  // 실시간 갱신이 늦으면 DONE_HOLD_MS 뒤 지운다
-  const shown = pending.filter((p) => !(p.state === 'done' && names.has(p.file.name)))
-  const doneByName = new Map(pending.filter((p) => p.state === 'done').map((p) => [p.file.name, p.preview]))
+          col.pick(list)
+        }
+      : null,
+  )
+  // 칸이 처음 그려질 때 있던 파일 — 이것만 차례로 진해진다(나중에 올린 것은 올리던 자리에 바로 선다)
+  const [initial] = useState(() => new Set(files.map((f) => f.assetId)))
+  const upload = col.canUpload
+  const clear = col.canClear
   const images = files.filter((f) => f.isImage)
   const others = files.filter((f) => !f.isImage)
-  const upImages = shown.filter((p) => p.isImage)
-  const upOthers = shown.filter((p) => !p.isImage)
-  const busy = clearing.busy || shown.some((p) => p.state === 'up')
+  const upImages = col.uploads.filter((p) => p.isImage)
+  const upOthers = col.uploads.filter((p) => !p.isImage)
 
   return (
     <section
       ref={zone}
-      className={cx('water-files', upload && 'is-droppable', dragging && 'is-dragging', clearing.busy && 'is-clearing')}
+      className={cx('water-files', upload && 'is-droppable', drop.dragging && 'is-dragging', col.clearing.busy && 'is-clearing')}
       data-column={column.id}
-      aria-busy={busy || undefined}
-      {...dropHandlers}
+      aria-busy={col.busy || undefined}
+      {...drop.dropProps}
     >
       <header className="water-files__head">
         <h3 className="water-files__title">
@@ -348,10 +200,10 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
                 variant="ghost"
                 size="sm"
                 icon={Trash2}
-                disabled={clearing.busy}
-                onClick={() => setConfirming(true)}
+                disabled={col.clearing.busy}
+                onClick={col.askClear}
               >
-                {clearing.busy ? '지우는 중…' : '모두 지우기'}
+                {col.clearing.busy ? '지우는 중…' : '모두 지우기'}
               </WaterButton>
             )}
             {upload && (
@@ -370,7 +222,7 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
               key={f.assetId}
               file={f}
               link={links?.get(f.assetId)}
-              placeholder={doneByName.get(f.name) ?? null}
+              placeholder={col.previewOf(f.name)}
               failed={!!error}
               broken={broken.has(f.assetId)}
               index={initial.has(f.assetId) ? i : null}
@@ -379,7 +231,7 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
             />
           ))}
           {upImages.map((p) => (
-            <PendingThumb key={`up-${p.id}`} p={p} onRetry={() => retry(p)} onDismiss={() => remove(p.id)} />
+            <PendingThumb key={`up-${p.id}`} p={p} onRetry={() => col.retry(p)} onDismiss={() => col.dismiss(p)} />
           ))}
         </div>
       )}
@@ -415,12 +267,12 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
             )
           })}
           {upOthers.map((p) => (
-            <PendingRow key={`up-${p.id}`} p={p} onRetry={() => retry(p)} onDismiss={() => remove(p.id)} />
+            <PendingRow key={`up-${p.id}`} p={p} onRetry={() => col.retry(p)} onDismiss={() => col.dismiss(p)} />
           ))}
         </ul>
       )}
 
-      {upload && files.length === 0 && shown.length === 0 && (
+      {upload && files.length === 0 && col.uploads.length === 0 && (
         <p className="water-files__hint">
           <Upload size={14} aria-hidden />
           끌어다 놓거나 "올리기" — 사진·동영상·문서, 10MB까지
@@ -428,10 +280,10 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
       )}
 
       {error && <p className="water-files__error">파일 주소를 받지 못했어요: {error}</p>}
-      {problem && <p className="water-files__error">{problem}</p>}
-      {clearing.error && (
+      {col.problem && <p className="water-files__error">{col.problem}</p>}
+      {col.clearing.error && (
         <p className="water-files__error">
-          {column.title} 지우기에 실패했어요: {clearing.error}
+          {column.title} 지우기에 실패했어요: {col.clearing.error}
         </p>
       )}
 
@@ -445,7 +297,10 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
             className="sr-only"
             tabIndex={-1}
             aria-hidden
-            onChange={(e) => pick(e.target.files)}
+            onChange={(e) => {
+              col.pick(e.target.files)
+              e.target.value = ''
+            }}
           />
           <span className="water-files__drop" aria-hidden>
             <Upload size={18} />
@@ -455,17 +310,17 @@ function FileColumn({ itemId, column, files, links, error, broken, onBroken, onV
         </>
       )}
       <p className="sr-only" role="status">
-        {status}
+        {col.status}
       </p>
 
       {clear && (
         <WaterDialog
-          open={confirming}
+          open={col.confirming}
           title={`파일 ${files.length}개를 모두 지울까요?`}
           message={`'${column.title}' 칸의 파일이 Monday에서도 지워지고 되돌릴 수 없어요.`}
           confirmLabel="모두 지우기"
-          onCancel={() => setConfirming(false)}
-          onConfirm={runClear}
+          onCancel={col.cancelClear}
+          onConfirm={col.runClear}
         />
       )}
     </section>
@@ -477,9 +332,10 @@ interface WaterItemFilesProps {
   item: TechItemDoc
   /**
    * 물에만 — 올리기·비우기·주소 받기. 없으면 기존 ItemFiles와 똑같이 보기만(파일이 있는 칸만, 주소는 Monday).
-   * 올리기가 있으면 빈 칸도 보여 놓을 자리가 된다. 한 번 만든 것을 계속 넘긴다(주소 받기가 다시 돌지 않게)
+   * 올리기가 있으면 빈 칸도 보여 놓을 자리가 된다. 한 번 만든 것을 계속 넘긴다(주소 받기가 다시 돌지 않게).
+   * 타입은 세 레이아웃이 같이 쓰는 TechFileActions(data/tech-file-actions.ts — 물 이름 WaterFileActions도 같다)
    */
-  actions?: WaterFileActions
+  actions?: TechFileActions
 }
 
 /**

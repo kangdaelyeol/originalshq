@@ -14,10 +14,11 @@ export {
 } from './record-drawer'
 export { WaterRecordTable } from './record-table'
 export { WaterToaster } from './toaster'
-// 파일 칸(상세 서랍) — 스타일은 ../styles/_files.scss
+// 파일 칸(상세 서랍) — 스타일은 ../styles/_files.scss. 올리기·비우기는 세 레이아웃이 같이 쓰는
+// data/tech-file-actions.ts(물 이름으로 다시 내보낸다)
 export { WaterItemFiles } from './water-item-files'
 export {
   techFileActions,
-  type WaterFileActions,
-  type WaterFileTarget,
-} from './file-actions'
+  type TechFileActions as WaterFileActions,
+  type TechFileTarget as WaterFileTarget,
+} from '../../../data/tech-file-actions'

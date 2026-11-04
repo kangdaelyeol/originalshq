@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { TechBoardMeta, TechColumn, TechItemDoc } from '../../../data/tech-boards'
 import type { TechFileLink } from '../../../data/tech-files'
-import type { WaterFileActions, WaterFileTarget } from '../board/file-actions'
+import type { TechFileActions, TechFileTarget } from '../../../data/tech-file-actions'
 
 // 견본 파일 칸 — 물 파일 칸(WaterItemFiles)을 Monday 없이 돌려 보는 가짜 저장소. 올리기는 지연(빠르게 1.1초 ·
 // 느리게 3.2초 + 붙이는 시간)과 실패(58%에서 끊김)를 고를 수 있고, 올린 파일은 이 탭 안에서만 목록에 붙는다
@@ -118,7 +118,7 @@ export function useSampleFiles(base: TechBoardMeta) {
     }
   }, [])
 
-  const actions = useMemo<WaterFileActions>(() => {
+  const actions = useMemo<TechFileActions>(() => {
     const later = (ms: number, run: () => void) => {
       const t = window.setTimeout(() => {
         timers.current.delete(t)
@@ -126,7 +126,7 @@ export function useSampleFiles(base: TechBoardMeta) {
       }, ms)
       timers.current.add(t)
     }
-    const add = (target: WaterFileTarget, file: File) => {
+    const add = (target: TechFileTarget, file: File) => {
       const url = URL.createObjectURL(file)
       objectUrls.current.push(url)
       const entry: SampleFile = {
