@@ -19,12 +19,13 @@ import {
   type MouseEvent,
 } from 'react'
 import { usePendingSaves } from '../../../data/tech-save-queue'
-import { isDone } from '../../../data/tech-stage'
 import { UPDATE_BOARDS } from '../../../data/use-item-updates'
 import { useItemParam } from '../../../lib/use-item-param'
 import { useBoardEdit } from '../../board/board-edit-context'
 import { useRecordSelection } from '../../board/record-selection'
+import { sortHeader } from '../../board/record-sort'
 import type { RecordColumn } from '../../board/record-table'
+import { useRecordRows, type RecordLike } from '../../board/use-record-rows'
 import { cx } from '@/ohq-ui/lib/cx'
 import type { WaterDropEffect } from '@/ohq-ui/water/fx'
 import {
@@ -39,16 +40,7 @@ import {
   WaterChips,
   WaterTextField,
 } from '@/ohq-ui/water/controls'
-import { RECORD_PAGE, compareValues, type SortDir } from './record-sort'
 import { WaterSelectionBar } from './water-selection-bar'
-
-type View = 'open' | 'done' | 'all'
-
-interface RecordLike {
-  itemId: string
-  stage: string | null
-  status: string | null
-}
 
 interface WaterRecordTableProps<T extends RecordLike> {
   title: string
@@ -102,7 +94,7 @@ export function WaterRecordTable<T extends RecordLike>({
   selectedId,
   searchPlaceholder = '이름·내용 검색',
   progress = true,
-  pageSize = RECORD_PAGE,
+  pageSize,
   effect,
 }: WaterRecordTableProps<T>) {
   const edit = useBoardEdit()
@@ -123,69 +115,24 @@ export function WaterRecordTable<T extends RecordLike>({
     (itemId: string, on: boolean) => setSelected([itemId], on),
     [setSelected],
   )
-  const [view, setView] = useState<View>(progress ? 'open' : 'all')
-  const [assignee, setAssignee] = useState('')
-  const [query, setQuery] = useState('')
-  const [limit, setLimit] = useState(pageSize)
-  const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null)
-  // 단계 칸은 이름이 아니라 Monday 그룹 순서(신규 → … → 완료)로 정렬한다.
-  const groupOrder = edit?.meta.groups.map((g) => g.title)
-
-  const openCount = records.filter((r) => !isDone(r)).length
-  const viewOptions = [
-    { value: 'open' as const, label: `진행 중 ${openCount}` },
-    { value: 'done' as const, label: `완료 ${records.length - openCount}` },
-    { value: 'all' as const, label: `전체 ${records.length}` },
-  ]
-
-  // 담당자 목록 — 맡은 건이 많은 순.
-  const people = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const r of records)
-      for (const name of assigneesOf(r))
-        counts.set(name, (counts.get(name) ?? 0) + 1)
-    return [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name)
-  }, [records, assigneesOf])
-
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    const filtered = records.filter(
-      (r) =>
-        (view === 'all' || (view === 'done') === isDone(r)) &&
-        (!assignee || assigneesOf(r).includes(assignee)) &&
-        (!needle || searchOf(r).toLowerCase().includes(needle)),
-    )
-    const column = sort && columns.find((c) => c.key === sort.key)
-    if (sort && column?.sortValue) {
-      const valueOf =
-        column.key === 'stage' && groupOrder
-          ? (r: T) => {
-              const i = groupOrder.indexOf(r.stage ?? '')
-              return i < 0 ? null : i
-            }
-          : column.sortValue
-      return [...filtered].sort((a, b) =>
-        compareValues(valueOf(a), valueOf(b), sort.dir),
-      )
-    }
-    if (view === 'open' && sortOpen) return [...filtered].sort(sortOpen)
-    if (view !== 'open' && sortDone) return [...filtered].sort(sortDone)
-    return filtered
-  }, [
-    records,
+  // 거르기·정렬·"더 보기" — 대시보드 표와 같이 쓴다
+  const {
     view,
+    setView,
+    viewOptions,
     assignee,
+    setAssignee,
+    people,
     query,
-    assigneesOf,
-    searchOf,
-    sortOpen,
-    sortDone,
+    setQuery,
     sort,
-    columns,
-    groupOrder,
-  ])
-
-  const visible = rows.slice(0, limit)
+    toggleSort: toggleRowSort,
+    rows,
+    visible,
+    limit,
+    more,
+    emptyText,
+  } = useRecordRows({ records, columns, assigneesOf, searchOf, sortOpen, sortDone, progress, pageSize })
   const selIndex = selectedId
     ? visible.findIndex((r) => r.itemId === selectedId)
     : -1
@@ -352,26 +299,11 @@ export function WaterRecordTable<T extends RecordLike>({
     [],
   )
 
-  // 머리글 클릭 — 오름차순 → 내림차순 → 기본 순서
+  // 머리글 클릭 — 오름차순 → 내림차순 → 기본 순서. 알약이 누른 시각부터 옮겨 가게 시각을 적어 둔다
   const toggleSort = (key: string) => {
     pressed.current = { at: waterClock(), x: null }
-    setSort((s) =>
-      s?.key !== key
-        ? { key, dir: 'asc' }
-        : s.dir === 'asc'
-          ? { key, dir: 'desc' }
-          : null,
-    )
-    setLimit(pageSize)
+    toggleRowSort(key)
   }
-
-  // 거르는 조건이 바뀌면 다시 처음 줄 수로.
-  const reset =
-    <V,>(set: (value: V) => void) =>
-    (value: V) => {
-      set(value)
-      setLimit(pageSize)
-    }
 
   return (
     <section className="water-record">
@@ -386,7 +318,7 @@ export function WaterRecordTable<T extends RecordLike>({
               ariaLabel="진행 상태"
               options={viewOptions}
               value={view}
-              onChange={reset(setView)}
+              onChange={setView}
             />
           )}
           {edit && (
@@ -409,7 +341,7 @@ export function WaterRecordTable<T extends RecordLike>({
           type="search"
           value={query}
           placeholder={searchPlaceholder}
-          onChange={(e) => reset(setQuery)(e.target.value)}
+          onChange={(e) => setQuery(e.target.value)}
         />
         {people.length > 0 && (
           // 기본 부품에 고르기 칸(select)이 없어 로컬 — 모양은 WaterTextField 유리 알약과 같게
@@ -418,7 +350,7 @@ export function WaterRecordTable<T extends RecordLike>({
             <select
               className="water-board-select__input"
               value={assignee}
-              onChange={(e) => reset(setAssignee)(e.target.value)}
+              onChange={(e) => setAssignee(e.target.value)}
             >
               <option value="">담당자 전체</option>
               {people.map((name) => (
@@ -451,19 +383,17 @@ export function WaterRecordTable<T extends RecordLike>({
                   </th>
                 )}
                 {columns.map((column) => {
-                  const active = sort?.key === column.key ? sort.dir : null
+                  const {
+                    dir: active,
+                    ariaSort,
+                    title: sortTitle,
+                  } = sortHeader(sort, column.key)
                   return (
                     <th
                       key={column.key}
                       scope="col"
                       className={column.className}
-                      aria-sort={
-                        active === 'asc'
-                          ? 'ascending'
-                          : active === 'desc'
-                            ? 'descending'
-                            : undefined
-                      }
+                      aria-sort={ariaSort}
                     >
                       {column.sortValue ? (
                         <button
@@ -473,13 +403,7 @@ export function WaterRecordTable<T extends RecordLike>({
                             active && 'is-active',
                           )}
                           onClick={() => toggleSort(column.key)}
-                          title={
-                            active === 'asc'
-                              ? '내림차순으로'
-                              : active === 'desc'
-                                ? '정렬 해제'
-                                : '오름차순으로'
-                          }
+                          title={sortTitle}
                         >
                           {column.header}
                           {active === 'asc' ? (
@@ -509,11 +433,7 @@ export function WaterRecordTable<T extends RecordLike>({
                     colSpan={columns.length + (edit ? 1 : 0)}
                     className="water-record-table__empty"
                   >
-                    {query || assignee
-                      ? '조건에 맞는 기록이 없어요.'
-                      : view === 'open'
-                        ? '진행 중인 건이 없어요.'
-                        : '기록이 없어요.'}
+                    {emptyText}
                   </td>
                 </tr>
               )}
@@ -561,7 +481,7 @@ export function WaterRecordTable<T extends RecordLike>({
         <button
           type="button"
           className="water-record__more"
-          onClick={() => setLimit((n) => n + pageSize)}
+          onClick={more}
         >
           더 보기 <span>{rows.length - limit}건 남음</span>
         </button>

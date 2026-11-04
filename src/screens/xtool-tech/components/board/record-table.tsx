@@ -1,13 +1,14 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, LoaderCircle, MessageCircle, MessageCirclePlus, Plus, Search } from 'lucide-react'
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { usePendingSaves } from '../../data/tech-save-queue'
-import { isDone } from '../../data/tech-stage'
 import { UPDATE_BOARDS } from '../../data/use-item-updates'
 import { useItemParam } from '../../lib/use-item-param'
 import { cx } from '@/ohq-ui/lib/cx'
 import { useBoardEdit } from './board-edit-context'
 import { useRecordSelection } from './record-selection'
 import { RecordSelectionBar } from './record-selection-bar'
+import { sortHeader } from './record-sort'
+import { useRecordRows, type RecordLike } from './use-record-rows'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
@@ -19,33 +20,6 @@ export interface RecordColumn<T> {
   className?: string
   /** 있으면 머리글을 눌러 이 값으로 정렬한다(빈 값은 방향과 상관없이 맨 뒤). */
   sortValue?: (record: T) => string | number | null | undefined
-}
-
-type SortDir = 'asc' | 'desc'
-
-const isBlank = (v: unknown) => v === null || v === undefined || v === ''
-
-/** 빈 값은 늘 뒤로, 숫자는 크기, 글자는 한국어 순서 */
-function compareValues(
-  a: string | number | null | undefined,
-  b: string | number | null | undefined,
-  dir: SortDir,
-): number {
-  if (isBlank(a) || isBlank(b))
-    return isBlank(a) === isBlank(b) ? 0 : isBlank(a) ? 1 : -1
-  const diff =
-    typeof a === 'number' && typeof b === 'number'
-      ? a - b
-      : String(a).localeCompare(String(b), 'ko', { numeric: true })
-  return dir === 'asc' ? diff : -diff
-}
-
-type View = 'open' | 'done' | 'all'
-
-interface RecordLike {
-  itemId: string
-  stage: string | null
-  status: string | null
 }
 
 interface RecordTableProps<T extends RecordLike> {
@@ -65,10 +39,10 @@ interface RecordTableProps<T extends RecordLike> {
   progress?: boolean
 }
 
-// 처음에 보여 줄 줄 수 — 완료 목록은 수백 건이라 "더 보기"로 늘린다.
-const PAGE = 30
-
-/** 보드 기록 표 — 진행 중·완료·전체 / 담당자 / 검색으로 거르고, 줄을 누르면 상세를 연다. */
+/**
+ * 보드 기록 표 — 진행 중·완료·전체 / 담당자 / 검색으로 거르고, 줄을 누르면 상세를 연다. 거르기·정렬·"더 보기"는
+ * 물 표와 같이 쓴다(useRecordRows).
+ */
 export function RecordTable<T extends RecordLike>({
   title,
   records,
@@ -88,90 +62,26 @@ export function RecordTable<T extends RecordLike>({
   // 말풍선 보드(출장업무·아톡문의)는 이름 칸 옆에 업데이트 수 — 누르면 서랍이 업데이트 탭으로 열린다
   const updateCountOf =
     edit && UPDATE_BOARDS.has(edit.boardKey) ? (itemId: string) => edit.itemOf(itemId)?.updateCount ?? 0 : null
-  const [view, setView] = useState<View>(progress ? 'open' : 'all')
-  const [assignee, setAssignee] = useState('')
-  const [query, setQuery] = useState('')
-  const [limit, setLimit] = useState(PAGE)
-  const [sort, setSort] = useState<{ key: string; dir: SortDir } | null>(null)
-  // 단계 칸은 이름이 아니라 Monday 그룹 순서(신규 → … → 완료)로 정렬한다.
-  const groupOrder = edit?.meta.groups.map((g) => g.title)
   // 줄 고르기(체크) — 고르면 아래에 이동·삭제 막대(Monday 표 선택 막대와 같은 기능). 고칠 수 있는 보드만
   const ids = useMemo(() => records.map((r) => r.itemId), [records])
   const selection = useRecordSelection(ids)
-
-  const openCount = records.filter((r) => !isDone(r)).length
-  const viewOptions = [
-    { value: 'open' as const, label: `진행 중 ${openCount}` },
-    { value: 'done' as const, label: `완료 ${records.length - openCount}` },
-    { value: 'all' as const, label: `전체 ${records.length}` },
-  ]
-
-  // 담당자 목록 — 맡은 건이 많은 순.
-  const people = useMemo(() => {
-    const counts = new Map<string, number>()
-    for (const r of records)
-      for (const name of assigneesOf(r))
-        counts.set(name, (counts.get(name) ?? 0) + 1)
-    return [...counts].sort((a, b) => b[1] - a[1]).map(([name]) => name)
-  }, [records, assigneesOf])
-
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    const filtered = records.filter(
-      (r) =>
-        (view === 'all' || (view === 'done') === isDone(r)) &&
-        (!assignee || assigneesOf(r).includes(assignee)) &&
-        (!needle || searchOf(r).toLowerCase().includes(needle)),
-    )
-    const column = sort && columns.find((c) => c.key === sort.key)
-    if (sort && column?.sortValue) {
-      const valueOf =
-        column.key === 'stage' && groupOrder
-          ? (r: T) => {
-              const i = groupOrder.indexOf(r.stage ?? '')
-              return i < 0 ? null : i
-            }
-          : column.sortValue
-      return [...filtered].sort((a, b) =>
-        compareValues(valueOf(a), valueOf(b), sort.dir),
-      )
-    }
-    if (view === 'open' && sortOpen) return [...filtered].sort(sortOpen)
-    if (view !== 'open' && sortDone) return [...filtered].sort(sortDone)
-    return filtered
-  }, [
-    records,
+  const {
     view,
+    setView,
+    viewOptions,
     assignee,
+    setAssignee,
+    people,
     query,
-    assigneesOf,
-    searchOf,
-    sortOpen,
-    sortDone,
+    setQuery,
     sort,
-    columns,
-    groupOrder,
-  ])
-
-  // 머리글 클릭 — 오름차순 → 내림차순 → 기본 순서
-  const toggleSort = (key: string) => {
-    setSort((s) =>
-      s?.key !== key
-        ? { key, dir: 'asc' }
-        : s.dir === 'asc'
-          ? { key, dir: 'desc' }
-          : null,
-    )
-    setLimit(PAGE)
-  }
-
-  // 거르는 조건이 바뀌면 다시 처음 줄 수로.
-  const reset =
-    <V,>(set: (value: V) => void) =>
-    (value: V) => {
-      set(value)
-      setLimit(PAGE)
-    }
+    toggleSort,
+    rows,
+    visible,
+    limit,
+    more,
+    emptyText,
+  } = useRecordRows({ records, columns, assigneesOf, searchOf, sortOpen, sortDone, progress })
 
   return (
     <GlassCard
@@ -184,7 +94,7 @@ export function RecordTable<T extends RecordLike>({
               ariaLabel="진행 상태"
               options={viewOptions}
               value={view}
-              onChange={reset(setView)}
+              onChange={setView}
             />
           )}
           {edit && (
@@ -204,7 +114,7 @@ export function RecordTable<T extends RecordLike>({
             type="search"
             value={query}
             placeholder={searchPlaceholder}
-            onChange={(e) => reset(setQuery)(e.target.value)}
+            onChange={(e) => setQuery(e.target.value)}
           />
         </label>
         {people.length > 0 && (
@@ -212,7 +122,7 @@ export function RecordTable<T extends RecordLike>({
             <span className="sr-only">담당자</span>
             <select
               value={assignee}
-              onChange={(e) => reset(setAssignee)(e.target.value)}
+              onChange={(e) => setAssignee(e.target.value)}
             >
               <option value="">담당자 전체</option>
               {people.map((name) => (
@@ -232,39 +142,27 @@ export function RecordTable<T extends RecordLike>({
               {edit && (
                 <th scope="col" className="record-table__check">
                   <PickAll
-                    ids={rows.slice(0, limit).map((r) => r.itemId)}
+                    ids={visible.map((r) => r.itemId)}
                     selected={selection.selected}
                     onChange={selection.set}
                   />
                 </th>
               )}
               {columns.map((column) => {
-                const active = sort?.key === column.key ? sort.dir : null
+                const { dir: active, ariaSort, title: sortTitle } = sortHeader(sort, column.key)
                 return (
                   <th
                     key={column.key}
                     scope="col"
                     className={column.className}
-                    aria-sort={
-                      active === 'asc'
-                        ? 'ascending'
-                        : active === 'desc'
-                          ? 'descending'
-                          : undefined
-                    }
+                    aria-sort={ariaSort}
                   >
                     {column.sortValue ? (
                       <button
                         type="button"
                         className={cx('th-sort', active && 'is-active')}
                         onClick={() => toggleSort(column.key)}
-                        title={
-                          active === 'asc'
-                            ? '내림차순으로'
-                            : active === 'desc'
-                              ? '정렬 해제'
-                              : '오름차순으로'
-                        }
+                        title={sortTitle}
                       >
                         {column.header}
                         {active === 'asc' ? (
@@ -291,15 +189,11 @@ export function RecordTable<T extends RecordLike>({
             {rows.length === 0 && (
               <tr>
                 <td colSpan={columns.length + (edit ? 1 : 0)} className="table__empty">
-                  {query || assignee
-                    ? '조건에 맞는 기록이 없어요.'
-                    : view === 'open'
-                      ? '진행 중인 건이 없어요.'
-                      : '기록이 없어요.'}
+                  {emptyText}
                 </td>
               </tr>
             )}
-            {rows.slice(0, limit).map((record) => (
+            {visible.map((record) => (
               <tr
                 key={record.itemId}
                 className={cx(
@@ -370,7 +264,7 @@ export function RecordTable<T extends RecordLike>({
         <button
           type="button"
           className="record-more"
-          onClick={() => setLimit((n) => n + PAGE)}
+          onClick={more}
         >
           더 보기 <span>{rows.length - limit}건 남음</span>
         </button>
