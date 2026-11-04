@@ -23,6 +23,8 @@ export interface SettingEvent {
   memo: string
   /** 처음 넣은 장(앞에 설정이 없었다). */
   first: boolean
+  /** 전날과 그 날 고른 소재 — 구간 카드가 새로 넣은 것·뺀 것을 보인다. */
+  creatives: { before: string[]; after: string[] }
 }
 
 const describe = (
@@ -54,6 +56,23 @@ const describe = (
   '랜딩 URL': fields.landingUrl,
 })
 
+/** 소재 칸의 바뀐 내용 — 몇 개에서 몇 개로, 새로 넣은 것·뺀 것 수(소재 ID는
+ * 읽을 수 없어서 칸 비교에만 쓴다). */
+const creativeChange = (
+  before: readonly string[],
+  after: readonly string[],
+) => {
+  const added = after.filter((id) => !before.includes(id)).length
+  const removed = before.filter((id) => !after.includes(id)).length
+  const diff = [added && `새로 ${added}`, removed && `뺌 ${removed}`]
+    .filter(Boolean)
+    .join(' · ')
+  return {
+    before: before.length ? `${before.length}개` : '없음',
+    after: `${after.length ? `${after.length}개` : '없음'}${diff ? ` (${diff})` : ''}`,
+  }
+}
+
 /**
  * 대상의 설정 변경일 — 광고셋이면 소속 캠페인의 변경도(비워 둔 칸은 캠페인
  * 설정을 따르니까). 값이 실제로 바뀐 칸만 남기고, 바뀐 게 없는 날(메모만 고친
@@ -79,19 +98,27 @@ export function settingEvents(
   ].sort()
   const events: SettingEvent[] = []
   for (const date of dates) {
-    const before = describe(
-      settingAt(entity, byEntity, addDays(date, -1)),
-      goalMap,
-      setMap,
-    )
-    const after = describe(settingAt(entity, byEntity, date), goalMap, setMap)
+    const beforeFields = settingAt(entity, byEntity, addDays(date, -1))
+    const afterFields = settingAt(entity, byEntity, date)
+    const before = describe(beforeFields, goalMap, setMap)
+    const after = describe(afterFields, goalMap, setMap)
     const changes = Object.keys(after)
       .filter((label) => before[label] !== after[label])
-      .map((label) => ({
-        label,
-        before: before[label] || '없음',
-        after: after[label] || '없음',
-      }))
+      .map((label) =>
+        label === '소재'
+          ? {
+              label,
+              ...creativeChange(
+                beforeFields.creativeIds,
+                afterFields.creativeIds,
+              ),
+            }
+          : {
+              label,
+              before: before[label] || '없음',
+              after: after[label] || '없음',
+            },
+      )
     if (changes.length === 0) continue
     const starting = [
       ...own.filter((v) => v.effectiveFrom === date),
@@ -113,6 +140,10 @@ export function settingEvents(
         .filter(Boolean)
         .join(' · '),
       first: Object.values(before).every((v) => !v),
+      creatives: {
+        before: beforeFields.creativeIds,
+        after: afterFields.creativeIds,
+      },
     })
   }
   return events

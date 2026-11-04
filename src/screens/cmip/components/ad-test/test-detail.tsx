@@ -20,9 +20,11 @@ import {
   shortDate,
   won,
 } from '../ad-settings/labels'
+import { CreativePreview } from '../ad-settings/creative-picker'
 import { BASELINE_DAYS, type SettingSegment } from './changes'
 import { segmentColor } from './palette'
 import { SegmentKpis } from './segment-kpis'
+import { SegmentCreatives, TestCreatives } from './test-creatives'
 import { TestTimeline } from './test-timeline'
 
 type Vm = ReturnType<typeof useAdTestViewModel>
@@ -54,11 +56,13 @@ const Section = ({
   </section>
 )
 
-/** 설정 한 장의 칸들을 배지로 — 정한 칸만. */
+/** 설정 한 장의 칸들을 배지로 — 정한 칸만. 구간 카드는 소재를 썸네일로
+ * 따로 보여서 withCreatives를 끈다. */
 const settingChips = (
   fields: AdSettingFields,
   goals: readonly ConversionGoal[],
   sets: readonly CreativeSet[],
+  withCreatives = true,
 ): string[] => {
   const goal = goals.find((g) => g.key === fields.conversionGoal)
   return [
@@ -67,7 +71,9 @@ const settingChips = (
     fields.budget && formatBudget(fields.budget),
     fields.creativeSetId &&
       `소재 셋 ${sets.find((s) => s.id === fields.creativeSetId)?.name ?? '(지운 셋)'}`,
-    fields.creativeIds.length > 0 && `소재 ${fields.creativeIds.length}개`,
+    withCreatives &&
+      fields.creativeIds.length > 0 &&
+      `소재 ${fields.creativeIds.length}개`,
     fields.targetCpa !== null && `목표 단가 ${won(fields.targetCpa)}`,
     fields.targetRoas !== null &&
       `목표 ROAS ${fields.targetRoas.toLocaleString('ko-KR')}%`,
@@ -99,6 +105,8 @@ const dataEventText = (e: DataEvent) =>
 export function TestDetail({ vm }: { vm: Vm }) {
   // 판단 지표 — 전환 목표를 따르되 이 화면에서만 바꿔 볼 수 있다(저장 안 함).
   const [kpiOverride, setKpiOverride] = useState<GoalKpi | ''>('')
+  // 크게 보는 소재(구간 카드·소재 칸에서 누른 것).
+  const [previewId, setPreviewId] = useState<string | null>(null)
   const { entity, snapshot } = vm
   if (!entity || !snapshot) {
     return (
@@ -145,6 +153,13 @@ export function TestDetail({ vm }: { vm: Vm }) {
   const chips = settingChips(setting, snapshot.goals, snapshot.creativeSets)
   const hasBaselineData =
     !!vm.events[0]?.first && vm.days.some((d) => d.date < vm.events[0].date)
+  const preview = previewId ? (vm.creativeById.get(previewId) ?? null) : null
+  const creativeIds = [
+    ...new Set(segments.flatMap((s) => s.setting?.creativeIds ?? [])),
+  ]
+  const analyzedCount = creativeIds.filter(
+    (id) => vm.creativeById.get(id)?.analysis?.status === 'done',
+  ).length
 
   return (
     <div className="ad-test-detail">
@@ -219,6 +234,7 @@ export function TestDetail({ vm }: { vm: Vm }) {
                       segment.setting,
                       snapshot.goals,
                       snapshot.creativeSets,
+                      false,
                     )
                   : []
                 return (
@@ -288,6 +304,12 @@ export function TestDetail({ vm }: { vm: Vm }) {
                         ))}
                       </span>
                     )}
+                    <SegmentCreatives
+                      segment={segment}
+                      byId={vm.creativeById}
+                      loading={vm.creativesState?.status === 'loading'}
+                      onOpen={setPreviewId}
+                    />
                   </li>
                 )
               })}
@@ -328,6 +350,22 @@ export function TestDetail({ vm }: { vm: Vm }) {
             />
           </Section>
 
+          <Section
+            title="소재"
+            hint={
+              creativeIds.length > 0
+                ? `구간에 고른 소재 ${creativeIds.length}개 · 분석됨 ${analyzedCount} — 누르면 크게 보고 분석합니다`
+                : undefined
+            }
+          >
+            <TestCreatives
+              segments={segments}
+              state={vm.creativesState}
+              byId={vm.creativeById}
+              onOpen={setPreviewId}
+            />
+          </Section>
+
           {vm.changes.some((e) => inRange(e.date)) && (
             <Section
               title="성과에서 찾은 변화"
@@ -349,6 +387,14 @@ export function TestDetail({ vm }: { vm: Vm }) {
             </Section>
           )}
         </>
+      )}
+
+      {preview && (
+        <CreativePreview
+          creative={preview}
+          onClose={() => setPreviewId(null)}
+          onAnalyzed={(analysis) => vm.applyAnalysis(preview.id, analysis)}
+        />
       )}
     </div>
   )

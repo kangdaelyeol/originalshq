@@ -465,6 +465,101 @@
   @include glass.tint(var(--glass-warn), 22%);
 }
 
+// 구간 카드의 소재 줄(test-creatives.tsx SegmentCreatives) — 바로 앞 설정보다
+// 새로 넣은 것은 강조색 고리, 뺀 것은 흐리게 뒤에.
+.ad-test-period__creatives {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  li {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  li.is-new .ad-test-thumb {
+    outline: 2px solid var(--glass-accent);
+    outline-offset: 1px;
+  }
+  li.is-removed .ad-test-thumb {
+    opacity: 0.4;
+    filter: grayscale(1);
+  }
+}
+.ad-test-period__creatives-label {
+  font-size: 11.5px;
+  color: $text-3;
+}
+.ad-test-period__mark {
+  font-size: 10px;
+  color: $text-3;
+
+  .is-new > & {
+    font-weight: 600;
+    color: var(--glass-accent);
+  }
+}
+
+// 소재 썸네일 — 세로 영상(9:16)이 대부분이라 그 비율 칸.
+.ad-test-thumb {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 36px;
+  aspect-ratio: 9 / 16;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 7px;
+  background: $fill-2;
+  cursor: zoom-in;
+
+  &:disabled {
+    cursor: default;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  &.is-large {
+    width: 64px;
+    border-radius: 10px;
+
+    img {
+      object-fit: contain;
+    }
+  }
+}
+.ad-test-thumb__empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: 2px;
+  font-size: 9.5px;
+  line-height: 1.2;
+  color: $text-3;
+  text-align: center;
+}
+.ad-test-thumb__analyzed {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--glass-accent);
+}
+
 // ── 구간별 지표 ─────────────────────────────────────────────────────────
 
 .ad-test-kpis {
@@ -540,4 +635,117 @@
   display: block;
   font-size: 10.5px;
   color: var(--glass-warn);
+}
+
+// ── 소재(test-creatives.tsx TestCreatives) ──────────────────────────────
+// 구간들에 고른 소재 한 번씩 — 썸네일 · 이름 · 돈 구간 · 분석 요약.
+
+.ad-test-creatives {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ad-test-creatives__note {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: $text-3;
+}
+.ad-test-creative {
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: $fill-1;
+}
+.ad-test-creative__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.ad-test-creative__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  b {
+    overflow: hidden;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: $text;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  span {
+    font-size: 11px;
+    color: $text-3;
+  }
+}
+.ad-test-creative__segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: $text-2;
+  }
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 2px;
+    background: var(--seg-color);
+  }
+}
+.ad-test-creative__facts {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+
+  div {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 6px;
+  }
+  dt {
+    font-size: 11px;
+    color: $text-3;
+  }
+  // 두 줄까지 — 전체는 크게 보기에서.
+  dd {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.45;
+    color: $text;
+    word-break: break-word;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+.ad-test-creative__pending {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: $text-3;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    color: $text-2;
+  }
 }

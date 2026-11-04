@@ -14,35 +14,13 @@ import {
   changeCachedCreatives,
   type AdCreativesState,
 } from '../../view-model/use-ad-creatives'
-
-const lengthLabel = (c: AdCreativeView) =>
-  c.kind === 'image'
-    ? '이미지'
-    : c.media?.lengthSec != null
-      ? `영상 ${Math.round(c.media.lengthSec)}초`
-      : '영상'
-
-const shortDate = (iso: string) => {
-  const [, m, d] = iso.split('-').map(Number)
-  return `${m}/${d}`
-}
-
-const errorText = (err: unknown) =>
-  err instanceof Error ? err.message : String(err)
-
-/** 카드·창의 집행 표시 — 직접 올린 것은 올린 날. */
-const seenLabel = (c: AdCreativeView) =>
-  c.upload
-    ? `직접 올림 ${shortDate(c.lastSeenDate)}`
-    : c.active
-      ? '집행 중'
-      : `~${shortDate(c.lastSeenDate)}`
-
-const STRENGTH_LABEL: Record<string, string> = {
-  strong: '강함',
-  medium: '보통',
-  weak: '약함',
-}
+import {
+  errorText,
+  lengthLabel,
+  seenLabel,
+  shortDate,
+  STRENGTH_LABEL,
+} from './creative-labels'
 
 /** 분석 결과 — 퍼셉트론 게시본 프롬프트로 Claude가 본 것. 프레임 수만큼
  * 비용이 들어(영상 30장이면 약 $0.2) 누를 때만 돈다. */
@@ -205,8 +183,10 @@ function DeleteUpload({
   )
 }
 
-/** 소재 하나 크게 — 원본(영상은 재생)과 분석, 분석용 프레임 전부, 쓴 광고. */
-function CreativePreview({
+/** 소재 하나 크게 — 원본(영상은 재생)과 분석, 분석용 프레임 전부, 쓴 광고.
+ * onDeleted가 있으면 직접 올린 소재를 지울 수 있다(매체별 테스트는 저장한 장에
+ * 든 소재만 보여서 지우기를 두지 않는다). */
+export function CreativePreview({
   creative,
   onClose,
   onAnalyzed,
@@ -215,7 +195,7 @@ function CreativePreview({
   creative: AdCreativeView
   onClose: () => void
   onAnalyzed: (analysis: CreativeAnalysis) => void
-  onDeleted: () => void
+  onDeleted?: () => void
 }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -311,7 +291,7 @@ function CreativePreview({
           </section>
         )}
 
-        {creative.upload && (
+        {creative.upload && onDeleted && (
           <DeleteUpload creative={creative} onDeleted={onDeleted} />
         )}
       </div>

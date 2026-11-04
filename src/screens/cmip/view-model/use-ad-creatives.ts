@@ -53,14 +53,16 @@ export const addCachedCreative = (
     )
 }
 
-/** 캠페인·광고셋 하나의 저장 소재(listAdCreatives). */
-export const useAdCreatives = (key: AdEntityKey): AdCreativesState => {
+/** 캠페인·광고셋 하나의 저장 소재(listAdCreatives) — key가 null이면 받지
+ * 않는다(받는 중으로 둔다). */
+export const useAdCreatives = (key: AdEntityKey | null): AdCreativesState => {
   const [state, setState] = useState<{
     key: AdEntityKey
     value: AdCreativesState
   } | null>(null)
 
   useEffect(() => {
+    if (!key) return
     let alive = true
     load(key)
       .then((creatives) => {

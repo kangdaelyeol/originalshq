@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
+  adEntityKey,
   dataEvents,
   fillDays,
   getAdEntityDaily,
@@ -8,9 +9,11 @@ import {
   settingAt,
   versionsByEntity,
   type AdChannel,
+  type AdCreativeView,
   type AdEntity,
   type AdEntityDay,
   type AdSettingsSnapshot,
+  type CreativeAnalysis,
   type GoalKpi,
 } from '../client'
 import {
@@ -19,6 +22,7 @@ import {
   type SettingEvent,
 } from '../components/ad-test/changes'
 import { todayISO } from '../utils'
+import { changeCachedCreatives, useAdCreatives } from './use-ad-creatives'
 import { usePersistentState } from '@/hooks/use-persistent-state'
 
 type DailyState =
@@ -181,6 +185,38 @@ export const useAdTestViewModel = () => {
   )
   const changes = useMemo(() => dataEvents(days), [days])
 
+  // 구간(장)에 고른 소재 — 캠페인의 소재 목록(그 광고셋들 소재와 캠페인에 올린
+  // 것)에서 찾는다. 광고셋은 비워 둔 소재 칸이 캠페인 것을 따르므로 캠페인
+  // 목록이라야 다 들어 있다. 고른 소재가 없으면 받지 않는다.
+  const creativeKey =
+    entity && segments.some((s) => s.setting?.creativeIds.length)
+      ? entity.level === 'campaign'
+        ? entity.key
+        : adEntityKey(entity.channel, 'campaign', entity.campaignId)
+      : null
+  const creativesState = useAdCreatives(creativeKey)
+  // 이 화면에서 방금 분석한 것 — 목록을 다시 받지 않고 바로 보인다.
+  const [analyzed, setAnalyzed] = useState<Record<string, CreativeAnalysis>>({})
+  const creativeById = useMemo(
+    () =>
+      new Map<string, AdCreativeView>(
+        creativesState.status === 'ready'
+          ? creativesState.creatives.map((c) => [
+              c.id,
+              analyzed[c.id] ? { ...c, analysis: analyzed[c.id] } : c,
+            ])
+          : [],
+      ),
+    [creativesState, analyzed],
+  )
+  const applyAnalysis = (id: string, analysis: CreativeAnalysis) => {
+    setAnalyzed((prev) => ({ ...prev, [id]: analysis }))
+    // 받아 둔 목록에도 — 광고 설정 편집기를 열어도 보이게.
+    changeCachedCreatives((list) =>
+      list.map((c) => (c.id === id ? { ...c, analysis } : c)),
+    )
+  }
+
   // 판단 지표 — 지금 적용 중인 설정의 전환 목표가 정한 지표(없으면 null).
   const goalKpi: GoalKpi | null = (() => {
     if (!entity || !snapshot) return null
@@ -208,5 +244,8 @@ export const useAdTestViewModel = () => {
     goalKpi,
     withBaseline,
     setWithBaseline,
+    creativesState: creativeKey ? creativesState : null,
+    creativeById,
+    applyAnalysis,
   } as const
 }
