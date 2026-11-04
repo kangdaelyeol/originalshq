@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, type To } from 'react-router-dom'
 import { buildMyWork, MY_WORK_BOARDS, urgencyText, type MyWorkBoard, type MyWorkItem } from '../../data/my-work'
 import { BOARD_TABS } from '../../data/tech-boards'
 import { koreaToday, shortDate } from '../../lib/dates'
@@ -80,7 +80,16 @@ export function MyWorkCard({ names, sources, loading }: MyWorkCardProps) {
   )
 }
 
-export function MyWorkRow({ item, today }: { item: MyWorkItem; today: string }) {
+interface MyWorkRowProps {
+  item: MyWorkItem
+  today: string
+  /** 누르면 갈 곳 — 기본은 그 보드(상세가 열린 채). 내 업무 화면은 이 화면의 서랍을 여는 주소를 준다. */
+  to?: To
+  /** 기록을 쌓지 않고 간다(같은 화면에서 서랍만 열 때) */
+  replace?: boolean
+}
+
+export function MyWorkRow({ item, today, to, replace }: MyWorkRowProps) {
   const urgency = urgencyText(item, today)
   const detail = [
     item.target && `${item.target.label} ${shortDate(item.target.date)}${item.target.time ? ` ${item.target.time}` : ''}`,
@@ -90,7 +99,11 @@ export function MyWorkRow({ item, today }: { item: MyWorkItem; today: string }) 
     .join(' · ')
   return (
     <li>
-      <Link className={cx('my-work__row', item.done && 'is-done')} to={`${xtPath(`/boards/${item.slug}`)}?item=${item.itemId}`}>
+      <Link
+        className={cx('my-work__row', item.done && 'is-done')}
+        to={to ?? `${xtPath(`/boards/${item.slug}`)}?item=${item.itemId}`}
+        replace={replace}
+      >
         <span className="my-work__board">{item.boardLabel}</span>
         <span className="my-work__body">
           <span className="my-work__name">{item.name || '(이름 없음)'}</span>

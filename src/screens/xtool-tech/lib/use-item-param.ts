@@ -1,5 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { BOARD_TABS, type TechBoardKey } from '../data/tech-boards'
 
 /** 상세 서랍의 탭 — 정보(기본) · 업데이트(Monday 댓글, 말풍선 보드만). 주소의 ?panel=updates와 같이 간다. */
 export type ItemPanel = 'info' | 'updates'
@@ -48,4 +49,46 @@ export function useItemPanel(): [ItemPanel, (panel: ItemPanel) => void] {
     [setParams],
   )
   return [panel, select]
+}
+
+/** 보드 밖(내 업무)에서 연 항목 — 어느 보드의 어느 항목인지 */
+export interface BoardItemRef {
+  boardKey: TechBoardKey
+  itemId: string
+}
+
+/**
+ * 내 업무에서 연 항목 — 주소의 ?board=<보드 키>&item=<id>. 여러 보드의 줄이 한 목록에 섞여 있어 보드도 주소에
+ * 둔다(?who는 그대로 간다). 여는 건 줄 링크(boardItemSearch)이고, 닫으면 board·item·panel을 같이 지운다.
+ * 탭(?panel)은 보드 화면처럼 useItemPanel이 다룬다.
+ */
+export function useBoardItemParam(): [BoardItemRef | null, () => void] {
+  const [params, setParams] = useSearchParams()
+  const boardKey = BOARD_TABS.find((t) => t.key === params.get('board'))?.key ?? null
+  const itemId = params.get('item')
+  const opened = useMemo(() => (boardKey && itemId ? { boardKey, itemId } : null), [boardKey, itemId])
+  const close = useCallback(
+    () =>
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('board')
+          next.delete('item')
+          next.delete('panel')
+          return next
+        },
+        { replace: true },
+      ),
+    [setParams],
+  )
+  return [opened, close]
+}
+
+/** 내 업무 줄이 가는 주소(?…) — 지금 주소(?who 등)에 board·item을 얹는다. 탭(?panel)은 정보로 돌아간다. */
+export function boardItemSearch(params: URLSearchParams, { boardKey, itemId }: BoardItemRef): string {
+  const next = new URLSearchParams(params)
+  next.set('board', boardKey)
+  next.set('item', itemId)
+  next.delete('panel')
+  return `?${next}`
 }

@@ -8,11 +8,13 @@ import { useCurrentMember } from '../context/member-context'
 import { usePeriod } from '../context/period-context'
 import { buildMyWork, MY_WORK_BOARDS, type MyWorkBoard } from '../data/my-work'
 import { PERIOD_COMPARE } from '../data/period'
-import { BOARD_TABS } from '../data/tech-boards'
+import { BOARD_TABS, type TechBoardKey } from '../data/tech-boards'
 import { useMyIdentity, useWorkPeople, useWorkSources } from '../data/use-my-work'
 import { daysBetween, inRange, koreaToday, periodRange } from '../lib/dates'
+import { boardItemSearch, useBoardItemParam } from '../lib/use-item-param'
 import { myWorkPath } from '../paths'
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
+import { BoardItemHost } from './boards/board-host'
 
 // 처음에 보여 줄 줄 수
 const PAGE = 20
@@ -30,7 +32,9 @@ const labelOf = (key: MyWorkBoard) => BOARD_TABS.find((t) => t.key === key)?.lab
 
 /**
  * 내 업무 — 담당자 칸이 있는 보드 여섯 개에서 담당자가 그 사람인 건만 모은다. 기본은 나,
- * ?who=<이름>이면 그 직원(사이드바 내 업무 아래 직원 목록에서 고른다). 줄을 누르면 그 보드의 상세가 열린다.
+ * ?who=<이름>이면 그 직원(사이드바 내 업무 아래 직원 목록에서 고른다). 줄을 누르면 그 보드의 상세 서랍이
+ * 이 화면에서 열린다(?board·?item — 수정·업데이트·파일·삭제는 보드 화면과 같고, "보드에서 보기"로 그 보드로).
+ * Monday 표 레이아웃은 칸을 바로 고치는 표라 서랍 없이 그대로.
  */
 export function MyWorkPage() {
   const [params] = useSearchParams()
@@ -40,6 +44,10 @@ export function MyWorkPage() {
   const { period } = usePeriod()
   const { theme } = useAppearance()
   const today = koreaToday()
+  // 줄을 눌러 연 항목(?board·?item) — 서랍은 닫히는 움직임이 끝날 때까지 그려 두려고 마지막에 연 보드를 들고 있는다.
+  const [opened, closeItem] = useBoardItemParam()
+  const [drawerBoard, setDrawerBoard] = useState<TechBoardKey | null>(opened?.boardKey ?? null)
+  if (opened && opened.boardKey !== drawerBoard) setDrawerBoard(opened.boardKey)
 
   const who = params.get('who')
   // 기술팀이 아닌 관리자는 개인 보드가 없다 — 내 업무로 오면 첫 기술팀원의 보드를 보여 준다.
@@ -169,7 +177,13 @@ export function MyWorkPage() {
         ) : (
           <ul className="my-work__list">
             {shown.slice(0, limit).map((item) => (
-              <MyWorkRow key={`${item.boardKey}:${item.itemId}`} item={item} today={today} />
+              <MyWorkRow
+                key={`${item.boardKey}:${item.itemId}`}
+                item={item}
+                today={today}
+                to={boardItemSearch(params, item)}
+                replace
+              />
             ))}
           </ul>
         )}
@@ -179,6 +193,14 @@ export function MyWorkPage() {
           </button>
         )}
       </GlassCard>
+
+      {drawerBoard && (
+        <BoardItemHost
+          boardKey={drawerBoard}
+          itemId={opened?.boardKey === drawerBoard ? opened.itemId : null}
+          onClose={closeItem}
+        />
+      )}
     </>
   )
 }

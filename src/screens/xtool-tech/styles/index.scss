@@ -11,6 +11,8 @@
 .xtool-tech {
   @include meta.load-css('layout');
   @include meta.load-css('boards');
+  // 내 업무 서랍 이름 위 보드 이름 링크("보드에서 보기")
+  @include meta.load-css('board-host');
   // 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세·수정 패널) — 썸네일·목록(boards) 뒤에
   @include meta.load-css('item-files');
   @include meta.load-css('monday');
