@@ -114,7 +114,11 @@ export function RelationPicker({
       // 열려 있으면 Esc는 목록만 닫는다 — DrawerShell이 이 표시를 본다.
       data-popover-open={open || undefined}
       onKeyDown={(e) => {
-        if (e.key === 'Escape' && open) setOpen(false)
+        // 아래 판(편집 판 밑의 상세 판 — 이 목록이 자기 안에 없어 양보하지 않는다)까지 가서 같이 닫히지 않게 막는다.
+        if (e.key === 'Escape' && open) {
+          e.stopPropagation()
+          setOpen(false)
+        }
       }}
     >
       <button
