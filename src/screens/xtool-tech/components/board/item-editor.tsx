@@ -29,7 +29,7 @@ import {
   type LocationState,
 } from '../../data/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
-import { addressErrorText } from '../../lib/address-error'
+import { addressErrorText } from '../../lib/error-text'
 import { isComposing } from '../../lib/ime'
 import { useWaterLayout } from '../../water-layout/load'
 import { Button } from '../layout-parts'

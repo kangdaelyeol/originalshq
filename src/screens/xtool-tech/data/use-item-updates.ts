@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useCurrentMember } from '../context/member-context'
+import { errorText } from '../lib/error-text'
 import type { TechBoardKey } from './tech-boards'
 import { dismissToast, pushToast } from './tech-save-queue'
 import { fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from './tech-updates'
@@ -10,11 +11,9 @@ import { fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from '.
 /** 업데이트를 세는(말풍선이 있는) 보드 — 출장업무·아톡문의 */
 export const UPDATE_BOARDS: ReadonlySet<TechBoardKey> = new Set(['fieldService', 'techInquiry'])
 
-export const updatesErrorText = (error: unknown) => {
-  const message = (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
-  // 함수가 문구 없이 실패하면 코드(internal)만 온다.
-  return message && !/^internal$/i.test(message) ? message : 'Monday와 연결하지 못했어요. 잠시 후 다시 해 주세요.'
-}
+// 함수가 문구 없이 실패하면 코드(internal)만 온다 — 그때는 이 문장으로.
+export const updatesErrorText = (error: unknown) =>
+  errorText(error, { fallback: 'Monday와 연결하지 못했어요. 잠시 후 다시 해 주세요.' })
 
 /** 2026-09-02T05:30:00Z → "9월 2일 14:30" (한국 시각) */
 export function updateWhenText(iso: string | null): string {

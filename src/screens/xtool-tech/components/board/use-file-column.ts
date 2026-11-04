@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react'
-import { fileErrorMessage, type TechFileActions, type TechFileTarget } from '../../data/tech-file-actions'
+import type { TechFileActions, TechFileTarget } from '../../data/tech-file-actions'
 import { checkFile, type TechFileRef } from '../../data/tech-files'
+import { errorText } from '../../lib/error-text'
 
 // 파일 칸 하나의 올리기·비우기·끌어다 놓기 — 세 레이아웃의 파일 칸이 같이 쓴다: 대시보드 상세 서랍(ItemFiles)·
 // 수정 패널(FileField), Monday 표 파일 모달(FilesModal), 물 상세 서랍(WaterItemFiles). 모양은 저마다 그리고,
@@ -110,8 +111,9 @@ export function useFileColumn(
         timers.current.add(t)
       },
       (e: unknown) => {
-        patch(id, { state: 'fail', error: fileErrorMessage(e) })
-        setStatus(`${file.name} 올리기에 실패했어요: ${fileErrorMessage(e)}`)
+        // 실패 문구는 토스트(tech-file-actions)와 같게
+        patch(id, { state: 'fail', error: errorText(e) })
+        setStatus(`${file.name} 올리기에 실패했어요: ${errorText(e)}`)
       },
     )
   }
@@ -155,8 +157,8 @@ export function useFileColumn(
         setStatus(`${target.label} 칸을 모두 지웠어요`)
       },
       (e: unknown) => {
-        setClearing({ busy: false, error: fileErrorMessage(e) })
-        setStatus(`${target.label} 지우기에 실패했어요: ${fileErrorMessage(e)}`)
+        setClearing({ busy: false, error: errorText(e) })
+        setStatus(`${target.label} 지우기에 실패했어요: ${errorText(e)}`)
       },
     )
   }

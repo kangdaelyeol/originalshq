@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { errorText } from '../lib/error-text'
 import {
   createTechItem,
   deleteTechItems,
@@ -162,12 +163,9 @@ export const useSyncStatus = (): SyncStatus =>
 
 const failures = new Map<string, { toastId: number; count: number; retries: (() => void)[] }>()
 
-const errorText = (error: unknown) =>
-  // 함수 오류 문구 끝의 상태 코드 꼬리표([500])는 뗀다.
-  (error instanceof Error ? error.message : String(error)).replace(/(\s*\[\d+\])+$/, '')
-
 function reportFailure(title: string, error: unknown, retry: () => void) {
-  notify(title, errorText(error), '다시 시도', retry)
+  // 함수 오류 문구 끝의 상태 코드 꼬리표([500])는 겹친 것까지 뗀다.
+  notify(title, errorText(error, { allTails: true }), '다시 시도', retry)
 }
 
 function notify(title: string, message: string, actionLabel: string, retry: () => void) {

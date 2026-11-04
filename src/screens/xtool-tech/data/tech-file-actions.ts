@@ -1,3 +1,4 @@
+import { errorText } from '../lib/error-text'
 import type { TechBoardKey } from './tech-boards'
 import { clearTechFiles, uploadTechFile, type TechFileLink } from './tech-files'
 import { dismissToast, hasToast, markSaving, pushToast, setToast, type Toast } from './tech-save-queue'
@@ -39,10 +40,6 @@ export interface TechFileActions {
 
 // 성공 토스트가 떠 있는 시간 — 저장소(tech-save-queue)와 같다
 const SUCCESS_MS = 2600
-
-/** 실패 문구 — 함수 오류 끝의 상태 번호([500] 등)는 뺀다. 토스트와 칸 안 문구가 같게 칸(use-file-column)도 쓴다 */
-export const fileErrorMessage = (error: unknown): string =>
-  (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
 
 // 실패해서 떠 있는 토스트 — 같은 일을 다시 하면(칸의 다시 시도·토스트의 다시 시도·같은 칸 다시 비우기) 새로 띄우지
 // 않고 그 토스트를 "진행 중"으로 되돌려 쓴다. 올리기는 고른 파일(File)마다, 비우기는 칸마다
@@ -97,7 +94,7 @@ export function techFileActions(boardKey: TechBoardKey): TechFileActions {
           setToast(id, {
             tone: 'error',
             title: `${file.name} 올리기에 실패했어요`,
-            message: fileErrorMessage(error),
+            message: errorText(error),
             action: {
               label: '다시 시도',
               run: () => (onRetry ? onRetry() : void upload(target, file, () => {}).catch(() => {})),
@@ -125,7 +122,7 @@ export function techFileActions(boardKey: TechBoardKey): TechFileActions {
           setToast(id, {
             tone: 'error',
             title: `${target.label} 지우기에 실패했어요`,
-            message: fileErrorMessage(error),
+            message: errorText(error),
             action: {
               label: '다시 시도',
               run: () => (onRetry ? onRetry() : void clear(target).catch(() => {})),

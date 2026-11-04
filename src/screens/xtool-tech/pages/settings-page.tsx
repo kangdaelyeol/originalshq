@@ -18,6 +18,7 @@ import {
 } from '../data/tech-backgrounds'
 import { deleteProfilePhoto, PROFILE_ACCEPT, uploadProfilePhoto, useProfilePhoto } from '../data/tech-profiles'
 import { pushToast } from '../data/tech-save-queue'
+import { errorText } from '../lib/error-text'
 import { cx } from '@/ohq-ui/lib/cx'
 import { ACCENT_PRESETS, DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
 import { GLASS_LIMITS, GLASS_PRESETS, glassVars, matchGlassPreset } from '@/ohq-ui/theme/glass'
@@ -153,8 +154,6 @@ function ProfilePhotoCard() {
     </GlassCard>
   )
 }
-
-const errorText = (error: unknown) => (error instanceof Error ? error.message : String(error)).replace(/\s*\[\d+\]$/, '')
 
 /** 직원이 공유한 사진 한 장 — 누르면 배경으로. 올린 사람에게만 지우기 버튼이 보인다. */
 function SharedTile({
