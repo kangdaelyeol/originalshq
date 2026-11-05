@@ -23,7 +23,7 @@ export function TeamCard({ members, me, loading }: { members: TeamMemberStatus[]
       subtitle={loading ? '불러오는 중…' : `${members.length}명`}
     >
       {!loading && members.length === 0 ? (
-        <p className="bar-list__empty">최근 담당자로 나온 사람이 없어요.</p>
+        <p className="bar-list__empty">보일 기술팀원이 없어요.</p>
       ) : (
         <ul className="team-grid">
           {members.map((m) => (

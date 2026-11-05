@@ -58,7 +58,7 @@ export function WaterTeamCard({
           ))}
         </ul>
       ) : members.length === 0 ? (
-        <WaterEmpty title="최근 담당자로 나온 사람이 없어요." />
+        <WaterEmpty title="보일 기술팀원이 없어요." />
       ) : (
         <ul className="water-team">
           {members.map((m, i) => {

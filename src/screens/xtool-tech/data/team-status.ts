@@ -3,8 +3,9 @@ import type { DocTaskRecord, FieldServiceRecord, InquiryRecord, RepairRecord, Ta
 import { kingFacts, kingPeriod, KINGS } from './tech-kings'
 import { isDone, splitNames } from './tech-stage'
 
-// 팀 현황 — 기술팀 보드에 최근 RECENT_DAYS일 동안 담당자로 나온 사람이 팀원이다(구성원 명단은
-// 규칙상 관리자만 읽어서). 사람마다 진행 중(보드별)·오늘 방문·이번 주 처리(세 왕 합계).
+// 팀 현황 — /admin/xtool에서 기술팀으로 등록한 사람(roster, 이름)만 보인다. 명단을 아직 못 읽었으면(null)
+// 기술팀 보드에 최근 RECENT_DAYS일 동안 담당자로 나온 사람으로 대신한다. 사람마다 진행 중(보드별)·오늘 방문·
+// 이번 주 처리(세 왕 합계).
 
 export const RECENT_DAYS = 90
 // 담당자 칸에 남는 이름 중 사람이 아닌 것
@@ -30,7 +31,7 @@ export interface TeamSources {
 
 const EMPTY_OPEN = (): Record<WorkBoard, number> => ({ fieldService: 0, repair: 0, techInquiry: 0, techTask: 0, records: 0 })
 
-export function buildTeamStatus(s: TeamSources, today: string): TeamMemberStatus[] {
+export function buildTeamStatus(s: TeamSources, today: string, roster: readonly string[] | null = null): TeamMemberStatus[] {
   const since = addDays(today, -RECENT_DAYS)
   const people = new Map<string, TeamMemberStatus>()
   const person = (name: string) => {
@@ -41,6 +42,8 @@ export function buildTeamStatus(s: TeamSources, today: string): TeamMemberStatus
     }
     return p
   }
+  // 기술팀은 맡은 일이 없어도 0건으로 보인다
+  for (const name of roster ?? []) person(name)
   const visit = (
     board: WorkBoard,
     r: { stage: string | null; status: string | null; updatedAt: string | null; createdAt: string | null },
@@ -77,7 +80,8 @@ export function buildTeamStatus(s: TeamSources, today: string): TeamMemberStatus
     }
   }
 
-  return [...people.values()].sort(
+  const team = roster ? new Set(roster) : null
+  return [...people.values()].filter((p) => !team || team.has(p.name)).sort(
     (a, b) => b.openTotal - a.openTotal || b.doneThisWeek - a.doneThisWeek || a.name.localeCompare(b.name, 'ko'),
   )
 }

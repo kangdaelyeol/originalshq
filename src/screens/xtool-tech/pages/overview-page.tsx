@@ -24,6 +24,7 @@ import {
   type KingSources,
   type KingSpan,
 } from '../data/tech-kings'
+import { useTechMembers } from '../data/tech-members'
 import { useMyIdentity } from '../data/use-my-work'
 import { koreaToday, shortDate } from '../lib/dates'
 
@@ -74,7 +75,13 @@ export function OverviewPage() {
     },
     today,
   )
-  const team = buildTeamStatus({ ...sources, techTask: taskRecords, records: docRecords }, today)
+  // 팀 현황은 기술팀으로 등록한 사람만(명단을 못 읽었으면 최근 담당자로)
+  const roster = useTechMembers()
+  const team = buildTeamStatus(
+    { ...sources, techTask: taskRecords, records: docRecords },
+    today,
+    roster?.map((m) => m.name).filter(Boolean) ?? null,
+  )
   const loadingAll = [field, repair, inquiry, task, docs, rentals, parts, requests].some((b) => !b.board && !b.error)
 
   return (
