@@ -515,10 +515,9 @@ $seg-icon-halo: drop-shadow(0 calc(var(--w-dpx, 0.5px) * 0.5) calc(var(--w-dpx, 
   }
 }
 
-// 어두운 알약 — D7 고른 칩(#605e63 → #3f3d42 92% → #353338) + 흰 글자, 둘레 옅은 그림자
+// 어두운 알약 — D7 고른 칩(#605e63 → #3f3d42 92% → #353338) + 흰 글자. 그림자는 없다(유리 주 버튼과 같게)
 .water-button--primary {
   background: $w-dark-chip;
-  box-shadow: 0 3px 7px rgba(0, 0, 0, 0.22);
   @include w-on-dark;
 }
 

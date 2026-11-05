@@ -373,15 +373,11 @@
   color: var(--accent-ink);
   background: linear-gradient(180deg, var(--accent-hi), var(--accent-lo));
   border-color: rgba(255, 255, 255, 0.14);
-  box-shadow:
-    0 10px 24px -10px rgba(var(--accent-rgb), 0.85),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  // 그림자 없이 — 강조색 빛 번짐·윗면 빛줄이 주변 판 위에서 떠 보여 뺐다(마우스를 올리면 밝아지기만)
+  box-shadow: none;
 
   &:hover {
     filter: brightness(1.07);
-    box-shadow:
-      0 12px 28px -10px rgba(var(--accent-rgb), 0.95),
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
   }
 }
 
