@@ -7,12 +7,14 @@ import { PERIOD_OPTIONS } from '../../data/period'
 import type { TechBoardKey } from '../../data/tech-boards'
 
 // 요약 줄을 접었는지 — 보드마다 이 브라우저에 기억한다(use-monday-prefs의 칸 너비·접은 그룹과 같은 방식).
+// 처음(기억한 값이 없으면)에는 접어 둔다 — 표가 먼저 보이게.
 
 const read = (key: string): boolean => {
   try {
-    return JSON.parse(window.localStorage.getItem(key) ?? 'false') === true
+    const saved = window.localStorage.getItem(key)
+    return saved === null ? true : JSON.parse(saved) === true
   } catch {
-    return false
+    return true
   }
 }
 
