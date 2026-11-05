@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   SortField,
   type SortDirection,
@@ -20,9 +20,12 @@ import { leadClient } from '@/screens/xtool-lead-manager/client'
  * 작업과 같이 쓰는 값이라 메인 view-model이 넘겨준다.
  */
 export const useLeadListViewModel = ({
+  active,
   setLoading,
   showToast,
 }: {
+  /** 리드 탭이 열려 있는지 — 처음 열 때 목록을 받는다. */
+  active: boolean
   setLoading: (loading: boolean) => void
   showToast: (type: ToastType) => void
 }) => {
@@ -52,11 +55,17 @@ export const useLeadListViewModel = ({
     setHasLoaded(true)
   }, [setLoading, showToast])
 
+  // 처음 리드 탭을 열 때 받는다 — 기본 탭(Monday 고객)만 보고 가는 동안에는
+  // 리드 전체를 받지 않는다. 그 전에 다른 곳(Monday CAPI 전송 뒤 등)에서 이미
+  // 받았으면 다시 받지 않는다.
+  const requested = useRef(false)
   useEffect(() => {
+    if (!active || requested.current || hasLoaded) return
+    requested.current = true
     ;(async () => {
       await fetchLeads()
     })()
-  }, [fetchLeads])
+  }, [active, hasLoaded, fetchLeads])
 
   const keywordFilteredRows = useMemo(
     () => filterLeadsByKeywords(rows, searchValue),

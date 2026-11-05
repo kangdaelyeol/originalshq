@@ -147,33 +147,34 @@ export const useCsTeamViewModel = ({
   // 인입 처리 수 + 전환 표(방문체험 확정·결제 전환) — 전부 접수일 기준이라
   // 기간 합계가 위 카드(stats)와 같다. 전환은 기간 뒤에 일어난 것도 세야 해서
   // 날짜를 자르지 않은 원본(facts)으로 센다.
-  const kpi = useMemo(() => {
-    const periods = periodsBetween(unit, range)
-    const kpis = (Object.keys(CS_KPIS) as CsConversionId[]).map((id) =>
-      buildCsConversionKpi(
-        id,
-        facts.consultations,
-        members,
-        unit,
-        range,
-        dates,
-      ),
-    )
-    return {
-      periods,
+  // 집계는 데이터·명단·기간이 바뀔 때만 — 정렬(머리글·건수/비율)만 바꿀 때는
+  // 아래에서 줄 순서만 다시 정한다.
+  const kpiBase = useMemo(
+    () => ({
+      periods: periodsBetween(unit, range),
       // 인입 처리 수 — 건수만 있는 표(방문체험 확정·결제 전환 위에 둔다).
-      intake: (() => {
-        const intake = buildIntakeKpi(
-          inRangeFacts.consultations,
+      intake: buildIntakeKpi(inRangeFacts.consultations, members, unit, range),
+      kpis: (Object.keys(CS_KPIS) as CsConversionId[]).map((id) =>
+        buildCsConversionKpi(
+          id,
+          facts.consultations,
           members,
           unit,
           range,
-        )
-        return {
-          ...intake,
-          rows: sortKpiRows(intake.rows, tableSorts['cs-kpi:intake'], periods),
-        }
-      })(),
+          dates,
+        ),
+      ),
+    }),
+    [facts, inRangeFacts, members, unit, range, dates],
+  )
+  const kpi = useMemo(() => {
+    const { periods, intake, kpis } = kpiBase
+    return {
+      periods,
+      intake: {
+        ...intake,
+        rows: sortKpiRows(intake.rows, tableSorts['cs-kpi:intake'], periods),
+      },
       kpis: kpis.map((each) => {
         const by = sortBy[each.id] ?? 'count'
         return {
@@ -189,7 +190,7 @@ export const useCsTeamViewModel = ({
         }
       }),
     }
-  }, [facts, inRangeFacts, members, unit, range, dates, tableSorts, sortBy])
+  }, [kpiBase, tableSorts, sortBy])
 
   const neglect = useMemo(
     () => callbackNeglect.filter((row) => memberSet.has(row.assignee)),

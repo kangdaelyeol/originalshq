@@ -195,9 +195,12 @@ const groupBy = (
   keyOf: (customer: MondayCustomerListItem) => string,
 ): Map<string, MondayCustomerListItem[]> => {
   const groups = new Map<string, MondayCustomerListItem[]>()
+  // 그 자리에 더한다 — 한 명마다 배열을 새로 만들면 큰 묶음에서 O(n²)이다.
   for (const customer of customers) {
     const key = keyOf(customer)
-    groups.set(key, [...(groups.get(key) ?? []), customer])
+    const group = groups.get(key)
+    if (group) group.push(customer)
+    else groups.set(key, [customer])
   }
   return groups
 }

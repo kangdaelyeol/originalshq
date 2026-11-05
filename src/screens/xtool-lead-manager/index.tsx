@@ -34,17 +34,17 @@ import {
 // 자식이어야 한다(Provider를 렌더하는 컴포넌트 자신은 그 값을 못 본다) — 그래서
 // XtoolLeadManager가 아니라 Provider 안의 이 컴포넌트에서 호출한다.
 const XtoolLeadManagerScreen = () => {
-  const main = useMainViewModel()
+  // 최상위 탭 — 리드(이 화면에서 직접 관리하는 데이터) / Monday 고객(Monday
+  // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). 리드 목록은 cmip 관리
+  // 탭을, Monday 목록은 그 탭이나 퍼널 통계 탭을 처음 열 때 받아온다.
+  const pageTab = usePageTabViewModel()
+  const { tab } = pageTab.state
+
+  const main = useMainViewModel(tab === 'leads')
   const createLead = useCreateLeadViewModel({
     fetchLeads: main.actions.fetchLeads,
     showToast: main.actions.showToast,
   })
-
-  // 최상위 탭 — 리드(이 화면에서 직접 관리하는 데이터) / Monday 고객(Monday
-  // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). Monday 목록은 그 탭이나
-  // 퍼널 통계 탭을 처음 열 때 받아온다.
-  const pageTab = usePageTabViewModel()
-  const { tab } = pageTab.state
   // 고객 목록은 Monday 고객 탭과 퍼널 통계 탭이 쓴다(통계 탭은 따로 받는
   // 날짜별 집계만 쓴다).
   const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')

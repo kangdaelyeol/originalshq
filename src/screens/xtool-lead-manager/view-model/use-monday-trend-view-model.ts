@@ -258,43 +258,49 @@ export const useMondayTrendViewModel = (active: boolean) => {
     [salesSortKey],
   )
 
+  // 표마다의 정렬 — 집계와 정렬을 따로 두고, 정렬은 그 표의 정렬 상태만
+  // 본다. 머리글 하나를 눌렀다고 다른 표의 집계까지 다시 하지 않게.
+  const callbackSort = tableSorts['neglect:callback']
+  const visitSort = tableSorts['neglect:visit']
+  const salesNeglectSort = tableSorts['neglect:sales']
+  const pipelineSort = tableSorts.pipeline
+
   // ── 방치 현황 ───────────────────────────────────────────────────────
   // 기간과 무관한 "지금" 현황이다 — 오늘 기준으로 기한이 지난 것을 센다.
-  const neglect = useMemo(() => {
+  const neglectRows = useMemo(() => {
     const today = todayInKorea()
+    const rowsOf = (kind: 'callback' | 'visit' | 'sales') =>
+      neglectByAssignee(followUps, kind, today).filter(
+        (row) => includeInactive || !isInactiveAssignee(row.assignee),
+      )
     return {
       today,
-      callback: sortNeglectRows(
-        neglectByAssignee(followUps, 'callback', today).filter(
-          (row) => includeInactive || !isInactiveAssignee(row.assignee),
-        ),
-        tableSorts['neglect:callback'],
-      ),
-      visit: sortNeglectRows(
-        neglectByAssignee(followUps, 'visit', today).filter(
-          (row) => includeInactive || !isInactiveAssignee(row.assignee),
-        ),
-        tableSorts['neglect:visit'],
-      ),
+      callback: rowsOf('callback'),
+      visit: rowsOf('visit'),
       // 체험 후 영업 미처리 — 영업통계 맨 아래.
-      sales: sortNeglectRows(
-        neglectByAssignee(followUps, 'sales', today).filter(
-          (row) => includeInactive || !isInactiveAssignee(row.assignee),
-        ),
-        tableSorts['neglect:sales'],
-      ),
+      sales: rowsOf('sales'),
     }
-  }, [followUps, tableSorts, includeInactive])
+  }, [followUps, includeInactive])
+  const neglect = useMemo(
+    () => ({
+      today: neglectRows.today,
+      callback: sortNeglectRows(neglectRows.callback, callbackSort),
+      visit: sortNeglectRows(neglectRows.visit, visitSort),
+      sales: sortNeglectRows(neglectRows.sales, salesNeglectSort),
+    }),
+    [neglectRows, callbackSort, visitSort, salesNeglectSort],
+  )
 
   // ── 현재 파이프라인 ─────────────────────────────────────────────────
   // 인입통계 맨 위 — 기간과 무관한 오늘 기준 단계별 건수.
-  const pipeline = useMemo(() => {
-    const built = buildPipeline(followUps)
-    return {
-      ...built,
-      rows: sortPipelineRows(built.rows, tableSorts.pipeline),
-    }
-  }, [followUps, tableSorts])
+  const builtPipeline = useMemo(() => buildPipeline(followUps), [followUps])
+  const pipeline = useMemo(
+    () => ({
+      ...builtPipeline,
+      rows: sortPipelineRows(builtPipeline.rows, pipelineSort),
+    }),
+    [builtPipeline, pipelineSort],
+  )
 
   // ── 개인 KPI ────────────────────────────────────────────────────────
   const kpiRange = kpiRanges[kpiUnit]
