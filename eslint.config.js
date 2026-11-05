@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // apps/ — RN 앱은 자기 린트(앱 package.json lint)를 쓴다
+  globalIgnores(['dist', 'apps']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

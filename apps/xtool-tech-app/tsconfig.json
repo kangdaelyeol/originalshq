@@ -1,0 +1,16 @@
+{
+  "extends": "@react-native/typescript-config",
+  "compilerOptions": {
+    // 웹과 같이 쓰는 데이터 코드 — Metro는 metro.config.js가 같은 곳으로 묶는다.
+    // 공용 코드가 부르는 react·firebase의 타입도 이 앱의 것으로(저장소 루트 node_modules의 웹용이 아니라).
+    "paths": {
+      "@xtool-core/*": ["../../packages/xtool-core/src/*"],
+      "react": ["./node_modules/@types/react"],
+      "firebase/*": ["./node_modules/firebase/*"],
+      // RN 저장 방식(getReactNativePersistence)의 타입 — exports의 types 조건이 react-native보다 앞이라 직접 가리킨다
+      "@firebase/auth": ["./node_modules/@firebase/auth/dist/rn/index.rn.d.ts"]
+    }
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../../packages/xtool-core/src/**/*.ts"],
+  "exclude": ["**/node_modules", "**/Pods"]
+}
