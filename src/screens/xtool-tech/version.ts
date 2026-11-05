@@ -19,6 +19,20 @@ export interface TechRelease {
 /** 업데이트 기록 — 최근 것부터 */
 export const TECH_CHANGELOG: readonly TechRelease[] = [
   {
+    version: '1.2.0',
+    date: '2026-11-05',
+    title: '직책 표시와 화면 다듬기',
+    changes: [
+      { kind: 'new', text: '직책 — 관리자가 정한 직책(사원~대표)과 그룹장·팀원이 팀원 & 권한에 보여요' },
+      { kind: 'improved', text: '팀 현황 — 기술팀으로 등록된 사람만 보여요(맡은 일이 없어도 0건으로 나와요)' },
+      {
+        kind: 'improved',
+        text: '칸 이름 — 고객 이름 칸은 "고객명", 전화번호 칸은 "연락처"로 맞추고 "(- 하이픈 필수)" 같은 입력 안내는 뺐어요',
+      },
+      { kind: 'improved', text: 'Monday 표 — 보드 위 요약 줄을 처음에는 접어 둬요(펼치면 그 보드는 펼친 채로 기억해요)' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-11-05',
     title: '첫 버전',
