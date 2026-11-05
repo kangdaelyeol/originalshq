@@ -2,12 +2,15 @@ import { KeyRound, Search, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
   generateTempPassword,
+  GROUP_ROLES,
+  POSITIONS,
   removeMember,
   resetMemberPassword,
   TEAMS,
   TECH_AREAS,
   updateMember,
   watchMembers,
+  type Position,
   type XtoolMember,
 } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
@@ -121,6 +124,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           <thead>
             <tr>
               <th scope="col">구성원</th>
+              <th scope="col">직책</th>
               <th scope="col">팀 페이지 권한</th>
               <th scope="col">관리자</th>
               <th scope="col">기술팀 담당</th>
@@ -134,7 +138,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           <tbody>
             {members && shown.length === 0 && (
               <tr>
-                <td colSpan={7} className="table__empty">
+                <td colSpan={8} className="table__empty">
                   {needle ? '검색 결과가 없어요.' : '아직 등록된 구성원이 없어요.'}
                 </td>
               </tr>
@@ -154,6 +158,48 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                           {isSelf && <span className="member-self">나</span>}
                         </p>
                         <p className="person__sub">{member.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    {/* 직책(사원~대표)과 그룹장·팀원 — tech 팀원 & 권한에 보인다. 그룹 역할은 고른 것을 다시 누르면 비운다. */}
+                    <div className="member-role">
+                      <select
+                        className="log-select"
+                        value={member.position ?? ''}
+                        aria-label={`${member.name} 직책`}
+                        disabled={busy}
+                        onChange={(e) => {
+                          const position = (e.target.value || null) as Position | null
+                          void run(member.email, () => updateMember(member.email, { position }))
+                        }}
+                      >
+                        <option value="">직책 미정</option>
+                        {POSITIONS.map((position) => (
+                          <option key={position.key} value={position.key}>
+                            {position.label}
+                          </option>
+                        ))}
+                      </select>
+                      <div className="admin-chips">
+                        {GROUP_ROLES.map((role) => {
+                          const on = member.groupRole === role.key
+                          return (
+                            <button
+                              key={role.key}
+                              type="button"
+                              className={cx('admin-chip', on && 'is-on')}
+                              aria-pressed={on}
+                              aria-label={`${member.name} ${role.label}`}
+                              disabled={busy}
+                              onClick={() =>
+                                void run(member.email, () => updateMember(member.email, { groupRole: on ? null : role.key }))
+                              }
+                            >
+                              {role.label}
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
                   </td>

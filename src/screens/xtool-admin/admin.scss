@@ -436,6 +436,17 @@
     }
   }
 
+  // 직책 칸 — 직책 고르기 + 그룹장·팀원
+  .member-role {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .log-select {
+      height: 30px;
+    }
+  }
+
   .member-self {
     margin-left: 6px;
     padding: 1px 6px;

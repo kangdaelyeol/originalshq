@@ -2,7 +2,7 @@ import { ScrollText, ShieldCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import { TECH_AREAS, type XtoolMember } from '@/xtool-auth/members'
+import { GROUP_ROLES, POSITIONS, TECH_AREAS, type XtoolMember } from '@/xtool-auth/members'
 import { Avatar, Button, GlassCard, StatusPill } from '../components/layout-parts'
 import { MemberLogPanel, MemberWorkPanel } from '../components/team/member-panels'
 import { useCurrentMember } from '../context/member-context'
@@ -20,9 +20,12 @@ import { BoardItemHost } from './boards/board-host'
 const ADMIN_PATH = '/admin/xtool'
 
 const areaLabel = (member: XtoolMember) => TECH_AREAS.find((a) => a.key === member.techArea)?.label ?? null
+const positionLabel = (member: XtoolMember) => POSITIONS.find((p) => p.key === member.position)?.label ?? null
+const groupRoleLabel = (member: XtoolMember) => GROUP_ROLES.find((r) => r.key === member.groupRole)?.label ?? null
 
 /**
- * 팀원 & 권한 — 관리자 화면에서 기술팀으로 등록한 활성 구성원. 담당영역(방문체험·AS)은 관리자가 정하고, 상태는 지금
+ * 팀원 & 권한 — 관리자 화면에서 기술팀으로 등록한 활성 구성원. 직책(사원~대표·그룹장/팀원)과 담당영역(방문체험·AS)은
+ * 관리자가 정하고, 상태는 지금
  * 맡은 업무(오늘 기준으로 끝나지 않은 담당 업무, 내 업무와 같은 계산)를 센다 — 누르면 그 업무 목록이 열리고, 목록의
  * 업무를 누르면 이 화면에서 그 항목 상세가 열린다. "로그"는 그 사람의 수정 기록(기술팀 모두 본다).
  */
@@ -78,6 +81,7 @@ export function TeamPage() {
             <thead>
               <tr>
                 <th scope="col">프로필</th>
+                <th scope="col">직책</th>
                 <th scope="col">담당 영역</th>
                 <th scope="col">상태</th>
                 <th scope="col">작업</th>
@@ -86,7 +90,7 @@ export function TeamPage() {
             <tbody>
               {members !== null && rows.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="table__empty">
+                  <td colSpan={5} className="table__empty">
                     기술팀으로 등록된 사람이 없어요.
                   </td>
                 </tr>
@@ -95,6 +99,8 @@ export function TeamPage() {
                 const items = workOf.get(member.email) ?? []
                 const urgent = items.filter((i) => i.urgent).length
                 const area = areaLabel(member)
+                const position = positionLabel(member)
+                const groupRole = groupRoleLabel(member)
                 return (
                   <tr key={member.email}>
                     <td>
@@ -109,6 +115,18 @@ export function TeamPage() {
                           <p className="person__sub">{member.email}</p>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      {position || groupRole ? (
+                        <span className="team-position">
+                          {position && <span className="team-area">{position}</span>}
+                          {groupRole && (
+                            <StatusPill tone={member.groupRole === 'lead' ? 'info' : 'neutral'}>{groupRole}</StatusPill>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="table__muted">미정</span>
+                      )}
                     </td>
                     <td>{area ? <span className="team-area">{area}</span> : <span className="table__muted">미정</span>}</td>
                     <td>

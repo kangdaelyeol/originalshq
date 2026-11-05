@@ -36,6 +36,27 @@ export const TECH_AREAS: readonly { key: TechArea; label: string }[] = [
   { key: 'as', label: 'AS' },
 ]
 
+/** 직책 — 관리자가 정한다(tech 팀원 & 권한에 보인다). 낮은 것부터. 키를 바꾸면 firestore.rules도 같이. */
+export type Position = 'staff' | 'associate' | 'assistant' | 'manager' | 'deputy' | 'general' | 'ceo'
+
+export const POSITIONS: readonly { key: Position; label: string }[] = [
+  { key: 'staff', label: '사원' },
+  { key: 'associate', label: '주임' },
+  { key: 'assistant', label: '대리' },
+  { key: 'manager', label: '과장' },
+  { key: 'deputy', label: '차장' },
+  { key: 'general', label: '부장' },
+  { key: 'ceo', label: '대표' },
+]
+
+/** 그룹 안의 역할 — 그룹장·팀원 */
+export type GroupRole = 'lead' | 'member'
+
+export const GROUP_ROLES: readonly { key: GroupRole; label: string }[] = [
+  { key: 'lead', label: '그룹장' },
+  { key: 'member', label: '팀원' },
+]
+
 export interface XtoolMember {
   email: string
   name: string
@@ -45,6 +66,10 @@ export interface XtoolMember {
   status: MemberStatus
   /** 기술팀 담당영역 — 정하지 않았으면 없음 */
   techArea?: TechArea | null
+  /** 직책 — 정하지 않았으면 없음 */
+  position?: Position | null
+  /** 그룹장·팀원 — 정하지 않았으면 없음 */
+  groupRole?: GroupRole | null
   createdAt?: Timestamp | null
   createdBy?: string
   updatedAt?: Timestamp | null
@@ -103,10 +128,10 @@ export async function addMember(input: MemberInput, adminEmail: string): Promise
   return true
 }
 
-/** 권한·상태·담당영역 바꾸기(관리자) — 넘긴 값만 바뀐다. */
+/** 권한·상태·담당영역·직책 바꾸기(관리자) — 넘긴 값만 바뀐다. */
 export async function updateMember(
   email: string,
-  patch: Partial<Pick<XtoolMember, 'name' | 'isAdmin' | 'teams' | 'status' | 'techArea'>>,
+  patch: Partial<Pick<XtoolMember, 'name' | 'isAdmin' | 'teams' | 'status' | 'techArea' | 'position' | 'groupRole'>>,
 ): Promise<void> {
   await updateDoc(memberRef(email), { ...patch, updatedAt: serverTimestamp() })
 }

@@ -21,6 +21,13 @@
   }
 }
 
+// 직책 칸 — 직책 글자 옆에 그룹장·팀원 알약
+.team-position {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .team-area {
   color: var(--text-1);
   font-weight: 500;
