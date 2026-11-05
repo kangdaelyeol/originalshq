@@ -30,7 +30,7 @@ export const BACKGROUND_OPTIONS: readonly BackgroundOption[] = [
 
 export interface Appearance {
   /**
-   * 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(화면도 Monday식 배치를 고를 수 있다) · water: D7 물
+   * 판 모양 — glass: 유리 판 · monday: Monday 판·선·버튼(기본 — 화면도 Monday식 배치를 고를 수 있다) · water: D7 물
    * (화면 틀·부품을 물 부품으로)
    */
   theme: ThemeName
@@ -50,7 +50,8 @@ export interface Appearance {
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
-  theme: 'glass',
+  // 처음 들어온 사람은 Monday 표로(기술팀 보드의 기본 레이아웃). 이미 고른 사람은 저장된 값 그대로.
+  theme: 'monday',
   mondayPalette: 'navy',
   mondayPhotoId: null,
   background: 'shards',

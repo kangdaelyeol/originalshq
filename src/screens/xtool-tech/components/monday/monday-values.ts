@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { columnLabel, isAssigneeColumn, withoutLegacyAssignee, type EditState, type LocationState } from '../../data/tech-edit'
+import { GROUP_COLUMN, NAME_COLUMN } from '../../data/tech-views'
 import { cx } from '@/ohq-ui/lib/cx'
 import { koreaToday } from '../../lib/dates'
 import { labelColor } from './monday-colors'
@@ -207,6 +208,16 @@ export const visibleColumns = (meta: TechBoardMeta): TechColumn[] =>
     .filter((c) => !HIDDEN_TYPES.has(c.type))
     // 머리글·편집 칸에 보일 이름으로(columnLabel) — 바꾼 이름도 연락처 칸 판단(isPhoneColumn)에 그대로 걸린다
     .map((c) => ({ ...c, title: columnLabel(c), ...(isAssigneeColumn(c) ? { type: 'assignee' } : {}) }))
+
+/**
+ * 보기 조건에 쓸 수 있는 칸 — 이름 칸·그룹(가짜 칸)과 보이는 칸. 그룹 칸은 고를 값이 그룹 id라 options에 그룹
+ * 제목을 두지 않는다(모달이 meta.groups로 고른다).
+ */
+export const viewColumns = (meta: TechBoardMeta, boardKey: TechBoardKey): TechColumn[] => [
+  { id: NAME_COLUMN, title: NAME_TITLE[boardKey], type: 'name', writable: false },
+  { id: GROUP_COLUMN, title: '그룹', type: 'group', writable: false },
+  ...visibleColumns(meta),
+]
 
 /** 머리글 정렬 — 1 오름차순 · -1 내림차순 */
 export type MonSort = { columnId: string; dir: 1 | -1 } | null

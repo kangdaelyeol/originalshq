@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Navigate } from 'react-router-dom'
 import { AttentionRow, KingCard, TeamCard } from '../components/layout-parts'
 import { MyWorkCard } from '../components/overview/my-work-card'
 import { ScheduleCard } from '../components/overview/schedule-card'
@@ -27,6 +28,8 @@ import {
 import { useTechMembers } from '../data/tech-members'
 import { useMyIdentity } from '../data/use-my-work'
 import { koreaToday, shortDate } from '../lib/dates'
+import { useOverviewHidden } from '../lib/overview-pref'
+import { MY_WORK_PATH } from '../paths'
 
 const SPANS: readonly { span: KingSpan; label: string; previous: string }[] = [
   { span: 'week', label: '이번 주', previous: '지난주' },
@@ -39,6 +42,12 @@ const SPANS: readonly { span: KingSpan; label: string; previous: string }[] = [
  * 기준: 이번 주(일~토)·이번 달 두 줄에 AS왕·수리왕·아톡처리왕).
  */
 export function OverviewPage() {
+  // Monday 표에서 개요를 숨겼으면(설정 > 레이아웃) 내 업무로
+  if (useOverviewHidden()) return <Navigate to={MY_WORK_PATH} replace />
+  return <Overview />
+}
+
+function Overview() {
   const field = useTechBoard('fieldService')
   const repair = useTechBoard('repair')
   const inquiry = useTechBoard('techInquiry')

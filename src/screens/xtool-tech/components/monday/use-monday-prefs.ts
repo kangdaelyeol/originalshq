@@ -55,3 +55,18 @@ export function useCollapsedGroups(boardKey: TechBoardKey): [ReadonlySet<string>
   )
   return [collapsed, set]
 }
+
+/** 고른 보기 id — null이면 메인 테이블. 보기 목록은 팀이 같이 쓰고, 어느 보기를 보는지는 사람마다 이 브라우저에. */
+export function useSelectedView(boardKey: TechBoardKey): [string | null, (id: string | null) => void] {
+  const key = `xtool-tech:monday-view:${boardKey}`
+  const [selected, setSelected] = useState<{ key: string; id: string | null }>(() => ({ key, id: read<string | null>(key, null) }))
+  const select = useCallback(
+    (id: string | null) => {
+      write(key, id)
+      setSelected({ key, id })
+    },
+    [key],
+  )
+  // 보드를 옮기면(같은 화면에서 주소만 바뀐다) 그 보드의 기억을 읽는다
+  return [selected.key === key ? selected.id : read<string | null>(key, null), select]
+}

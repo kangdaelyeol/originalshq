@@ -1,0 +1,258 @@
+// ── 보기 탭·보기 모달 ───────────────────────────────────────────────────────
+// 탭 줄(.mon-board__views)의 저장한 보기와 "+" 단추, 보기 추가·고치기 모달(틀은 파일 모달의 .mon-modal).
+
+.mon-board__views {
+  align-items: flex-end;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+
+  .mon-tab {
+    flex: none;
+    white-space: nowrap;
+  }
+}
+
+.mon-viewtab {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+
+  &.is-on {
+    border-bottom: 2px solid var(--mon-primary);
+
+    .mon-tab {
+      border-bottom-color: transparent;
+    }
+  }
+}
+
+.mon-viewtab__more {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: var(--mon-overlay);
+    color: var(--mon-text);
+  }
+}
+
+.mon-board__views .mon-tab--add {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  padding: 0;
+  border-radius: 4px 4px 0 0;
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+}
+
+.mon-menu__item--danger {
+  color: var(--mon-danger-text);
+}
+
+// ── 모달 ────────────────────────────────────────────────────────────────────
+
+.mon-viewmodal {
+  width: min(720px, 100%);
+}
+
+.mon-viewmodal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.mon-viewmodal__field,
+.mon-viewmodal__section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mon-viewmodal__label {
+  color: var(--mon-text-2);
+  font-size: 13px;
+}
+
+.mon-viewmodal__row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.mon-viewmodal__count {
+  margin-left: auto;
+  color: var(--mon-text-2);
+  font-size: 13px;
+
+  strong {
+    color: var(--mon-text);
+    font-weight: 600;
+  }
+}
+
+.mon-viewmodal__match {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.mon-viewmodal__rules {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.mon-viewrule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--mon-line);
+  border-radius: 8px;
+  background: var(--mon-surface);
+}
+
+.mon-viewrule__line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.mon-viewrule__join {
+  color: var(--mon-text-2);
+  font-size: 12px;
+}
+
+.mon-viewrule__remove {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text-2);
+
+  &:hover {
+    background: var(--mon-overlay);
+    color: var(--mon-danger-text);
+  }
+}
+
+.mon-viewrule__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 160px;
+  overflow: auto;
+}
+
+.mon-vinput,
+.mon-vselect {
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--mon-line-strong);
+  border-radius: 4px;
+  background: var(--mon-bg);
+  color: var(--mon-text);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+
+  &:hover {
+    border-color: var(--mon-control);
+  }
+
+  &:focus-visible {
+    border-color: var(--mon-primary);
+  }
+}
+
+.mon-vselect {
+  min-width: 140px;
+  max-width: 240px;
+  cursor: pointer;
+}
+
+.mon-viewrule__line .mon-vinput {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.mon-vchip {
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--mon-line-strong);
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-text);
+  font-size: 13px;
+  white-space: nowrap;
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+
+  &.is-on {
+    border-color: var(--mon-primary);
+    background: var(--mon-tool-on);
+  }
+
+  // 숨길 칸 — 고르면(숨김) 줄을 긋는다
+  &.mon-vchip--hide.is-on {
+    border-color: var(--mon-line);
+    background: var(--mon-overlay);
+    color: var(--mon-text-2);
+    text-decoration: line-through;
+  }
+}
+
+.mon-viewmodal__add {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-link);
+
+  &:hover {
+    background: var(--mon-overlay);
+  }
+}
+
+.mon-viewmodal__actions {
+  display: inline-flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.mon-viewmodal .mon-modal__upload:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -1,20 +1,27 @@
 import { Info } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import { GlassCard } from '../../components/layout-parts'
+import { GlassCard, SegmentedControl } from '../../components/layout-parts'
 import { cx } from '@/ohq-ui/lib/cx'
 import { MONDAY_PALETTES } from '@/ohq-ui/theme/monday'
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import type { ThemeName } from '@/ohq-ui/theme/theme-root'
 import { layoutKind, type LayoutStructure } from '../../lib/layout-kind'
+import { setMondayOverviewShown, useMondayOverviewShown } from '../../lib/overview-pref'
 
 // 레이아웃은 두 단계로 고른다(lib/layout-kind) — 구조(보드 화면의 짜임)를 고르고, 대시보드면 디자인(유리·물)을,
 // Monday 표면 Monday 색상을 고른다. 저장 값은 그대로 하나(ThemeName)라 예전에 고른 값도 그대로 읽힌다.
 
-/** 구조 — 고르면 그 구조의 첫 디자인으로(대시보드는 유리, 지금 대시보드면 디자인은 그대로) */
+/** 구조 — 고르면 그 구조의 첫 디자인으로(대시보드는 유리, 지금 대시보드면 디자인은 그대로). Monday 표가 기본이라 먼저. */
 const STRUCTURE_OPTIONS: readonly { value: LayoutStructure; label: string; description: string }[] = [
-  { value: 'dashboard', label: '대시보드', description: '숫자 카드·차트와 목록 — 줄을 누르면 상세가 떠요' },
   { value: 'table', label: 'Monday 표', description: 'Monday처럼 그룹별 표 — 칸을 눌러 바로 고쳐요' },
+  { value: 'dashboard', label: '대시보드', description: '숫자 카드·차트와 목록 — 줄을 누르면 상세가 떠요' },
 ]
+
+/** Monday 표의 개요 보드 — 처음엔 숨김(lib/overview-pref) */
+const OVERVIEW_OPTIONS = [
+  { value: 'hide', label: '숨기기' },
+  { value: 'show', label: '보이기' },
+] as const
 
 /** 대시보드 디자인 — 구조는 같고 부품 모양만 다르다 */
 const DESIGN_OPTIONS: readonly { value: ThemeName; label: string; description: string }[] = [
@@ -74,11 +81,12 @@ function LayoutArt({ layout }: { layout: ThemeName }) {
   )
 }
 
-/** 레이아웃 — 구조(대시보드·Monday 표)를 고르고, 대시보드면 디자인(유리·물), Monday 표면 Monday 색상을 고른다. */
+/** 레이아웃 — 구조(Monday 표·대시보드)를 고르고, 대시보드면 디자인(유리·물), Monday 표면 Monday 색상과 개요 보드를 고른다. */
 export function LayoutCard() {
   const { theme, setTheme, mondayPalette, setMondayPalette } = useAppearance()
   const { structure, design } = layoutKind(theme)
   const monday = design === 'monday'
+  const overviewShown = useMondayOverviewShown()
   const pickStructure = (next: LayoutStructure) => {
     if (next !== structure) setTheme(next === 'table' ? 'monday' : 'glass')
   }
@@ -160,6 +168,18 @@ export function LayoutCard() {
               )
             })}
           </div>
+        </>
+      )}
+      {monday && (
+        <>
+          <h3 className="bg-section-label">개요 보드</h3>
+          <SegmentedControl
+            ariaLabel="개요 보드"
+            size="sm"
+            options={OVERVIEW_OPTIONS}
+            value={overviewShown ? 'show' : 'hide'}
+            onChange={(next) => setMondayOverviewShown(next === 'show')}
+          />
         </>
       )}
       {monday && (

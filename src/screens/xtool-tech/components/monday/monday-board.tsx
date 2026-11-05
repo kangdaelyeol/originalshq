@@ -1,11 +1,16 @@
-import { ArrowDownUp, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Plus, Search, X } from 'lucide-react'
+import { ArrowDownUp, ChevronDown, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Filter, Plus, Search, X } from 'lucide-react'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
+import { pushToast } from '../../data/tech-save-queue'
+import { applyViewRules, deleteBoardView, ruleReady, useBoardViews, type BoardView, type BoardViewSpec } from '../../data/tech-views'
+import { errorText } from '../../lib/error-text'
+import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
 import { MonPopover } from './monday-popover'
 import { MondaySection } from './monday-section'
 import { SelectionProvider } from './monday-selection-bar'
+import { ViewModal } from './monday-view-modal'
 import {
   groupIdOf,
   ITEM_NOUN,
@@ -14,10 +19,11 @@ import {
   nextSort,
   OTHER_GROUP,
   splitNames,
+  viewColumns,
   visibleColumns,
   type MonSort,
 } from './monday-values'
-import { useCollapsedGroups } from './use-monday-prefs'
+import { useCollapsedGroups, useSelectedView } from './use-monday-prefs'
 
 interface MondayBoardProps {
   boardKey: TechBoardKey
@@ -27,10 +33,13 @@ interface MondayBoardProps {
   summary?: ReactNode
 }
 
+/** 보기 모달 — 새 보기(initial은 복제할 때 처음 값) 또는 고칠 보기 */
+type ViewEditor = { view: BoardView | null; initial?: BoardViewSpec }
+
 /**
- * Monday 표 레이아웃(보드 화면) — 위 도구 줄(새 항목·검색·사람·정렬·모두 접기)과 보드 한 장
- * 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다. summary가 있으면 보기 탭과
- * 도구 줄 사이에 넣는다.
+ * Monday 표 레이아웃(보드 화면) — 보기 탭(메인 테이블 + 팀이 저장한 보기), 위 도구 줄(새 항목·검색·사람·정렬·
+ * 모두 접기)과 보드 한 장 분량의 표(MondaySection). 표는 자기 안에서 위아래·옆으로 스크롤된다. summary가
+ * 있으면 보기 탭과 도구 줄 사이에 넣는다. 보기를 고르면 그 조건으로 거른 항목에 검색·사람 거르기를 더한다.
  */
 export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps) {
   const boardRef = useRef<HTMLElement>(null)
@@ -42,8 +51,23 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [person, setPerson] = useState<string | null>(null)
-  const [sort, setSort] = useState<MonSort>(null)
-  const [menu, setMenu] = useState<{ kind: 'person' | 'sort'; anchor: HTMLElement } | null>(null)
+  const [menu, setMenu] = useState<{ kind: 'person' | 'sort' | 'view'; anchor: HTMLElement } | null>(null)
+
+  // 보기 — 팀이 같이 쓰는 목록(Firestore), 어느 것을 보는지는 이 브라우저에. 지워진 보기면 메인 테이블.
+  const { views } = useBoardViews(boardKey)
+  const [selectedId, selectView] = useSelectedView(boardKey)
+  const view = views?.find((v) => v.id === selectedId) ?? null
+  const [editor, setEditor] = useState<ViewEditor | null>(null)
+  const [deleting, setDeleting] = useState<BoardView | null>(null)
+  const conditionColumns = useMemo(() => viewColumns(meta, boardKey), [meta, boardKey])
+  const readyRules = view?.rules.filter(ruleReady).length ?? 0
+
+  // 정렬 — 보기를 고르면(또는 보기의 정렬이 바뀌면) 그 보기의 정렬로 시작하고, 도구 줄·머리글로 잠깐 바꿀 수 있다
+  const sortKey = view ? `${view.id}:${JSON.stringify(view.sort)}` : ''
+  const [sortState, setSortState] = useState<{ key: string; sort: MonSort }>({ key: '', sort: null })
+  const sort = sortState.key === sortKey ? sortState.sort : (view?.sort ?? null)
+  const setSort = (next: MonSort | ((current: MonSort) => MonSort)) =>
+    setSortState({ key: sortKey, sort: typeof next === 'function' ? next(sort) : next })
 
   // 담당자로 거를 사람 — 사람 칸에 나오는 이름, 많이 맡은 순
   const people = useMemo(() => {
@@ -55,10 +79,15 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
   }, [items, peopleColumns])
 
   const needle = query.trim().toLowerCase()
-  const filtering = Boolean(needle || person)
+  const searching = Boolean(needle || person)
+  const filtering = searching || readyRules > 0
+  const viewItems = useMemo(
+    () => (view ? applyViewRules(items, view, conditionColumns, (item) => groupIdOf(meta, item)) : items),
+    [items, view, conditionColumns, meta],
+  )
   const shown = useMemo(
-    () => (filtering ? items.filter((item) => matchesItem(item, peopleColumns, needle, person)) : items),
-    [items, peopleColumns, needle, person, filtering],
+    () => (searching ? viewItems.filter((item) => matchesItem(item, peopleColumns, needle, person)) : viewItems),
+    [viewItems, peopleColumns, needle, person, searching],
   )
   // "모두 접기"가 다루는 그룹 — 거르는 중이면 항목이 남은 그룹만
   const groupIds = filtering
@@ -71,7 +100,33 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
     <section ref={boardRef} className="mon-board" aria-label={meta.name}>
       <Topbar embedded />
       <nav className="mon-board__views" aria-label="보기">
-        <span className="mon-tab is-on">메인 테이블</span>
+        <button type="button" className={cx('mon-tab', !view && 'is-on')} aria-current={!view || undefined} onClick={() => selectView(null)}>
+          메인 테이블
+        </button>
+        {views?.map((v) => {
+          const on = v.id === view?.id
+          return (
+            <span key={v.id} className={cx('mon-viewtab', on && 'is-on')}>
+              <button type="button" className={cx('mon-tab', on && 'is-on')} aria-current={on || undefined} onClick={() => selectView(v.id)}>
+                {v.name}
+              </button>
+              {on && (
+                <button
+                  type="button"
+                  className="mon-viewtab__more"
+                  aria-label={`${v.name} 보기 메뉴`}
+                  aria-haspopup="menu"
+                  onClick={(e) => setMenu(menu?.kind === 'view' ? null : { kind: 'view', anchor: e.currentTarget })}
+                >
+                  <ChevronDown size={14} aria-hidden />
+                </button>
+              )}
+            </span>
+          )
+        })}
+        <button type="button" className="mon-tab mon-tab--add" aria-label="보기 추가" title="보기 추가" onClick={() => setEditor({ view: null })}>
+          <Plus size={16} aria-hidden />
+        </button>
       </nav>
       {summary}
       <div className="mon-toolbar">
@@ -136,6 +191,13 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
           )}
         </span>
 
+        {view && (
+          <button type="button" className={cx('mon-tool', readyRules > 0 && 'is-on')} onClick={() => setEditor({ view })}>
+            <Filter size={15} aria-hidden />
+            {readyRules > 0 ? `조건 / ${readyRules}` : '조건'}
+          </button>
+        )}
+
         <button
           type="button"
           className={cx('mon-tool', sort && 'is-on')}
@@ -155,7 +217,7 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
           {allCollapsed ? '모두 펼치기' : '모두 접기'}
         </button>
 
-        <span className="mon-toolbar__count">{filtering ? `${shown.length}개 찾음` : `${items.length}개 항목`}</span>
+        <span className="mon-toolbar__count">{searching ? `${shown.length}개 찾음` : `${shown.length}개 항목`}</span>
       </div>
 
       <div className="mon-scroll">
@@ -170,6 +232,7 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
             onSort={(id) => setSort((current) => nextSort(current, id))}
             collapsed={collapsed}
             setCollapsed={setCollapsed}
+            hiddenColumns={view?.hidden}
           />
         </SelectionProvider>
       </div>
@@ -232,6 +295,84 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
           )}
         </MonPopover>
       )}
+      {menu?.kind === 'view' && view && (
+        <MonPopover anchor={menu.anchor} width={200} onClose={() => setMenu(null)}>
+          <ul className="mon-menu">
+            <li>
+              <button
+                type="button"
+                className="mon-menu__item"
+                onClick={() => {
+                  setMenu(null)
+                  setEditor({ view })
+                }}
+              >
+                보기 고치기
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="mon-menu__item"
+                onClick={() => {
+                  setMenu(null)
+                  setEditor({ view: null, initial: { ...view, name: `${view.name} 복사`.slice(0, 40) } })
+                }}
+              >
+                복제하기
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="mon-menu__item mon-menu__item--danger"
+                onClick={() => {
+                  setMenu(null)
+                  setDeleting(view)
+                }}
+              >
+                보기 지우기
+              </button>
+            </li>
+          </ul>
+        </MonPopover>
+      )}
+
+      {editor && (
+        <ViewModal
+          boardKey={boardKey}
+          meta={meta}
+          items={items}
+          view={editor.view}
+          initial={editor.initial}
+          onClose={() => setEditor(null)}
+          onSaved={(id) => {
+            setEditor(null)
+            selectView(id)
+          }}
+          onDeleted={() => {
+            setEditor(null)
+            selectView(null)
+          }}
+        />
+      )}
+
+      <ConfirmDialog
+        open={deleting !== null}
+        title={`"${deleting?.name ?? ''}" 보기를 지울까요?`}
+        message="기술팀 모두의 보드에서 이 보기 탭이 사라져요. 항목은 그대로예요."
+        confirmLabel="지우기"
+        onConfirm={() => {
+          const target = deleting
+          setDeleting(null)
+          if (!target) return
+          selectView(null)
+          deleteBoardView(target.id).catch((e: unknown) =>
+            pushToast({ tone: 'error', title: `"${target.name}" 보기를 지우지 못했어요`, message: errorText(e) }),
+          )
+        }}
+        onCancel={() => setDeleting(null)}
+      />
     </section>
   )
 }

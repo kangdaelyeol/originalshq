@@ -136,6 +136,40 @@ service cloud.firestore {
       allow delete: if isXtoolTeamMember('tech') && signedInEmail() == email;
     }
 
+    // 보드 보기(Monday 표의 보기 탭 — 이름 붙인 조건·정렬·숨길 칸) — 기술팀 모두가 같이 쓰고 만들고 고치고
+    // 지운다. 화면이 직접 쓰고(data/tech-views.ts), 여기서는 모양과 쓴 사람만 본다.
+    function validBoardView(data) {
+      return data.keys().hasOnly(['board', 'name', 'match', 'rules', 'sort', 'hidden',
+          'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
+        && data.board in ['fieldService', 'repair', 'records', 'techInquiry', 'techTask',
+          'asRequests', 'parts', 'rentals', 'serials']
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 40
+        && data.match in ['all', 'any']
+        && data.rules is list && data.rules.size() <= 20
+        && (data.sort == null
+          || (data.sort is map && data.sort.keys().hasOnly(['columnId', 'dir'])
+            && data.sort.columnId is string && data.sort.dir in [1, -1]))
+        && data.hidden is list && data.hidden.size() <= 80
+        && data.updatedBy == signedInEmail()
+        && data.updatedAt == request.time;
+    }
+
+    match /techBoardViews/{viewId} {
+      allow read: if isXtoolTeamMember('tech');
+
+      allow create: if isXtoolTeamMember('tech') && validBoardView(request.resource.data)
+        && request.resource.data.createdBy == signedInEmail()
+        && request.resource.data.createdAt == request.time;
+
+      // 만든 사람·때·보드는 그대로
+      allow update: if isXtoolTeamMember('tech') && validBoardView(request.resource.data)
+        && request.resource.data.board == resource.data.board
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      allow delete: if isXtoolTeamMember('tech');
+    }
+
     // This rule allows anyone with your Firestore database reference to view, edit,
     // and delete all data in your Firestore database. It is useful for getting
     // started, but it is configured to expire after 30 days because it

@@ -10,6 +10,7 @@ import { cx } from '@/ohq-ui/lib/cx'
 import { accentVars, DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
 import { useLayoutKind } from '../../lib/layout-kind'
 import { navArrowKeys } from '../../lib/nav-arrow-keys'
+import { useOverviewHidden } from '../../lib/overview-pref'
 import { SIDEBAR_TOGGLE_KEY } from '../../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS } from '../../nav'
 import { XT_BASE } from '../../paths'
@@ -40,6 +41,8 @@ export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
   const id = useId()
   const photo = useProfilePhoto(member.email)
   const { design } = useLayoutKind()
+  // Monday 표에서 개요를 숨겼으면 메뉴에서 뺀다(설정 > 레이아웃)
+  const overviewHidden = useOverviewHidden()
   return (
     <div className="sidebar-wrap">
       <aside id={id} className="glass sidebar" onKeyDown={onNavKeys}>
@@ -55,7 +58,9 @@ export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
           <nav key={section.label} className="sidebar__section" aria-label={section.label}>
             <p className="sidebar__section-label">{section.label}</p>
             <ul>
-              {section.items.filter((item) => !item.adminOnly || member.isAdmin).map((item) => {
+              {section.items
+                .filter((item) => (!item.adminOnly || member.isAdmin) && !(overviewHidden && item.to === XT_BASE))
+                .map((item) => {
                 if (item.people) return <SidebarPeopleItem key={item.to} item={item} collapsed={collapsed} />
                 const { to, label, icon: Icon, badge } = item
                 return (

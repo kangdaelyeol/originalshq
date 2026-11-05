@@ -48,6 +48,8 @@ export interface MondaySectionProps {
   boxed?: boolean
   /** 그룹 맨 아래 "+ 추가" 줄 — 내 업무에서는 끈다(새 항목은 담당자가 비어 있어 목록에서 사라진다). */
   allowAdd?: boolean
+  /** 숨길 칸 id — 고른 보기의 숨길 칸 */
+  hiddenColumns?: readonly string[]
 }
 
 /**
@@ -57,9 +59,11 @@ export interface MondaySectionProps {
  * 쌓아도 보드마다 제 칸으로 그린다.
  */
 export function MondaySection(props: MondaySectionProps) {
-  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, boxed = false, allowAdd = true } = props
+  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, boxed = false, allowAdd = true, hiddenColumns } = props
   const nameTitle = NAME_TITLE[boardKey]
-  const columns = useMemo(() => visibleColumns(meta), [meta])
+  const allColumns = useMemo(() => visibleColumns(meta), [meta])
+  // 그릴 칸 — 보기의 숨길 칸은 뺀다(정렬은 숨긴 칸으로도 된다 — allColumns)
+  const columns = useMemo(() => allColumns.filter((c) => !hiddenColumns?.includes(c.id)), [allColumns, hiddenColumns])
 
   const [widths, setWidth] = useColumnWidths(boardKey)
   const [editing, setEditing] = useState<EditingCell | null>(null)
@@ -158,7 +162,7 @@ export function MondaySection(props: MondaySectionProps) {
   }
 
   const groups: MonGroup[] = useMemo(() => {
-    const sortColumn = sort && sort.columnId !== 'name' ? columns.find((c) => c.id === sort.columnId) : null
+    const sortColumn = sort && sort.columnId !== 'name' ? allColumns.find((c) => c.id === sort.columnId) : null
     const valueOf = (item: TechItemDoc) => (sortColumn ? sortValue(sortColumn, item.values[sortColumn.id]) : item.name)
     const compare = (a: TechItemDoc, b: TechItemDoc) => {
       const x = valueOf(a)
@@ -180,7 +184,7 @@ export function MondaySection(props: MondaySectionProps) {
       const made = inGroup.filter((item) => createdRank(item) !== null).sort((a, b) => createdRank(a)! - createdRank(b)!)
       return { ...g, items: made.length ? [...inGroup.filter((item) => createdRank(item) === null), ...made] : inGroup }
     })
-  }, [items, meta, columns, sort])
+  }, [items, meta, allColumns, sort])
 
   const shown = hideEmptyGroups ? groups.filter((g) => g.items.length > 0) : groups
   const updatesItem = updatesFor ? items.find((item) => rowKey(item) === updatesFor) : undefined
