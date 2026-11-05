@@ -8,7 +8,7 @@ import type { Request } from 'firebase-functions/https'
 import { checkAdmin, checkMember } from './admin-auth'
 import { db } from './app'
 import { traceRun } from './cost-trace'
-import { ValidationResponse } from './types'
+import { Lead, ValidationResponse } from './types'
 
 const corsHandler = cors({ origin: true })
 
@@ -123,6 +123,35 @@ export const endpoint =
         })
       },
     )
+
+/**
+ * 리드 문서를 트랜잭션 안에서 읽고 고친다 — 상담·구매·접수 기록은 배열이라
+ * 통째로 다시 써야 하는데, 읽은 뒤 다른 요청이 같은 리드를 고쳤으면 Firestore가
+ * 다시 읽어 build를 다시 부른다(두 사람이 동시에 고쳐도 기록이 사라지지 않게).
+ * build는 고칠 칸을 돌려주고, 고칠 기록이 없으면 null(쓰지 않는다). 리드가
+ * 없으면 404 { error: 'lead not found' }를 보내고 null을 돌려준다. 고친 뒤의
+ * 리드와 고친 칸을 돌려준다.
+ */
+export const patchLead = async (
+  response: Response,
+  id: string,
+  build: (lead: Omit<Lead, 'id'>) => Partial<Omit<Lead, 'id'>> | null,
+): Promise<{
+  lead: Omit<Lead, 'id'>
+  patch: Partial<Omit<Lead, 'id'>> | null
+} | null> => {
+  const docRef = db.collection('lead').doc(id)
+  const result = await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(docRef)
+    if (!snapshot.exists) return null
+    const lead = snapshot.data() as Omit<Lead, 'id'>
+    const patch = build(lead)
+    if (patch) tx.update(docRef, patch)
+    return { lead: { ...lead, ...patch }, patch }
+  })
+  if (!result) response.status(404).send({ error: 'lead not found' })
+  return result
+}
 
 /** 리드 문서를 찾는다 — 없으면 404 { error: 'lead not found' }를 보내고
  * null을 돌려준다(호출부는 그대로 return). */

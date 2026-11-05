@@ -179,6 +179,7 @@ const validateCallResult = (
       error: `transcript must be up to ${MAX_TURNS} turns of {role, text, at}`,
     }
   }
+  const latency = parseLatency(body.latency)
   return {
     ok: true,
     data: {
@@ -188,9 +189,7 @@ const validateCallResult = (
       endedAt,
       endReason,
       transcript,
-      ...(parseLatency(body.latency)
-        ? { latency: parseLatency(body.latency) }
-        : {}),
+      ...(latency ? { latency } : {}),
     },
   }
 }
@@ -229,9 +228,9 @@ export const submitVoiceCallResult = onRequest(
     {
       name: 'submitVoiceCallResult',
       method: 'POST',
-      validate: validateCallResult,
     },
-    async ({ request, response, data }) => {
+    async ({ request, response }) => {
+      // 비밀키부터 — 키 없이 부른 요청에는 입력 검사 문구도 보여 주지 않는다.
       if (
         !secretMatches(
           request.get('x-voice-agent-secret'),
@@ -241,6 +240,12 @@ export const submitVoiceCallResult = onRequest(
         response.status(401).send({ error: 'invalid agent secret' })
         return
       }
+      const validation = validateCallResult(request.body ?? {})
+      if (!validation.ok) {
+        response.status(400).send({ error: validation.error })
+        return
+      }
+      const data = validation.data
       const record: CallRecord = {
         ...data,
         source: data.callId.startsWith(WEB_TEST_PREFIX) ? 'web-test' : 'phone',

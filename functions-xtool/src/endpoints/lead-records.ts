@@ -20,7 +20,7 @@ import {
   ga4MeasurementId,
   ga4ApiSecret,
 } from '../app'
-import { endpoint, findLead } from '../http'
+import { endpoint, findLead, patchLead } from '../http'
 
 // ────────────────────────────────
 // contactLead — 상담 1건 등록(배열에 추가). 등록할 때마다 Meta "Contact" CAPI를
@@ -41,7 +41,7 @@ export const contactLead = onRequest(
 
       const found = await findLead(response, id)
       if (!found) return
-      const { docRef, snapshot } = found
+      const { snapshot } = found
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
 
@@ -84,14 +84,13 @@ export const contactLead = onRequest(
         externalId: lead.externalId,
         eventId,
       }
-      // Firestore는 배열 원소를 부분 수정할 수 없어, 전체를 읽어 append한
-      // 뒤 통째로 되쓴다(data/importer.ts의 read-modify-write와 같은 결).
-      const consultations = [...(lead.consultations ?? []), record]
-
-      await docRef.update({
-        consultations,
-        externalId: lead.externalId ?? '',
-      })
+      // 보내는 사이 다른 요청이 같은 리드를 고쳤을 수 있어, 붙이기는 최신
+      // 리드에 트랜잭션으로(patchLead).
+      const saved = await patchLead(response, id, (fresh) => ({
+        consultations: [...(fresh.consultations ?? []), record],
+        externalId: fresh.externalId || lead.externalId || '',
+      }))
+      if (!saved) return
 
       // GA4 — 기기별로 정해둔 이벤트가 있을 때만(지금은 '기타'·'B2G') 보낸다.
       // Meta CAPI 성공과 저장까지 끝난 뒤라, 여기서 실패해도 상담 등록
@@ -134,11 +133,7 @@ export const contactLead = onRequest(
         ga4: ga4Result,
       })
 
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        consultations,
-      })
+      response.status(200).send({ id: snapshot.id, ...saved.lead })
     },
   ),
 )
@@ -161,9 +156,15 @@ export const purchaseLead = onRequest(
 
       const found = await findLead(response, id)
       if (!found) return
-      const { docRef, snapshot } = found
+      const { snapshot } = found
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
+
+      // contactLead와 같은 확인 — 번호가 없으면 externalId를 만들 수 없다.
+      if (!lead.ph) {
+        response.status(400).send({ error: 'lead has no ph to contact' })
+        return
+      }
 
       const hasEid = hasExternalId(lead)
       if (!hasEid) lead.externalId = generateExternalId(lead.ph)
@@ -197,12 +198,12 @@ export const purchaseLead = onRequest(
         externalId: lead.externalId,
         eventId,
       }
-      const purchases = [...(lead.purchases ?? []), record]
-
-      await docRef.update({
-        purchases,
-        externalId: lead.externalId ?? '',
-      })
+      // contactLead와 같은 이유로 최신 리드에 트랜잭션으로 붙인다.
+      const saved = await patchLead(response, id, (fresh) => ({
+        purchases: [...(fresh.purchases ?? []), record],
+        externalId: fresh.externalId || lead.externalId || '',
+      }))
+      if (!saved) return
 
       logger.info('purchaseLead 성공:', {
         leadId: id,
@@ -216,11 +217,7 @@ export const purchaseLead = onRequest(
         testEventCode: testEventCode ?? null,
       })
 
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        purchases,
-      })
+      response.status(200).send({ id: snapshot.id, ...saved.lead })
     },
   ),
 )
@@ -243,31 +240,28 @@ export const updateIntake = onRequest(
     async ({ response, data }) => {
       const { id, recordId, at, device } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
-
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const target = (lead.intakes ?? []).find((i) => i.id === recordId)
-
-      if (!target) {
+      const saved = await patchLead(response, id, (lead) => {
+        const intakes = lead.intakes ?? []
+        if (!intakes.some((i) => i.id === recordId)) return null
+        return {
+          intakes: intakes.map((i) =>
+            i.id === recordId
+              ? {
+                  ...i,
+                  ...(at !== undefined ? { at } : {}),
+                  ...(device ? { device } : {}),
+                }
+              : i,
+          ),
+        }
+      })
+      if (!saved) return
+      if (!saved.patch) {
         response.status(404).send({ error: 'intake record not found' })
         return
       }
 
-      const intakes = (lead.intakes ?? []).map((i) =>
-        i.id === recordId
-          ? {
-              ...i,
-              ...(at !== undefined ? { at } : {}),
-              ...(device ? { device } : {}),
-            }
-          : i,
-      )
-
-      await docRef.update({ intakes })
-
-      response.status(200).send({ id: snapshot.id, ...lead, intakes })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -283,16 +277,16 @@ export const deleteIntake = onRequest(
     async ({ response, data }) => {
       const { id, recordId } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
+      // 이미 없는 기록이면 쓰지 않고 그대로 돌려준다(예전처럼 200).
+      const saved = await patchLead(response, id, (lead) => {
+        const intakes = lead.intakes ?? []
+        return intakes.some((i) => i.id === recordId)
+          ? { intakes: intakes.filter((i) => i.id !== recordId) }
+          : null
+      })
+      if (!saved) return
 
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const intakes = (lead.intakes ?? []).filter((i) => i.id !== recordId)
-
-      await docRef.update({ intakes })
-
-      response.status(200).send({ id: snapshot.id, ...lead, intakes })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -300,7 +294,7 @@ export const deleteIntake = onRequest(
 // ────────────────────────────────
 // updateConsultation / deleteConsultation / updatePurchase / deletePurchase
 // — 이력 모달에서 개별 항목을 고치거나 지울 때 쓴다. Firestore가 배열 원소를
-// 부분 수정 못 하는 건 위 등록 엔드포인트와 같은 이유로, 전체 읽고 통째로 쓴다.
+// 부분 수정 못 해 통째로 쓰므로 트랜잭션으로 읽고 쓴다(patchLead).
 // ────────────────────────────────
 export const updateConsultation = onRequest(
   endpoint(
@@ -313,32 +307,29 @@ export const updateConsultation = onRequest(
     async ({ response, data }) => {
       const { id, recordId, at, device, note } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
-
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const target = (lead.consultations ?? []).find((c) => c.id === recordId)
-
-      if (!target) {
+      const saved = await patchLead(response, id, (lead) => {
+        const consultations = lead.consultations ?? []
+        if (!consultations.some((c) => c.id === recordId)) return null
+        return {
+          consultations: consultations.map((c) =>
+            c.id === recordId
+              ? {
+                  ...c,
+                  ...(at !== undefined ? { at } : {}),
+                  ...(device ? { device } : {}),
+                  ...(note !== undefined ? { note } : {}),
+                }
+              : c,
+          ),
+        }
+      })
+      if (!saved) return
+      if (!saved.patch) {
         response.status(404).send({ error: 'consultation record not found' })
         return
       }
 
-      const consultations = (lead.consultations ?? []).map((c) =>
-        c.id === recordId
-          ? {
-              ...c,
-              ...(at !== undefined ? { at } : {}),
-              ...(device ? { device } : {}),
-              ...(note !== undefined ? { note } : {}),
-            }
-          : c,
-      )
-
-      await docRef.update({ consultations })
-
-      response.status(200).send({ id: snapshot.id, ...lead, consultations })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -354,18 +345,16 @@ export const deleteConsultation = onRequest(
     async ({ response, data }) => {
       const { id, recordId } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
+      // 이미 없는 기록이면 쓰지 않고 그대로 돌려준다(예전처럼 200).
+      const saved = await patchLead(response, id, (lead) => {
+        const consultations = lead.consultations ?? []
+        return consultations.some((c) => c.id === recordId)
+          ? { consultations: consultations.filter((c) => c.id !== recordId) }
+          : null
+      })
+      if (!saved) return
 
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const consultations = (lead.consultations ?? []).filter(
-        (c) => c.id !== recordId,
-      )
-
-      await docRef.update({ consultations })
-
-      response.status(200).send({ id: snapshot.id, ...lead, consultations })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -393,7 +382,7 @@ export const resendConsultation = onRequest(
 
       const found = await findLead(response, id)
       if (!found) return
-      const { docRef, snapshot } = found
+      const { snapshot } = found
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
       const target = (lead.consultations ?? []).find((c) => c.id === recordId)
@@ -440,16 +429,24 @@ export const resendConsultation = onRequest(
         return
       }
 
-      const consultations = (lead.consultations ?? []).map((c) =>
-        c.id === recordId
-          ? { ...c, externalId: lead.externalId, eventId }
-          : c,
-      )
-
-      await docRef.update({
-        consultations,
-        externalId: lead.externalId ?? '',
+      // 보내는 사이 그 기록이 지워졌으면 404(이벤트는 이미 나갔다).
+      const saved = await patchLead(response, id, (fresh) => {
+        const consultations = fresh.consultations ?? []
+        if (!consultations.some((c) => c.id === recordId)) return null
+        return {
+          consultations: consultations.map((c) =>
+            c.id === recordId
+              ? { ...c, externalId: lead.externalId, eventId }
+              : c,
+          ),
+          externalId: fresh.externalId || lead.externalId || '',
+        }
       })
+      if (!saved) return
+      if (!saved.patch) {
+        response.status(404).send({ error: 'consultation record not found' })
+        return
+      }
 
       // action_source가 이번엔 뭘로 나갔는지(website인지 physical_store인지)를
       // 포함해서 남긴다 — Firebase 콘솔 로그에서 이 재전송이 실제로 광고 성과
@@ -466,11 +463,7 @@ export const resendConsultation = onRequest(
         testEventCode: testEventCode ?? null,
       })
 
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        consultations,
-      })
+      response.status(200).send({ id: snapshot.id, ...saved.lead })
     },
   ),
 )
@@ -486,32 +479,29 @@ export const updatePurchase = onRequest(
     async ({ response, data }) => {
       const { id, recordId, at, device, price } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
-
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const target = (lead.purchases ?? []).find((p) => p.id === recordId)
-
-      if (!target) {
+      const saved = await patchLead(response, id, (lead) => {
+        const purchases = lead.purchases ?? []
+        if (!purchases.some((p) => p.id === recordId)) return null
+        return {
+          purchases: purchases.map((p) =>
+            p.id === recordId
+              ? {
+                  ...p,
+                  ...(at !== undefined ? { at } : {}),
+                  ...(device ? { device } : {}),
+                  ...(price !== undefined ? { price } : {}),
+                }
+              : p,
+          ),
+        }
+      })
+      if (!saved) return
+      if (!saved.patch) {
         response.status(404).send({ error: 'purchase record not found' })
         return
       }
 
-      const purchases = (lead.purchases ?? []).map((p) =>
-        p.id === recordId
-          ? {
-              ...p,
-              ...(at !== undefined ? { at } : {}),
-              ...(device ? { device } : {}),
-              ...(price !== undefined ? { price } : {}),
-            }
-          : p,
-      )
-
-      await docRef.update({ purchases })
-
-      response.status(200).send({ id: snapshot.id, ...lead, purchases })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -527,16 +517,16 @@ export const deletePurchase = onRequest(
     async ({ response, data }) => {
       const { id, recordId } = data
 
-      const found = await findLead(response, id)
-      if (!found) return
-      const { docRef, snapshot } = found
+      // 이미 없는 기록이면 쓰지 않고 그대로 돌려준다(예전처럼 200).
+      const saved = await patchLead(response, id, (lead) => {
+        const purchases = lead.purchases ?? []
+        return purchases.some((p) => p.id === recordId)
+          ? { purchases: purchases.filter((p) => p.id !== recordId) }
+          : null
+      })
+      if (!saved) return
 
-      const lead = snapshot.data() as Omit<Lead, 'id'>
-      const purchases = (lead.purchases ?? []).filter((p) => p.id !== recordId)
-
-      await docRef.update({ purchases })
-
-      response.status(200).send({ id: snapshot.id, ...lead, purchases })
+      response.status(200).send({ id, ...saved.lead })
     },
   ),
 )
@@ -560,7 +550,7 @@ export const resendPurchase = onRequest(
 
       const found = await findLead(response, id)
       if (!found) return
-      const { docRef, snapshot } = found
+      const { snapshot } = found
 
       const lead = snapshot.data() as Omit<Lead, 'id'>
       const target = (lead.purchases ?? []).find((p) => p.id === recordId)
@@ -600,16 +590,24 @@ export const resendPurchase = onRequest(
         return
       }
 
-      const purchases = (lead.purchases ?? []).map((p) =>
-        p.id === recordId
-          ? { ...p, externalId: lead.externalId, eventId }
-          : p,
-      )
-
-      await docRef.update({
-        purchases,
-        externalId: lead.externalId ?? '',
+      // resendConsultation과 같다 — 보내는 사이 지워졌으면 404.
+      const saved = await patchLead(response, id, (fresh) => {
+        const purchases = fresh.purchases ?? []
+        if (!purchases.some((p) => p.id === recordId)) return null
+        return {
+          purchases: purchases.map((p) =>
+            p.id === recordId
+              ? { ...p, externalId: lead.externalId, eventId }
+              : p,
+          ),
+          externalId: fresh.externalId || lead.externalId || '',
+        }
       })
+      if (!saved) return
+      if (!saved.patch) {
+        response.status(404).send({ error: 'purchase record not found' })
+        return
+      }
 
       logger.info('resendPurchase 성공:', {
         leadId: id,
@@ -623,11 +621,7 @@ export const resendPurchase = onRequest(
         testEventCode: testEventCode ?? null,
       })
 
-      response.status(200).send({
-        id: snapshot.id,
-        ...lead,
-        purchases,
-      })
+      response.status(200).send({ id: snapshot.id, ...saved.lead })
     },
   ),
 )

@@ -24,9 +24,11 @@ const squash = (value: string) => value.replace(/\s+/g, '')
 const BOARD_CACHE_MS = 10 * 60 * 1000
 const boardCache = new Map<string, { at: number; shape: BoardShape }>()
 
-// 요청 한도 초과·Monday 내부 오류 — 잠깐 뒤 다시 하면 될 수 있다.
-const TRANSIENT_GRAPHQL =
-  /complexity|rate ?limit|too many|internal server error|timeout|try again/i
+// 잠깐 뒤 다시 하면 될 수 있는 오류 — 요청 한도 초과는 처리 전에 거절된
+// 것이라 그냥 다시 해도 되고, 내부 오류·타임아웃은 이미 처리됐을 수 있어
+// 다시 만들기 전에 만들어졌는지부터 본다(TransientError의 sent).
+const REJECTED_GRAPHQL = /complexity|rate ?limit|too many/i
+const MAYBE_DONE_GRAPHQL = /internal server error|timeout|try again/i
 
 const mondayRequest = async <T>(
   apiKey: string,
@@ -63,7 +65,8 @@ const mondayRequest = async <T>(
     if (isTransientStatus(response.status)) {
       throw new TransientError(text, true)
     }
-    if (TRANSIENT_GRAPHQL.test(message)) throw new TransientError(text, false)
+    if (REJECTED_GRAPHQL.test(message)) throw new TransientError(text, false)
+    if (MAYBE_DONE_GRAPHQL.test(message)) throw new TransientError(text, true)
     throw new Error(text)
   }
   return body.data
@@ -175,7 +178,36 @@ const findCreatedItem = async (
       Date.parse(item.created_at) >= since &&
       (!phone || item.column_values[0]?.text === inquiry.phoneFormatted),
   )
-  return found?.id ?? null
+  if (found) return found.id
+  // 최근 아이템에 없으면 번호로 — 며칠 뒤 화면에서 다시 할 때 바쁜 보드에서는
+  // 그 사이 새 아이템이 많아 최근 목록 밖으로 밀려나 있다. 번호 검색은 방금
+  // 만든 아이템을 못 찾을 뿐(색인이 늦다) 오래된 것은 찾는다. 검색이 실패하면
+  // 없는 것으로 본다(예전과 같다).
+  if (!phone) return null
+  const byPhone = await mondayRequest<{
+    items_page_by_column_values: {
+      items: { id: string; name: string; created_at: string }[]
+    }
+  }>(
+    apiKey,
+    `query ($board: ID!, $column: String!, $value: String!) {
+      items_page_by_column_values(
+        board_id: $board,
+        limit: ${RECENT_ITEM_LIMIT},
+        columns: [{ column_id: $column, column_values: [$value] }]
+      ) { items { id name created_at } }
+    }`,
+    {
+      board: inquiry.boardId,
+      column: phone.id,
+      value: inquiry.phoneFormatted,
+    },
+  ).catch(() => null)
+  return (
+    byPhone?.items_page_by_column_values.items.find(
+      (item) => item.name === name && Date.parse(item.created_at) >= since,
+    )?.id ?? null
+  )
 }
 
 /**

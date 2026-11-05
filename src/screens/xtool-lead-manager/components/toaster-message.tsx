@@ -1,5 +1,5 @@
 export type ToastType =
-  'registered' | 'deleted' | 'updated' | 'error' | 'partial'
+  'registered' | 'deleted' | 'updated' | 'error' | 'partial' | 'partialPurchase'
 
 interface ToasterMessageProps {
   type: ToastType
@@ -14,6 +14,7 @@ const MESSAGE_MAP: Record<ToastType, string> = {
   // 고객 정보는 만들어졌는데 상담 등록만 실패한 경우 — 'error'로 뭉뚱그리면
   // "아무것도 안 됐다"고 오해해 같은 고객을 중복 등록할 수 있어 구분해둔다.
   partial: '고객 등록됨(상담 등록 실패)',
+  partialPurchase: '고객 등록됨(구매 등록 실패)',
 }
 
 const COLOR_MAP: Record<ToastType, string> = {
@@ -22,6 +23,7 @@ const COLOR_MAP: Record<ToastType, string> = {
   updated: '#22c55e',
   error: '#fb0404',
   partial: '#f59e0b',
+  partialPurchase: '#f59e0b',
 }
 
 export const ToasterMessage = ({ type }: ToasterMessageProps) => {

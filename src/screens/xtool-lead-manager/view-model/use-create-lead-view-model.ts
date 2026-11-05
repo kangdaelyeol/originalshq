@@ -94,7 +94,11 @@ export const useCreateLeadViewModel = ({
    * 고객을 중복 등록하지 않고, 표에 뜬 그 리드에서 상담/구매 등록을 다시
    * 시도할 수 있다. 그래서 후속 호출이 실패해도 목록은 갱신하고 모달은
    * 닫는다. */
-  const createLeadThen = async (followUp?: FollowUp) => {
+  const createLeadThen = async (
+    followUp?: FollowUp,
+    /** 후속 호출만 실패했을 때의 알림 — 상담(기본)·구매. */
+    partial: 'partial' | 'partialPurchase' = 'partial',
+  ) => {
     setIsSubmitting(true)
     const body = buildCreateLeadBody()
     const createRes = await leadClient.create(body)
@@ -115,7 +119,7 @@ export const useCreateLeadViewModel = ({
 
     if (followRes && !followRes.ok) {
       console.error(followRes.error)
-      showToast('partial')
+      showToast(partial)
     } else if (followRes) {
       showToast('registered')
     }
@@ -148,14 +152,16 @@ export const useCreateLeadViewModel = ({
       return
     }
 
-    await createLeadThen((leadId, createdAt) =>
-      leadClient.registerPurchase({
-        id: leadId,
-        device: createForm.device,
-        price,
-        at: createdAt,
-        ...testEventCodeField(),
-      }),
+    await createLeadThen(
+      (leadId, createdAt) =>
+        leadClient.registerPurchase({
+          id: leadId,
+          device: createForm.device,
+          price,
+          at: createdAt,
+          ...testEventCodeField(),
+        }),
+      'partialPurchase',
     )
   }
 

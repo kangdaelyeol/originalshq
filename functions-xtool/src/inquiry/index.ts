@@ -277,7 +277,32 @@ const runMonday = async (
 export const isTestInquiry = (inquiry: Pick<Inquiry, 'name' | 'company'>) =>
   /테스트|test/i.test(`${inquiry.name} ${inquiry.company ?? ''}`)
 
+// 같은 번호로 이 시간 안에 다시 오면 자동 문자는 건너뛴다 — 상담 신청은 로그인
+// 없이 들어오는 폼이라, 아무 번호로 여러 번 보내 문자 비용을 쓰게 하는 것을
+// 막는다(같은 고객이 실수로 두 번 보낸 경우에도 한 번만). 화면에서 직접 보낼
+// 때는 막지 않는다.
+const SMS_REPEAT_MS = 10 * 60_000
+const SMS_THROTTLE = 'inquirySmsThrottle'
+
+/** 이 번호로 자동 문자를 보내도 되는지 — 되면 그 자리를 잡고(lastSentAt)
+ * 풀어 줄 함수를 돌려준다(보내기가 실패하면 다음 신청이 보낼 수 있게). */
+const claimSmsSlot = async (
+  db: Firestore,
+  to: string,
+): Promise<(() => Promise<void>) | null> => {
+  const ref = db.collection(SMS_THROTTLE).doc(to)
+  const now = Date.now()
+  const claimed = await db.runTransaction(async (tx) => {
+    const last = (await tx.get(ref)).data()?.lastSentAt as number | undefined
+    if (last !== undefined && now - last < SMS_REPEAT_MS) return false
+    tx.set(ref, { lastSentAt: now })
+    return true
+  })
+  return claimed ? async () => void (await ref.delete()) : null
+}
+
 const runSms = async (
+  db: Firestore,
   inquiry: Inquiry,
   settings: InquirySettings,
   secrets: InquirySecrets,
@@ -310,6 +335,14 @@ const runSms = async (
   if (!isMobilePhone(to)) {
     return { ...base, status: 'skipped', error: '휴대폰 번호가 아닙니다' }
   }
+  const release = manual ? null : await claimSmsSlot(db, to)
+  if (!manual && !release) {
+    return {
+      ...base,
+      status: 'skipped',
+      error: '같은 번호로 10분 안에 문자를 보내 자동으로는 보내지 않았습니다',
+    }
+  }
   try {
     const { messageId, attempts } = await sendSms({
       apiKey: secrets.solapiApiKey,
@@ -322,6 +355,7 @@ const runSms = async (
     return { ...base, status: 'success', messageId, error: null, attempts }
   } catch (error) {
     logger.error('문의 문자 발송 실패:', inquiry.id, error)
+    await release?.().catch(() => undefined)
     return {
       ...base,
       status: 'failed',
@@ -386,7 +420,12 @@ export const submitInquiry = async (
   }
 
   inquiry.monday = await runMonday(inquiry, secrets)
-  inquiry.sms = await runSms(inquiry, await getInquirySettings(db), secrets)
+  inquiry.sms = await runSms(
+    db,
+    inquiry,
+    await getInquirySettings(db),
+    secrets,
+  )
   inquiry.updatedAt = Date.now()
   await ref.update({
     monday: inquiry.monday,
@@ -421,6 +460,7 @@ export const retryInquiryStep = async (
       throw new Error('이미 문자를 보낸 문의입니다')
     }
     inquiry.sms = await runSms(
+      db,
       inquiry,
       await getInquirySettings(db),
       secrets,

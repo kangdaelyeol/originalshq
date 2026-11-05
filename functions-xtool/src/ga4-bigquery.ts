@@ -85,13 +85,20 @@ const toNumber = (value: unknown): number | null => {
 }
 
 /** clientIds의 GA4 이벤트 — [fromDate, toDate](YYYYMMDD) 범위의 일별·실시간
- * 테이블에서, 시간순. */
+ * 테이블에서, 시간순. truncated면 MAX_ROWS에서 잘려 뒤(최근) 이벤트가 빠졌다
+ * (ga-sync가 id를 나눠 다시 묻는다). */
 export async function fetchGa4Events(
   clientIds: string[],
   fromDate: string,
   toDate: string,
-): Promise<{ events: Ga4Event[]; bytesProcessed: number }> {
-  if (clientIds.length === 0) return { events: [], bytesProcessed: 0 }
+): Promise<{
+  events: Ga4Event[]
+  bytesProcessed: number
+  truncated: boolean
+}> {
+  if (clientIds.length === 0) {
+    return { events: [], bytesProcessed: 0, truncated: false }
+  }
   // projectId를 주지 않으면 함수가 도는 프로젝트에서 작업을 실행한다.
   const bigquery = new BigQuery()
   const [job] = await bigquery.createQueryJob({
@@ -126,5 +133,5 @@ export async function fetchGa4Events(
   )
   // 비용 추적 — BigQuery는 fetch를 거치지 않아 직접 알린다(cost-trace.ts).
   addBigQueryBytes(bytesProcessed)
-  return { events, bytesProcessed }
+  return { events, bytesProcessed, truncated: events.length >= MAX_ROWS }
 }

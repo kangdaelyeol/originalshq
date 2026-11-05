@@ -15,6 +15,7 @@ import {
   getDailyRepeatRevenue,
   getKpiFacts,
   getTechFacts,
+  hasSyncedItem,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
@@ -397,6 +398,12 @@ export const getMondayItemUpdates = onRequest(
       const itemId = String(request.query.itemId ?? '').trim()
       if (!/^\d+$/.test(itemId)) {
         response.status(400).send({ error: 'itemId는 숫자여야 합니다' })
+        return
+      }
+      // 등록한 보드의 기록만 — API 키로는 등록하지 않은 보드의 메모·파일도
+      // 보이므로, 동기화해 둔 아이템인지 먼저 본다.
+      if (!(await hasSyncedItem(db, itemId))) {
+        response.status(404).send({ error: '등록된 보드의 기록이 아닙니다' })
         return
       }
       const updates = await fetchItemUpdates(mondayApiKey.value(), itemId)

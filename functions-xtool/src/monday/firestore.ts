@@ -35,6 +35,14 @@ const CUSTOMERS_COLLECTION = 'mondayCustomers'
 // Firestore batch 한 번에 담을 수 있는 쓰기는 500건 — 여유를 두고 끊는다.
 const BATCH_SIZE = 400
 
+/** 동기화해 둔 아이템인지 — 등록한 보드의 기록만 화면에서 열게 한다. */
+export async function hasSyncedItem(
+  db: Firestore,
+  itemId: string,
+): Promise<boolean> {
+  return (await db.collection(ITEMS_COLLECTION).doc(itemId).get()).exists
+}
+
 export async function listBoards(db: Firestore): Promise<MondayBoard[]> {
   const snapshot = await db.collection(BOARDS_COLLECTION).get()
   return snapshot.docs.map((doc) => doc.data() as MondayBoard)

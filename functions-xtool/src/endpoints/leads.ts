@@ -103,6 +103,13 @@ export const createLead = onRequest(
 // ────────────────────────────────
 // createLeadFromContact
 // ────────────────────────────────
+
+/** 홈페이지 폼이 보낸 접수 시각 — 브라우저 시계라 조금 어긋날 수 있지만, 하루
+ * 넘게 지났거나 5분 넘게 앞서면 잘못된 값으로 보고 서버 시각을 쓴다. */
+const plausibleSubmitTime = (at: number) => {
+  const now = Date.now()
+  return at >= now - 86_400_000 && at <= now + 5 * 60_000 ? at : now
+}
 export const createLeadFromContact = onRequest(
   endpoint(
     {
@@ -136,11 +143,12 @@ export const createLeadFromContact = onRequest(
         ph: digitsOnlyPhone,
         em: normalizeEmail(input.em ?? ''),
         remarks: input.remarks ?? '',
-        // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다.
+        // 최초 접수 1건 — device는 호출부가 보냈으면 그대로 싣는다. 시각은
+        // 폼이 보낸 값이 그럴듯할 때만(로그인 없이 들어오는 요청이다).
         intakes: [
           {
             id: generateRecordId(),
-            at: input.createdAt,
+            at: plausibleSubmitTime(input.createdAt),
             ...(input.device ? { device: input.device } : {}),
           },
         ],

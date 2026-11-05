@@ -62,5 +62,10 @@ export async function checkAdmin(request: Request): Promise<AdminCheck> {
   if (member?.status !== 'active' || !member.isAdmin) {
     return { ok: false, status: 403, error: '관리자 계정만 볼 수 있어요' }
   }
+  // 비밀번호를 다시 발급받은 관리자도 임시 비밀번호로는 관리 작업을 못 한다
+  // (checkMember·Firestore 규칙·기술 보드 함수와 같은 기준).
+  if (member.mustChangePassword === true) {
+    return { ok: false, status: 403, error: '먼저 비밀번호를 정해 주세요' }
+  }
   return { ok: true, email: member.email }
 }

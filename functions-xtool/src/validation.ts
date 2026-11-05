@@ -58,8 +58,37 @@ export const validateCreateLead = (
     return { ok: false, error: 'ph must contain digits' }
   }
 
-  return { ok: true, data: body as CreateLeadInput }
+  // 글자 칸 — 글자가 아니면 거절하고, 너무 길면 자른다(로그인 없이 부르는
+  // createLeadFromContact로 큰 값이 저장되거나 Meta로 넘어가지 않게. 홈페이지
+  // 폼 값을 잃지 않으려고 길이로는 거절하지 않는다).
+  const cleaned: Record<string, unknown> = { ...body }
+  for (const [field, max] of LEAD_TEXT_LIMITS) {
+    const value = body[field]
+    if (value === undefined || value === null) continue
+    if (typeof value !== 'string') {
+      return { ok: false, error: `${field} must be a string` }
+    }
+    cleaned[field] = value.trim().slice(0, max)
+  }
+
+  return { ok: true, data: cleaned as CreateLeadInput }
 }
+
+/** 리드 생성의 글자 칸과 최대 길이. */
+const LEAD_TEXT_LIMITS: [string, number][] = [
+  ['ph', 40],
+  ['fn', 100],
+  ['em', 254],
+  ['utm_campaign', 500],
+  ['utm_medium', 500],
+  ['utm_source', 500],
+  ['ip', 100],
+  ['fbc', 500],
+  ['fbp', 500],
+  ['user_agent', 1000],
+  ['remarks', 2000],
+  ['ga4ClientId', 200],
+]
 
 /** test_event_code는 선택값 — 있으면 문자열이어야 하고, 빈 문자열은 "안 보낸
  * 것"과 같게 취급해 undefined로 정리한다(체크박스는 켰는데 값을 안 채운 경우

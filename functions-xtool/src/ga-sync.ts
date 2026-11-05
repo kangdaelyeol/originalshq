@@ -1,4 +1,5 @@
 import { Firestore } from 'firebase-admin/firestore'
+import * as logger from 'firebase-functions/logger'
 import { fetchGa4Events, type Ga4Event } from './ga4-bigquery'
 import { getGaConsultations } from './monday'
 
@@ -12,6 +13,32 @@ import { getGaConsultations } from './monday'
 //     테이블은 늦게 도착한 이벤트로 최대 3일 안에 다시 쓰일 수 있다.
 //
 // Monday 예약 동기화 직후에 같이 돈다(하루 6번).
+
+/** clientIds의 이벤트를 빠짐없이 — 한 번에 MAX_ROWS를 넘어 잘리면 id를 반으로
+ * 나눠 다시 묻는다(잘렸을 때만 — 쿼리마다 테이블을 다시 읽어 비용이 든다). 잘린
+ * 채로 저장하면 그 id는 다음부터 최근 며칠만 다시 읽어서 빠진 구간이 영영 안
+ * 채워진다. id 하나만으로도 넘으면 받은 만큼만 쓰고 경고를 남긴다. */
+async function fetchAllGa4Events(
+  clientIds: string[],
+  fromDate: string,
+  toDate: string,
+): Promise<{ events: Ga4Event[]; bytesProcessed: number }> {
+  const result = await fetchGa4Events(clientIds, fromDate, toDate)
+  if (!result.truncated) return result
+  if (clientIds.length === 1) {
+    logger.warn('GA4 이벤트가 한 id만으로 조회 상한을 넘었습니다:', clientIds[0])
+    return result
+  }
+  const half = Math.ceil(clientIds.length / 2)
+  const [head, tail] = [clientIds.slice(0, half), clientIds.slice(half)]
+  const first = await fetchAllGa4Events(head, fromDate, toDate)
+  const second = await fetchAllGa4Events(tail, fromDate, toDate)
+  return {
+    events: [...first.events, ...second.events],
+    bytesProcessed:
+      result.bytesProcessed + first.bytesProcessed + second.bytesProcessed,
+  }
+}
 
 export const GA_EVENTS_COLLECTION = 'gaEvents'
 const STATE_DOC = { collection: 'mondayStats', doc: 'gaSyncState' }
@@ -131,7 +158,7 @@ export async function syncGaEvents(
         )
         .sort()[0],
     )
-    const result = await fetchGa4Events(newIds, from, today)
+    const result = await fetchAllGa4Events(newIds, from, today)
     bytesProcessed += result.bytesProcessed
     const byClient = group(result.events)
     for (const id of newIds) {
@@ -146,7 +173,7 @@ export async function syncGaEvents(
 
   // 2) 이미 있는 id — 최근 며칠만 다시 읽어 그 날짜분을 바꿔 끼운다.
   if (knownIds.length > 0) {
-    const result = await fetchGa4Events(knownIds, refreshFrom, today)
+    const result = await fetchAllGa4Events(knownIds, refreshFrom, today)
     bytesProcessed += result.bytesProcessed
     const fresh = group(result.events)
     const snapshots = await db.getAll(

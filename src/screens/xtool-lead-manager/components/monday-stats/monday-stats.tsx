@@ -28,7 +28,7 @@ import type {
   useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import {
-  formatPhoneNumber,
+  formatMondayPhone,
   formatWon,
   PURCHASE_SCOPE_LABEL,
   type PathRate,
@@ -246,7 +246,7 @@ const PathCustomersModal = ({
                       {customer.name}
                     </button>
                   </td>
-                  <td>{formatPhoneNumber(customer.phone)}</td>
+                  <td>{formatMondayPhone(customer.phone)}</td>
                   <td>{customer.firstContactAt ?? '-'}</td>
                   <td>
                     {customer.visitCompleted

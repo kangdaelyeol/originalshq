@@ -9,6 +9,7 @@ export {
   getFollowUps,
   getKpiFacts,
   getTechFacts,
+  hasSyncedItem,
   listBoards,
   listCustomerSummaries,
   listMissingPhoneItems,
