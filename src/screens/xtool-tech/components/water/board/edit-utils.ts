@@ -1,10 +1,5 @@
-// 편집 칸(물)이 같이 쓰는 작은 도구 — 기존 item-editor.tsx의 것과 같은 규칙(그쪽은 내보내지 않아 옮겨 둔다).
-
-/** 한국 지금 시각 — 날짜(YYYY-MM-DD)와 시각(HH:MM) */
-export const koreaNow = () => {
-  const iso = new Date(Date.now() + 9 * 3600_000).toISOString()
-  return { date: iso.slice(0, 10), time: iso.slice(11, 16) }
-}
+// 물 편집 칸이 같이 쓰는 작은 도구 — 담당자 동그라미 색(물 벽에 맞춘 차분한 색표라 lib/person-color와 따로 둔다).
+// 한국 지금 시각(koreaNow)은 lib/dates.
 
 /**
  * 담당자 동그라미 색 — 이름으로 늘 같은 색(사람 구분용 장식). 회색 벽 위에서 흰 이름 글자가 읽히는 중간

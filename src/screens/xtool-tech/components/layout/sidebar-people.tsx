@@ -1,13 +1,13 @@
 import { ChevronUp } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
-import { useState } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink } from 'react-router-dom'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { useSidebarPeople } from '../../data/use-my-work'
 import { cx } from '@/ohq-ui/lib/cx'
 import { personColor } from '../../lib/person-color'
+import { usePeopleOpen } from '../../lib/use-people-open'
 import type { NavItem } from '../../nav'
-import { MY_WORK_PATH, myWorkPath } from '../../paths'
+import { myWorkPath } from '../../paths'
 import { Avatar } from '@/ohq-ui/components/avatar'
 
 // Design 8 하위 메뉴와 같은 곡선(0.33, 1, 0.68, 1) — 높이와 갈매기가 함께 움직인다
@@ -19,16 +19,8 @@ const EASE = [0.33, 1, 0.68, 1] as const
  * 사이드바를 접으면 목록은 숨는다.
  */
 export function SidebarPeopleItem({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
-  const { pathname } = useLocation()
-  const onMyWork = pathname.startsWith(MY_WORK_PATH)
-  const [open, setOpen] = useState(onMyWork)
-  // 다른 곳(개요 카드 등)에서 내 업무로 들어와도 목록을 편다 — 렌더 중에 이전 값과 비교
-  const [wasOnMyWork, setWasOnMyWork] = useState(onMyWork)
-  if (onMyWork !== wasOnMyWork) {
-    setWasOnMyWork(onMyWork)
-    if (onMyWork) setOpen(true)
-  }
-  const shown = open && !collapsed
+  // 펼침 — 물 사이드바와 같은 규칙(내 업무로 들어오면 편다)
+  const { shown, setOpen } = usePeopleOpen(collapsed)
   const Icon = item.icon
 
   return (

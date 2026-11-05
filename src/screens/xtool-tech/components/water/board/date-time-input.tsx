@@ -1,7 +1,7 @@
 import { X } from 'lucide-react'
 import { useState } from 'react'
 import { WaterCheck } from '@/ohq-ui/water/controls'
-import { koreaNow } from './edit-utils'
+import { koreaNow } from '../../../lib/dates'
 
 interface WaterDateTimeInputProps {
   id: string

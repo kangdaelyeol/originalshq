@@ -14,9 +14,10 @@ import { pressPoint, rippleAt } from '@/ohq-ui/water/ripple'
 import { useProfilePhoto } from '../data/tech-profiles'
 import { useSidebarPeople } from '../data/use-my-work'
 import { personColor } from '../lib/person-color'
+import { usePeopleOpen, type PeopleOpen } from '../lib/use-people-open'
 import { SIDEBAR_TOGGLE_KEY } from '../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS, type NavItem } from '../nav'
-import { MY_WORK_PATH, myWorkPath, XT_BASE } from '../paths'
+import { myWorkPath, XT_BASE } from '../paths'
 
 // 관리자 화면(구성원 등록·권한) — 팀 페이지 밖, 모든 팀이 같이 쓴다.
 const ADMIN_PATH = '/admin/xtool'
@@ -128,16 +129,9 @@ function WaterNav({ sections, collapsed }: { sections: { label: string; items: N
   const pressedAt = useRef<number | undefined>(undefined)
   const latest = useRef({ active, reduced })
 
-  // 직원 목록 펼침 — 실제 메뉴와 창 안의 흰 한 벌이 같이 쓴다(한 벌만 펴지면 줄이 어긋난다)
-  const onMyWork = pathname.startsWith(MY_WORK_PATH)
-  const [peopleOpen, setPeopleOpen] = useState(onMyWork)
-  // 다른 곳(개요 카드 등)에서 내 업무로 들어와도 목록을 편다 — 렌더 중에 이전 값과 비교
-  const [wasOnMyWork, setWasOnMyWork] = useState(onMyWork)
-  if (onMyWork !== wasOnMyWork) {
-    setWasOnMyWork(onMyWork)
-    if (onMyWork) setPeopleOpen(true)
-  }
-  const people = { shown: peopleOpen && !collapsed, setOpen: setPeopleOpen }
+  // 직원 목록 펼침 — 실제 메뉴와 창 안의 흰 한 벌이 같이 쓴다(한 벌만 펴지면 줄이 어긋난다). 규칙은 지금
+  // 사이드바와 같다(usePeopleOpen).
+  const people = usePeopleOpen(collapsed)
 
   // 알약을 그릴 때마다(같은 프레임) 창을 같은 모양으로 옮기고, 창 안의 흰 메뉴는 거꾸로 옮겨 제자리에 둔다
   const follow = (pose: IndicatorPose) => {
@@ -239,11 +233,7 @@ function WaterNav({ sections, collapsed }: { sections: { label: string; items: N
   )
 }
 
-interface PeopleState {
-  /** 직원 목록이 펼쳐져 있는지(사이드바를 접으면 숨는다) */
-  shown: boolean
-  setOpen: (update: boolean | ((open: boolean) => boolean)) => void
-}
+type PeopleState = PeopleOpen
 
 interface NavListsProps {
   sections: { label: string; items: NavItem[] }[]
