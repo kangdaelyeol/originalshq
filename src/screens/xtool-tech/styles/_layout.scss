@@ -91,6 +91,11 @@
   margin-bottom: 30px;
 }
 
+.sidebar__brand .brand-mark {
+  // 로고 판 둘레 빛(강조색 그림자)은 사이드바 위에서 뜬 것처럼 보여 뺀다
+  box-shadow: none;
+}
+
 .sidebar__brand-text {
   display: flex;
   flex-direction: column;

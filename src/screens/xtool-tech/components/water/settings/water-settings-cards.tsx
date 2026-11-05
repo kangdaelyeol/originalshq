@@ -26,7 +26,6 @@ export function WaterWallCard() {
   return (
     <WaterCard
       title="배경"
-      subtitle="물 화면 뒤 타일 벽의 색조예요. 바꾸는 즉시 이 화면에 적용돼요."
       actions={
         <WaterButton variant="ghost" size="sm" icon={RotateCcw} onClick={resetWater}>
           기본값으로
@@ -71,7 +70,7 @@ export function WaterAccentCard() {
   }
 
   return (
-    <WaterCard title="강조색" subtitle="고른 메뉴·탭 뒤 알약, 주요 버튼, 막대 그래프에 쓰는 색이에요.">
+    <WaterCard title="강조색">
       <div className="accent-picker">
         <ul className="swatches" aria-label="강조색">
           {WATER_ACCENTS.map((option) => (
@@ -132,7 +131,6 @@ export function WaterEffectCard() {
   return (
     <WaterCard
       title="유리 효과"
-      subtitle="카드·사이드바·서랍 등 물 유리 판의 깊이와 테두리예요. 바꾸는 즉시 이 화면에 적용돼요."
       actions={preset === null ? <WaterStatusPill tone="neutral">사용자 지정</WaterStatusPill> : null}
     >
       <div className="glass-presets" role="group" aria-label="유리 효과 프리셋">

@@ -17,7 +17,6 @@ export function GlassEffectCard({ photoUrl }: { photoUrl: string | null }) {
   return (
     <GlassCard
       title="유리 효과"
-      subtitle="카드·사이드바·상단바·알림·로그인 카드의 유리 판이에요. 바꾸는 즉시 이 화면에도 적용돼요."
       actions={glassPreset === null ? <StatusPill tone="neutral">사용자 지정</StatusPill> : null}
     >
       <div className="glass-settings">

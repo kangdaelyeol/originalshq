@@ -25,7 +25,6 @@ export function AccentCard() {
   return (
     <GlassCard
       title="강조색"
-      subtitle="버튼·활성 메뉴·로고 판, 그리고 텍스처 배경의 빛에 쓰는 색이에요."
       actions={locked ? <StatusPill tone="neutral">사진 배경 — 기본색 고정</StatusPill> : null}
     >
       <div className={cx('accent-picker', locked && 'is-locked')}>

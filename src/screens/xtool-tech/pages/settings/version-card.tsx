@@ -15,7 +15,7 @@ const KIND: Record<ChangeKind, { label: string; tone: Tone }> = {
  */
 export function VersionCard() {
   return (
-    <GlassCard title="버전 정보" subtitle="지금 쓰고 있는 tech 화면의 버전과 업데이트 기록이에요.">
+    <GlassCard title="버전 정보">
       <p className="version-current">
         <strong>v{TECH_VERSION}</strong>
         <span>지금 버전</span>

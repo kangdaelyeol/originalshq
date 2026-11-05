@@ -29,7 +29,7 @@ export function ProfilePhotoCard() {
   }
 
   return (
-    <GlassCard title="프로필 사진" subtitle="담당자 칸·팀 현황·사이드바에 이름 대신 보이는 사진이에요. 팀 모두가 봐요.">
+    <GlassCard title="프로필 사진">
       <div className="profile-photo">
         <Avatar
           initials={initialsOf(member.name, member.email)}

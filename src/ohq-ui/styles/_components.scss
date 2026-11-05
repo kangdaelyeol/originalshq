@@ -588,9 +588,11 @@
   }
 
   // 프로필 사진
+  // 사진 — 둘레 빛(그림자)은 이니셜 판에만. 사진에 두르면 사진 밖으로 번져 어색하다
   &--photo {
     overflow: hidden;
     background: rgba(255, 255, 255, 0.08);
+    box-shadow: none;
   }
 
   img {

@@ -1,12 +1,14 @@
 import { ChevronLeft, LogOut, ShieldCheck } from 'lucide-react'
 import { motion } from 'motion/react'
-import { useId } from 'react'
+import { useId, type CSSProperties } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { useProfilePhoto } from '../../data/tech-profiles'
 import { cx } from '@/ohq-ui/lib/cx'
+import { accentVars, DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
+import { useLayoutKind } from '../../lib/layout-kind'
 import { navArrowKeys } from '../../lib/nav-arrow-keys'
 import { SIDEBAR_TOGGLE_KEY } from '../../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS } from '../../nav'
@@ -20,6 +22,8 @@ const ADMIN_PATH = '/admin/xtool'
 
 // ↑·↓로 메뉴 옮겨 가기 — 메뉴와 펼친 직원 목록
 const onNavKeys = navArrowKeys('.nav-item, .nav-sub__btn')
+// Monday 표는 강조색이 Monday 파랑이라, 로고 판만 xTool 그린으로 둔다(브랜드 색)
+const BRAND_ACCENT = accentVars(DEFAULT_ACCENT) as CSSProperties
 
 interface SidebarProps {
   member: XtoolMember
@@ -35,10 +39,11 @@ interface SidebarProps {
 export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
   const id = useId()
   const photo = useProfilePhoto(member.email)
+  const { design } = useLayoutKind()
   return (
     <div className="sidebar-wrap">
       <aside id={id} className="glass sidebar" onKeyDown={onNavKeys}>
-        <div className="sidebar__brand">
+        <div className="sidebar__brand" style={design === 'monday' ? BRAND_ACCENT : undefined}>
           <BrandMark />
           <div className="sidebar__brand-text">
             <strong>xtool tech</strong>

@@ -83,7 +83,7 @@ export function LayoutCard() {
     if (next !== structure) setTheme(next === 'table' ? 'monday' : 'glass')
   }
   return (
-    <GlassCard title="레이아웃" subtitle="보드 화면(출장업무·AS 등)의 구조와 화면 디자인이에요. 고른 값은 이 브라우저에 저장돼요.">
+    <GlassCard title="레이아웃">
       <h3 className="bg-section-label layout-section-label">구조</h3>
       <div className="layout-options" role="radiogroup" aria-label="구조">
         {STRUCTURE_OPTIONS.map((option) => {

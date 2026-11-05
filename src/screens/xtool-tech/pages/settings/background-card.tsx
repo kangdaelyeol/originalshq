@@ -123,7 +123,6 @@ export function BackgroundCard({ shared, uploading, onUpload }: BackgroundCardPr
   return (
     <GlassCard
       title="배경"
-      subtitle="대시보드와 로그인 화면 뒤에 깔리는 배경이에요. 고른 배경은 이 브라우저에 저장되고, 올린 사진은 팀 모두가 골라 쓸 수 있어요."
       actions={
         <Button variant="ghost" size="sm" icon={RotateCcw} onClick={reset}>
           기본값으로
