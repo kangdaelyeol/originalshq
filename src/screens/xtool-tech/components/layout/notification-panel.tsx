@@ -142,7 +142,9 @@ function PanelBody({ anchor, triggerRef, items, onClose, onRead, onReadAll }: Om
             </li>
           )
         })}
-        {visible.length === 0 && <li className="notif__empty">읽지 않은 알림이 없어요</li>}
+        {visible.length === 0 && (
+          <li className="notif__empty">{filter === 'unread' ? '읽지 않은 알림이 없어요' : '알림이 없어요'}</li>
+        )}
       </ul>
 
       <p className="notif__footer">최근 7일 알림을 보여 줘요 · 누르면 읽음으로 바뀌어요</p>
