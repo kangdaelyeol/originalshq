@@ -13,6 +13,11 @@
   }
 }
 
+// 레이아웃 카드 첫 소제목(구조) — 카드 머리 바로 아래라 위 여백을 줄인다
+.bg-section-label.layout-section-label {
+  margin-top: 4px;
+}
+
 .layout-art {
   display: flex;
   flex-direction: column;
