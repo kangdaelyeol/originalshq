@@ -140,11 +140,16 @@ $group-title-h: 40px;
     }
   }
 
+  // 이름 칸 머리글은 줄과 같은 줄맞춤 — 체크는 줄의 체크 자리, 글자는 줄의 이름 글자 자리(.mon-name-head)
   .mon-cell--name {
     z-index: 4;
-    justify-content: center;
     border-top-left-radius: 8px;
   }
+}
+
+// 이름 칸 머리글 글자 — 줄 이름 단추(.mon-name)의 안쪽 여백(4px)과 테두리(1px)만큼 띄워 이름 글자와 맞춘다
+.mon-name-head {
+  padding-left: 5px;
 }
 
 .mon-resize {
@@ -231,6 +236,11 @@ $group-title-h: 40px;
   &[aria-expanded='true'] {
     color: var(--mon-text);
   }
+}
+
+// 머리글에서 줄의 펼치기 단추 자리만 차지한다(이름 글자 줄맞춤)
+.mon-expand--ghost {
+  visibility: hidden;
 }
 
 .mon-row:hover .mon-expand.is-empty {

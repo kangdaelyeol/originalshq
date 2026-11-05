@@ -176,8 +176,10 @@ export function GroupTable(props: GroupTableProps) {
                   onChange={(on) => selection.set(boardKey, groupIds, on)}
                 />
               )}
+              {/* 줄과 같은 자리 — 하위 줄이 있는 보드는 펼치기 단추 자리를 비워 두어 이름 글자와 머리글 글자를 맞춘다 */}
+              {props.subColumns && <span className="mon-expand mon-expand--ghost" aria-hidden />}
               <SortButton id="name" title={nameTitle} sort={sort} onSort={onSort} />
-              <span className="mon-text">{nameTitle}</span>
+              <span className="mon-text mon-name-head">{nameTitle}</span>
               <ResizeHandle id="name" width={widthOf('name')} onResize={onResize} />
             </div>
             {columns.map((c) => (
