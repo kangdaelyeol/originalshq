@@ -62,36 +62,38 @@ export function RentalsBoard({ doc }: { doc: TechBoardDoc<'rentals'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="대여품 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        progress={false}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="기기·SN·대여자 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="대여품 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={assigneesOf}
+          searchOf={searchOf}
+          progress={false}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="기기·SN·대여자 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard title="오래 나가 있는 대여품" subtitle={`${rented.length}대`}>
-          <UpcomingList
-            mode="since"
-            today={today}
-            empty="대여 중인 기기가 없어요."
-            items={rented.slice(0, 6).map((r) => ({
-              key: r.itemId,
-              date: r.rentedAt!,
-              title: r.name || '(이름 없음)',
-              meta: [r.renter, r.serialNumber].filter(Boolean).join(' · '),
-              onSelect: () => setSelectedId(r.itemId),
-            }))}
-          />
-        </GlassCard>
-        <GlassCard title="기기별 대여품" subtitle={`전체 ${records.length}대`}>
-          <BarList items={countBy(records.map((r) => r.name))} unit="대" ariaLabel="기기별 대여품 수" />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard title="오래 나가 있는 대여품" subtitle={`${rented.length}대`}>
+            <UpcomingList
+              mode="since"
+              today={today}
+              empty="대여 중인 기기가 없어요."
+              items={rented.slice(0, 6).map((r) => ({
+                key: r.itemId,
+                date: r.rentedAt!,
+                title: r.name || '(이름 없음)',
+                meta: [r.renter, r.serialNumber].filter(Boolean).join(' · '),
+                onSelect: () => setSelectedId(r.itemId),
+              }))}
+            />
+          </GlassCard>
+          <GlassCard title="기기별 대여품" subtitle={`전체 ${records.length}대`}>
+            <BarList items={countBy(records.map((r) => r.name))} unit="대" ariaLabel="기기별 대여품 수" />
+          </GlassCard>
+        </div>
       </div>
 
       <RentalsDrawer doc={doc} selectedId={selectedId} onClose={close} />

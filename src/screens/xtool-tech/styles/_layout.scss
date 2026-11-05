@@ -8,7 +8,7 @@
   grid-template-columns: 256px minmax(0, 1fr);
   gap: 32px;
   align-items: start;
-  max-width: 1320px;
+  // 화면 전체 폭을 쓴다(Monday 표와 같게) — 넓은 화면에서는 보드 몸통이 목록 옆에 곁 카드를 둔다(boards/_base.scss)
   margin: 0 auto;
   // 사이드바 접기·펴기 — Design 8과 같은 곡선
   transition: grid-template-columns 0.35s cubic-bezier(0.33, 1, 0.68, 1);

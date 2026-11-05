@@ -123,53 +123,55 @@ export function FieldServiceBoard({
         ))}
       </div>
 
-      <RecordTable
-        title="출장 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) =>
-          byDateAsc(a.visitAt, b.visitAt) ||
-          byDateAsc(a.receivedAt, b.receivedAt)
-        }
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·주소·비고 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="출장 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={assigneesOf}
+          searchOf={searchOf}
+          sortOpen={(a, b) =>
+            byDateAsc(a.visitAt, b.visitAt) ||
+            byDateAsc(a.receivedAt, b.receivedAt)
+          }
+          sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="고객·주소·비고 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard title="다가오는 방문" subtitle={`${upcoming.length}건`}>
-          <UpcomingList
-            today={today}
-            empty="잡힌 방문 일정이 없어요."
-            items={upcoming.slice(0, 6).map((r) => ({
-              key: r.itemId,
-              date: r.visitAt!,
-              title: r.name || '(이름 없음)',
-              meta: [
-                r.visitTime,
-                r.region,
-                r.type,
-                splitNames(r.assignee).join(', '),
-              ]
-                .filter(Boolean)
-                .join(' · '),
-              onSelect: () => setSelectedId(r.itemId),
-            }))}
-          />
-        </GlassCard>
-        <GlassCard
-          title="지역별 접수"
-          subtitle={`${names.current} ${received.length}건`}
-        >
-          <BarList
-            items={countBy(received.map((r) => r.region))}
-            ariaLabel="지역별 출장 접수"
-            empty="이 기간에 접수된 출장이 없어요."
-          />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard title="다가오는 방문" subtitle={`${upcoming.length}건`}>
+            <UpcomingList
+              today={today}
+              empty="잡힌 방문 일정이 없어요."
+              items={upcoming.slice(0, 6).map((r) => ({
+                key: r.itemId,
+                date: r.visitAt!,
+                title: r.name || '(이름 없음)',
+                meta: [
+                  r.visitTime,
+                  r.region,
+                  r.type,
+                  splitNames(r.assignee).join(', '),
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                onSelect: () => setSelectedId(r.itemId),
+              }))}
+            />
+          </GlassCard>
+          <GlassCard
+            title="지역별 접수"
+            subtitle={`${names.current} ${received.length}건`}
+          >
+            <BarList
+              items={countBy(received.map((r) => r.region))}
+              ariaLabel="지역별 출장 접수"
+              empty="이 기간에 접수된 출장이 없어요."
+            />
+          </GlassCard>
+        </div>
       </div>
 
       <FieldServiceDrawer doc={doc} selectedId={selectedId} onClose={close} />

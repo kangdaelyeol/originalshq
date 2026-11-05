@@ -58,35 +58,37 @@ export function PartsBoard({ doc }: { doc: TechBoardDoc<'parts'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="부품 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={noAssignees}
-        searchOf={searchOf}
-        progress={false}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="부품명·영문명·SKU·분류 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="부품 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={noAssignees}
+          searchOf={searchOf}
+          progress={false}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="부품명·영문명·SKU·분류 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard title="재고 부족" subtitle={`${out.length + low.length}개`}>
-          <MiniList
-            empty="재고가 부족한 부품이 없어요."
-            items={shortage.slice(0, 7).map((r) => ({
-              key: r.itemId,
-              title: r.name,
-              meta: [r.sku, r.category].filter(Boolean).join(' · '),
-              value: `재고 ${r.stock}`,
-              alert: isOut(r),
-              onSelect: () => setSelectedId(r.itemId),
-            }))}
-          />
-        </GlassCard>
-        <GlassCard title="분류별 부품" subtitle={`전체 ${records.length}개`}>
-          <BarList items={countBy(records.map(firstCategory))} unit="개" ariaLabel="분류별 부품 수" />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard title="재고 부족" subtitle={`${out.length + low.length}개`}>
+            <MiniList
+              empty="재고가 부족한 부품이 없어요."
+              items={shortage.slice(0, 7).map((r) => ({
+                key: r.itemId,
+                title: r.name,
+                meta: [r.sku, r.category].filter(Boolean).join(' · '),
+                value: `재고 ${r.stock}`,
+                alert: isOut(r),
+                onSelect: () => setSelectedId(r.itemId),
+              }))}
+            />
+          </GlassCard>
+          <GlassCard title="분류별 부품" subtitle={`전체 ${records.length}개`}>
+            <BarList items={countBy(records.map(firstCategory))} unit="개" ariaLabel="분류별 부품 수" />
+          </GlassCard>
+        </div>
       </div>
 
       <PartsDrawer doc={doc} selectedId={selectedId} onClose={close} />

@@ -9,9 +9,31 @@
   }
 }
 
-.side-stack {
+// 보드 화면 몸통(pages/boards/*-board.tsx) — 목록과 곁 카드(차트·다가오는 방문 등). 화면 전체 폭을 쓰니, 넓은 화면에서는
+// 곁 카드를 목록 오른쪽에 세로로 쌓아 목록과 함께 한눈에 보이게 하고, 좁으면 목록 아래에 둔다(곁 카드 둘은 나란히).
+.board-body {
   display: flex;
   flex-direction: column;
   gap: var(--gap);
   min-width: 0;
+}
+
+@media (min-width: 1680px) {
+  .board-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(320px, 22vw, 440px);
+    align-items: start;
+  }
+
+  .board-body > .board-body__side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// 곁 카드는 목록을 내려도 화면에 붙어 있다 — 곁 카드 목록은 6줄까지라 화면 높이가 넉넉할 때만(작은 화면에서 아래가 잘리지 않게)
+@media (min-width: 1680px) and (min-height: 900px) {
+  .board-body > .board-body__side {
+    position: sticky;
+    top: 20px;
+  }
 }

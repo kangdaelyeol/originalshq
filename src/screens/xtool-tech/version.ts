@@ -4,7 +4,7 @@
 // 업데이트 기록(TECH_CHANGELOG)은 요청이 있을 때 지난 기록 뒤로 바뀐 것을 묶어 맨 위에 더한다 — 한 기록이 그
 // 사이 여러 버전을 묶는다(버전은 그 기록을 쓸 때의 TECH_VERSION). 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const TECH_VERSION = '1.2.0'
+export const TECH_VERSION = '1.3.0'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 

@@ -81,8 +81,7 @@ export function AppLayout() {
     <MemberContext.Provider value={session.member}>
       <UsageTracking pathname={pathname} />
       <AppBackground />
-      {/* Monday 표는 칸이 많아 화면 폭을 다 쓴다(is-wide). */}
-      <div className={cx('shell', collapsed && 'is-collapsed', structure === 'table' && 'is-wide')}>
+      <div className={cx('shell', collapsed && 'is-collapsed')}>
         <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
           {/* Monday 표의 보드·내 업무는 상단바가 표 판 안에 들어간다(MondayBoard·MondayMyWork). */}

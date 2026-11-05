@@ -76,7 +76,7 @@ export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
         ))}
       </div>
 
-      <div className="grid grid--main-side">
+      <div className="board-body">
         <RecordTable
           title="자료 목록"
           records={records}
@@ -88,7 +88,7 @@ export function RecordsBoard({ doc }: { doc: TechBoardDoc<'records'> }) {
           selectedId={selectedId}
           searchPlaceholder="업무·담당자 검색"
         />
-        <div className="side-stack">
+        <div className="grid board-body__side">
           <GlassCard
             title="담당자별 업무"
             subtitle={`전체 ${records.length}건`}

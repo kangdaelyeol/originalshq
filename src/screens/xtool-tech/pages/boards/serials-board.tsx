@@ -54,34 +54,36 @@ export function SerialsBoard({ doc }: { doc: TechBoardDoc<'serials'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="SN 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={noAssignees}
-        searchOf={searchOf}
-        progress={false}
-        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="SN·기기·고객 이름 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="SN 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={noAssignees}
+          searchOf={searchOf}
+          progress={false}
+          sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="SN·기기·고객 이름 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard title="기기별 대수" subtitle={`전체 ${records.length}대`}>
-          <BarList items={countBy(records.map((r) => r.device))} unit="대" ariaLabel="기기별 SN 수" />
-        </GlassCard>
-        <GlassCard title="중복 SN" subtitle={`${duplicates.length}건`}>
-          <MiniList
-            empty="중복된 SN이 없어요."
-            items={duplicates.slice(0, 7).map((r) => ({
-              key: r.itemId,
-              title: r.serialNumber,
-              meta: [r.device, r.notes].filter(Boolean).join(' · '),
-              onSelect: () => setSelectedId(r.itemId),
-            }))}
-          />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard title="기기별 대수" subtitle={`전체 ${records.length}대`}>
+            <BarList items={countBy(records.map((r) => r.device))} unit="대" ariaLabel="기기별 SN 수" />
+          </GlassCard>
+          <GlassCard title="중복 SN" subtitle={`${duplicates.length}건`}>
+            <MiniList
+              empty="중복된 SN이 없어요."
+              items={duplicates.slice(0, 7).map((r) => ({
+                key: r.itemId,
+                title: r.serialNumber,
+                meta: [r.device, r.notes].filter(Boolean).join(' · '),
+                onSelect: () => setSelectedId(r.itemId),
+              }))}
+            />
+          </GlassCard>
+        </div>
       </div>
 
       <SerialsDrawer doc={doc} selectedId={selectedId} onClose={close} />

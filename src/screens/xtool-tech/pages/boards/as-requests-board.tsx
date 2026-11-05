@@ -63,26 +63,28 @@ export function AsRequestsBoard({ doc }: { doc: TechBoardDoc<'asRequests'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="신청 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={noAssignees}
-        searchOf={searchOf}
-        progress={false}
-        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="신청자·기기·증상·주소 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="신청 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={noAssignees}
+          searchOf={searchOf}
+          progress={false}
+          sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="신청자·기기·증상·주소 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard title="기기별 신청" subtitle={`전체 ${records.length}건`}>
-          <BarList items={countBy(records.map((r) => r.device))} ariaLabel="기기별 AS 신청" />
-        </GlassCard>
-        <GlassCard title="구매 경로" subtitle={`전체 ${records.length}건`}>
-          <BarList items={countBy(records.map((r) => r.purchaseChannel))} ariaLabel="구매 경로별 AS 신청" />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard title="기기별 신청" subtitle={`전체 ${records.length}건`}>
+            <BarList items={countBy(records.map((r) => r.device))} ariaLabel="기기별 AS 신청" />
+          </GlassCard>
+          <GlassCard title="구매 경로" subtitle={`전체 ${records.length}건`}>
+            <BarList items={countBy(records.map((r) => r.purchaseChannel))} ariaLabel="구매 경로별 AS 신청" />
+          </GlassCard>
+        </div>
       </div>
 
       <AsRequestsDrawer doc={doc} selectedId={selectedId} onClose={close} />

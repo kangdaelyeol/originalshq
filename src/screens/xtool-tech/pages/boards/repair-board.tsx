@@ -135,40 +135,42 @@ export function RepairBoard({ doc }: { doc: TechBoardDoc<'repair'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="AS 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·기기·증상·SN 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="AS 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={assigneesOf}
+          searchOf={searchOf}
+          sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
+          sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="고객·기기·증상·SN 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard
-          title="기기별 접수"
-          subtitle={`${names.current} ${received.length}건`}
-        >
-          <BarList
-            items={countBy(received.map((r) => r.device))}
-            ariaLabel="기기별 AS 접수"
-            empty="이 기간에 접수된 AS가 없어요."
-          />
-        </GlassCard>
-        <GlassCard
-          title="담당자별 진행 중"
-          subtitle={`진행 중 ${open.length}건`}
-        >
-          <BarList
-            items={workload}
-            ariaLabel="담당자별 진행 중인 AS"
-            empty="진행 중인 AS가 없어요."
-          />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard
+            title="기기별 접수"
+            subtitle={`${names.current} ${received.length}건`}
+          >
+            <BarList
+              items={countBy(received.map((r) => r.device))}
+              ariaLabel="기기별 AS 접수"
+              empty="이 기간에 접수된 AS가 없어요."
+            />
+          </GlassCard>
+          <GlassCard
+            title="담당자별 진행 중"
+            subtitle={`진행 중 ${open.length}건`}
+          >
+            <BarList
+              items={workload}
+              ariaLabel="담당자별 진행 중인 AS"
+              empty="진행 중인 AS가 없어요."
+            />
+          </GlassCard>
+        </div>
       </div>
 
       <RepairDrawer doc={doc} selectedId={selectedId} onClose={close} />

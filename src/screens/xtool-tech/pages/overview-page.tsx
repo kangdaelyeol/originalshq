@@ -85,7 +85,7 @@ export function OverviewPage() {
   const loadingAll = [field, repair, inquiry, task, docs, rentals, parts, requests].some((b) => !b.board && !b.error)
 
   return (
-    <>
+    <div className="overview-layout">
       <div className="grid overview-top">
         <MyWorkCard
           names={myNames}
@@ -109,40 +109,42 @@ export function OverviewPage() {
         />
       </div>
 
-      <AttentionRow tiles={attention} loading={loadingAll} />
+      <div className="overview-main">
+        <AttentionRow tiles={attention} loading={loadingAll} />
 
-      {SPANS.map(({ span, label, previous }) => {
-        const period = kingPeriod(span)
-        const before = previousKingPeriod(span, period)
-        return (
-          <section key={span} className="king-section" aria-label={`${label} 기술팀 왕`}>
-            <h2 className="king-section__title">
-              {label} 기술팀 왕
-              <span>
-                {shortDate(period.start)} ~ {shortDate(period.end)}
-              </span>
-            </h2>
-            <div className="grid king-grid">
-              {KINGS.map((def) => {
-                const facts = factsById[def.id]
-                return (
-                  <KingCard
-                    key={def.id}
-                    def={def}
-                    spanLabel={label}
-                    previousLabel={previous}
-                    period={period}
-                    result={facts ? rankKing(facts, period) : null}
-                    previousTop={facts ? (rankKing(facts, before).rows[0] ?? null) : null}
-                  />
-                )
-              })}
-            </div>
-          </section>
-        )
-      })}
+        {SPANS.map(({ span, label, previous }) => {
+          const period = kingPeriod(span)
+          const before = previousKingPeriod(span, period)
+          return (
+            <section key={span} className="king-section" aria-label={`${label} 기술팀 왕`}>
+              <h2 className="king-section__title">
+                {label} 기술팀 왕
+                <span>
+                  {shortDate(period.start)} ~ {shortDate(period.end)}
+                </span>
+              </h2>
+              <div className="grid king-grid">
+                {KINGS.map((def) => {
+                  const facts = factsById[def.id]
+                  return (
+                    <KingCard
+                      key={def.id}
+                      def={def}
+                      spanLabel={label}
+                      previousLabel={previous}
+                      period={period}
+                      result={facts ? rankKing(facts, period) : null}
+                      previousTop={facts ? (rankKing(facts, before).rows[0] ?? null) : null}
+                    />
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })}
 
-      <TeamCard members={team} me={myNames} loading={loadingAll} />
-    </>
+        <TeamCard members={team} me={myNames} loading={loadingAll} />
+      </div>
+    </div>
   )
 }

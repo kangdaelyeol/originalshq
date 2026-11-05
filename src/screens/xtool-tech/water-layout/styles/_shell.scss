@@ -1,7 +1,7 @@
 @use '../../../../ohq-ui/water/styles/tokens' as *;
 
 // ── 물 레이아웃 틀(water-shell.tsx) ───────────────────────────────────────────
-// 지금 레이아웃(.shell — styles/_layout.scss)과 같은 칸: 사이드바 256px(접으면 76px) + 본문, 가운데 1320px.
+// 지금 레이아웃(.shell — styles/_layout.scss)과 같은 칸: 사이드바 256px(접으면 76px) + 본문, 화면 전체 폭.
 // 무대(D7 유리 타일 벽)는 화면에 붙박이로 깔고 그 위에 사이드바·본문을 얹는다.
 .wl-shell {
   --wl-gap: 20px;
@@ -13,7 +13,6 @@
   grid-template-columns: 256px minmax(0, 1fr);
   gap: 28px;
   align-items: start;
-  max-width: 1320px;
   margin: 0 auto;
   // 위아래 여백은 sticky 사이드바의 top 여백과 같아야 한다(지금 레이아웃 주석 참고)
   padding: 20px 24px;

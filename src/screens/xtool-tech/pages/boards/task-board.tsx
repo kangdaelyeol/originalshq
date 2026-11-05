@@ -101,59 +101,61 @@ export function TaskBoard({ doc }: { doc: TechBoardDoc<'techTask'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="업무 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) =>
-          byDateAsc(a.dueAt, b.dueAt) || byDateAsc(a.requestedAt, b.requestedAt)
-        }
-        sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="업무·사람·상세내용 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="업무 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={assigneesOf}
+          searchOf={searchOf}
+          sortOpen={(a, b) =>
+            byDateAsc(a.dueAt, b.dueAt) || byDateAsc(a.requestedAt, b.requestedAt)
+          }
+          sortDone={(a, b) => byDateDesc(doneOn(a), doneOn(b))}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="업무·사람·상세내용 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard
-          title="오래 걸리는 업무"
-          subtitle={`${oldest.length}건`}
-        >
-          <UpcomingList
-            mode="since"
-            today={today}
-            empty="진행 중인 업무가 없어요."
-            items={oldest.slice(0, 6).map((r) => ({
-              key: r.itemId,
-              date: r.requestedAt!,
-              title: r.name || '(이름 없음)',
-              meta: [
-                assigneesOf(r).join(', ') || '담당자 없음',
-                r.dueAt ? `마감 ${shortDate(r.dueAt)}` : null,
-              ]
-                .filter(Boolean)
-                .join(' · '),
-              onSelect: () => setSelectedId(r.itemId),
-            }))}
-          />
-        </GlassCard>
-        <GlassCard
-          title="담당자별 진행 중"
-          subtitle={`진행 중 ${open.length}건`}
-        >
-          <BarList
-            items={countBy(
-              open.flatMap((r) =>
-                assigneesOf(r).length ? assigneesOf(r) : [null],
-              ),
-              '담당자 없음',
-            )}
-            ariaLabel="담당자별 진행 중인 업무"
-            empty="진행 중인 업무가 없어요."
-          />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard
+            title="오래 걸리는 업무"
+            subtitle={`${oldest.length}건`}
+          >
+            <UpcomingList
+              mode="since"
+              today={today}
+              empty="진행 중인 업무가 없어요."
+              items={oldest.slice(0, 6).map((r) => ({
+                key: r.itemId,
+                date: r.requestedAt!,
+                title: r.name || '(이름 없음)',
+                meta: [
+                  assigneesOf(r).join(', ') || '담당자 없음',
+                  r.dueAt ? `마감 ${shortDate(r.dueAt)}` : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · '),
+                onSelect: () => setSelectedId(r.itemId),
+              }))}
+            />
+          </GlassCard>
+          <GlassCard
+            title="담당자별 진행 중"
+            subtitle={`진행 중 ${open.length}건`}
+          >
+            <BarList
+              items={countBy(
+                open.flatMap((r) =>
+                  assigneesOf(r).length ? assigneesOf(r) : [null],
+                ),
+                '담당자 없음',
+              )}
+              ariaLabel="담당자별 진행 중인 업무"
+              empty="진행 중인 업무가 없어요."
+            />
+          </GlassCard>
+        </div>
       </div>
 
       <TaskDrawer doc={doc} selectedId={selectedId} onClose={close} />

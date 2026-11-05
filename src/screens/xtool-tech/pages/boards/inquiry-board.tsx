@@ -117,40 +117,42 @@ export function InquiryBoard({ doc }: { doc: TechBoardDoc<'techInquiry'> }) {
         ))}
       </div>
 
-      <RecordTable
-        title="문의 목록"
-        records={records}
-        columns={COLUMNS}
-        assigneesOf={assigneesOf}
-        searchOf={searchOf}
-        sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
-        sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
-        onSelect={(r) => setSelectedId(r.itemId)}
-        selectedId={selectedId}
-        searchPlaceholder="고객·기기·문의 내용 검색"
-      />
+      <div className="board-body">
+        <RecordTable
+          title="문의 목록"
+          records={records}
+          columns={COLUMNS}
+          assigneesOf={assigneesOf}
+          searchOf={searchOf}
+          sortOpen={(a, b) => byDateAsc(a.receivedAt, b.receivedAt)}
+          sortDone={(a, b) => byDateDesc(a.receivedAt, b.receivedAt)}
+          onSelect={(r) => setSelectedId(r.itemId)}
+          selectedId={selectedId}
+          searchPlaceholder="고객·기기·문의 내용 검색"
+        />
 
-      <div className="grid grid--pair">
-        <GlassCard
-          title="문의 종류"
-          subtitle={`${names.current} ${received.length}건`}
-        >
-          <BarList
-            items={countBy(received.map((r) => r.type))}
-            ariaLabel="문의 종류별 접수"
-            empty="이 기간에 접수된 문의가 없어요."
-          />
-        </GlassCard>
-        <GlassCard
-          title="기기 계열"
-          subtitle={`${names.current} ${received.length}건`}
-        >
-          <BarList
-            items={countBy(received.map((r) => r.deviceSeries))}
-            ariaLabel="기기 계열별 접수"
-            empty="이 기간에 접수된 문의가 없어요."
-          />
-        </GlassCard>
+        <div className="grid grid--pair board-body__side">
+          <GlassCard
+            title="문의 종류"
+            subtitle={`${names.current} ${received.length}건`}
+          >
+            <BarList
+              items={countBy(received.map((r) => r.type))}
+              ariaLabel="문의 종류별 접수"
+              empty="이 기간에 접수된 문의가 없어요."
+            />
+          </GlassCard>
+          <GlassCard
+            title="기기 계열"
+            subtitle={`${names.current} ${received.length}건`}
+          >
+            <BarList
+              items={countBy(received.map((r) => r.deviceSeries))}
+              ariaLabel="기기 계열별 접수"
+              empty="이 기간에 접수된 문의가 없어요."
+            />
+          </GlassCard>
+        </div>
       </div>
 
       <InquiryDrawer doc={doc} selectedId={selectedId} onClose={close} />

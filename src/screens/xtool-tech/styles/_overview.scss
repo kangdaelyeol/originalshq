@@ -284,6 +284,35 @@
   align-items: start;
 }
 
+// 개요 배치(pages/overview-page.tsx) — 좁으면 위에 나의 진행 중 업무·일정(둘이 나란히), 아래에 나머지. 넓으면(화면 전체
+// 폭) 나의 업무·일정을 오른쪽 세로 칸으로 옮겨 나머지(챙겨야 할 것·기술팀 왕·팀 현황)와 나란히 둔다.
+.overview-layout,
+.overview-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  min-width: 0;
+}
+
+@media (min-width: 1680px) {
+  .overview-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 500px);
+    align-items: start;
+  }
+
+  .overview-layout > .overview-top {
+    grid-column: 2;
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .overview-main {
+    grid-column: 1;
+    grid-row: 1;
+  }
+}
+
 .schedule__overdue {
   margin-bottom: 12px;
   border-radius: 10px;
