@@ -13,6 +13,7 @@ import { round3, waterClock } from '@/ohq-ui/water/motion'
 import { pressPoint, rippleAt } from '@/ohq-ui/water/ripple'
 import { useProfilePhoto } from '../data/tech-profiles'
 import { useSidebarPeople } from '../data/use-my-work'
+import { navArrowKeys } from '../lib/nav-arrow-keys'
 import { personColor } from '../lib/person-color'
 import { usePeopleOpen, type PeopleOpen } from '../lib/use-people-open'
 import { SIDEBAR_TOGGLE_KEY } from '../lib/use-sidebar-collapsed'
@@ -21,6 +22,8 @@ import { myWorkPath, XT_BASE } from '../paths'
 
 // 관리자 화면(구성원 등록·권한) — 팀 페이지 밖, 모든 팀이 같이 쓴다.
 const ADMIN_PATH = '/admin/xtool'
+// ↑·↓로 메뉴 옮겨 가기 — 지금 사이드바와 같다(lib/nav-arrow-keys). 표시 알약 창(inert)의 겹친 메뉴는 빠진다.
+const onNavKeys = navArrowKeys('a.wl-nav__item, a.wl-people__btn')
 // 표시 알약이 움직이는 동안 — 이 안에 크기가 바뀌면(직원 목록 펼침 등) 끊지 않고 새 자리로 이어 간다
 const SETTLE = 0.9
 
@@ -51,7 +54,7 @@ export function WaterSidebar({ member, collapsed, onToggle }: WaterSidebarProps)
   }))
   return (
     <div className="wl-sidebar-wrap">
-      <aside id={id} className="wl-sidebar">
+      <aside id={id} className="wl-sidebar" onKeyDown={onNavKeys}>
         <div className="wl-sidebar__brand">
           <span className="wl-brand" aria-hidden>
             <XMark className="wl-brand__x" />

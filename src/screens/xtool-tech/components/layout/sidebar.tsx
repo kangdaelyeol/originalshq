@@ -7,6 +7,7 @@ import type { XtoolMember } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { useProfilePhoto } from '../../data/tech-profiles'
 import { cx } from '@/ohq-ui/lib/cx'
+import { navArrowKeys } from '../../lib/nav-arrow-keys'
 import { SIDEBAR_TOGGLE_KEY } from '../../lib/use-sidebar-collapsed'
 import { NAV_SECTIONS } from '../../nav'
 import { XT_BASE } from '../../paths'
@@ -16,6 +17,9 @@ import { SidebarPeopleItem } from './sidebar-people'
 
 // 관리자 화면(구성원 등록·권한) — 팀 페이지 밖, 모든 팀이 같이 쓴다.
 const ADMIN_PATH = '/admin/xtool'
+
+// ↑·↓로 메뉴 옮겨 가기 — 메뉴와 펼친 직원 목록
+const onNavKeys = navArrowKeys('.nav-item, .nav-sub__btn')
 
 interface SidebarProps {
   member: XtoolMember
@@ -33,7 +37,7 @@ export function Sidebar({ member, collapsed, onToggle }: SidebarProps) {
   const photo = useProfilePhoto(member.email)
   return (
     <div className="sidebar-wrap">
-      <aside id={id} className="glass sidebar">
+      <aside id={id} className="glass sidebar" onKeyDown={onNavKeys}>
         <div className="sidebar__brand">
           <BrandMark />
           <div className="sidebar__brand-text">
