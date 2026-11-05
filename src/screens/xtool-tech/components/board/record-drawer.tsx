@@ -42,7 +42,13 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
   const count = (record && edit?.itemOf(record.itemId)?.updateCount) || 0
   const [confirming, setConfirming] = useState(false)
   return (
-    <DrawerShell open={record !== null} onClose={onClose} labelledBy="drawer-title" contentKey={record?.itemId}>
+    <DrawerShell
+      open={record !== null}
+      onClose={onClose}
+      labelledBy="drawer-title"
+      contentKey={record?.itemId}
+      placement="center"
+    >
       {record && (
         <>
           <header className="drawer__header">

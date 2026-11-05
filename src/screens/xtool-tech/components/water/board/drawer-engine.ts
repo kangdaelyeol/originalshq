@@ -17,6 +17,8 @@ import { SpringTrack } from './board-motion'
 
 /** 서랍 밖 여유 — 그림자(21·44px 오프셋, 36px 흐림 + 20px 퍼짐)까지 화면 밖으로 */
 const OFFSCREEN_PAD = 96
+/** 가운데 모달이 떠오르는 거리 — 화면 밖에서 오지 않고 제자리 아래에서 떠오르며 흐릿함이 걷힌다 */
+const RISE = 28
 
 /** 내용이 나오기 시작하는 시각 — 서랍이 처음 제자리에 닿을 때 */
 export const DRAWER_REVEAL_AT = springArrival(WATER_SPRING.move)
@@ -32,11 +34,14 @@ export class WaterDrawerEngine {
   private onGone: (() => void) | null = null
   private reduced: boolean
   private reveals: Animation[] = []
+  /** 가운데 모달 — 옆이 아니라 아래에서 떠오른다(같은 스프링) */
+  private rise: boolean
 
-  constructor(panel: HTMLElement, scrim: HTMLElement | null, reduced: boolean) {
+  constructor(panel: HTMLElement, scrim: HTMLElement | null, reduced: boolean, rise = false) {
     this.panel = panel
     this.scrim = scrim
     this.reduced = reduced
+    this.rise = rise
     this.x = new SpringTrack(0, WATER_SPRING.move)
   }
 
@@ -47,7 +52,7 @@ export class WaterDrawerEngine {
   enter(at?: number, reveal: readonly Element[] = []) {
     const now = since(at)
     const first = this.off === 0
-    this.off = this.panel.offsetWidth + OFFSCREEN_PAD
+    this.off = this.rise ? RISE : this.panel.offsetWidth + OFFSCREEN_PAD
     if (first) this.x.jump(this.off)
     this.mode = 'in'
     this.start = now
@@ -125,9 +130,11 @@ export class WaterDrawerEngine {
       return false
     }
     const { x } = this.x.at(now)
-    st.transform = `translate3d(${round3(x)}px, 0, 0)`
-    if (this.scrim)
-      this.scrim.style.opacity = String(round3(clamp01(1 - x / this.off)))
+    const shown = round3(clamp01(1 - x / this.off))
+    st.transform = this.rise ? `translate3d(0, ${round3(x)}px, 0)` : `translate3d(${round3(x)}px, 0, 0)`
+    if (this.scrim) this.scrim.style.opacity = String(shown)
+    // 가운데 모달은 제자리 근처에서 움직이니 들어오는 동안 함께 또렷해진다
+    if (this.rise && this.mode === 'in') st.opacity = String(shown)
     if (this.mode === 'out') {
       const on = 1 - smooth((t - 0.17) / 0.13)
       st.opacity = String(round3(on))
@@ -138,6 +145,7 @@ export class WaterDrawerEngine {
     if (!this.x.settled(now)) return true
     // 제자리 — transform·층을 지워 큰 판이 따로 층을 차지하지 않게
     st.transform = ''
+    st.opacity = ''
     st.willChange = ''
     return false
   }

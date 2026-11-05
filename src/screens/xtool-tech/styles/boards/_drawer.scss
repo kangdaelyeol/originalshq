@@ -23,6 +23,16 @@
   background-color: rgba(22, 23, 27, calc(var(--glass-opacity) + 0.3));
 }
 
+// 가운데 모달(기록 상세·팀원 업무·수정 기록 — DrawerShell placement="center") — 판은 같고 자리·크기만 다르다.
+// 내용만큼 높아지다가 화면을 넘으면 본문이 스크롤된다.
+.drawer--center {
+  inset: 0;
+  width: min(640px, calc(100vw - 32px));
+  height: fit-content;
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+}
+
 .drawer__header {
   display: flex;
   align-items: flex-start;

@@ -79,6 +79,7 @@ export function WaterRecordDrawer({
       onClose={onClose}
       labelledBy={titleId}
       contentKey={record?.itemId}
+      placement="center"
     >
       {record && (
         <>

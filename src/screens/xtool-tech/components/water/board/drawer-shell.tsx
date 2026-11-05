@@ -20,6 +20,8 @@ interface WaterDrawerShellProps {
   layer?: 'base' | 'top'
   /** 바뀌면 내용을 다시 차례로 보인다(다른 항목을 열 때). */
   contentKey?: string
+  /** center: 화면 가운데 뜨는 모달(상세 보기) — 아래에서 떠오른다. 기본은 오른쪽 서랍. */
+  placement?: 'side' | 'center'
   children: ReactNode
 }
 
@@ -28,7 +30,7 @@ const revealNodes = (panel: HTMLElement) =>
   Array.from(panel.querySelectorAll('[data-water-reveal]'))
 
 /**
- * 오른쪽 유리 서랍 껍데기(물) — 기존 DrawerShell과 같은 props. 화면 루트(usePortalRoot)로 포털해서 띄우고,
+ * 오른쪽 유리 서랍 껍데기(물, center면 가운데 모달) — 기존 DrawerShell과 같은 props. 화면 루트(usePortalRoot)로 포털해서 띄우고,
  * 들어올 때 D7 move 스프링(3.8% 넘침), 나갈 때 trail(임계 감쇠)로 움직인다(WaterDrawerEngine — rAF가
  * transform·opacity만 쓴다). 막은 서랍이 들어온 만큼 짙어진다.
  *
@@ -42,6 +44,7 @@ export function WaterDrawerShell({
   labelledBy,
   layer = 'base',
   contentKey,
+  placement = 'side',
   children,
 }: WaterDrawerShellProps) {
   const root = usePortalRoot()
@@ -63,7 +66,7 @@ export function WaterDrawerShell({
   useLayoutEffect(() => {
     const p = panel.current
     if (!present || !p) return
-    const e = new WaterDrawerEngine(p, scrim.current, reduced)
+    const e = new WaterDrawerEngine(p, scrim.current, reduced, placement === 'center')
     engine.current = e
     return () => {
       e.destroy()
@@ -146,7 +149,11 @@ export function WaterDrawerShell({
       <aside
         ref={panel}
         tabIndex={-1}
-        className={cx('water-drawer', layer === 'top' && 'water-drawer--top')}
+        className={cx(
+          'water-drawer',
+          layer === 'top' && 'water-drawer--top',
+          placement === 'center' && 'water-drawer--center',
+        )}
         role="dialog"
         aria-modal="true"
         aria-labelledby={labelledBy}
