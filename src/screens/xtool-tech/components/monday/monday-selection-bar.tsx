@@ -52,7 +52,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
  */
 function SelectionBar({ state }: { state: SelectionState }) {
   const root = usePortalRoot()
-  const actions = useSelectionActions({ byBoard: selectedByBoard(state.selected), clear: state.clear, keepAfterMove: true })
+  const actions = useSelectionActions({ byBoard: selectedByBoard(state.selected), clear: state.clear })
   const { count, moveAnchor } = actions
   const single = actions.moveBoard
 
@@ -117,7 +117,7 @@ function MoveMenu({
   const { meta } = useTechBoard(boardKey)
   return (
     <MonPopover anchor={anchor} width={260} onClose={onClose}>
-      <p className="mon-menu__title">어느 그룹으로 옮길까요</p>
+      <p className="mon-menu__title">어느 진행 단계로 옮길까요</p>
       <ul className="mon-menu">
         {(meta?.groups ?? []).map((g, i) => (
           <li key={g.id}>

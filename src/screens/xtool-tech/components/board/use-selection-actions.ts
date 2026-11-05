@@ -4,7 +4,7 @@ import { deleteItems, moveItems } from '../../data/tech-outbox'
 
 // 고른 줄 옮기기·지우기 — 대시보드·물 고르기 막대와 Monday 표 선택 막대가 같이 쓴다. 막대마다 모양만 다르고
 // 하는 일은 여기 하나: 진행 단계(그룹) 옮기기(한 보드만 골랐을 때), 확인을 받고 Monday 휴지통으로 지우기, 그 뒤
-// 선택 풀기(Monday 표는 옮긴 뒤에는 고른 채로 둔다 — keepAfterMove). 옮기기·지우기는 표에 바로 보이고 Monday에는
+// 선택 풀기(세 레이아웃 모두 옮기거나 지우면 푼다). 옮기기·지우기는 표에 바로 보이고 Monday에는
 // 뒤에서 쓴다(저장 대기열 — 실패하면 토스트, 지운 줄은 다시 보인다). 확인 문구는 DELETE_CONFIRM_MESSAGE(record-selection.ts).
 
 interface SelectionActionsOptions {
@@ -12,8 +12,6 @@ interface SelectionActionsOptions {
   byBoard: ReadonlyMap<TechBoardKey, string[]>
   /** 선택 풀기 */
   clear: () => void
-  /** 옮긴 뒤에도 고른 채로 둔다(Monday 표) — 아니면 옮기고 선택을 푼다 */
-  keepAfterMove?: boolean
 }
 
 export interface SelectionActions {
@@ -36,7 +34,7 @@ export interface SelectionActions {
   confirmDelete: () => void
 }
 
-export function useSelectionActions({ byBoard, clear, keepAfterMove = false }: SelectionActionsOptions): SelectionActions {
+export function useSelectionActions({ byBoard, clear }: SelectionActionsOptions): SelectionActions {
   const [moveAnchor, setMoveAnchor] = useState<HTMLElement | null>(null)
   const [confirming, setConfirming] = useState(false)
   const boards = [...byBoard.keys()]
@@ -55,7 +53,7 @@ export function useSelectionActions({ byBoard, clear, keepAfterMove = false }: S
       if (!moveBoard) return
       // 새 그룹에 바로 보이고, 실패한 것은 원래 그룹으로 돌아간다.
       moveItems(moveBoard, byBoard.get(moveBoard) ?? [], groupId)
-      if (!keepAfterMove) clear()
+      clear()
     },
     confirming,
     askDelete: () => setConfirming(true),
