@@ -36,6 +36,17 @@
   @include meta.load-css('water-boot');
 }
 
+// 알약(상태·진행 단계 — ohq-ui .pill, 물 .water-pill) — 기본·물 레이아웃은 둥근 알약 대신 모서리 5px 직사각형, 테두리
+// 없이(바탕·글자색은 그대로). 다른 칸·단추와 같은 직사각형 결로 맞춘다. Monday 표는 테마 모양 그대로 둔다. 물 스타일은
+// 나중에 불러오니 :not으로 한 단계 더 세게 건다.
+.xtool-tech:not(.theme-monday) {
+  .pill,
+  .water-pill {
+    border: 0;
+    border-radius: 5px;
+  }
+}
+
 // 설정 > 레이아웃 "Monday 표" — 루트에 theme-monday(+ mon-light · mon-black)가 붙으면 위 스타일을 Monday 모양으로
 // 덮는다. 색·글꼴과 기본 부품은 공용 디자인 테마, 화면 틀은 tech 테마(_theme-monday.scss). 둘 다 맨 뒤에 와야
 // 같은 우선순위의 위 스타일보다 이긴다.
