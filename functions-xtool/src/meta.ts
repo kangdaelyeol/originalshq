@@ -1,7 +1,18 @@
 import * as crypto from 'crypto'
 import * as logger from 'firebase-functions/logger'
-import { Lead } from './types'
+import { DEFAULT_EXPECTED_VALUE, DEVICE_EXPECTED_VALUE } from './constants'
+import { Device, Lead } from './types'
 import { getActionSource, type ActionSource } from './utils'
+
+/** 기기의 예상 금액(원) — 표(constants.ts)에 없으면 기본값. */
+export const expectedValueOf = (device: Device): number =>
+  DEVICE_EXPECTED_VALUE[device] ?? DEFAULT_EXPECTED_VALUE
+
+/** 기기 여럿 중 예상 금액이 가장 큰 것(대표 기기) — 같으면 앞의 것. */
+export const topDevice = (devices: readonly Device[]): Device =>
+  devices.reduce((top, device) =>
+    expectedValueOf(device) > expectedValueOf(top) ? device : top,
+  )
 
 export const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value.trim().toLowerCase()).digest('hex')

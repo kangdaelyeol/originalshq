@@ -5,6 +5,7 @@ import {
   type SortDirection,
 } from '@/screens/xtool-lead-manager/types'
 import {
+  consultationDevices,
   formatPhoneNumber,
   formatTime,
 } from '@/screens/xtool-lead-manager/utils'
@@ -50,7 +51,7 @@ const intakeTitle = (records: readonly IntakeRecord[]): string =>
 
 const consultationTitle = (records: readonly ConsultationRecord[]): string =>
   records
-    .map((r) => `${formatTime(r.at)} · ${r.device}`)
+    .map((r) => `${formatTime(r.at)} · ${consultationDevices(r).join(', ')}`)
     .reverse()
     .join('\n')
 

@@ -105,7 +105,7 @@ export const useLeadMutationsViewModel = (run: RunLeadMutation) => {
   const updateConsultationRecord = async (
     leadId: string,
     recordId: string,
-    updates: { at?: number; device?: Device; note?: string },
+    updates: { at?: number; devices?: Device[]; note?: string },
   ) => {
     await run(
       () => leadClient.updateConsultation({ id: leadId, recordId, ...updates }),

@@ -112,28 +112,58 @@ const parseTestEventCode = (
   return { ok: true, data: trimmed === '' ? undefined : trimmed }
 }
 
-/** 상담/구매 등록 공통 — device 필수, at은 선택(안 주면 호출부에서 Date.now()). */
+/** 상담/구매 등록 공통 — at은 선택(안 주면 호출부에서 Date.now()). */
+const parseAt = (
+  body: Record<string, unknown>,
+): ValidationResponse<number | undefined> => {
+  const { at } = body as { at?: number }
+  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
+    return { ok: false, error: 'at must be a positive number if provided' }
+  }
+  return { ok: true, data: at }
+}
+
+/** 구매 등록 — device 필수. */
 const parseDeviceAndAt = (
   body: Record<string, unknown>,
 ): ValidationResponse<{ device: Device; at?: number }> => {
-  const { device, at } = body as { device?: string; at?: number }
+  const { device } = body as { device?: string }
 
   if (!device || !Device.includes(device as Device)) {
     return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
   }
 
-  if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
-    return { ok: false, error: 'at must be a positive number if provided' }
-  }
+  const atRes = parseAt(body)
+  if (!atRes.ok) return atRes
 
-  return { ok: true, data: { device: device as Device, at } }
+  return { ok: true, data: { device: device as Device, at: atRes.data } }
+}
+
+/** 상담 기기 — devices(여러 개) 또는 device 하나(기기를 하나만 고르는 화면).
+ * 겹친 기기는 하나로 친다. */
+const parseDevices = (
+  body: Record<string, unknown>,
+): ValidationResponse<Device[]> => {
+  const list =
+    body.devices ?? (body.device === undefined ? undefined : [body.device])
+  if (
+    !Array.isArray(list) ||
+    list.length === 0 ||
+    !list.every((device) => Device.includes(device as Device))
+  ) {
+    return {
+      ok: false,
+      error: `devices must be a list of: ${Device.join(', ')}`,
+    }
+  }
+  return { ok: true, data: [...new Set(list as Device[])] }
 }
 
 export const validateContactLead = (
   body: Record<string, unknown>,
 ): ValidationResponse<{
   id: string
-  device: Device
+  devices: Device[]
   at?: number
   testEventCode?: string
 }> => {
@@ -143,8 +173,11 @@ export const validateContactLead = (
     return { ok: false, error: 'id is required' }
   }
 
-  const deviceRes = parseDeviceAndAt(body)
-  if (!deviceRes.ok) return deviceRes
+  const devicesRes = parseDevices(body)
+  if (!devicesRes.ok) return devicesRes
+
+  const atRes = parseAt(body)
+  if (!atRes.ok) return atRes
 
   const testEventCodeRes = parseTestEventCode(body)
   if (!testEventCodeRes.ok) return testEventCodeRes
@@ -153,8 +186,8 @@ export const validateContactLead = (
     ok: true,
     data: {
       id,
-      device: deviceRes.data.device,
-      at: deviceRes.data.at,
+      devices: devicesRes.data,
+      at: atRes.data,
       testEventCode: testEventCodeRes.data,
     },
   }
@@ -271,14 +304,13 @@ export const validateUpdateConsultation = (
   id: string
   recordId: string
   at?: number
-  device?: Device
+  devices?: Device[]
   note?: string
 }> => {
-  const { id, recordId, at, device, note } = body as {
+  const { id, recordId, at, note } = body as {
     id?: string
     recordId?: string
     at?: number
-    device?: string
     note?: string
   }
 
@@ -291,20 +323,20 @@ export const validateUpdateConsultation = (
   if (at !== undefined && (typeof at !== 'number' || at <= 0)) {
     return { ok: false, error: 'at must be a positive number if provided' }
   }
-  if (device !== undefined && !Device.includes(device as Device)) {
-    return { ok: false, error: `device must be one of: ${Device.join(', ')}` }
+  let devices: Device[] | undefined
+  if (body.devices !== undefined || body.device !== undefined) {
+    const devicesRes = parseDevices(body)
+    if (!devicesRes.ok) return devicesRes
+    devices = devicesRes.data
   }
   if (note !== undefined && typeof note !== 'string') {
     return { ok: false, error: 'note must be a string if provided' }
   }
-  if (at === undefined && device === undefined && note === undefined) {
-    return { ok: false, error: 'at, device, or note must be provided' }
+  if (at === undefined && devices === undefined && note === undefined) {
+    return { ok: false, error: 'at, devices, or note must be provided' }
   }
 
-  return {
-    ok: true,
-    data: { id, recordId, at, device: device as Device | undefined, note },
-  }
+  return { ok: true, data: { id, recordId, at, devices, note } }
 }
 
 export const validateUpdatePurchase = (

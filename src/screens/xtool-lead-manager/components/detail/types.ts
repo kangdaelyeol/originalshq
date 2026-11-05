@@ -10,7 +10,12 @@ import type { EditingField } from '@/screens/xtool-lead-manager/types'
  */
 
 export type IntakeUpdates = { at?: number; device?: Device }
-export type ConsultationUpdates = IntakeUpdates & { note?: string }
+export type ConsultationUpdates = {
+  at?: number
+  /** 상담 기기 전부 — 서버가 그중 예상 금액이 가장 큰 것을 대표 기기로 둔다. */
+  devices?: Device[]
+  note?: string
+}
 export type PurchaseUpdates = IntakeUpdates & { price?: number }
 
 export type UpdateRecord<Updates> = (

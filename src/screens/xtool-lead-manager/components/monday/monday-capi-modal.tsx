@@ -3,6 +3,7 @@ import { useRef, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, Send, X } from 'lucide-react'
 import { Segmented } from '@/components/glass'
 import { Device } from '@/screens/xtool-lead-manager/entity'
+import { DeviceChips } from '../device-chips'
 import type { CreateLeadFormValues } from '@/screens/xtool-lead-manager/types'
 import { useModal } from '@/screens/xtool-lead-manager/hooks/use-modal'
 import {
@@ -85,6 +86,7 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
   const {
     source,
     form,
+    devices,
     leadsStatus,
     match,
     target,
@@ -263,23 +265,36 @@ export const MondayCapiModal = ({ capi }: { capi: MondayCapi }) => {
             <div className="monday_capi_body">
               <p className="monday_capi_label">{event} 이벤트</p>
               <div className="monday_capi_grid">
-                {/* 기본 select — 유리 Select의 목록은 스크롤되는 폼 안에서 잘린다. */}
-                <Row label="기기" htmlFor="monday-capi-device">
-                  <select
-                    id="monday-capi-device"
-                    className="monday_capi_control"
-                    value={form.device}
-                    onChange={(event) =>
-                      actions.updateField('device', event.target.value)
-                    }
-                  >
-                    {Object.values(Device).map((device) => (
-                      <option key={device} value={device}>
-                        {device}
-                      </option>
-                    ))}
-                  </select>
-                </Row>
+                {source.kind === 'consultation' ? (
+                  // 관심 기기를 여러 개 고른 상담 — 서버가 그중 예상 금액이
+                  // 가장 큰 기기의 금액으로 보낸다.
+                  <div className="monday_capi_row monday_capi_row_wide">
+                    <span>기기 · 여럿이면 가장 큰 예상 금액으로 보냅니다</span>
+                    <DeviceChips
+                      value={devices}
+                      onChange={actions.changeDevices}
+                      label="상담 기기"
+                    />
+                  </div>
+                ) : (
+                  // 기본 select — 유리 Select의 목록은 스크롤되는 폼 안에서 잘린다.
+                  <Row label="기기" htmlFor="monday-capi-device">
+                    <select
+                      id="monday-capi-device"
+                      className="monday_capi_control"
+                      value={form.device}
+                      onChange={(event) =>
+                        actions.updateField('device', event.target.value)
+                      }
+                    >
+                      {Object.values(Device).map((device) => (
+                        <option key={device} value={device}>
+                          {device}
+                        </option>
+                      ))}
+                    </select>
+                  </Row>
+                )}
                 <TextRow
                   label={`${kindLabel} 시각`}
                   field="createdAt"

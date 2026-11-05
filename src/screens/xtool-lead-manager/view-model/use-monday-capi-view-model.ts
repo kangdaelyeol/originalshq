@@ -3,12 +3,17 @@ import {
   INITIAL_CREATE_LEAD_FORM,
   type CreateLeadFormValues,
 } from '@/screens/xtool-lead-manager/types'
-import type { Lead, MondayCustomer } from '@/screens/xtool-lead-manager/entity'
+import type {
+  Device,
+  Lead,
+  MondayCustomer,
+} from '@/screens/xtool-lead-manager/entity'
 import { leadClient } from '@/screens/xtool-lead-manager/client'
 import {
   buildMondayCapiForm,
   findLeadByPhone,
   leadRecordRows,
+  mondayConsultationDevices,
   sameDayRecordCount,
   type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
@@ -43,6 +48,8 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
   const [form, setForm] = useState<CreateLeadFormValues>(
     INITIAL_CREATE_LEAD_FORM,
   )
+  // 상담 기기 — 관심 기기를 여러 개 고른 상담이 있어 폼(기기 하나)과 따로.
+  const [devices, setDevices] = useState<Device[]>([])
   const [leads, setLeads] = useState<Lead[]>([])
   const [leadsStatus, setLeadsStatus] = useState<LeadsStatus>('loading')
   const [target, setTarget] = useState<MondayCapiTarget>('existing')
@@ -55,6 +62,11 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
   const open = async (customer: MondayCustomer, next: MondayCapiSource) => {
     setSource(next)
     setForm(buildMondayCapiForm(customer, next))
+    setDevices(
+      next.kind === 'consultation'
+        ? mondayConsultationDevices(next.record)
+        : [],
+    )
     setTarget('existing')
     setError(null)
     setResult(null)
@@ -127,7 +139,7 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
       source.kind === 'consultation'
         ? leadClient.registerConsultation({
             id,
-            device: form.device,
+            devices,
             at,
             ...testEventCode,
           })
@@ -180,6 +192,7 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
     state: {
       source,
       form,
+      devices,
       leadsStatus,
       match,
       target,
@@ -196,6 +209,7 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
       send,
       updateField,
       toggleTest,
+      changeDevices: setDevices,
       changeTestCode: (code: string) =>
         setForm((prev) => ({ ...prev, testEventCode: code })),
       changeTarget: setTarget,

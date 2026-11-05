@@ -41,7 +41,11 @@ export type IntakeRecord = {
 export type ConsultationRecord = {
   id: string
   at: number
+  /** 대표 기기 — devices 중 예상 금액이 가장 큰 것(서버가 정한다). */
   device: Device
+  /** 고른 기기 전부(관심 기기를 여러 개 고른 상담). 예전 기록에는 없다 —
+   * consultationDevices로 읽는다. */
+  devices?: Device[]
   externalId?: string
   eventId?: string
   /** 이 상담 건에 대한 메모 — 나중에 Monday CRM에 쌓인 상담 메모를 이 필드로

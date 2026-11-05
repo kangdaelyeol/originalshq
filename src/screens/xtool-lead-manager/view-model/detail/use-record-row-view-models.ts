@@ -6,6 +6,7 @@ import {
   type PurchaseRecord,
 } from '@/screens/xtool-lead-manager/entity'
 import {
+  consultationDevices,
   fromDatetimeLocalValue,
   toDatetimeLocalValue,
 } from '@/screens/xtool-lead-manager/utils'
@@ -52,21 +53,24 @@ export const useConsultationRowViewModel = (
   record: ConsultationRecord,
   onUpdate: (updates: {
     at?: number
-    device?: Device
+    devices?: Device[]
     note?: string
   }) => Promise<void>,
 ) => {
   const [editing, setEditing] = useState(false)
-  const [device, setDevice] = useState<Device>(record.device)
+  // 관심 기기가 여럿인 상담이 있어 기기는 여러 개 고른다.
+  const [devices, setDevices] = useState<Device[]>(() =>
+    consultationDevices(record),
+  )
   const [at, setAt] = useState(toDatetimeLocalValue(record.at))
   // Monday CRM에서 나중에 이 값을 채워 넣을 예정 — 그 전까지는 수기 입력.
   const [note, setNote] = useState(record.note ?? '')
   const [resendOpen, setResendOpen] = useState(false)
 
   return {
-    state: { editing, device, at, note, resendOpen },
+    state: { editing, devices, at, note, resendOpen },
     actions: {
-      setDevice,
+      setDevices,
       setAt,
       setNote,
       startEdit: () => setEditing(true),
@@ -74,7 +78,7 @@ export const useConsultationRowViewModel = (
       toggleResend: () => setResendOpen((v) => !v),
       closeResend: () => setResendOpen(false),
       save: async () => {
-        await onUpdate({ device, at: fromDatetimeLocalValue(at), note })
+        await onUpdate({ devices, at: fromDatetimeLocalValue(at), note })
         setEditing(false)
       },
     },

@@ -1,8 +1,8 @@
 import * as logger from 'firebase-functions/logger'
 import { onRequest } from 'firebase-functions/https'
 import { ConsultationRecord, Lead, PurchaseRecord } from '../types'
-import { DEVICE_EXPECTED_VALUE, GA4_CONSULTATION_EVENTS } from '../constants'
-import { sendMetaEvent } from '../meta'
+import { GA4_CONSULTATION_EVENTS } from '../constants'
+import { expectedValueOf, sendMetaEvent, topDevice } from '../meta'
 import { sendGa4Event } from '../ga4'
 import { generateEventId, generateExternalId, generateRecordId } from '../utils'
 import {
@@ -38,7 +38,9 @@ export const contactLead = onRequest(
       member: true,
     },
     async ({ response, data }) => {
-      const { id, device, at, testEventCode } = data
+      const { id, devices, at, testEventCode } = data
+      // 기기가 여럿이면 예상 금액이 가장 큰 것이 대표 — 그 금액으로 보낸다.
+      const device = topDevice(devices)
 
       const found = await findLead(response, id)
       if (!found) return
@@ -65,7 +67,7 @@ export const contactLead = onRequest(
         testEventCode,
         customData: {
           currency: 'KRW',
-          value: DEVICE_EXPECTED_VALUE[device],
+          value: expectedValueOf(device),
         },
         eventTimeMs,
         eventId,
@@ -82,6 +84,7 @@ export const contactLead = onRequest(
         id: generateRecordId(),
         at: eventTimeMs,
         device,
+        devices,
         externalId: lead.externalId,
         eventId,
       }
@@ -126,6 +129,7 @@ export const contactLead = onRequest(
         leadId: id,
         recordId: record.id,
         device,
+        devices,
         at: new Date(record.at).toISOString(),
         actionSource: capiResult.actionSource,
         eventId: capiResult.eventId,
@@ -306,7 +310,7 @@ export const updateConsultation = onRequest(
       validate: validateUpdateConsultation,
     },
     async ({ response, data }) => {
-      const { id, recordId, at, device, note } = data
+      const { id, recordId, at, devices, note } = data
 
       const saved = await patchLead(response, id, (lead) => {
         const consultations = lead.consultations ?? []
@@ -317,7 +321,7 @@ export const updateConsultation = onRequest(
               ? {
                   ...c,
                   ...(at !== undefined ? { at } : {}),
-                  ...(device ? { device } : {}),
+                  ...(devices ? { device: topDevice(devices), devices } : {}),
                   ...(note !== undefined ? { note } : {}),
                 }
               : c,
@@ -417,7 +421,7 @@ export const resendConsultation = onRequest(
         testEventCode,
         customData: {
           currency: 'KRW',
-          value: DEVICE_EXPECTED_VALUE[target.device],
+          value: expectedValueOf(target.device),
         },
         eventTimeMs: target.at,
         eventId,

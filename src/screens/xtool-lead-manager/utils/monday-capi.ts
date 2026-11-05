@@ -7,6 +7,7 @@ import {
 } from '../entity'
 import { INITIAL_CREATE_LEAD_FORM, type CreateLeadFormValues } from '../types'
 import { toDatetimeLocalValue } from './format-time'
+import { consultationDevices } from './lead'
 
 /** Monday 고객 상세에서 CAPI로 보낼 수 있는 기록 — 상담(Meta "Contact")과
  * 구매(Meta "Purchase"). */
@@ -55,6 +56,20 @@ export const mondayDevice = (
     if (found) return found[1]
   }
   return Device.ETC
+}
+
+/** 상담 기록의 기기들 — 관심 기기 칸(기타 오프라인 보드의 드롭다운)에 여럿을
+ * 고르면 Monday가 "F2 울트라, P3"처럼 쉼표로 이어 준다. 라벨마다 기기를 찾고
+ * (못 찾으면 "기타"), 칸이 비었으면 보드 이름으로 하나. */
+export const mondayConsultationDevices = (
+  record: MondayConsultation,
+): Device[] => {
+  const labels = (record.product ?? '')
+    .split(',')
+    .map((label) => label.trim())
+    .filter(Boolean)
+  if (labels.length === 0) return [mondayDevice([record.boardName])]
+  return [...new Set(labels.map((label) => mondayDevice([label])))]
 }
 
 /** 기록의 시각(ms) — Monday 날짜 칸은 날짜뿐이라("2026-09-23"), 그날 만들어진
@@ -123,7 +138,8 @@ export const buildMondayCapiForm = (
       utm_campaign: clean(record.utmCampaign),
       fbc: clean(record.fbc),
       fbp: clean(record.fbp),
-      device: mondayDevice([record.product, record.boardName]),
+      // 접수 기기(새 리드로 만들 때) — 상담 기기는 모달이 따로 고른다.
+      device: mondayConsultationDevices(record)[0],
       createdAt: toDatetimeLocalValue(
         mondayEventTime(record.receivedAt, record.createdAt),
       ),
@@ -208,14 +224,20 @@ export const leadRecordRows = (
   const day = Number.isNaN(at) ? null : toDatetimeLocalValue(at).slice(0, 10)
   const row = (
     recordKind: MondayCapiKind,
-    record: { id: string; at: number; device: string; price?: number },
+    record: {
+      id: string
+      at: number
+      device: Device
+      devices?: Device[]
+      price?: number
+    },
   ): LeadRecordRow => {
     const local = toDatetimeLocalValue(record.at)
     return {
       key: `${recordKind}:${record.id}`,
       kind: recordKind,
       at: local.replace('T', ' ').slice(0, 16),
-      device: record.device,
+      device: consultationDevices(record).join(', '),
       price: record.price ?? null,
       sameDay: recordKind === kind && local.slice(0, 10) === day,
     }

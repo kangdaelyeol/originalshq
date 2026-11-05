@@ -1,8 +1,9 @@
+import type { ConsultationRecord } from '@/screens/xtool-lead-manager/entity'
 import {
-  Device,
-  type ConsultationRecord,
-} from '@/screens/xtool-lead-manager/entity'
-import { formatTime } from '@/screens/xtool-lead-manager/utils'
+  consultationDevices,
+  formatTime,
+} from '@/screens/xtool-lead-manager/utils'
+import { DeviceChips } from '../device-chips'
 import { useConsultationRowViewModel } from '@/screens/xtool-lead-manager/view-model/detail'
 import { DeleteIcon, EditIcon, ResendIcon } from './icons'
 import { ResendPanel } from './resend-panel'
@@ -31,9 +32,9 @@ export function ConsultationRow({
   const { state, actions } = useConsultationRowViewModel(record, (updates) =>
     onUpdate(leadId, record.id, updates),
   )
-  const { editing, device, at, note, resendOpen } = state
+  const { editing, devices, at, note, resendOpen } = state
   const {
-    setDevice,
+    setDevices,
     setAt,
     setNote,
     startEdit,
@@ -46,17 +47,7 @@ export function ConsultationRow({
   if (editing) {
     return (
       <div className="record_row editing">
-        <select
-          className="control"
-          value={device}
-          onChange={(e) => setDevice(e.target.value as Device)}
-        >
-          {Object.values(Device).map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
+        <DeviceChips value={devices} onChange={setDevices} label="상담 기기" />
         <input
           className="control"
           type="datetime-local"
@@ -84,7 +75,7 @@ export function ConsultationRow({
   return (
     <div className="record_row_wrap">
       <div className="record_row">
-        <span className="device">{record.device}</span>
+        <span className="device">{consultationDevices(record).join(', ')}</span>
         <span className="at">{formatTime(record.at)}</span>
         <div className="record_actions">
           <button
