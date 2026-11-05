@@ -9,9 +9,10 @@ import { BackgroundCard } from './settings/background-card'
 import { GlassEffectCard } from './settings/glass-effect-card'
 import { LayoutCard } from './settings/layout-card'
 import { ProfilePhotoCard } from './settings/profile-photo-card'
+import { VersionCard } from './settings/version-card'
 
 /**
- * 설정 — 프로필 사진·레이아웃 카드, 대시보드면 배경·강조색·유리 효과 카드까지(카드는 pages/settings/). 카드의
+ * 설정 — 프로필 사진·레이아웃 카드, 유리 디자인이면 배경·강조색·유리 효과 카드, 맨 아래 버전 정보(카드는 pages/settings/). 카드의
  * 부품(GlassCard·Button·Avatar)은 components/layout-parts에서 받아 물 레이아웃이면 물 부품으로 바뀐다.
  */
 export function SettingsPage() {
@@ -52,6 +53,8 @@ export function SettingsPage() {
           <GlassEffectCard photoUrl={sharedUrl} />
         </>
       )}
+
+      <VersionCard />
     </>
   )
 }
