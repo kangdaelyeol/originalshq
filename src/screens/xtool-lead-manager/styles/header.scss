@@ -1,4 +1,5 @@
 @use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
 @use './variables.scss';
 
 // 맨 위 줄 — 틀(위에 붙음·배경 빛·[로고 | 탭 | 오른쪽])은 GlassHeader가 그리고,
@@ -21,6 +22,39 @@
   }
   .xtool-logo {
     height: 26px;
+  }
+
+  // 로그인한 사람 — 이름 두 글자 동그라미 + 로그아웃 알약(테마 고르기와 같은 높이).
+  .xtool-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .xtool-account__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: $fill-2;
+    color: $text;
+    font-size: 12px;
+    font-weight: 600;
+    user-select: none;
+  }
+  .xtool-account__signout {
+    @include glass.pill-button;
+    height: 32px;
+    padding: 0 12px;
+    font-size: 12.5px;
+    font-family: inherit;
+    color: $text-2;
+    cursor: pointer;
+
+    &:hover {
+      color: $text;
+    }
   }
 
   // 회사 로고 — 바탕 없이.

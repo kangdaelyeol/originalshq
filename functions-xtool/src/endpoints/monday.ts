@@ -47,7 +47,7 @@ const MONDAY_SYNC_MEMORY = '1GiB'
 // ────────────────────────────────
 export const listMondayBoards = onRequest(
   endpoint(
-    { name: 'listMondayBoards', method: 'GET' },
+    { name: 'listMondayBoards', method: 'GET', admin: true },
     async ({ response }) => {
       const boards = await listBoards(db)
       response.status(200).send({ boards, count: boards.length })
@@ -65,6 +65,7 @@ export const previewMondayBoard = onRequest(
   endpoint(
     {
       name: 'previewMondayBoard',
+      admin: true,
       method: 'GET',
       onError: (error, response) => {
         // 확인용 엔드포인트라 원인(보드 id 오타, 권한, GraphQL 오류)을 그대로
@@ -110,6 +111,7 @@ export const listMondayWorkspaceBoards = onRequest(
   endpoint(
     {
       name: 'listMondayWorkspaceBoards',
+      admin: true,
       method: 'GET',
       onError: (error, response) => {
         response.status(502).send({
@@ -164,6 +166,7 @@ export const registerMondayBoard = onRequest(
   endpoint(
     {
       name: 'registerMondayBoard',
+      admin: true,
       method: 'POST',
       validate: validateRegisterMondayBoard,
     },
@@ -198,6 +201,7 @@ export const removeMondayBoard = onRequest(
   endpoint(
     {
       name: 'removeMondayBoard',
+      admin: true,
       method: 'POST',
       validate: validateRemoveMondayBoard,
     },
@@ -218,7 +222,7 @@ export const removeMondayBoard = onRequest(
 export const rebuildMondayCustomers = onRequest(
   { timeoutSeconds: 300, memory: MONDAY_SYNC_MEMORY },
   endpoint(
-    { name: 'rebuildMondayCustomers', method: 'POST' },
+    { name: 'rebuildMondayCustomers', method: 'POST', admin: true },
     async ({ response }) => {
       response.status(200).send(await rebuildCustomers(db))
     },
@@ -235,7 +239,7 @@ export const syncMondayBoards = onRequest(
     memory: MONDAY_SYNC_MEMORY,
   },
   endpoint(
-    { name: 'syncMondayBoards', method: 'POST' },
+    { name: 'syncMondayBoards', method: 'POST', admin: true },
     async ({ request, response }) => {
       const validationRes = validateSyncMondayBoards(request.body ?? {})
       if (!validationRes.ok) {
@@ -259,7 +263,7 @@ export const syncMondayBoards = onRequest(
 export const listMondayCustomers = onRequest(
   { memory: '512MiB' },
   endpoint(
-    { name: 'listMondayCustomers', method: 'GET' },
+    { name: 'listMondayCustomers', method: 'GET', member: true },
     async ({ response }) => {
       const customers = await listCustomerSummaries(db)
       response.status(200).send({ customers, count: customers.length })
@@ -272,7 +276,7 @@ export const listMondayCustomers = onRequest(
 // ────────────────────────────────
 export const getMondayCustomer = onRequest(
   endpoint(
-    { name: 'getMondayCustomer', method: 'GET' },
+    { name: 'getMondayCustomer', method: 'GET', member: true },
     async ({ request, response }) => {
       const phone = String(request.query.phone ?? '').replace(/\D/g, '')
       if (!phone) {
@@ -296,7 +300,7 @@ export const getMondayCustomer = onRequest(
 // ────────────────────────────────
 export const listMondayMissingPhoneItems = onRequest(
   endpoint(
-    { name: 'listMondayMissingPhoneItems', method: 'GET' },
+    { name: 'listMondayMissingPhoneItems', method: 'GET', member: true },
     async ({ response }) => {
       const items = await listMissingPhoneItems(db)
       response.status(200).send({ items, count: items.length })
@@ -310,7 +314,7 @@ export const listMondayMissingPhoneItems = onRequest(
 // ────────────────────────────────
 export const listMondayPaymentIssues = onRequest(
   endpoint(
-    { name: 'listMondayPaymentIssues', method: 'GET' },
+    { name: 'listMondayPaymentIssues', method: 'GET', member: true },
     async ({ response }) => {
       const issues = await listPaymentIssues(db)
       response.status(200).send({ issues, count: issues.length })
@@ -324,7 +328,7 @@ export const listMondayPaymentIssues = onRequest(
 // ────────────────────────────────
 export const getMondayDailyInflow = onRequest(
   endpoint(
-    { name: 'getMondayDailyInflow', method: 'GET' },
+    { name: 'getMondayDailyInflow', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getDailyInflow(db))
     },
@@ -337,7 +341,7 @@ export const getMondayDailyInflow = onRequest(
 // ────────────────────────────────
 export const getMondayDailySales = onRequest(
   endpoint(
-    { name: 'getMondayDailySales', method: 'GET' },
+    { name: 'getMondayDailySales', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getDailySales(db))
     },
@@ -350,7 +354,7 @@ export const getMondayDailySales = onRequest(
 // ────────────────────────────────
 export const getMondayFollowUps = onRequest(
   endpoint(
-    { name: 'getMondayFollowUps', method: 'GET' },
+    { name: 'getMondayFollowUps', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getFollowUps(db))
     },
@@ -363,7 +367,7 @@ export const getMondayFollowUps = onRequest(
 export const getMondayKpiFacts = onRequest(
   { memory: '512MiB' },
   endpoint(
-    { name: 'getMondayKpiFacts', method: 'GET' },
+    { name: 'getMondayKpiFacts', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getKpiFacts(db))
     },
@@ -381,6 +385,7 @@ export const getMondayItemUpdates = onRequest(
   endpoint(
     {
       name: 'getMondayItemUpdates',
+      member: true,
       method: 'GET',
       onError: (error, response) => {
         response.status(502).send({
@@ -412,7 +417,7 @@ export const getMondayItemUpdates = onRequest(
 // ────────────────────────────────
 export const getMondayTechFacts = onRequest(
   endpoint(
-    { name: 'getMondayTechFacts', method: 'GET' },
+    { name: 'getMondayTechFacts', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getTechFacts(db))
     },
@@ -425,7 +430,7 @@ export const getMondayTechFacts = onRequest(
 // ────────────────────────────────
 export const getMondayRepeatRevenue = onRequest(
   endpoint(
-    { name: 'getMondayRepeatRevenue', method: 'GET' },
+    { name: 'getMondayRepeatRevenue', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getDailyRepeatRevenue(db))
     },
@@ -440,7 +445,7 @@ export const getMondayRepeatRevenue = onRequest(
 export const getMondayAttribution = onRequest(
   { memory: '512MiB' },
   endpoint(
-    { name: 'getMondayAttribution', method: 'GET' },
+    { name: 'getMondayAttribution', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getAttributionRows(db))
     },
@@ -455,7 +460,7 @@ export const getMondayAttribution = onRequest(
 export const getMondayGaTracking = onRequest(
   { memory: '512MiB' },
   endpoint(
-    { name: 'getMondayGaTracking', method: 'GET' },
+    { name: 'getMondayGaTracking', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await readGaTracking(db))
     },
@@ -471,6 +476,7 @@ export const syncMondayGaEvents = onRequest(
   endpoint(
     {
       name: 'syncMondayGaEvents',
+      member: true,
       method: 'POST',
       onError: async (error, response) => {
         await saveGaSyncError(db, error)

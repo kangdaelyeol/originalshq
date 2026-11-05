@@ -1,3 +1,4 @@
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import { API_BASE } from '../constants'
 
 export type ClientResponse<T> =
@@ -15,7 +16,8 @@ export type ClientResponse<T> =
 
 /**
  * xtool Functions 호출 하나 — 모든 client가 이걸 쓴다. body를 주면 JSON
- * POST, 없으면 GET(method로 바꿀 수 있다).
+ * POST, 없으면 GET(method로 바꿀 수 있다). 로그인한 사람의 토큰을 붙인다 —
+ * 서버가 등록된 구성원인지 확인한다(functions-xtool admin-auth.ts checkMember).
  *
  * 실패는 던지지 않고 { ok: false, error }로 돌려준다. error는 항상
  * 문자열이다 — 서버가 보낸 { error: '...' }가 있으면 그 문구, 없으면
@@ -30,7 +32,7 @@ export const request = async <T>(
   const { body } = options
   const method = options.method ?? (body ? 'POST' : 'GET')
   try {
-    const response = await fetch(`${API_BASE}/${endpoint}`, {
+    const response = await authFetch(`${API_BASE}/${endpoint}`, {
       method,
       ...(body
         ? {

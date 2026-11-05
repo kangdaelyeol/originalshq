@@ -9,6 +9,7 @@ import {
   PAGE_TABS,
   type PageTab,
 } from '@/screens/xtool-lead-manager/view-model/use-page-tab-view-model'
+import { initialsOf } from '@/xtool-auth/use-xtool-session'
 
 // 최상위 탭 이름 — Segmented가 받는 { id: 이름 } 모양.
 const TAB_LABEL = Object.fromEntries(
@@ -16,18 +17,23 @@ const TAB_LABEL = Object.fromEntries(
 ) as Record<PageTab, string>
 
 /** 화면 맨 위 줄 — 로고, 가운데 최상위 탭(유리 알약 — 탭을 바꾸면 알약이
- * 미끄러져 간다), 오른쪽 테마 고르기와 회사 로고. 어느 탭이 열려 있는지는 부모
- * (pages/xtool-page)가 넘겨준다. */
+ * 미끄러져 간다), 오른쪽 로그인한 사람·테마 고르기와 회사 로고. 어느 탭이 열려
+ * 있는지는 부모(pages/xtool-page)가 넘겨준다. */
 export const Header = ({
   tab,
   onSelectTab,
   theme,
   onSelectTheme,
+  account,
+  onSignOut,
 }: {
   tab: PageTab
   onSelectTab: (tab: PageTab) => void
   theme: GlassThemeId
   onSelectTheme: (theme: GlassThemeId) => void
+  /** 로그인한 구성원 — 이름 두 글자와 로그아웃. */
+  account: { name: string; email: string }
+  onSignOut: () => void
 }) => {
   return (
     <GlassHeader
@@ -55,6 +61,18 @@ export const Header = ({
       }
       end={
         <>
+          <div className="xtool-account" title={account.email}>
+            <span className="xtool-account__avatar" aria-hidden="true">
+              {initialsOf(account.name, account.email)}
+            </span>
+            <button
+              type="button"
+              className="xtool-account__signout"
+              onClick={onSignOut}
+            >
+              로그아웃
+            </button>
+          </div>
           <ThemePicker value={theme} onChange={onSelectTheme} />
           <div className="enterprise-logo-badge">
             <img

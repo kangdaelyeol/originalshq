@@ -1,10 +1,11 @@
-// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 관리자 확인(401·403),
-// 입력 검사(400), 실패 시 로그 + 500. 각 엔드포인트는 본 처리만 쓴다.
+// HTTP 함수의 공통 껍데기 — CORS, 허용 메서드 확인(405), 로그인 확인(관리자·
+// 구성원, 401·403), 입력 검사(400), 실패 시 로그 + 500. 각 엔드포인트는 본 처리만
+// 쓴다.
 import cors from 'cors'
 import type { Response } from 'express'
 import * as logger from 'firebase-functions/logger'
 import type { Request } from 'firebase-functions/https'
-import { checkAdmin } from './admin-auth'
+import { checkAdmin, checkMember } from './admin-auth'
 import { db } from './app'
 import { traceRun } from './cost-trace'
 import { ValidationResponse } from './types'
@@ -22,6 +23,9 @@ interface EndpointOptions<T> {
    * 관리자여야 한다(admin-auth.ts). 토큰이 없거나 만료면 401, 관리자가
    * 아니면 403. */
   admin?: boolean
+  /** 가입한 사람 누구나(관리자가 아니어도 — 리드 관리자) — 토큰이 등록된 활성
+   * 구성원이어야 한다(admin-auth.ts checkMember). admin과 같이 쓰지 않는다. */
+  member?: boolean
   /** request.body 검사 — 실패하면 400 { error }, 통과하면 data로 넘긴다. */
   validate?: (body: Record<string, unknown>) => ValidationResponse<T>
   /** 실패 로그 문구를 바꿀 때만(기본 "<name> 처리 실패:"). */
@@ -47,6 +51,8 @@ export const endpoint =
       request: Request
       response: Response
       data: T
+      /** 로그인을 확인한 함수(admin·member)에서 부른 사람 — 그 밖은 null. */
+      viewer: { email: string; isAdmin: boolean } | null
     }) => Promise<void>,
   ) =>
   (request: Request, response: Response): void =>
@@ -75,12 +81,21 @@ export const endpoint =
               return
             }
 
+            let viewer: { email: string; isAdmin: boolean } | null = null
             if (options.admin) {
               const access = await checkAdmin(request)
               if (!access.ok) {
                 response.status(access.status).send({ error: access.error })
                 return
               }
+              viewer = { email: access.email, isAdmin: true }
+            } else if (options.member) {
+              const access = await checkMember(request)
+              if (!access.ok) {
+                response.status(access.status).send({ error: access.error })
+                return
+              }
+              viewer = { email: access.email, isAdmin: access.isAdmin }
             }
 
             let data = undefined as T
@@ -93,7 +108,7 @@ export const endpoint =
               data = validationRes.data
             }
 
-            await run({ request, response, data })
+            await run({ request, response, data, viewer })
           } catch (error) {
             failure = error
             logger.error(

@@ -30,7 +30,12 @@ import { endpoint, findLead } from '../http'
 export const contactLead = onRequest(
   { secrets: [metaPixelId, metaAccessToken, ga4MeasurementId, ga4ApiSecret] },
   endpoint(
-    { name: 'contactLead', method: 'POST', validate: validateContactLead },
+    {
+      name: 'contactLead',
+      method: 'POST',
+      validate: validateContactLead,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, device, at, testEventCode } = data
 
@@ -145,7 +150,12 @@ export const contactLead = onRequest(
 export const purchaseLead = onRequest(
   { secrets: [metaPixelId, metaAccessToken] },
   endpoint(
-    { name: 'purchaseLead', method: 'POST', validate: validatePurchaseLead },
+    {
+      name: 'purchaseLead',
+      method: 'POST',
+      validate: validatePurchaseLead,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, device, price, at, testEventCode } = data
 
@@ -224,7 +234,12 @@ export const purchaseLead = onRequest(
 // ────────────────────────────────
 export const updateIntake = onRequest(
   endpoint(
-    { name: 'updateIntake', method: 'POST', validate: validateUpdateIntake },
+    {
+      name: 'updateIntake',
+      method: 'POST',
+      validate: validateUpdateIntake,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, recordId, at, device } = data
 
@@ -259,7 +274,12 @@ export const updateIntake = onRequest(
 
 export const deleteIntake = onRequest(
   endpoint(
-    { name: 'deleteIntake', method: 'POST', validate: validateDeleteRecord },
+    {
+      name: 'deleteIntake',
+      method: 'POST',
+      validate: validateDeleteRecord,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, recordId } = data
 
@@ -286,6 +306,7 @@ export const updateConsultation = onRequest(
   endpoint(
     {
       name: 'updateConsultation',
+      member: true,
       method: 'POST',
       validate: validateUpdateConsultation,
     },
@@ -326,6 +347,7 @@ export const deleteConsultation = onRequest(
   endpoint(
     {
       name: 'deleteConsultation',
+      member: true,
       method: 'POST',
       validate: validateDeleteRecord,
     },
@@ -362,6 +384,7 @@ export const resendConsultation = onRequest(
   endpoint(
     {
       name: 'resendConsultation',
+      member: true,
       method: 'POST',
       validate: validateResendRecord,
     },
@@ -456,6 +479,7 @@ export const updatePurchase = onRequest(
   endpoint(
     {
       name: 'updatePurchase',
+      member: true,
       method: 'POST',
       validate: validateUpdatePurchase,
     },
@@ -494,7 +518,12 @@ export const updatePurchase = onRequest(
 
 export const deletePurchase = onRequest(
   endpoint(
-    { name: 'deletePurchase', method: 'POST', validate: validateDeleteRecord },
+    {
+      name: 'deletePurchase',
+      method: 'POST',
+      validate: validateDeleteRecord,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, recordId } = data
 
@@ -520,7 +549,12 @@ export const deletePurchase = onRequest(
 export const resendPurchase = onRequest(
   { secrets: [metaPixelId, metaAccessToken] },
   endpoint(
-    { name: 'resendPurchase', method: 'POST', validate: validateResendRecord },
+    {
+      name: 'resendPurchase',
+      method: 'POST',
+      validate: validateResendRecord,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, recordId, testEventCode } = data
 

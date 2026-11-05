@@ -1,8 +1,8 @@
 import type { User } from 'firebase/auth'
 import { getMember, type TeamKey, type XtoolMember } from './members'
 
-/** 들어가려는 곳 — 팀 페이지 하나 또는 관리자 화면. */
-export type AccessTarget = TeamKey | 'admin'
+/** 들어가려는 곳 — 팀 페이지 하나, 관리자 화면, 또는 가입한 사람 누구나(member — 리드 관리자처럼 팀·관리자와 상관없이). */
+export type AccessTarget = TeamKey | 'admin' | 'member'
 
 export type DeniedReason = 'not-registered' | 'disabled' | 'no-access' | 'unverified' | 'password-setup'
 
@@ -25,8 +25,8 @@ export async function checkAccess(user: User, target: AccessTarget): Promise<Acc
   const member = await getMember(user.email)
   if (!member) return { ok: false, reason: 'not-registered' }
   if (member.status !== 'active') return { ok: false, reason: 'disabled' }
-  // 관리자는 팀 페이지 모두에 들어간다(규칙·함수도 관리자를 허용한다).
-  const allowed = member.isAdmin || (target !== 'admin' && member.teams[target] === true)
+  // 관리자는 팀 페이지 모두에 들어간다(규칙·함수도 관리자를 허용한다). member는 활성 구성원이면 누구나.
+  const allowed = member.isAdmin || target === 'member' || (target !== 'admin' && member.teams[target] === true)
   if (!allowed) return { ok: false, reason: 'no-access' }
   // 관리자가 발급한 임시 비밀번호로 들어왔으면 자기 비밀번호부터 — 그동안은 규칙이 데이터를 막는다.
   if (member.mustChangePassword) return { ok: false, reason: 'password-setup' }

@@ -10,7 +10,6 @@ import {
   submitInquiry as processInquiry,
   validateInquiry,
 } from '../inquiry'
-import { checkAdmin } from '../admin-auth'
 import { db, mondayApiKey, solapiApiKey, solapiApiSecret } from '../app'
 import { endpoint, parseSince } from '../http'
 
@@ -64,12 +63,12 @@ export const submitInquiry = onRequest(
 // (incremental: true). 저장 시각과 실제 쓰기 사이의 틈을 덮으려고 2분 앞부터.
 // 지운 문의는 여기로 알 수 없어서 화면이 10분마다 기간 전체를 다시 받는다.
 //
-// 전부 주는 건 관리자 토큰을 보낸 /log뿐이다. 로그인 없이 부르는 xtool-lead-
-// manager("오늘 웹 문의" — 기기별로 세기만 한다)에는 summaryOf의 칸만 준다.
+// 로그인한 구성원만 — 전부 주는 건 관리자(/log)뿐이고, 관리자가 아닌 리드
+// 관리자("오늘 웹 문의" — 기기별로 세기만 한다)에는 summaryOf의 칸만 준다.
 const INQUIRY_OVERLAP_MS = 2 * 60_000
 const MAX_UPDATED_INQUIRIES = 500
 
-// 로그인 없는 쪽에 주는 칸 — 연락처·IP·광고 식별값·문의 내용·문자 본문은 뺀다.
+// 관리자가 아닌 쪽에 주는 칸 — 연락처·IP·광고 식별값·문의 내용·문자 본문은 뺀다.
 // 이름·회사명은 테스트 신청을 거르는 데 쓴다(lead-manager isTest).
 const summaryOf = (inquiry: Inquiry) => ({
   id: inquiry.id,
@@ -84,9 +83,10 @@ const summaryOf = (inquiry: Inquiry) => ({
 
 export const listInquiryLogs = onRequest(
   endpoint(
-    { name: 'listInquiryLogs', method: 'GET' },
-    async ({ request, response }) => {
-      const full = (await checkAdmin(request)).ok
+    { name: 'listInquiryLogs', method: 'GET', member: true },
+    async ({ request, response, viewer }) => {
+      // 전부는 관리자(/log)만 — 리드 관리자(가입한 사람)에게는 요약만.
+      const full = viewer?.isAdmin === true
       const days = Math.min(Math.max(Number(request.query.days) || 7, 1), 90)
       const now = Date.now()
       const windowStart = now - days * 86_400_000

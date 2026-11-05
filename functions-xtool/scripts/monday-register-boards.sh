@@ -6,10 +6,48 @@
 #
 #   bash scripts/monday-register-boards.sh
 #
+# 보드 등록은 관리자만 할 수 있다 — 실행하면 xtool 관리자 이메일·비밀번호를 묻고
+# 그 계정으로 로그인해 받은 토큰을 붙여 보낸다(비밀번호 계정만 — Google로만 쓰는
+# 관리자는 XTOOL_ID_TOKEN에 토큰을 넣어 실행한다).
+#
 # 보드를 더하거나 빼려면 아래 목록을 고친다. 빼는 것은 removeMondayBoard.
 set -u
 
 API_BASE="${API_BASE:-https://us-central1-xtool-63b29.cloudfunctions.net}"
+# 웹 앱 설정(비밀 값이 아니다 — 화면 코드에도 들어 있다)의 apiKey로 로그인한다.
+CONFIG="$(dirname "$0")/../../src/xtool-auth/firebase-config.ts"
+
+if [ -z "${XTOOL_ID_TOKEN:-}" ]; then
+  read -r -p '관리자 이메일: ' ADMIN_EMAIL
+  read -r -s -p '비밀번호: ' ADMIN_PASSWORD
+  echo
+  API_KEY="$(sed -n "s/.*apiKey: *['\"]\([^'\"]*\)['\"].*/\1/p" "$CONFIG")"
+  export ADMIN_EMAIL ADMIN_PASSWORD API_KEY
+  XTOOL_ID_TOKEN="$(node -e '
+    fetch(
+      "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" +
+        process.env.API_KEY,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: process.env.ADMIN_EMAIL.trim().toLowerCase(),
+          password: process.env.ADMIN_PASSWORD,
+          returnSecureToken: true,
+        }),
+      },
+    )
+      .then((res) => res.json())
+      .then((body) => {
+        if (!body.idToken) {
+          console.error("로그인 실패:", body.error?.message ?? "알 수 없는 오류")
+          process.exit(1)
+        }
+        process.stdout.write(body.idToken)
+      })
+  ')" || exit 1
+  unset ADMIN_PASSWORD
+fi
 
 BOARDS=(
   "5031196508  F2"
@@ -39,6 +77,7 @@ for entry in "${BOARDS[@]}"; do
   # 응답에서 마지막 동기화 결과(lastSync)만 보여준다.
   curl -sS -X POST "$API_BASE/registerMondayBoard" \
     -H 'Content-Type: application/json' \
+    -H "Authorization: Bearer $XTOOL_ID_TOKEN" \
     -d "{\"boardId\":\"$board_id\"}" |
     node -e '
       let body = ""

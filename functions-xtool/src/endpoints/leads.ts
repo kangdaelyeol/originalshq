@@ -29,7 +29,7 @@ import { endpoint, findLead } from '../http'
 // ────────────────────────────────
 export const listLeads = onRequest(
   endpoint(
-    { name: 'listLeads', method: 'GET' },
+    { name: 'listLeads', method: 'GET', member: true },
     async ({ response }) => {
       // createdAt은 더 이상 리드 최상위 필드가 아니라(intakes 배열로 옮김)
       // orderBy 대상으로 못 쓴다 — Firestore는 orderBy 필드가 없는 문서를
@@ -54,6 +54,7 @@ export const createLead = onRequest(
   endpoint(
     {
       name: 'createLead',
+      member: true,
       method: 'POST',
       validate: validateCreateLead,
       logLabel: '리드 생성 실패:',
@@ -168,6 +169,7 @@ export const updateLeadPhone = onRequest(
   endpoint(
     {
       name: 'updateLeadPhone',
+      member: true,
       method: 'POST',
       validate: valiedateUpdateLeadPhone,
     },
@@ -195,7 +197,12 @@ export const updateLeadPhone = onRequest(
 // ────────────────────────────────
 export const updateLeadFn = onRequest(
   endpoint(
-    { name: 'updateLeadFn', method: 'POST', validate: validateUpdateLeadFn },
+    {
+      name: 'updateLeadFn',
+      method: 'POST',
+      validate: validateUpdateLeadFn,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, fn } = data
 
@@ -217,7 +224,12 @@ export const updateLeadFn = onRequest(
 // ────────────────────────────────
 export const updateLeadEm = onRequest(
   endpoint(
-    { name: 'updateLeadEm', method: 'POST', validate: validateUpdateLeadEm },
+    {
+      name: 'updateLeadEm',
+      method: 'POST',
+      validate: validateUpdateLeadEm,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id, em } = data
 
@@ -239,6 +251,7 @@ export const updateLeadRemarks = onRequest(
   endpoint(
     {
       name: 'updateLeadRemarks',
+      member: true,
       method: 'POST',
       validate: validateUpdateLeadRemarks,
     },
@@ -266,6 +279,7 @@ export const updateLeadTrackingField = onRequest(
   endpoint(
     {
       name: 'updateLeadTrackingField',
+      member: true,
       method: 'POST',
       validate: validateUpdateLeadTrackingField,
     },
@@ -288,7 +302,12 @@ export const updateLeadTrackingField = onRequest(
 // ────────────────────────────────
 export const deleteLead = onRequest(
   endpoint(
-    { name: 'deleteLead', method: 'POST', validate: validateDeleteLead },
+    {
+      name: 'deleteLead',
+      method: 'POST',
+      validate: validateDeleteLead,
+      member: true,
+    },
     async ({ response, data }) => {
       const { id } = data
 
@@ -321,7 +340,7 @@ export const deleteLead = onRequest(
 // ────────────────────────────────
 export const migrateLeadsToArrays = onRequest(
   endpoint(
-    { name: 'migrateLeadsToArrays', method: 'GET' },
+    { name: 'migrateLeadsToArrays', method: 'GET', admin: true },
     async ({ response }) => {
       const snapshot = await db.collection('lead').get()
       let migrated = 0
@@ -397,7 +416,7 @@ export const migrateLeadsToArrays = onRequest(
 // ────────────────────────────────
 export const migrateLeadsToIntakes = onRequest(
   endpoint(
-    { name: 'migrateLeadsToIntakes', method: 'GET' },
+    { name: 'migrateLeadsToIntakes', method: 'GET', admin: true },
     async ({ response }) => {
       const snapshot = await db.collection('lead').get()
       let migrated = 0

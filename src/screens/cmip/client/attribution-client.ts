@@ -5,6 +5,7 @@
  * 기여 ROAS"(하한)와 "고객 유입 월 코호트 ROAS"가 광고비와 맞춰 계산한다.
  */
 import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
@@ -29,7 +30,8 @@ export type AttributionRow = [
 ]
 
 export async function getAttribution(): Promise<AttributionRow[]> {
-  const res = await fetch(`${API_BASE}/getMondayAttribution`)
+  // xtool 함수가 로그인한 구성원인지 확인한다 — 토큰을 붙인다.
+  const res = await authFetch(`${API_BASE}/getMondayAttribution`)
 
   let body: unknown
   try {

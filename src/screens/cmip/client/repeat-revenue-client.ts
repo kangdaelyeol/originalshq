@@ -8,6 +8,7 @@
  * 서버는 전체 기간을 한 번에 주므로 조회 기간으로 거르는 것은 여기서 한다.
  */
 import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { authFetch } from '@/xtool-auth/auth-fetch'
 import type { ISODate } from '../types'
 import { CallableError } from './csv-client'
 
@@ -27,7 +28,8 @@ export async function getRepeatRevenue(
   dateStart: ISODate,
   dateEnd: ISODate,
 ): Promise<RepeatRevenueByDate> {
-  const res = await fetch(`${API_BASE}/getMondayRepeatRevenue`)
+  // xtool 함수가 로그인한 구성원인지 확인한다 — 토큰을 붙인다.
+  const res = await authFetch(`${API_BASE}/getMondayRepeatRevenue`)
 
   let body: unknown
   try {
