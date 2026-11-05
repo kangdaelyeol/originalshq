@@ -50,8 +50,11 @@ const GA_LOOKBACK_DAYS = 30
 // 이미 있는 id를 다시 읽는 날 수(오늘 포함).
 const REFRESH_DAYS = 3
 // 한 사람의 이벤트를 문서 하나에 담는 상한 — 문서 한도(1MB) 안에 들도록
-// 최근 것만 남긴다.
+// 최근 것만 남긴다. 건수만으로는 모자라다: 페이지 주소가 긴 사람은 3,000건이
+// 1.1MB가 돼 저장이 매번 실패했다(11/5). 그래서 크기로도 자른다 — JSON 글자
+// 크기는 Firestore가 세는 크기보다 크거나 같아서 그대로 상한으로 쓴다.
 const MAX_EVENTS_PER_CLIENT = 3000
+const MAX_EVENT_BYTES_PER_CLIENT = 900_000
 
 const DAY_MS = 86_400_000
 const KST_MS = 9 * 3_600_000
@@ -83,6 +86,8 @@ export interface GaSyncResult {
   /** 이번에 저장한 문서(id) 수와 그 안의 이벤트 수. */
   writtenDocs: number
   storedEvents: number
+  /** 저장에 실패한 문서 수 — 없으면 빠진다. */
+  failedDocs?: number
   bytesProcessed: number
   /** 다시 읽은 최근 날짜 범위(YYYYMMDD). */
   refreshFrom: string
@@ -105,14 +110,24 @@ const group = (events: Ga4Event[]): Map<string, Ga4Event[]> => {
 
 /** 중복을 빼고 시간순으로. 같은 밀리초에 찍힌 이벤트는 키로 순서를 정한다 —
  * 그러지 않으면 조회할 때마다 순서가 달라져, 바뀐 게 없는데도 다시 쓰게
- * 된다(10/22 확인). */
+ * 된다(10/22 확인). 건수·크기 상한을 넘으면 오래된 것부터 뺀다. */
 const finish = (events: Ga4Event[]): Ga4Event[] => {
   const unique = new Map(events.map((event) => [eventKey(event), event]))
-  return [...unique.values()]
+  const sorted = [...unique.values()]
     .sort(
       (a, b) => a.at - b.at || eventKey(a).localeCompare(eventKey(b)),
     )
     .slice(-MAX_EVENTS_PER_CLIENT)
+  // 최근 것부터 크기를 더해 상한을 넘기 직전까지만 남긴다.
+  let bytes = 0
+  let start = sorted.length
+  while (start > 0) {
+    const size = Buffer.byteLength(JSON.stringify(sorted[start - 1]))
+    if (bytes + size > MAX_EVENT_BYTES_PER_CLIENT) break
+    bytes += size
+    start -= 1
+  }
+  return sorted.slice(start)
 }
 
 export async function syncGaEvents(
@@ -195,18 +210,25 @@ export async function syncGaEvents(
     }
   }
 
+  // 한 문서가 실패해도 나머지는 쓴다 — 실패는 id마다 한 번 남기고 결과
+  // 숫자에서 뺀다(잡지 않으면 끝난 뒤 처리 안 된 오류로 수십 줄이 찍힌다).
   const writer = db.bulkWriter()
-  for (const [id, doc] of toWrite) writer.set(collection.doc(id), doc)
+  const failed = new Set<string>()
+  for (const [id, doc] of toWrite) {
+    writer.set(collection.doc(id), doc).catch((error) => {
+      failed.add(id)
+      logger.error(`GA 이벤트 저장 실패(${id}):`, error)
+    })
+  }
   await writer.close()
+  const written = [...toWrite].filter(([id]) => !failed.has(id))
 
   const result: GaSyncResult = {
     clientIds: clientIds.length,
     newClientIds: newIds.length,
-    writtenDocs: toWrite.size,
-    storedEvents: [...toWrite.values()].reduce(
-      (sum, doc) => sum + doc.events.length,
-      0,
-    ),
+    writtenDocs: written.length,
+    storedEvents: written.reduce((sum, [, doc]) => sum + doc.events.length, 0),
+    ...(failed.size > 0 ? { failedDocs: failed.size } : {}),
     bytesProcessed,
     refreshFrom,
     refreshTo: today,
