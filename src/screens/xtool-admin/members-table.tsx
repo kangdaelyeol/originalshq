@@ -43,13 +43,9 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
 
   useEffect(
     () =>
-      watchMembers(
-        (next) => {
-          setMembers(next)
-          setError(null)
-        },
-        (e) => setError(firestoreErrorMessage(e)),
-      ),
+      // 목록이 바뀌어도 오류는 지우지 않는다 — 규칙에 막힌 쓰기는 되돌리는 스냅샷이 바로 따라와서, 여기서
+      // 지우면 실패 문구가 보이자마자 사라진다(오류는 다음 작업을 시작할 때 run이 지운다).
+      watchMembers(setMembers, (e) => setError(firestoreErrorMessage(e))),
     [],
   )
 
