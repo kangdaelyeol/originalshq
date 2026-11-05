@@ -3,6 +3,7 @@ import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { uploadSharedBackground, useSharedBackgrounds, useSharedBackgroundUrl } from '../data/tech-backgrounds'
 import { pushToast } from '../data/tech-save-queue'
 import { errorText } from '../lib/error-text'
+import { useLayoutKind } from '../lib/layout-kind'
 import { AccentCard } from './settings/accent-card'
 import { BackgroundCard } from './settings/background-card'
 import { GlassEffectCard } from './settings/glass-effect-card'
@@ -14,7 +15,8 @@ import { ProfilePhotoCard } from './settings/profile-photo-card'
  * 부품(GlassCard·Button·Avatar)은 components/layout-parts에서 받아 물 레이아웃이면 물 부품으로 바뀐다.
  */
 export function SettingsPage() {
-  const { theme, background, sharedBackgroundId, setSharedBackground } = useAppearance()
+  const { background, sharedBackgroundId, setSharedBackground } = useAppearance()
+  const { design } = useLayoutKind()
   // 공유 사진 목록·고른 공유 사진은 화면이 받는다 — 배경·유리 카드는 대시보드에서만 그리지만 Monday 표·물에서도
   // 미리 받아 두어, 대시보드로 바꾸면 바로 보이게
   const shared = useSharedBackgrounds()
@@ -33,15 +35,15 @@ export function SettingsPage() {
       .finally(() => setUploading(false))
   }
 
-  const monday = theme === 'monday'
-  const water = theme === 'water'
+  // 배경·강조색·유리 효과는 유리 디자인에서만 쓴다(물·Monday는 자기 판 색)
+  const glass = design === 'glass'
   return (
     <>
       <ProfilePhotoCard />
 
       <LayoutCard />
 
-      {!monday && !water && (
+      {glass && (
         <>
           <BackgroundCard shared={shared} uploading={uploading} onUpload={upload} />
 

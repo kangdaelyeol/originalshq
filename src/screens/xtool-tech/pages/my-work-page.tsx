@@ -11,9 +11,9 @@ import { PERIOD_COMPARE } from '../data/period'
 import { BOARD_TABS, type TechBoardKey } from '../data/tech-boards'
 import { useMyIdentity, useWorkPeople, useWorkSources } from '../data/use-my-work'
 import { daysBetween, inRange, koreaToday, periodRange } from '../lib/dates'
+import { useLayoutKind } from '../lib/layout-kind'
 import { boardItemSearch, useBoardItemParam } from '../lib/use-item-param'
 import { myWorkPath } from '../paths'
-import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { BoardItemHost } from './boards/board-host'
 
 // 처음에 보여 줄 줄 수
@@ -42,7 +42,7 @@ export function MyWorkPage() {
   const me = useMyIdentity()
   const { sources, loading } = useWorkSources()
   const { period } = usePeriod()
-  const { theme } = useAppearance()
+  const { structure } = useLayoutKind()
   const today = koreaToday()
   // 줄을 눌러 연 항목(?board·?item) — 서랍은 닫히는 움직임이 끝날 때까지 그려 두려고 마지막에 연 보드를 들고 있는다.
   const [opened, closeItem] = useBoardItemParam()
@@ -95,7 +95,7 @@ export function MyWorkPage() {
   const title = mine ? '내 담당 업무' : who ? `${who}님 담당 업무` : '직원 업무'
 
   // Monday 표 레이아웃 — 숫자 카드 없이 보드마다 Monday 표로(칸을 바로 고친다).
-  if (theme === 'monday') {
+  if (structure === 'table') {
     const entries = new Map<MyWorkBoard, Set<string>>()
     for (const item of items) {
       if (state !== 'all' && (state === 'done') !== item.done) continue

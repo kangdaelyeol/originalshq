@@ -8,10 +8,10 @@ import { useXtoolSession, type XtoolSession } from '@/xtool-auth/use-xtool-sessi
 import { MemberContext } from '../../context/member-context'
 import { cx } from '@/ohq-ui/lib/cx'
 import { pageStagger } from '@/ohq-ui/lib/motion'
+import { useLayoutKind } from '../../lib/layout-kind'
 import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
 import type { LoginLocationState } from '../../pages/login-page'
 import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
-import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { WaterBackdrop, WaterShellGate } from '../../water-layout/water-gate'
 import { AppBackground } from './app-background'
 import { Sidebar } from './sidebar'
@@ -40,7 +40,7 @@ export function AppLayout() {
   const session = useXtoolSession('tech')
   const previousRef = useRef<XtoolSession['status']>('loading')
   const [collapsed, toggleSidebar] = useSidebarCollapsed()
-  const { theme } = useAppearance()
+  const { structure, design } = useLayoutKind()
 
   // 로그인 화면은 lazy라 받는 동안 이 화면이 남아 있다 — 그 사이 상태가 한 번 더 바뀌어도
   // (권한 없음 → 로그아웃) 처음 보낸 안내가 덮이지 않게, 이동은 여기 한 곳에서 이전 상태를 보고 한다.
@@ -62,10 +62,10 @@ export function AppLayout() {
   }, [session, navigate])
 
   // 로그인 확인 중·로그인 화면으로 넘어가는 중 — 배경만 깔아 두어 깜빡임 없이.
-  if (session.status !== 'ready') return theme === 'water' ? <WaterBackdrop /> : <AppBackground />
+  if (session.status !== 'ready') return design === 'water' ? <WaterBackdrop /> : <AppBackground />
 
   // 설정 > 레이아웃 "물" — 화면 틀(무대·사이드바·상단바)을 물 묶음으로 그린다(물을 고른 사람만 받는다).
-  if (theme === 'water') {
+  if (design === 'water') {
     return (
       <MemberContext.Provider value={session.member}>
         <UsageTracking pathname={pathname} />
@@ -82,11 +82,11 @@ export function AppLayout() {
       <UsageTracking pathname={pathname} />
       <AppBackground />
       {/* Monday 표는 칸이 많아 화면 폭을 다 쓴다(is-wide). */}
-      <div className={cx('shell', collapsed && 'is-collapsed', theme === 'monday' && 'is-wide')}>
+      <div className={cx('shell', collapsed && 'is-collapsed', structure === 'table' && 'is-wide')}>
         <Sidebar member={session.member} collapsed={collapsed} onToggle={toggleSidebar} />
         <main className="shell__main">
           {/* Monday 표의 보드·내 업무는 상단바가 표 판 안에 들어간다(MondayBoard·MondayMyWork). */}
-          {!(theme === 'monday' && (pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH))) && <Topbar />}
+          {!(structure === 'table' && (pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH))) && <Topbar />}
           {/* 경로가 바뀌면 새로 그려서 카드들이 차례로 떠오르게 한다(motion.ts 주석 참고). */}
           <motion.div key={pathname} className="page" variants={pageStagger} initial="hidden" animate="show">
             {outlet}

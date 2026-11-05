@@ -1,9 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
+import { useLayoutKind } from '../../lib/layout-kind'
 
 interface DrawerShellProps {
   open: boolean
@@ -40,8 +40,8 @@ export function DrawerShell({
   children,
 }: DrawerShellProps) {
   const root = usePortalRoot()
-  const { theme } = useAppearance()
-  const center = placement === 'center' && theme !== 'monday'
+  const { design } = useLayoutKind()
+  const center = placement === 'center' && design !== 'monday'
   const panelRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
