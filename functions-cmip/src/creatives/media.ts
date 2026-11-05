@@ -9,8 +9,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { getStorage } from 'firebase-admin/storage'
+import * as logger from 'firebase-functions/logger'
 import ffmpegPath from 'ffmpeg-static'
 import { FRAME_LONG_SIDE, framePlan } from '../creative-analysis'
+import { PHASH_SIDE, phashOf } from '../creative-similarity/phash'
 import { mapLimit } from './map-limit'
 import type { CreativeFrame, CreativeKind, CreativeMedia } from './types'
 
@@ -104,6 +106,61 @@ export const downloadUrl = (bucket: string, path: string, token: string) => {
     ? `http://${host}`
     : 'https://firebasestorage.googleapis.com'
   return `${base}/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`
+}
+
+/** 프레임 파일 하나의 지문 — ffmpeg로 32×32 회색 값을 뽑아 pHash로. 실패하면
+ * 빈 값(지문 없는 프레임은 비교에서 빠지고, 동기화가 나중에 다시 채운다). */
+const framePhash = async (file: string): Promise<string | null> => {
+  try {
+    const { stdout } = await run(
+      ffmpeg(),
+      [
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-i',
+        file,
+        '-vf',
+        `scale=${PHASH_SIDE}:${PHASH_SIDE}:flags=area,format=gray`,
+        '-f',
+        'rawvideo',
+        'pipe:1',
+      ],
+      { encoding: 'buffer' },
+    )
+    return phashOf(new Uint8Array(stdout))
+  } catch (err) {
+    logger.warn(`프레임 지문 실패(${file}):`, err)
+    return null
+  }
+}
+
+/** 지문이 없는 프레임만 Storage에서 받아 지문을 채운다 — 바뀐 프레임 목록,
+ * 하나도 못 채웠으면 null. 지문을 만들기 전에 처리한 소재용(fillFrameHashes). */
+export async function withFrameHashes(
+  frames: CreativeFrame[],
+): Promise<CreativeFrame[] | null> {
+  const todo = frames.filter((f) => !f.phash)
+  if (!todo.length) return null
+  const bucket = getStorage().bucket()
+  const dir = await mkdtemp(join(tmpdir(), 'phash-'))
+  try {
+    const hashes = new Map<string, string>()
+    await mapLimit(todo, EXTRACT_CONCURRENCY, async (f, index) => {
+      const file = join(dir, `frame-${index}.jpg`)
+      const [data] = await bucket.file(f.path).download()
+      await writeFile(file, data)
+      const phash = await framePhash(file)
+      if (phash) hashes.set(f.path, phash)
+    })
+    if (!hashes.size) return null
+    return frames.map((f) => {
+      const phash = hashes.get(f.path)
+      return phash ? { ...f, phash } : f
+    })
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 }
 
 /** 저장하면서 토큰을 붙이고 그 주소를 돌려준다. */
@@ -335,9 +392,11 @@ export async function processCreativeMedia(
 
     // 프레임 — 시점마다 한 장(-ss를 -i 앞에 두면 그 근처로 바로 건너뛴다).
     const times = kind === 'video' ? framePlan(lengthSec ?? 0) : [0]
-    const extracted: ({ t: number; file: string } | null)[] = times.map(
-      () => null,
-    )
+    const extracted: ({
+      t: number
+      file: string
+      phash: string | null
+    } | null)[] = times.map(() => null)
     await mapLimit(times, EXTRACT_CONCURRENCY, async (t, index) => {
       const file = join(dir, `frame-${index}.jpg`)
       const args =
@@ -364,7 +423,8 @@ export async function processCreativeMedia(
         )
       })
       // 영상 끝을 넘은 시점이면 파일이 안 생긴다 — 건너뛴다.
-      if (await stat(file).catch(() => null)) extracted[index] = { t, file }
+      if (await stat(file).catch(() => null))
+        extracted[index] = { t, file, phash: await framePhash(file) }
     })
     const frames = extracted.filter((f) => f !== null)
     if (frames.length === 0) throw new Error('프레임을 하나도 뽑지 못했습니다')
@@ -393,6 +453,8 @@ export async function processCreativeMedia(
           path,
           url: await saveWithUrl(path, data, 'image/jpeg'),
           ...jpegSize(data),
+          // Firestore는 undefined를 받지 않는다 — 지문이 없으면 칸을 뺀다.
+          ...(frame.phash ? { phash: frame.phash } : {}),
         }
       })
     await mapLimit(uploads, UPLOAD_CONCURRENCY, (upload) => upload())

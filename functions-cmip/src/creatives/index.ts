@@ -18,6 +18,7 @@ import {
   isMissingBucket,
   processCreativeMedia,
   withDownloadUrls,
+  withFrameHashes,
   type MediaSource,
 } from './media'
 import { findActiveMetaCreatives, mediaUrlOf, pageTokensOf } from './meta'
@@ -45,6 +46,9 @@ const PROCESS_PER_RUN = 200
 const PROCESS_CONCURRENCY = 3
 /** 이만큼 실패하면 failed로 멈춘다(그 전까지는 다음 실행에 다시 시도). */
 const MAX_ATTEMPTS = 3
+/** 한 번 실행에 지문을 채울 예전 소재 수 — 프레임을 Storage에서 다시 받는다.
+ * 다 채운 뒤에는 읽기만 하고 끝난다. */
+const HASH_FILL_PER_RUN = 40
 
 const adsetKeysOf = (channel: CreativeChannel, ads: FoundCreative['ads']) =>
   [
@@ -65,6 +69,8 @@ export interface CreativeSyncResult {
   pending: number
   /** 화면용 주소(다운로드 토큰)를 이번에 채운 예전 소재 수. */
   urlsFilled: number
+  /** 프레임 지문(pHash)을 이번에 채운 예전 소재 수. */
+  hashesFilled: number
 }
 
 /** 1) 찾은 소재를 adCreatives에 모은다 — 이미 있는 문서는 한 번에 읽고,
@@ -218,8 +224,42 @@ async function fillDownloadUrls(
   return filled
 }
 
-/** 찾은 소재를 모으고(1) 처리하고(2) 주소를 채운다(3) — 채널마다 찾는 법과
- * 받을 주소를 정하는 법(prepare)만 다르다. */
+/** 4) 지문을 만들기 전에 처리한 그 채널의 소재에 프레임 지문을 채운다 — 소재
+ * 유사도(creative-similarity)가 쓴다. 프레임을 Storage에서 다시 받아 한 번에
+ * HASH_FILL_PER_RUN개씩. 실패한 소재는 다음 실행에 다시. */
+async function fillFrameHashes(
+  channel: CreativeChannel,
+  deadlineMs: number,
+): Promise<number> {
+  const snap = await db
+    .collection(AD_CREATIVES)
+    .where('status', '==', 'ready')
+    .where('channel', '==', channel)
+    .get()
+  const missing = snap.docs
+    .map((d) => d.data() as AdCreative)
+    .filter((c) => c.media && c.media.frames.some((f) => !f.phash))
+    .slice(0, HASH_FILL_PER_RUN)
+  let filled = 0
+  await mapLimit(missing, 3, async (creative) => {
+    if (Date.now() > deadlineMs || !creative.media) return
+    try {
+      const frames = await withFrameHashes(creative.media.frames)
+      if (!frames) return
+      await db
+        .collection(AD_CREATIVES)
+        .doc(creative.id)
+        .update({ 'media.frames': frames })
+      filled += 1
+    } catch (err) {
+      logger.warn(`프레임 지문 채우기 실패(${creative.id}):`, err)
+    }
+  })
+  return filled
+}
+
+/** 찾은 소재를 모으고(1) 처리하고(2) 주소(3)와 지문(4)을 채운다 — 채널마다
+ * 찾는 법과 받을 주소를 정하는 법(prepare)만 다르다. */
 async function syncFound(
   channel: CreativeChannel,
   found: { ads: number; creatives: FoundCreative[] },
@@ -234,6 +274,7 @@ async function syncFound(
     ...recorded,
     ...processed,
     urlsFilled: await fillDownloadUrls(channel, deadlineMs),
+    hashesFilled: await fillFrameHashes(channel, deadlineMs),
   }
 }
 

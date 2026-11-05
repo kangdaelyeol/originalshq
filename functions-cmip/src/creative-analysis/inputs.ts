@@ -1,6 +1,7 @@
 /**
  * 소재 분석의 실제 입력 — Meta 광고 하나에서 퍼셉트론 입력 노드마다 값을
- * 모은다(영상·문구·타겟팅은 Meta, 성과·설정·테스트는 CMIP DB). 쓰기는 없다.
+ * 모은다(영상·문구·타겟팅은 Meta, 성과·설정·테스트·소재 라이브러리는 CMIP DB).
+ * 쓰기는 없다.
  * 노드 id와 값 이름은 퍼셉트론 기본 망의 입력 노드·카드 값 줄 이름과 같다 —
  * 조각의 {frames}·{CPA} 같은 자리에 들어간다(prompt-graph/compose.ts fill).
  */
@@ -11,6 +12,12 @@ import {
   type MetaAdForAnalysis,
 } from '../channel/meta/creatives'
 import type { DateSummary } from '../channel/meta/types'
+import {
+  LIBRARY_NODES,
+  creativeOfAd,
+  libraryInputs,
+  loadMetaCreatives,
+} from '../creative-similarity'
 import type { ComposeInputs, NodeInput } from '../prompt-graph'
 
 // ── 프레임 계획 ──────────────────────────────────────────────────────────
@@ -176,9 +183,10 @@ export async function gatherAdInputs(
   const ad = await fetchMetaAdForAnalysis(adId, accessToken)
   const adsetKey = `meta:adset:${ad.adsetId}`
   const campaignKey = `meta:campaign:${ad.campaignId}`
-  const [byDate, snapshot] = await Promise.all([
+  const [byDate, snapshot, creatives] = await Promise.all([
     getAdEntityDaily('meta', 'adset', ad.adsetId),
     getAdSettingsSnapshot(),
+    loadMetaCreatives(),
   ])
   const notes: string[] = []
   const times = ad.video?.lengthSec ? framePlan(ad.video.lengthSec) : []
@@ -238,9 +246,21 @@ export async function gatherAdInputs(
     : { vars: {} }
   if (!t) notes.push('광고셋 타겟팅을 읽지 못했습니다')
 
+  // 소재 라이브러리·다양성·컨셉·안드로메다 — 이 광고의 소재(adCreatives)를
+  // 같은 계정의 다른 소재와 견준다(creative-similarity).
+  // 소재를 못 찾으면 빈 값으로 둔다 — 카드 값(목업)이 프롬프트에 섞이지 않게.
+  const creative = creativeOfAd(creatives, ad.adId)
+  if (creative) Object.assign(inputs, libraryInputs(creative, creatives, notes))
+  else {
+    for (const id of LIBRARY_NODES) inputs[id] = { vars: {} }
+    notes.push(
+      '이 광고의 소재가 아직 동기화·처리되지 않아 소재 라이브러리와 견주지 못했습니다',
+    )
+  }
+
   notes.push(
-    '브랜드 가이드·소재 라이브러리는 아직 데이터가 없어 카드 값(설정)을 씁니다',
-    '특징 질문의 답·신뢰도는 아직 목업입니다 — 3단계(특징·게이트)에서 실제로',
+    '브랜드 가이드는 아직 데이터가 없어 카드 값(설정)을 씁니다',
+    '다양성 말고 특징 질문은 아직 재지 않아 Claude가 직접 판단합니다(게이트는 미측정이면 통과)',
   )
 
   return {

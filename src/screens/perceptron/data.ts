@@ -266,12 +266,12 @@ const BASE_LAYERS: Layers = [
       'hd:andromeda',
       'andromeda lens',
       [
-        ['entity', 'concept'],
-        ['dedupe', 'on', 'accent'],
-        ['diversity', '0.62'],
+        ['entity', '2개 묶음'],
+        ['diversity', '0.31', 'accent'],
+        ['overlaps', '소재 B 0.69(화면)'],
       ],
       'out:task',
-      '- 안드로메다 기준: 컨셉이 겹치면 한 소재로 묶인다고 보고 겹침부터 본다',
+      '- 안드로메다 기준: 컨셉이 겹치면 한 소재로 묶인다고 보고 겹침부터 본다\n- 같은 묶음: {entity} · 겹치는 소재: {overlaps}',
     ),
     n(
       'hd:concept',
@@ -282,7 +282,7 @@ const BASE_LAYERS: Layers = [
         ['hook', '0–3 s'],
       ],
       'out:task',
-      '- 컨셉 지문: {result} — 기존 12개 컨셉과 비교한다',
+      '- 컨셉 지문: {result} · 훅 {angle} · 형식 {format}',
     ),
     n(
       'hd:persona',
@@ -362,7 +362,7 @@ const BASE_LAYERS: Layers = [
         ['window', '14 d'],
       ],
       'out:context',
-      '- 계정: xtool · 소재 37개 · 최근 14일',
+      '- 계정: xtool',
     ),
     n(
       'gt:task',
@@ -545,11 +545,11 @@ export const USE_CASES = [
   'ab-test',
   'report',
   'persona',
-  'rival',
+  'andromeda',
   'brief',
 ] as const
 
-/** 영상처럼 6개 케이스를 차례로 돈다(나머지 6개는 격자에만). */
+/** 영상처럼 7개 케이스를 차례로 돈다(나머지 5개는 격자에만). */
 export const DEFAULT_CASES: CaseDef[] = [
   {
     id: 1,
@@ -572,10 +572,8 @@ export const DEFAULT_CASES: CaseDef[] = [
     },
     lines: {
       'out:role': '너는 xtool의 퍼포먼스 마케터다.',
-      'out:task':
-        '소재의 주성분과 타겟 가설을 낸다. 기존 소재 37개와 겹침을 본다.',
-      'out:output':
-        '{ "hook": {}, "message": {}, "andromeda": {}, "targeting": [] }',
+      'out:task': '소재의 주성분과 타겟 가설을 낸다.',
+      'out:output': '{ "hook": {}, "message": {}, "targeting": [] }',
     },
     confidence: 0.97,
     ms: 31,
@@ -740,5 +738,38 @@ export const DEFAULT_CASES: CaseDef[] = [
     confidence: 0.71,
     ms: 27,
     outTokens: 500,
+  },
+  {
+    // 안드로메다 겹침 — 묶음·다양성은 코드가 재고(creative-similarity), Claude는
+    // 그 숫자로 겹치는 이유를 설명하고 겹치지 않는 컨셉을 낸다.
+    id: 11,
+    title: 'ANDROMEDA CHECK',
+    color: '#ff8a3d',
+    path: ['in:library', 'ft:diversity', 'hd:andromeda', 'gt:task', 'out:task'],
+    results: {
+      'in:library': '→ 컨셉 28 / 소재 41',
+      'hd:andromeda': '→ 2개 묶음 · 0.31',
+    },
+    answers: {
+      'ft:hook': ['결과 먼저', 0.88],
+      'ft:strength': ['3 / 5', 0.8],
+      'ft:funnel': ['고려', 0.8],
+      'ft:cpa': ['flat', 0.8],
+      'ft:offer': ['no', 0.9],
+      'ft:diversity': ['0.31', 1],
+      'ft:persona': ['공방', 0.78],
+      'ft:risk': ['no', 0.95],
+    },
+    lines: {
+      'out:role': '너는 Meta 광고 소재 전략가다. 점수를 새로 매기지 않는다.',
+      'out:task':
+        'Meta 안드로메다는 비슷한 소재를 한 광고처럼 묶는다고 본다. context의 묶음·다양성·겹치는 소재(코드가 잰 값)로 겹치는 이유를 설명하고, 겹치지 않는 새 컨셉 3개를 낸다.',
+      'out:output':
+        '{ "overlap": "", "keep": [], "new_concepts": [{ "angle": "", "hook": "", "why": "" }] }',
+      'out:selfcheck': '- 새 컨셉 셋이 기존 묶음과도, 서로와도 겹치지 않는가',
+    },
+    confidence: 1,
+    ms: 4,
+    outTokens: 900,
   },
 ]

@@ -143,7 +143,7 @@ function AdPreview({ graph, caseId }: { graph: Graph; caseId: number }) {
           </div>
           {got.missing.length > 0 && (
             <p className="pn-insp__server is-diff">
-              값이 없어 '—'로 둔 자리: {got.missing.join(', ')}
+              값이 없어 비워 둔 자리('—'·미측정): {got.missing.join(', ')}
             </p>
           )}
           {result.notes.map((n) => (

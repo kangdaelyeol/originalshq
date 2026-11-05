@@ -143,7 +143,10 @@ const viewCase = (
   layout: Layout,
   c: CaseDef,
 ): CaseView => {
-  const { confidence, hold, results, prompt, cost } = composeCase(graph, c)
+  const composed = composeCase(graph, c)
+  const { hold, results, prompt, cost } = composed
+  // 입력 없이(목업) 만들면 늘 케이스의 답·기본 신뢰도로 잰다 — null이 아니다.
+  const confidence = composed.confidence ?? c.confidence
   const path = c.path.map((id) => nodes.get(id)!.node)
   const verdict = `${confidence.toFixed(2)} ${hold ? '<' : '≥'} ${GATE.toFixed(2)}`
   const features = graph.layers[1]

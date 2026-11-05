@@ -9,6 +9,11 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getStorage } from 'firebase-admin/storage'
 import { frameTokens } from '../creative-analysis'
+import {
+  LIBRARY_NODES,
+  libraryInputs,
+  loadMetaCreatives,
+} from '../creative-similarity'
 import { db } from '../data'
 import { HttpError } from '../http'
 import {
@@ -175,7 +180,18 @@ export async function analyzeCreative(
   const c = graph.cases.find((x) => CASE_TITLE.test(x.title)) ?? graph.cases[0]
   if (!c) throw new HttpError(404, '프롬프트 망에 케이스가 없습니다')
 
-  const composed = composeCase(graph, c, inputsOf(creative))
+  const inputs = inputsOf(creative)
+  // 경로가 소재 라이브러리 노드를 지나면 같은 계정의 다른 소재와 견준 값을
+  // 넣는다 — 안드로메다는 Meta 것이라 다른 채널 소재는 빈 값으로.
+  if (c.path.some((id) => LIBRARY_NODES.indexOf(id) >= 0)) {
+    if (creative.channel === 'meta')
+      Object.assign(
+        inputs,
+        libraryInputs(creative, await loadMetaCreatives(), []),
+      )
+    else for (const id of LIBRARY_NODES) inputs[id] = { vars: {} }
+  }
+  const composed = composeCase(graph, c, inputs)
   const head = graph.layers[4]?.[0]
   const base: Omit<CreativeAnalysis, 'status' | 'result' | 'error'> = {
     at: Date.now(),

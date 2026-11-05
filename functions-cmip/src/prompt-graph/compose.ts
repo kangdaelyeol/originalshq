@@ -95,6 +95,9 @@ export interface NodeInput {
   vars?: Record<string, string>
   /** 함께 보내는 입력 토큰(영상 프레임 등) — 노드에 적어 둔 어림값 대신. */
   tokens?: number
+  /** 특징 노드의 실제 답 — 코드가 잰 값(다양성 점수 등)이면 신뢰도는 1. 경로의
+   * 특징 노드면 게이트가 이 신뢰도로 판정한다. */
+  answer?: Answer
 }
 
 /** 노드 id별 실제 입력. 없으면(목업) 조각의 {이름}은 카드 값으로 채운다. */
@@ -102,15 +105,18 @@ export type ComposeInputs = Record<string, NodeInput>
 
 /** 케이스 하나를 망에 통과시킨 결과. */
 export interface Composed {
-  /** 경로가 지나는 특징 질문의 답 신뢰도(답이 없으면 케이스 기본값). */
-  confidence: number
+  /** 경로가 지나는 특징 질문의 답 신뢰도(답이 없으면 케이스 기본값). 실제
+   * 입력으로 만들 때 그 질문의 실제 답이 없으면 null — 재지 않아 게이트가
+   * 판정하지 않는다(통과). */
+  confidence: number | null
   hold: boolean
   /** 경로 노드 id별 결과 띠(게이트·머리 포함). */
   results: Record<string, string>
   /** 프롬프트(줄 단위). */
   prompt: string[]
   cost: Cost
-  /** 실제 입력으로 만들 때 값이 없어 '—'로 둔 자리("노드.이름"). */
+  /** 실제 입력으로 만들 때 값이 없어 '—'로 둔 자리("노드.이름") — 결과
+   * 자리("노드.result")는 UNMEASURED로 둔다. */
   missing: string[]
 }
 
@@ -138,6 +144,10 @@ export const fallbackResult = (n: NodeDef) => {
 
 const answerResult = ([answer, conf]: Answer) =>
   `→ ${answer}  ${conf.toFixed(2)}`
+
+/** 실제 입력으로 만들 때 값이 없는 노드의 결과 — 케이스에 적힌 목업 결과·답을
+ * 쓰지 않고, 조각의 {result} 자리에서 Claude가 직접 판단하게 둔다. */
+export const UNMEASURED = '미측정 — 주어진 자료로 직접 판단'
 
 /** 머리 칸 제목의 "·" 뒤 — 프롬프트 첫 줄에 붙는 모델 이름. */
 export const modelName = (head?: NodeDef) =>
@@ -224,19 +234,33 @@ export const composeCase = (
     if (!n) throw new Error(`경로의 노드 ${id}가 망에 없습니다`)
     return n
   })
-  const asked = c.answers[path[1].id]
-  const confidence = asked ? asked[1] : c.confidence
-  const hold = confidence < GATE
+  // 실제 입력으로 만들 때는 케이스에 적힌 답·결과(목업)를 쓰지 않는다 — 실제
+  // 답이 없는 특징 질문은 재지 않은 것이라 게이트도 판정하지 않는다.
+  const feature = inputs ? inputs[path[1].id] : undefined
+  const asked = inputs ? feature && feature.answer : c.answers[path[1].id]
+  const confidence = asked ? asked[1] : inputs ? null : c.confidence
+  const hold = confidence !== null && confidence < GATE
   const results: Record<string, string> = {}
-  for (const n of path.slice(0, 3)) {
-    const a = c.answers[n.id]
-    const real = inputs && inputs[n.id] && inputs[n.id].result
-    results[n.id] =
-      real || c.results[n.id] || (a ? answerResult(a) : fallbackResult(n))
-  }
-  const verdict = `${confidence.toFixed(2)} ${hold ? '<' : '≥'} ${GATE.toFixed(2)}`
-  results[path[3].id] = `${verdict}   ${hold ? 'hold' : 'pass'}`
   const missing: string[] = []
+  for (const n of path.slice(0, 3)) {
+    if (inputs) {
+      const input = inputs[n.id]
+      const result =
+        (input && input.result) ||
+        (input && input.answer ? answerResult(input.answer) : UNMEASURED)
+      results[n.id] = result
+      if (result === UNMEASURED && n.prompt.indexOf('{result}') >= 0)
+        missing.push(`${n.id}.result`)
+      continue
+    }
+    const a = c.answers[n.id]
+    results[n.id] = c.results[n.id] || (a ? answerResult(a) : fallbackResult(n))
+  }
+  const verdict =
+    confidence === null
+      ? '미측정'
+      : `${confidence.toFixed(2)} ${hold ? '<' : '≥'} ${GATE.toFixed(2)}`
+  results[path[3].id] = `${verdict}   ${hold ? 'hold' : 'pass'}`
   const prompt = compose(
     graph.layers,
     c,

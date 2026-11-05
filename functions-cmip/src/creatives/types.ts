@@ -31,6 +31,9 @@ export interface CreativeFrame {
   url?: string
   width: number
   height: number
+  /** 프레임 지문(creative-similarity/phash.ts) — 지문을 만들기 전에 처리한
+   * 소재는 동기화가 나중에 채운다(fillFrameHashes). */
+  phash?: string
 }
 
 export interface CreativeMedia {
