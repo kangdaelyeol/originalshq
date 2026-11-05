@@ -23,7 +23,7 @@ import {
 
 const SALES_METRICS: readonly SalesMetric[] = ['amount', 'count']
 
-/** 왕 카드 묶음 — 이번 주(일~토)·이번 달, 그리고 바로 앞 기간의 1위. */
+/** 왕 카드 묶음 — 이번 주(월~일)·이번 달, 그리고 바로 앞 기간의 1위. */
 const kingsOf = (
   sales: SaleFact[],
   period: TechPeriod,

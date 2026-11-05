@@ -32,10 +32,10 @@ export interface TechPeriod {
   end: string
 }
 
-/** 이번 주 — 일요일부터 토요일까지. */
+/** 이번 주 — 월요일부터 일요일까지(개인 KPI·CS팀 표의 주와 같다). */
 export const thisTechWeek = (today = new Date()): TechPeriod => {
   const start = new Date(today)
-  start.setDate(today.getDate() - today.getDay())
+  start.setDate(today.getDate() - ((today.getDay() + 6) % 7))
   const end = new Date(start)
   end.setDate(start.getDate() + 6)
   return { start: localISO(start), end: localISO(end) }
@@ -48,7 +48,7 @@ export const thisTechMonth = (today = new Date()): TechPeriod => {
   return { start: localISO(start), end: localISO(end) }
 }
 
-/** 바로 앞 기간 — 지난주(일~토)·지난달. 이번 주·달이 막 시작해 비어 있을 때
+/** 바로 앞 기간 — 지난주(월~일)·지난달. 이번 주·달이 막 시작해 비어 있을 때
  * 견줘 볼 1위를 보여 준다. */
 export const previousTechPeriod = (
   period: TechPeriod,

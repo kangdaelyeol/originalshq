@@ -25,7 +25,7 @@ import {
 
 const TECH_BASES: readonly TechBasis[] = ['received', 'done']
 
-/** 왕 카드 묶음 — 이번 주(일~토)·이번 달. 바로 앞 기간의 1위도 같이 낸다
+/** 왕 카드 묶음 — 이번 주(월~일)·이번 달. 바로 앞 기간의 1위도 같이 낸다
  * (이번 주·달이 막 시작해 비어 있을 때 견줘 보게). */
 const kingsOf = (
   facts: MondayTechFact[],
