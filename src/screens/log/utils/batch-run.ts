@@ -199,6 +199,10 @@ export const summarizeRun = (run: BatchRun): string => {
               ]
             })()
           : []),
+        // 실패한 통계 단계(11/5 배포부터) — 그 통계만 이전 값으로 남았다.
+        ...(Array.isArray(customers?.failedSteps)
+          ? [`통계 실패: ${(customers.failedSteps as string[]).join(', ')}`]
+          : []),
       ].join(' · ')
     }
     case 'offline-sales':

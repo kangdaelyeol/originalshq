@@ -213,43 +213,61 @@ export async function rebuildCustomers(
   const written = await time('rebuild.customers', () =>
     replaceCustomers(db, customers),
   )
-  // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
-  await time('rebuild.dailyInflow', () =>
-    saveDailyInflow(db, buildDailyInflow(items, kindByBoardId)),
-  )
+
+  // 통계 단계는 서로 독립이다 — 하나가 실패해도(문서 크기 한도 등) 나머지는
+  // 계속 저장하고, 실패한 단계 이름을 결과(failedSteps)에 남긴다. 위의 고객
+  // 통합이 실패하면 그때는 전체가 실패한다.
+  const failedSteps: string[] = []
+  const step = async <T>(
+    name: string,
+    run: () => Promise<T>,
+  ): Promise<T | null> => {
+    try {
+      return await time(`rebuild.${name}`, run)
+    } catch (error) {
+      logger.error(`Monday 통계 저장 실패(${name}):`, error)
+      failedSteps.push(name)
+      return null
+    }
+  }
   const purchaseItems = items.filter(
     (item) => kindByBoardId.get(item.boardId) === 'purchase',
   )
+
+  // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
+  await step('dailyInflow', () =>
+    saveDailyInflow(db, buildDailyInflow(items, kindByBoardId)),
+  )
   // 판매 통계(제품별 판매 수량)도 — 결제 보드의 품목 줄과 Cafe24 주문 품목.
-  await time('rebuild.dailySales', () =>
+  await step('dailySales', () =>
     saveDailySales(db, buildDailySales(purchaseItems, orders)),
   )
   // 오프라인 매출 원장(cmip의 오프라인 매출·ROAS가 읽는다).
-  const offlineSaleLines = await time('rebuild.offlineSales', () =>
+  const offlineSaleLines = await step('offlineSales', () =>
     replaceOfflineSales(db, buildOfflineSaleLines(purchaseItems)),
   )
   // 날짜별 신규·재구매 금액(cmip ROAS 탭의 신규 고객 ROAS).
-  await time('rebuild.repeatRevenue', () =>
+  await step('repeatRevenue', () =>
     saveDailyRepeatRevenue(db, buildDailyRepeatRevenue(customers)),
   )
   // 광고 기여 ROAS 재료(cmip ROAS 탭의 ROAS 하한·코호트 ROAS).
-  await time('rebuild.attribution', () =>
+  await step('attribution', () =>
     saveAttributionRows(db, buildAttributionRows(customers)),
   )
   // GA ClientId가 적힌 상담(오기입 추적).
-  await time('rebuild.gaConsultations', () =>
+  await step('gaConsultations', () =>
     saveGaConsultations(db, buildGaConsultations(items, kindByBoardId)),
   )
   // 진행 중인 상담·방문체험(방치 현황).
-  await time('rebuild.followUps', () =>
+  await step('followUps', () =>
     saveFollowUps(db, buildFollowUps(items, kindByBoardId)),
   )
   // 개인 KPI 재료(담당자별 방문체험 확정·결제 전환·매출).
-  await time('rebuild.kpiFacts', () =>
+  await step('kpiFacts', () =>
     saveKpiFacts(db, buildKpiFacts(items, kindByBoardId)),
   )
   // 기술 통계 재료(출장·AS·기술 문의·기타업무 — 번호 없는 기록 포함).
-  await time('rebuild.techFacts', () =>
+  await step('techFacts', () =>
     saveTechFacts(db, buildTechFacts(items, kindByBoardId)),
   )
   return {
@@ -257,6 +275,7 @@ export async function rebuildCustomers(
     ...counts,
     ...written,
     offlineSaleLines,
+    ...(failedSteps.length > 0 ? { failedSteps } : {}),
   }
 }
 

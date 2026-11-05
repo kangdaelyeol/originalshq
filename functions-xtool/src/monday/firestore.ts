@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import * as logger from 'firebase-functions/logger'
 import {
   CollectionReference,
   DocumentData,
@@ -443,74 +444,81 @@ export async function listCafe24Orders(db: Firestore): Promise<Cafe24Order[]> {
 }
 
 const STATS_COLLECTION = 'mondayStats'
-const DAILY_INFLOW_DOC = 'dailyInflow'
 
-/** 날짜별 인입 건수를 문서 하나에 통째로 저장한다 — 하루에 한 줄이라 몇 년
- * 치도 문서 크기 한도(1MB)에 한참 못 미치고, 읽을 때 문서 1건만 읽으면 된다. */
-export async function saveDailyInflow(
+// mondayStats — 통계 재료를 종류마다 문서 하나에 통째로 둔다(동기화가 쓰고
+// 통계 화면이 문서 1건만 읽는다). 모양은 { 값들, syncedAt }.
+
+// 문서 하나의 크기 한도는 1MB — 그 80%를 넘으면 경고를 남겨, 실제로 쓰기가
+// 실패하기 전에(나눠 저장할 때가 됐는지) 알 수 있게 한다.
+const STATS_DOC_WARN_BYTES = 800_000
+
+/** 문서 하나를 통째로 쓴다 — syncedAt은 지금. */
+async function saveStatsDoc(
   db: Firestore,
-  days: MondayDailyInflow[],
+  doc: string,
+  fields: Record<string, unknown>,
 ): Promise<void> {
+  const bytes = Buffer.byteLength(JSON.stringify(fields))
+  if (bytes > STATS_DOC_WARN_BYTES) {
+    logger.warn(
+      `mondayStats/${doc} 문서가 ${Math.round(bytes / 1000)}KB — ` +
+        '1MB 한도에 가깝다',
+    )
+  }
   await db
     .collection(STATS_COLLECTION)
-    .doc(DAILY_INFLOW_DOC)
-    .set({ days, syncedAt: Date.now() })
+    .doc(doc)
+    .set({ ...fields, syncedAt: Date.now() })
 }
 
-export async function getDailyInflow(
+/** 문서 하나를 읽는다 — 아직 없으면 data는 undefined, syncedAt은 null. */
+async function readStatsDoc<T>(
   db: Firestore,
-): Promise<{ days: MondayDailyInflow[]; syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(DAILY_INFLOW_DOC).get()
-  const data = doc.data() as
-    { days: MondayDailyInflow[]; syncedAt: number } | undefined
-  return { days: data?.days ?? [], syncedAt: data?.syncedAt ?? null }
+  doc: string,
+): Promise<{ data: Partial<T> | undefined; syncedAt: number | null }> {
+  const snapshot = await db.collection(STATS_COLLECTION).doc(doc).get()
+  const data = snapshot.data() as
+    | (Partial<T> & { syncedAt?: number })
+    | undefined
+  return { data, syncedAt: data?.syncedAt ?? null }
 }
 
-const DAILY_SALES_DOC = 'dailySales'
-
-/** 판매 통계용 줄 전체를 문서 하나에 저장한다 — 날짜·채널·제품별로 한 줄이라
- * 몇천 줄 수준이고, 문서 크기 한도(1MB)의 일부만 쓴다. */
-export async function saveDailySales(
-  db: Firestore,
-  rows: MondayDailySale[],
-): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(DAILY_SALES_DOC)
-    .set({ rows, syncedAt: Date.now() })
+/** 배열 하나만 담은 문서의 저장·조회 한 쌍. 조회는 { [field]: 배열,
+ * syncedAt } — 아직 없으면 빈 배열과 null. */
+function statsList<T, F extends string>(doc: string, field: F) {
+  return {
+    save: async (db: Firestore, list: T[]): Promise<void> =>
+      saveStatsDoc(db, doc, { [field]: list }),
+    get: async (
+      db: Firestore,
+    ): Promise<Record<F, T[]> & { syncedAt: number | null }> => {
+      const { data, syncedAt } = await readStatsDoc<Record<F, T[]>>(db, doc)
+      return { [field]: data?.[field] ?? [], syncedAt } as Record<F, T[]> & {
+        syncedAt: number | null
+      }
+    },
+  }
 }
 
-export async function getDailySales(
-  db: Firestore,
-): Promise<{ rows: MondayDailySale[]; syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(DAILY_SALES_DOC).get()
-  const data = doc.data() as
-    { rows: MondayDailySale[]; syncedAt: number } | undefined
-  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
-}
+/** 날짜별 인입 건수 — 하루에 한 줄이라 몇 년 치도 문서 크기 한도(1MB)에
+ * 한참 못 미치고, 읽을 때 문서 1건만 읽으면 된다. */
+const dailyInflow = statsList<MondayDailyInflow, 'days'>('dailyInflow', 'days')
+export const saveDailyInflow = dailyInflow.save
+export const getDailyInflow = dailyInflow.get
 
-const FOLLOW_UPS_DOC = 'followUps'
+/** 판매 통계용 줄 전체 — 날짜·채널·제품별로 한 줄이라 몇천 줄 수준이고, 문서
+ * 크기 한도(1MB)의 일부만 쓴다. */
+const dailySales = statsList<MondayDailySale, 'rows'>('dailySales', 'rows')
+export const saveDailySales = dailySales.save
+export const getDailySales = dailySales.get
 
-/** 진행 중인 상담·방문체험 기록 전체를 문서 하나에 저장한다(천오백 건 남짓,
- * 수백 KB). */
-export async function saveFollowUps(
-  db: Firestore,
-  followUps: MondayFollowUp[],
-): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(FOLLOW_UPS_DOC)
-    .set({ followUps, syncedAt: Date.now() })
-}
-
-export async function getFollowUps(
-  db: Firestore,
-): Promise<{ followUps: MondayFollowUp[]; syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(FOLLOW_UPS_DOC).get()
-  const data = doc.data() as
-    { followUps: MondayFollowUp[]; syncedAt: number } | undefined
-  return { followUps: data?.followUps ?? [], syncedAt: data?.syncedAt ?? null }
-}
+/** 진행 중인 상담·방문체험 기록 전체(천오백 건 남짓, 수백 KB). */
+const followUps = statsList<MondayFollowUp, 'followUps'>(
+  'followUps',
+  'followUps',
+)
+export const saveFollowUps = followUps.save
+export const getFollowUps = followUps.get
 
 const KPI_FACTS_DOC = 'kpiFacts'
 
@@ -521,28 +529,22 @@ export async function saveKpiFacts(
 ): Promise<void> {
   // Firestore는 배열 안의 배열을 저장하지 못한다 — 한 줄씩 JSON 문자열로 바꿔
   // 넣고 읽을 때 되돌린다.
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(KPI_FACTS_DOC)
-    .set({
-      consultations: facts.consultations.map((row) => JSON.stringify(row)),
-      visits: facts.visits.map((row) => JSON.stringify(row)),
-      sales: facts.sales.map((row) => JSON.stringify(row)),
-      boards: facts.boards,
-      syncedAt: Date.now(),
-    })
+  await saveStatsDoc(db, KPI_FACTS_DOC, {
+    consultations: facts.consultations.map((row) => JSON.stringify(row)),
+    visits: facts.visits.map((row) => JSON.stringify(row)),
+    sales: facts.sales.map((row) => JSON.stringify(row)),
+    boards: facts.boards,
+  })
 }
 
 export async function getKpiFacts(
   db: Firestore,
 ): Promise<MondayKpiFacts & { syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(KPI_FACTS_DOC).get()
-  const data = doc.data() as
-    | (Record<'consultations' | 'visits' | 'sales', string[]> & {
-        boards?: MondayKpiFacts['boards']
-        syncedAt: number
-      })
-    | undefined
+  const { data, syncedAt } = await readStatsDoc<
+    Record<'consultations' | 'visits' | 'sales', string[]> & {
+      boards: MondayKpiFacts['boards']
+    }
+  >(db, KPI_FACTS_DOC)
   const parse = <T>(rows: string[] | undefined): T[] =>
     (rows ?? []).map((row) => JSON.parse(row) as T)
   return {
@@ -550,57 +552,22 @@ export async function getKpiFacts(
     visits: parse(data?.visits),
     sales: parse(data?.sales),
     boards: data?.boards ?? {},
-    syncedAt: data?.syncedAt ?? null,
+    syncedAt,
   }
 }
 
-const TECH_FACTS_DOC = 'techFacts'
-
-/** 기술 통계 재료를 문서 하나에 저장한다(기술지원팀 기록 천 건 남짓, 수백 KB). */
-export async function saveTechFacts(
-  db: Firestore,
-  facts: MondayTechFact[],
-): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(TECH_FACTS_DOC)
-    .set({ facts, syncedAt: Date.now() })
-}
-
-export async function getTechFacts(
-  db: Firestore,
-): Promise<{ facts: MondayTechFact[]; syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(TECH_FACTS_DOC).get()
-  const data = doc.data() as
-    { facts: MondayTechFact[]; syncedAt: number } | undefined
-  return { facts: data?.facts ?? [], syncedAt: data?.syncedAt ?? null }
-}
-
-const DAILY_REPEAT_REVENUE_DOC = 'dailyRepeatRevenue'
+/** 기술 통계 재료(기술지원팀 기록 천 건 남짓, 수백 KB). */
+const techFacts = statsList<MondayTechFact, 'facts'>('techFacts', 'facts')
+export const saveTechFacts = techFacts.save
+export const getTechFacts = techFacts.get
 
 /** 날짜별 신규·재구매 금액 — 하루 한 줄이라 몇 년 치도 문서 하나에 들어간다. */
-export async function saveDailyRepeatRevenue(
-  db: Firestore,
-  rows: MondayDailyRepeatRevenue[],
-): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(DAILY_REPEAT_REVENUE_DOC)
-    .set({ rows, syncedAt: Date.now() })
-}
-
-export async function getDailyRepeatRevenue(
-  db: Firestore,
-): Promise<{ rows: MondayDailyRepeatRevenue[]; syncedAt: number | null }> {
-  const doc = await db
-    .collection(STATS_COLLECTION)
-    .doc(DAILY_REPEAT_REVENUE_DOC)
-    .get()
-  const data = doc.data() as
-    | { rows: MondayDailyRepeatRevenue[]; syncedAt: number }
-    | undefined
-  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
-}
+const dailyRepeatRevenue = statsList<MondayDailyRepeatRevenue, 'rows'>(
+  'dailyRepeatRevenue',
+  'rows',
+)
+export const saveDailyRepeatRevenue = dailyRepeatRevenue.save
+export const getDailyRepeatRevenue = dailyRepeatRevenue.get
 
 const ATTRIBUTION_DOC = 'attribution'
 
@@ -611,21 +578,19 @@ export async function saveAttributionRows(
   db: Firestore,
   rows: MondayAttributionRow[],
 ): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(ATTRIBUTION_DOC)
-    .set({ rows: rows.map((row) => JSON.stringify(row)), syncedAt: Date.now() })
+  await saveStatsDoc(db, ATTRIBUTION_DOC, {
+    rows: rows.map((row) => JSON.stringify(row)),
+  })
 }
 
 export async function getAttributionRows(
   db: Firestore,
 ): Promise<{ rows: MondayAttributionRow[]; syncedAt: number | null }> {
-  const doc = await db.collection(STATS_COLLECTION).doc(ATTRIBUTION_DOC).get()
-  const data = doc.data() as { rows: string[]; syncedAt: number } | undefined
-  return {
-    rows: (data?.rows ?? []).map((row) => JSON.parse(row)),
-    syncedAt: data?.syncedAt ?? null,
-  }
+  const { data, syncedAt } = await readStatsDoc<{ rows: string[] }>(
+    db,
+    ATTRIBUTION_DOC,
+  )
+  return { rows: (data?.rows ?? []).map((row) => JSON.parse(row)), syncedAt }
 }
 
 // 오프라인 매출 원장 — 결제 보드의 품목 줄 하나가 문서 하나(id = subitem id).
@@ -658,28 +623,10 @@ export async function replaceOfflineSales(
   return { written: writtenCount, deleted: deletedCount }
 }
 
-const GA_CONSULTATIONS_DOC = 'gaConsultations'
-
 /** GA ClientId가 적힌 상담 기록 — 수십~수백 건이라 문서 하나에 넣는다. */
-export async function saveGaConsultations(
-  db: Firestore,
-  rows: MondayGaConsultation[],
-): Promise<void> {
-  await db
-    .collection(STATS_COLLECTION)
-    .doc(GA_CONSULTATIONS_DOC)
-    .set({ rows, syncedAt: Date.now() })
-}
-
-export async function getGaConsultations(
-  db: Firestore,
-): Promise<{ rows: MondayGaConsultation[]; syncedAt: number | null }> {
-  const doc = await db
-    .collection(STATS_COLLECTION)
-    .doc(GA_CONSULTATIONS_DOC)
-    .get()
-  const data = doc.data() as
-    | { rows: MondayGaConsultation[]; syncedAt: number }
-    | undefined
-  return { rows: data?.rows ?? [], syncedAt: data?.syncedAt ?? null }
-}
+const gaConsultations = statsList<MondayGaConsultation, 'rows'>(
+  'gaConsultations',
+  'rows',
+)
+export const saveGaConsultations = gaConsultations.save
+export const getGaConsultations = gaConsultations.get

@@ -609,8 +609,11 @@ export interface MondayCustomerRebuildResult {
   onlineOrderCount: number
   excludedOrderCount: number
   /** 오프라인 매출 원장(offlineSales) — 새로 생겼거나 바뀌어 쓴 줄 수와,
-   * Monday에서 사라져 지운 줄 수. */
-  offlineSaleLines: { written: number; deleted: number }
+   * Monday에서 사라져 지운 줄 수. 그 단계가 실패했으면 null. */
+  offlineSaleLines: { written: number; deleted: number } | null
+  /** 실패한 통계 단계 이름(dailyInflow, followUps …) — 다 됐으면 없다. 고객
+   * 통합은 끝났고, 그 통계만 이전 값으로 남아 있다. */
+  failedSteps?: string[]
 }
 
 /** 하루치 인입 건수 — 그날 상담 보드에 새로 접수된 기록 수. 인입으로 보는
