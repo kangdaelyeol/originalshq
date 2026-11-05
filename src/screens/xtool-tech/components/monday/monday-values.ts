@@ -144,12 +144,12 @@ export const INLINE_TYPES = new Set(['text', 'numbers', 'phone', 'email'])
 
 /** 이름 칸 머리글 — Monday 이름 칸 제목은 캐시에 없어서 보드마다 정한다. */
 export const NAME_TITLE: Record<TechBoardKey, string> = {
-  fieldService: '클라이언트',
-  repair: '고객',
+  fieldService: '고객명',
+  repair: '고객명',
   records: '업무',
   techInquiry: '고객명',
   techTask: '업무',
-  asRequests: '신청자',
+  asRequests: '고객명',
   parts: '부품',
   rentals: '대여품',
   serials: 'SN',
@@ -189,7 +189,8 @@ export const groupIdOf = (meta: TechBoardMeta, item: TechItemDoc): string =>
 export const visibleColumns = (meta: TechBoardMeta): TechColumn[] =>
   withoutLegacyAssignee(meta.columns)
     .filter((c) => !HIDDEN_TYPES.has(c.type))
-    .map((c) => (isAssigneeColumn(c) ? { ...c, title: columnLabel(c), type: 'assignee' } : c))
+    // 머리글·편집 칸에 보일 이름으로(columnLabel) — 바꾼 이름도 연락처 칸 판단(isPhoneColumn)에 그대로 걸린다
+    .map((c) => ({ ...c, title: columnLabel(c), ...(isAssigneeColumn(c) ? { type: 'assignee' } : {}) }))
 
 /** 머리글 정렬 — 1 오름차순 · -1 내림차순 */
 export type MonSort = { columnId: string; dir: 1 | -1 } | null

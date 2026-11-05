@@ -41,8 +41,6 @@ const isLegacyAssigneeColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean 
 export const withoutLegacyAssignee = <T extends Pick<TechColumn, 'type' | 'title'>>(columns: T[]): T[] =>
   columns.some(isAssigneeColumn) ? columns.filter((c) => !isLegacyAssigneeColumn(c)) : columns
 
-/** 화면에 보일 칸 이름 — 담당자(엑스툴)는 그냥 "담당자" */
-export const columnLabel = (c: Pick<TechColumn, 'type' | 'title'>): string => (isAssigneeColumn(c) ? '담당자' : c.title)
 
 // ── 연락처 칸 ─────────────────────────────────────────────────────────────────
 // 전화 칸과 제목이 연락처·전화번호·휴대폰인 글자 칸 — 칠 때는 010-1234-5678로 맞춰 보여 주고,
@@ -52,6 +50,20 @@ const PHONE_TITLE = /연락처|전화번호|휴대폰|핸드폰|phone/i
 
 export const isPhoneColumn = (c: Pick<TechColumn, 'type' | 'title'>): boolean =>
   c.type === 'phone' || (c.type === 'text' && PHONE_TITLE.test(c.title.replace(/\s/g, '')))
+
+// Monday 칸 제목 끝의 입력 안내 — "(- 하이픈 필수)"·"(- 필수)"·"(간략하게 체크)"처럼 Monday에서 적는 사람에게 남긴 말.
+// "(대여자)"·"(SN)"처럼 뜻을 보태는 괄호는 둔다.
+const INPUT_HINT = /\s*\([^()]*(?:-|필수|체크)[^()]*\)/g
+
+/**
+ * 화면에 보일 칸 이름 — 담당자(엑스툴)는 "담당자", 전화 칸은 "연락처"로 맞추고 입력 안내 괄호는 뺀다. 화면에 보일
+ * 글자만 바꾼다 — 칸을 알아보는 판단(담당자·전화 칸 등)은 Monday 제목 그대로(c.title)를 본다.
+ */
+export const columnLabel = (c: Pick<TechColumn, 'type' | 'title'>): string => {
+  if (isAssigneeColumn(c)) return '담당자'
+  if (isPhoneColumn(c)) return '연락처'
+  return c.title.replace(INPUT_HINT, '').trim() || c.title
+}
 
 /** 번호 하나로 볼 수 있는 값인지 — 숫자·하이픈·공백·괄호·점만, 숫자는 11자리까지(빈 값도 참) */
 export const isPhoneLike = (text: string): boolean =>

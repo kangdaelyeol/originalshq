@@ -19,7 +19,7 @@ const deviceOf = (r: R) => [r.device, r.model].filter((v) => v && v !== '기타'
 const COLUMNS: RecordColumn<R>[] = [
   {
     key: 'name',
-    header: '신청자',
+    header: '고객명',
     sortValue: (r) => r.name,
     cell: (r) => (
       <span className="cell-person">

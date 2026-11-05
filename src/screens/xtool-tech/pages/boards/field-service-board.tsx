@@ -39,7 +39,7 @@ const searchOf = (r: R) =>
 const COLUMNS: RecordColumn<R>[] = [
   {
     key: 'name',
-    header: '고객',
+    header: '고객명',
     sortValue: (r) => r.name,
     cell: (r) => (
       <span className="cell-person">
