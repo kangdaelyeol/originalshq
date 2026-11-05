@@ -1,11 +1,12 @@
 import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus } from 'lucide-react'
-import type { TechColumn, TechItemDoc } from '../../data/tech-boards'
+import { memo } from 'react'
+import type { TechBoardKey, TechColumn, TechItemDoc } from '../../data/tech-boards'
 import { isWritable } from '../../data/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
 import { InlineInput } from './monday-editors'
 import { EditableCell } from './monday-editable-cell'
-import type { GroupTableProps } from './monday-group'
-import { selectionKey, useSelection } from './monday-selection'
+import type { EditingCell, GroupTableProps } from './monday-group'
+import type { SelectionState } from './monday-selection'
 import { SubTable } from './monday-subitems'
 import { RowCheck } from './monday-table-controls'
 import { rowKey } from './monday-values'
@@ -30,19 +31,49 @@ function UpdatesButton({ count, active, label, onClick }: { count: number; activ
   )
 }
 
+/** 줄이 받는 것 — 함수는 늘 같은 것(MondaySection useStableHandlers), 나머지는 이 줄 몫만(memo가 견준다) */
+type ItemRowProps = Pick<
+  GroupTableProps,
+  | 'setEditing'
+  | 'nameOf'
+  | 'commitCell'
+  | 'commitName'
+  | 'openFiles'
+  | 'addSubitem'
+  | 'commitSubCell'
+  | 'commitSubName'
+  | 'removeSubitem'
+  | 'subNameTitle'
+  | 'openUpdates'
+  | 'subColumns'
+  | 'toggleExpanded'
+> & {
+  item: TechItemDoc
+  boardKey: TechBoardKey
+  columns: TechColumn[]
+  /** 이 줄(또는 펼친 하위 줄)을 고치는 중일 때만 — 아니면 null */
+  editing: EditingCell | null
+  /** 업데이트 패널이 이 줄에 열렸는지 */
+  updatesOpen: boolean
+  /** 하위 아이템을 펼쳤는지 */
+  open: boolean
+  /** 골랐는지(체크박스) */
+  picked: boolean
+  /** 고르기 — 선택이 없는 화면이면 null */
+  setPicked: SelectionState['set'] | null
+}
+
 /**
  * 항목 한 줄 — 고르기 체크박스, 하위 아이템 펼치기, 이름(누르면 그 자리에서 고친다)·하위 수·말풍선, 칸들.
- * 펼치면 줄 아래로 하위 표(SubTable).
+ * 펼치면 줄 아래로 하위 표(SubTable). memo — 칸 하나를 고치거나 다른 줄을 골라도 이 줄은 다시 그리지 않는다.
  */
-export function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDoc }) {
-  const { columns, editing, setEditing, nameOf, commitName, subColumns, expanded, commitSubCell, commitSubName, removeSubitem } = props
+export const ItemRow = memo(function ItemRow({ item, ...props }: ItemRowProps) {
+  const { columns, editing, setEditing, nameOf, commitName, subColumns, open, commitSubCell, commitSubName, removeSubitem, picked } = props
   const key = rowKey(item)
   const nameKey = `${key}:name`
   const subCount = item.subitems?.length ?? 0
-  const open = expanded.has(key)
   const Chevron = open ? ChevronDown : ChevronRight
-  const selection = useSelection()
-  const picked = selection?.selected.has(selectionKey(props.boardKey, key)) ?? false
+  const setPicked = props.setPicked
 
   return (
     <>
@@ -56,12 +87,8 @@ export function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDo
             setEditing({ key: nameKey, anchor: e.currentTarget })
           }}
         >
-          {selection && (
-            <RowCheck
-              checked={picked}
-              label={`${nameOf(item)} 고르기`}
-              onChange={(on) => selection.set(props.boardKey, [key], on)}
-            />
+          {setPicked && (
+            <RowCheck checked={picked} label={`${nameOf(item)} 고르기`} onChange={(on) => setPicked(props.boardKey, [key], on)} />
           )}
           {subColumns && (
             <button
@@ -99,7 +126,7 @@ export function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDo
           {props.openUpdates && !item.draft && (
             <UpdatesButton
               count={item.updateCount ?? 0}
-              active={props.updatesOpenFor === key}
+              active={props.updatesOpen}
               label={nameOf(item)}
               onClick={() => props.openUpdates?.(item)}
             />
@@ -125,7 +152,7 @@ export function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDo
       )}
     </>
   )
-}
+})
 
 function ItemCell({
   item,
@@ -134,7 +161,7 @@ function ItemCell({
   setEditing,
   commitCell,
   openFiles,
-}: GroupTableProps & { item: TechItemDoc; column: TechColumn }) {
+}: ItemRowProps & { column: TechColumn }) {
   return (
     <EditableCell
       editKey={`${rowKey(item)}:${column.id}`}

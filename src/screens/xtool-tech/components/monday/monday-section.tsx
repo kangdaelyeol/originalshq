@@ -4,6 +4,7 @@ import { initialState, toEditValue } from '../../data/tech-edit'
 import { createItem, editItem } from '../../data/tech-outbox'
 import { priceColumn, relationColumn } from '../../data/tech-subitems'
 import { cx } from '@/ohq-ui/lib/cx'
+import { useStableHandlers } from '../../lib/use-stable-handlers'
 import { groupColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
 import { GroupTable, type EditingCell, type MonGroup } from './monday-group'
@@ -186,6 +187,25 @@ export function MondaySection(props: MondaySectionProps) {
     })
   }, [items, meta, allColumns, sort])
 
+  // 줄에 넘길 핸들러 — 늘 같은 함수로(줄이 memo라, 칸 하나를 고칠 때 다른 줄은 다시 그리지 않는다)
+  const handlers = useStableHandlers({
+    commitCell,
+    commitName,
+    openFiles: (item: TechItemDoc, column: TechColumn) => setFilesFor({ itemId: rowKey(item), columnId: column.id }),
+    addItem: allowAdd ? addItem : null,
+    addSubitem,
+    commitSubCell,
+    commitSubName,
+    removeSubitem,
+    openUpdates: UPDATE_BOARDS.has(boardKey) ? (item: TechItemDoc) => setUpdatesFor(rowKey(item)) : null,
+    toggleExpanded: (itemId: string) =>
+      setExpanded((s) => {
+        const next = new Set(s)
+        if (!next.delete(itemId)) next.add(itemId)
+        return next
+      }),
+  })
+
   const shown = hideEmptyGroups ? groups.filter((g) => g.items.length > 0) : groups
   const updatesItem = updatesFor ? items.find((item) => rowKey(item) === updatesFor) : undefined
   const filesItem = filesFor ? items.find((item) => rowKey(item) === filesFor.itemId) : undefined
@@ -211,26 +231,11 @@ export function MondaySection(props: MondaySectionProps) {
           editing={editing}
           setEditing={setEditing}
           nameOf={nameOf}
-          commitCell={commitCell}
-          commitName={commitName}
-          openFiles={(item, column) => setFilesFor({ itemId: rowKey(item), columnId: column.id })}
-          addItem={allowAdd ? addItem : null}
-          addSubitem={addSubitem}
-          commitSubCell={commitSubCell}
-          commitSubName={commitSubName}
-          removeSubitem={removeSubitem}
-          openUpdates={UPDATE_BOARDS.has(boardKey) ? (item) => setUpdatesFor(rowKey(item)) : null}
+          {...handlers}
           updatesOpenFor={updatesFor}
           subColumns={subColumns}
           subNameTitle={SUB_NAME_TITLE[boardKey] ?? '하위 아이템'}
           expanded={expanded}
-          toggleExpanded={(itemId) =>
-            setExpanded((s) => {
-              const next = new Set(s)
-              if (!next.delete(itemId)) next.add(itemId)
-              return next
-            })
-          }
         />
       ))}
       {filesItem && filesColumn && (

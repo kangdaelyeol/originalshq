@@ -192,9 +192,37 @@ export function GroupTable(props: GroupTableProps) {
             <div className="mon-cell mon-cell--end" aria-hidden />
           </div>
 
-          {group.items.slice(0, limit).map((item) => (
-            <ItemRow key={rowKey(item)} item={item} {...props} />
-          ))}
+          {group.items.slice(0, limit).map((item) => {
+            const key = rowKey(item)
+            const open = props.expanded.has(key)
+            return (
+              <ItemRow
+                key={key}
+                item={item}
+                boardKey={boardKey}
+                columns={columns}
+                // 고치는 칸이 이 줄(또는 펼친 하위 줄)일 때만 넘긴다 — 나머지 줄은 다시 그리지 않는다(ItemRow memo)
+                editing={props.editing && (props.editing.key.startsWith(`${key}:`) || (open && props.editing.key.startsWith('sub:'))) ? props.editing : null}
+                setEditing={props.setEditing}
+                nameOf={props.nameOf}
+                commitCell={props.commitCell}
+                commitName={props.commitName}
+                openFiles={props.openFiles}
+                addSubitem={props.addSubitem}
+                commitSubCell={props.commitSubCell}
+                commitSubName={props.commitSubName}
+                removeSubitem={props.removeSubitem}
+                subNameTitle={props.subNameTitle}
+                openUpdates={props.openUpdates}
+                updatesOpen={props.updatesOpenFor === key}
+                subColumns={props.subColumns}
+                open={open}
+                toggleExpanded={props.toggleExpanded}
+                picked={selection?.selected.has(selectionKey(boardKey, key)) ?? false}
+                setPicked={selection?.set ?? null}
+              />
+            )
+          })}
 
           {group.items.length > limit && <AutoMore remaining={group.items.length - limit} onMore={onMore} />}
 
