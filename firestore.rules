@@ -33,7 +33,8 @@ service cloud.firestore {
       return data.name is string && data.name.size() > 0 && data.name.size() <= 60
         && data.isAdmin is bool
         && data.teams is map && data.teams.size() <= 20
-        && data.status in ['active', 'disabled'];
+        && data.status in ['active', 'disabled']
+        && (data.get('techArea', null) == null || data.techArea in ['visit', 'as']);
     }
 
     match /xtoolMembers/{memberId} {
@@ -52,11 +53,11 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time
         && request.resource.data.createdBy == signedInEmail();
 
-      // 관리자: 이름·권한·상태만. 자기 자신의 관리자 권한을 빼거나 정지할 수는 없다
+      // 관리자: 이름·권한·상태·기술팀 담당영역만. 자기 자신의 관리자 권한을 빼거나 정지할 수는 없다
       // (마지막 관리자가 스스로 잠기는 일을 막는다).
       allow update: if isXtoolAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['name', 'isAdmin', 'teams', 'status', 'updatedAt'])
+          .hasOnly(['name', 'isAdmin', 'teams', 'status', 'techArea', 'updatedAt'])
         && validMemberFields(request.resource.data)
         && request.resource.data.updatedAt == request.time
         && (memberId != signedInEmail()

@@ -28,6 +28,14 @@ export const TEAMS: readonly { key: TeamKey; label: string; ready: boolean }[] =
 
 export type MemberStatus = 'active' | 'disabled'
 
+/** 기술팀 담당영역 — 관리자가 정한다(기술팀 팀원 화면에 보인다). */
+export type TechArea = 'visit' | 'as'
+
+export const TECH_AREAS: readonly { key: TechArea; label: string }[] = [
+  { key: 'visit', label: '방문체험' },
+  { key: 'as', label: 'AS' },
+]
+
 export interface XtoolMember {
   email: string
   name: string
@@ -35,6 +43,8 @@ export interface XtoolMember {
   /** 팀 페이지별 접근 권한 */
   teams: Partial<Record<TeamKey, boolean>>
   status: MemberStatus
+  /** 기술팀 담당영역 — 정하지 않았으면 없음 */
+  techArea?: TechArea | null
   createdAt?: Timestamp | null
   createdBy?: string
   updatedAt?: Timestamp | null
@@ -93,10 +103,10 @@ export async function addMember(input: MemberInput, adminEmail: string): Promise
   return true
 }
 
-/** 권한·상태 바꾸기(관리자) — 넘긴 값만 바뀐다. */
+/** 권한·상태·담당영역 바꾸기(관리자) — 넘긴 값만 바뀐다. */
 export async function updateMember(
   email: string,
-  patch: Partial<Pick<XtoolMember, 'name' | 'isAdmin' | 'teams' | 'status'>>,
+  patch: Partial<Pick<XtoolMember, 'name' | 'isAdmin' | 'teams' | 'status' | 'techArea'>>,
 ): Promise<void> {
   await updateDoc(memberRef(email), { ...patch, updatedAt: serverTimestamp() })
 }

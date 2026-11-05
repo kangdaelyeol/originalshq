@@ -5,6 +5,7 @@ import {
   removeMember,
   resetMemberPassword,
   TEAMS,
+  TECH_AREAS,
   updateMember,
   watchMembers,
   type XtoolMember,
@@ -122,6 +123,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
               <th scope="col">구성원</th>
               <th scope="col">팀 페이지 권한</th>
               <th scope="col">관리자</th>
+              <th scope="col">기술팀 담당</th>
               <th scope="col">상태</th>
               <th scope="col">마지막 로그인</th>
               <th scope="col">
@@ -132,7 +134,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           <tbody>
             {members && shown.length === 0 && (
               <tr>
-                <td colSpan={6} className="table__empty">
+                <td colSpan={7} className="table__empty">
                   {needle ? '검색 결과가 없어요.' : '아직 등록된 구성원이 없어요.'}
                 </td>
               </tr>
@@ -193,6 +195,33 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
                         관리자
                       </button>
                     </div>
+                  </td>
+                  <td>
+                    {/* 기술팀 담당영역 — 기술팀 팀원 화면(팀원 & 권한)에 보인다. 고른 것을 다시 누르면 비운다. */}
+                    {member.teams.tech === true ? (
+                      <div className="admin-chips">
+                        {TECH_AREAS.map((area) => {
+                          const on = member.techArea === area.key
+                          return (
+                            <button
+                              key={area.key}
+                              type="button"
+                              className={cx('admin-chip', on && 'is-on')}
+                              aria-pressed={on}
+                              aria-label={`${member.name} 담당 ${area.label}`}
+                              disabled={busy}
+                              onClick={() =>
+                                void run(member.email, () => updateMember(member.email, { techArea: on ? null : area.key }))
+                              }
+                            >
+                              {area.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <span className="table__muted">—</span>
+                    )}
                   </td>
                   <td>
                     <StatusPill tone={status.tone} dot>
