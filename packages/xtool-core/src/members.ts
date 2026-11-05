@@ -153,18 +153,6 @@ export async function recordSignIn(user: User): Promise<void> {
 /** 비밀번호 최소 길이 — 함수와 같게 */
 export const MIN_PASSWORD = 8
 
-// 헷갈리는 글자(0·O·1·l·I)는 뺀다 — 직원에게 말로·메신저로 옮겨 적기 쉽게.
-const PASSWORD_CHARS = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
-
-/** 임시 비밀번호 — 10자, 글자·숫자 섞어서 */
-export function generateTempPassword(length = 10): string {
-  const bytes = crypto.getRandomValues(new Uint32Array(length))
-  let out = ''
-  for (const b of bytes) out += PASSWORD_CHARS[b % PASSWORD_CHARS.length]
-  // 숫자가 하나도 없으면 마지막 자리를 숫자로
-  return /\d/.test(out) ? out : out.slice(0, -1) + String(2 + (bytes[0] % 8))
-}
-
 /** 구성원 등록 + 아이디(이메일)·임시 비밀번호 발급 */
 export async function issueAccount(input: Omit<MemberInput, 'status'> & { password: string }): Promise<void> {
   await httpsCallable(xtoolFirebase().functions, 'xtoolIssueAccount')({

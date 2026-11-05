@@ -74,7 +74,7 @@ export function xtoolFirebase(): XtoolFirebase {
 }
 
 // 공용 데이터 코드(xtool-core)가 이 초기화를 쓴다
-provideXtoolFirebase(xtoolFirebase)
+provideXtoolFirebase(xtoolFirebase, { configured: isXtoolFirebaseConfigured })
 
 export const googleProvider = new GoogleAuthProvider()
 // 계정이 여러 개인 브라우저에서 매번 고를 수 있게.

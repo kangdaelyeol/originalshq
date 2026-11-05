@@ -15,11 +15,19 @@ export interface XtoolFirebase {
 }
 
 let provider: (() => XtoolFirebase) | null = null
+let configured = false
 
-/** 플랫폼의 Firebase 초기화를 끼운다 — 처음 부를 때 초기화하는 함수를 넘긴다. */
-export function provideXtoolFirebase(get: () => XtoolFirebase): void {
+/**
+ * 플랫폼의 Firebase 초기화를 끼운다 — 처음 부를 때 초기화하는 함수를 넘긴다. configured가 false면(설정이 비었다)
+ * 로그인 화면이 "설정이 필요해요"만 띄운다(useXtoolSession unconfigured).
+ */
+export function provideXtoolFirebase(get: () => XtoolFirebase, options: { configured?: boolean } = {}): void {
   provider = get
+  configured = options.configured ?? true
 }
+
+/** Firebase를 쓸 수 있는지 — 끼웠고 설정이 채워졌다 */
+export const isXtoolFirebaseConfigured = (): boolean => provider !== null && configured
 
 /** 지금 플랫폼의 Firebase — provideXtoolFirebase 전에 부르면 오류 */
 export function xtoolFirebase(): XtoolFirebase {

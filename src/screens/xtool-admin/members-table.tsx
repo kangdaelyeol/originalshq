@@ -1,7 +1,6 @@
 import { KeyRound, Search, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import {
-  generateTempPassword,
   GROUP_ROLES,
   POSITIONS,
   removeMember,
@@ -14,6 +13,7 @@ import {
   type TeamKey,
   type XtoolMember,
 } from '@xtool-core/members'
+import { generateTempPassword } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { usePhotoOf } from '@/screens/xtool-tech/data/tech-profiles'
 import { Avatar } from '@/ohq-ui/components/avatar'

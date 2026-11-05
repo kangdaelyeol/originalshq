@@ -2,13 +2,13 @@ import { CircleCheck, RefreshCw, UserPlus } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import {
   addMember,
-  generateTempPassword,
   issueAccount,
   MIN_PASSWORD,
   normalizeEmail,
   TEAMS,
   type TeamKey,
 } from '@xtool-core/members'
+import { generateTempPassword } from '@/xtool-auth/members'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { TextField } from '@/ohq-ui/components/text-field'
