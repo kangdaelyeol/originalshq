@@ -436,6 +436,18 @@
     }
   }
 
+  // 표 위 팀별로 보기 — 전체·팀·관리자, 이름 옆 인원 수
+  .member-filter {
+    width: fit-content;
+    margin-bottom: 14px;
+  }
+
+  .member-filter__count {
+    margin-left: 6px;
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+  }
+
   // 직책 칸 — 직책 고르기 + 그룹장·팀원
   .member-role {
     display: flex;

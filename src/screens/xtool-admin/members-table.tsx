@@ -11,6 +11,7 @@ import {
   updateMember,
   watchMembers,
   type Position,
+  type TeamKey,
   type XtoolMember,
 } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
@@ -25,6 +26,15 @@ import { CredentialNote } from './credential-note'
 import { firestoreErrorMessage, functionErrorMessage, relativeTime } from './errors'
 
 
+// 표 위 팀 버튼 — 전체·팀별(TEAMS)·관리자. 검색과 같이 걸린다.
+type MemberFilter = 'all' | TeamKey | 'admin'
+
+const FILTERS: readonly { key: MemberFilter; label: string; match: (m: XtoolMember) => boolean }[] = [
+  { key: 'all', label: '전체', match: () => true },
+  ...TEAMS.map((team) => ({ key: team.key, label: team.label, match: (m: XtoolMember) => m.teams[team.key] === true })),
+  { key: 'admin', label: '관리자', match: (m) => m.isAdmin },
+]
+
 function statusOf(member: XtoolMember) {
   if (member.status === 'disabled') return { tone: 'crit', label: '정지' } as const
   // 임시 비밀번호를 받고 아직 자기 비밀번호를 안 정함
@@ -38,6 +48,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
   const [members, setMembers] = useState<XtoolMember[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<MemberFilter>('all')
   const [confirming, setConfirming] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const photoOf = usePhotoOf()
@@ -87,8 +98,9 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
 
   const nameOfMember = (email: string | null) => (members ?? []).find((m) => m.email === email)?.name || email || ''
   const needle = query.trim().toLowerCase()
+  const inFilter = FILTERS.find((f) => f.key === filter)?.match ?? (() => true)
   const shown = (members ?? []).filter(
-    (m) => !needle || m.email.includes(needle) || m.name.toLowerCase().includes(needle),
+    (m) => inFilter(m) && (!needle || m.email.includes(needle) || m.name.toLowerCase().includes(needle)),
   )
   const activeCount = (members ?? []).filter((m) => m.status === 'active').length
 
@@ -119,6 +131,23 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
         </p>
       )}
       {issued && <CredentialNote {...issued} onClose={() => setIssued(null)} />}
+      <div className="admin-chips member-filter" role="group" aria-label="팀별로 보기">
+        {FILTERS.map((f) => {
+          const on = filter === f.key
+          return (
+            <button
+              key={f.key}
+              type="button"
+              className={cx('admin-chip', on && 'is-on')}
+              aria-pressed={on}
+              onClick={() => setFilter(f.key)}
+            >
+              {f.label}
+              <span className="member-filter__count">{(members ?? []).filter(f.match).length}</span>
+            </button>
+          )
+        })}
+      </div>
       <div className="table-wrap">
         <table className="table table--roomy">
           <thead>
@@ -139,7 +168,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
             {members && shown.length === 0 && (
               <tr>
                 <td colSpan={8} className="table__empty">
-                  {needle ? '검색 결과가 없어요.' : '아직 등록된 구성원이 없어요.'}
+                  {needle ? '검색 결과가 없어요.' : filter !== 'all' ? '이 팀에 등록된 구성원이 없어요.' : '아직 등록된 구성원이 없어요.'}
                 </td>
               </tr>
             )}
