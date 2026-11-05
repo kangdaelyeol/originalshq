@@ -28,6 +28,8 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
     category,
     categories,
     categoryCounts,
+    consultationBoard,
+    consultationBoards,
     sort,
     pageSize,
     page,
@@ -37,6 +39,7 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
   const {
     changeSearch,
     changeCategory,
+    changeConsultationBoard,
     changeSort,
     changePageSize,
     goToPrevPage,
@@ -90,6 +93,31 @@ export const MondayNav = ({ state, actions }: MondayNavProps) => {
               )}
             </div>
           </div>
+
+          {/* 상담 보드 — 그 보드에서 상담이 들어온 고객만(검색·분류 안의 수). 지금
+              고른 보드는 이번 검색·분류에 없어도 목록에 남긴다. */}
+          <Select
+            className="page_size_select monday_sort"
+            value={consultationBoard ?? ''}
+            options={[
+              { value: '', label: '상담 보드 전체' },
+              ...consultationBoards.map(({ boardName, count }) => ({
+                value: boardName,
+                label: `${boardName} ${count.toLocaleString('ko-KR')}`,
+              })),
+              ...(consultationBoard &&
+              !consultationBoards.some((b) => b.boardName === consultationBoard)
+                ? [
+                    {
+                      value: consultationBoard,
+                      label: `${consultationBoard} 0`,
+                    },
+                  ]
+                : []),
+            ]}
+            onChange={(value) => changeConsultationBoard(value || null)}
+            label="상담 보드"
+          />
 
           <Select
             className="page_size_select monday_sort"

@@ -124,9 +124,34 @@ export const MONDAY_SORT_LABEL: Record<MondaySort, string> = {
   amount: '구매 금액순',
 }
 
+/** 이 고객의 상담이 그 보드에서 들어왔으면 그 보드의 최근 상담 — 아니면
+ * undefined. 상담 보드 목록이 생기기 전에 동기화된 고객은 늘 undefined. */
+const consultationOn = (customer: MondayCustomerListItem, board: string) =>
+  customer.summary.consultationBoards?.find((b) => b.boardName === board)
+
+/** 상담 보드 거르기 — board가 null이면 모두. */
+export const matchesConsultationBoard = (
+  customer: MondayCustomerListItem,
+  board: string | null,
+) => board === null || consultationOn(customer, board) !== undefined
+
+/** 상담이 들어온 보드와 그 보드의 고객 수 — 많은 순(같으면 이름 순). */
+export const countConsultationBoards = (
+  customers: readonly MondayCustomerListItem[],
+): { boardName: string; count: number }[] => {
+  const counts = new Map<string, number>()
+  for (const customer of customers)
+    for (const { boardName } of customer.summary.consultationBoards ?? [])
+      counts.set(boardName, (counts.get(boardName) ?? 0) + 1)
+  return [...counts]
+    .map(([boardName, count]) => ({ boardName, count }))
+    .sort((a, b) => b.count - a.count || a.boardName.localeCompare(b.boardName))
+}
+
 const sortKey = (
   customer: MondayCustomerListItem,
   sort: MondaySort,
+  board: string | null,
 ): string | number => {
   switch (sort) {
     case 'records':
@@ -136,7 +161,10 @@ const sortKey = (
     case 'amount':
       return customer.summary.purchaseAmount
     case 'consultation':
-      return customer.summary.latestConsultationAt ?? ''
+      // 상담 보드를 골랐으면 그 보드의 최근 상담으로 줄 세운다.
+      return board === null
+        ? (customer.summary.latestConsultationAt ?? '')
+        : (consultationOn(customer, board)?.latestAt ?? '')
     default:
       return customer.lastUpdatedAt ?? ''
   }
@@ -146,10 +174,11 @@ const sortKey = (
 export const sortMondayCustomers = (
   customers: MondayCustomerListItem[],
   sort: MondaySort,
+  board: string | null = null,
 ): MondayCustomerListItem[] =>
   [...customers].sort((a, b) => {
-    const keyA = sortKey(a, sort)
-    const keyB = sortKey(b, sort)
+    const keyA = sortKey(a, sort, board)
+    const keyB = sortKey(b, sort, board)
     if (typeof keyA === 'number' && typeof keyB === 'number') {
       return keyB - keyA
     }

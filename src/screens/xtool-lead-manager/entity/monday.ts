@@ -46,6 +46,9 @@ export interface MondayCustomerSummary {
   funnel: MondayCustomerFunnel
   assignees: string[]
   boardNames: string[]
+  /** 상담이 들어온 보드마다 가장 최근 상담 접수일 — 최근 접수 순. 이 필드가
+   * 생기기 전에 동기화된 고객에는 없다. */
+  consultationBoards?: { boardName: string; latestAt: string | null }[]
 }
 
 /** 퍼널 통계용 파생값 — 고객 1명이 퍼널의 어디까지 갔는지. */

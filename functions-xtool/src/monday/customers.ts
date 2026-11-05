@@ -5,6 +5,7 @@ import {
   MondayColumn,
   MondayConsultation,
   MondayCustomer,
+  MondayCustomerSummary,
   MondayDailyInflow,
   MondayItem,
   MondayPaymentIssue,
@@ -395,6 +396,19 @@ const buildCustomer = (
           ...(orders.length > 0 ? [CAFE24_SOURCE_NAME] : []),
         ]),
       ].sort(),
+      // 상담은 최근 접수 순이라 보드마다 처음 나온 것이 그 보드의 최근 상담이다.
+      consultationBoards: consultations.reduce<
+        MondayCustomerSummary['consultationBoards']
+      >(
+        (boards, record) =>
+          boards.some((b) => b.boardName === record.boardName)
+            ? boards
+            : [
+                ...boards,
+                { boardName: record.boardName, latestAt: record.receivedAt },
+              ],
+        [],
+      ),
     },
     itemCount: items.length + orders.length,
     boardIds: [

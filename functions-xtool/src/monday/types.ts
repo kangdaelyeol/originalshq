@@ -248,6 +248,10 @@ export interface MondayCustomerSummary {
   assignees: string[]
   /** 이 고객이 등장한 보드 이름들. */
   boardNames: string[]
+  /** 상담이 들어온 보드마다 가장 최근 상담 접수일(접수일이 없으면 null) — 최근
+   * 접수 순. Monday 고객 탭의 "상담 보드" 거르기와, 보드를 고른 최근 상담순이
+   * 쓴다(보드 이름에 점이 들어갈 수 있어 맵이 아니라 배열). */
+  consultationBoards: { boardName: string; latestAt: string | null }[]
 }
 
 /** 퍼널 통계용 파생값 — 고객 1명이 퍼널의 어디까지 갔는지. 통계 화면은

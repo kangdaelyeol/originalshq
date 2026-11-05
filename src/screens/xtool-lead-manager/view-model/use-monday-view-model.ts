@@ -18,8 +18,10 @@ import { usePagination } from '@/screens/xtool-lead-manager/hooks/use-pagination
 import {
   buildMondayHighlights,
   buildMondayOverview,
+  countConsultationBoards,
   filterMondayCustomers,
   todayInKorea,
+  matchesConsultationBoard,
   matchesMondayCategory,
   sortMondayCustomers,
   type MondayCategory,
@@ -63,6 +65,11 @@ export const useMondayViewModel = (active: boolean) => {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<MondayCategory>('all')
   const [sort, setSort] = useState<MondaySort>('updated')
+  // 상담 보드 — null이면 모두. 고르면 그 보드에서 상담이 들어온 고객만, 최근
+  // 상담순은 그 보드의 최근 상담으로.
+  const [consultationBoard, setConsultationBoard] = useState<string | null>(
+    null,
+  )
 
   const [detailPhone, setDetailPhone] = useState<string | null>(null)
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
@@ -131,19 +138,34 @@ export const useMondayViewModel = (active: boolean) => {
     return counts
   }, [searched])
 
+  const inCategory = useMemo(
+    () =>
+      searched.filter((customer) => matchesMondayCategory(customer, category)),
+    [searched, category],
+  )
+  /** 상담 보드 고르기 — 검색·분류 결과 안에서 보드마다 고객 수. */
+  const consultationBoards = useMemo(
+    () => countConsultationBoards(inCategory),
+    [inCategory],
+  )
+
   const filtered = useMemo(
     () =>
       sortMondayCustomers(
-        searched.filter((customer) =>
-          matchesMondayCategory(customer, category),
+        inCategory.filter((customer) =>
+          matchesConsultationBoard(customer, consultationBoard),
         ),
         sort,
+        consultationBoard,
       ),
-    [searched, category, sort],
+    [inCategory, consultationBoard, sort],
   )
 
-  // 검색어·분류·정렬이 바뀌면 1페이지로.
-  const pagination = usePagination(filtered, `${search}|${category}|${sort}`)
+  // 검색어·분류·보드·정렬이 바뀌면 1페이지로.
+  const pagination = usePagination(
+    filtered,
+    `${search}|${category}|${consultationBoard ?? ''}|${sort}`,
+  )
 
   const openDetail = useCallback(async (phone: string) => {
     setDetailPhone(phone)
@@ -244,6 +266,8 @@ export const useMondayViewModel = (active: boolean) => {
       category,
       categories: CATEGORIES,
       categoryCounts,
+      consultationBoard,
+      consultationBoards,
       sort,
       pageSize: pagination.pageSize,
       page: pagination.page,
@@ -262,6 +286,7 @@ export const useMondayViewModel = (active: boolean) => {
       reload: load,
       changeSearch: setSearch,
       changeCategory: setCategory,
+      changeConsultationBoard: setConsultationBoard,
       changeSort: setSort,
       changePageSize: pagination.setPageSize,
       goToPrevPage: pagination.goToPrevPage,
