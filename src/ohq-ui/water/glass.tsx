@@ -47,6 +47,12 @@ interface WaterGlassFilterProps {
    * 계산해 goo보다 GPU 패스가 1/3. 모양·이음매는 goo와 같다
    */
   gooShape?: boolean
+  /** 테두리·안쪽 그림자 진하기 배수 — CSS w-glass의 --w-rim과 같은 값을 넘긴다(사용자 설정, theme/water.ts) */
+  rim?: number
+  /** 떨어지는 그림자(크기·진하기) 배수 — CSS w-glass의 --w-depth와 같다 */
+  depth?: number
+  /** 유리 농도 — 0이면 D7 몸(2.6% 어둡게), 올리면 그만큼 흰 막(CSS --w-pane과 같다) */
+  frost?: number
 }
 
 /**
@@ -105,9 +111,24 @@ export function WaterGooShapeFilter({ id, region, k = 1 }: { id: string; region:
  * 자리 그대로(흐리게) 옮기는데, SVG 모양은 소수 자리 그대로 그린다. 바꿔 끼우는 순간의 모양(자리·높이)은 양쪽 다
  * 장치 화소에 붙여야 테두리가 반 화소 어긋나지 않는다(소수 자리면 테두리 줄이 40~70 다르다)
  */
-export function WaterGlassFilter({ id, region, k = 1, lift = 1, goo = false, gooShape = false }: WaterGlassFilterProps) {
-  const s = k * lift
+export function WaterGlassFilter({
+  id,
+  region,
+  k = 1,
+  lift = 1,
+  goo = false,
+  gooShape = false,
+  rim = 1,
+  depth = 1,
+  frost = 0,
+}: WaterGlassFilterProps) {
+  const s = k * lift * depth
   const seam = goo || gooShape
+  // 떨어지는 그림자 — 깊이 0이면 없음
+  const shadow = lift > 0 && depth > 0
+  // 테두리 진하기(rim)·그림자 진하기(depth)를 곱한 불투명도(1을 넘지 않게)
+  const edge = (a: number) => n(Math.min(1, a * rim))
+  const drop = (a: number) => n(Math.min(1, a * Math.min(1, lift) * depth))
   return (
     <filter
       id={id}
@@ -130,7 +151,7 @@ export function WaterGlassFilter({ id, region, k = 1, lift = 1, goo = false, goo
         <feColorMatrix in="SourceAlpha" values={alpha(1)} result="shape" />
       )}
 
-      {lift > 0 && (
+      {shadow && (
         <>
           <feGaussianBlur in="shape" stdDeviation={n(10 * s)} result="spread0" />
           <feComponentTransfer in="spread0" result="spread">
@@ -142,9 +163,9 @@ export function WaterGlassFilter({ id, region, k = 1, lift = 1, goo = false, goo
           </feComponentTransfer>
           <feGaussianBlur in="spread" stdDeviation={n(18 * s)} result="spreadB" />
           <feOffset in="spreadB" dx={n(21 * s)} dy={n(44 * s)} result="far" />
-          <feColorMatrix in="far" values={alpha(n(0.27 * Math.min(1, lift)))} result="farC" />
+          <feColorMatrix in="far" values={alpha(drop(0.27))} result="farC" />
           <feGaussianBlur in="shape" stdDeviation={n(12 * s)} result="nearC0" />
-          <feColorMatrix in="nearC0" values={alpha(n(0.13 * Math.min(1, lift)))} result="nearC" />
+          <feColorMatrix in="nearC0" values={alpha(drop(0.13))} result="nearC" />
           <feMerge result="shadows">
             <feMergeNode in="farC" />
             <feMergeNode in="nearC" />
@@ -156,40 +177,40 @@ export function WaterGlassFilter({ id, region, k = 1, lift = 1, goo = false, goo
       <feOffset in="shape" dx={n(7 * k)} dy={n(13 * k)} result="innerO" />
       <feGaussianBlur in="innerO" stdDeviation={n(8 * k)} result="innerB" />
       <feComposite in="shape" in2="innerB" operator="out" result="inner" />
-      <feColorMatrix in="inner" values={alpha(0.24)} result="innerC" />
+      <feColorMatrix in="inner" values={alpha(edge(0.24))} result="innerC" />
 
       <feOffset in="shape" dx={n(1.7 * k)} dy={n(1.9 * k)} result="darkO" />
       <feComposite in="shape" in2="darkO" operator="out" result="darkA" />
       <feGaussianBlur in="darkA" stdDeviation={n(0.55 * k)} result="darkB" />
       <feComposite in="darkB" in2="shape" operator="in" result="dark" />
-      <feColorMatrix in="dark" values={alpha(0.62)} result="darkC" />
+      <feColorMatrix in="dark" values={alpha(edge(0.62))} result="darkC" />
       <feMorphology in="shape" operator="erode" radius={n(Math.max(0.75, k))} result="thin" />
       <feComposite in="shape" in2="thin" operator="out" result="outline" />
-      <feColorMatrix in="outline" values={alpha(0.24)} result="outlineC" />
+      <feColorMatrix in="outline" values={alpha(edge(0.24))} result="outlineC" />
 
       <feOffset in="shape" dx={n(-3.4 * k)} dy={n(-3.4 * k)} result="whiteO" />
       <feComposite in="shape" in2="whiteO" operator="out" result="whiteA" />
       <feGaussianBlur in="whiteA" stdDeviation={n(0.7 * k)} result="whiteB" />
       <feComposite in="whiteB" in2="shape" operator="in" result="whiteIn" />
-      <feColorMatrix in="whiteIn" values={white(0.9)} result="whiteC" />
+      <feColorMatrix in="whiteIn" values={white(edge(0.9))} result="whiteC" />
       <feOffset in="shape" dx={n(-2 * k)} dy={n(-5.5 * k)} result="softO" />
       <feComposite in="shape" in2="softO" operator="out" result="softA" />
       <feGaussianBlur in="softA" stdDeviation={n(1.4 * k)} result="softB" />
       <feComposite in="softB" in2="shape" operator="in" result="softIn" />
-      <feColorMatrix in="softIn" values={white(0.3)} result="softC" />
+      <feColorMatrix in="softIn" values={white(edge(0.3))} result="softC" />
       {seam && (
         <>
           <feOffset in="cshape" dx={n(-3.4 * k)} dy={n(-3.4 * k)} result="seamO" />
           <feComposite in="cshape" in2="seamO" operator="out" result="seamA" />
           <feGaussianBlur in="seamA" stdDeviation={n(1.3 * k)} result="seamB" />
           <feComposite in="seamB" in2="shape" operator="in" result="seamIn" />
-          <feColorMatrix in="seamIn" values={white(0.5)} result="seamC" />
+          <feColorMatrix in="seamIn" values={white(edge(0.5))} result="seamC" />
         </>
       )}
-      <feColorMatrix in="shape" values={alpha(0.026)} result="tint" />
+      <feColorMatrix in="shape" values={frost > 0 ? white(n(frost)) : alpha(0.026)} result="tint" />
 
       <feMerge>
-        {lift > 0 && <feMergeNode in="shadowOut" />}
+        {shadow && <feMergeNode in="shadowOut" />}
         <feMergeNode in="tint" />
         <feMergeNode in="innerC" />
         <feMergeNode in="softC" />

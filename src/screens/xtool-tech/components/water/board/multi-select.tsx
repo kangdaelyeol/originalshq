@@ -10,7 +10,9 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { cx } from '@/ohq-ui/lib/cx'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
+import { waterPaneColors } from '@/ohq-ui/theme/water'
 import { useReducedMotion } from '@/ohq-ui/water/hooks'
 import { WaterCheck } from '@/ohq-ui/water/controls'
 import { WaterGlassFilter, WaterGooShapeFilter } from '@/ohq-ui/water/glass'
@@ -60,9 +62,15 @@ const snapRect = (r: DOMRect) => {
   return { left, top, right, bottom, width: right - left, height: bottom - top }
 }
 
-/** 불투명 속 — CSS $wb-fill(150deg rgb 203 → 189)과 같은 색 */
-const FILL_FROM = 'rgb(203, 201, 206)'
-const FILL_TO = 'rgb(189, 187, 192)'
+/**
+ * 이 팝오버의 SVG 유리 — 불투명 속(CSS $wb-fill과 같은 색)과 필터의 테두리·깊이·농도를 사용자 물 설정(판 색·유리
+ * 효과)에 맞춘다. CSS 판(w-glass·wb-panel)은 같은 값을 --w-* 변수로 받는다(theme/water.ts).
+ */
+function useGlassLook() {
+  const { water } = useAppearance()
+  const pane = waterPaneColors(water)
+  return { fillFrom: pane.solidHi, fillTo: pane.solidLo, filter: { rim: water.rim, depth: water.depth, frost: water.frost } }
+}
 
 /**
  * 물 모양 미리 데우기는 한 페이지에 한 번 — 처음 그리는 필터는 GPU가 셰이더를 만드느라(약 24ms) 첫 펼침의 첫
@@ -80,6 +88,7 @@ const claimGooWarm = () => {
  * 0.002 — 눈에 안 보인다) 한 번 그려 GPU가 셰이더를 미리 만들게 한다. 칸에 마우스·초점이 오면 잠깐 그린다
  */
 function WaterGooWarm({ id }: { id: string }) {
+  const look = useGlassLook()
   return (
     <svg
       className="water-multi-warm"
@@ -95,6 +104,7 @@ function WaterGooWarm({ id }: { id: string }) {
           k={GOO_K}
           lift={GOO_LIFT}
           gooShape
+          {...look.filter}
         />
         <WaterGooShapeFilter
           id={`${id}-shape`}
@@ -112,8 +122,8 @@ function WaterGooWarm({ id }: { id: string }) {
           y2="116"
           gradientUnits="userSpaceOnUse"
         >
-          <stop offset="0" stopColor={FILL_FROM} />
-          <stop offset="1" stopColor={FILL_TO} />
+          <stop offset="0" stopColor={look.fillFrom} />
+          <stop offset="1" stopColor={look.fillTo} />
         </linearGradient>
       </defs>
       <rect
@@ -170,6 +180,7 @@ export function WaterMultiSelect({
 }: WaterMultiSelectProps) {
   const root = usePortalRoot()
   const reduced = useReducedMotion()
+  const look = useGlassLook()
   const [open, setOpen] = useState(false)
   // 팝오버를 그리고 있는지 — 접히는 움직임이 끝날 때까지 남긴다
   const [present, setPresent] = useState(false)
@@ -585,6 +596,7 @@ export function WaterMultiSelect({
                     k={GOO_K}
                     lift={GOO_LIFT}
                     gooShape
+                    {...look.filter}
                   />
                   <WaterGooShapeFilter
                     id={`${gooId}-shape`}
@@ -599,8 +611,8 @@ export function WaterMultiSelect({
                     id={`${gooId}-fill`}
                     gradientUnits="userSpaceOnUse"
                   >
-                    <stop offset="0" stopColor={FILL_FROM} />
-                    <stop offset="1" stopColor={FILL_TO} />
+                    <stop offset="0" stopColor={look.fillFrom} />
+                    <stop offset="1" stopColor={look.fillTo} />
                   </linearGradient>
                 </defs>
                 <rect

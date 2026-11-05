@@ -8,7 +8,8 @@
 
 // 불투명 유리 속 — 팝오버·서랍·토스트는 아래 내용을 가리니 D7 따로 선 단추 속(.d7-menu__solid 가운데 194 →
 // 가장자리 181)과 같은 밝기로 채운다. 판이 넓어 둥근(radial) 대신 왼쪽 위가 밝은 사선(무대와 같은 방향).
-$wb-fill: linear-gradient(150deg, rgb(203, 201, 206), rgb(189, 187, 192));
+// 판 색·유리 농도(설정 — theme/water.ts waterPaneColors)가 --w-solid-*로 온다. 물 고르기 팝오버의 SVG 속도 같은 값.
+$wb-fill: linear-gradient(150deg, var(--w-solid-hi, rgb(203, 201, 206)), var(--w-solid-lo, rgb(189, 187, 192)));
 // 칸 사이 가는 선(벽 격자선 16.5%보다 옅게)
 $wb-rule: rgba(0, 0, 0, 0.085);
 // 어두운 알약 위 흐린 글자

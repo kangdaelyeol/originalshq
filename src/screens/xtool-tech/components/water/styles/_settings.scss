@@ -34,6 +34,27 @@
   border-radius: 999px;
 }
 
+// 판 색 — 이름·고르기·설명(물 슬라이더 머리·설명과 같은 글자)
+.water-effect-field {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.water-effect-field__label {
+  margin: 0;
+  font: 600 12.5px/1.2 $w-font;
+  color: $w-ink-2;
+}
+
+.water-effect-field__hint {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.4;
+  color: $w-ink-2;
+}
+
 .water-effect-sliders {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

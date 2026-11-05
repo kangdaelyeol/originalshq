@@ -6,6 +6,7 @@ import {
   matchWaterPreset,
   WATER_ACCENTS,
   WATER_LIMITS,
+  WATER_PANES,
   WATER_PRESETS,
   WATER_WALLS,
   waterAccentStops,
@@ -124,7 +125,10 @@ export function WaterAccentCard() {
   )
 }
 
-/** 유리 효과 — 물 유리 판의 깊이(떨어지는 그림자)와 테두리(가장자리·안쪽 그림자) 진하기. */
+/**
+ * 유리 효과 — 물 유리 판의 깊이(떨어지는 그림자)·테두리(가장자리·안쪽 그림자) 진하기, 판 색(불투명 판 바탕)·유리
+ * 농도(판에 덮는 흰빛). 프리셋은 깊이·테두리만 바꾼다.
+ */
 export function WaterEffectCard() {
   const { water, setWater } = useAppearance()
   const preset = matchWaterPreset(water)
@@ -176,6 +180,27 @@ export function WaterEffectCard() {
           step={10}
           format={(v) => `${v}%`}
           onChange={(v) => setWater({ rim: v / 100 })}
+        />
+        <div className="water-effect-field">
+          <p className="water-effect-field__label">판 색</p>
+          <WaterSegmented
+            options={WATER_PANES}
+            value={water.pane}
+            onChange={(pane) => setWater({ pane })}
+            ariaLabel="판 색"
+            size="sm"
+          />
+          <p className="water-effect-field__hint">서랍·팝업·알림처럼 내용을 가리는 판의 바탕색</p>
+        </div>
+        <WaterRange
+          label="유리 농도"
+          hint="판에 덮는 흰빛 — 높을수록 밝고 뿌옇게"
+          value={Math.round(water.frost * 100)}
+          min={WATER_LIMITS.frost.min * 100}
+          max={WATER_LIMITS.frost.max * 100}
+          step={5}
+          format={(v) => `${v}%`}
+          onChange={(v) => setWater({ frost: v / 100 })}
         />
       </div>
     </WaterCard>

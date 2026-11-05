@@ -171,13 +171,15 @@ $w-info: #4a72b8;
 ///   (--w-dpx: 배율 2 0.5px · 배율 1 1px, w-vars)로 맞춘다
 /// 단면 최대 오차(밝기, k 1·0.7·0.5 알약·카드): 배율 2 61 → 20 · 배율 1 36 → 15, 안쪽 그림자 3 안쪽.
 /// 떨어지는 그림자는 lift만큼 줄인다(크기 + 진하기 — 필터는 크기만 줄인다)
-/// 사용자 설정(theme/water.ts) — --w-rim: 테두리·안쪽 그림자 진하기 배수, --w-depth: 떨어지는 그림자(크기·진하기) 배수.
+/// 사용자 설정(theme/water.ts) — --w-rim: 테두리·안쪽 그림자 진하기 배수, --w-depth: 떨어지는 그림자(크기·진하기) 배수,
+/// --w-pane: 유리 몸 바탕.
 /// 둘 다 없으면 1(D7 값 그대로)
 @mixin w-glass($k: 1, $lift: 1) {
   $q: var(--w-dpx, 0.5px);
   $rim: var(--w-rim, 1);
   $depth: var(--w-depth, 1);
-  background: rgba(0, 0, 0, 0.026);
+  // 유리 몸 — D7 2.6% 어둡게, 유리 농도(--w-pane)를 올리면 흰 막
+  background: var(--w-pane, rgba(0, 0, 0, 0.026));
   box-shadow:
     inset 0 0 (1px * $k) rgb(255 255 255 / min(1, 0.35 * #{$rim})),
     inset -2.8px -2.8px 0 -2.55px rgb(0 0 0 / min(1, 0.14 * #{$rim})),
