@@ -31,6 +31,7 @@ export const canSendMondayCapi = (source: MondayCapiSource): boolean =>
 // 바꾼 글자에서 찾는다("[B2B] F2 울트라 UV 보드" → "[b2b]f2울트라uv보드").
 // 위에서부터 먼저 맞는 것 — UV·울트라가 붙은 이름이 그냥 F2보다 먼저다.
 const DEVICE_PATTERNS: [RegExp, Device][] = [
+  [/f1(ultra|울트라)/, Device.F1_ULTRA],
   [/f2(ultra|울트라)?uv/, Device.F2_ULTRA_UV],
   [/f2(ultra|울트라)/, Device.F2_ULTRA],
   [/f2/, Device.F2],

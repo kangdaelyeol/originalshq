@@ -1,4 +1,5 @@
 export const Device = [
+  'F1Ultra',
   'F2Ultra',
   'F2UltraUV',
   'P3',

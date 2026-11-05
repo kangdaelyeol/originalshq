@@ -1,8 +1,9 @@
 import * as logger from 'firebase-functions/logger'
 import { onRequest } from 'firebase-functions/https'
 import { ConsultationRecord, Lead, PurchaseRecord } from '../types'
-import { DEVICE_EXPECTED_VALUE, sendMetaEvent } from '../meta'
-import { GA4_CONSULTATION_EVENTS, sendGa4Event } from '../ga4'
+import { DEVICE_EXPECTED_VALUE, GA4_CONSULTATION_EVENTS } from '../constants'
+import { sendMetaEvent } from '../meta'
+import { sendGa4Event } from '../ga4'
 import { generateEventId, generateExternalId, generateRecordId } from '../utils'
 import {
   hasExternalId,

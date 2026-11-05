@@ -1,4 +1,5 @@
 export const Device = {
+  F1_ULTRA: 'F1Ultra',
   F2: 'F2',
   F2_ULTRA: 'F2Ultra',
   F2_ULTRA_UV: 'F2UltraUV',

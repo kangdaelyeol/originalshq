@@ -1,21 +1,7 @@
 import * as crypto from 'crypto'
 import * as logger from 'firebase-functions/logger'
-import { Lead, Device } from './types'
+import { Lead } from './types'
 import { getActionSource, type ActionSource } from './utils'
-
-export const DEVICE_EXPECTED_VALUE: Record<Device, number> = {
-  F2Ultra: 104500,
-  F2UltraUV: 195000,
-  P3: 89000,
-  DTF: 152000,
-  Metalfab: 492000,
-  F2: 800000,
-  M2: 570000,
-  o1: 800000,
-  WonderPress: 150000,
-  B2G: 1000000,
-  기타: 200000,
-}
 
 export const sha256 = (value: string) =>
   crypto.createHash('sha256').update(value.trim().toLowerCase()).digest('hex')
