@@ -35,7 +35,8 @@
 
 .drawer__header {
   display: flex;
-  align-items: flex-start;
+  // 단추(수정·삭제·닫기)를 제목 묶음(보드 이름·이름·단계)의 가운데 줄에 — 높이가 다른 단추끼리도 가운데가 맞는다
+  align-items: center;
   gap: 12px;
   padding: 20px 20px 16px;
   border-bottom: 1px solid var(--line);

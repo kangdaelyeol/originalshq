@@ -4,6 +4,7 @@ import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import type { TechBoardKey, TechBoardMeta } from '../../data/tech-boards'
+import { useCenterOnMain } from '../../lib/use-center-on-main'
 import { DELETE_CONFIRM_MESSAGE } from './record-selection'
 import { useSelectionActions } from './use-selection-actions'
 
@@ -24,12 +25,14 @@ export function RecordSelectionBar({ boardKey, meta, selected, onClear }: Record
   const actions = useSelectionActions({ byBoard: new Map([[boardKey, [...selected]]]), clear: onClear })
   const { count, confirming } = actions
   const moving = actions.moveAnchor !== null
+  // 창 가운데가 아니라 본문(사이드바 오른쪽) 가운데에
+  const barRef = useCenterOnMain<HTMLDivElement>(count > 0)
   if (!root || (count === 0 && !confirming)) return null
 
   return createPortal(
     <>
       {count > 0 && (
-        <div className="glass selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
+        <div ref={barRef} className="glass selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
           <span className="selbar__count">{count}</span>
           <span className="selbar__label">개 선택</span>
           {meta.groups.length > 0 && (

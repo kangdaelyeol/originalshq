@@ -8,6 +8,7 @@ import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { DELETE_CONFIRM_MESSAGE } from '../board/record-selection'
 import { useSelectionActions } from '../board/use-selection-actions'
+import { useCenterOnMain } from '../../lib/use-center-on-main'
 import { groupColor } from './monday-colors'
 import { MonPopover } from './monday-popover'
 import { selectedByBoard, SelectionContext, selectionKey, type SelectionState } from './monday-selection'
@@ -55,13 +56,15 @@ function SelectionBar({ state }: { state: SelectionState }) {
   const actions = useSelectionActions({ byBoard: selectedByBoard(state.selected), clear: state.clear })
   const { count, moveAnchor } = actions
   const single = actions.moveBoard
+  // 창 가운데가 아니라 본문(사이드바 오른쪽) 가운데에
+  const barRef = useCenterOnMain<HTMLDivElement>(count > 0)
 
   if (!root || count === 0) return null
   const noun = single ? ITEM_NOUN[single] : '항목'
 
   return createPortal(
     <>
-      <div className="mon-selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
+      <div ref={barRef} className="mon-selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
         <span className="mon-selbar__count">{count}</span>
         <span className="mon-selbar__label">{noun} 선택</span>
         <span className="mon-selbar__actions">

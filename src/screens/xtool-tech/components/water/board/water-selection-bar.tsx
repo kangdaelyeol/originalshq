@@ -5,6 +5,7 @@ import { WaterButton, WaterDialog, WaterIconButton } from '@/ohq-ui/water/contro
 import type { TechBoardKey, TechBoardMeta } from '../../../data/tech-boards'
 import { DELETE_CONFIRM_MESSAGE } from '../../board/record-selection'
 import { useSelectionActions } from '../../board/use-selection-actions'
+import { useCenterOnMain } from '../../../lib/use-center-on-main'
 
 interface WaterSelectionBarProps {
   boardKey: TechBoardKey
@@ -23,12 +24,14 @@ export function WaterSelectionBar({ boardKey, meta, selected, onClear }: WaterSe
   const actions = useSelectionActions({ byBoard: new Map([[boardKey, [...selected]]]), clear: onClear })
   const { count, confirming } = actions
   const moving = actions.moveAnchor !== null
+  // 창 가운데가 아니라 본문(사이드바 오른쪽) 가운데에
+  const barRef = useCenterOnMain<HTMLDivElement>(count > 0)
   if (!root || (count === 0 && !confirming)) return null
 
   return createPortal(
     <>
       {count > 0 && (
-        <div className="water-selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
+        <div ref={barRef} className="water-selbar" role="toolbar" aria-label={`${count}개 선택됨`}>
           <span className="water-selbar__count">{count}</span>
           <span className="water-selbar__label">개 선택</span>
           {meta.groups.length > 0 && (
