@@ -5,6 +5,7 @@ import {
   leadClient,
   type ClientResponse,
 } from '@/screens/xtool-lead-manager/client'
+import { testCode } from '@/screens/xtool-lead-manager/utils'
 
 /** 고친 리드를 돌려받는 서버 호출 하나를 실행한다 — 도는 동안 전체 화면
  * 로딩을 켜고, 실패하면 에러 토스트, 성공하면 목록·상세 모달을 새 리드로
@@ -42,9 +43,7 @@ export const createRunLeadMutation =
   }
 
 // Meta CAPI 재전송 — testEventCode를 주면 이번 재전송만 테스트 이벤트로
-// 표시된다(상세 모달의 ↻ 버튼에서 선택적으로 입력).
-const testEventCodeField = (testEventCode?: string) =>
-  testEventCode ? { test_event_code: testEventCode } : {}
+// 표시된다(상세 모달의 ↻ 버튼에서 선택적으로 입력, testCode).
 
 /**
  * 상세 모달에서 리드를 고치는 동작들 — 기본 정보·추적 정보 필드, 접수/상담/
@@ -133,7 +132,7 @@ export const useLeadMutationsViewModel = (run: RunLeadMutation) => {
         leadClient.resendConsultation({
           id: leadId,
           recordId,
-          ...testEventCodeField(testEventCode),
+          ...testCode(testEventCode),
         }),
       'updated',
     )
@@ -169,7 +168,7 @@ export const useLeadMutationsViewModel = (run: RunLeadMutation) => {
         leadClient.resendPurchase({
           id: leadId,
           recordId,
-          ...testEventCodeField(testEventCode),
+          ...testCode(testEventCode),
         }),
       'updated',
     )

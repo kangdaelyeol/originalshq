@@ -27,12 +27,11 @@ import {
   Segmented,
   type TrendListRow,
 } from '@/components/glass'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 type CsTeam = ReturnType<typeof useCsTeamViewModel>
 
 const count = (value: number) => `${value.toLocaleString('ko-KR')}건`
-const rate = (part: number, whole: number) =>
-  whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
 type MetricKey = 'intake' | 'paid' | 'visit'
 
@@ -224,8 +223,8 @@ const MetricCard = ({
           }
           text={
             isRate
-              ? rate(total[metric.key], total.intake)
-              : rate(total.intake, allIntake)
+              ? percentOf(total[metric.key], total.intake)
+              : percentOf(total.intake, allIntake)
           }
           label={isRate ? 'CS팀 전환율' : '전체 상담 중 CS팀'}
         />
@@ -271,7 +270,7 @@ const MetricCard = ({
                 <span className="cs_metric_value">
                   {count(each[metric.key])}
                   {isRate && (
-                    <small>{rate(each[metric.key], each.intake)}</small>
+                    <small>{percentOf(each[metric.key], each.intake)}</small>
                   )}
                 </span>
               </li>

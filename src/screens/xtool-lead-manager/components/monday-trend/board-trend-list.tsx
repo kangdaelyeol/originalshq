@@ -4,8 +4,7 @@ import {
   type BoardTrend,
   type InflowPoint,
 } from '@/screens/xtool-lead-manager/utils'
-
-const percent = (share: number) => `${(share * 100).toFixed(1)}%`
+import { percent } from '@/screens/xtool-lead-manager/utils/calc'
 
 /** 항목 하나(BoardTrend — 보드·제품)를 추이 목록 한 줄로. 막대는 비중(가장
  * 큰 항목 = 가득, 따로 둔 줄도 같은 기준이라 길이를 견줄 수 있다). */

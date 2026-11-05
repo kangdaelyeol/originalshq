@@ -1,4 +1,5 @@
 import type { MondayCustomerListItem } from '../entity'
+import { daysBetween, median } from './calc'
 
 // 퍼널 통계 — 고객 목록(요약)만으로 집계한다. 단위는 전부 "고객"(전화번호
 // 하나)이고, 기간은 그 고객의 최초 인입 월 기준(코호트)이다: 9월에 처음
@@ -89,20 +90,6 @@ export interface PathCustomer {
   assignee: string | null
   source: string | null
   boards: string[]
-}
-
-const DAY_MS = 86_400_000
-
-const daysBetween = (from: string, to: string): number =>
-  Math.round((Date.parse(to) - Date.parse(from)) / DAY_MS)
-
-const median = (values: number[]): number | null => {
-  if (values.length === 0) return null
-  const sorted = [...values].sort((a, b) => a - b)
-  const middle = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 1
-    ? sorted[middle]
-    : (sorted[middle - 1] + sorted[middle]) / 2
 }
 
 const ratio = (part: number, whole: number): number =>

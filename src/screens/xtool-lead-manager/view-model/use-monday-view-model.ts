@@ -15,6 +15,7 @@ import type {
   MondayPaymentIssueItem,
 } from '@/screens/xtool-lead-manager/entity'
 import { usePagination } from '@/screens/xtool-lead-manager/hooks/use-pagination'
+import { useLoadWhenActive } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import {
   buildMondayHighlights,
   buildMondayOverview,
@@ -49,18 +50,39 @@ const CATEGORIES: MondayCategory[] = [
   'multiple',
 ]
 
+const NO_CUSTOMERS: {
+  customers: MondayCustomerListItem[]
+  missingItems: MondayMissingPhoneItem[]
+  paymentIssues: MondayPaymentIssueItem[]
+} = { customers: [], missingItems: [], paymentIssues: [] }
+
+const fetchCustomers = async () => {
+  const [customersRes, missingRes, issuesRes] = await Promise.all([
+    mondayClient.getCustomers(),
+    mondayClient.getMissingPhoneItems(),
+    mondayClient.getPaymentIssues(),
+  ])
+  if (!customersRes.ok) {
+    console.error('Monday 고객 목록 실패:', customersRes.error)
+    return null
+  }
+  return {
+    customers: customersRes.data.customers,
+    // 경고 목록은 부가 정보라, 실패해도 표는 보여준다.
+    missingItems: missingRes.ok ? missingRes.data.items : [],
+    paymentIssues: issuesRes.ok ? issuesRes.data.issues : [],
+  }
+}
+
 /** Monday 고객 탭의 상태 — 목록(검색·분류·정렬·페이지), 고객 상세, 확인이
  * 필요한 기록(번호·결제). `active`가 처음 true가 될 때 목록을 받아온다(리드
  * 탭만 쓰는 동안에는 받지 않는다). */
 export const useMondayViewModel = (active: boolean) => {
-  const [customers, setCustomers] = useState<MondayCustomerListItem[]>([])
-  const [missingItems, setMissingItems] = useState<MondayMissingPhoneItem[]>([])
-  const [paymentIssues, setPaymentIssues] = useState<MondayPaymentIssueItem[]>(
-    [],
-  )
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
-    'idle',
-  )
+  const {
+    status,
+    data: { customers, missingItems, paymentIssues },
+    reload,
+  } = useLoadWhenActive(active, fetchCustomers, NO_CUSTOMERS)
 
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<MondayCategory>('all')
@@ -89,34 +111,6 @@ export const useMondayViewModel = (active: boolean) => {
   const [missingOpen, setMissingOpen] = useState(false)
   // 요약 카드의 "이번 달"·경과 일수 기준일 — 탭을 연 날로 고정한다.
   const [today] = useState(todayInKorea)
-
-  const load = useCallback(async () => {
-    setStatus('loading')
-    const [customersRes, missingRes, issuesRes] = await Promise.all([
-      mondayClient.getCustomers(),
-      mondayClient.getMissingPhoneItems(),
-      mondayClient.getPaymentIssues(),
-    ])
-
-    if (!customersRes.ok) {
-      console.error('Monday 고객 목록 실패:', customersRes.error)
-      setStatus('error')
-      return
-    }
-
-    setCustomers(customersRes.data.customers)
-    // 경고 목록은 부가 정보라, 실패해도 표는 보여준다.
-    setMissingItems(missingRes.ok ? missingRes.data.items : [])
-    setPaymentIssues(issuesRes.ok ? issuesRes.data.issues : [])
-    setStatus('ready')
-  }, [])
-
-  useEffect(() => {
-    if (!active || status !== 'idle') return
-    ;(async () => {
-      await load()
-    })()
-  }, [active, status, load])
 
   // 7천 명을 글자마다 걸러내면 입력이 밀린다 — 입력창은 바로 반응하고 표는
   // 한 박자 늦게 따라오게 한다.
@@ -283,7 +277,7 @@ export const useMondayViewModel = (active: boolean) => {
       itemUpdates,
     },
     actions: {
-      reload: load,
+      reload,
       changeSearch: setSearch,
       changeCategory: setCategory,
       changeConsultationBoard: setConsultationBoard,

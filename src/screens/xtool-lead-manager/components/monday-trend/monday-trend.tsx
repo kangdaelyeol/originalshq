@@ -8,38 +8,21 @@ import {
   TREND_SECTION_LABEL,
   type useCsTeamViewModel,
   type useLiveInflowViewModel,
-  type InflowView,
   type useMondayTrendViewModel,
   type useSalesTeamViewModel,
   type useTechStatsViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { SortButton } from '@/screens/xtool-lead-manager/components'
 import {
-  INFLOW_UNIT_AVERAGE,
   INFLOW_UNIT_LABEL,
-  INFLOW_UNIT_NOUN,
   PURCHASE_SCOPE_LABEL,
-  shortBoardName,
-  type InflowSortKey,
-  type InflowUnit,
 } from '@/screens/xtool-lead-manager/utils'
 // 기간 선택은 cmip의 것을 그대로 쓴다 — 프리셋(지난 7일 등)과 달력이 같은
 // 방식으로 동작해야 두 화면을 오가며 쓰기 편하다.
-import { CalendarDays, FileWarning, Inbox, TrendingUp } from 'lucide-react'
-import {
-  AutoHeight,
-  LoadingPanel,
-  Segmented,
-  StatTile,
-} from '@/components/glass'
+import { AutoHeight, LoadingPanel, Segmented } from '@/components/glass'
 import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
-import { InflowChart } from './inflow-chart'
-import { BoardTrendList } from './board-trend-list'
-import { HeatCell } from './heat-cell'
 import { LiveInflow } from './live-inflow'
-import { CsTeamSection } from './cs-team-section'
 import { KpiControls, KpiSection } from './kpi-section'
-import { PipelineSection } from './pipeline-section'
+import { InflowSection } from './inflow-section'
 import { SalesSection } from './sales-section'
 import { SalesTeamSection } from './sales-team-section'
 import { TechSection } from './tech-section'
@@ -54,20 +37,6 @@ type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
   tech: ReturnType<typeof useTechStatsViewModel>
   /** 영업 통계(useSalesTeamViewModel) — 개인 KPI 재료로 만든다. */
   salesTeam: ReturnType<typeof useSalesTeamViewModel>
-}
-
-const count = (value: number): string => `${value.toLocaleString('ko-KR')}건`
-
-const INFLOW_VIEW_LABEL: Record<InflowView, string> = {
-  trend: '보드별 추이',
-  table: '표',
-}
-
-/** 평균 타일의 "n일 기준" — 표의 줄 수를 세는 단위. */
-const INFLOW_UNIT_COUNT: Record<InflowUnit, string> = {
-  day: '일',
-  week: '주',
-  month: '개월',
 }
 
 /**
@@ -91,32 +60,19 @@ export const MondayTrend = ({
     status,
     range,
     unit,
-    points,
-    summary,
-    tableRows,
-    sortKey,
-    sortDirection,
-    boardTrends,
-    columnMax,
-    inflowView,
     section,
     sales,
     neglect,
     kpi,
     tableSorts,
     includeInactive,
-    pipeline,
-    pipelineView,
     cardViews,
   } = state
   const {
     changeRange,
     changeUnit,
-    toggleSort,
-    changeInflowView,
     changeSalesView,
     changeCardView,
-    changePipelineView,
     reload,
     changeSection,
     changeSalesScope,
@@ -128,28 +84,9 @@ export const MondayTrend = ({
     toggleIncludeInactive,
     selectKpiAssignee,
   } = actions
-  const noun = INFLOW_UNIT_NOUN[unit]
   // 기간(단위·시작·끝)이 바뀌면 그래프를 새로 붙여 처음부터 다시 그린다 —
   // 그대로 두면 값만 바뀌어 "그려지는" 움직임이 없다(새로 생긴 줄만 그려진다).
   const drawKey = `${unit}:${range.start}:${range.end}`
-
-  /** 합계를 표의 줄 수로 나눈 평균 — 소수 첫째 자리까지. */
-  const average = (total: number): string =>
-    points.length === 0
-      ? '-'
-      : (Math.round((total / points.length) * 10) / 10).toLocaleString('ko-KR')
-
-  // 표의 컬럼 — 날짜(기간), 전체 인입, 오기입, 그리고 이 기간에 인입이 있던
-  // 보드들(많은 순). 컬럼마다 머리글을 눌러 정렬한다.
-  const columns: { key: InflowSortKey; label: string }[] = [
-    { key: 'date', label: unit === 'day' ? '날짜' : '기간' },
-    { key: 'total', label: '전체 인입' },
-    { key: 'misentry', label: '오기입' },
-    ...summary.boards.map((board) => ({
-      key: `board:${board.name}` as InflowSortKey,
-      label: shortBoardName(board.name),
-    })),
-  ]
 
   return (
     <>
@@ -287,178 +224,12 @@ export const MondayTrend = ({
                 drawKey={drawKey}
               />
             ) : (
-              <>
-                {/* 맨 위 한 줄 — 왼쪽 기간 인입 건수(그래프+표), 오른쪽 오늘 웹 문의(실시간). */}
-                <div className="inflow_top_row">
-                  <section className="stats_card inflow_main">
-                    <h2>{INFLOW_UNIT_LABEL[unit]} 인입 건수</h2>
-                    <p className="stats_desc">
-                      같은 고객이 여러 번 문의해도 각각 포함
-                    </p>
-
-                    <div className="stats_tiles trend_tiles">
-                      <StatTile
-                        icon={Inbox}
-                        label="전체 인입"
-                        value={count(summary.total)}
-                        sub={`인입 있던 보드 ${summary.boards.length}개`}
-                      />
-                      <StatTile
-                        icon={CalendarDays}
-                        label={INFLOW_UNIT_AVERAGE[unit]}
-                        value={`${(
-                          Math.round(summary.average * 10) / 10
-                        ).toLocaleString('ko-KR')}건`}
-                        sub={`${points.length}${INFLOW_UNIT_COUNT[unit]} 기준`}
-                      />
-                      <StatTile
-                        icon={TrendingUp}
-                        label={`가장 많은 ${noun}`}
-                        value={summary.peak ? count(summary.peak.total) : '-'}
-                        sub={summary.peak?.label}
-                      />
-                      <StatTile
-                        icon={FileWarning}
-                        label="오기입"
-                        value={count(summary.misentry)}
-                        sub={
-                          summary.total > 0
-                            ? `전체 인입의 ${((summary.misentry / summary.total) * 100).toFixed(1)}%`
-                            : undefined
-                        }
-                        to={{ search: '?tab=tracking' }}
-                        linkLabel="오기입 추적 탭으로"
-                      />
-                    </div>
-
-                    <InflowChart
-                      key={drawKey}
-                      points={points}
-                      average={summary.average}
-                    />
-                    {/* 같은 기간의 표 — 그래프와 한 카드에 둔다. */}
-                    <div className="inflow_table_block">
-                      <div className="inflow_table_head">
-                        <h3>보드별 {INFLOW_UNIT_LABEL[unit]} 현황</h3>
-                        <Segmented
-                          options={INFLOW_VIEW_LABEL}
-                          value={inflowView}
-                          onChange={changeInflowView}
-                          label="보드 현황 보기"
-                        />
-                      </div>
-                      {inflowView === 'trend' ? (
-                        <BoardTrendList
-                          key={drawKey}
-                          trends={boardTrends.boards}
-                          extra={boardTrends.misentry}
-                          points={points}
-                          columns={{ name: '보드', peak: `가장 많은 ${noun}` }}
-                          empty="이 기간에 인입이 없습니다."
-                        />
-                      ) : (
-                        <div className="trend_table_scroll">
-                          <table className="stats_table">
-                            <thead>
-                              <tr>
-                                {columns.map((column) => (
-                                  <th
-                                    key={column.key}
-                                    className="sortable"
-                                    aria-sort={
-                                      column.key !== sortKey
-                                        ? 'none'
-                                        : sortDirection === 'asc'
-                                          ? 'ascending'
-                                          : 'descending'
-                                    }
-                                    onClick={() => toggleSort(column.key)}
-                                  >
-                                    {column.label}
-                                    <SortButton
-                                      columnKey={column.key}
-                                      sortField={sortKey}
-                                      sortDirection={sortDirection}
-                                      onSort={toggleSort}
-                                    />
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {tableRows.map((point) => (
-                                <tr key={point.date}>
-                                  <td>{point.label}</td>
-                                  <HeatCell
-                                    value={point.total}
-                                    max={columnMax.total}
-                                  />
-                                  <HeatCell
-                                    value={point.misentry}
-                                    max={columnMax.misentry}
-                                    warn
-                                  />
-                                  {summary.boards.map((board) => (
-                                    <HeatCell
-                                      key={board.name}
-                                      value={point.boards?.[board.name] ?? 0}
-                                      max={columnMax[`board:${board.name}`]}
-                                    />
-                                  ))}
-                                </tr>
-                              ))}
-                            </tbody>
-                            {/* 합계·평균 — 정렬과 무관하게 항상 맨 아래. 평균은 표에
-                          보이는 줄 수(일·주·월)로 나눈 값이다. */}
-                            <tfoot>
-                              <tr>
-                                <td>합계</td>
-                                <td>{summary.total.toLocaleString('ko-KR')}</td>
-                                <td>
-                                  {summary.misentry.toLocaleString('ko-KR')}
-                                </td>
-                                {summary.boards.map((board) => (
-                                  <td key={board.name}>
-                                    {board.count.toLocaleString('ko-KR')}
-                                  </td>
-                                ))}
-                              </tr>
-                              <tr>
-                                <td>평균</td>
-                                <td>{average(summary.total)}</td>
-                                <td>{average(summary.misentry)}</td>
-                                {summary.boards.map((board) => (
-                                  <td key={board.name}>
-                                    {average(board.count)}
-                                  </td>
-                                ))}
-                              </tr>
-                            </tfoot>
-                          </table>
-                        </div>
-                      )}
-                    </div>
-                  </section>
-                  <LiveInflow live={live} />
-                </div>
-
-                <PipelineSection
-                  pipeline={pipeline}
-                  sort={tableSorts.pipeline}
-                  onSort={(key) => toggleTableSort('pipeline', key)}
-                  view={pipelineView}
-                  onView={changePipelineView}
-                />
-
-                <CsTeamSection
-                  csTeam={csTeam}
-                  sorts={tableSorts}
-                  onSort={toggleTableSort}
-                  neglectExpanded={neglect.expanded}
-                  onToggleNeglect={toggleExpanded}
-                  today={neglect.today}
-                />
-              </>
+              <InflowSection
+                trend={{ state, actions }}
+                live={live}
+                csTeam={csTeam}
+                drawKey={drawKey}
+              />
             )}
           </div>
         </AutoHeight>

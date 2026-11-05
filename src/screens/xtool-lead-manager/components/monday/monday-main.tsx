@@ -20,6 +20,7 @@ import { MondaySideList } from './monday-side-list'
 import { MondayHighlights } from './monday-highlights'
 import { MondayReviewPanel } from './monday-review-panel'
 import { MondayTable } from './monday-table'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 type MondayMainProps = Pick<
   ReturnType<typeof useMondayViewModel>,
@@ -62,8 +63,6 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
     (issue) => issue.type === 'duplicate-consultation',
   ).length
   const reviewCount = missingItems.length + paymentIssues.length
-  const percent = (part: number, whole: number) =>
-    whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
   return (
     <div className="xtool-main monday_main glass_theme">
@@ -95,7 +94,7 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
                 value={
                   ready ? `${overview.buyers.toLocaleString('ko-KR')}명` : '-'
                 }
-                sub={`전체 고객의 ${percent(overview.buyers, overview.customers)}`}
+                sub={`전체 고객의 ${percentOf(overview.buyers, overview.customers)}`}
                 onGo={
                   category === 'purchase'
                     ? undefined

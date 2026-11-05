@@ -21,6 +21,7 @@ import type {
   GaTrackingFilter,
   useGaTrackingViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
+import { koreaIso } from '@/screens/xtool-lead-manager/utils/calc'
 
 type GaTrackingProps = ReturnType<typeof useGaTrackingViewModel>
 
@@ -32,7 +33,7 @@ const FILTER_LABEL: Record<GaTrackingFilter, string> = {
 /** ms → "10/21 14:03:21"(KST). */
 const formatTime = (ms: number | null): string => {
   if (ms === null) return '-'
-  const iso = new Date(ms + 9 * 3_600_000).toISOString()
+  const iso = koreaIso(ms)
   return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, 19)}`
 }
 

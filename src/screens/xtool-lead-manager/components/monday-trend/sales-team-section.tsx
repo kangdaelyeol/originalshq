@@ -16,13 +16,12 @@ import { BoardTrendList } from './board-trend-list'
 import { InflowChart } from './inflow-chart'
 import { KingCard } from './king-card'
 import { SalesNeglect } from './neglect-section'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 type SalesTeam = ReturnType<typeof useSalesTeamViewModel>
 type King = SalesTeam['state']['kings']['week'][number]
 
 const count = (value: number) => `${value.toLocaleString('ko-KR')}건`
-const share = (part: number, whole: number) =>
-  whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
 const SPAN_LABEL = { week: '이번 주', month: '이번 달' } as const
 const PREVIOUS_LABEL = { week: '지난주', month: '지난달' } as const
@@ -217,7 +216,9 @@ export const SalesTeamSection = ({
           <StatTile
             icon={Repeat}
             label="재구매 매출 비중"
-            value={detailed ? share(summary.repeatAmount, summary.amount) : '-'}
+            value={
+              detailed ? percentOf(summary.repeatAmount, summary.amount) : '-'
+            }
             sub={
               detailed
                 ? `재구매 ${count(summary.repeatCount)} · ${formatWonShort(summary.repeatAmount)}`
@@ -227,7 +228,7 @@ export const SalesTeamSection = ({
           <StatTile
             icon={Store}
             label="방문체험 거친 매출"
-            value={share(summary.visitAmount, summary.amount)}
+            value={percentOf(summary.visitAmount, summary.amount)}
             sub={`${count(summary.visitCount)} · ${formatWonShort(summary.visitAmount)}`}
           />
           <StatTile

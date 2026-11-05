@@ -8,6 +8,7 @@ import {
 } from '@/screens/xtool-lead-manager/utils'
 import { SortableTh } from './sortable-th'
 import { StackedBars, Segmented, type StackSegment } from '@/components/glass'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 type Pipeline = ReturnType<typeof useMondayTrendViewModel>['state']['pipeline']
 
@@ -24,9 +25,6 @@ const stageColor = (stage: string, index: number): string =>
     : /기타|없음/.test(stage)
       ? 'var(--pipe-other)'
       : `var(--pipe-${index})`
-
-const share = (count: number, total: number): string =>
-  total === 0 ? '-' : `${((count / total) * 100).toFixed(1)}%`
 
 /**
  * 현재 파이프라인 — 지금 진행 중인 상담이 단계별로 몇 건인지, 보드마다.
@@ -132,7 +130,7 @@ export const PipelineSection = ({
               <tr>
                 <td>비율</td>
                 {stages.map((stage) => (
-                  <td key={stage}>{share(sum.counts[stage], sum.total)}</td>
+                  <td key={stage}>{percentOf(sum.counts[stage], sum.total)}</td>
                 ))}
                 <td>{sum.total === 0 ? '-' : '100%'}</td>
               </tr>

@@ -1,4 +1,5 @@
 import type { MondayDailyInflow } from '../entity'
+import { DAY_MS } from './calc'
 
 /** 그래프의 점 하나 — 하루, 한 주, 또는 한 달. `date`는 그 구간의 첫날이다. */
 export interface InflowPoint extends MondayDailyInflow {
@@ -33,8 +34,6 @@ export const INFLOW_UNIT_NOUN: Record<InflowUnit, string> = {
   week: '주',
   month: '달',
 }
-
-const DAY_MS = 86_400_000
 
 const toISO = (time: number): string =>
   new Date(time).toISOString().slice(0, 10)

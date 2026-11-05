@@ -4,7 +4,6 @@ import type {
   InflowView,
   useMondayTrendViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { SortButton } from '@/screens/xtool-lead-manager/components'
 import {
   formatWon,
   INFLOW_UNIT_AVERAGE,
@@ -14,7 +13,7 @@ import {
   type InflowUnit,
 } from '@/screens/xtool-lead-manager/utils'
 import { BoardTrendList } from './board-trend-list'
-import { HeatCell } from './heat-cell'
+import { HeatmapTable } from './heatmap-table'
 import { InflowChart } from './inflow-chart'
 
 type SalesProps = {
@@ -163,72 +162,18 @@ export const SalesSection = ({
             wideName
           />
         ) : (
-          <div className="trend_table_scroll sales_table_scroll">
-            <table className="stats_table">
-              <thead>
-                <tr>
-                  {heads.map((head) => (
-                    <th
-                      key={head.key}
-                      className="sortable"
-                      title={head.label}
-                      aria-sort={
-                        head.key !== sortKey
-                          ? 'none'
-                          : sortDirection === 'asc'
-                            ? 'ascending'
-                            : 'descending'
-                      }
-                      onClick={() => onSort(head.key)}
-                    >
-                      <span className="sales_head_label">{head.label}</span>
-                      <SortButton
-                        columnKey={head.key}
-                        sortField={sortKey}
-                        sortDirection={sortDirection}
-                        onSort={onSort}
-                      />
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {tableRows.map((point) => (
-                  <tr key={point.date}>
-                    <td>{point.label}</td>
-                    <HeatCell value={point.total} max={columnMax.total} />
-                    {columns.map((column) => (
-                      // 칸(제품)마다 가장 많이 팔린 기간이 가장 진하다. 안 팔린
-                      // 칸은 0을 흐리게 — 칸이 많아 0이 대부분이다.
-                      <HeatCell
-                        key={column.name}
-                        value={point.boards?.[column.name] ?? 0}
-                        max={columnMax[`board:${column.name}`]}
-                      />
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>합계</td>
-                  <td>{summary.quantity.toLocaleString('ko-KR')}</td>
-                  {columns.map((column) => (
-                    <td key={column.name}>
-                      {column.count.toLocaleString('ko-KR')}
-                    </td>
-                  ))}
-                </tr>
-                <tr>
-                  <td>평균</td>
-                  <td>{average(summary.quantity)}</td>
-                  {columns.map((column) => (
-                    <td key={column.name}>{average(column.count)}</td>
-                  ))}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+          <HeatmapTable
+            heads={heads}
+            sortKey={sortKey}
+            sortDirection={sortDirection}
+            onSort={onSort}
+            rows={tableRows}
+            columns={columns}
+            columnMax={columnMax}
+            total={summary.quantity}
+            periodCount={periodCount}
+            wide
+          />
         )}
       </div>
     </section>

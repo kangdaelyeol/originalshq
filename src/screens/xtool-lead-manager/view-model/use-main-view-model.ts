@@ -7,6 +7,7 @@ import {
 import { useToast } from '@/screens/xtool-lead-manager/hooks'
 import {
   fromDatetimeLocalValue,
+  testCodeOf,
   toDatetimeLocalValue,
 } from '@/screens/xtool-lead-manager/utils'
 import { latestIntake, type Lead } from '@/screens/xtool-lead-manager/entity'
@@ -21,11 +22,7 @@ import {
  * 테스트로 체크했을 때만 Meta 테스트 이벤트 코드. */
 const registerExtras = (form: RegisterFormValues) => {
   const at = form.at ? fromDatetimeLocalValue(form.at) : undefined
-  const testEventCode = form.isTest ? form.testEventCode.trim() : ''
-  return {
-    ...(at ? { at } : {}),
-    ...(testEventCode ? { test_event_code: testEventCode } : {}),
-  }
+  return { ...(at ? { at } : {}), ...testCodeOf(form) }
 }
 
 /**

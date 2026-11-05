@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
+import { useLoadWhenActive } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import type {
   MondayDailyInflow,
   MondayDailySale,
@@ -80,19 +81,46 @@ const parseCardViews = (
       )
     : undefined
 
+const NO_TREND: {
+  days: MondayDailyInflow[]
+  syncedAt: number | null
+  salesRows: MondayDailySale[]
+  followUps: MondayFollowUp[]
+  kpiFacts: MondayKpiFacts
+} = {
+  days: [],
+  syncedAt: null,
+  salesRows: [],
+  followUps: [],
+  kpiFacts: { consultations: [], visits: [], sales: [] },
+}
+
+const fetchTrend = async () => {
+  const [res, salesRes, followUpsRes, kpiRes] = await Promise.all([
+    mondayClient.getDailyInflow(),
+    mondayClient.getDailySales(),
+    mondayClient.getFollowUps(),
+    mondayClient.getKpiFacts(),
+  ])
+  if (!res.ok || !salesRes.ok || !followUpsRes.ok || !kpiRes.ok) {
+    console.error('통계 실패:', res, salesRes, followUpsRes, kpiRes)
+    return null
+  }
+  return {
+    days: res.data.days,
+    syncedAt: res.data.syncedAt,
+    salesRows: salesRes.data.rows,
+    followUps: followUpsRes.data.followUps,
+    kpiFacts: kpiRes.data,
+  }
+}
+
 export const useMondayTrendViewModel = (active: boolean) => {
-  const [days, setDays] = useState<MondayDailyInflow[]>([])
-  const [syncedAt, setSyncedAt] = useState<number | null>(null)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
-    'idle',
-  )
-  const [salesRows, setSalesRows] = useState<MondayDailySale[]>([])
-  const [followUps, setFollowUps] = useState<MondayFollowUp[]>([])
-  const [kpiFacts, setKpiFacts] = useState<MondayKpiFacts>({
-    consultations: [],
-    visits: [],
-    sales: [],
-  })
+  const {
+    status,
+    data: { days, syncedAt, salesRows, followUps, kpiFacts },
+    reload,
+  } = useLoadWhenActive(active, fetchTrend, NO_TREND)
   // 방치·개인 KPI에 삭제된 팀원·담당자 없음 줄을 보일지 — 기본은 숨김.
   const [includeInactive, setIncludeInactive] = useState(false)
   // 개인 KPI에서 한 담당자만 요약해 볼 때 그 담당자(null이면 전체).
@@ -143,34 +171,6 @@ export const useMondayTrendViewModel = (active: boolean) => {
   const [cardViews, setCardViews] = usePersistentState<
     Record<string, CardView>
   >('xtool.kpi.views', {}, parseCardViews)
-
-  const load = useCallback(async () => {
-    setStatus('loading')
-    const [res, salesRes, followUpsRes, kpiRes] = await Promise.all([
-      mondayClient.getDailyInflow(),
-      mondayClient.getDailySales(),
-      mondayClient.getFollowUps(),
-      mondayClient.getKpiFacts(),
-    ])
-    if (!res.ok || !salesRes.ok || !followUpsRes.ok || !kpiRes.ok) {
-      console.error('통계 실패:', res, salesRes, followUpsRes, kpiRes)
-      setStatus('error')
-      return
-    }
-    setDays(res.data.days)
-    setSalesRows(salesRes.data.rows)
-    setFollowUps(followUpsRes.data.followUps)
-    setKpiFacts(kpiRes.data)
-    setSyncedAt(res.data.syncedAt)
-    setStatus('ready')
-  }, [])
-
-  useEffect(() => {
-    if (!active || status !== 'idle') return
-    ;(async () => {
-      await load()
-    })()
-  }, [active, status, load])
 
   const points = useMemo(
     () => inflowSeries(days, range.start, range.end, unit),
@@ -443,7 +443,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       changeCardView: (id: string, view: CardView) =>
         setCardViews((prev) => ({ ...prev, [id]: view })),
       changePipelineView: setPipelineView,
-      reload: load,
+      reload,
       changeSection: setSection,
       changeSalesScope: setSalesScope,
       toggleSalesSort,

@@ -3,13 +3,10 @@ import {
   inquiryClient,
   type LiveInquiry,
 } from '@/screens/xtool-lead-manager/client'
+import { koreaDate } from '@/screens/xtool-lead-manager/utils/calc'
 
 // 보고 있는 동안 1분마다 다시 받는다.
 const REFRESH_MS = 60_000
-
-/** 한국 날짜(YYYY-MM-DD) — 신청의 접수일(receivedDate)과 같은 기준. */
-const koreaDate = (ms: number) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(ms)
 
 /** 테스트 신청 — 서버가 자동 문자를 보내지 않는 기준과 같다(고객명·회사명에
  * "테스트"나 "test"). 통계에서는 빼고 몇 건 뺐는지만 보여준다. */

@@ -10,6 +10,7 @@ import {
   type SortDirection,
 } from '@/screens/xtool-lead-manager/types'
 import { consultationDevices } from './lead'
+import { koreaDate } from './calc'
 
 /** 이름/비고/이메일은 입력 그대로(대소문자만 무시) 부분일치, 전화번호는 숫자만
  * 남겨서 비교한다 — ph는 저장 시점에 이미 숫자만 남아있어서, "010-1234"처럼
@@ -87,14 +88,11 @@ export interface LeadOverview {
   purchased: number
 }
 
-const koreaDay = (ms: number) =>
-  new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul' }).format(ms)
-
 export const buildLeadOverview = (
   leads: readonly Lead[],
   now: number,
 ): LeadOverview => {
-  const today = koreaDay(now)
+  const today = koreaDate(now)
   const overview: LeadOverview = {
     total: leads.length,
     today: 0,
@@ -102,7 +100,7 @@ export const buildLeadOverview = (
     purchased: 0,
   }
   for (const lead of leads) {
-    if ((lead.intakes ?? []).some((intake) => koreaDay(intake.at) === today))
+    if ((lead.intakes ?? []).some((intake) => koreaDate(intake.at) === today))
       overview.today += 1
     if ((lead.consultations ?? []).length > 0) overview.consulted += 1
     if ((lead.purchases ?? []).length > 0) overview.purchased += 1

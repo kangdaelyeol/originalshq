@@ -3,6 +3,7 @@ import type {
   MondayTechFact,
   MondayTechKind,
 } from '../entity'
+import { daysBetween, median } from './calc'
 
 // 기술 통계(통계 탭) — 기술지원팀 기록(출장·AS·기술 문의·기타업무)을 기간·
 // 담당자별로 묶는다. 재료는 서버가 기록마다 한 줄씩 만들어 둔 것(getMondayTechFacts)
@@ -17,8 +18,6 @@ export const TECH_BOARD_LABEL: Record<MondayTechKind, string> = {
 }
 
 const TECH_KINDS = Object.keys(TECH_BOARD_LABEL) as MondayTechKind[]
-
-const DAY_MS = 86_400_000
 
 /** 브라우저 날짜(한국 시간)를 YYYY-MM-DD로. */
 const localISO = (date: Date): string => {
@@ -66,19 +65,6 @@ export const previousTechPeriod = (
 
 const inPeriod = (date: string, period: TechPeriod) =>
   date !== '' && date >= period.start && date <= period.end
-
-/** 두 날짜 사이의 일수(b - a). */
-const daysBetween = (a: string, b: string): number =>
-  Math.round((Date.parse(b) - Date.parse(a)) / DAY_MS)
-
-const median = (values: number[]): number | null => {
-  if (values.length === 0) return null
-  const sorted = [...values].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2
-    ? sorted[mid]
-    : Math.round(((sorted[mid - 1] + sorted[mid]) / 2) * 10) / 10
-}
 
 // ── 왕(담당자 순위) ──────────────────────────────────────────────────────
 
@@ -248,8 +234,15 @@ export const summarizeTechRange = (
     inquiryHandled,
     repairAmount,
     // 날짜를 거꾸로 적은 건(음수)은 오기입이라 뺀다.
-    repairDays: median(repairDays.filter((days) => days >= 0)),
-    fieldLeadDays: median(fieldLeadDays.filter((days) => days >= 0)),
+    // 중앙값은 소수 첫째 자리까지.
+    repairDays: median(
+      repairDays.filter((days) => days >= 0),
+      1,
+    ),
+    fieldLeadDays: median(
+      fieldLeadDays.filter((days) => days >= 0),
+      1,
+    ),
     unlinked,
     guessed,
   }

@@ -4,6 +4,7 @@ import type { useMondayTrendViewModel } from '@/screens/xtool-lead-manager/view-
 import type { NeglectRow, TableSort } from '@/screens/xtool-lead-manager/utils'
 import { SortableTh } from './sortable-th'
 import { StackedBars, Segmented, type StackSegment } from '@/components/glass'
+import { percent } from '@/screens/xtool-lead-manager/utils/calc'
 
 type NeglectProps = {
   neglect: ReturnType<typeof useMondayTrendViewModel>['state']['neglect']
@@ -26,8 +27,6 @@ const COLUMNS: { key: keyof NeglectRow; label: string }[] = [
   { key: 'month', label: '8~30일' },
   { key: 'old', label: '31일 이상' },
 ]
-
-const percent = (rate: number): string => `${(rate * 100).toFixed(0)}%`
 
 /** 펼친 담당자의 방치 기록 — 표의 펼친 줄과 그래프의 펼친 줄이 같이 쓴다. */
 const NeglectItems = ({ items }: { items: NeglectRow['items'] }) => (
@@ -144,7 +143,7 @@ const NeglectTable = ({
                 total: row.neglected,
                 aside: (
                   <>
-                    진행 중 {row.open} · <strong>{percent(row.rate)}</strong>
+                    진행 중 {row.open} · <strong>{percent(row.rate, 0)}</strong>
                     {row.old > 0 && (
                       <span className="glass_stack_badge">31일+ {row.old}</span>
                     )}
@@ -215,7 +214,7 @@ const NeglectTable = ({
                       <td className={row.neglected > 0 ? 'neglect_count' : ''}>
                         {row.neglected}
                       </td>
-                      <td>{percent(row.rate)}</td>
+                      <td>{percent(row.rate, 0)}</td>
                       <td>{row.recent}</td>
                       <td>{row.month}</td>
                       <td className={row.old > 0 ? 'neglect_old' : ''}>
@@ -240,7 +239,10 @@ const NeglectTable = ({
                 <td>{total.onHold}</td>
                 <td>{total.neglected}</td>
                 <td>
-                  {percent(total.open === 0 ? 0 : total.neglected / total.open)}
+                  {percent(
+                    total.open === 0 ? 0 : total.neglected / total.open,
+                    0,
+                  )}
                 </td>
                 <td>{total.recent}</td>
                 <td>{total.month}</td>

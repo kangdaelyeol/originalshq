@@ -1,5 +1,6 @@
 import type { MondayKpiFacts } from '../entity'
 import { isInactiveAssignee, todayInKorea } from './monday-neglect'
+import { DAY_MS, percent } from './calc'
 
 // ── 기간 ────────────────────────────────────────────────────────────────
 // 개인 KPI는 일별·주별·월별로 나눠 보고, 단위마다 기간을 따로 고른다.
@@ -20,7 +21,6 @@ export interface KpiRange {
   to: string
 }
 
-const DAY_MS = 86_400_000
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
 const toISO = (time: number): string =>
@@ -358,7 +358,7 @@ export const computeKpis = (
 /** 지표 값을 화면용 글자로. */
 export const formatKpi = (cell: KpiCell, format: KpiFormat): string => {
   if (format === 'percent') {
-    return cell.den ? `${(cell.value * 100).toFixed(1)}%` : '-'
+    return cell.den ? percent(cell.value) : '-'
   }
   if (format === 'won')
     return `${Math.round(cell.value).toLocaleString('ko-KR')}원`

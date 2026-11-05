@@ -1,6 +1,5 @@
 import type { MondayFollowUp } from '../entity'
-
-const DAY_MS = 86_400_000
+import { DAY_MS, koreaDate } from './calc'
 
 /** 기한을 며칠 넘겼는지 — 기한이 오늘이거나 아직 안 왔으면 0. */
 export const overdueDays = (followUp: MondayFollowUp, today: string): number =>
@@ -72,5 +71,4 @@ export const isInactiveAssignee = (assignee: string): boolean =>
   assignee === '' || assignee === '(담당자 없음)' || assignee === '삭제된 팀원'
 
 /** 한국 시간 기준 오늘(YYYY-MM-DD). */
-export const todayInKorea = (): string =>
-  new Date(Date.now() + 9 * 3_600_000).toISOString().slice(0, 10)
+export const todayInKorea = (): string => koreaDate()

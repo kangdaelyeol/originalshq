@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
+import { useLoadWhenActive } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import type { MondayTechFact } from '@/screens/xtool-lead-manager/entity'
 import {
   TECH_KINGS,
@@ -44,16 +45,30 @@ const kingsOf = (
  * 공용 값(range·unit)을 그대로 쓰고, 왕 카드만 이번 주·이번 달로 고정이다.
  * `active`가 처음 true가 될 때 받아온다.
  */
+const NO_TECH_FACTS: { facts: MondayTechFact[]; syncedAt: number | null } = {
+  facts: [],
+  syncedAt: null,
+}
+
+const fetchTechFacts = async () => {
+  const res = await mondayClient.getTechFacts()
+  if (!res.ok) {
+    console.error('기술 통계 실패:', res)
+    return null
+  }
+  return { facts: res.data.facts, syncedAt: res.data.syncedAt }
+}
+
 export const useTechStatsViewModel = (
   active: boolean,
   range: TechPeriod,
   unit: InflowUnit,
 ) => {
-  const [facts, setFacts] = useState<MondayTechFact[]>([])
-  const [syncedAt, setSyncedAt] = useState<number | null>(null)
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(
-    'idle',
-  )
+  const {
+    status,
+    data: { facts, syncedAt },
+    reload,
+  } = useLoadWhenActive(active, fetchTechFacts, NO_TECH_FACTS)
   // 추이 그래프를 접수일로 셀지, 끝난 날로 셀지 — 이 브라우저에 남긴다.
   const [basis, setBasis] = usePersistentState<TechBasis>(
     'xtool.tech.basis',
@@ -62,26 +77,6 @@ export const useTechStatsViewModel = (
   )
   // 펼쳐 둔 줄 — "카드:담당자" 또는 "stale".
   const [openRows, setOpenRows] = useState<ReadonlySet<string>>(() => new Set())
-
-  const load = useCallback(async () => {
-    setStatus('loading')
-    const res = await mondayClient.getTechFacts()
-    if (!res.ok) {
-      console.error('기술 통계 실패:', res)
-      setStatus('error')
-      return
-    }
-    setFacts(res.data.facts)
-    setSyncedAt(res.data.syncedAt)
-    setStatus('ready')
-  }, [])
-
-  useEffect(() => {
-    if (!active || status !== 'idle') return
-    ;(async () => {
-      await load()
-    })()
-  }, [active, status, load])
 
   const kings = useMemo(
     () => ({
@@ -142,7 +137,7 @@ export const useTechStatsViewModel = (
       openRows,
     },
     actions: {
-      reload: load,
+      reload,
       changeBasis: setBasis,
       toggleRow,
     },

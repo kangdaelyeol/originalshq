@@ -1,4 +1,5 @@
 import type { MondayCustomerListItem } from '../entity'
+import { daysBetween } from './calc'
 
 /** 고객 탭 아래 요약 카드의 한 줄. */
 export interface MondayHighlightRow {
@@ -27,8 +28,6 @@ const nameOf = (customer: MondayCustomerListItem) =>
   customer.names[0] ?? '이름 없음'
 const assigneeOf = (customer: MondayCustomerListItem) =>
   customer.summary.assignees[0] ?? '담당자 없음'
-const daysBetween = (from: string, to: string) =>
-  Math.round((Date.parse(to) - Date.parse(from)) / 86_400_000)
 
 // 구매가 없어도 "고민 중"으로 보지 않는 상태 — 이미 끝난 상담.
 const CLOSED_STATUSES = new Set(['미전환', '오기입'])

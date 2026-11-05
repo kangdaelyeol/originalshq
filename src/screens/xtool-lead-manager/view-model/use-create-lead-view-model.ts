@@ -9,6 +9,7 @@ import {
   leadClient,
   type ClientResponse,
 } from '@/screens/xtool-lead-manager/client'
+import { testCodeOf } from '@/screens/xtool-lead-manager/utils'
 
 interface CreateLeadDeps {
   /** 등록 후 표를 최신으로 다시 불러온다 — 목록은 useMainViewModel이 갖고 있다. */
@@ -80,13 +81,6 @@ export const useCreateLeadViewModel = ({
     return { ...createForm, createdAt: createdAtMs }
   }
 
-  /** 후속 호출(상담/구매 등록)에 같이 실어 보낼 test_event_code — 테스트를
-   * 켰고 코드가 비어 있지 않을 때만 붙는다. */
-  const testEventCodeField = () =>
-    createForm.isTest && createForm.testEventCode.trim()
-      ? { test_event_code: createForm.testEventCode.trim() }
-      : {}
-
   /** 리드를 만들고, followUp이 있으면 그 리드로 이어서 호출한다.
    *
    * 리드 생성엔 성공했는데 후속 호출만 실패하면(네트워크 등) 리드가 이미
@@ -136,7 +130,7 @@ export const useCreateLeadViewModel = ({
         id: leadId,
         device: createForm.device,
         at: createdAt,
-        ...testEventCodeField(),
+        ...testCodeOf(createForm),
       }),
     )
 
@@ -159,7 +153,7 @@ export const useCreateLeadViewModel = ({
           device: createForm.device,
           price,
           at: createdAt,
-          ...testEventCodeField(),
+          ...testCodeOf(createForm),
         }),
       'partialPurchase',
     )

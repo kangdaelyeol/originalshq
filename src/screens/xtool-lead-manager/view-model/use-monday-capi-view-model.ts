@@ -15,6 +15,7 @@ import {
   leadRecordRows,
   mondayConsultationDevices,
   sameDayRecordCount,
+  testCodeOf,
   type MondayCapiSource,
 } from '@/screens/xtool-lead-manager/utils'
 
@@ -130,10 +131,7 @@ export const useMondayCapiViewModel = ({ fetchLeads }: MondayCapiDeps) => {
 
     setSending(true)
     setError(null)
-    const testEventCode =
-      form.isTest && form.testEventCode.trim()
-        ? { test_event_code: form.testEventCode.trim() }
-        : {}
+    const testEventCode = testCodeOf(form)
     // 리드 탭의 상담·구매 등록과 같은 호출 — 서버가 CAPI를 보내고 기록을 더한다.
     const register = (id: string) =>
       source.kind === 'consultation'

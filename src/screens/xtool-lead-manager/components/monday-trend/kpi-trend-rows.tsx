@@ -1,10 +1,8 @@
 import type { TrendListColumns, TrendListRow } from '@/components/glass'
 import { formatKpi, type KpiResult } from '@/screens/xtool-lead-manager/utils'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 type Cell = KpiResult['sum']['total']
-
-const share = (part: number, whole: number) =>
-  whole > 0 ? `${((part / whole) * 100).toFixed(1)}%` : '-'
 
 /**
  * 지표 하나(KpiResult)를 담당자별 추이 목록 줄로 — 개인 KPI 카드와 CS팀 인입
@@ -52,7 +50,7 @@ export const kpiTrendRows = (
           ratio: max > 0 ? row.total.value / max : 0,
           text: isRate
             ? formatKpi(row.total, 'percent')
-            : share(row.total.value, each.sum.total.value),
+            : percentOf(row.total.value, each.sum.total.value),
         },
         peak:
           series[peak] > 0

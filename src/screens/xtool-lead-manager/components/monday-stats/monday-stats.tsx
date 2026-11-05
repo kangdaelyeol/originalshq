@@ -35,6 +35,7 @@ import {
   type PurchaseScope,
   type RateRow,
 } from '@/screens/xtool-lead-manager/utils'
+import { percent } from '@/screens/xtool-lead-manager/utils/calc'
 
 type MondayStatsProps = ReturnType<typeof useMondayStatsViewModel> & {
   /** 고객 목록을 받아오는 중인지·실패했는지 — 목록은 Monday 고객 탭의
@@ -53,7 +54,6 @@ const SCOPE_DESC: Record<PurchaseScope, string> = {
     '구매는 온라인몰 주문만 봅니다. 문의 기록 없이 오프라인에서만 산 고객은 모수에서 뺍니다.',
 }
 
-const percent = (rate: number): string => `${(rate * 100).toFixed(1)}%`
 const people = (count: number): string => `${count.toLocaleString('ko-KR')}명`
 const days = (value: number | null): string =>
   value === null ? '-' : `${Math.round(value * 10) / 10}일`

@@ -22,6 +22,7 @@ import {
   Loading,
   Table,
 } from '@/screens/xtool-lead-manager/components'
+import { percentOf } from '@/screens/xtool-lead-manager/utils/calc'
 
 // Nav와 페이지네이션 상태를 공유해야 해서(둘 다 useMainViewModel 결과가
 // 필요) 이 훅은 더 이상 여기서 직접 호출하지 않는다 — 부모(index.tsx)가 한
@@ -80,8 +81,7 @@ export const Main = ({
     () => buildLeadOverview(filteredRows, openedAt),
     [filteredRows, openedAt],
   )
-  const percent = (part: number) =>
-    overview.total > 0 ? `${((part / overview.total) * 100).toFixed(1)}%` : '-'
+  const percent = (part: number) => percentOf(part, overview.total)
   const count = (value: number) =>
     initialLoading ? '-' : `${value.toLocaleString('ko-KR')}명`
 
