@@ -8,6 +8,7 @@ import { StatCard as BaseStatCard } from '@/ohq-ui/components/stat-card'
 import { StatusPill as BaseStatusPill } from '@/ohq-ui/components/status-pill'
 import { useWaterLayout } from '../water-layout/load'
 import { Assignees as BaseAssignees, PhoneLink as BasePhoneLink, StagePill as BaseStagePill } from './board/cells'
+import { DrawerShell as BaseDrawerShell } from './board/drawer-shell'
 import { MiniList as BaseMiniList } from './board/mini-list'
 import { DrawerList as BaseDrawerList, RecordDrawer as BaseRecordDrawer } from './board/record-drawer'
 import { RecordTable as BaseRecordTable } from './board/record-table'
@@ -114,4 +115,9 @@ export function KingCard(props: ComponentProps<typeof BaseKingCard>) {
 export function TeamCard(props: ComponentProps<typeof BaseTeamCard>) {
   const water = useWaterLayout()
   return water ? <water.WaterTeamCard {...props} /> : <BaseTeamCard {...props} />
+}
+
+export function DrawerShell(props: ComponentProps<typeof BaseDrawerShell>) {
+  const water = useWaterLayout()
+  return water ? <water.WaterDrawerShell {...props} /> : <BaseDrawerShell {...props} />
 }

@@ -18,6 +18,8 @@
   @include meta.load-css('overview');
   // 내 업무 서랍 이름 위 보드 이름 링크("보드에서 보기")
   @include meta.load-css('board-host');
+  // 팀원 & 권한 — 상태 칸 단추·수정 기록 모달
+  @include meta.load-css('team');
   // 파일 칸의 올리기·끌어다 놓기·진행(대시보드 상세·수정 패널) — 썸네일·목록(boards) 뒤에
   @include meta.load-css('item-files');
   // Monday 표 레이아웃(monday/ — 판·도구 줄·표·팝오버·업데이트·파일 모달·선택 막대 …)
