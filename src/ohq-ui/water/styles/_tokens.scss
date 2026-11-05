@@ -20,9 +20,15 @@ $w-ink: #3f3e43;
 $w-ink-2: #55545a;
 $w-ink-3: #69676c;
 
-// 어두운 알약(고른 것) — 표시 알약 위 #555358 → 아래 #2b292e, 효과 칩 #605e63 → #3f3d42 92% → #353338
-$w-dark: linear-gradient(180deg, #555358, #2b292e);
-$w-dark-chip: linear-gradient(180deg, #605e63, #3f3d42 92%, #353338);
+// 어두운 알약(고른 것) — 표시 알약 위 #555358 → 아래 #2b292e, 효과 칩 #605e63 → #3f3d42 92% → #353338.
+// 사용자가 강조색을 고르면 단계 색이 CSS 변수(--w-dark-*)로 온다(theme/water.ts waterVars) — 없으면 D7 잉크.
+$w-dark: linear-gradient(180deg, var(--w-dark-1, #555358), var(--w-dark-2, #2b292e));
+$w-dark-chip: linear-gradient(
+  180deg,
+  var(--w-dark-chip-1, #605e63),
+  var(--w-dark-chip-2, #3f3d42) 92%,
+  var(--w-dark-chip-3, #353338)
+);
 $w-dark-shadow: 0 0.35em 0.8em rgba(0, 0, 0, 0.26);
 
 // 반투명 흰 알약(안 고른 칩) — 199 → 215
@@ -165,19 +171,25 @@ $w-info: #4a72b8;
 ///   (--w-dpx: 배율 2 0.5px · 배율 1 1px, w-vars)로 맞춘다
 /// 단면 최대 오차(밝기, k 1·0.7·0.5 알약·카드): 배율 2 61 → 20 · 배율 1 36 → 15, 안쪽 그림자 3 안쪽.
 /// 떨어지는 그림자는 lift만큼 줄인다(크기 + 진하기 — 필터는 크기만 줄인다)
+/// 사용자 설정(theme/water.ts) — --w-rim: 테두리·안쪽 그림자 진하기 배수, --w-depth: 떨어지는 그림자(크기·진하기) 배수.
+/// 둘 다 없으면 1(D7 값 그대로)
 @mixin w-glass($k: 1, $lift: 1) {
   $q: var(--w-dpx, 0.5px);
+  $rim: var(--w-rim, 1);
+  $depth: var(--w-depth, 1);
   background: rgba(0, 0, 0, 0.026);
   box-shadow:
-    inset 0 0 (1px * $k) rgba(255, 255, 255, 0.35),
-    inset -2.8px -2.8px 0 -2.55px rgba(0, 0, 0, 0.14),
-    inset round(1.7px * $k, $q) round(1.9px * $k, $q) (1.1px * $k) rgba(0, 0, 0, 0.62),
-    inset 0 0 0 max(1px, 1px * $k) rgba(0, 0, 0, 0.24),
-    inset round(-3.4px * $k, $q) round(-3.4px * $k, $q) (1.4px * $k) rgba(255, 255, 255, 0.9),
-    inset round(-2px * $k, $q) round(-5.5px * $k, $q) (2.8px * $k) rgba(255, 255, 255, 0.3),
-    inset (7px * $k) (13px * $k) (16px * $k) rgba(0, 0, 0, 0.24),
-    (21px * $k * $lift) (44px * $k * $lift) (36px * $k * $lift) (20px * $k * $lift) rgba(0, 0, 0, 0.27 * min(1, $lift)),
-    0 0 (24px * $k * $lift) rgba(0, 0, 0, 0.13 * min(1, $lift));
+    inset 0 0 (1px * $k) rgb(255 255 255 / min(1, 0.35 * #{$rim})),
+    inset -2.8px -2.8px 0 -2.55px rgb(0 0 0 / min(1, 0.14 * #{$rim})),
+    inset round(1.7px * $k, $q) round(1.9px * $k, $q) (1.1px * $k) rgb(0 0 0 / min(1, 0.62 * #{$rim})),
+    inset 0 0 0 max(1px, 1px * $k) rgb(0 0 0 / min(1, 0.24 * #{$rim})),
+    inset round(-3.4px * $k, $q) round(-3.4px * $k, $q) (1.4px * $k) rgb(255 255 255 / min(1, 0.9 * #{$rim})),
+    inset round(-2px * $k, $q) round(-5.5px * $k, $q) (2.8px * $k) rgb(255 255 255 / min(1, 0.3 * #{$rim})),
+    inset (7px * $k) (13px * $k) (16px * $k) rgb(0 0 0 / min(1, 0.24 * #{$rim})),
+    calc(#{21px * $k * $lift} * #{$depth}) calc(#{44px * $k * $lift} * #{$depth})
+      calc(#{36px * $k * $lift} * #{$depth}) calc(#{20px * $k * $lift} * #{$depth})
+      rgb(0 0 0 / min(1, #{0.27 * min(1, $lift)} * #{$depth})),
+    0 0 calc(#{24px * $k * $lift} * #{$depth}) rgb(0 0 0 / min(1, #{0.13 * min(1, $lift)} * #{$depth}));
 }
 
 /** 홈(D7 track) — 유리 안에 파인 길 */

@@ -19,7 +19,7 @@ const STRUCTURE_OPTIONS: readonly { value: LayoutStructure; label: string; descr
 /** 대시보드 디자인 — 구조는 같고 부품 모양만 다르다 */
 const DESIGN_OPTIONS: readonly { value: ThemeName; label: string; description: string }[] = [
   { value: 'glass', label: '유리', description: '어두운 유리 판 — 배경·강조색·유리 효과를 고를 수 있어요' },
-  { value: 'water', label: '물', description: '밝은 유리 벽 위 물 부품 — 고르면 물처럼 미끄러져요' },
+  { value: 'water', label: '물', description: '밝은 유리 벽 위 물 부품 — 벽 색조·강조색·깊이를 고를 수 있어요' },
 ]
 
 /** 레이아웃 견본 — 유리 대시보드는 숫자 카드·차트, Monday 표는 색 막대가 붙은 그룹 표, 물은 유리 알약과 유리 판. */
@@ -79,7 +79,6 @@ export function LayoutCard() {
   const { theme, setTheme, mondayPalette, setMondayPalette } = useAppearance()
   const { structure, design } = layoutKind(theme)
   const monday = design === 'monday'
-  const water = design === 'water'
   const pickStructure = (next: LayoutStructure) => {
     if (next !== structure) setTheme(next === 'table' ? 'monday' : 'glass')
   }
@@ -168,13 +167,6 @@ export function LayoutCard() {
           <Info size={14} aria-hidden />
           Monday 표에서는 화면 전체가 Monday 모양이라 배경·강조색·유리 효과를 쓰지 않아요. 대시보드의 유리 디자인으로
           바꾸면 다시 고를 수 있어요.
-        </p>
-      )}
-      {water && (
-        <p className="accent-picker__note">
-          <Info size={14} aria-hidden />
-          물에서는 화면 전체가 밝은 유리 벽이라 배경·강조색·유리 효과를 쓰지 않아요. 유리 디자인으로 바꾸면 다시 고를 수
-          있어요.
         </p>
       )}
     </GlassCard>

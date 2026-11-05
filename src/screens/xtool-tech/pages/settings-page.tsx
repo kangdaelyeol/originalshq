@@ -4,6 +4,7 @@ import { uploadSharedBackground, useSharedBackgrounds, useSharedBackgroundUrl } 
 import { pushToast } from '../data/tech-save-queue'
 import { errorText } from '../lib/error-text'
 import { useLayoutKind } from '../lib/layout-kind'
+import { useWaterLayout } from '../water-layout/load'
 import { AccentCard } from './settings/accent-card'
 import { BackgroundCard } from './settings/background-card'
 import { GlassEffectCard } from './settings/glass-effect-card'
@@ -12,7 +13,8 @@ import { ProfilePhotoCard } from './settings/profile-photo-card'
 import { VersionCard } from './settings/version-card'
 
 /**
- * 설정 — 프로필 사진·레이아웃 카드, 유리 디자인이면 배경·강조색·유리 효과 카드, 맨 아래 버전 정보(카드는 pages/settings/). 카드의
+ * 설정 — 프로필 사진·레이아웃 카드, 유리·물 디자인이면 그 디자인의 배경·강조색·유리 효과 카드, 맨 아래 버전 정보
+ * (카드는 pages/settings/, 물 카드는 components/water/settings). 카드의
  * 부품(GlassCard·Button·Avatar)은 components/layout-parts에서 받아 물 레이아웃이면 물 부품으로 바뀐다.
  */
 export function SettingsPage() {
@@ -36,8 +38,10 @@ export function SettingsPage() {
       .finally(() => setUploading(false))
   }
 
-  // 배경·강조색·유리 효과는 유리 디자인에서만 쓴다(물·Monday는 자기 판 색)
+  // 배경·강조색·유리 효과 — 유리 디자인은 유리 카드, 물 디자인은 물 카드(벽 색조·강조색·깊이·테두리, 물 묶음 안).
+  // Monday는 자기 판 색이라 없다.
   const glass = design === 'glass'
+  const water = useWaterLayout()
   return (
     <>
       <ProfilePhotoCard />
@@ -51,6 +55,16 @@ export function SettingsPage() {
           <AccentCard />
 
           <GlassEffectCard photoUrl={sharedUrl} />
+        </>
+      )}
+
+      {water && (
+        <>
+          <water.WaterWallCard />
+
+          <water.WaterAccentCard />
+
+          <water.WaterEffectCard />
         </>
       )}
 

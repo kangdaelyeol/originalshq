@@ -1,0 +1,54 @@
+@use 'board/base' as *;
+
+// 설정 > 물 디자인 카드(components/water/settings) — 견본 칸은 설정 화면의 .glass-preset 칸을 그대로 쓰고, 안의 그림만 물로.
+
+// 벽 색조 견본 — 그 색조의 사선 그러데이션 + 타일 격자선
+.water-walls {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.water-wall-art {
+  display: block;
+  height: 56px;
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, $w-line 1px, transparent 1px) 0 0 / 46px 20px,
+    linear-gradient(180deg, $w-line 1px, transparent 1px) 0 0 / 46px 20px,
+    linear-gradient(135deg, var(--art-hi), var(--art-lo));
+}
+
+// 유리 효과 견본 — 벽 위에 프리셋 값(--w-depth·--w-rim)으로 칠한 작은 유리 판
+.water-effect-sample {
+  display: grid;
+  place-items: center;
+  height: 56px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--w-stage-hi, #{$w-stage-hi}), var(--w-stage-lo, #{$w-stage-lo}));
+  overflow: hidden;
+}
+
+.water-effect-sample__chip {
+  @include w-glass(0.6, 0.6);
+  width: 58%;
+  height: 26px;
+  border-radius: 999px;
+}
+
+.water-effect-sliders {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 24px;
+  margin-top: 16px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+// 강조색 미리보기 — 지금 색으로 칠한 고르기·주요 버튼
+.water-accent-preview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}

@@ -3,6 +3,7 @@ import { DEFAULT_ACCENT, isHexColor } from '../theme/accent'
 import { GLASS_DEFAULT, normalizeGlass, type GlassSettings } from '../theme/glass'
 import { MONDAY_PALETTES, type MondayPalette } from '../theme/monday'
 import type { ThemeName } from '../theme/theme-root'
+import { normalizeWater, WATER_DEFAULT, type WaterSettings } from '../theme/water'
 
 // 외관 설정 — 판 모양(유리·Monday·물)과 그 색, 강조색, 유리 효과, 배경. 이 브라우저에 저장해 두고 originalshq의
 // 화면들(기술팀 보드·관리 화면 등)이 같은 모양으로 그린다(AppearanceProvider). 고르는 화면(설정)은 각 앱이 그린다.
@@ -42,6 +43,8 @@ export interface Appearance {
   accent: string
   /** 유리 판의 흐림·농도·채도·테두리 빛 */
   glass: GlassSettings
+  /** 물 디자인의 벽 색조·강조색·깊이·테두리(유리의 배경·강조색·유리 효과에 해당) */
+  water: WaterSettings
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -51,6 +54,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   sharedBackgroundId: null,
   accent: DEFAULT_ACCENT,
   glass: GLASS_DEFAULT,
+  water: WATER_DEFAULT,
 }
 
 // 저장 위치·모양 — 처음 기술팀 보드(xtool-tech)에서 쓰던 그대로 둔다(이미 저장된 값을 계속 읽게). 판 모양은
@@ -82,6 +86,7 @@ export function loadAppearance(): Appearance {
       sharedBackgroundId: shared ? sharedId : null,
       accent: isHexColor(parsed.accent) ? parsed.accent.toLowerCase() : DEFAULT_APPEARANCE.accent,
       glass: normalizeGlass(parsed.glass),
+      water: normalizeWater(parsed.water),
     }
   } catch {
     return DEFAULT_APPEARANCE
@@ -118,7 +123,11 @@ export interface AppearanceState extends Appearance {
   setAccent: (accent: string) => void
   /** 일부 값만 넘기면 나머지는 그대로 둔다. */
   setGlass: (glass: Partial<GlassSettings>) => void
+  /** 물 디자인 값 — 일부만 넘기면 나머지는 그대로 */
+  setWater: (water: Partial<WaterSettings>) => void
+  /** 배경 카드의 "기본값으로" — 유리 쪽(배경·강조색·유리 효과)만. 물 값은 resetWater */
   reset: () => void
+  resetWater: () => void
 }
 
 export const AppearanceContext = createContext<AppearanceState | null>(null)

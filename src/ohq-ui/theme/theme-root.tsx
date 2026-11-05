@@ -4,6 +4,7 @@ import { PortalRootContext } from '../lib/portal-root'
 import { accentVars } from './accent'
 import { glassVars, type GlassSettings } from './glass'
 import { FIGTREE_HREF, type MondayPalette } from './monday'
+import { waterVars, type WaterSettings } from './water'
 
 /**
  * 판 모양 — glass: 유리 판(기본) · monday: Monday 판·선·버튼(styles/themes) · water: D7 물(연회색 유리 벽 위 물
@@ -16,6 +17,8 @@ interface ThemeRootProps {
   accent: string
   /** 유리 판의 흐림·농도·채도·테두리 빛 */
   glass: GlassSettings
+  /** 물 디자인의 벽·강조색·깊이·테두리 — 물일 때만 칠한다(theme/water.ts) */
+  water?: WaterSettings
   /** 판 모양 — 기본은 유리 */
   theme?: ThemeName
   /** Monday 테마의 색 — 기본은 남색 */
@@ -31,10 +34,14 @@ interface ThemeRootProps {
  * 이름의 --glass-* 등)에 새어 나간다. 포털(팝오버·모달·토스트)도 body 대신 여기에 띄워야 토큰이 그대로
  * 적용된다(usePortalRoot).
  */
-export function ThemeRoot({ accent, glass, theme = 'glass', palette = 'navy', className, children }: ThemeRootProps) {
+export function ThemeRoot({ accent, glass, water, theme = 'glass', palette = 'navy', className, children }: ThemeRootProps) {
   // 포털이 띄워질 곳 — 루트 요소가 붙으면 채워진다.
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null)
-  const style = useMemo(() => ({ ...accentVars(accent), ...glassVars(glass) }) as CSSProperties, [accent, glass])
+  const style = useMemo(
+    () =>
+      ({ ...accentVars(accent), ...glassVars(glass), ...(theme === 'water' && water ? waterVars(water) : {}) }) as CSSProperties,
+    [accent, glass, water, theme],
+  )
   const monday = theme === 'monday'
 
   // Monday 글꼴 — Monday 테마를 고를 때 한 번만 불러온다.

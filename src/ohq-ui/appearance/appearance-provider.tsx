@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { GlassSettings } from '../theme/glass'
 import type { MondayPalette } from '../theme/monday'
+import { WATER_DEFAULT, type WaterSettings } from '../theme/water'
 import { ThemeRoot, type ThemeName } from '../theme/theme-root'
 import {
   AppearanceContext,
@@ -37,8 +38,11 @@ export function AppearanceProvider({ className, children }: { className?: string
         setAppearance((a) => ({ ...a, background: 'shared', sharedBackgroundId: id })),
       setAccent: (accent: string) => setAppearance((a) => ({ ...a, accent: accent.toLowerCase() })),
       setGlass: (glass: Partial<GlassSettings>) => setAppearance((a) => ({ ...a, glass: { ...a.glass, ...glass } })),
-      // 배경 카드의 "기본값으로" — 판 모양(테마)과 그 색은 따로 고른 것이라 남긴다.
-      reset: () => setAppearance((a) => ({ ...DEFAULT_APPEARANCE, theme: a.theme, mondayPalette: a.mondayPalette })),
+      setWater: (water: Partial<WaterSettings>) => setAppearance((a) => ({ ...a, water: { ...a.water, ...water } })),
+      // 배경 카드의 "기본값으로" — 판 모양(테마)과 그 색, 물 디자인 값은 따로 고른 것이라 남긴다.
+      reset: () =>
+        setAppearance((a) => ({ ...DEFAULT_APPEARANCE, theme: a.theme, mondayPalette: a.mondayPalette, water: a.water })),
+      resetWater: () => setAppearance((a) => ({ ...a, water: WATER_DEFAULT })),
     }),
     [appearance, accentInUse],
   )
@@ -48,6 +52,7 @@ export function AppearanceProvider({ className, children }: { className?: string
       <ThemeRoot
         accent={accentInUse}
         glass={appearance.glass}
+        water={appearance.water}
         theme={appearance.theme}
         palette={appearance.mondayPalette}
         className={className}

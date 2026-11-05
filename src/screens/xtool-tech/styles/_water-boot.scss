@@ -5,5 +5,6 @@
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: linear-gradient(135deg, rgb(227, 225, 230), rgb(172, 170, 175));
+  // 벽 색조(설정 > 배경 — --w-stage-*)를 따른다
+  background: linear-gradient(135deg, var(--w-stage-hi, rgb(227, 225, 230)), var(--w-stage-lo, rgb(172, 170, 175)));
 }

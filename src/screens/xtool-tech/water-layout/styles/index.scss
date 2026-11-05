@@ -17,5 +17,5 @@
 // 물 셸이 떠 있는 동안 루트 — 밝은 벽이라 밝은 색 체계(스크롤바·입력), 끝까지 당겨도 어두운 바탕이 비치지 않게
 .ohq-ui.theme-water:has(.wl-shell) {
   color-scheme: light;
-  background: $w-stage;
+  background: var(--w-stage-mid, #{$w-stage});
 }

@@ -7,4 +7,6 @@
   @include meta.load-css('board');
   @include meta.load-css('files');
   @include meta.load-css('updates');
+  // 설정 > 물 디자인 카드(배경·강조색·유리 효과)
+  @include meta.load-css('settings');
 }
