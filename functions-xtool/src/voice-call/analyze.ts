@@ -1,6 +1,6 @@
 // AI 음성 상담 통화 후 처리 — 대화록에서 요약과 판정 칸(docs/ai-sales-agent/README.md
 // 6-2)을 뽑는다. 통화 중에는 빠른 모델(Haiku)이 말하고, 지연과 상관없는 여기서는 더 좋은
-// 모델로 한 번 돌린다(xtool-ai-sales-agent docs/tech-stack.md 4-3).
+// 모델로 한 번 돌린다(xtool-ai-sales-agent docs/2-tech-stack.md 4-3).
 import Anthropic from '@anthropic-ai/sdk'
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod'
 import { z } from 'zod'
