@@ -21,6 +21,13 @@ export interface Inquiry {
   /** 회사·기관명과 문의 유형(B2B). 예전 기록에는 없다. */
   company?: string
   inquiryType?: string
+  /** 앙케이트 — 추천 기기와 설문 답(여러 개면 ", "로 이은 값). 예전 기록에는
+   * 없다. */
+  recommendedProduct?: string
+  purpose?: string
+  materials?: string
+  tasks?: string
+  scale?: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

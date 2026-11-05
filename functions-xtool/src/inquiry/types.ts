@@ -15,6 +15,8 @@ export const INQUIRY_BOARDS = {
   other: { boardId: '5031373952', label: '기타 온라인 문의' },
   // 기업·교육기관·공공기관 도입 문의 — 아이템 이름이 회사명이다.
   B2B: { boardId: '5027795374', label: 'B2B 솔루션' },
+  // 기기 추천 설문(앙케이트)을 마친 뒤의 상담 신청 — 추천 기기와 답을 같이 받는다.
+  survey: { boardId: '5032280581', label: '앙케이트 문의' },
 } as const satisfies Record<string, { boardId: string; label: string }>
 
 export type InquiryDevice = keyof typeof INQUIRY_BOARDS
@@ -41,6 +43,14 @@ export interface InquiryInput {
   company: string
   /** 문의 유형(B2B) — 여러 개면 ", "로 이어 붙인 값. */
   inquiryType: string
+  /** 앙케이트(survey) — 설문이 추천한 기기(설문 응답의 product)와 답(answers).
+   * Monday에는 받은 글자 그대로 넣고(추천 기기도 코드 그대로), 여러 개인 답은
+   * ", "로 이어 붙인다. 다른 보드에는 그 컬럼이 없어 건너뛴다. */
+  recommendedProduct: string
+  purpose: string
+  materials: string
+  tasks: string
+  scale: string
   utmCampaign: string
   utmMedium: string
   utmSource: string

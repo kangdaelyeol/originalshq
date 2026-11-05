@@ -18,6 +18,7 @@ import {
   INQUIRY_BOARDS,
   isInquiryDevice,
   type Inquiry,
+  type InquiryDevice,
   type InquiryInput,
   type InquirySettings,
   type MondayStep,
@@ -121,6 +122,11 @@ export const validateInquiry = (
       introPeriod: cleanEmpty(text(record, 'introPeriod')),
       company: cleanEmpty(text(record, 'company')).slice(0, 100),
       inquiryType: cleanEmpty(textList(record, 'inquiryType')),
+      recommendedProduct: cleanEmpty(text(record, 'recommendedProduct')),
+      purpose: cleanEmpty(text(record, 'purpose')),
+      materials: cleanEmpty(textList(record, 'materials')),
+      tasks: cleanEmpty(textList(record, 'tasks')),
+      scale: cleanEmpty(text(record, 'scale')),
       utmCampaign: cleanEmpty(text(record, 'utmCampaign')),
       utmMedium: cleanEmpty(text(record, 'utmMedium')),
       utmSource: cleanEmpty(text(record, 'utmSource')),
@@ -152,16 +158,34 @@ const formatPhone = (raw: string): string => {
 const koreaToday = (ms: number) =>
   new Date(ms + 9 * 3_600_000).toISOString().slice(0, 10)
 
+/** 문자의 {기기} — 보드의 기기 이름. 앙케이트는 추천 기기를 사람이 읽는 이름으로
+ * (기기 코드면 그 보드의 이름, 모르는 값은 받은 그대로, 없으면 보드 이름). */
+const deviceLabel = (
+  inquiry: Pick<Inquiry, 'device' | 'recommendedProduct'>,
+) => {
+  const product = inquiry.recommendedProduct?.trim()
+  if (inquiry.device !== 'survey' || !product) {
+    return INQUIRY_BOARDS[inquiry.device].label
+  }
+  const code = Object.keys(INQUIRY_BOARDS).find(
+    (key) => key.toLowerCase() === product.toLowerCase(),
+  )
+  return code ? INQUIRY_BOARDS[code as InquiryDevice].label : product
+}
+
 /** 문자 내용의 자리표시자를 실제 값으로 바꾼다. */
 export const renderTemplate = (
   template: string,
-  inquiry: Pick<Inquiry, 'name' | 'device' | 'phoneFormatted'>,
+  inquiry: Pick<
+    Inquiry,
+    'name' | 'device' | 'phoneFormatted' | 'recommendedProduct'
+  >,
 ) =>
   template
     .split('{고객명}')
     .join(inquiry.name || '고객')
     .split('{기기}')
-    .join(INQUIRY_BOARDS[inquiry.device].label)
+    .join(deviceLabel(inquiry))
     .split('{전화번호}')
     .join(inquiry.phoneFormatted)
 

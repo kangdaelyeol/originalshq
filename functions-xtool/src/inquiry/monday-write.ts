@@ -99,6 +99,12 @@ const columnEntries = (
   // B2B 보드 — 아이템 이름은 회사명이고 고객명은 담당자 칸으로 간다.
   [/^기업담당자성함$/, inquiry.name],
   [/^문의유형$/, inquiry.inquiryType ?? ''],
+  // 앙케이트 보드 — 모두 텍스트 컬럼이라 받은 글자 그대로.
+  [/^앙케이트추천기기$/, inquiry.recommendedProduct ?? ''],
+  [/^도입목적$/, inquiry.purpose ?? ''],
+  [/^활용소재$/, inquiry.materials ?? ''],
+  [/^작업종류$/, inquiry.tasks ?? ''],
+  [/^작업규모$/, inquiry.scale ?? ''],
   [/^이메일$/, inquiry.email],
   [/^광고UTM$/i, inquiry.utmCampaign],
   [/^광고UTMmedium$/i, inquiry.utmMedium],

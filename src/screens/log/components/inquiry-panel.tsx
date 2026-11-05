@@ -105,6 +105,16 @@ const InquiryDetail = ({
         <Fact label="문의 유형" value={inquiry.inquiryType ?? ''} />
         <Fact label="문의 내용" value={inquiry.message ?? ''} />
         <Fact label="도입시기" value={inquiry.introPeriod ?? ''} />
+        {/* 앙케이트 문의만 — 다른 보드는 이 칸이 없어 늘 비어 있다. */}
+        {inquiry.device === 'survey' && (
+          <>
+            <Fact label="추천 기기" value={inquiry.recommendedProduct ?? ''} />
+            <Fact label="도입 목적" value={inquiry.purpose ?? ''} />
+            <Fact label="활용 소재" value={inquiry.materials ?? ''} />
+            <Fact label="작업 종류" value={inquiry.tasks ?? ''} />
+            <Fact label="작업 규모" value={inquiry.scale ?? ''} />
+          </>
+        )}
         <Fact label="utm_source" value={inquiry.utmSource} />
         <Fact label="utm_medium" value={inquiry.utmMedium} />
         <Fact label="utm_campaign" value={inquiry.utmCampaign} />
