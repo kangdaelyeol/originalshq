@@ -15,7 +15,6 @@ import { BoardEditHost } from './boards/board-host'
 import { FieldServiceBoard } from './boards/field-service-board'
 import { InquiryBoard } from './boards/inquiry-board'
 import { PartsBoard } from './boards/parts-board'
-import { RecordsBoard } from './boards/records-board'
 import { boardDef } from './boards/registry'
 import { RentalsBoard } from './boards/rentals-board'
 import { SerialsBoard } from './boards/serials-board'
@@ -92,7 +91,6 @@ function BoardScreen({ tabKey, label }: { tabKey: (typeof BOARD_TABS)[number]['k
     <BoardEditHost boardKey={tabKey} meta={state.meta} itemsById={state.itemsById}>
       {tabKey === 'fieldService' && <FieldServiceBoard doc={doc as TechBoardDoc<'fieldService'>} />}
       {tabKey === 'repair' && <RepairBoard doc={doc as TechBoardDoc<'repair'>} />}
-      {tabKey === 'records' && <RecordsBoard doc={doc as TechBoardDoc<'records'>} />}
       {tabKey === 'techInquiry' && <InquiryBoard doc={doc as TechBoardDoc<'techInquiry'>} />}
       {tabKey === 'techTask' && <TaskBoard doc={doc as TechBoardDoc<'techTask'>} />}
       {tabKey === 'asRequests' && <AsRequestsBoard doc={doc as TechBoardDoc<'asRequests'>} />}

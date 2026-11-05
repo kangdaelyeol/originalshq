@@ -13,7 +13,6 @@ const BOARD_SHORT: Record<WorkBoard, string> = {
   repair: 'AS',
   techInquiry: '아톡',
   techTask: '기타',
-  records: '자료',
 }
 
 /** 사람 동그라미 — 불투명 유리 단추(D7) 속 이니셜, 나는 어두운 표시 알약 속 흰 이니셜. 사진이 있으면 사진 */

@@ -12,7 +12,7 @@ import { functionErrorMessage } from './errors'
 const LONG_CALL = { timeout: 300_000 }
 
 /** 담당자 칸이 있는 보드 — 서버 tech-boards/assignees.ts ASSIGNEE_BOARDS와 같게 */
-const BOARDS: TechBoardKey[] = ['fieldService', 'repair', 'techInquiry', 'techTask', 'records', 'rentals']
+const BOARDS: TechBoardKey[] = ['fieldService', 'repair', 'techInquiry', 'techTask', 'rentals']
 
 interface CopyResult {
   boardKey: TechBoardKey

@@ -10,8 +10,6 @@ import { InquiryDrawer } from './inquiry-board'
 import { inquiryKpis } from './inquiry-kpis'
 import { PartsDrawer } from './parts-board'
 import { partsKpis } from './parts-kpis'
-import { RecordsDrawer } from './records-board'
-import { recordsKpis } from './records-kpis'
 import { RentalsDrawer } from './rentals-board'
 import { rentalsKpis } from './rentals-kpis'
 import { RepairDrawer } from './repair-board'
@@ -43,7 +41,6 @@ export interface BoardDef<K extends TechBoardKey> {
 export const BOARD_DEFS: { [K in TechBoardKey]: BoardDef<K> } = {
   fieldService: { kpis: fieldServiceKpis, Drawer: FieldServiceDrawer },
   repair: { kpis: repairKpis, Drawer: RepairDrawer },
-  records: { kpis: recordsKpis, Drawer: RecordsDrawer },
   techInquiry: { kpis: inquiryKpis, Drawer: InquiryDrawer },
   techTask: { kpis: taskKpis, Drawer: TaskDrawer },
   asRequests: { kpis: asRequestsKpis, Drawer: AsRequestsDrawer },

@@ -2,12 +2,12 @@ import { addDays, byDateDesc, daysBetween, isoToKoreaDate, shortDate } from '../
 import { BOARD_TABS, type TechBoardKey, type TechBoardRecordMap } from './tech-boards'
 import { isDone, splitNames } from './tech-stage'
 
-// 담당 업무 — 담당자 칸이 있는 보드 여섯 개에서 그 사람이 담당인 건을 모은다(개요 카드·내 업무 화면).
+// 담당 업무 — 담당자 칸이 있는 보드 다섯 개에서 그 사람이 담당인 건을 모은다(개요 카드·내 업무 화면).
 // 순서: 진행 중 먼저 — 지났거나 3일 안에 다가오는 날짜(출장 방문일·기타업무 마감일)가 있는 건
 // 먼저(날짜순), 그다음 나머지를 오래된 순(접수·요청일). 완료는 그 뒤에 최근 끝난 순.
 
-export type MyWorkBoard = 'fieldService' | 'repair' | 'techInquiry' | 'techTask' | 'records' | 'rentals'
-export const MY_WORK_BOARDS: readonly MyWorkBoard[] = ['fieldService', 'repair', 'techInquiry', 'techTask', 'records', 'rentals']
+export type MyWorkBoard = 'fieldService' | 'repair' | 'techInquiry' | 'techTask' | 'rentals'
+export const MY_WORK_BOARDS: readonly MyWorkBoard[] = ['fieldService', 'repair', 'techInquiry', 'techTask', 'rentals']
 
 // 이 날 수 안으로 다가오면 "급한 건"으로 위에 올린다.
 const SOON_DAYS = 3
@@ -87,10 +87,6 @@ export function buildMyWork(
     if (!take(r, splitNames(r.assignee))) continue
     push('techTask', r, r.dueAt ? { label: '마감', date: r.dueAt } : null, r.requestedAt ? { label: '요청', date: r.requestedAt } : null, r.completedAt)
   }
-  for (const r of sources.records ?? []) {
-    if (!take(r, r.assignees)) continue
-    push('records', r, null, r.requestedAt ? { label: '요청', date: r.requestedAt } : null, r.completedAt)
-  }
   for (const r of sources.rentals ?? []) {
     if (!take(r, r.assignees)) continue
     push('rentals', r, null, r.rentedAt ? { label: '대여', date: r.rentedAt } : null, r.returnedAt)
@@ -151,7 +147,6 @@ export function buildWorkPeople(sources: Sources, today: string): WorkPerson[] {
   for (const r of sources.repair ?? []) visit(r, splitNames(r.assignee))
   for (const r of sources.techInquiry ?? []) visit(r, splitNames(r.assignee))
   for (const r of sources.techTask ?? []) visit(r, splitNames(r.assignee))
-  for (const r of sources.records ?? []) visit(r, r.assignees)
   for (const r of sources.rentals ?? []) visit(r, r.assignees)
   return [...people.values()].sort((a, b) => b.open - a.open || a.name.localeCompare(b.name, 'ko'))
 }

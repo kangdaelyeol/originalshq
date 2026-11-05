@@ -147,7 +147,6 @@ export const INLINE_TYPES = new Set(['text', 'numbers', 'phone', 'email'])
 export const NAME_TITLE: Record<TechBoardKey, string> = {
   fieldService: '고객명',
   repair: '고객명',
-  records: '업무',
   techInquiry: '고객명',
   techTask: '업무',
   asRequests: '고객명',
@@ -163,7 +162,6 @@ export const NAME_TITLE: Record<TechBoardKey, string> = {
 export const ITEM_NOUN: Record<TechBoardKey, string> = {
   fieldService: '고객',
   repair: '고객',
-  records: '업무',
   techInquiry: '고객',
   techTask: '업무',
   asRequests: '신청자',

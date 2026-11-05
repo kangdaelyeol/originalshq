@@ -7,7 +7,6 @@ import { buildAttention } from '../data/attention'
 import { buildTeamStatus } from '../data/team-status'
 import type {
   AsRequestRecord,
-  DocTaskRecord,
   FieldServiceRecord,
   InquiryRecord,
   PartRecord,
@@ -52,7 +51,6 @@ function Overview() {
   const repair = useTechBoard('repair')
   const inquiry = useTechBoard('techInquiry')
   const task = useTechBoard('techTask')
-  const docs = useTechBoard('records')
   const rentals = useTechBoard('rentals')
   const parts = useTechBoard('parts')
   const requests = useTechBoard('asRequests')
@@ -72,7 +70,6 @@ function Overview() {
 
   const today = koreaToday()
   const taskRecords = (task.board?.records as TaskRecord[] | undefined) ?? null
-  const docRecords = (docs.board?.records as DocTaskRecord[] | undefined) ?? null
   const rentalRecords = (rentals.board?.records as RentalRecord[] | undefined) ?? null
   const attention = buildAttention(
     {
@@ -87,24 +84,23 @@ function Overview() {
   // 팀 현황은 기술팀으로 등록한 사람만(명단을 못 읽었으면 최근 담당자로)
   const roster = useTechMembers()
   const team = buildTeamStatus(
-    { ...sources, techTask: taskRecords, records: docRecords },
+    { ...sources, techTask: taskRecords },
     today,
     roster?.map((m) => m.name).filter(Boolean) ?? null,
   )
-  const loadingAll = [field, repair, inquiry, task, docs, rentals, parts, requests].some((b) => !b.board && !b.error)
+  const loadingAll = [field, repair, inquiry, task, rentals, parts, requests].some((b) => !b.board && !b.error)
 
   return (
     <div className="overview-layout">
       <div className="grid overview-top">
         <MyWorkCard
           names={myNames}
-          loading={[field, repair, inquiry, task, docs].some((b) => !b.board && !b.error)}
+          loading={[field, repair, inquiry, task].some((b) => !b.board && !b.error)}
           sources={{
             fieldService: sources.fieldService,
             repair: sources.repair,
             techInquiry: sources.techInquiry,
             techTask: (task.board?.records as TaskRecord[] | undefined) ?? null,
-            records: (docs.board?.records as DocTaskRecord[] | undefined) ?? null,
           }}
         />
         <ScheduleCard

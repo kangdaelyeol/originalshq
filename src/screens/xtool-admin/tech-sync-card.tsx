@@ -10,7 +10,7 @@ import type { TechBoardMeta } from '@/screens/xtool-tech/data/tech-boards'
 import { relativeTime } from './errors'
 
 // 보드 순서 — functions-xtool/src/tech-boards/boards.ts의 TECH_BOARDS와 같게.
-const ORDER = ['fieldService', 'repair', 'techInquiry', 'techTask', 'records', 'asRequests', 'parts', 'rentals', 'serials']
+const ORDER = ['fieldService', 'repair', 'techInquiry', 'techTask', 'asRequests', 'parts', 'rentals', 'serials']
 
 type Notice = { tone: 'good' | 'crit'; text: string }
 
@@ -30,7 +30,11 @@ export function TechSyncCard() {
         collection(xtoolFirebase().db, 'techBoardMeta'),
         (snap) =>
           setMetas(
-            snap.docs.map((d) => d.data() as TechBoardMeta).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key)),
+            snap.docs
+              .map((d) => d.data() as TechBoardMeta)
+              // 연결을 끊은 보드(자료정리 — 서버 RETIRED_TECH_BOARDS)의 남은 기록은 빼고
+              .filter((m) => ORDER.includes(m.key))
+              .sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key)),
           ),
         (error) => setNotice({ tone: 'crit', text: `보드 정보를 읽지 못했어요: ${error.message}` }),
       ),

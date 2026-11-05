@@ -1,6 +1,6 @@
 import * as logger from 'firebase-functions/logger'
 import { Firestore } from 'firebase-admin/firestore'
-import { findTechBoard, TECH_BOARDS } from './boards'
+import { findTechBoard, RETIRED_TECH_BOARDS, TECH_BOARDS } from './boards'
 import { refreshItems } from './edits'
 import { getBoardMeta, saveBoardMeta } from './firestore'
 import { createWebhook, deleteWebhook } from './monday-api'
@@ -136,6 +136,25 @@ export async function setupTechWebhooks(
       webhooks: { ids, at: Date.now(), errors },
     })
     results.push({ key: source.key, created: ids.length, errors })
+  }
+  // 연결을 끊은 보드 — 전에 만든 webhook만 지운다(새로 만들지 않는다). 지우지 못한 것은 기록에 남겨
+  // 다음에 다시 지운다.
+  for (const retired of RETIRED_TECH_BOARDS) {
+    const meta = await getBoardMeta(db, retired.key)
+    const ids = meta?.webhooks?.ids ?? []
+    if (ids.length === 0) continue
+    const left: string[] = []
+    const errors: string[] = []
+    for (const id of ids) {
+      await deleteWebhook(apiKey, id).catch((error) => {
+        left.push(id)
+        errors.push(`${id}: ${error instanceof Error ? error.message : error}`)
+        logger.warn(`webhook 삭제 실패(${retired.key} ${id}):`, error)
+      })
+    }
+    await saveBoardMeta(db, retired.key, {
+      webhooks: { ids: left, at: Date.now(), errors },
+    })
   }
   return results
 }

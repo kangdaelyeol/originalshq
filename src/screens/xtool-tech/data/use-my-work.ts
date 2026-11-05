@@ -4,7 +4,7 @@ import { useCurrentMember } from '../context/member-context'
 import { koreaToday } from '../lib/dates'
 import { MY_WORK_PATH } from '../paths'
 import { buildWorkPeople, type MyWorkSources, type WorkPerson } from './my-work'
-import type { DocTaskRecord, FieldServiceRecord, InquiryRecord, RentalRecord, RepairRecord, TaskRecord } from './tech-boards'
+import type { FieldServiceRecord, InquiryRecord, RentalRecord, RepairRecord, TaskRecord } from './tech-boards'
 import { useTechBoard } from './tech-boards-store'
 import { useTechMembers } from './tech-members'
 import { usePhotoOf, useProfilePhoto } from './tech-profiles'
@@ -25,25 +25,23 @@ export function useMyIdentity(): MyIdentity {
   return useMemo(() => ({ names: new Set(memberName ? [memberName] : []), name: memberName }), [memberName])
 }
 
-/** 담당자 칸이 있는 보드 여섯 개 — 실시간. loading은 아직 첫 응답이 안 온 보드가 있을 때. */
+/** 담당자 칸이 있는 보드 다섯 개 — 실시간. loading은 아직 첫 응답이 안 온 보드가 있을 때. */
 export function useWorkSources(): { sources: MyWorkSources; loading: boolean } {
   const field = useTechBoard('fieldService')
   const repair = useTechBoard('repair')
   const inquiry = useTechBoard('techInquiry')
   const task = useTechBoard('techTask')
-  const docs = useTechBoard('records')
   const rentals = useTechBoard('rentals')
-  const boards = [field, repair, inquiry, task, docs, rentals]
+  const boards = [field, repair, inquiry, task, rentals]
   const sources = useMemo<MyWorkSources>(
     () => ({
       fieldService: (field.board?.records as FieldServiceRecord[] | undefined) ?? null,
       repair: (repair.board?.records as RepairRecord[] | undefined) ?? null,
       techInquiry: (inquiry.board?.records as InquiryRecord[] | undefined) ?? null,
       techTask: (task.board?.records as TaskRecord[] | undefined) ?? null,
-      records: (docs.board?.records as DocTaskRecord[] | undefined) ?? null,
       rentals: (rentals.board?.records as RentalRecord[] | undefined) ?? null,
     }),
-    [field.board, repair.board, inquiry.board, task.board, docs.board, rentals.board],
+    [field.board, repair.board, inquiry.board, task.board, rentals.board],
   )
   return { sources, loading: boards.some((b) => !b.board && !b.error) }
 }

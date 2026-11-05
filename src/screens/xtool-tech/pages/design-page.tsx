@@ -286,8 +286,8 @@ function TechCatalog() {
 
       <TeamCard
         members={[
-          { name: '이재민', open: { fieldService: 0, repair: 5, techInquiry: 1, techTask: 4, records: 1 }, openTotal: 11, visitsToday: 0, doneThisWeek: 3 },
-          { name: '지상헌', open: { fieldService: 4, repair: 1, techInquiry: 1, techTask: 1, records: 0 }, openTotal: 7, visitsToday: 1, doneThisWeek: 2 },
+          { name: '이재민', open: { fieldService: 0, repair: 5, techInquiry: 1, techTask: 4 }, openTotal: 10, visitsToday: 0, doneThisWeek: 3 },
+          { name: '지상헌', open: { fieldService: 4, repair: 1, techInquiry: 1, techTask: 1 }, openTotal: 7, visitsToday: 1, doneThisWeek: 2 },
         ]}
         me={new Set(['이재민'])}
         loading={false}

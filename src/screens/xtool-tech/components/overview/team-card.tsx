@@ -10,7 +10,6 @@ const BOARD_SHORT: Record<WorkBoard, string> = {
   repair: 'AS',
   techInquiry: '아톡',
   techTask: '기타',
-  records: '자료',
 }
 
 /** 팀 현황 — 사람마다 진행 중(보드별)·오늘 방문·이번 주 처리. 나는 강조. */

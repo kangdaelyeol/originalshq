@@ -141,7 +141,7 @@ service cloud.firestore {
     function validBoardView(data) {
       return data.keys().hasOnly(['board', 'name', 'match', 'rules', 'sort', 'hidden',
           'createdBy', 'createdAt', 'updatedBy', 'updatedAt'])
-        && data.board in ['fieldService', 'repair', 'records', 'techInquiry', 'techTask',
+        && data.board in ['fieldService', 'repair', 'techInquiry', 'techTask',
           'asRequests', 'parts', 'rentals', 'serials']
         && data.name is string && data.name.size() > 0 && data.name.size() <= 40
         && data.match in ['all', 'any']

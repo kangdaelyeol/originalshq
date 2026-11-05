@@ -21,7 +21,6 @@ export const ASSIGNEE_BOARDS: readonly TechBoardKey[] = [
   'repair',
   'techInquiry',
   'techTask',
-  'records',
   'rentals',
 ]
 

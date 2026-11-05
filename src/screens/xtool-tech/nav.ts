@@ -2,7 +2,6 @@ import {
   Barcode,
   ClipboardList,
   ClipboardPen,
-  FileText,
   LayoutGrid,
   MessageCircle,
   Package,
@@ -38,7 +37,6 @@ export interface NavSection {
 export const BOARD_ICONS: Record<TechBoardKey, LucideIcon> = {
   fieldService: Truck,
   repair: Wrench,
-  records: FileText,
   techInquiry: MessageCircle,
   techTask: ClipboardList,
   asRequests: ClipboardPen,

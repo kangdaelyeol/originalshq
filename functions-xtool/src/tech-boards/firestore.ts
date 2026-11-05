@@ -1,5 +1,6 @@
 import { Firestore } from 'firebase-admin/firestore'
 import {
+  RetiredTechBoardKey,
   TechBoardKey,
   TechBoardMeta,
   TechEditLog,
@@ -21,7 +22,7 @@ const BATCH_SIZE = 400
 
 export async function getBoardMeta(
   db: Firestore,
-  key: TechBoardKey,
+  key: TechBoardKey | RetiredTechBoardKey,
 ): Promise<TechBoardMeta | null> {
   const doc = await db.collection(META).doc(key).get()
   return doc.exists ? (doc.data() as TechBoardMeta) : null
@@ -29,7 +30,7 @@ export async function getBoardMeta(
 
 export async function saveBoardMeta(
   db: Firestore,
-  key: TechBoardKey,
+  key: TechBoardKey | RetiredTechBoardKey,
   patch: Partial<TechBoardMeta>,
 ): Promise<void> {
   await db.collection(META).doc(key).set({ key, ...patch }, { merge: true })

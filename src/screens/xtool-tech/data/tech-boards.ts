@@ -8,7 +8,6 @@ import { xtoolFirebase } from '@/xtool-auth/firebase'
 export type TechBoardKey =
   | 'fieldService'
   | 'repair'
-  | 'records'
   | 'techInquiry'
   | 'techTask'
   | 'asRequests'
@@ -18,7 +17,7 @@ export type TechBoardKey =
 
 interface RecordBase {
   itemId: string
-  /** item 이름 — 업무 보드는 고객 이름(번호를 뗀), 자료정리·기타업무는 업무 이름. */
+  /** item 이름 — 업무 보드는 고객 이름(번호를 뗀), 기타업무는 업무 이름. */
   name: string
   /** Monday 그룹 이름 — 진행 단계. */
   stage: string | null
@@ -90,15 +89,6 @@ export interface TaskRecord extends RecordBase {
   details: string | null
 }
 
-/** 자료정리 */
-export interface DocTaskRecord extends RecordBase {
-  assignees: string[]
-  requestedAt: string | null
-  completedAt: string | null
-  notionUrl: string | null
-  details: string | null
-}
-
 /** AS 신청서 — 고객이 직접 작성하는 접수 양식 */
 export interface AsRequestRecord extends RecordBase {
   receivedAt: string | null
@@ -153,7 +143,6 @@ export interface PartRecord extends RecordBase {
 export interface TechBoardRecordMap {
   fieldService: FieldServiceRecord
   repair: RepairRecord
-  records: DocTaskRecord
   techInquiry: InquiryRecord
   techTask: TaskRecord
   asRequests: AsRequestRecord
@@ -343,7 +332,6 @@ export const BOARD_TABS: readonly {
 }[] = [
   { slug: 'field-service', key: 'fieldService', label: '출장업무', section: 'work' },
   { slug: 'repair', key: 'repair', label: 'AS', section: 'work' },
-  { slug: 'records', key: 'records', label: '자료정리', section: 'work' },
   { slug: 'inquiry', key: 'techInquiry', label: '아톡문의', section: 'work' },
   { slug: 'tasks', key: 'techTask', label: '기타업무', section: 'work' },
   { slug: 'as-requests', key: 'asRequests', label: 'AS 신청서', section: 'manage' },

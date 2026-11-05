@@ -9,13 +9,16 @@ import {
 // 읽고, 수정은 함수가 Monday에 대신 써 준다. Monday가 원본이고 우리 DB는
 // 캐시(+ 수정 기록)다. 들어오는 변경은 Monday webhook과 정기 동기화로 받는다.
 
+/** 연결을 끊은 보드 — Monday에만 남기고 우리는 읽지도 쓰지도 않는다. 전에 만든 webhook을 지울 때만
+ * 부른다(boards.ts RETIRED_TECH_BOARDS). 자료정리 2026: 회사에서 쓰지 않기로 했다. */
+export type RetiredTechBoardKey = 'records'
+
 /** 보드 이름표 — 보드 이름은 바뀔 수 있어 코드에서는 이 값으로 부른다. */
 export type TechBoardKey =
   | 'fieldService'
   | 'repair'
   | 'techInquiry'
   | 'techTask'
-  | 'records'
   | 'asRequests'
   | 'parts'
   | 'rentals'
@@ -36,16 +39,6 @@ export interface TechRecordBase {
   /** Monday 쪽 생성/수정 시각(ISO). */
   createdAt: string | null
   updatedAt: string | null
-}
-
-/** 자료정리 2026 — 기타업무와 같은 모양의 업무 보드. */
-export interface TechDocTask extends TechRecordBase {
-  status: string | null
-  assignees: string[]
-  requestedAt: string | null
-  completedAt: string | null
-  notionUrl: string | null
-  details: string | null
 }
 
 /** AS 신청서 — 고객이 직접 작성하는 접수 양식. */
@@ -120,7 +113,6 @@ export interface TechBoardRecords {
   repair: WithPhone<MondayRepair>
   techInquiry: WithPhone<MondayTechInquiry>
   techTask: WithPhone<MondayTechTask>
-  records: TechDocTask
   asRequests: TechAsRequest
   parts: TechPart
   rentals: TechRental

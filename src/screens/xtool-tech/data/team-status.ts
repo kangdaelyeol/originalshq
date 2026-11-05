@@ -1,5 +1,5 @@
 import { addDays } from '../lib/dates'
-import type { DocTaskRecord, FieldServiceRecord, InquiryRecord, RepairRecord, TaskRecord } from './tech-boards'
+import type { FieldServiceRecord, InquiryRecord, RepairRecord, TaskRecord } from './tech-boards'
 import { kingFacts, kingPeriod, KINGS } from './tech-kings'
 import { isDone, splitNames } from './tech-stage'
 
@@ -11,7 +11,7 @@ export const RECENT_DAYS = 90
 // 담당자 칸에 남는 이름 중 사람이 아닌 것
 const NOT_A_PERSON = /^삭제된 팀원$/
 
-export type WorkBoard = 'fieldService' | 'repair' | 'techInquiry' | 'techTask' | 'records'
+export type WorkBoard = 'fieldService' | 'repair' | 'techInquiry' | 'techTask'
 
 export interface TeamMemberStatus {
   name: string
@@ -26,10 +26,9 @@ export interface TeamSources {
   repair: RepairRecord[] | null
   techInquiry: InquiryRecord[] | null
   techTask: TaskRecord[] | null
-  records: DocTaskRecord[] | null
 }
 
-const EMPTY_OPEN = (): Record<WorkBoard, number> => ({ fieldService: 0, repair: 0, techInquiry: 0, techTask: 0, records: 0 })
+const EMPTY_OPEN = (): Record<WorkBoard, number> => ({ fieldService: 0, repair: 0, techInquiry: 0, techTask: 0 })
 
 export function buildTeamStatus(s: TeamSources, today: string, roster: readonly string[] | null = null): TeamMemberStatus[] {
   const since = addDays(today, -RECENT_DAYS)
@@ -69,7 +68,6 @@ export function buildTeamStatus(s: TeamSources, today: string, roster: readonly 
   for (const r of s.repair ?? []) visit('repair', r, splitNames(r.assignee))
   for (const r of s.techInquiry ?? []) visit('techInquiry', r, splitNames(r.assignee))
   for (const r of s.techTask ?? []) visit('techTask', r, splitNames(r.assignee))
-  for (const r of s.records ?? []) visit('records', r, r.assignees)
 
   // 이번 주 처리 — 기술팀 왕 세 개(AS왕·수리왕·아톡처리왕)를 합친 것
   const week = kingPeriod('week', today)

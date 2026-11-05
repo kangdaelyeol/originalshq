@@ -11,8 +11,8 @@ import {
   TechAsRequest,
   TechBoardKey,
   TechBoardRecords,
-  TechDocTask,
   TechPart,
+  RetiredTechBoardKey,
   TechRecordBase,
   TechRental,
   TechSerial,
@@ -48,11 +48,20 @@ export const TECH_BOARDS: readonly TechBoardSource[] = [
   { key: 'techInquiry', boardId: '5030892209', updates: true }, // 아톡문의
   { key: 'techTask', boardId: '5025392115', phoneColumnId: null }, // 기타업무
   // tech 페이지 전용 — 고객 통합과 무관.
-  { key: 'records', boardId: '5025392066', phoneColumnId: null }, // 자료정리
   { key: 'asRequests', boardId: '5028018471', phoneColumnId: null }, // AS 신청서
   { key: 'parts', boardId: '5027178208', phoneColumnId: null }, // 부품 마스터
   { key: 'rentals', boardId: '5025726650', phoneColumnId: null }, // 대여품 관리
   { key: 'serials', boardId: '5025519829', phoneColumnId: null }, // SN 관리
+]
+
+/** 연결을 끊은 보드 — 동기화·편집·webhook 대상에서 뺐다. webhook을 다시 만들
+ * 때 전에 만든 것을 지운다(webhooks.ts). Monday 보드와 그 내용은 그대로 둔다. */
+export const RETIRED_TECH_BOARDS: readonly {
+  key: RetiredTechBoardKey
+  boardId: string
+}[] = [
+  // 자료정리 2026 — 회사에서 쓰지 않기로 했다
+  { key: 'records', boardId: '5025392066' },
 ]
 
 const base = (item: MondayItem): TechRecordBase => ({
@@ -102,16 +111,6 @@ const fileCount = (value: string | null): number =>
 /** "N/A" 같은 자리표시를 뺀 주소. */
 const link = (value: string | null): string | null =>
   value && /^https?:\/\//.test(value) ? value : null
-
-export const toDocTask = (item: MondayItem): TechDocTask => ({
-  ...base(item),
-  status: pick(item, /^상태$/),
-  assignees: list(assigneeText(item)),
-  requestedAt: koreaDate(pick(item, /^요청일$/)),
-  completedAt: koreaDate(pick(item, /^완료일$/)),
-  notionUrl: link(pick(item, /^링크/)),
-  details: pick(item, /^상세내용$/),
-})
 
 export const toAsRequest = (item: MondayItem): TechAsRequest => ({
   ...base(item),
@@ -182,7 +181,6 @@ const CONVERTERS: {
   repair: withPhone(withAssignee(toRepair)),
   techInquiry: withPhone(withAssignee(toTechInquiry)),
   techTask: withPhone(withAssignee(toTechTask)),
-  records: toDocTask,
   asRequests: toAsRequest,
   parts: toPart,
   rentals: toRental,
