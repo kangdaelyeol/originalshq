@@ -1,4 +1,5 @@
-import type { Tone } from '@/ohq-ui/types'
+/** 단계 색 — 웹 디자인(ohq-ui Tone)과 같은 값 */
+export type StageTone = 'good' | 'warn' | 'crit' | 'info' | 'neutral'
 
 // 진행 단계(Monday 그룹 이름) 해석 — 보드마다 그룹 이름이 달라도 같은 기준으로 본다.
 // functions-xtool/src/monday/tech.ts의 isTechDone·FIRST_STAGE와 같은 규칙.
@@ -14,7 +15,7 @@ export const isNew = (r: { stage: string | null }): boolean => /^(신규|새로\
 export const isBlocked = (r: { stage: string | null; status: string | null }): boolean =>
   /막힘|보류/.test(`${r.stage ?? ''} ${r.status ?? ''}`)
 
-export function stageTone(r: { stage: string | null; status: string | null }): Tone {
+export function stageTone(r: { stage: string | null; status: string | null }): StageTone {
   if (isDone(r)) return 'good'
   if (isBlocked(r)) return 'crit'
   if (isNew(r)) return 'info'

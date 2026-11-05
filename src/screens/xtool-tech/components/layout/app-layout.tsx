@@ -2,14 +2,15 @@ import { motion } from 'motion/react'
 import { useEffect, useRef } from 'react'
 import { useUsageTracking } from '@/hooks/use-usage-tracking'
 import { ScrollRestoration, useLocation, useNavigate, useOutlet } from 'react-router-dom'
-import { DENIED_MESSAGE } from '@/xtool-auth/access'
+import { DENIED_MESSAGE } from '@xtool-core/access'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
 import { useXtoolSession, type XtoolSession } from '@/xtool-auth/use-xtool-session'
-import { MemberContext } from '../../context/member-context'
+import { MemberContext } from '@xtool-core/member-context'
 import { cx } from '@/ohq-ui/lib/cx'
 import { pageStagger } from '@/ohq-ui/lib/motion'
 import { useLayoutKind } from '../../lib/layout-kind'
 import { useSidebarCollapsed } from '../../lib/use-sidebar-collapsed'
+import { useWarnBeforeLeave } from '../../lib/warn-before-leave'
 import type { LoginLocationState } from '../../pages/login-page'
 import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
 import { WaterBackdrop, WaterShellGate } from '../../water-layout/water-gate'
@@ -41,6 +42,7 @@ export function AppLayout() {
   const previousRef = useRef<XtoolSession['status']>('loading')
   const [collapsed, toggleSidebar] = useSidebarCollapsed()
   const { structure, design } = useLayoutKind()
+  useWarnBeforeLeave()
 
   // 로그인 화면은 lazy라 받는 동안 이 화면이 남아 있다 — 그 사이 상태가 한 번 더 바뀌어도
   // (권한 없음 → 로그아웃) 처음 보낸 안내가 덮이지 않게, 이동은 여기 한 곳에서 이전 상태를 보고 한다.

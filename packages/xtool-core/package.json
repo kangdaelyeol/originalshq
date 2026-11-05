@@ -1,0 +1,11 @@
+{
+  "name": "@originalshq/xtool-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "xtool 기술팀 보드 — 웹(src/screens/xtool-tech)과 앱이 같이 쓰는 데이터 코드(Firestore 읽기·함수 호출·저장 규칙). 빌드하지 않고 소스(TS)를 그대로 가져다 쓴다.",
+  "peerDependencies": {
+    "firebase": "^12.0.0",
+    "react": ">=19.0.0"
+  }
+}

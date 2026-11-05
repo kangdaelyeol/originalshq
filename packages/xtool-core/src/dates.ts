@@ -1,4 +1,4 @@
-import type { Period } from '../data/period'
+import type { Period } from './period'
 
 // 보드 날짜는 한국 날짜 문자열(YYYY-MM-DD)이라 문자열 그대로 비교한다.
 

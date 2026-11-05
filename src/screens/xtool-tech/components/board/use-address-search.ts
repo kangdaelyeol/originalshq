@@ -1,7 +1,7 @@
 import { useRef, useState, type FocusEvent, type KeyboardEvent } from 'react'
-import { searchAddress, type AddressResult } from '../../data/tech-boards'
-import type { LocationState } from '../../data/tech-edit'
-import { addressErrorText } from '../../lib/error-text'
+import { searchAddress, type AddressResult } from '@xtool-core/tech-boards'
+import type { LocationState } from '@xtool-core/tech-edit'
+import { addressErrorText } from '@xtool-core/error-text'
 import { isComposing } from '../../lib/ime'
 
 // 주소 칸 하나의 검색·고르기 — 대시보드 편집 판·Monday 표 팝오버의 주소 칸(LocationInput)과 물 주소 칸

@@ -1,6 +1,6 @@
 import { doc, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
+import { xtoolFirebase } from './firebase'
 import type { TechBoardKey } from './tech-boards'
 
 // item 업데이트(Monday 댓글) — Monday 표 말풍선 패널이 읽고 쓴다. 서버: functions-xtool

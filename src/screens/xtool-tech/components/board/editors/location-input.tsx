@@ -1,6 +1,6 @@
 import { MapPin, Search } from 'lucide-react'
 import { useEffect } from 'react'
-import type { LocationState } from '../../../data/tech-edit'
+import type { LocationState } from '@xtool-core/tech-edit'
 import { Button } from '../../layout-parts'
 import { useAddressSearch } from '../use-address-search'
 

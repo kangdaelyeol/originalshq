@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import { useState } from 'react'
-import { koreaNow } from '../../../lib/dates'
+import { koreaNow } from '@xtool-core/dates'
 
 // 편집 판의 칸 부품 — 물 레이아웃은 같은 props의 WaterDateTimeInput(components/water/board/date-time-input.tsx)으로
 // 바꿔 끼운다.

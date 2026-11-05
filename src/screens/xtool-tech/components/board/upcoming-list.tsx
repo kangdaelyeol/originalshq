@@ -1,4 +1,4 @@
-import { daysBetween, relativeDay } from '../../lib/dates'
+import { daysBetween, relativeDay } from '@xtool-core/dates'
 import { cx } from '@/ohq-ui/lib/cx'
 
 export interface UpcomingItem {

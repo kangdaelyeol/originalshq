@@ -1,7 +1,7 @@
-import { errorText } from '../lib/error-text'
-import type { TechBoardKey } from './tech-boards'
+import { errorText } from '@xtool-core/error-text'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
 import { clearTechFiles, uploadTechFile, type TechFileLink } from './tech-files'
-import { dismissToast, hasToast, markSaving, pushToast, setToast, type Toast } from './tech-save-queue'
+import { dismissToast, hasToast, markSaving, pushToast, setToast, type Toast } from '@xtool-core/tech-save-queue'
 
 // 파일 칸의 일(올리기·비우기) — 세 레이아웃(대시보드·Monday 표·물)의 파일 칸이 같이 쓴다: 상세 서랍의 파일
 // (ItemFiles·WaterItemFiles), Monday 표의 파일 모달(FilesModal), 수정 패널의 파일 칸(FileField). 칸 안의 진행·

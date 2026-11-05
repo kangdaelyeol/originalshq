@@ -1,9 +1,9 @@
 import { CircleCheck, Hourglass, MessageCircle, MessagesSquare } from 'lucide-react'
 import type { StatCardData } from '@/ohq-ui/types'
 import { PERIOD_COMPARE, type Period } from '../../data/period'
-import type { InquiryRecord, TechBoardDoc } from '../../data/tech-boards'
-import { isDone } from '../../data/tech-stage'
-import { inRange, periodRange, type DateRange } from '../../lib/dates'
+import type { InquiryRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { isDone } from '@xtool-core/tech-stage'
+import { inRange, periodRange, type DateRange } from '@xtool-core/dates'
 
 // 아톡문의 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 

@@ -1,9 +1,9 @@
 import { Lock, Save, X } from 'lucide-react'
 import { useId, useMemo, useState, type ReactNode } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc, TechMondayUser } from '../../data/tech-boards'
-import { useMondayUsers } from '../../data/tech-boards-store'
-import { createItem, editItem, type CellEdit } from '../../data/tech-outbox'
-import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubRow } from '../../data/tech-subitems'
+import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc, TechMondayUser } from '@xtool-core/tech-boards'
+import { useMondayUsers } from '@xtool-core/tech-boards-store'
+import { createItem, editItem, type CellEdit } from '@xtool-core/tech-outbox'
+import { editableSubColumns, initialRows, SUBITEM_LABEL, subitemEdits, type SubRow } from '@xtool-core/tech-subitems'
 import {
   columnLabel,
   emptyState,
@@ -20,9 +20,9 @@ import {
   withoutLegacyAssignee,
   type EditState,
   type LocationState,
-} from '../../data/tech-edit'
+} from '@xtool-core/tech-edit'
 import { cx } from '@/ohq-ui/lib/cx'
-import { koreaNow } from '../../lib/dates'
+import { koreaNow } from '@xtool-core/dates'
 import { useWaterLayout } from '../../water-layout/load'
 import { Button } from '../layout-parts'
 import { DrawerShell } from './drawer-shell'

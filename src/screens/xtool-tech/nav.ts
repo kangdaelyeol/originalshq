@@ -14,7 +14,7 @@ import {
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { BOARD_TABS, type TechBoardKey } from './data/tech-boards'
+import { BOARD_TABS, type TechBoardKey } from '@xtool-core/tech-boards'
 import { MY_WORK_PATH, xtPath } from './paths'
 
 export interface NavItem {

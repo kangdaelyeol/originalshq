@@ -1,8 +1,8 @@
 import { onIdTokenChanged, type User } from 'firebase/auth'
 import { useEffect, useState } from 'react'
-import { checkAccess, type AccessTarget, type DeniedReason } from './access'
+import { checkAccess, type AccessTarget, type DeniedReason } from '@xtool-core/access'
 import { isXtoolFirebaseConfigured, xtoolFirebase } from './firebase'
-import type { XtoolMember } from './members'
+import type { XtoolMember } from '@xtool-core/members'
 
 export type XtoolSession =
   | { status: 'unconfigured' }

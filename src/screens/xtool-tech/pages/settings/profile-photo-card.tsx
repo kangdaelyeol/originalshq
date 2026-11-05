@@ -2,10 +2,10 @@ import { Camera, LoaderCircle, Trash2 } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { Avatar, Button, GlassCard } from '../../components/layout-parts'
-import { useCurrentMember } from '../../context/member-context'
+import { useCurrentMember } from '@xtool-core/member-context'
 import { deleteProfilePhoto, PROFILE_ACCEPT, uploadProfilePhoto, useProfilePhoto } from '../../data/tech-profiles'
-import { pushToast } from '../../data/tech-save-queue'
-import { errorText } from '../../lib/error-text'
+import { pushToast } from '@xtool-core/tech-save-queue'
+import { errorText } from '@xtool-core/error-text'
 
 /** 내 프로필 사진 — 올리면 담당자 동그라미·팀 현황·사이드바에 이 사진이 보인다. */
 export function ProfilePhotoCard() {

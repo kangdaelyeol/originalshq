@@ -11,7 +11,7 @@ import {
   dismissToast,
   useToasts,
   type Toast,
-} from '../../../data/tech-save-queue'
+} from '@xtool-core/tech-save-queue'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { useReducedMotion } from '@/ohq-ui/water/hooks'

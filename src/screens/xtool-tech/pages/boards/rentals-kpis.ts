@@ -1,6 +1,6 @@
 import { CircleCheck, OctagonAlert, PackageOpen, Wrench } from 'lucide-react'
 import type { StatCardData, Tone } from '@/ohq-ui/types'
-import type { RentalRecord, TechBoardDoc } from '../../data/tech-boards'
+import type { RentalRecord, TechBoardDoc } from '@xtool-core/tech-boards'
 
 // 대여품 관리 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 // 대여 상태 나누기는 표의 상태 칸도 쓴다.

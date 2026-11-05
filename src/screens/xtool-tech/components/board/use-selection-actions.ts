@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import type { TechBoardKey } from '../../data/tech-boards'
-import { deleteItems, moveItems } from '../../data/tech-outbox'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
+import { deleteItems, moveItems } from '@xtool-core/tech-outbox'
 
 // 고른 줄 옮기기·지우기 — 대시보드·물 고르기 막대와 Monday 표 선택 막대가 같이 쓴다. 막대마다 모양만 다르고
 // 하는 일은 여기 하나: 진행 단계(그룹) 옮기기(한 보드만 골랐을 때), 확인을 받고 Monday 휴지통으로 지우기, 그 뒤

@@ -1,9 +1,9 @@
 import { CalendarClock, CircleCheck, Inbox, Truck } from 'lucide-react'
 import type { StatCardData } from '@/ohq-ui/types'
 import { PERIOD_COMPARE, type Period } from '../../data/period'
-import type { FieldServiceRecord, TechBoardDoc } from '../../data/tech-boards'
-import { isDone, isNew } from '../../data/tech-stage'
-import { byDateAsc, inRange, isoToKoreaDate, periodRange } from '../../lib/dates'
+import type { FieldServiceRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { isDone, isNew } from '@xtool-core/tech-stage'
+import { byDateAsc, inRange, isoToKoreaDate, periodRange } from '@xtool-core/dates'
 
 // 출장업무 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 // 표가 같이 쓰는 기준(끝난 날·다가오는 방문)도 여기 둔다.

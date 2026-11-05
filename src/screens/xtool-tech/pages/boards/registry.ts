@@ -1,7 +1,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import type { StatCardData } from '@/ohq-ui/types'
 import type { Period } from '../../data/period'
-import type { TechBoardDoc, TechBoardKey } from '../../data/tech-boards'
+import type { TechBoardDoc, TechBoardKey } from '@xtool-core/tech-boards'
 import { AsRequestsDrawer } from './as-requests-board'
 import { asRequestsKpis } from './as-requests-kpis'
 import { FieldServiceDrawer } from './field-service-board'

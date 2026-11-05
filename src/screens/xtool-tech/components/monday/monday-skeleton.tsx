@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechColumn } from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechColumn } from '@xtool-core/tech-boards'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
 import { defaultWidth, NAME_WIDTH, visibleColumns } from './monday-values'

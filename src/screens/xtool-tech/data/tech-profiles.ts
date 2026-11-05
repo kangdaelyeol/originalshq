@@ -1,7 +1,7 @@
 import { Bytes, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore'
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { normalizeEmail } from '@/xtool-auth/members'
+import { normalizeEmail } from '@xtool-core/members'
 
 // 프로필 사진(설정 > 프로필 사진) — 본인이 올리고, 팀 모두가 담당자 동그라미 등에서 본다.
 // 사진은 화면에서 정사각형으로 잘라 작게 줄여 xtoolProfiles/{이메일}에 bytes로 넣는다(규칙이

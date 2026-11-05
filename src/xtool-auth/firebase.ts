@@ -4,10 +4,10 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithCredential,
-  type Auth,
 } from 'firebase/auth'
-import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore'
-import { connectFunctionsEmulator, getFunctions, type Functions } from 'firebase/functions'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import { connectFunctionsEmulator, getFunctions } from 'firebase/functions'
+import { provideXtoolFirebase, type XtoolFirebase } from '@xtool-core/firebase'
 import { XTOOL_FIREBASE_CONFIG } from './firebase-config'
 
 // 다른 화면(parke 등)이 다른 Firebase 프로젝트를 써도 섞이지 않게 이름 붙인 앱으로 만든다.
@@ -42,13 +42,6 @@ const EMULATOR_CONFIG = {
 export const isXtoolFirebaseConfigured =
   useEmulator || Boolean(XTOOL_FIREBASE_CONFIG.apiKey && XTOOL_FIREBASE_CONFIG.appId)
 
-interface XtoolFirebase {
-  auth: Auth
-  db: Firestore
-  /** functions-xtool의 호출 함수(onCall) — 로그인 토큰이 저절로 실려 간다. */
-  functions: Functions
-}
-
 let instance: XtoolFirebase | null = null
 
 /** 처음 부를 때 초기화한다(설정이 비어 있을 때 import만으로 깨지지 않게). */
@@ -79,6 +72,9 @@ export function xtoolFirebase(): XtoolFirebase {
   instance = { auth, db, functions }
   return instance
 }
+
+// 공용 데이터 코드(xtool-core)가 이 초기화를 쓴다
+provideXtoolFirebase(xtoolFirebase)
 
 export const googleProvider = new GoogleAuthProvider()
 // 계정이 여러 개인 브라우저에서 매번 고를 수 있게.

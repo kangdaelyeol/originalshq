@@ -3,8 +3,8 @@ import { Navigate } from 'react-router-dom'
 import { AttentionRow, KingCard, TeamCard } from '../components/layout-parts'
 import { MyWorkCard } from '../components/overview/my-work-card'
 import { ScheduleCard } from '../components/overview/schedule-card'
-import { buildAttention } from '../data/attention'
-import { buildTeamStatus } from '../data/team-status'
+import { buildAttention } from '@xtool-core/attention'
+import { buildTeamStatus } from '@xtool-core/team-status'
 import type {
   AsRequestRecord,
   FieldServiceRecord,
@@ -13,8 +13,8 @@ import type {
   RentalRecord,
   RepairRecord,
   TaskRecord,
-} from '../data/tech-boards'
-import { useTechBoard } from '../data/tech-boards-store'
+} from '@xtool-core/tech-boards'
+import { useTechBoard } from '@xtool-core/tech-boards-store'
 import {
   kingFacts,
   kingPeriod,
@@ -23,10 +23,10 @@ import {
   rankKing,
   type KingSources,
   type KingSpan,
-} from '../data/tech-kings'
-import { useTechMembers } from '../data/tech-members'
+} from '@xtool-core/tech-kings'
+import { useTechMembers } from '@xtool-core/tech-members'
 import { useMyIdentity } from '../data/use-my-work'
-import { koreaToday, shortDate } from '../lib/dates'
+import { koreaToday, shortDate } from '@xtool-core/dates'
 import { useOverviewHidden } from '../lib/overview-pref'
 import { MY_WORK_PATH } from '../paths'
 

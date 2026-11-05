@@ -1,7 +1,7 @@
 import { FileText, ImagePlus, RotateCcw, Upload } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
 import { WaterButton, WaterChips, type WaterOption } from '@/ohq-ui/water/controls'
-import type { TechBoardMeta } from '../../../data/tech-boards'
+import type { TechBoardMeta } from '@xtool-core/tech-boards'
 import { WaterItemFiles } from '../board/water-item-files'
 import { dropOn, samplePhotoFile, useSampleFiles, type SampleUploadMode } from './sample-files'
 

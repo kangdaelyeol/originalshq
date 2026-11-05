@@ -1,4 +1,4 @@
-import { formatPhone, stageLabel, stageTone } from '../../data/tech-stage'
+import { formatPhone, stageLabel, stageTone } from '@xtool-core/tech-stage'
 import { StatusPill } from '@/ohq-ui/components/status-pill'
 
 /** 진행 단계 배지 — 완료(초록) · 멈춤(빨강) · 신규(파랑) · 그 밖의 진행 중(노랑). */

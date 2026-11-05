@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterEmpty } from '@/ohq-ui/water/surfaces/water-empty'
-import { daysBetween, relativeDay } from '../../../lib/dates'
+import { daysBetween, relativeDay } from '@xtool-core/dates'
 import type { UpcomingItem } from '../../board/upcoming-list'
 
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']

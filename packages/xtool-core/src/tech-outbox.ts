@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { errorText } from '../lib/error-text'
+import { errorText } from './error-text'
 import {
   createTechItem,
   deleteTechItems,
@@ -131,15 +131,10 @@ export interface SyncStatus {
 let status: SyncStatus = { saving: 0, savedAt: null }
 let savedAt: number | null = null
 
-const warnBeforeLeave = (e: BeforeUnloadEvent) => e.preventDefault()
-
 function emitStatus() {
   let saving = deleting
   for (const s of states.values()) if (s.queued || s.inFlight) saving++
   if (saving !== status.saving || savedAt !== status.savedAt) {
-    // 안 보낸 수정이 있으면 창을 닫기 전에 묻는다.
-    if (saving > 0 && status.saving === 0) window.addEventListener('beforeunload', warnBeforeLeave)
-    if (saving === 0 && status.saving > 0) window.removeEventListener('beforeunload', warnBeforeLeave)
     status = { saving, savedAt }
     statusListeners.forEach((listener) => listener())
   }
@@ -150,6 +145,7 @@ function emit(boardKey: TechBoardKey) {
   emitStatus()
 }
 
+/** 저장 상태 — 안 보낸 수정이 있으면 창을 닫기 전에 묻는 것은 플랫폼이 한다(웹 lib/warn-before-leave). */
 export const useSyncStatus = (): SyncStatus =>
   useSyncExternalStore(
     (listener) => {

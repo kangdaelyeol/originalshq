@@ -8,8 +8,8 @@ import {
   WaterIconButton,
   WaterSegmented,
 } from '@/ohq-ui/water/controls'
-import { deleteItems } from '../../../data/tech-outbox'
-import { UPDATE_BOARDS } from '../../../data/use-item-updates'
+import { deleteItems } from '@xtool-core/tech-outbox'
+import { UPDATE_BOARDS } from '@xtool-core/use-item-updates'
 import { useItemPanel, type ItemPanel } from '../../../lib/use-item-param'
 import { WaterStagePill } from './cells'
 import { WaterDrawerShell } from './drawer-shell'

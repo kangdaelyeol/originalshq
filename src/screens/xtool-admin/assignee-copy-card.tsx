@@ -5,7 +5,7 @@ import { xtoolFirebase } from '@/xtool-auth/firebase'
 import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { BOARD_TABS, type TechBoardKey } from '@/screens/xtool-tech/data/tech-boards'
+import { BOARD_TABS, type TechBoardKey } from '@xtool-core/tech-boards'
 import { functionErrorMessage } from './errors'
 
 // 함수 제한 시간(300초)만큼 기다린다 — 한 번에 3분까지 쓰고 남은 건은 다시 불러 이어서 쓴다.

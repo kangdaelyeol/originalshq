@@ -1,8 +1,8 @@
 import { ChevronDown, Crown } from 'lucide-react'
 import { motion } from 'motion/react'
 import { useState } from 'react'
-import type { KingDef, KingPeriod, KingResult, KingRow } from '../../data/tech-kings'
-import { shortDate } from '../../lib/dates'
+import type { KingDef, KingPeriod, KingResult, KingRow } from '@xtool-core/tech-kings'
+import { shortDate } from '@xtool-core/dates'
 import { cx } from '@/ohq-ui/lib/cx'
 import { cardEnter } from '@/ohq-ui/lib/motion'
 

@@ -1,6 +1,6 @@
 import { httpsCallable } from 'firebase/functions'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import type { TechBoardKey } from './tech-boards'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
 
 // 파일 칸(사진·동영상·문서) — 원본은 Monday. 올리기는 우리 함수(techUploadFile)로 파일을 그대로
 // 보내 Monday 파일 칸에 붙이고, 보기는 Monday 임시 주소(1시간)를 받아 쓴다.

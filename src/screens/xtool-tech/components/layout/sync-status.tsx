@@ -1,5 +1,5 @@
 import { CloudCheck, LoaderCircle } from 'lucide-react'
-import { useSyncStatus } from '../../data/tech-outbox'
+import { useSyncStatus } from '@xtool-core/tech-outbox'
 
 /**
  * 저장 표시(상단바) — 고친 것은 화면에 바로 보이고 Monday에는 뒤에서 쓴다. 보내는 중이면 "저장 중 N건",

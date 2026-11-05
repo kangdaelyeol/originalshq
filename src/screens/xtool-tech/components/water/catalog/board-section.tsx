@@ -1,9 +1,9 @@
 import { Upload } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { AddressResult, TechBoardMeta } from '../../../data/tech-boards'
-import type { LocationState } from '../../../data/tech-edit'
-import type { Toast } from '../../../data/tech-save-queue'
-import { addDays, koreaToday, shortDate } from '../../../lib/dates'
+import type { AddressResult, TechBoardMeta } from '@xtool-core/tech-boards'
+import type { LocationState } from '@xtool-core/tech-edit'
+import type { Toast } from '@xtool-core/tech-save-queue'
+import { addDays, koreaToday, shortDate } from '@xtool-core/dates'
 import {
   BoardEditContext,
   type BoardEditState,

@@ -1,12 +1,12 @@
 import { useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { useCurrentMember } from '../context/member-context'
-import { koreaToday } from '../lib/dates'
+import { useCurrentMember } from '@xtool-core/member-context'
+import { koreaToday } from '@xtool-core/dates'
 import { MY_WORK_PATH } from '../paths'
-import { buildWorkPeople, type MyWorkSources, type WorkPerson } from './my-work'
-import type { FieldServiceRecord, InquiryRecord, RentalRecord, RepairRecord, TaskRecord } from './tech-boards'
-import { useTechBoard } from './tech-boards-store'
-import { useTechMembers } from './tech-members'
+import { buildWorkPeople, type MyWorkSources, type WorkPerson } from '@xtool-core/my-work'
+import type { FieldServiceRecord, InquiryRecord, RentalRecord, RepairRecord, TaskRecord } from '@xtool-core/tech-boards'
+import { useTechBoard } from '@xtool-core/tech-boards-store'
+import { useTechMembers } from '@xtool-core/tech-members'
 import { usePhotoOf, useProfilePhoto } from './tech-profiles'
 
 export interface MyIdentity {

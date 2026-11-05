@@ -6,7 +6,7 @@ import { WaterButton, WaterDialog, WaterIconButton } from '@/ohq-ui/water/contro
 import { useReducedMotion, useWaterRipple } from '@/ohq-ui/water/hooks'
 import { rippleAt } from '@/ohq-ui/water/ripple'
 import { WaterFlag } from '@/ohq-ui/water/surfaces/water-flag'
-import type { TechBoardMeta, TechColumn, TechItemDoc } from '../../../data/tech-boards'
+import type { TechBoardMeta, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import type { TechFileActions } from '../../../data/tech-file-actions'
 import {
   fetchFileLinks,

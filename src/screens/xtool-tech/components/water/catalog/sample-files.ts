@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { TechBoardMeta, TechColumn, TechItemDoc } from '../../../data/tech-boards'
+import type { TechBoardMeta, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import type { TechFileLink } from '../../../data/tech-files'
 import type { TechFileActions, TechFileTarget } from '../../../data/tech-file-actions'
 

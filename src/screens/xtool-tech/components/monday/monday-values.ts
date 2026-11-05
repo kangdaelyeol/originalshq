@@ -1,9 +1,9 @@
 import type { CSSProperties } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '../../data/tech-boards'
-import { columnLabel, isAssigneeColumn, withoutLegacyAssignee, type EditState, type LocationState } from '../../data/tech-edit'
-import { GROUP_COLUMN, NAME_COLUMN } from '../../data/tech-views'
+import type { TechBoardKey, TechBoardMeta, TechCellValue, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
+import { columnLabel, isAssigneeColumn, withoutLegacyAssignee, type EditState, type LocationState } from '@xtool-core/tech-edit'
+import { GROUP_COLUMN, NAME_COLUMN } from '@xtool-core/tech-views'
 import { cx } from '@/ohq-ui/lib/cx'
-import { koreaToday } from '../../lib/dates'
+import { koreaToday } from '@xtool-core/dates'
 import { labelColor } from './monday-colors'
 
 // Monday 표 칸의 값 다루기 — 칸 너비·정렬값·날짜 글자·미리 보기 값. 값은 캐시에 적힌 그대로
@@ -249,4 +249,4 @@ export function splitNamePhone(name: string): { label: string; phones: string } 
 }
 
 /** 업데이트(Monday 댓글) 말풍선이 있는 보드 — 서버 TECH_BOARDS의 updates와 같게 */
-export { UPDATE_BOARDS } from '../../data/use-item-updates'
+export { UPDATE_BOARDS } from '@xtool-core/use-item-updates'

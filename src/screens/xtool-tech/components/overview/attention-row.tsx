@@ -1,6 +1,6 @@
 import { motion } from 'motion/react'
 import { Link } from 'react-router-dom'
-import type { AttentionTile } from '../../data/attention'
+import type { AttentionTile } from '@xtool-core/attention'
 import { cx } from '@/ohq-ui/lib/cx'
 import { cardEnter } from '@/ohq-ui/lib/motion'
 import { xtPath } from '../../paths'

@@ -1,7 +1,7 @@
 import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useSyncExternalStore } from 'react'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
-import type { XtoolMember } from '@/xtool-auth/members'
+import { xtoolFirebase } from './firebase'
+import type { XtoolMember } from './members'
 
 // 기술팀 명단 — /admin/xtool에서 기술팀(teams.tech)으로 등록한 활성 구성원. 내 업무의 직원 목록이
 // 이 명단을 따른다. 규칙이 기술팀원에게 "기술팀으로 등록된 사람" 문서만 읽게 해서 같은 조건으로 묻는다.

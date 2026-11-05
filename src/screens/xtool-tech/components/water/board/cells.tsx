@@ -1,4 +1,4 @@
-import { formatPhone, stageLabel, stageTone } from '../../../data/tech-stage'
+import { formatPhone, stageLabel, stageTone } from '@xtool-core/tech-stage'
 import { usePhotoOf } from '../../../data/tech-profiles'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { WaterAvatar, WaterStatusPill } from '@/ohq-ui/water/controls'

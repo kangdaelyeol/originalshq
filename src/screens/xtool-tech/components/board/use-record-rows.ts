@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { isDone } from '../../data/tech-stage'
+import { isDone } from '@xtool-core/tech-stage'
 import { useBoardEdit } from './board-edit-context'
 import { compareValues, RECORD_PAGE, type RecordSort } from './record-sort'
 import type { RecordColumn } from './record-table'

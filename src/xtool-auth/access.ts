@@ -1,36 +1,5 @@
-import type { User } from 'firebase/auth'
-import { getMember, type TeamKey, type XtoolMember } from './members'
+// 들어갈 수 있는지 판단 — 기술팀 보드 웹·앱 공용 코드(xtool-core)로 옮겼다. 다른 화면의 import는 그대로 둔다.
+// 이 경로로 쓰는 화면도 웹 Firebase 초기화가 xtool-core에 끼워지게(provideXtoolFirebase)
+import './firebase'
 
-/** 들어가려는 곳 — 팀 페이지 하나, 관리자 화면, 또는 가입한 사람 누구나(member — 리드 관리자처럼 팀·관리자와 상관없이). */
-export type AccessTarget = TeamKey | 'admin' | 'member'
-
-export type DeniedReason = 'not-registered' | 'disabled' | 'no-access' | 'unverified' | 'password-setup'
-
-export type AccessResult = { ok: true; member: XtoolMember } | { ok: false; reason: DeniedReason }
-
-export const DENIED_MESSAGE: Record<DeniedReason, string> = {
-  'not-registered': '등록되지 않은 계정이에요. 관리자에게 등록을 요청해 주세요.',
-  disabled: '사용이 정지된 계정이에요. 관리자에게 문의해 주세요.',
-  'no-access': '이 페이지를 쓸 권한이 없는 계정이에요. 관리자에게 권한을 요청해 주세요.',
-  unverified: '메일 인증이 안 된 계정이에요. 관리자에게 아이디·비밀번호 발급을 요청해 주세요.',
-  'password-setup': '임시 비밀번호로 로그인했어요. 앞으로 쓸 비밀번호를 먼저 정해 주세요.',
-}
-
-/**
- * 로그인한 사람이 target에 들어갈 수 있는지 — 화면을 보여 줄지 정하는 판단이다. 실제 보호는
- * Firestore 규칙이 한다(등록·권한이 없으면 데이터를 못 읽는다).
- */
-export async function checkAccess(user: User, target: AccessTarget): Promise<AccessResult> {
-  if (!user.email) return { ok: false, reason: 'not-registered' }
-  const member = await getMember(user.email)
-  if (!member) return { ok: false, reason: 'not-registered' }
-  if (member.status !== 'active') return { ok: false, reason: 'disabled' }
-  // 관리자는 팀 페이지 모두에 들어간다(규칙·함수도 관리자를 허용한다). member는 활성 구성원이면 누구나.
-  const allowed = member.isAdmin || target === 'member' || (target !== 'admin' && member.teams[target] === true)
-  if (!allowed) return { ok: false, reason: 'no-access' }
-  // 관리자가 발급한 임시 비밀번호로 들어왔으면 자기 비밀번호부터 — 그동안은 규칙이 데이터를 막는다.
-  if (member.mustChangePassword) return { ok: false, reason: 'password-setup' }
-  // 비밀번호 계정은 메일 인증 전엔 막는다 — 남이 등록된 이메일로 먼저 가입해 들어오는 걸 막는다.
-  if (!user.emailVerified) return { ok: false, reason: 'unverified' }
-  return { ok: true, member }
-}
+export * from '@xtool-core/access'

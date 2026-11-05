@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import type { TechBoardKey } from '../../data/tech-boards'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
 
 // Monday 표에서 손으로 바꾼 것 — 칸 너비·접은 그룹. 보드마다 이 브라우저에 기억한다.
 

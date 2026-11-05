@@ -4,15 +4,15 @@ import { BackgroundArt } from '@/ohq-ui/backgrounds/background-art'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { cx } from '@/ohq-ui/lib/cx'
 import { DEFAULT_ACCENT } from '@/ohq-ui/theme/accent'
-import { useCurrentMember } from '../../context/member-context'
+import { useCurrentMember } from '@xtool-core/member-context'
 import {
   BACKGROUND_ACCEPT,
   deleteSharedBackground,
   type SharedBackground,
   type useSharedBackgrounds,
 } from '../../data/tech-backgrounds'
-import { pushToast } from '../../data/tech-save-queue'
-import { errorText } from '../../lib/error-text'
+import { pushToast } from '@xtool-core/tech-save-queue'
+import { errorText } from '@xtool-core/error-text'
 
 // 팀이 공유한 사진 고르기 — 유리 배경 카드, Monday 배경 사진 카드, 물 배경 카드가 같이 쓴다. 고른 값은 레이아웃마다
 // 따로 저장하니(유리 sharedBackgroundId · Monday mondayPhotoId · 물 water.photoId) 고르기·지운 뒤는 쓰는 쪽이 정한다.

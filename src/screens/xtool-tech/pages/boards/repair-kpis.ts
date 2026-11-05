@@ -1,9 +1,9 @@
 import { CircleCheck, PackageOpen, Send, Wrench } from 'lucide-react'
 import type { StatCardData } from '@/ohq-ui/types'
 import { PERIOD_COMPARE, type Period } from '../../data/period'
-import type { RepairRecord, TechBoardDoc } from '../../data/tech-boards'
-import { isDone, isNew } from '../../data/tech-stage'
-import { inRange, isoToKoreaDate, periodRange } from '../../lib/dates'
+import type { RepairRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { isDone, isNew } from '@xtool-core/tech-stage'
+import { inRange, isoToKoreaDate, periodRange } from '@xtool-core/dates'
 
 // AS 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { TechBoardKey } from '../../data/tech-boards'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
 
 // Monday 표의 줄 선택(체크박스) — 보드 화면과 내 업무(여러 보드)가 같이 쓴다. 열쇠는
 // "보드:항목 id". 선택 막대(monday-selection-bar.tsx)가 이걸 보고 이동·삭제를 한다.

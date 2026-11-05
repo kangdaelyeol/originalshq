@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type DragEvent as ReactDragEvent } from 'react'
 import type { TechFileActions, TechFileTarget } from '../../data/tech-file-actions'
 import { checkFile, type TechFileRef } from '../../data/tech-files'
-import { errorText } from '../../lib/error-text'
+import { errorText } from '@xtool-core/error-text'
 
 // 파일 칸 하나의 올리기·비우기·끌어다 놓기 — 세 레이아웃의 파일 칸이 같이 쓴다: 대시보드 상세 서랍(ItemFiles)·
 // 수정 패널(FileField), Monday 표 파일 모달(FilesModal), 물 상세 서랍(WaterItemFiles). 모양은 저마다 그리고,

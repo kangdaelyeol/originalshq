@@ -13,7 +13,7 @@ import {
   type Position,
   type TeamKey,
   type XtoolMember,
-} from '@/xtool-auth/members'
+} from '@xtool-core/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { usePhotoOf } from '@/screens/xtool-tech/data/tech-profiles'
 import { Avatar } from '@/ohq-ui/components/avatar'

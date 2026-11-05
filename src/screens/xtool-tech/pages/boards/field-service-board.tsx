@@ -15,8 +15,8 @@ import { countBy } from '@/ohq-ui/charts/chart-utils'
 import type { RecordColumn } from '../../components/board/record-table'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
-import type { FieldServiceRecord, TechBoardDoc } from '../../data/tech-boards'
-import { formatPhone, isDone, splitNames } from '../../data/tech-stage'
+import type { FieldServiceRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { formatPhone, isDone, splitNames } from '@xtool-core/tech-stage'
 import {
   byDateAsc,
   byDateDesc,
@@ -25,7 +25,7 @@ import {
   periodRange,
   relativeDay,
   shortDate,
-} from '../../lib/dates'
+} from '@xtool-core/dates'
 import { useItemParam } from '../../lib/use-item-param'
 import { doneOn, fieldServiceKpis, upcomingVisits } from './field-service-kpis'
 import type { BoardDrawerProps } from './registry'

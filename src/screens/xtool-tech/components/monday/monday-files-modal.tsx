@@ -1,7 +1,7 @@
 import { ExternalLink, FileText, ImageOff, LoaderCircle, RotateCcw, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { TechBoardKey, TechColumn, TechItemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import { techFileActions } from '../../data/tech-file-actions'
 import { fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink } from '../../data/tech-files'
 import { cx } from '@/ohq-ui/lib/cx'

@@ -14,8 +14,8 @@ import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
-import type { RepairRecord, TechBoardDoc } from '../../data/tech-boards'
-import { formatPhone, isDone, splitNames } from '../../data/tech-stage'
+import type { RepairRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { formatPhone, isDone, splitNames } from '@xtool-core/tech-stage'
 import {
   byDateAsc,
   byDateDesc,
@@ -24,7 +24,7 @@ import {
   koreaToday,
   periodRange,
   shortDate,
-} from '../../lib/dates'
+} from '@xtool-core/dates'
 import { formatInt } from '@/ohq-ui/lib/format'
 import { useItemParam } from '../../lib/use-item-param'
 import type { BoardDrawerProps } from './registry'

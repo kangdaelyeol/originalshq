@@ -1,6 +1,6 @@
 import { useLocation } from 'react-router-dom'
-import { BOARD_TABS, type TechBoardKey } from '../../data/tech-boards'
-import { useTechBoard } from '../../data/tech-boards-store'
+import { BOARD_TABS, type TechBoardKey } from '@xtool-core/tech-boards'
+import { useTechBoard } from '@xtool-core/tech-boards-store'
 import { NAV_SECTIONS } from '../../nav'
 import { MY_WORK_PATH, XT_BASE, xtPath } from '../../paths'
 

@@ -1,8 +1,8 @@
 import { Check, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { TechBoardKey, TechItemDoc } from '../../data/tech-boards'
-import { useTechBoard } from '../../data/tech-boards-store'
-import { stageLabel } from '../../data/tech-stage'
+import type { TechBoardKey, TechItemDoc } from '@xtool-core/tech-boards'
+import { useTechBoard } from '@xtool-core/tech-boards-store'
+import { stageLabel } from '@xtool-core/tech-stage'
 import { cx } from '@/ohq-ui/lib/cx'
 import { formatInt } from '@/ohq-ui/lib/format'
 

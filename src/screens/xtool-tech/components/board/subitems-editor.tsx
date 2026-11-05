@@ -1,7 +1,7 @@
 import { Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useMemo } from 'react'
-import type { TechColumn } from '../../data/tech-boards'
-import type { EditState } from '../../data/tech-edit'
+import type { TechColumn } from '@xtool-core/tech-boards'
+import type { EditState } from '@xtool-core/tech-edit'
 import {
   editableSubColumns,
   newRow,
@@ -9,7 +9,7 @@ import {
   readonlySubColumns,
   relationColumn,
   type SubRow,
-} from '../../data/tech-subitems'
+} from '@xtool-core/tech-subitems'
 import { cx } from '@/ohq-ui/lib/cx'
 import { RelationPicker } from './relation-picker'
 

@@ -1,6 +1,6 @@
 import { ArrowRight, Info, KeyRound, Lock, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { DENIED_MESSAGE } from '@/xtool-auth/access'
+import { DENIED_MESSAGE } from '@xtool-core/access'
 import {
   completePasswordSetup,
   signInWithEmail,
@@ -8,7 +8,7 @@ import {
   signOutXtool,
   type AuthOutcome,
 } from '@/xtool-auth/auth-actions'
-import { MIN_PASSWORD } from '@/xtool-auth/members'
+import { MIN_PASSWORD } from '@xtool-core/members'
 import type { XtoolSession } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/ohq-ui/brand/brand-mark'
 import { GoogleMark } from '@/ohq-ui/brand/google-mark'

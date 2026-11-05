@@ -4,7 +4,7 @@ import type { StatCardData } from '@/ohq-ui/types'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_OPTIONS } from '../../data/period'
-import type { TechBoardKey } from '../../data/tech-boards'
+import type { TechBoardKey } from '@xtool-core/tech-boards'
 
 // 요약 줄을 접었는지 — 보드마다 이 브라우저에 기억한다(use-monday-prefs의 칸 너비·접은 그룹과 같은 방식).
 // 처음(기억한 값이 없으면)에는 접어 둔다 — 표가 먼저 보이게.

@@ -1,6 +1,6 @@
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
 import { useEffect, useSyncExternalStore } from 'react'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
+import { xtoolFirebase } from './firebase'
 import {
   normalizeRecord,
   type TechBoardDoc,

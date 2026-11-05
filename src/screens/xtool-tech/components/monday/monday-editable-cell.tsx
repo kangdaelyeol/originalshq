@@ -1,4 +1,4 @@
-import type { TechCellValue, TechColumn } from '../../data/tech-boards'
+import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards'
 import {
   formatPhoneTyping,
   initialState,
@@ -7,8 +7,8 @@ import {
   isPhoneLike,
   PHONE_PREFIX,
   type EditState,
-} from '../../data/tech-edit'
-import { pushToast } from '../../data/tech-save-queue'
+} from '@xtool-core/tech-edit'
+import { pushToast } from '@xtool-core/tech-save-queue'
 import { cx } from '@/ohq-ui/lib/cx'
 import { CellView } from './monday-cells'
 import { CellEditor, InlineInput, type CellCommit } from './monday-editors'

@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards'
 
 export interface BoardEditState {
   boardKey: TechBoardKey

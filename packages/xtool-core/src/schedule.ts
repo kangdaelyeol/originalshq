@@ -1,4 +1,4 @@
-import { addDays } from '../lib/dates'
+import { addDays } from './dates'
 import { BOARD_TABS, type FieldServiceRecord, type RentalRecord, type TaskRecord, type TechBoardKey } from './tech-boards'
 import { isDone, splitNames } from './tech-stage'
 

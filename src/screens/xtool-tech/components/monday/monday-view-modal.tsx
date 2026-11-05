@@ -1,7 +1,7 @@
 import { LoaderCircle, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
-import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import {
   applyViewRules,
   cellChoices,
@@ -17,8 +17,8 @@ import {
   type BoardView,
   type BoardViewSpec,
   type ViewRule,
-} from '../../data/tech-views'
-import { errorText } from '../../lib/error-text'
+} from '@xtool-core/tech-views'
+import { errorText } from '@xtool-core/error-text'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'

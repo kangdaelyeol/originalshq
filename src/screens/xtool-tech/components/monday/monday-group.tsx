@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, LoaderCircle } from 'lucide-react'
 import { useEffect, useRef, type CSSProperties } from 'react'
-import type { TechBoardKey, TechColumn, TechItemDoc, TechSubitemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechColumn, TechItemDoc, TechSubitemDoc } from '@xtool-core/tech-boards'
 import { cx } from '@/ohq-ui/lib/cx'
 import { formatInt } from '@/ohq-ui/lib/format'
 import { AddRow } from './monday-add-row'

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterNumber } from '@/ohq-ui/water/surfaces/water-number'
 import { WaterSkeletonBlock } from '@/ohq-ui/water/surfaces/water-skeleton'
-import type { AttentionTile } from '../../../data/attention'
+import type { AttentionTile } from '@xtool-core/attention'
 import { xtPath } from '../../../paths'
 
 const TONE_LABEL: Record<AttentionTile['tone'], string> = { crit: '급함', warn: '챙김', info: '알림' }

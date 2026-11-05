@@ -3,7 +3,7 @@ import { useReducedMotion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { flushSync } from 'react-dom'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { checkAccess } from '@/xtool-auth/access'
+import { checkAccess } from '@xtool-core/access'
 import {
   completePasswordSetup,
   sendPasswordReset,
@@ -12,9 +12,9 @@ import {
   signOutXtool,
   type AuthOutcome,
 } from '@/xtool-auth/auth-actions'
-import { DENIED_MESSAGE } from '@/xtool-auth/access'
+import { DENIED_MESSAGE } from '@xtool-core/access'
 import { isXtoolFirebaseConfigured, xtoolFirebase } from '@/xtool-auth/firebase'
-import { MIN_PASSWORD, normalizeEmail } from '@/xtool-auth/members'
+import { MIN_PASSWORD, normalizeEmail } from '@xtool-core/members'
 import xtoolLogoUrl from '../assets/symbols/xtool-logo-text.png'
 import { AppBackground } from '../components/layout/app-background'
 import { GoogleMark } from '@/ohq-ui/brand/google-mark'

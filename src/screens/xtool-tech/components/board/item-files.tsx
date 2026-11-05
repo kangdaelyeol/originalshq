@@ -1,6 +1,6 @@
 import { FileText, Film, Image as ImageIcon, ImageOff, LoaderCircle, RotateCcw, Trash2, Upload, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc } from '../../data/tech-boards'
+import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import { techFileActions, type TechFileActions } from '../../data/tech-file-actions'
 import { fetchFileLinks, FILE_ACCEPT, filesOf, type TechFileLink, type TechFileRef } from '../../data/tech-files'
 import { Button } from '@/ohq-ui/components/button'

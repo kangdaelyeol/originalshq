@@ -5,8 +5,8 @@ import { WaterBar } from '@/ohq-ui/water/charts/water-bar'
 import { WaterCard } from '@/ohq-ui/water/surfaces/water-card'
 import { WaterEmpty } from '@/ohq-ui/water/surfaces/water-empty'
 import { WaterSkeletonBlock } from '@/ohq-ui/water/surfaces/water-skeleton'
-import type { KingDef, KingPeriod, KingResult, KingRow } from '../../../data/tech-kings'
-import { shortDate } from '../../../lib/dates'
+import type { KingDef, KingPeriod, KingResult, KingRow } from '@xtool-core/tech-kings'
+import { shortDate } from '@xtool-core/dates'
 
 // 처음에 보여 줄 순위 수 — 나머지는 "외 N명"
 const SHOWN = 5

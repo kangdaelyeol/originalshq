@@ -27,6 +27,8 @@
   },
   "include": [
     "src",
+    // 기술팀 보드 웹·앱 공용 데이터 코드(@xtool-core/*)
+    "packages/xtool-core/src",
     // 퍼셉트론 화면과 소재 분석 API가 함께 쓰는 프롬프트 망 모듈(의존성 없는 순수 파일).
     "functions-cmip/src/prompt-graph/compose.ts"
   ],

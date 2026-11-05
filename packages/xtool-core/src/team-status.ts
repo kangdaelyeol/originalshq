@@ -1,4 +1,4 @@
-import { addDays } from '../lib/dates'
+import { addDays } from './dates'
 import type { FieldServiceRecord, InquiryRecord, RepairRecord, TaskRecord } from './tech-boards'
 import { kingFacts, kingPeriod, KINGS } from './tech-kings'
 import { isDone, splitNames } from './tech-stage'

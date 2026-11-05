@@ -6,7 +6,7 @@ import { xtoolFirebase } from '@/xtool-auth/firebase'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { StatusPill } from '@/ohq-ui/components/status-pill'
-import type { TechBoardMeta } from '@/screens/xtool-tech/data/tech-boards'
+import type { TechBoardMeta } from '@xtool-core/tech-boards'
 import { relativeTime } from './errors'
 
 // 보드 순서 — functions-xtool/src/tech-boards/boards.ts의 TECH_BOARDS와 같게.

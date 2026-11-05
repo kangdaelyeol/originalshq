@@ -1,5 +1,5 @@
 import { Suspense, use, type ReactNode } from 'react'
-import type { XtoolMember } from '@/xtool-auth/members'
+import type { XtoolMember } from '@xtool-core/members'
 import { loadWaterLayout } from './load'
 
 /** 물 묶음을 받는 동안의 바탕 — 무대와 같은 밝기(styles/_water-boot.scss) */

@@ -1,4 +1,4 @@
-import { addDays, byDateDesc, daysBetween, isoToKoreaDate, shortDate } from '../lib/dates'
+import { addDays, byDateDesc, daysBetween, isoToKoreaDate, shortDate } from './dates'
 import { BOARD_TABS, type TechBoardKey, type TechBoardRecordMap } from './tech-boards'
 import { isDone, splitNames } from './tech-stage'
 

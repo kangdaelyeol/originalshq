@@ -1,6 +1,6 @@
 import type { FieldServiceRecord, InquiryRecord, RepairRecord } from './tech-boards'
 import { isDone, isNew, splitNames } from './tech-stage'
-import { addDays, isoToKoreaDate, koreaToday } from '../lib/dates'
+import { addDays, isoToKoreaDate, koreaToday } from './dates'
 
 // 기술팀 왕 — xtool-lead-manager 통계 탭 "기술 통계"의 왕과 같은 기준(그쪽 utils/tech-stats.ts).
 //   · AS왕(출장업무): 방문을 마친 출장 — 방문일(없으면 마지막 수정일)

@@ -1,5 +1,5 @@
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
-import type { TeamMemberStatus, WorkBoard } from '../../data/team-status'
+import type { TeamMemberStatus, WorkBoard } from '@xtool-core/team-status'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Avatar } from '@/ohq-ui/components/avatar'

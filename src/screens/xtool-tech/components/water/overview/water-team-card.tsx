@@ -5,7 +5,7 @@ import { WaterBar } from '@/ohq-ui/water/charts/water-bar'
 import { WaterCard } from '@/ohq-ui/water/surfaces/water-card'
 import { WaterEmpty } from '@/ohq-ui/water/surfaces/water-empty'
 import { WaterSkeletonBlock } from '@/ohq-ui/water/surfaces/water-skeleton'
-import type { TeamMemberStatus, WorkBoard } from '../../../data/team-status'
+import type { TeamMemberStatus, WorkBoard } from '@xtool-core/team-status'
 import { usePhotoOf } from '../../../data/tech-profiles'
 
 const BOARD_SHORT: Record<WorkBoard, string> = {

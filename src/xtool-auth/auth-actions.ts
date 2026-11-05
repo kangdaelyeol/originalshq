@@ -8,9 +8,9 @@ import {
   signOut,
   type UserCredential,
 } from 'firebase/auth'
-import { checkAccess, DENIED_MESSAGE, type AccessTarget } from './access'
+import { checkAccess, DENIED_MESSAGE, type AccessTarget } from '@xtool-core/access'
 import { googleProvider, xtoolFirebase } from './firebase'
-import { normalizeEmail, recordSignIn, setOwnPassword } from './members'
+import { normalizeEmail, recordSignIn, setOwnPassword } from '@xtool-core/members'
 
 export type AuthOutcome =
   | { ok: true }

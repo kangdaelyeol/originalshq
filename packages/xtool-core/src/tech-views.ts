@@ -1,8 +1,8 @@
 import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
-import { normalizeEmail } from '@/xtool-auth/members'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { addDays, koreaToday } from '../lib/dates'
+import { normalizeEmail } from './members'
+import { xtoolFirebase } from './firebase'
+import { addDays, koreaToday } from './dates'
 import type { TechBoardKey, TechColumn, TechItemDoc } from './tech-boards'
 
 // 보드 보기 — 보드마다 이름 붙여 저장해 두는 거르기(조건)·정렬·숨길 칸. 기술팀 모두가 같이 보고 만들고

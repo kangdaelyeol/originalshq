@@ -1,7 +1,7 @@
 import { collection, limit, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { useEffect, useState } from 'react'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { normalizeEmail } from '@/xtool-auth/members'
+import { xtoolFirebase } from './firebase'
+import { normalizeEmail } from './members'
 
 // 수정 기록(techEditLogs) — tech 화면에서 누가 무엇을 바꿨는지. 함수가 쓰고 기술팀 모두 읽는다(firestore.rules).
 // 팀원 화면의 "로그"가 한 사람 것만 걸러 보여 준다 — 최근 기록에서 거른다(사람별 색인을 따로 두지 않으려고).

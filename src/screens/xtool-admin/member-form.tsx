@@ -8,7 +8,7 @@ import {
   normalizeEmail,
   TEAMS,
   type TeamKey,
-} from '@/xtool-auth/members'
+} from '@xtool-core/members'
 import { Button } from '@/ohq-ui/components/button'
 import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { TextField } from '@/ohq-ui/components/text-field'

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useCurrentMember } from '../context/member-context'
-import { errorText } from '../lib/error-text'
+import { useCurrentMember } from './member-context'
+import { errorText } from './error-text'
 import type { TechBoardKey } from './tech-boards'
 import { dismissToast, pushToast } from './tech-save-queue'
 import { fetchUpdates, postUpdate, watchCachedUpdates, type TechUpdate } from './tech-updates'

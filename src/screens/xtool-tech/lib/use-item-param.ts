@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { BOARD_TABS, type TechBoardKey } from '../data/tech-boards'
+import { BOARD_TABS, type TechBoardKey } from '@xtool-core/tech-boards'
 
 /** 상세 서랍의 탭 — 정보(기본) · 업데이트(Monday 댓글, 말풍선 보드만). 주소의 ?panel=updates와 같이 간다. */
 export type ItemPanel = 'info' | 'updates'

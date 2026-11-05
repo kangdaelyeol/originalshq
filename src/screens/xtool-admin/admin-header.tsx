@@ -1,7 +1,7 @@
 import { ArrowUpRight, LogOut } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
-import type { XtoolMember } from '@/xtool-auth/members'
+import type { XtoolMember } from '@xtool-core/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/ohq-ui/brand/brand-mark'
 import { Avatar } from '@/ohq-ui/components/avatar'

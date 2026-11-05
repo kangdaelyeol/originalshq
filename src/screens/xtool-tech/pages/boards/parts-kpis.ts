@@ -1,6 +1,6 @@
 import { CircleAlert, Package, PackageX, Receipt } from 'lucide-react'
 import type { StatCardData } from '@/ohq-ui/types'
-import type { PartRecord, TechBoardDoc } from '../../data/tech-boards'
+import type { PartRecord, TechBoardDoc } from '@xtool-core/tech-boards'
 
 // 부품 마스터 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 // 재고 기준(없음·적음)은 표의 재고 칸·재고 부족 목록도 쓴다.

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { TechMondayUser } from '../../../data/tech-boards'
+import type { TechMondayUser } from '@xtool-core/tech-boards'
 import { useWaterLayout } from '../../../water-layout/load'
 import { ChipPicker } from './chip-picker'
 

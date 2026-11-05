@@ -18,8 +18,8 @@ import {
   type KeyboardEvent,
   type MouseEvent,
 } from 'react'
-import { usePendingSaves } from '../../../data/tech-save-queue'
-import { UPDATE_BOARDS } from '../../../data/use-item-updates'
+import { usePendingSaves } from '@xtool-core/tech-save-queue'
+import { UPDATE_BOARDS } from '@xtool-core/use-item-updates'
 import { useItemParam } from '../../../lib/use-item-param'
 import { useBoardEdit } from '../../board/board-edit-context'
 import { useRecordSelection } from '../../board/record-selection'

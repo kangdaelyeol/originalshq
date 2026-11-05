@@ -1,7 +1,7 @@
 import { CircleAlert, CircleCheck, LoaderCircle, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { createPortal } from 'react-dom'
-import { dismissToast, useToasts } from '../../data/tech-save-queue'
+import { dismissToast, useToasts } from '@xtool-core/tech-save-queue'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 

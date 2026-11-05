@@ -1,7 +1,9 @@
 import type { Option } from '@/ohq-ui/types'
 import { MY_WORK_PATH, xtPath } from '../paths'
 
-export type Period = 'today' | '7d' | '30d' | '1y'
+import type { Period } from '@xtool-core/period'
+
+export type { Period }
 
 export const PERIOD_OPTIONS: readonly Option<Period>[] = [
   { value: 'today', label: '오늘' },

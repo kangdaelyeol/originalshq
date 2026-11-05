@@ -13,15 +13,15 @@ import type { RecordColumn } from '../../components/board/record-table'
 import { countBy } from '@/ohq-ui/charts/chart-utils'
 import { usePeriod } from '../../context/period-context'
 import { PERIOD_COMPARE } from '../../data/period'
-import type { InquiryRecord, TechBoardDoc } from '../../data/tech-boards'
-import { formatPhone, splitNames } from '../../data/tech-stage'
+import type { InquiryRecord, TechBoardDoc } from '@xtool-core/tech-boards'
+import { formatPhone, splitNames } from '@xtool-core/tech-stage'
 import {
   byDateAsc,
   byDateDesc,
   koreaToday,
   periodRange,
   shortDate,
-} from '../../lib/dates'
+} from '@xtool-core/dates'
 import { useItemParam } from '../../lib/use-item-param'
 import { inquiryKpis, receivedIn } from './inquiry-kpis'
 import type { BoardDrawerProps } from './registry'

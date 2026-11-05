@@ -1,8 +1,8 @@
 import { ClipboardPen, Inbox, Paperclip, SquareCheck } from 'lucide-react'
 import type { StatCardData } from '@/ohq-ui/types'
 import { PERIOD_COMPARE, type Period } from '../../data/period'
-import type { TechBoardDoc } from '../../data/tech-boards'
-import { inRange, periodRange } from '../../lib/dates'
+import type { TechBoardDoc } from '@xtool-core/tech-boards'
+import { inRange, periodRange } from '@xtool-core/dates'
 
 // AS 신청서 숫자 카드 — 보드 화면(대시보드·물)과 Monday 표 요약 줄이 같은 것을 그린다(registry).
 

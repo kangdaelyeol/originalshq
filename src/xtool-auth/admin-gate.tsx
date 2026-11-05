@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { DENIED_MESSAGE } from './access'
+import { DENIED_MESSAGE } from '@xtool-core/access'
 import {
   signInWithEmail,
   signInWithGoogle,

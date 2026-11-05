@@ -3,7 +3,7 @@
 // 서버 쪽 정의: functions-xtool/src/tech-boards/types.ts, monday/types.ts(MondayFieldService 등).
 
 import { httpsCallable } from 'firebase/functions'
-import { xtoolFirebase } from '@/xtool-auth/firebase'
+import { xtoolFirebase } from './firebase'
 
 export type TechBoardKey =
   | 'fieldService'

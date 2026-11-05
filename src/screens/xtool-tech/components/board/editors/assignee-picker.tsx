@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useTechMembers } from '../../../data/tech-members'
+import { useTechMembers } from '@xtool-core/tech-members'
 import { useWaterLayout } from '../../../water-layout/load'
 import { ChipPicker } from './chip-picker'
 
