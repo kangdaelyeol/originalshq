@@ -36,6 +36,8 @@ export interface Appearance {
   theme: ThemeName
   /** Monday 테마의 색 */
   mondayPalette: MondayPalette
+  /** Monday 테마의 배경 사진 — 팀이 공유한 사진 id(없으면 Monday 바탕색). 유리 배경과 따로 고른다. */
+  mondayPhotoId: string | null
   background: BackgroundKind
   /** background가 shared일 때 고른 사진(앱이 주소를 찾아 ScreenBackground에 넘긴다) */
   sharedBackgroundId: string | null
@@ -50,6 +52,7 @@ export interface Appearance {
 export const DEFAULT_APPEARANCE: Appearance = {
   theme: 'glass',
   mondayPalette: 'navy',
+  mondayPhotoId: null,
   background: 'shards',
   sharedBackgroundId: null,
   accent: DEFAULT_ACCENT,
@@ -78,6 +81,7 @@ export function loadAppearance(): Appearance {
       mondayPalette: MONDAY_PALETTES.some((o) => o.value === parsed.mondayPalette)
         ? (parsed.mondayPalette as MondayPalette)
         : DEFAULT_APPEARANCE.mondayPalette,
+      mondayPhotoId: typeof parsed.mondayPhotoId === 'string' && parsed.mondayPhotoId ? parsed.mondayPhotoId : null,
       background: shared
         ? 'shared'
         : BACKGROUND_OPTIONS.some((o) => o.value === parsed.background)
@@ -117,6 +121,8 @@ export interface AppearanceState extends Appearance {
   accentInUse: string
   setTheme: (theme: ThemeName) => void
   setMondayPalette: (palette: MondayPalette) => void
+  /** Monday 배경 사진(팀이 공유한 사진 id, null이면 Monday 바탕색) */
+  setMondayPhoto: (id: string | null) => void
   setBackground: (background: BuiltInBackground) => void
   /** 팀이 공유한 사진을 배경으로 */
   setSharedBackground: (id: string) => void

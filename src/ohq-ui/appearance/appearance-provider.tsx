@@ -32,6 +32,7 @@ export function AppearanceProvider({ className, children }: { className?: string
       accentInUse,
       setTheme: (theme: ThemeName) => setAppearance((a) => ({ ...a, theme })),
       setMondayPalette: (mondayPalette: MondayPalette) => setAppearance((a) => ({ ...a, mondayPalette })),
+      setMondayPhoto: (mondayPhotoId: string | null) => setAppearance((a) => ({ ...a, mondayPhotoId })),
       setBackground: (background: BuiltInBackground) =>
         setAppearance((a) => ({ ...a, background, sharedBackgroundId: null })),
       setSharedBackground: (id: string) =>
@@ -39,9 +40,15 @@ export function AppearanceProvider({ className, children }: { className?: string
       setAccent: (accent: string) => setAppearance((a) => ({ ...a, accent: accent.toLowerCase() })),
       setGlass: (glass: Partial<GlassSettings>) => setAppearance((a) => ({ ...a, glass: { ...a.glass, ...glass } })),
       setWater: (water: Partial<WaterSettings>) => setAppearance((a) => ({ ...a, water: { ...a.water, ...water } })),
-      // 배경 카드의 "기본값으로" — 판 모양(테마)과 그 색, 물 디자인 값은 따로 고른 것이라 남긴다.
+      // 배경 카드의 "기본값으로" — 판 모양(테마)과 그 색·사진, 물 디자인 값은 따로 고른 것이라 남긴다.
       reset: () =>
-        setAppearance((a) => ({ ...DEFAULT_APPEARANCE, theme: a.theme, mondayPalette: a.mondayPalette, water: a.water })),
+        setAppearance((a) => ({
+          ...DEFAULT_APPEARANCE,
+          theme: a.theme,
+          mondayPalette: a.mondayPalette,
+          mondayPhotoId: a.mondayPhotoId,
+          water: a.water,
+        })),
       resetWater: () => setAppearance((a) => ({ ...a, water: WATER_DEFAULT })),
     }),
     [appearance, accentInUse],

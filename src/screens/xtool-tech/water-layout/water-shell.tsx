@@ -1,5 +1,7 @@
 import { useLocation } from 'react-router-dom'
+import { useAppearance } from '@/ohq-ui/appearance/appearance'
 import { cx } from '@/ohq-ui/lib/cx'
+import { useSharedBackgroundUrl } from '../data/tech-backgrounds'
 import { WaterToaster } from '../components/water/board'
 import { xtPath } from '../paths'
 import type { WaterShellProps } from './water-gate'
@@ -15,9 +17,13 @@ export function WaterShell({ member, collapsed, onToggle, children }: WaterShell
   const { pathname } = useLocation()
   // 디자인(부품 카탈로그)은 견본마다 바탕이 있어 어두운 판 위에 그대로 그린다(styles/_pages.scss)
   const native = pathname.startsWith(xtPath('/design'))
+  // 벽 아래 사진(설정 > 배경 — 팀이 공유한 사진) — 있으면 벽 색조를 반투명 막으로 깔아 그 위 잉크 글자가 읽히게
+  const { water } = useAppearance()
+  const photoUrl = useSharedBackgroundUrl(water.photoId)
   return (
     <div className={cx('wl-shell', collapsed && 'is-collapsed')}>
-      <div className="water-stage wl-stage" aria-hidden />
+      {photoUrl && <div className="wl-photo" style={{ backgroundImage: `url("${photoUrl}")` }} aria-hidden />}
+      <div className={cx('water-stage wl-stage', photoUrl && 'has-photo')} aria-hidden />
       <WaterSidebar member={member} collapsed={collapsed} onToggle={onToggle} />
       <main className="wl-main">
         <WaterTopbar />

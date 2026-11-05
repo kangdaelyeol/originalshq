@@ -48,9 +48,19 @@ export interface WaterSettings {
   pane: WaterPane
   /** 유리 농도 — 판에 덮는 흰빛(0 = D7 그대로 · 투명한 판은 이만큼 흰 막, 불투명한 판은 이만큼 밝아진다) */
   frost: number
+  /** 벽 아래 깔 사진 — 팀이 공유한 사진 id(앱이 주소를 찾는다). 벽 색조가 반투명 막으로 덮인다. 없으면 null */
+  photoId: string | null
 }
 
-export const WATER_DEFAULT: WaterSettings = { wall: 'grey', accent: null, depth: 1, rim: 1, pane: 'grey', frost: 0 }
+export const WATER_DEFAULT: WaterSettings = {
+  wall: 'grey',
+  accent: null,
+  depth: 1,
+  rim: 1,
+  pane: 'grey',
+  frost: 0,
+  photoId: null,
+}
 
 export const WATER_LIMITS = {
   depth: { min: 0, max: 1.6, step: 0.1 },
@@ -83,6 +93,7 @@ export function normalizeWater(raw: unknown): WaterSettings {
     rim: num('rim'),
     pane: WATER_PANES.some((p) => p.value === input.pane) ? (input.pane as WaterPane) : WATER_DEFAULT.pane,
     frost: num('frost'),
+    photoId: typeof input.photoId === 'string' && input.photoId ? input.photoId : null,
   }
 }
 

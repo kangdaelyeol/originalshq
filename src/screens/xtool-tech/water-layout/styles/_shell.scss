@@ -37,6 +37,20 @@
   pointer-events: none;
 }
 
+// 벽 아래 사진 — 벽(-1) 밑에 붙박이로 깔고, 벽은 색조 그러데이션을 반투명으로 바꿔 막처럼 덮는다(_stage.scss --w-wall-*)
+.wl-shell .wl-photo {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: center / cover no-repeat;
+  pointer-events: none;
+}
+
+.wl-shell .wl-stage.has-photo {
+  --w-wall-hi: color-mix(in srgb, var(--w-stage-hi, #{$w-stage-hi}) 68%, transparent);
+  --w-wall-lo: color-mix(in srgb, var(--w-stage-lo, #{$w-stage-lo}) 68%, transparent);
+}
+
 .wl-main {
   min-width: 0;
   display: flex;

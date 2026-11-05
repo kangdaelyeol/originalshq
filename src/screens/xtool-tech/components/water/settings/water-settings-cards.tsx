@@ -12,6 +12,7 @@ import {
   waterAccentStops,
 } from '@/ohq-ui/theme/water'
 import { WaterButton, WaterCard, WaterRange, WaterSegmented, WaterStatusPill } from '@/ohq-ui/water'
+import { SharedPhotoPicker, type SharedPhotoPickerProps } from '../../../pages/settings/shared-photo-picker'
 
 // 설정 > 물 디자인 카드 셋 — 유리 디자인의 배경·강조색·유리 효과에 해당한다. 값은 외관 설정(appearance water)에
 // 저장되고 ThemeRoot가 CSS 변수(--w-*)로 칠해 바꾸는 즉시 이 화면(물)에 보인다(ohq-ui/theme/water.ts).
@@ -21,8 +22,11 @@ const CUSTOM_COMMIT_MS = 120
 // D7 잉크(강조색 기본) 견본 색 — _tokens.scss $w-dark 위 단계
 const INK = '#555358'
 
-/** 배경 — 타일 벽의 색조. "기본값으로"는 물 디자인 값 전체(벽·강조색·유리 효과)를 처음으로. */
-export function WaterWallCard() {
+/**
+ * 배경 — 타일 벽의 색조와 벽 아래 깔 사진(팀이 공유한 사진 — 벽 색조가 반투명 막으로 덮어 글자가 읽힌다).
+ * "기본값으로"는 물 디자인 값 전체(벽·사진·강조색·유리 효과)를 처음으로.
+ */
+export function WaterWallCard(props: Pick<SharedPhotoPickerProps, 'shared' | 'uploading' | 'onUpload'>) {
   const { water, setWater, resetWater } = useAppearance()
   return (
     <WaterCard
@@ -54,6 +58,13 @@ export function WaterWallCard() {
           )
         })}
       </div>
+      <SharedPhotoPicker
+        {...props}
+        selectedId={water.photoId}
+        onSelect={(photoId) => setWater({ photoId })}
+        onCleared={() => setWater({ photoId: null })}
+        none={{ label: '사진 없음', description: '타일 벽만', onSelect: () => setWater({ photoId: null }) }}
+      />
     </WaterCard>
   )
 }
