@@ -69,6 +69,12 @@ export const columnLabel = (c: Pick<TechColumn, 'type' | 'title'>): string => {
 export const isPhoneLike = (text: string): boolean =>
   /^[\d\s().-]*$/.test(text) && text.replace(/\D/g, '').length <= 11
 
+/** 빈 연락처 칸을 열면 미리 적어 두는 앞자리 — 고객 번호가 거의 휴대폰이라 */
+export const PHONE_PREFIX = '010'
+
+/** 미리 적은 앞자리만 남은 연락처 — 손대지 않은 것으로 보고 빈 값으로 둔다 */
+export const isPhonePrefixOnly = (text: string): boolean => text.replace(/\D/g, '') === PHONE_PREFIX
+
 /** 덜 적은 번호 — 숫자가 있지만 9자리가 안 된다(저장하지 않는다). */
 export const isPartialPhone = (text: string): boolean => {
   const digits = text.replace(/\D/g, '').length

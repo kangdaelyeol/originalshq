@@ -12,6 +12,8 @@ import {
   isAssigneeColumn,
   isPhoneColumn,
   isPhoneLike,
+  isPhonePrefixOnly,
+  PHONE_PREFIX,
   isWritable,
   sameState,
   toEditValue,
@@ -422,6 +424,13 @@ function ColumnInput({ id, column, value, onChange, users, currentText }: Column
           onChange={(e) =>
             onChange(isPhoneColumn(column) && isPhoneLike(value as string) ? formatPhoneTyping(e.target.value) : e.target.value)
           }
+          // 빈 연락처 칸에 들어오면 010을 미리 적고, 그대로 나가면 다시 비운다(손대지 않은 칸은 바뀐 것이 아니다)
+          onFocus={() => {
+            if (isPhoneColumn(column) && !(value as string)) onChange(PHONE_PREFIX)
+          }}
+          onBlur={() => {
+            if (isPhoneColumn(column) && isPhonePrefixOnly(value as string)) onChange('')
+          }}
         />
       )
   }

@@ -5,6 +5,7 @@ import {
   isPartialPhone,
   isPhoneColumn,
   isPhoneLike,
+  PHONE_PREFIX,
   type EditState,
 } from '../../data/tech-edit'
 import { pushToast } from '../../data/tech-save-queue'
@@ -77,6 +78,7 @@ export function EditableCell({
           inputMode={column.type === 'numbers' ? 'decimal' : isPhoneColumn(column) ? 'tel' : column.type === 'email' ? 'email' : undefined}
           // 번호 하나로 적힌 값만 치는 대로 하이픈을 넣는다(번호 두 개 등은 적힌 그대로).
           format={isPhoneColumn(column) && isPhoneLike(initial) ? formatPhoneTyping : undefined}
+          prefill={isPhoneColumn(column) ? PHONE_PREFIX : undefined}
           onCommit={(value) => {
             if (isPhoneColumn(column) && isPhoneLike(value) && isPartialPhone(value)) {
               setEditing(null)

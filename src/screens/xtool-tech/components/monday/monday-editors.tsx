@@ -28,19 +28,24 @@ interface InlineInputProps {
   inputMode?: 'decimal' | 'tel' | 'email'
   /** 치는 대로 모양 맞추기(연락처 하이픈) */
   format?: (value: string) => string
+  /** 빈 칸을 열면 미리 적어 둘 글자(연락처 010) — 그대로 닫으면 빈 칸 그대로 */
+  prefill?: string
   onCommit: (value: string) => void
   onCancel: () => void
 }
 
 /** 칸 안 입력 — 엔터·탭·바깥 누르기로 저장, Esc로 취소. */
-export function InlineInput({ initial, label, inputMode, format, onCommit, onCancel }: InlineInputProps) {
-  const [value, setValue] = useState(initial)
+export function InlineInput({ initial, label, inputMode, format, prefill, onCommit, onCancel }: InlineInputProps) {
+  const prefilled = Boolean(prefill) && !initial
+  const [value, setValue] = useState(prefilled && prefill ? prefill : initial)
   // 엔터로 저장한 뒤 blur가 한 번 더 저장하지 않게
   const [done, setDone] = useState(false)
   const finish = (commit: boolean) => {
     if (done) return
     setDone(true)
-    if (commit && value !== initial) onCommit(value)
+    // 미리 적은 글자만 남았으면 빈 칸 그대로
+    const next = prefilled && value === prefill ? '' : value
+    if (commit && next !== initial) onCommit(next)
     else onCancel()
   }
   return (
@@ -50,7 +55,12 @@ export function InlineInput({ initial, label, inputMode, format, onCommit, onCan
       value={value}
       inputMode={inputMode}
       autoFocus
-      onFocus={(e) => e.currentTarget.select()}
+      // 미리 적은 글자는 이어 치게 커서를 끝에, 아니면 전체 선택(바로 덮어쓴다)
+      onFocus={(e) => {
+        const input = e.currentTarget
+        if (prefilled) input.setSelectionRange(input.value.length, input.value.length)
+        else input.select()
+      }}
       onChange={(e) => setValue(format ? format(e.target.value) : e.target.value)}
       onBlur={() => finish(true)}
       onKeyDown={(e) => {
