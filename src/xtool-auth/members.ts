@@ -28,11 +28,12 @@ export const TEAMS: readonly { key: TeamKey; label: string; ready: boolean }[] =
 
 export type MemberStatus = 'active' | 'disabled'
 
-/** 기술팀 담당영역 — 관리자가 정한다(기술팀 팀원 화면에 보인다). */
+/** 기술팀 담당영역 — 관리자가 정한다(기술팀 팀원 화면에 보인다). 키 visit은 저장된 값·규칙과 맞추려고 그대로 두고
+ *  이름만 "설치"로 바꿨다(처음엔 "방문체험"). */
 export type TechArea = 'visit' | 'as'
 
 export const TECH_AREAS: readonly { key: TechArea; label: string }[] = [
-  { key: 'visit', label: '방문체험' },
+  { key: 'visit', label: '설치' },
   { key: 'as', label: 'AS' },
 ]
 

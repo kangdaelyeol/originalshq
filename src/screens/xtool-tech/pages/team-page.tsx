@@ -24,7 +24,7 @@ const positionLabel = (member: XtoolMember) => POSITIONS.find((p) => p.key === m
 const groupRoleLabel = (member: XtoolMember) => GROUP_ROLES.find((r) => r.key === member.groupRole)?.label ?? null
 
 /**
- * 팀원 & 권한 — 관리자 화면에서 기술팀으로 등록한 활성 구성원. 직책(사원~대표·그룹장/팀원)과 담당영역(방문체험·AS)은
+ * 팀원 & 권한 — 관리자 화면에서 기술팀으로 등록한 활성 구성원. 직책(사원~대표·그룹장/팀원)과 담당영역(설치·AS)은
  * 관리자가 정하고, 상태는 지금
  * 맡은 업무(오늘 기준으로 끝나지 않은 담당 업무, 내 업무와 같은 계산)를 센다 — 누르면 그 업무 목록이 열리고, 목록의
  * 업무를 누르면 이 화면에서 그 항목 상세가 열린다. "로그"는 그 사람의 수정 기록(기술팀 모두 본다).
