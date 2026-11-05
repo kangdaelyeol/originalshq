@@ -93,7 +93,8 @@ export function EditableCell({
 
   return (
     <div
-      className={cx(cellClass(column), writable && 'is-writable', active && 'is-active')}
+      // is-opens — 고칠 수는 없어도 눌러 여는 칸(파일 칸 → 파일 모달)도 손가락 커서
+      className={cx(cellClass(column), writable && 'is-writable', opens && 'is-opens', active && 'is-active')}
       style={cellStyle(column, cell)}
       role="gridcell"
       tabIndex={opens ? 0 : -1}

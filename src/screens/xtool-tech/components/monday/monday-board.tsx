@@ -8,6 +8,7 @@ import { MondaySection } from './monday-section'
 import { SelectionProvider } from './monday-selection-bar'
 import {
   groupIdOf,
+  ITEM_NOUN,
   matchesItem,
   NAME_TITLE,
   nextSort,
@@ -85,7 +86,7 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
           }}
         >
           <Plus size={15} strokeWidth={2.4} aria-hidden />
-          새로운 {nameTitle}
+          새로운 {ITEM_NOUN[boardKey]}
         </button>
 
         {searchOpen || query ? (

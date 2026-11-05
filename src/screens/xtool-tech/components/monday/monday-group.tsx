@@ -9,7 +9,7 @@ import type { CellCommit } from './monday-editors'
 import { ItemRow } from './monday-item-row'
 import { selectionKey, useSelection } from './monday-selection'
 import { ResizeHandle, RowCheck, SortButton } from './monday-table-controls'
-import { rowKey, type MonSort } from './monday-values'
+import { ITEM_NOUN, rowKey, type MonSort } from './monday-values'
 
 // Monday 표의 그룹 하나(GroupTable) — 제목·머리글·줄·"+ 추가"·요약. 줄과 칸은 monday-item-row ·
 // monday-editable-cell, 하위 아이템은 monday-subitems, 작은 부품은 monday-table-controls · monday-add-row.
@@ -198,7 +198,7 @@ export function GroupTable(props: GroupTableProps) {
 
           {group.items.length > limit && <AutoMore remaining={group.items.length - limit} onMore={onMore} />}
 
-          {props.addItem && <AddRow nameTitle={nameTitle} onAdd={(name) => props.addItem?.(group.id, name)} />}
+          {props.addItem && <AddRow nameTitle={ITEM_NOUN[boardKey]} onAdd={(name) => props.addItem?.(group.id, name)} />}
 
           <div className="mon-row mon-summary" role="row" aria-label="요약">
             <div className="mon-cell mon-cell--name mon-summary__lead" />

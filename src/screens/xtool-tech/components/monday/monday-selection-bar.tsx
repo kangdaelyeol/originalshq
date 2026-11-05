@@ -11,7 +11,7 @@ import { useSelectionActions } from '../board/use-selection-actions'
 import { groupColor } from './monday-colors'
 import { MonPopover } from './monday-popover'
 import { selectedByBoard, SelectionContext, selectionKey, type SelectionState } from './monday-selection'
-import { NAME_TITLE } from './monday-values'
+import { ITEM_NOUN } from './monday-values'
 
 /** 줄 선택 상태를 아래 표에 나눠 준다. */
 export function SelectionProvider({ children }: { children: ReactNode }) {
@@ -57,7 +57,7 @@ function SelectionBar({ state }: { state: SelectionState }) {
   const single = actions.moveBoard
 
   if (!root || count === 0) return null
-  const noun = single ? NAME_TITLE[single] : '항목'
+  const noun = single ? ITEM_NOUN[single] : '항목'
 
   return createPortal(
     <>

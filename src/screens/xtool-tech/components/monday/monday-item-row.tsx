@@ -47,7 +47,15 @@ export function ItemRow({ item, ...props }: GroupTableProps & { item: TechItemDo
   return (
     <>
       <div className={cx('mon-row', picked && 'is-selected')} role="row" aria-selected={picked}>
-        <div className="mon-cell mon-cell--name" role="rowheader">
+        <div
+          className="mon-cell mon-cell--name is-name-editable"
+          role="rowheader"
+          // 칸 어디를 눌러도 이름을 고친다 — 이름 글자(.mon-name)만 누르던 것을 칸 전체로. 체크·펼치기·업데이트 단추는 제 일만
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('button, input, label, [role="checkbox"]')) return
+            setEditing({ key: nameKey, anchor: e.currentTarget })
+          }}
+        >
           {selection && (
             <RowCheck
               checked={picked}

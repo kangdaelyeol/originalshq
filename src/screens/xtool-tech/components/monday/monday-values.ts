@@ -155,6 +155,22 @@ export const NAME_TITLE: Record<TechBoardKey, string> = {
   serials: 'SN',
 }
 
+/**
+ * 항목을 부르는 말 — "새로운 고객"·"+ 고객 추가"·선택 막대 "고객 3개". 이름 칸 머리글(NAME_TITLE "고객명")과 따로
+ * 둔다(머리글을 그대로 쓰면 "새로운 고객명"이 된다).
+ */
+export const ITEM_NOUN: Record<TechBoardKey, string> = {
+  fieldService: '고객',
+  repair: '고객',
+  records: '업무',
+  techInquiry: '고객',
+  techTask: '업무',
+  asRequests: '신청자',
+  parts: '부품',
+  rentals: '대여품',
+  serials: 'SN',
+}
+
 /** 하위 아이템 이름 칸 머리글 */
 export const SUB_NAME_TITLE: Partial<Record<TechBoardKey, string>> = {
   fieldService: '품목명',

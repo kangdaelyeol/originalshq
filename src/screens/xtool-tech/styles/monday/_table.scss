@@ -177,9 +177,15 @@ $group-title-h: 40px;
   border-right: 0;
 }
 
-// 고칠 수 있는 칸 — 올려도 테두리는 없다(줄 바탕만 밝아진다).
-.mon-cell.is-writable {
+// 고칠 수 있는 칸·눌러 여는 칸(파일) — 올려도 테두리는 없다(줄 바탕만 밝아진다).
+.mon-cell.is-writable,
+.mon-cell.is-opens {
   cursor: pointer;
+}
+
+// 이름 칸 — 칸 어디를 눌러도 이름을 고친다(글자 커서)
+.mon-cell--name.is-name-editable {
+  cursor: text;
 }
 
 .mon-cell:focus-visible,
