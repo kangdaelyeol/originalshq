@@ -55,8 +55,9 @@ export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
   kpi: '개인 KPI',
 }
 
-/** 통계 탭의 상태 — 소주제 둘(인입통계 / 판매통계)의 원본 데이터(한 번 받아
- * 둔다)와 조회 기간, 그 기간의 그래프·표용 데이터. `active`가 처음 true가 될 때 받아온다. */
+/** 통계 탭의 상태 — 소주제 다섯(인입·판매·영업·기술 통계, 개인 KPI) 중 기술
+ * 통계를 뺀 넷의 원본 데이터(한 번 받아 둔다. 기술 통계는
+ * useTechStatsViewModel이 따로 받는다)와 조회 기간, 그 기간의 그래프·표용 데이터. `active`가 처음 true가 될 때 받아온다. */
 /** 보드 현황 보기 — 보드별 추이(목록) / 표(히트맵). */
 export type InflowView = 'trend' | 'table'
 export const INFLOW_VIEWS: readonly InflowView[] = ['trend', 'table']
@@ -137,7 +138,8 @@ export const useMondayTrendViewModel = (active: boolean) => {
   // 방치 현황에서 펼쳐 둔 담당자들 — "종류:담당자" 문자열.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set())
   const [section, setSection] = useState<TrendSection>('inflow')
-  // 기간은 두 소주제가 같이 쓴다 — 오가며 같은 기간을 비교하기 쉽게.
+  // 기간은 개인 KPI(자기 기간을 따로 고른다)를 뺀 소주제가 같이 쓴다 — 오가며
+  // 같은 기간을 비교하기 쉽게.
   const [range, setRange] = useState(() => defaultRange('day'))
   // 판매통계 — 채널(통합/오프라인/온라인)과 표의 정렬(처음엔 최근 날짜가 위).
   const [salesScope, setSalesScope] = useState<PurchaseScope>('all')

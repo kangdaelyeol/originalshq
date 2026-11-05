@@ -40,8 +40,9 @@ type MondayTrendProps = ReturnType<typeof useMondayTrendViewModel> & {
 }
 
 /**
- * 통계 탭 — 소주제 둘: 인입통계(날짜별 인입 건수)와 판매통계(제품별 판매
- * 수량, sales-section.tsx). 위쪽 줄에서 소주제와 기간을 고른다.
+ * 통계 탭 — 소주제 다섯: 인입통계(날짜별 인입 건수, inflow-section.tsx),
+ * 판매통계(제품별 판매 수량, sales-section.tsx), 영업 통계, 기술 통계, 개인
+ * KPI. 위쪽 줄에서 소주제와 기간을 고른다.
  *
  * 인입은 그날 상담 보드(기기별 B2B 보드, B2B 솔루션, 기타 온라인 문의, 기타
  * 오프라인)에 새로 접수된 기록의 수다. 방문체험·샘플테스트·결제는 이미
@@ -92,7 +93,7 @@ export const MondayTrend = ({
     <>
       <div className="lead_manager_nav monday_stats_nav monday_trend_nav glass_theme">
         <div className="inner">
-          {/* 소주제 — 인입통계 / 판매통계. 기간은 둘이 같이 쓴다. */}
+          {/* 소주제 — 기간은 개인 KPI를 뺀 소주제가 같이 쓴다. */}
           <Segmented
             options={TREND_SECTION_LABEL}
             value={section}
@@ -131,8 +132,8 @@ export const MondayTrend = ({
               onChange={changeRange}
             />
           )}
-          {/* 묶는 단위(일/주/월)는 두 소주제가 같이 쓰고, 판매통계에는 채널
-              선택이 더 붙는다. */}
+          {/* 묶는 단위(일/주/월)도 개인 KPI를 뺀 소주제가 같이 쓰고, 판매통계에는
+              채널 선택이 더 붙는다. */}
           {section !== 'kpi' && (
             <Segmented
               options={INFLOW_UNIT_LABEL}
