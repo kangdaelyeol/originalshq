@@ -195,14 +195,16 @@ function MyWorkBoardSection({
   return (
     <section className="mon-workbox" aria-label={label}>
       <header className="mon-workbox__head">
-        <span className="mon-workbox__icon" aria-hidden>
-          <Icon size={16} strokeWidth={2} />
+        <span className="mon-workbox__head-inner">
+          <span className="mon-workbox__icon" aria-hidden>
+            <Icon size={16} strokeWidth={2} />
+          </span>
+          <Link to={xtPath(`/boards/${slug}`)} className="mon-workbox__title" title={`${label} 보드로`}>
+            {label}
+            <ArrowUpRight size={15} aria-hidden />
+          </Link>
+          <span className="mon-workbox__count">{items.length}건</span>
         </span>
-        <Link to={xtPath(`/boards/${slug}`)} className="mon-workbox__title" title={`${label} 보드로`}>
-          {label}
-          <ArrowUpRight size={15} aria-hidden />
-        </Link>
-        <span className="mon-workbox__count">{items.length}건</span>
       </header>
       <MondaySection
         boardKey={boardKey}
@@ -210,7 +212,7 @@ function MyWorkBoardSection({
         items={items}
         hideEmptyGroups
         allowAdd={false}
-        ownScroll
+        boxed
         sort={sort}
         onSort={(id) => setSort((current) => nextSort(current, id))}
         collapsed={collapsed}

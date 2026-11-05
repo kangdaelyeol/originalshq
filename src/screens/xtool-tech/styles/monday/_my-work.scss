@@ -1,15 +1,18 @@
 // ── 보드 구역(내 업무에서 보드마다 제목 + 그룹 표) ───────────────────────────────
 // ── 내 업무 보드 박스 ───────────────────────────────────────────────────────────
-// 보드 하나 = 박스 하나. 박스는 판의 보이는 높이 안으로 줄이고(머리말·도구 줄을 뺀 높이), 길면 머리말은
-// 그대로 두고 표만 박스 안에서 위아래·옆으로 스크롤된다. 옆 스크롤도 박스마다 따로 — 칸 수가 다른
-// 보드가 같이 밀려 텅 비지 않게.
+// 보드 하나 = 박스 하나. 스크롤은 판 전체(.mon-scroll) 하나 — 내리면 박스 머리(보드 이름)가 먼저 위에 붙고, 그 아래에
+// 그룹 제목, 그 아래에 칸 머리글이 붙는다(--mon-sticky-top = 박스 머리 높이). 다음 박스가 올라오면 그 박스 머리로
+// 바뀐다. 옆으로도 판 전체가 밀리고, 박스는 칸이 많은 만큼 넓어진다(적어도 판 너비).
+$workbox-head-h: 53px;
+
 .mon-workbox {
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100dvh - 250px);
-  min-height: 0;
+  --mon-sticky-top: #{$workbox-head-h};
+
+  width: max-content;
+  min-width: 100%;
   margin-top: 18px;
-  overflow: hidden;
+  // 둥근 모서리만 자른다 — clip은 스크롤 상자가 아니라서 안의 sticky가 판 스크롤에 붙는다(hidden이면 박스에 붙는다)
+  overflow: clip;
   border: 1px solid var(--mon-line);
   border-radius: 12px;
   background: var(--mon-workbox);
@@ -20,13 +23,25 @@
 }
 
 .mon-workbox__head {
+  position: sticky;
+  top: 0;
+  // 그룹 제목(5)·칸 머리글(6) 위
+  z-index: 7;
   display: flex;
-  flex: none;
   align-items: center;
-  gap: 10px;
-  padding: 12px 18px;
+  height: $workbox-head-h;
+  padding: 0 18px;
   border-bottom: 1px solid var(--mon-line);
   background: var(--mon-workbox-head);
+}
+
+// 머리 안 글자 — 옆으로 밀어도 왼쪽에 붙어 있다(그룹 제목 글자와 같게)
+.mon-workbox__head-inner {
+  position: sticky;
+  left: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .mon-workbox__icon {
@@ -64,11 +79,8 @@
   font-size: 13px;
 }
 
-// 박스 안 표 — 위아래·옆 스크롤이 박스 안에서(칸 머리글은 박스 안에서 위에 붙는다)
-.mon-section--own-scroll {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
+// 박스 안 표 — 스크롤은 판 전체가 하고, 표는 박스 여백(18px) 안에
+.mon-section--boxed {
   padding: 0 18px 16px;
 
   .mon-group:first-child {

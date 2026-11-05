@@ -88,8 +88,8 @@ function AutoMore({ remaining, onMore }: { remaining: number; onMore: () => void
   useEffect(() => {
     const el = ref.current
     if (!el) return
-    // 표가 스스로 스크롤된다 — 내 업무의 보드 박스면 그 박스, 아니면 판
-    const root = el.closest<HTMLElement>('.mon-section--own-scroll, .mon-scroll')
+    // 스크롤은 판(.mon-scroll) — 내 업무의 보드 박스도 판 전체로 스크롤된다
+    const root = el.closest<HTMLElement>('.mon-scroll')
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) onMoreRef.current()

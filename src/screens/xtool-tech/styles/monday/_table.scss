@@ -34,7 +34,8 @@ $group-title-h: 40px;
 
 .mon-group__title {
   position: sticky;
-  top: 0;
+  // 위에 먼저 붙는 것이 있으면(내 업무 보드 박스 머리 — --mon-sticky-top) 그 아래에 붙는다
+  top: var(--mon-sticky-top, 0px);
   z-index: 5;
   height: $group-title-h;
   background: var(--mon-bg);
@@ -126,7 +127,7 @@ $group-title-h: 40px;
 
 .mon-row--head {
   position: sticky;
-  top: $group-title-h;
+  top: calc(var(--mon-sticky-top, 0px) + #{$group-title-h});
   // 제목 줄(5) 위 — 위 테두리에 걸친 정렬 동그라미가 제목 줄에 가려지지 않게
   z-index: 6;
 

@@ -48,17 +48,17 @@ function SkeletonTable({
   columns,
   nameWidth,
   groups,
-  ownScroll = false,
+  boxed = false,
 }: {
   columns: SkelColumn[]
   nameWidth: number
   groups: number[]
-  ownScroll?: boolean
+  boxed?: boolean
 }) {
   const template = `${nameWidth}px ${columns.map((c) => `${c.width}px`).join(' ')} minmax(48px, 1fr)`
   return (
     <div
-      className={cx('mon-section mon-section--skel', ownScroll && 'mon-section--own-scroll')}
+      className={cx('mon-section mon-section--skel', boxed && 'mon-section--boxed')}
       style={{ '--mon-cols': template } as CSSProperties}
       aria-hidden
     >
@@ -147,11 +147,13 @@ export function MondayWorkboxSkeleton({ rows = 4 }: { rows?: number }) {
   return (
     <section className="mon-workbox" aria-hidden>
       <header className="mon-workbox__head">
-        <Block className="mon-skel--icon" />
-        <Block className="mon-skel--title" style={{ width: 96 }} />
-        <Block style={{ width: 28 }} />
+        <span className="mon-workbox__head-inner">
+          <Block className="mon-skel--icon" />
+          <Block className="mon-skel--title" style={{ width: 96 }} />
+          <Block style={{ width: 28 }} />
+        </span>
       </header>
-      <SkeletonTable columns={fallbackColumns()} nameWidth={NAME_WIDTH} groups={[rows]} ownScroll />
+      <SkeletonTable columns={fallbackColumns()} nameWidth={NAME_WIDTH} groups={[rows]} boxed />
     </section>
   )
 }

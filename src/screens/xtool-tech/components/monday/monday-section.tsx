@@ -44,8 +44,8 @@ export interface MondaySectionProps {
   onSort: (columnId: string) => void
   collapsed: ReadonlySet<string>
   setCollapsed: (ids: string[], collapsed: boolean) => void
-  /** 옆·위아래 스크롤을 이 구역 안에서 — 내 업무의 보드 박스(칸 수가 다른 보드를 쌓는다) */
-  ownScroll?: boolean
+  /** 내 업무의 보드 박스 안 — 박스 여백 안에 그린다(스크롤은 판 전체, 칸 머리글은 박스 머리 아래에 붙는다) */
+  boxed?: boolean
   /** 그룹 맨 아래 "+ 추가" 줄 — 내 업무에서는 끈다(새 항목은 담당자가 비어 있어 목록에서 사라진다). */
   allowAdd?: boolean
 }
@@ -57,7 +57,7 @@ export interface MondaySectionProps {
  * 쌓아도 보드마다 제 칸으로 그린다.
  */
 export function MondaySection(props: MondaySectionProps) {
-  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, ownScroll = false, allowAdd = true } = props
+  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, boxed = false, allowAdd = true } = props
   const nameTitle = NAME_TITLE[boardKey]
   const columns = useMemo(() => visibleColumns(meta), [meta])
 
@@ -188,7 +188,7 @@ export function MondaySection(props: MondaySectionProps) {
   const filesColumn = filesFor ? columns.find((c) => c.id === filesFor.columnId) : undefined
 
   return (
-    <div className={cx('mon-section', ownScroll && 'mon-section--own-scroll')} style={{ '--mon-cols': template } as CSSProperties}>
+    <div className={cx('mon-section', boxed && 'mon-section--boxed')} style={{ '--mon-cols': template } as CSSProperties}>
       {shown.map((group) => (
         <GroupTable
           key={group.id}
