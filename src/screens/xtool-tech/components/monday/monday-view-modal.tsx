@@ -22,6 +22,7 @@ import { errorText } from '@xtool-core/error-text'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
+import { MonSelect } from './monday-select'
 import { groupIdOf, viewColumns } from './monday-values'
 
 interface ViewModalProps {
@@ -186,34 +187,26 @@ export function ViewModal({ boardKey, meta, items, view, initial, onClose, onSav
                     <li key={index} className="mon-viewrule">
                       <div className="mon-viewrule__line">
                         {index > 0 && <span className="mon-viewrule__join">{draft.match === 'all' ? '그리고' : '또는'}</span>}
-                        <select
+                        <MonSelect
                           className="mon-vselect"
                           aria-label="칸"
                           value={column ? rule.columnId : ''}
-                          onChange={(e) => {
-                            const next = byId.get(e.target.value)
+                          options={[
+                            ...(column ? [] : [{ value: '', label: '(지워진 칸)' }]),
+                            ...columns.map((c) => ({ value: c.id, label: c.title })),
+                          ]}
+                          onChange={(id) => {
+                            const next = byId.get(id)
                             if (next) setRule(index, ruleFor(next))
                           }}
-                        >
-                          {!column && <option value="">(지워진 칸)</option>}
-                          {columns.map((c) => (
-                            <option key={c.id} value={c.id}>
-                              {c.title}
-                            </option>
-                          ))}
-                        </select>
-                        <select
+                        />
+                        <MonSelect
                           className="mon-vselect"
                           aria-label="조건"
                           value={rule.op}
-                          onChange={(e) => setRule(index, { ...rule, op: e.target.value as ViewRule['op'], values: [] })}
-                        >
-                          {OPS_BY_KIND[kind].map((o) => (
-                            <option key={o.op} value={o.op}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                          options={OPS_BY_KIND[kind].map((o) => ({ value: o.op, label: o.label }))}
+                          onChange={(op) => setRule(index, { ...rule, op, values: [] })}
+                        />
                         {input === 'type' && (
                           <input
                             className="mon-vinput"
@@ -273,21 +266,16 @@ export function ViewModal({ boardKey, meta, items, view, initial, onClose, onSav
             <section className="mon-viewmodal__section" aria-label="정렬">
               <span className="mon-viewmodal__label">정렬</span>
               <div className="mon-viewrule__line">
-                <select
+                <MonSelect
                   className="mon-vselect"
                   aria-label="정렬할 칸"
                   value={draft.sort?.columnId ?? ''}
-                  onChange={(e) => patch({ sort: e.target.value ? { columnId: e.target.value, dir: draft.sort?.dir ?? 1 } : null })}
-                >
-                  <option value="">정렬 안 함</option>
-                  {columns
-                    .filter((c) => c.id !== GROUP_COLUMN)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                </select>
+                  options={[
+                    { value: '', label: '정렬 안 함' },
+                    ...columns.filter((c) => c.id !== GROUP_COLUMN).map((c) => ({ value: c.id, label: c.title })),
+                  ]}
+                  onChange={(id) => patch({ sort: id ? { columnId: id, dir: draft.sort?.dir ?? 1 } : null })}
+                />
                 {draft.sort && (
                   <span className="mon-viewmodal__match" role="radiogroup" aria-label="정렬 방향">
                     {([1, -1] as const).map((dir) => (

@@ -169,8 +169,7 @@
   overflow: auto;
 }
 
-.mon-vinput,
-.mon-vselect {
+.mon-vinput {
   height: 34px;
   padding: 0 10px;
   border: 1px solid var(--mon-line-strong);
@@ -190,10 +189,10 @@
   }
 }
 
+// 칸·조건·정렬 드롭다운(.mon-select) 폭
 .mon-vselect {
   min-width: 140px;
   max-width: 240px;
-  cursor: pointer;
 }
 
 .mon-viewrule__line .mon-vinput {

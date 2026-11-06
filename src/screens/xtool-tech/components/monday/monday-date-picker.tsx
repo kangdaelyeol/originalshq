@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { useState } from 'react'
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards'
 import { initialState } from '@xtool-core/tech-edit'
@@ -7,6 +7,7 @@ import { isComposing } from '../../lib/ime'
 import { koreaToday } from '@xtool-core/dates'
 import type { CellCommit } from './monday-editors'
 import { MonPopover } from './monday-popover'
+import { MonSelect } from './monday-select'
 import { previewCell } from './monday-values'
 
 const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일']
@@ -173,34 +174,27 @@ export function DatePicker({ column, cell, anchor, onCommit, onCancel }: DatePic
       </div>
 
       <div className="mon-date__nav">
-        <label className="mon-date__select">
-          <select
-            aria-label="월"
-            value={view.month}
-            onChange={(e) => setView((v) => ({ ...v, month: Number(e.target.value) }))}
-          >
-            {MONTHS.map((m) => (
-              <option key={m} value={m}>
-                {m}월
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} aria-hidden />
-        </label>
-        <label className="mon-date__select">
-          <select
-            aria-label="연도"
-            value={view.year}
-            onChange={(e) => setView((v) => ({ ...v, year: Number(e.target.value) }))}
-          >
-            {Array.from({ length: YEARS_BACK + YEARS_AHEAD + 1 }, (_, i) => thisYear - YEARS_BACK + i).map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={14} aria-hidden />
-        </label>
+        <MonSelect
+          variant="bare"
+          searchable={false}
+          minWidth={96}
+          aria-label="월"
+          value={view.month}
+          options={MONTHS.map((m) => ({ value: m, label: `${m}월` }))}
+          onChange={(month) => setView((v) => ({ ...v, month }))}
+        />
+        <MonSelect
+          variant="bare"
+          searchable={false}
+          minWidth={96}
+          aria-label="연도"
+          value={view.year}
+          options={Array.from({ length: YEARS_BACK + YEARS_AHEAD + 1 }, (_, i) => thisYear - YEARS_BACK + i).map((y) => ({
+            value: y,
+            label: String(y),
+          }))}
+          onChange={(year) => setView((v) => ({ ...v, year }))}
+        />
         <span className="mon-date__arrows">
           <button type="button" aria-label="이전 달" onClick={() => shift(-1)}>
             <ChevronLeft size={16} aria-hidden />

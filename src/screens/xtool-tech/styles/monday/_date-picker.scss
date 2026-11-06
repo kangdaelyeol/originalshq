@@ -91,38 +91,6 @@
   gap: 4px;
 }
 
-.mon-date__select {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-
-  select {
-    height: 30px;
-    padding: 0 26px 0 8px;
-    border: 0;
-    border-radius: 4px;
-    background: none;
-    color: var(--mon-text);
-    font: inherit;
-    appearance: none;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--mon-overlay);
-    }
-
-    option {
-      background: var(--mon-pop);
-    }
-  }
-
-  svg {
-    position: absolute;
-    right: 8px;
-    pointer-events: none;
-  }
-}
-
 .mon-date__arrows {
   display: flex;
   margin-left: auto;
