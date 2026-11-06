@@ -1,10 +1,11 @@
 import { Firestore, Timestamp } from 'firebase-admin/firestore'
 
-// 사용 분석 — xtool-lead-manager·cmip·xtool-tech 화면을 누가(익명 방문자)
-// 얼마나 봤는지.
+// 사용 분석 — xtool-lead-manager·cmip·xtool-tech 화면을 누가 얼마나 봤는지.
 // 탭 한 번 방문(들어와서 다른 탭으로 가거나 창을 닫을 때까지)이 문서 하나다.
 // 화면이 보는 동안 1분마다 같은 문서를 덮어써 "실제로 본 시간"을 늘린다.
-// /log의 "사용 분석" 탭이 읽는다. 이름·IP 등 개인을 알아볼 값은 받지 않는다.
+// /log의 "사용 분석" 탭이 읽는다. 세 화면 모두 로그인해야 들어오므로, 화면이
+// 같이 보낸 로그인 토큰으로 확인한 계정 메일을 남긴다(/log가 구성원 이름으로
+// 바꿔 보여 준다). 이름·IP는 받지 않는다.
 
 export const USAGE_SEGMENTS_COLLECTION = 'usageSegments'
 
@@ -36,6 +37,9 @@ export interface UsageSegment {
   /** 다른 탭으로 갔거나 창을 닫아 끝난 방문인지. */
   closed: boolean
   updatedAt: number
+  /** 로그인한 사람의 계정(토큰으로 확인한 소문자 메일) — 이 칸을 붙이기 전
+   * 기록, 토큰이 없거나 틀린 요청에는 없다. */
+  email?: string
 }
 
 /** 화면이 보낸 값을 검사해 저장할 모양으로 — 형식이 이상한 것은 버린다
@@ -85,22 +89,55 @@ export const parseUsageSegments = (
   })
 }
 
+/** 저장 — email은 토큰으로 확인한 계정(없으면 null). 합쳐 쓰므로(merge) 토큰이
+ * 아직 준비되지 않은 첫 기록 뒤에 온 갱신이 계정을 채우고, 그 뒤 토큰 없이 온
+ * 갱신이 지우지 않는다. */
 export async function saveUsageSegments(
   db: Firestore,
   segments: UsageSegment[],
+  email: string | null,
 ): Promise<void> {
   if (segments.length === 0) return
   const collection = db.collection(USAGE_SEGMENTS_COLLECTION)
   const batch = db.batch()
   for (const segment of segments) {
-    batch.set(collection.doc(segment.id), {
-      ...segment,
-      expireAt: Timestamp.fromMillis(
-        segment.startedAt + RETENTION_DAYS * 86_400_000,
-      ),
-    })
+    batch.set(
+      collection.doc(segment.id),
+      {
+        ...segment,
+        ...(email ? { email } : {}),
+        expireAt: Timestamp.fromMillis(
+          segment.startedAt + RETENTION_DAYS * 86_400_000,
+        ),
+      },
+      { merge: true },
+    )
   }
   await batch.commit()
+}
+
+/** 구성원 메일 → 이름(xtoolMembers) — /log가 계정 대신 이름을 보여 주려고.
+ * 명단은 수십 명이고 화면이 1분마다 부르므로 함수 인스턴스에 5분 둔다. */
+const NAMES_TTL_MS = 5 * 60_000
+let namesCache: { at: number; names: Map<string, string> } | null = null
+
+export async function memberNames(
+  db: Firestore,
+): Promise<Map<string, string>> {
+  const now = Date.now()
+  if (namesCache && now - namesCache.at < NAMES_TTL_MS) {
+    return namesCache.names
+  }
+  const snapshot = await db.collection('xtoolMembers').get()
+  const names = new Map<string, string>()
+  for (const doc of snapshot.docs) {
+    const name = doc.get('name')
+    if (typeof name === 'string' && name.trim()) {
+      names.set(doc.id, name.trim())
+    }
+  }
+  namesCache = { at: now, names }
+  return names
 }
 
 /** /log 사용 분석의 이어 받기 — since(ms) 이후에 저장(1분마다 덮어씀)된 방문만.

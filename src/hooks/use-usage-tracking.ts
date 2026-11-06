@@ -1,9 +1,12 @@
+import { onIdTokenChanged } from 'firebase/auth'
 import { useEffect, useRef } from 'react'
 import { API_BASE } from '@/screens/xtool-lead-manager/constants'
+import { isXtoolFirebaseConfigured, xtoolFirebase } from '@/xtool-auth/firebase'
 
 // 사용 분석 수집 — 화면이 어떤 탭을 얼마나 실제로 봤는지를 functions-xtool의
-// logUsage로 보낸다(/log의 "사용 분석" 탭이 읽는다). 사용자에게 아무것도 묻지
-// 않고, 이름·연락처 같은 값은 보내지 않는다.
+// logUsage로 보낸다(/log의 "사용 분석" 탭이 읽는다). 세 화면 모두 로그인해야
+// 들어오므로 로그인 토큰을 같이 보내고, 서버가 토큰으로 계정(메일)을 확인해
+// 남긴다(/log는 구성원 이름으로 보여 준다). 이름·연락처는 직접 보내지 않는다.
 //
 // 탭 방문 하나 = 기록 하나(segment). 들어올 때 만들고, 보는 동안 1분마다 본
 // 시간을 갱신하고, 다른 탭으로 가거나 창을 닫을 때 마지막 값으로 닫는다.
@@ -91,6 +94,24 @@ export const useUsageTracking = (app: UsageApp, view: string) => {
     const visitorId = visitorIdOf()
     const sessionId = randomId()
     let segment: Segment | null = null
+    // 로그인한 사람의 ID 토큰 — 창을 닫을 때(pagehide)는 기다릴 수 없어 미리
+    // 받아 둔다. 한 시간마다 SDK가 새로 받으면 여기도 바뀐다. 처음 기록이 토큰
+    // 전에 나가도 다음 갱신(1분 뒤)이나 닫힘이 계정을 채운다(서버가 합쳐 쓴다).
+    let idToken: string | null = null
+    const offToken = isXtoolFirebaseConfigured
+      ? onIdTokenChanged(xtoolFirebase().auth, (user) => {
+          if (!user) {
+            idToken = null
+            return
+          }
+          user.getIdToken().then(
+            (token) => {
+              idToken = token
+            },
+            () => {},
+          )
+        })
+      : () => {}
 
     const isVisible = () => document.visibilityState === 'visible'
     const accumulate = (current: Segment) => {
@@ -103,6 +124,7 @@ export const useUsageTracking = (app: UsageApp, view: string) => {
       if (current.closed) return
       current.closed = closed
       send({
+        ...(idToken ? { idToken } : {}),
         segments: [
           {
             id: current.id,
@@ -171,6 +193,7 @@ export const useUsageTracking = (app: UsageApp, view: string) => {
     trackerRef.current = { setView }
 
     return () => {
+      offToken()
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisibility)
       window.removeEventListener('pagehide', onPageHide)

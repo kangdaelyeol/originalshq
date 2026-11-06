@@ -3,8 +3,8 @@ import { formatAgo, formatDateTime, formatDay } from '../utils/batch-run'
 import {
   APP_LABEL,
   formatSpan,
-  shortVisitor,
   viewLabel,
+  visitorLabel,
   type UsageApp,
 } from '../utils/usage'
 import {
@@ -31,7 +31,8 @@ const appTag = (app: UsageApp) => (
 
 /**
  * /log의 "사용 분석" 탭 — xtool-lead-manager·cmip·xtool-tech를 어느 탭에서 얼마나
- * 봤는지. 사람은 이름이 아니라 브라우저별 무작위 방문자 id로만 구분하고,
+ * 봤는지. 사람은 로그인한 계정(구성원 이름)으로 구분하고 — 계정을 남기기 전
+ * 기록은 같은 브라우저가 나중에 남긴 계정, 그것도 없으면 브라우저 id로 —
  * 시간은 브라우저 탭을 실제로 보고 있던 시간만 센다(다른 탭으로 옮겨 둔 시간
  * 제외). 기록은 화면이 functions-xtool의 logUsage로 보낸다(src/hooks/
  * use-usage-tracking.ts).
@@ -74,8 +75,8 @@ export function UsagePanel() {
           <h2 className="batch-log__title">사용 분석</h2>
           <p className="batch-log__muted">
             xtool-lead-manager·cmip·xtool-tech를 어느 탭에서 얼마나 봤는지 —
-            방문자는 브라우저 단위, 시간은 실제로 화면을 보고 있던 시간입니다.
-            기록은 90일 보관.
+            방문자는 로그인한 계정 단위(계정을 모르는 예전 기록은 브라우저
+            단위), 시간은 실제로 화면을 보고 있던 시간입니다. 기록은 90일 보관.
           </p>
         </div>
         <div className="batch-log__controls">
@@ -348,8 +349,13 @@ export function UsagePanel() {
                             {formatDateTime(session.startedAt)}
                           </td>
                           <td>{APP_LABEL[session.app]}</td>
-                          <td className="batch-log__mono">
-                            {shortVisitor(session.visitorId)}
+                          <td
+                            className={
+                              session.email ? undefined : 'batch-log__mono'
+                            }
+                            title={session.email ?? undefined}
+                          >
+                            {visitorLabel(session)}
                           </td>
                           <td className="is-num">
                             {formatSpan(session.visibleMs)}
@@ -395,7 +401,10 @@ export function UsagePanel() {
                                   </tbody>
                                 </table>
                                 <p className="batch-log__muted batch-log__card-desc">
-                                  방문자 {session.visitorId} · 세션{' '}
+                                  {session.email
+                                    ? `계정 ${session.email} · `
+                                    : ''}
+                                  브라우저 {session.visitorId} · 세션{' '}
                                   {session.sessionId}
                                 </p>
                               </div>

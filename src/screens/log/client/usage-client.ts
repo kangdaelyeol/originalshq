@@ -12,6 +12,10 @@ export interface UsageSegment {
   visibleMs: number
   closed: boolean
   updatedAt: number
+  /** 로그인한 계정(서버가 토큰으로 확인한 메일) — 계정을 남기기 전 기록엔 없다. */
+  email?: string
+  /** 그 계정의 구성원 이름(서버가 지금 명단으로 붙인다). */
+  name?: string
 }
 
 /** 최근 days일에 시작한 탭 방문 — 최근 것부터. since(지난 응답의 fetchedAt)를

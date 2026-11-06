@@ -59,6 +59,14 @@ export const viewLabel = (app: UsageApp, view: string): string =>
 /** 방문자 id를 짧게 — 같은 방문자를 눈으로 구분할 정도만. */
 export const shortVisitor = (visitorId: string): string => visitorId.slice(0, 6)
 
+/** 표에 보일 방문자 — 구성원 이름, 명단에 없으면 계정 메일, 계정을 모르면
+ * 브라우저 id 앞 6자리. */
+export const visitorLabel = (session: {
+  name: string | null
+  email: string | null
+  visitorId: string
+}): string => session.name ?? session.email ?? shortVisitor(session.visitorId)
+
 /** 사용 시간 — 1분 미만은 초, 1시간 미만은 분·초, 그 이상은 시간·분. */
 export const formatSpan = (ms: number): string => {
   const seconds = Math.round(ms / 1000)
@@ -74,6 +82,13 @@ export interface UsageSession {
   sessionId: string
   app: UsageApp
   visitorId: string
+  /** 이 세션을 쓴 계정과 구성원 이름 — 계정을 남기기 전 기록이면 같은
+   * 브라우저(visitorId)가 나중에 남긴 계정으로 채운다. 그것도 없으면 null. */
+  email: string | null
+  name: string | null
+  /** 방문자를 셀 때 쓰는 값 — 계정이 있으면 계정(브라우저가 달라도 한 사람),
+   * 없으면 브라우저. */
+  visitor: string
   startedAt: number
   /** 마지막으로 기록이 갱신된 시각. */
   endedAt: number
@@ -86,6 +101,14 @@ export interface UsageSession {
 export const buildSessions = (
   segments: readonly UsageSegment[],
 ): UsageSession[] => {
+  // 브라우저마다 가장 최근에 남긴 계정 — 계정을 남기기 전 기록을 채우려고.
+  const accountOf = new Map<string, UsageSegment>()
+  for (const segment of segments) {
+    if (!segment.email) continue
+    const known = accountOf.get(segment.visitorId)
+    if (!known || known.updatedAt < segment.updatedAt)
+      accountOf.set(segment.visitorId, segment)
+  }
   const bySession = new Map<string, UsageSegment[]>()
   for (const segment of segments) {
     const list = bySession.get(segment.sessionId) ?? []
@@ -95,10 +118,16 @@ export const buildSessions = (
   return [...bySession.entries()]
     .map(([sessionId, list]) => {
       const sorted = [...list].sort((a, b) => a.startedAt - b.startedAt)
+      const visitorId = sorted[0].visitorId
+      const account =
+        sorted.find((s) => s.email) ?? accountOf.get(visitorId) ?? null
       return {
         sessionId,
         app: sorted[0].app,
-        visitorId: sorted[0].visitorId,
+        visitorId,
+        email: account?.email ?? null,
+        name: account?.name ?? null,
+        visitor: account?.email ?? visitorId,
         startedAt: sorted[0].startedAt,
         endedAt: Math.max(...sorted.map((s) => s.updatedAt)),
         visibleMs: sorted.reduce((sum, s) => sum + s.visibleMs, 0),
@@ -121,7 +150,7 @@ export interface UsageSummary {
 export const summarize = (sessions: readonly UsageSession[]): UsageSummary => {
   const visibleMs = sessions.reduce((sum, s) => sum + s.visibleMs, 0)
   return {
-    visitors: new Set(sessions.map((s) => s.visitorId)).size,
+    visitors: new Set(sessions.map((s) => s.visitor)).size,
     sessions: sessions.length,
     visibleMs,
     averageSessionMs: sessions.length ? visibleMs / sessions.length : 0,
@@ -163,7 +192,7 @@ export const usageByView = (sessions: readonly UsageSession[]): ViewUsage[] => {
         visibleMs: 0,
       }
       entry.visits += 1
-      entry.visitors.add(segment.visitorId)
+      entry.visitors.add(session.visitor)
       entry.visibleMs += segment.visibleMs
       byKey.set(key, entry)
     }
@@ -202,7 +231,7 @@ export const usageByDate = (
   return [...byDate.entries()]
     .map(([date, list]) => ({
       date,
-      visitors: new Set(list.map((s) => s.visitorId)).size,
+      visitors: new Set(list.map((s) => s.visitor)).size,
       sessions: list.length,
       visibleMs: list.reduce((sum, s) => sum + s.visibleMs, 0),
     }))

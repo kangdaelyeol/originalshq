@@ -1,9 +1,12 @@
+import { getAuth } from 'firebase-admin/auth'
 import { onRequest } from 'firebase-functions/https'
 import {
   listUsageSegments,
   listUsageSegmentsUpdatedSince,
+  memberNames,
   parseUsageSegments,
   saveUsageSegments,
+  type UsageSegment,
 } from '../usage'
 import { listBatchRuns } from '../batch-log'
 import { db } from '../app'
@@ -18,11 +21,25 @@ const RUN_OVERLAP_MS = 30 * 60_000
 // 이어 받기 한 번에 이만큼 넘게 바뀌었으면 기간 전체를 다시 준다.
 const MAX_UPDATED = 2_000
 
+/** 본문의 로그인 토큰(idToken)으로 확인한 계정 메일 — beacon은 헤더를 못 붙여
+ * 본문에 싣는다. 없거나 틀리면 null(기록은 그대로 받는다 — 계정만 빈다). */
+const accountOf = async (body: unknown): Promise<string | null> => {
+  const idToken = (body as { idToken?: unknown })?.idToken
+  if (typeof idToken !== 'string' || idToken.length > 4096) return null
+  const token = await getAuth()
+    .verifyIdToken(idToken)
+    .catch(() => null)
+  return token?.email && token.email_verified === true
+    ? token.email.toLowerCase()
+    : null
+}
+
 // ────────────────────────────────
-// logUsage — 사용 분석 수집(xtool-lead-manager·cmip 화면이 보낸다). 창을 닫을
-// 때도 빠지지 않도록 화면은 navigator.sendBeacon으로 보내는데, beacon은
-// text/plain 본문이라(JSON 형식은 CORS 사전 요청이 필요해 beacon으로 못 보낸다)
-// 본문을 직접 JSON으로 푼다. 응답 본문은 쓰지 않는다.
+// logUsage — 사용 분석 수집(xtool-lead-manager·cmip·xtool-tech 화면이 보낸다).
+// 창을 닫을 때도 빠지지 않도록 화면은 navigator.sendBeacon으로 보내는데,
+// beacon은 text/plain 본문이라(JSON 형식은 CORS 사전 요청이 필요해 beacon으로
+// 못 보낸다) 본문을 직접 JSON으로 푼다. 응답 본문은 쓰지 않는다. 로그인은
+// 요구하지 않고(공개), 토큰이 맞을 때만 계정을 남긴다.
 // ────────────────────────────────
 export const logUsage = onRequest(
   endpoint(
@@ -38,7 +55,11 @@ export const logUsage = onRequest(
         }
       }
       const segments = parseUsageSegments(body, Date.now())
-      await saveUsageSegments(db, segments)
+      if (segments.length === 0) {
+        response.status(204).send()
+        return
+      }
+      await saveUsageSegments(db, segments, await accountOf(body))
       response.status(204).send()
     },
   ),
@@ -48,7 +69,8 @@ export const logUsage = onRequest(
 // getUsageSegments — 사용 분석 기록(/log). ?days=N(기본 7, 최대 90)일 안에
 // 시작한 탭 방문을 최근 것부터 최대 20,000건. ?since=(지난 응답의 fetchedAt)를
 // 주면 그 뒤에 저장된 방문만 준다(incremental: true — 1분마다 다시 받을 때
-// 기간 전체 수백 건 대신 몇 건만 읽는다).
+// 기간 전체 수백 건 대신 몇 건만 읽는다). 계정(email)이 있는 방문에는 구성원
+// 이름(name)을 붙여 준다(지금 명단 기준 — 저장하지 않는다).
 // ────────────────────────────────
 export const getUsageSegments = onRequest(
   { memory: '512MiB' },
@@ -71,9 +93,18 @@ export const getUsageSegments = onRequest(
               MAX_UPDATED,
             )
       const incremental = updated !== null && updated.length < MAX_UPDATED
-      const segments = incremental
+      const listed = incremental
         ? updated
         : await listUsageSegments(db, windowStart, 20_000)
+      const names = listed.some((s) => s.email)
+        ? await memberNames(db)
+        : new Map<string, string>()
+      const segments = listed.map(
+        (s): UsageSegment & { name?: string } => {
+          const name = s.email ? names.get(s.email) : undefined
+          return name ? { ...s, name } : s
+        },
+      )
       response
         .status(200)
         .send({ segments, days, fetchedAt: now, incremental })
