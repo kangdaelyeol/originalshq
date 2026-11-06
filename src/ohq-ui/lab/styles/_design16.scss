@@ -1,0 +1,2550 @@
+// ── Design 16 — sample/design16-admin.mp4 ───────────────────────────────────
+// 유리 관리 앱 "Cirrel"(영상 720×1280 중 y 396~762의 창 650×366만, 위 제목·워터마크·아래 코드 칸은 뺐다).
+// 크기는 전부 영상 px — u(n) = n × --d16-px(영상 1px이 몇 CSS px인지). 장면은 container query로 무대 폭에
+// 맞추고(창 650px = 100cqw, 2.4배까지), 부품 견본은 칸마다 --d16-px를 따로 준다.
+// 주석의 F는 영상 프레임(30fps). 움직임 값은 showcase/design16/d16-motion.ts에 있다.
+// 테마: 색·반경·흐림·글꼴·강조색은 .d16의 토큰(--d16-*)만 읽는다 — .d16--violet처럼 강조색 하나로 다시 칠해진다.
+@use 'sass:map';
+
+@property --d16-px {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 1px;
+}
+
+@function u($n) {
+  @return calc(#{$n} * var(--d16-px));
+}
+
+// 공 색 — 왼쪽 위 빛(0%) · 가운데(36%) · 아래(68%) · 오른 아래 테(100%). F110에서 빛 자리부터 대각선으로 잰 값.
+$d16-orbs: (
+  orange: (
+    rgb(203 171 107),
+    rgb(188 134 55),
+    rgb(178 116 38),
+    rgb(136 72 9),
+  ),
+  blue: (
+    rgb(93 160 240),
+    rgb(12 96 214),
+    rgb(9 74 170),
+    rgb(5 53 130),
+  ),
+  green: (
+    rgb(150 240 197),
+    rgb(87 210 157),
+    rgb(36 174 118),
+    rgb(11 133 94),
+  ),
+  silver: (
+    rgb(219 230 242),
+    rgb(158 172 192),
+    rgb(108 126 147),
+    rgb(81 91 107),
+  ),
+  cyan: (
+    rgb(138 231 244),
+    rgb(72 198 219),
+    rgb(26 163 189),
+    rgb(16 140 168),
+  ),
+);
+
+// 유리 판 — 어두운 남색 막 + 뒤 흐림 + 위가 밝은 테두리. F30 목표 카드: 주황 공(187,128,48)이 막 안에서
+// (70,54,35)로 — 막 불투명도 0.63, 색 (13,21,27). 공 테가 판 안에서 약 50px에 걸쳐 번진다 → 흐림 σ ≈ 17px.
+@mixin d16-glass {
+  background:
+    linear-gradient(
+      180deg,
+      var(--d16-glass-sheen) 0,
+      color-mix(in srgb, var(--d16-glass-sheen) 40%, transparent) u(9),
+      transparent u(30)
+    ),
+    var(--d16-glass);
+  -webkit-backdrop-filter: blur(u(var(--d16-blur))) saturate(var(--d16-glass-sat));
+  backdrop-filter: blur(u(var(--d16-blur))) saturate(var(--d16-glass-sat));
+  border: u(0.55) solid var(--d16-line);
+  border-top-color: var(--d16-line-hi);
+  box-shadow: var(--d16-shadow);
+}
+
+@mixin d16-hover {
+  &:hover,
+  &.is-hover {
+    @content;
+  }
+}
+
+// ── 테마 토큰 ───────────────────────────────────────────────────────────────
+.d16 {
+  // 색 — 바탕 (2,8,16), 글자 셋, 강조색(목표 호 0,132,255 · 몫 막대 2,134,250 = #0a84ff)
+  --d16-bg: #01060e;
+  --d16-ink: #eef3f8;
+  --d16-ink-2: rgb(214 221 232 / 0.86);
+  --d16-ink-3: rgb(214 221 232 / 0.66);
+  --d16-accent: #0a84ff;
+  --d16-accent-ink: #fff;
+  // 채운 단추·알약은 조금 깊은 강조색(영상 Create 6,90,200 · 사이드바 알약 10,102,212)
+  --d16-accent-fill: color-mix(in oklab, var(--d16-accent) 76%, #001450);
+  --d16-good: #34c759;
+  --d16-good-ink: #62de8f;
+  --d16-warn: #f7b23b;
+  --d16-bad: #ff6a4d;
+  --d16-teal: #33d0a9;
+  --d16-grey: #9fadc1;
+  // 유리
+  --d16-glass: rgb(13 21 22 / 0.7);
+  --d16-glass-sheen: rgb(255 255 255 / 0.1);
+  --d16-glass-sat: 1;
+  --d16-blur: 17;
+  --d16-inset: rgb(255 255 255 / 0.06);
+  --d16-inset-hover: rgb(0 0 0 / 0.22);
+  --d16-line: rgb(255 255 255 / 0.07);
+  --d16-line-hi: rgb(255 255 255 / 0.15);
+  --d16-shadow: 0 u(6) u(18) rgb(0 0 0 / 0.22);
+  --d16-field: rgb(255 255 255 / 0.045);
+  // 반경(영상 px)
+  --d16-r-window: 7;
+  --d16-r-panel: 10;
+  --d16-r-card: 7.5;
+  // 글꼴
+  --d16-font: Urbanist, var(--font-sans);
+
+  @each $tone, $stops in $d16-orbs {
+    @for $i from 1 through 4 {
+      --d16-orb-#{$tone}-#{$i}: #{nth($stops, $i)};
+    }
+  }
+
+  font-family: var(--d16-font);
+  color: var(--d16-ink);
+}
+
+// 강조색 하나로 다시 칠하기(무대 오른쪽 위 점)
+.d16--violet {
+  --d16-accent: #8b5cf6;
+}
+
+.d16--amber {
+  --d16-accent: #f59e0b;
+  --d16-accent-ink: #1d1300;
+}
+
+.showcase-stage--d16 .showcase-stage__body {
+  background: #05070b;
+}
+
+.d16-accents {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 4px;
+
+  &__dot {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    cursor: pointer;
+
+    &.is-blue {
+      background: #0a84ff;
+    }
+
+    &.is-violet {
+      background: #8b5cf6;
+    }
+
+    &.is-amber {
+      background: #f59e0b;
+    }
+
+    &.is-on {
+      box-shadow:
+        0 0 0 2px #05070b,
+        0 0 0 3.5px rgb(255 255 255 / 0.85);
+    }
+  }
+}
+
+// ── 장면 · 창 ───────────────────────────────────────────────────────────────
+.d16-scene {
+  container-type: inline-size;
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px 28px;
+}
+
+// 창 650×366(영상 x 35~685 · y 396~762) — 무대가 넓으면 2.4배까지(원래 앱 크기쯤)
+.d16-app {
+  --d16-px: clamp(0.4px, calc(100cqw / 650), 2.4px);
+
+  position: relative;
+  flex: none;
+  width: u(650);
+  height: u(366);
+  overflow: hidden;
+  isolation: isolate;
+  border-radius: u(var(--d16-r-window));
+  background: var(--d16-bg);
+  box-shadow:
+    inset 0 0 0 u(0.6) rgb(255 255 255 / 0.05),
+    0 18px 50px rgb(0 0 0 / 0.45);
+  font-size: u(6);
+  line-height: 1.2;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+// 앱·부품 칸 공통 — 태그 기본값 지우기
+.d16-app,
+.d16-part__well {
+  :where(button) {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  :where(h1, h2, h3, p, ul, dl, dd, figure) {
+    margin: 0;
+  }
+
+  :where(ul) {
+    padding: 0;
+    list-style: none;
+  }
+
+  :where(svg) {
+    display: block;
+  }
+}
+
+// 페이지 가운데 단(x 130~636) — 넘치면 이 단만 굴린다
+.d16-main {
+  position: absolute;
+  inset: 0 u(14) 0 u(130);
+  z-index: 2;
+  overflow: hidden auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.d16-page {
+  padding-bottom: u(12);
+}
+
+// 끄는 유령이 뜨는 층
+.d16-float {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+}
+
+.d16-app__toast {
+  position: absolute;
+  left: 50%;
+  bottom: u(10.5);
+  z-index: 40;
+  margin-left: u(-99);
+}
+
+// 화면 밖이면 숨쉬는 빛도 쉰다
+.d16-app.is-offscreen * {
+  animation-play-state: paused !important;
+}
+
+// ── 공 ─────────────────────────────────────────────────────────────────────
+.d16-orbs {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.d16-orb {
+  position: absolute;
+  left: calc((var(--x) - var(--r)) * var(--d16-px));
+  top: calc((var(--y) - var(--r)) * var(--d16-px));
+  width: calc(var(--r) * 2 * var(--d16-px));
+  height: calc(var(--r) * 2 * var(--d16-px));
+  border-radius: 50%;
+  // 빛 자리: 가운데에서 대각선으로 0.53r 위왼쪽(31%) — 그러데이션 반지름 1.48r(오른 아래 테까지)
+  background: radial-gradient(
+    circle calc(var(--r) * 1.48 * var(--d16-px)) at 31% 31%,
+    var(--o1) 0%,
+    var(--o2) 36%,
+    var(--o3) 68%,
+    var(--o4) 100%
+  );
+
+  @each $tone, $stops in $d16-orbs {
+    &--#{$tone} {
+      @for $i from 1 through 4 {
+        --o#{$i}: var(--d16-orb-#{$tone}-#{$i});
+      }
+    }
+  }
+}
+
+// ── 유리 판 ─────────────────────────────────────────────────────────────────
+.d16-glass {
+  position: relative;
+  border-radius: u(var(--d16-r-panel));
+
+  &--panel {
+    @include d16-glass;
+  }
+
+  // 판 위의 판 — 흐림 없이 밝은 막(뒤 판이 이미 흐렸다)
+  &--inset {
+    border: u(0.55) solid var(--d16-line);
+    border-top-color: rgb(255 255 255 / 0.1);
+    border-radius: u(var(--d16-r-card));
+    background: var(--d16-inset);
+  }
+
+  &--float {
+    @include d16-glass;
+
+    --d16-glass: rgb(20 28 36 / 0.86);
+    --d16-shadow: 0 u(12) u(26) rgb(0 0 0 / 0.45);
+  }
+
+  // 놓을 자리 — 1px 강조색 테(F157 x 259: 58,98,143)와 바깥 빛 2px
+  &.is-hot {
+    border-color: color-mix(in oklab, var(--d16-accent) 80%, #fff 0%);
+    box-shadow:
+      0 0 0 u(0.7) color-mix(in oklab, var(--d16-accent) 70%, transparent),
+      0 0 u(5) u(0.5) color-mix(in oklab, var(--d16-accent) 38%, transparent),
+      var(--d16-shadow);
+  }
+}
+
+// ── 사이드바 ────────────────────────────────────────────────────────────────
+.d16-side {
+  position: absolute;
+  top: u(8);
+  bottom: u(8);
+  left: u(8);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: u(116);
+  padding: u(6) u(6) u(6);
+}
+
+.d16-brand {
+  display: flex;
+  align-items: center;
+  gap: u(5);
+  height: u(18);
+  margin: 0 0 u(5) u(1);
+
+  &__mark {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: u(18);
+    height: u(18);
+    border-radius: u(5.5);
+    background: linear-gradient(
+      145deg,
+      color-mix(in oklab, var(--d16-accent) 60%, #8fd0ff) 0%,
+      var(--d16-accent) 45%,
+      var(--d16-accent-fill) 100%
+    );
+    box-shadow:
+      inset 0 u(0.6) 0 rgb(255 255 255 / 0.35),
+      0 u(2) u(6) color-mix(in oklab, var(--d16-accent) 40%, transparent);
+    color: #fff;
+
+    svg {
+      width: u(8.5);
+      height: u(8.5);
+    }
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: u(3.2);
+    min-width: 0;
+    margin-top: u(-2);
+  }
+
+  &__name {
+    font-size: u(9.2);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  &__shop {
+    font-size: u(4.6);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__collapse {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: u(15);
+    height: u(15);
+    border: u(0.5) solid var(--d16-line);
+    border-radius: 50%;
+    background: var(--d16-field);
+    color: var(--d16-ink-2);
+
+    svg {
+      width: u(7);
+      height: u(7);
+    }
+
+    @include d16-hover {
+      background: rgb(255 255 255 / 0.09);
+      color: var(--d16-ink);
+    }
+  }
+}
+
+.d16-search {
+  display: flex;
+  align-items: center;
+  gap: u(4);
+  height: u(18);
+  padding: 0 u(2.5) 0 u(6.5);
+  border: u(0.5) solid var(--d16-line);
+  border-radius: 999px;
+  background: var(--d16-field);
+  color: var(--d16-ink-2);
+
+  &__icon {
+    flex: none;
+    width: u(6.4);
+    height: u(6.4);
+  }
+
+  &__input {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: none;
+    font: inherit;
+    font-size: u(5.6);
+    color: var(--d16-ink);
+
+    &::placeholder {
+      color: var(--d16-ink-2);
+    }
+  }
+
+  &__kbd {
+    flex: none;
+    height: u(9);
+    padding: 0 u(2.6);
+    border-radius: u(3);
+    background: rgb(255 255 255 / 0.08);
+    font-family: inherit;
+    font-size: u(4.4);
+    font-weight: 600;
+    line-height: u(9);
+    color: var(--d16-ink-2);
+  }
+
+  @include d16-hover {
+    border-color: rgb(255 255 255 / 0.12);
+  }
+}
+
+.d16-side__search {
+  margin: 0 0 u(2.6);
+}
+
+// 목록 — 표시(파란 알약)가 여기 기준으로 움직인다
+.d16-side__list {
+  position: relative;
+  flex: 1;
+}
+
+.d16-side__indicator {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: u(5.5);
+  background: var(--d16-accent-fill);
+  box-shadow:
+    inset 0 u(0.5) 0 rgb(255 255 255 / 0.25),
+    0 u(2) u(7) color-mix(in oklab, var(--d16-accent) 35%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+// 칸 이름 줄 12.9px(Customers 145.3 → Finances 174.3 = 16.6 + 12.4), 글자 가운데가 위에서 6.7px
+.d16-side__label {
+  height: u(12.9);
+  padding: u(5) 0 0 u(6);
+  font-size: u(4.6);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.08em;
+  color: var(--d16-ink-3);
+}
+
+.d16-side__gap {
+  display: block;
+  height: u(4.4);
+}
+
+.d16-side__row {
+  position: relative;
+  z-index: 1;
+  margin-bottom: u(1.1);
+}
+
+.d16-nav-item {
+  display: flex;
+  align-items: center;
+  gap: u(5);
+  width: 100%;
+  height: u(15.5);
+  padding: 0 u(5) 0 u(6.6);
+  border-radius: u(5.5);
+  color: var(--d16-ink-2);
+  text-align: left;
+  transition:
+    color 0.2s,
+    background-color 0.12s;
+
+  &__icon {
+    flex: none;
+    width: u(7.2);
+    height: u(7.2);
+  }
+
+  &__label {
+    flex: 1;
+    font-size: u(6.3);
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  &__badge {
+    display: grid;
+    place-items: center;
+    min-width: u(9);
+    height: u(8);
+    padding: 0 u(2);
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--d16-accent) 22%, transparent);
+    font-size: u(4.5);
+    font-weight: 600;
+    color: color-mix(in oklab, var(--d16-accent) 55%, #fff);
+  }
+
+  &.is-active {
+    color: #fff;
+
+    .d16-nav-item__badge {
+      background: rgb(255 255 255 / 0.22);
+      color: #fff;
+    }
+  }
+
+  &.is-filled.is-active {
+    background: var(--d16-accent-fill);
+  }
+
+  @include d16-hover {
+    &:not(.is-active) {
+      background: rgb(255 255 255 / 0.045);
+      color: var(--d16-ink);
+    }
+  }
+}
+
+.d16-side__foot {
+  display: flex;
+  flex-direction: column;
+  gap: u(5);
+}
+
+.d16-side__dark {
+  display: flex;
+  align-items: center;
+  gap: u(5);
+  height: u(15);
+  padding: 0 u(2.5) 0 u(6.6);
+  color: var(--d16-ink-2);
+}
+
+.d16-side__dark-icon {
+  flex: none;
+  width: u(7.2);
+  height: u(7.2);
+}
+
+.d16-side__dark-label {
+  flex: 1;
+  font-size: u(6.3);
+  font-weight: 500;
+}
+
+.d16-switch {
+  flex: none;
+
+  &__track {
+    position: relative;
+    display: block;
+    width: u(21);
+    height: u(11);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.16);
+    transition: background-color 0.2s;
+  }
+
+  &__knob {
+    position: absolute;
+    top: u(1);
+    left: u(1);
+    width: u(9);
+    height: u(9);
+    border-radius: 50%;
+    background: #f4fbf4;
+    box-shadow: 0 u(0.6) u(1.6) rgb(0 0 0 / 0.3);
+    transition: translate 0.2s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  &.is-on &__track {
+    background: var(--d16-good);
+  }
+
+  &.is-on &__knob {
+    translate: u(10) 0;
+  }
+}
+
+.d16-user {
+  display: flex;
+  align-items: center;
+  gap: u(4);
+  width: 100%;
+  height: u(21);
+  padding: 0 u(5) 0 u(2);
+  border: u(0.5) solid var(--d16-line);
+  border-radius: 999px;
+  background: var(--d16-field);
+  text-align: left;
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: u(1.6);
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: u(5.8);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__email {
+    overflow: hidden;
+    font-size: u(4.6);
+    line-height: 1;
+    color: var(--d16-ink-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__icon {
+    flex: none;
+    width: u(6.5);
+    height: u(6.5);
+    color: var(--d16-ink-2);
+  }
+
+  @include d16-hover {
+    background: rgb(255 255 255 / 0.07);
+  }
+}
+
+// ── 머리글자·점·상품 칸 ─────────────────────────────────────────────────────
+.d16-avatar {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--s) * var(--d16-px));
+  height: calc(var(--s) * var(--d16-px));
+  border-radius: 50%;
+  background: hsl(var(--h) var(--c) 86%);
+  font-size: calc(var(--s) * 0.36 * var(--d16-px));
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: hsl(var(--h) 22% 26%);
+}
+
+.d16-dot {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: u(4);
+  height: u(4);
+  border-radius: 50%;
+  background: var(--tone, var(--d16-good));
+  box-shadow: 0 0 u(1.5) u(0.4) color-mix(in oklab, var(--tone, var(--d16-good)) 60%, transparent);
+
+  &--blue {
+    --tone: var(--d16-accent);
+  }
+
+  &--amber {
+    --tone: var(--d16-warn);
+  }
+
+  // 숨쉬는 빛 — 1.1초(F20.5 · F54 가장 번짐, F38.5 가장 좁음)
+  &.is-pulse {
+    animation: d16-breathe 1.1s ease-in-out infinite;
+  }
+}
+
+@keyframes d16-breathe {
+  0%,
+  100% {
+    box-shadow: 0 0 u(3) u(1.3) color-mix(in oklab, var(--tone, var(--d16-good)) 55%, transparent);
+  }
+
+  50% {
+    box-shadow: 0 0 u(1) u(0.2) color-mix(in oklab, var(--tone, var(--d16-good)) 45%, transparent);
+  }
+}
+
+.d16-thumb {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  border-radius: 28%;
+  background: var(--tb);
+  color: var(--tc);
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
+
+  &--green {
+    --tb: #123c3a;
+    --tc: #49d39a;
+  }
+
+  &--herbal {
+    --tb: #3e1d26;
+    --tc: #f06a5a;
+  }
+
+  &--oolong {
+    --tb: #3a2a16;
+    --tc: #f2a93b;
+  }
+
+  &--black {
+    --tb: #1b2433;
+    --tc: #9fb0c8;
+  }
+
+  &--ware {
+    --tb: #18304a;
+    --tc: #5aa8ff;
+  }
+}
+
+// 색 이름(상태·몫 막대·레인 점)
+.d16-tone--blue {
+  --tone: var(--d16-accent);
+}
+
+.d16-tone--green {
+  --tone: var(--d16-good);
+}
+
+.d16-tone--amber {
+  --tone: var(--d16-warn);
+}
+
+.d16-tone--red {
+  --tone: var(--d16-bad);
+}
+
+.d16-tone--teal {
+  --tone: var(--d16-teal);
+}
+
+.d16-tone--grey {
+  --tone: var(--d16-grey);
+}
+
+// ── 위 줄 ───────────────────────────────────────────────────────────────────
+.d16-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  height: u(42);
+  padding-top: u(12.5);
+
+  &__text {
+    display: flex;
+    flex-direction: column;
+    gap: u(3.4);
+    padding-left: u(1);
+  }
+
+  &__greeting {
+    font-size: u(8.8);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+
+  &__crumbs {
+    display: flex;
+    align-items: center;
+    gap: u(2.2);
+    font-size: u(5);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__sep {
+    white-space: pre;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: u(3.7);
+    padding-top: u(0.5);
+  }
+}
+
+.d16-icon-btn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: u(18.7);
+  height: u(18.7);
+  border: u(0.5) solid var(--d16-line);
+  border-top-color: var(--d16-line-hi);
+  border-radius: 50%;
+  background: rgb(14 16 20 / 0.72);
+  -webkit-backdrop-filter: blur(u(8));
+  backdrop-filter: blur(u(8));
+  color: var(--d16-ink);
+
+  &__icon {
+    width: u(7.4);
+    height: u(7.4);
+  }
+
+  &__badge {
+    position: absolute;
+    top: u(-1.5);
+    right: u(-1.5);
+    display: grid;
+    place-items: center;
+    min-width: u(7.5);
+    height: u(7.5);
+    border-radius: 999px;
+    background: var(--d16-accent);
+    font-size: u(4.2);
+    font-weight: 700;
+    color: var(--d16-accent-ink);
+    box-shadow: 0 0 0 u(0.8) var(--d16-bg);
+  }
+
+  @include d16-hover {
+    background: rgb(40 48 60 / 0.6);
+  }
+}
+
+.d16-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: u(3.2);
+  white-space: nowrap;
+  transition:
+    background-color 0.15s,
+    filter 0.15s;
+
+  &__icon {
+    flex: none;
+  }
+
+  &__label {
+    line-height: 1;
+  }
+
+  &--md {
+    height: u(18);
+    padding: 0 u(9) 0 u(7.5);
+    border-radius: 999px;
+    font-size: u(6.4);
+    font-weight: 600;
+
+    .d16-pill__icon {
+      width: u(7.4);
+      height: u(7.4);
+    }
+  }
+
+  &--sm {
+    height: u(13.8);
+    padding: 0 u(6) 0 u(5);
+    border-radius: 999px;
+    font-size: u(5.2);
+    font-weight: 600;
+
+    .d16-pill__icon {
+      width: u(5.6);
+      height: u(5.6);
+    }
+  }
+
+  // 파란 알약 — 위가 조금 밝다(Create 10,100,208 → 6,90,205)
+  &--accent {
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--d16-accent-fill) 92%, #fff) 0%,
+      var(--d16-accent-fill) 60%
+    );
+    box-shadow:
+      inset 0 u(0.5) 0 rgb(255 255 255 / 0.22),
+      0 u(3) u(9) color-mix(in oklab, var(--d16-accent) 28%, transparent);
+    color: var(--d16-accent-ink);
+
+    @include d16-hover {
+      filter: brightness(1.1);
+    }
+  }
+
+  &--glass {
+    border: u(0.5) solid var(--d16-line);
+    border-top-color: var(--d16-line-hi);
+    background: rgb(255 255 255 / 0.07);
+    -webkit-backdrop-filter: blur(u(8));
+    backdrop-filter: blur(u(8));
+    color: var(--d16-ink);
+
+    @include d16-hover {
+      background: rgb(255 255 255 / 0.12);
+    }
+  }
+
+  &--quiet {
+    border: u(0.5) solid rgb(255 255 255 / 0.1);
+    background: rgb(255 255 255 / 0.05);
+    color: var(--d16-ink);
+
+    @include d16-hover {
+      background: rgb(255 255 255 / 0.1);
+    }
+  }
+}
+
+.d16-link {
+  font-size: u(5.2);
+  font-weight: 500;
+  color: color-mix(in oklab, var(--d16-accent) 70%, #fff);
+  text-decoration: none;
+
+  @include d16-hover {
+    color: color-mix(in oklab, var(--d16-accent) 40%, #fff);
+  }
+}
+
+// ── 대시보드 ────────────────────────────────────────────────────────────────
+// 위 줄: 큰 판 346 + 7 + 오른쪽 153 (y 42~280), 아래 줄: 164 × 3, 틈 7.5 (y 288~)
+.d16-dash {
+  display: grid;
+  grid-template-columns: u(346) u(153);
+  gap: u(8) u(7);
+
+  &__main {
+    height: u(238);
+  }
+
+  &__side {
+    display: grid;
+    grid-template-rows: u(95) u(135);
+    gap: u(8);
+  }
+
+  &__row {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, 1fr);
+    gap: u(7.5);
+    align-items: start;
+  }
+}
+
+.d16-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  height: u(54);
+  margin: 0 0 u(4);
+}
+
+.d16-kpi {
+  position: relative;
+  padding: u(8.6) 0 0 u(10);
+
+  & + & {
+    border-left: u(0.6) solid rgb(255 255 255 / 0.06);
+  }
+
+  &__label {
+    font-size: u(5.2);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__value {
+    display: flex;
+    align-items: flex-end;
+    height: u(13);
+    margin-top: u(4.6) !important;
+    font-size: u(14.8);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    gap: u(4.6);
+    margin-top: u(4.2) !important;
+    font-size: u(5);
+    color: var(--d16-ink-2);
+  }
+
+  &--md &__value {
+    font-size: u(11.4);
+  }
+
+  &__spark {
+    position: absolute;
+    top: u(8);
+    right: u(10.5);
+    width: u(51);
+    height: u(13);
+  }
+}
+
+.d16-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: u(1.2);
+  height: u(8);
+  padding: 0 u(2.8) 0 u(2.2);
+  border-radius: u(2.6);
+  background: color-mix(in oklab, color-mix(in oklab, var(--d16-good) 70%, #8a9a90) 24%, transparent);
+  font-size: u(4.6);
+  font-weight: 600;
+  line-height: 1;
+  color: var(--d16-good-ink);
+
+  &__icon {
+    width: u(4);
+    height: u(4);
+  }
+
+  &.is-down {
+    background: color-mix(in oklab, var(--d16-bad) 18%, transparent);
+    color: color-mix(in oklab, var(--d16-bad) 75%, #fff);
+  }
+}
+
+.d16-spark {
+  overflow: visible;
+
+  &__line {
+    fill: none;
+    stroke: color-mix(in oklab, var(--d16-accent) 85%, #0a2a70);
+    stroke-width: 1.35;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+}
+
+// Sales studio — 제목 y 106 · 부제 115 · 단추 줄 y 102~117
+.d16-studio {
+  position: relative;
+  padding: 0 u(10);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: u(24);
+    margin-top: u(-3);
+  }
+
+  &__title {
+    font-size: u(6.5);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__sub {
+    margin-top: u(5.2) !important;
+    font-size: u(5);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__change {
+    color: var(--d16-good-ink);
+
+    &.is-down {
+      color: var(--d16-bad);
+    }
+  }
+
+  &__controls {
+    display: flex;
+    align-items: center;
+    gap: u(4.6);
+  }
+
+  // 차트는 판 기준 y 83~238(창 125~280)을 덮는다 — viewBox 좌표 = 판 좌표
+  // 머리의 음수 여백이 판과 겹쳐(마진 상쇄) 판 전체가 3px 올라가 있다 — 그만큼 더 내린다
+  &__chart {
+    position: absolute;
+    top: u(28);
+    left: 0;
+    width: u(346);
+    height: u(155);
+  }
+}
+
+.d16-compare {
+  display: inline-flex;
+  align-items: center;
+  gap: u(3);
+  height: u(15);
+  padding: 0 u(6.6) 0 u(6.2);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.06);
+  font-size: u(5.3);
+  font-weight: 600;
+  color: var(--d16-ink-2);
+  transition:
+    background-color 0.18s,
+    color 0.18s;
+
+  &__mark {
+    width: u(6);
+    height: u(1.5);
+    overflow: visible;
+
+    path {
+      fill: none;
+      stroke: currentcolor;
+      stroke-width: 1.2;
+      stroke-dasharray: 1.4 1;
+    }
+  }
+
+  &.is-on {
+    background: var(--d16-accent);
+    box-shadow: 0 u(2) u(7) color-mix(in oklab, var(--d16-accent) 35%, transparent);
+    color: var(--d16-accent-ink);
+  }
+
+  @include d16-hover {
+    filter: brightness(1.08);
+  }
+}
+
+// 기간 고르기 — 길 87.6×15, 칸 21.9(밝은 알약 18.6 = 칸에서 1.65 안쪽)
+.d16-range {
+  position: relative;
+  display: flex;
+  height: u(15);
+  padding: u(1.65);
+  border: u(0.5) solid rgb(255 255 255 / 0.06);
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.085);
+
+  &__indicator {
+    position: absolute;
+    top: u(1.65);
+    bottom: u(1.65);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.2);
+    box-shadow:
+      inset 0 u(0.5) 0 rgb(255 255 255 / 0.12),
+      0 u(1) u(3) rgb(0 0 0 / 0.25);
+  }
+
+  &__opt {
+    position: relative;
+    z-index: 1;
+    width: u(18.6);
+    margin: 0 u(1.65);
+    border-radius: 999px;
+    font-size: u(5.2);
+    font-weight: 600;
+    color: var(--d16-ink-2);
+    transition: color 0.2s;
+
+    &:first-of-type {
+      margin-left: 0;
+    }
+
+    &:last-of-type {
+      margin-right: 0;
+    }
+
+    &.is-on {
+      color: #fff;
+    }
+
+    @include d16-hover {
+      color: #fff;
+    }
+  }
+}
+
+.d16-chart {
+  overflow: visible;
+  font-family: var(--d16-font);
+
+  &__grid {
+    line {
+      stroke: rgb(255 255 255 / 0.05);
+      stroke-width: 0.6;
+
+      &.is-base {
+        stroke: rgb(255 255 255 / 0.1);
+      }
+    }
+
+    text {
+      font-size: 4.6px;
+      fill: var(--d16-ink-2);
+    }
+  }
+
+  &__x text {
+    font-size: 4.6px;
+    fill: var(--d16-ink-2);
+  }
+
+  &__line {
+    fill: none;
+    stroke: var(--d16-accent);
+    stroke-width: 1.15;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+  }
+
+  &__prev {
+    transition: opacity 0.25s;
+
+    path {
+      fill: none;
+      stroke: rgb(226 232 242 / 0.62);
+      stroke-width: 0.95;
+      stroke-dasharray: 1.5 1.5;
+    }
+
+    &.is-off {
+      opacity: 0;
+    }
+  }
+}
+
+// 오른쪽 · 아래 카드 공통 머리 — 제목 6.3px 600, 부제 5px
+.d16-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: u(4);
+
+  &__title {
+    display: flex;
+    align-items: center;
+    gap: u(3);
+    font-size: u(6.4);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__sub {
+    margin-top: u(3.6) !important;
+    font-size: u(5);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+}
+
+.d16-rows {
+  display: grid;
+  margin: 0;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: u(4);
+    height: u(11.8);
+  }
+
+  dt {
+    font-size: u(5.2);
+    color: var(--d16-ink-2);
+  }
+
+  dd {
+    margin: 0;
+    font-size: u(5.4);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+// November goal — 고리 가운데 (520, 100.7), 줄 x 553~627
+.d16-goal {
+  padding: u(8.5) u(9) 0 u(9);
+
+  &__edit {
+    display: grid;
+    place-items: center;
+    width: u(12);
+    height: u(12);
+    margin: u(-0.5) u(-2) 0 0;
+    border-radius: 50%;
+    color: var(--d16-ink);
+
+    svg {
+      width: u(6.4);
+      height: u(6.4);
+    }
+
+    @include d16-hover {
+      background: rgb(255 255 255 / 0.08);
+    }
+  }
+
+  &__body {
+    display: flex;
+    align-items: center;
+    gap: u(7.5);
+    margin-top: u(8);
+  }
+
+  &__rows {
+    flex: 1;
+  }
+}
+
+.d16-ring {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-content: center;
+  aspect-ratio: 1;
+  text-align: center;
+
+  svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  &__track {
+    fill: none;
+    stroke: rgb(255 255 255 / 0.075);
+    stroke-width: 4.6;
+  }
+
+  &__arc {
+    fill: none;
+    stroke: var(--d16-accent);
+    stroke-width: 4.6;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 1.5px color-mix(in oklab, var(--d16-accent) 60%, transparent));
+  }
+
+  &__label {
+    position: relative;
+    margin-top: u(-3);
+    font-size: u(9.6);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__sub {
+    position: relative;
+    margin-top: u(2);
+    font-size: u(4.6);
+    color: var(--d16-ink-2);
+  }
+}
+
+// Live store — 38(19.5px) · 막대 x 492~628 · 줄 y 227/238.7/250.3 · 알약 y 261~270
+.d16-live {
+  display: flex;
+  flex-direction: column;
+  padding: u(8.5) u(9) 0 u(9);
+
+  &__count {
+    display: flex;
+    align-items: baseline;
+    gap: u(3.2);
+    margin-top: u(8.4) !important;
+  }
+
+  &__num {
+    font-size: u(19.5);
+    font-weight: 600;
+    line-height: 0.82;
+    letter-spacing: -0.02em;
+  }
+
+  &__note {
+    font-size: u(5);
+    color: var(--d16-ink-2);
+  }
+
+  &__bars {
+    margin-top: u(7.4);
+  }
+
+  &__rows {
+    margin-top: u(3.8);
+
+    .d16-rows__row {
+      height: u(11.7);
+    }
+  }
+
+  .d16-status {
+    align-self: flex-start;
+    margin-top: u(4.6);
+  }
+}
+
+.d16-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: u(1.94);
+  height: calc(var(--h) * var(--d16-px));
+
+  &__bar {
+    flex: 1;
+    height: calc(var(--v) * 100%);
+    border-radius: u(0.8) u(0.8) u(0.3) u(0.3);
+    background: linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--d16-accent) 72%, #fff 0%) 0%,
+      color-mix(in oklab, var(--d16-accent) 55%, transparent) 55%,
+      color-mix(in oklab, var(--d16-accent) 22%, transparent) 100%
+    );
+  }
+}
+
+.d16-status {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: u(2.4);
+  height: u(9);
+  padding: 0 u(4.4) 0 u(3.6);
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--tone) 17%, transparent);
+  font-size: u(5);
+  font-weight: 600;
+  line-height: 1;
+  color: color-mix(in oklab, var(--tone) 78%, #fff);
+  white-space: nowrap;
+
+  &__dot {
+    width: u(2.6);
+    height: u(2.6);
+    border-radius: 50%;
+    background: var(--tone);
+  }
+}
+
+// 아래 줄 카드 — 제목 y 299.6, 줄 25px 간격(가운데 332.5 · 357.5)
+.d16-queue,
+.d16-low,
+.d16-sources {
+  padding: u(8.6) u(9) u(10);
+}
+
+.d16-list {
+  margin-top: u(10.5) !important;
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: u(4.6);
+    height: u(25);
+  }
+
+  &__text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: u(2);
+    min-width: 0;
+  }
+
+  &__name {
+    font-size: u(5.8);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__sub {
+    overflow: hidden;
+    font-size: u(4.6);
+    line-height: 1;
+    color: var(--d16-ink-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__value {
+    font-size: u(5.8);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__empty {
+    padding: u(8) 0;
+    font-size: u(5.2);
+    color: var(--d16-ink-2);
+  }
+}
+
+.d16-stock {
+  flex: none;
+  width: u(26);
+  height: u(2.4);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--d16-warn) 0 calc(var(--v) * 100%), transparent 0), rgb(255 255 255 / 0.1);
+}
+
+.d16-low__thumb {
+  border-radius: u(3.5);
+}
+
+.d16-sources {
+  &__bar {
+    margin-top: u(7) !important;
+  }
+
+  &__list {
+    margin-top: u(3.4) !important;
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: u(4) 1fr auto u(28);
+    gap: u(3.6);
+    align-items: center;
+    height: u(17);
+    font-size: u(5.2);
+  }
+
+  &__swatch {
+    width: u(3.6);
+    height: u(3.6);
+    border-radius: u(1);
+    background: var(--tone);
+  }
+
+  &__pct {
+    color: var(--d16-ink-2);
+  }
+
+  &__value {
+    font-weight: 600;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.d16-share {
+  display: flex;
+  gap: u(1.5);
+  height: u(5.5);
+
+  &__part {
+    min-width: u(3);
+    border-radius: 999px;
+    background: var(--tone);
+  }
+}
+
+// ── Orders 페이지 ───────────────────────────────────────────────────────────
+// 제목 x 131 · 위 끝 y 45 / 부제 y 69 / 단추 y 55.5~72.7 / 탭 글자 y 91.4 · 밑줄 99.5~101
+.d16-orders {
+  &__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    height: u(38.5);
+  }
+
+  &__title {
+    margin: u(2) 0 0 u(0.3) !important;
+  }
+
+  &__sub {
+    margin: u(4.6) 0 u(4) u(0.6) !important;
+    font-size: u(6.25);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__actions {
+    display: flex;
+    gap: u(4.7);
+    margin-top: u(13.5);
+
+    .d16-pill--md {
+      height: u(17.2);
+    }
+  }
+
+  &__tabs {
+    margin-top: u(2.6);
+  }
+
+  &__tools {
+    display: flex;
+    gap: u(4.5);
+    margin-top: u(11.2);
+
+    .d16-search,
+    .d16-select {
+      height: u(18);
+    }
+  }
+
+  &__search {
+    width: u(160.5);
+    padding-left: u(7.5);
+
+    .d16-search__input {
+      font-size: u(5.6);
+    }
+  }
+
+  &__chips {
+    margin-top: u(7);
+  }
+
+  &__returns {
+    margin-top: u(10);
+    padding: u(14);
+    font-size: u(6);
+    color: var(--d16-ink-2);
+  }
+}
+
+// 큰 제목 — 글자마다 가림(아래 3.5px 여유) 안에서 오른다
+.d16-rise {
+  display: flex;
+  overflow: hidden;
+  padding-bottom: u(3.5);
+  margin-bottom: u(-3.5);
+  font-size: u(16.8);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.015em;
+
+  &__char {
+    display: inline-block;
+  }
+}
+
+.d16-tabs {
+  position: relative;
+  display: flex;
+  gap: u(12);
+  height: u(16.5);
+  padding-left: u(6);
+  border-bottom: u(0.6) solid rgb(255 255 255 / 0.06);
+
+  &__tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: u(4);
+    height: 100%;
+    font-size: u(6);
+    font-weight: 500;
+    color: var(--d16-ink-2);
+    transition: color 0.15s;
+
+    &.is-on {
+      color: var(--d16-ink);
+    }
+
+    @include d16-hover {
+      color: rgb(230 236 245 / 0.86);
+    }
+  }
+
+  &__count {
+    display: grid;
+    place-items: center;
+    min-width: u(8);
+    height: u(8);
+    padding: 0 u(2);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.08);
+    font-size: u(4.4);
+    font-weight: 600;
+    color: var(--d16-ink-2);
+  }
+
+  // 밑줄 1.5px(F104 x 130.5~166.4 = 탭 글자 앞뒤 6px씩)
+  &__line {
+    position: absolute;
+    right: u(-6);
+    bottom: u(-0.9);
+    left: u(-6);
+    height: u(1.5);
+    border-radius: 999px;
+    background: var(--d16-accent);
+  }
+}
+
+.d16-select {
+  display: inline-flex;
+  align-items: center;
+  gap: u(8);
+  padding: 0 u(7) 0 u(9);
+  border: u(0.5) solid var(--d16-line);
+  border-radius: 999px;
+  background: var(--d16-field);
+  font-size: u(5.8);
+  color: var(--d16-ink);
+
+  &__icon {
+    width: u(5.4);
+    height: u(5.4);
+    color: var(--d16-ink-2);
+  }
+
+  @include d16-hover {
+    background: rgb(255 255 255 / 0.08);
+  }
+}
+
+// 걸러보기 — 14.5px 알약, 3.4px 틈
+.d16-chips {
+  display: flex;
+  gap: u(3.3);
+}
+
+.d16-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: u(4.4);
+  height: u(14.5);
+  padding: 0 u(4.4) 0 u(7);
+  border: u(0.5) solid var(--d16-line);
+  border-radius: 999px;
+  background: var(--d16-field);
+  font-size: u(5.4);
+  font-weight: 500;
+  color: var(--d16-ink-2);
+
+  &__count {
+    display: grid;
+    place-items: center;
+    min-width: u(9);
+    height: u(8);
+    padding: 0 u(2.4);
+    border-radius: 999px;
+    font-size: u(4.4);
+    font-weight: 600;
+  }
+
+  &.is-on {
+    border-color: transparent;
+    background: var(--d16-accent-fill);
+    color: var(--d16-accent-ink);
+
+    .d16-chip__count {
+      background: rgb(255 255 255 / 0.22);
+    }
+  }
+
+  @include d16-hover {
+    &:not(.is-on) {
+      background: rgb(255 255 255 / 0.08);
+      color: var(--d16-ink);
+    }
+  }
+}
+
+// 주문 표 — 판 y 156~, 요약 y 168, 머리 y 190, 줄 27.1px(가운데 212.8 · 240 …)
+.d16-table {
+  margin-top: u(7);
+  padding: u(8.3) 0 u(4);
+
+  &__summary {
+    padding: 0 u(8.5);
+    font-size: u(5.2);
+    color: var(--d16-ink-2);
+
+    b {
+      font-weight: 400;
+    }
+
+    .is-strong {
+      font-weight: 600;
+      color: var(--d16-ink);
+    }
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: u(22) u(49) u(88) u(83.7) u(77.7) u(50) u(29.5) 1fr;
+    align-items: center;
+    padding: 0 u(8.5);
+
+    > :last-child {
+      padding-left: u(13.9);
+    }
+
+    > .d16-check {
+      margin-left: u(2.75);
+    }
+  }
+
+  &__head {
+    height: u(17.75);
+    margin-top: u(10.4);
+    font-size: u(5);
+    color: var(--d16-ink-3);
+
+    > span {
+      display: inline-flex;
+      align-items: center;
+      gap: u(2);
+    }
+  }
+
+  &__sort {
+    width: u(4.6);
+    height: u(4.6);
+  }
+
+  .is-right {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  &__row {
+    height: u(27.1);
+    border-top: u(0.5) solid rgb(255 255 255 / 0.045);
+    font-size: u(5.4);
+    transition: background-color 0.12s;
+
+    @include d16-hover {
+      background: rgb(255 255 255 / 0.025);
+    }
+  }
+
+  &__id {
+    font-weight: 600;
+  }
+
+  &__customer {
+    display: flex;
+    align-items: center;
+    gap: u(4.4);
+  }
+
+  &__who {
+    display: flex;
+    flex-direction: column;
+    gap: u(1.8);
+  }
+
+  &__name {
+    font-size: u(5.6);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__city {
+    font-size: u(4.6);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__items {
+    display: flex;
+    align-items: center;
+    gap: u(4);
+    color: var(--d16-ink-2);
+  }
+
+  &__thumbs {
+    display: flex;
+
+    .d16-thumb + .d16-thumb {
+      margin-left: u(-1.5);
+      box-shadow: 0 0 0 u(0.6) rgb(14 20 27);
+    }
+  }
+
+  &__muted {
+    color: var(--d16-ink-2);
+  }
+
+  &__total {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.d16-check {
+  width: u(6.5);
+  height: u(6.5);
+  border: u(0.6) solid rgb(255 255 255 / 0.22);
+  border-radius: 50%;
+}
+
+// ── 칸반 ────────────────────────────────────────────────────────────────────
+// 레인 넷 x 130.5 · 259.5 · 387.7 · 516(폭 120, 틈 8.67), 위 y 110, 가장 낮은 높이 188.5(Delivered)
+.d16-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: u(8.67);
+  align-items: start;
+  margin-top: u(10.4);
+  touch-action: none;
+}
+
+.d16-lane {
+  min-height: u(188.5);
+  padding: u(6.5) u(5) u(6) u(5.4);
+
+  &__head {
+    display: flex;
+    align-items: center;
+    gap: u(3);
+    height: u(9);
+    padding-left: u(2.2);
+  }
+
+  &__dot {
+    width: u(4);
+    height: u(4);
+    border-radius: 50%;
+    background: color-mix(in oklab, var(--tone) 70%, #fff);
+    box-shadow: 0 0 u(2) color-mix(in oklab, var(--tone) 70%, transparent);
+  }
+
+  &__title {
+    font-size: u(6.5);
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  &__count {
+    display: grid;
+    place-items: center;
+    min-width: u(8.4);
+    height: u(8.4);
+    margin-left: u(1.4);
+    padding: 0 u(2);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.08);
+    font-size: u(4.4);
+    font-weight: 600;
+    color: var(--d16-ink-2);
+  }
+
+  &__sub {
+    margin: u(7) 0 0 u(2.8) !important;
+    font-size: u(5);
+    line-height: 1;
+    color: var(--d16-ink-2);
+  }
+
+  &__cards {
+    display: flex;
+    flex-direction: column;
+    gap: u(6);
+    margin-top: u(6.2);
+  }
+
+  // 빈 레인 — 46px 칸 가운데 글(F130 x 522.7~629.5 · y 145.4~191.7)
+  &__empty {
+    display: grid;
+    place-items: center;
+    height: u(46.3);
+    margin: u(2.3) u(0.7) 0 !important;
+    border: u(0.5) solid rgb(255 255 255 / 0.06);
+    border-radius: u(6);
+    background: rgb(0 0 0 / 0.16);
+    font-size: u(5.2);
+    color: var(--d16-ink-2);
+  }
+}
+
+// 주문 카드(109 × 83) — 번호 y +10.5 · 아바타 줄 +24 · 상품 +38.7/+51.5 · 아래 줄 +72.8
+.d16-ocard {
+  position: relative;
+  padding: u(6) u(5.4) u(3.1) u(4.6);
+  border: u(0.55) solid var(--d16-line);
+  border-top-color: rgb(255 255 255 / 0.11);
+  border-radius: u(var(--d16-r-card));
+  background: var(--d16-inset);
+  cursor: grab;
+  touch-action: none;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  &__id {
+    font-size: u(6.2);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+
+  &__when {
+    font-size: u(5);
+    color: var(--d16-ink-2);
+  }
+
+  &__who {
+    display: flex;
+    align-items: center;
+    gap: u(3.6);
+    margin: u(5.4) 0 u(3.2) !important;
+    font-size: u(6.2);
+    font-weight: 600;
+  }
+
+  &__items {
+    display: grid;
+    gap: u(5.3);
+    padding-left: u(1.8) !important;
+
+    li {
+      display: flex;
+      align-items: center;
+      gap: u(4.2);
+      font-size: u(5.2);
+      color: rgb(225 232 242 / 0.82);
+    }
+  }
+
+  &__foot {
+    display: flex;
+    align-items: center;
+    gap: u(4);
+    margin-top: u(11.1);
+  }
+
+  &__total {
+    font-size: u(6.2);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  &__chip {
+    flex: none;
+    height: u(8);
+    padding: 0 u(4);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.08);
+    font-size: u(4.5);
+    line-height: u(8);
+    color: var(--d16-ink-2);
+  }
+
+  &__go {
+    display: grid;
+    place-items: center;
+    width: u(13.6);
+    height: u(13.6);
+    margin-left: auto;
+    border-radius: u(4.6);
+    background: rgb(255 255 255 / 0.06);
+    color: var(--d16-ink);
+
+    svg {
+      width: u(6);
+      height: u(6);
+    }
+  }
+
+  // 올리면 막이 어두워진다(F133)
+  @include d16-hover {
+    background: var(--d16-inset-hover);
+  }
+
+  // 끄는 동안 제자리에 흐리게 남는다(F145~F160 글자 90/226)
+  &.is-lifted {
+    opacity: 0.36;
+  }
+
+  // 유령 — 영상 코드의 ocard--ghost: 떠 있는 유리(그림자), 손가락 따라 translate
+  &--ghost {
+    position: absolute;
+    z-index: 30;
+    margin: 0;
+    border-color: rgb(255 255 255 / 0.12);
+    background: rgb(22 30 38 / 0.9);
+    -webkit-backdrop-filter: blur(u(10));
+    backdrop-filter: blur(u(10));
+    box-shadow:
+      0 u(12) u(26) rgb(0 0 0 / 0.45),
+      inset 0 u(0.5) 0 rgb(255 255 255 / 0.08);
+    pointer-events: none;
+    cursor: grabbing;
+
+    // 부품 견본에서 멈춘 모습
+    &.is-static {
+      position: relative;
+      rotate: -2deg;
+      scale: 1.04;
+    }
+  }
+}
+
+.d16-board.is-dragging {
+  cursor: grabbing;
+}
+
+// ── 토스트 · 커서 ───────────────────────────────────────────────────────────
+.d16-toast {
+  display: flex;
+  align-items: center;
+  gap: u(4.6);
+  width: u(198);
+  height: u(25);
+  padding: 0 u(4.4) 0 u(8);
+  border-radius: 999px;
+  background: rgb(229 226 223 / 0.97);
+  box-shadow:
+    0 u(8) u(22) rgb(0 0 0 / 0.4),
+    inset 0 u(0.5) 0 rgb(255 255 255 / 0.8);
+  color: #1c1d22;
+
+  &__icon {
+    flex: none;
+    width: u(5.6);
+    height: u(5.6);
+    color: #7c7f86;
+  }
+
+  &__text {
+    flex: 1;
+    font-size: u(5.9);
+    font-weight: 500;
+  }
+
+  &__action {
+    height: u(13.4);
+    padding: 0 u(6.4);
+    border-radius: 999px;
+    background: rgb(0 0 0 / 0.07);
+    font-size: u(5.4);
+    font-weight: 600;
+
+    @include d16-hover {
+      background: rgb(0 0 0 / 0.13);
+    }
+  }
+}
+
+// 커서 끝이 (0,0) — 엔진이 translate로 옮긴다
+.d16-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 50;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+
+  &.is-on,
+  &.is-static {
+    opacity: 1;
+  }
+
+  &__arrow {
+    position: absolute;
+    top: u(-0.6);
+    left: u(-0.6);
+    width: u(8.4);
+    height: u(13);
+    overflow: visible;
+    filter: drop-shadow(0 u(0.6) u(0.8) rgb(0 0 0 / 0.45));
+
+    path {
+      fill: #fff;
+      stroke: #000;
+      stroke-width: 1;
+      stroke-linejoin: round;
+    }
+  }
+
+  // 누름 고리 — 반지름 5 → 18px, 0.2초(F137 7 · F140 16 · F142 18 흐려짐)
+  &__ring {
+    position: absolute;
+    top: u(-18);
+    left: u(-18);
+    width: u(36);
+    height: u(36);
+    border: u(0.9) solid rgb(255 255 255 / 0.85);
+    border-radius: 50%;
+    opacity: 0;
+    scale: 0.28;
+  }
+
+  &.is-press &__ring {
+    animation: d16-ring 0.26s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+
+  &.is-ring &__ring {
+    opacity: 0.8;
+    scale: 0.6;
+  }
+}
+
+@keyframes d16-ring {
+  0% {
+    opacity: 0.9;
+    scale: 0.28;
+  }
+
+  60% {
+    opacity: 0.75;
+  }
+
+  100% {
+    opacity: 0;
+    scale: 1;
+  }
+}
+
+// ── 움직임 줄이기 — 숨쉬기·커서 고리를 멈춘 고른 모습 ──────────────────────
+@media (prefers-reduced-motion: reduce) {
+  .d16-dot.is-pulse {
+    animation: none;
+  }
+
+  .d16-cursor.is-press .d16-cursor__ring {
+    animation: none;
+  }
+
+  .d16-switch__knob,
+  .d16-switch__track {
+    transition: none;
+  }
+}
+
+// ── 부품 견본 ───────────────────────────────────────────────────────────────
+.d16-parts {
+  display: grid;
+  gap: 16px;
+  padding: 0 24px 28px;
+}
+
+.d16-part {
+  padding: 16px 18px 18px;
+  border: 1px solid #172031;
+  border-radius: 14px;
+  background: #070b12;
+}
+
+.d16-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: #93a0b6;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: #101a2a;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #9ecbff;
+  }
+}
+
+.d16-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+  }
+
+  figcaption {
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    color: #93a0b6;
+  }
+}
+
+// 견본 칸 — 영상 1.6배(--d16-px 1.6px)
+.d16-part__well {
+  --d16-px: 1.6px;
+
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: u(8);
+  padding: u(12);
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid #172031;
+  border-radius: 10px;
+  background: var(--d16-bg);
+  font-size: u(6);
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+
+  > :not(.d16-orbs, .d16-float, .d16-cursor) {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+.d16-part__stack {
+  display: grid;
+  gap: u(8);
+  justify-items: start;
+}
+
+.d16-part__inline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: u(5);
+}
+
+.d16-part__well--glass {
+  width: u(200);
+  height: u(120);
+  gap: u(6);
+}
+
+.d16-part__glass {
+  display: grid;
+  place-items: center;
+  width: u(54);
+  height: u(62);
+  font-size: u(6);
+  color: var(--d16-ink-2);
+}
+
+.d16-part__well--side {
+  --d16-px: 1.3px;
+
+  width: u(132);
+  height: u(366);
+  padding: 0;
+
+  .d16-side {
+    position: absolute;
+  }
+}
+
+.d16-part__well--bits {
+  flex-direction: column;
+  align-items: stretch;
+  width: u(130);
+
+  .d16-nav-item {
+    width: u(103);
+  }
+}
+
+.d16-part__well--chart {
+  --d16-px: 1.5px;
+
+  padding: u(10);
+}
+
+.d16-part__chart {
+  width: u(346);
+  height: u(155);
+
+  .d16-chart {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.d16-part__well--kpi {
+  .d16-kpi {
+    width: u(115);
+    height: u(54);
+    border-radius: u(8);
+    background: var(--d16-glass);
+  }
+}
+
+.d16-part__well--rings {
+  gap: u(12);
+
+  .d16-ring {
+    width: calc(54.6 * var(--d16-px));
+  }
+}
+
+.d16-part__well--mini {
+  flex-direction: column;
+  align-items: stretch;
+  width: u(150);
+
+  .d16-bars {
+    width: 100%;
+  }
+
+  .d16-spark {
+    width: u(60);
+    height: u(14);
+  }
+}
+
+.d16-part__well--controls,
+.d16-part__well--tags {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.d16-part__well--cards {
+  --d16-px: 1.3px;
+
+  display: grid;
+  grid-template-columns: u(153) u(164);
+  align-items: start;
+
+  > .d16-glass {
+    width: u(153);
+  }
+
+  .d16-goal {
+    height: u(95);
+  }
+
+  .d16-live {
+    height: u(135);
+  }
+
+  .d16-low,
+  .d16-sources {
+    width: u(164) !important;
+  }
+}
+
+.d16-part__well--cards2 {
+  gap: u(10);
+  align-items: flex-start;
+
+  .d16-ocard {
+    width: u(109);
+  }
+}
+
+.d16-part__well--lanes {
+  align-items: flex-start;
+
+  .d16-lane {
+    width: u(120);
+    min-height: u(150);
+  }
+}
+
+.d16-part__well--board {
+  --d16-px: 1.3px;
+
+  padding: u(10);
+}
+
+.d16-part__board {
+  position: relative;
+  width: u(250);
+
+  .d16-board {
+    grid-template-columns: repeat(2, 1fr);
+    margin: 0;
+  }
+
+  .d16-lane {
+    min-height: u(150);
+  }
+}
+
+.d16-part__well--toast {
+  flex-direction: column;
+  width: u(230);
+  min-height: u(110);
+
+  .d16-cursor {
+    position: absolute;
+  }
+}

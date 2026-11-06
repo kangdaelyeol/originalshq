@@ -1,6 +1,6 @@
 import { lazy, type ComponentType } from 'react'
 
-// 디자인 견본(D1~D10·D13·D14) — 참고 영상의 디자인을 옮긴 것. 묶음마다 코드와 스타일을 따로 받는다(그 탭을 열 때만).
+// 디자인 견본(D1~D10·D13·D14·D16) — 참고 영상의 디자인을 옮긴 것. 묶음마다 코드와 스타일을 따로 받는다(그 탭을 열 때만).
 // 한 번에 넣으면 견본을 보지 않는 사람도 견본(WebGL 셰이더·아이콘 150개, 스타일 약 110KB 등)까지 받게 된다.
 
 export type ShowcaseKey =
@@ -16,6 +16,7 @@ export type ShowcaseKey =
   | 'design10'
   | 'design13'
   | 'design14'
+  | 'design16'
 
 export const SHOWCASES: readonly { value: ShowcaseKey; label: string; Component: ComponentType }[] = [
   {
@@ -123,6 +124,15 @@ export const SHOWCASES: readonly { value: ShowcaseKey; label: string; Component:
     Component: lazy(() =>
       Promise.all([import('./showcase/design14/design14-showcase'), import('./styles/showcase/design14.scss')]).then(
         ([m]) => ({ default: m.Design14Showcase }),
+      ),
+    ),
+  },
+  {
+    value: 'design16',
+    label: 'D16',
+    Component: lazy(() =>
+      Promise.all([import('./showcase/design16/design16-showcase'), import('./styles/showcase/design16.scss')]).then(
+        ([m]) => ({ default: m.Design16Showcase }),
       ),
     ),
   },
