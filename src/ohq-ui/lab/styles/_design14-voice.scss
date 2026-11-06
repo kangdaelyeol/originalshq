@@ -1,0 +1,875 @@
+// ── Design 14 음성 모드 — sample/design14-circle.mp4 8.43~22.67초 ─────────────────────
+// 부품: 맨 위 알약 막대(d14v-bar)·구슬(d14v-orb)·말풍선(d14v-bubble)·창업자 별자리(d14v-founder).
+// 크기는 전부 em — 1em = 영상(720×1280, 위 637px가 화면)의 10px. 부모가 font-size로 배율을 정하고 자리를 잡는다.
+// 주석의 F는 영상 프레임(30fps), 색은 그 프레임에서 잰 값(가는 글씨는 번져서 어둡게 잡혀 조금 밝혔다).
+// 지도 쪽(d14-)과 겹치지 않게 이름은 모두 d14v-.
+
+$d14v-accent: #fb5d2e; // 주황 — INVOICE CHASING 점 한가운데 F660 (252,94,47)
+$d14v-ink: #ece8e4; // 말풍선 글 — 획 꼭짓점 (211~216)
+$d14v-box: rgba(8, 6, 5, 0.6); // 말풍선·막대 바탕 — 안 (17,12,9), 밖 (39,25,17), 뒤 고리가 흐리게 비친다
+$d14v-edge: rgba(255, 255, 255, 0.07); // 테두리 1px — 바탕 13 위 30
+$d14v-gold: #d39b2e; // YOU 숫자 원 (208,154,40)
+$d14v-gold-mark: #e2a743; // ▲ (218,167,67), 꼭대기 (255,204,108)
+$d14v-status: #a68f55; // "waiting on you" — 9px 가는 획 꼭짓점 (96,84,52)
+$d14v-dot: #ddd6d2; // 흰 점 (220,212,209)
+$d14v-node: #dbd6d3; // YOU 원 (217,212,210)
+$d14v-label: #d8d2ce; // 주제 이름 꼭짓점 (201,195,192)
+$d14v-title: #f4f1ee; // YOU 이름 (243,240,237)
+$d14v-sub: #8f8986; // the founder · sign-off (133,127,124)
+$d14v-urgent: #d8344d; // 숨 쉬는 붉은 고리 F298 (126,47,55) — 그늘에 반쯤 가린 값
+$d14v-line: rgba(214, 150, 122, 0.46); // 별자리 줄 — 바탕 (20,13,8) 위 꼭짓점 (63,45,39)
+// 영상 글꼴은 SF Pro(대문자 높이·글자 모양). 다만 크롬의 system-ui는 작은 크기에서 SF Pro Text 간격이라
+// 영상보다 8~11% 넓다 — 글 종류마다 광학 크기(opsz)를 골라 줄 폭을 영상과 맞췄다(크롬에서 잰 비 0.99~1.01).
+// opsz는 가변 SF에만 걸리고 다른 글꼴에서는 아무 일도 하지 않는다.
+$d14v-sans:
+  system-ui,
+  -apple-system,
+  BlinkMacSystemFont,
+  'Segoe UI',
+  var(--font-sans);
+// 막대·꼬리표 대문자는 고정폭(글자당 5.3~5.6px, "I" 둘레가 비어 있다) — 영상은 SF Mono로 보이나 크롬에선
+// var(--font-mono)가 Menlo로 떨어진다(글자 폭 0.602em으로 같다)
+$d14v-mono: var(--font-mono);
+
+// 펼침·카메라처럼 남은 거리가 일정 비율로 주는 움직임(지수 감쇠)
+$d14v-ease-decay: linear(0, 0.39 10%, 0.63 20%, 0.78 30%, 0.86 40%, 0.92 50%, 0.95 60%, 0.97 70%, 0.99 85%, 1);
+
+// ── 맨 위 알약 막대 ────────────────────────────────────────────────────────────
+// F330: 바깥 x 220.5~498.5(27.8em) · y 9.5~45(3.6em), 가운데 x 359.5. 탭 알약 y 16~39.5(2.35em),
+// DEALS 310~362.5 · 6AM BRIEF 367.5~439(사이 5px), ■ 456~461 · ESC 467~482, 오른쪽 끝까지 16.5px.
+.d14v-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  box-sizing: border-box;
+  height: 3.6em;
+  padding: 0 0.35em 0 1.22em;
+  border: 0.1em solid $d14v-edge;
+  border-radius: 999px;
+  background: $d14v-box;
+  font-family: $d14v-mono;
+  line-height: 1;
+  white-space: nowrap;
+  animation: d14v-bar-in 0.2s ease-out both;
+
+  button:focus-visible {
+    outline: 0.15em solid rgba($d14v-accent, 0.7);
+    outline-offset: 0.15em;
+  }
+}
+
+// 단추 기본 글꼴을 지운다 — 크기·굵기는 아래 규칙이 정한다(같은 무게라 뒤가 이긴다)
+.d14v-bar__tab,
+.d14v-bar__esc {
+  font: inherit;
+  cursor: pointer;
+}
+
+// 대문자 8.5px(대문자 높이 6px), 글자 간격으로 글자당 5.5px
+.d14v-bar__mode,
+.d14v-bar__tab,
+.d14v-bar__esc {
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+// ● VOICE MODE — 점 지름 6px(가운데 x 236.5), 점과 글 사이 5.5px, 글 뒤 DEALS까지 11px
+.d14v-bar__mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65em;
+  margin-right: 0.65em;
+  color: #827d7a;
+}
+
+.d14v-bar__dot {
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  background: #e4572f; // (193,81,52) — 6px 점이 번진 값
+  box-shadow: 0 0 0.4em rgba($d14v-accent, 0.45);
+}
+
+// 6AM BRIEF — 회색 글, 옅은 회색 테두리 (35~44,31~38,26~34)
+.d14v-bar__tab {
+  height: 2.76em; // 23.5px ÷ 8.5px
+  padding: 0 1.28em;
+  border: 0.12em solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: transparent;
+  color: #96918e;
+
+  // DEALS — 주황 글·테두리, 안은 주황 9%(바탕 (17,12,9) → (37,19,13))
+  &.is-active {
+    border-color: rgba($d14v-accent, 0.3);
+    background: rgba($d14v-accent, 0.1);
+    color: #e8562c; // 꼭짓점 (162,61,30)
+  }
+}
+
+// ■ ESC — 흰 네모 6px, 굵은 밝은 글
+.d14v-bar__esc {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7em;
+  height: 2.76em;
+  padding: 0 1.37em 0 1.41em;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #d6d2cf;
+  font-weight: 700;
+}
+
+.d14v-bar__square {
+  width: 0.7em;
+  height: 0.7em;
+  background: #ccc8c6;
+}
+
+@keyframes d14v-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.4em);
+  }
+}
+
+// ── 구슬 ────────────────────────────────────────────────────────────────────
+// 화면 x 359.25 · y 316.2 가운데. 소리 크기 L(0~1)에 고리 반지름이 곧게 따라간다(잔차 0.1~0.5px):
+//   고리1 20.18 + 4.68L(사용자만) · 고리2 29.63 + 4.25L · 고리3 46.0 + 10.7L · 고리4 63.7 + 20.4L.
+// 밝기(고리 꼭짓점 − 둘레, 회색 0~255)도 L에 곧게 — 사용자 44+51L / 61+58L / 22+63L / 8+46L,
+// Kronos는 절반쯤(31+29L / 11+33L / 3+24L). 선 불투명도는 화면에 그려 같은 방법으로 잰 대비가 영상과
+// 맞게(L 0·0.4·1 여섯 경우, 차 ±4) 맞췄다. Kronos 속불: 가운데가 주황 0.39 + 0.42L(F414 (118,47,25) ·
+// F373 (208,79,39)), 반값 반지름 20.6 + 6.6L. 겹침은 지도 < 구슬 < 말풍선 — 그늘이 지도 글씨까지 어둡게 덮는다.
+.d14v-orb {
+  --d14v-l: 0.4;
+
+  position: relative;
+  width: 22.4em;
+  height: 22.4em;
+  pointer-events: none;
+}
+
+.d14v-orb__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.d14v-orb__glow {
+  r: calc((63.7px + 20.4px * var(--d14v-l)) * 1.12);
+  fill-opacity: calc(0.055 + 0.15 * var(--d14v-l));
+}
+
+.d14v-orb__glow-stop {
+  stop-color: #fff;
+}
+
+.d14v-orb__core {
+  r: calc(41.2px + 13.2px * var(--d14v-l));
+  fill-opacity: calc(0.39 + 0.42 * var(--d14v-l));
+}
+
+.d14v-orb__core-stop {
+  stop-color: $d14v-accent;
+}
+
+// 고리 선 굵기 1.25px — 영상 고리 대비(꼭짓점 − 둘레)에 맞춘 값(F330 사용자, F480 Kronos에서 화면과 견줬다)
+.d14v-orb__ring {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.25px;
+}
+
+.d14v-orb__ring--1 {
+  r: calc(20.18px + 4.68px * var(--d14v-l));
+  stroke-opacity: calc(0.26 + 0.44 * var(--d14v-l));
+}
+
+.d14v-orb__ring--2 {
+  r: calc(29.63px + 4.25px * var(--d14v-l));
+  stroke-opacity: calc(0.355 + 0.36 * var(--d14v-l));
+}
+
+.d14v-orb__ring--3 {
+  r: calc(46px + 10.7px * var(--d14v-l));
+  stroke-opacity: calc(0.125 + 0.36 * var(--d14v-l));
+}
+
+.d14v-orb__ring--4 {
+  r: calc(63.7px + 20.4px * var(--d14v-l));
+  stroke-opacity: calc(0.037 + 0.252 * var(--d14v-l));
+}
+
+// Kronos 고리 안쪽 면 — 셋째·넷째 고리 안이 바깥보다 한 단 밝다(F480 r 40~52 (33,18,13) → r 54~60 (28,17,11),
+// r 62~70 (24,16,10) → r 76~80 (18,12,9)). 사용자 쪽은 단 없이 고르게 줄어든다(F319).
+.d14v-orb__disc {
+  fill: $d14v-accent;
+}
+
+.d14v-orb__disc--3 {
+  r: calc(46px + 10.7px * var(--d14v-l));
+  fill-opacity: calc(0.02 + 0.012 * var(--d14v-l));
+}
+
+.d14v-orb__disc--4 {
+  r: calc(63.7px + 20.4px * var(--d14v-l));
+  fill-opacity: calc(0.014 + 0.01 * var(--d14v-l));
+}
+
+// Kronos — 안쪽 빛도 주황, 고리는 사용자보다 어둡다
+.d14v-orb--agent {
+  .d14v-orb__glow {
+    fill-opacity: calc(0.015 + 0.04 * var(--d14v-l));
+  }
+
+  .d14v-orb__glow-stop {
+    stop-color: $d14v-accent;
+  }
+
+  .d14v-orb__ring--2 {
+    stroke-opacity: calc(0.18 + 0.16 * var(--d14v-l));
+  }
+
+  .d14v-orb__ring--3 {
+    stroke-opacity: calc(0.05 + 0.205 * var(--d14v-l));
+  }
+
+  .d14v-orb__ring--4 {
+    stroke-opacity: calc(0.012 + 0.145 * var(--d14v-l));
+  }
+}
+
+// ── 말풍선 ───────────────────────────────────────────────────────────────────
+// F346·F635: 상자 바깥 x 191.5~527.5(33.6em) 고정, 아래 끝 y 233.5 고정. 한 줄 높이 4.1em(최소),
+// 두 줄부터 줄마다 18px(5.4 · 7.2 · 9.0em) — 위아래 안쪽 여백 8px. 글 14px SF(대문자 높이 10px), 줄 18px.
+// 글+커서 덩어리의 가운데가 상자 가운데보다 3px 왼쪽(356.6 대 359.5) — 안쪽 여백이 왼쪽 11.2px · 오른쪽 17px.
+// 글 덩어리 최대 폭 300.4px(줄 가운데 353.3), 커서 6.3×12.6px 흰 21%(바탕 13 → 63), 깜박이지 않는다.
+.d14v-bubble {
+  position: relative;
+  width: 33.6em;
+  font-family: $d14v-sans;
+}
+
+.d14v-bubble__box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 4.1em;
+  padding: 0.8em 1.7em 0.8em 1.12em;
+  border: 0.1em solid $d14v-edge;
+  border-radius: 0.65em;
+  background: $d14v-box;
+}
+
+.d14v-bubble__text {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.4em;
+  font-weight: 400;
+  font-variation-settings: 'opsz' 23; // "Kronos, where are we at with our" 192px
+  line-height: calc(18 / 14);
+  color: $d14v-ink;
+  text-align: center;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+}
+
+.d14v-bubble__caret {
+  flex: none;
+  width: 0.63em;
+  height: 1.26em;
+  margin-top: 0.15em; // F346 커서 가운데가 상자 가운데보다 0.75px 아래
+  background: rgba(236, 232, 228, 0.21);
+}
+
+// 꼬리표 줄 — 가운데가 상자 아래 테두리에 걸린다(YOU 알약 y 223.5~244.5, 상자 아래 233.5)
+.d14v-bubble__tags {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9em;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+// YOU 알약 4.0×2.1em · KRONOS 알약 5.95×2.05em, 글 고정폭 대문자 8.5px. 바탕은 비치지 않는다(상자 안팎이 같다).
+.d14v-tag {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: calc(2.1em / 0.85);
+  font-family: $d14v-mono;
+  font-size: 0.85em;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.15em; // KRONOS 39px · YOU 19px(글자당 6.4px)
+  white-space: nowrap;
+}
+
+// 글 양옆 잉크까지 10.5~11.5px — 끝 글자 뒤 글자 간격만큼 오른쪽을 덜 둔다
+.d14v-tag--you,
+.d14v-tag--agent {
+  padding: 0 1.03em 0 1.23em;
+  border: 0.12em solid;
+  border-radius: 999px;
+}
+
+// YOU — 회색 알약: 안 (45,42,39), 테두리 (70~88), 글 (198,194,190)
+.d14v-tag--you {
+  border-color: #625d59;
+  background: #2f2b28;
+  color: #ebe7e3;
+}
+
+// KRONOS — 주황 알약: 안 (52~56,24,9~10), 테두리 (84,51,37)
+.d14v-tag--agent {
+  border-color: #7d4532;
+  background: #391a0c;
+  color: #ff7352; // 꼭짓점 (205,94,67) — DEALS 글보다 밝고 분홍빛
+}
+
+// VOICE CLONE — 알약 없이 회색, 글자 간격이 좁다(11자 57px)
+.d14v-tag--plain {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #7b7572;
+}
+
+// ── 창업자(YOU) 별자리 ─────────────────────────────────────────────────────────
+// 기준점(크기 0)이 YOU 원 가운데 — F660 (362, 458). 주제 자리는 voice-script FOUNDER_TOPICS(em).
+.d14v-founder {
+  position: relative;
+  width: 0;
+  height: 0;
+  font-family: $d14v-sans;
+  line-height: 1;
+
+  // 접기 — 주제·줄은 그 프레임에 사라지고(F346 → F347) YOU 원은 0.1초에 흐려진다
+  &.is-closed {
+    .d14v-founder__lines,
+    .d14v-founder__topics {
+      visibility: hidden;
+    }
+
+    .d14v-founder__center,
+    .d14v-founder__shade {
+      opacity: 0;
+      transition: opacity 0.1s linear;
+    }
+  }
+
+  &.is-offscreen * {
+    animation-play-state: paused !important;
+  }
+}
+
+.d14v-founder__lines {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+}
+
+.d14v-founder__line {
+  stroke: $d14v-line;
+  stroke-width: 1px;
+  transform-origin: 0 0;
+}
+
+// YOU 둘레 그늘 — r 24~44 (14~16), 48~60 (18~20), 64~80 (21~27), 바탕 (26~32) · 줄도 YOU 쪽이 어둡다
+.d14v-founder__shade {
+  position: absolute;
+  left: -8em;
+  top: -8em;
+  width: 16em;
+  height: 16em;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgba(4, 3, 2, 0.5) 0,
+    rgba(4, 3, 2, 0.46) 50%,
+    rgba(4, 3, 2, 0.26) 70%,
+    rgba(4, 3, 2, 0.08) 88%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.d14v-founder__topics {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 주제 하나 — 요소 자리가 점 가운데
+.d14v-topic {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.d14v-topic__dot {
+  position: absolute;
+  left: calc(-1 * var(--d14v-dot));
+  top: calc(-1 * var(--d14v-dot));
+  width: calc(2 * var(--d14v-dot));
+  height: calc(2 * var(--d14v-dot));
+  border-radius: 50%;
+  background: $d14v-dot;
+}
+
+// 주황 점은 둘레가 조금 번진다(F660 r 6~8: (93,28,8) → (42,17,3))
+.d14v-topic--waiting .d14v-topic__dot {
+  background: $d14v-accent;
+  box-shadow: 0 0 0.45em rgba($d14v-accent, 0.55);
+}
+
+// ▲ — 너비 1.0em·높이 0.9em, 무게중심이 점 위 2.05em. 2.8px 위아래로 흔들린다(F318~F346·F652~F678, 약 1.6초)
+.d14v-topic__mark {
+  position: absolute;
+  left: -0.5em;
+  top: -2.55em;
+  width: 1em;
+  height: 0.9em;
+  background: linear-gradient(to bottom, #ffcf73, $d14v-gold-mark 55%, #c98f30);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  animation: d14v-mark-bob 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes d14v-mark-bob {
+  from {
+    transform: translateY(-0.28em);
+  }
+
+  to {
+    transform: translateY(0.28em);
+  }
+}
+
+// 붉은 고리 — 반지름 1.2 → 1.7em으로 커지며 짙어졌다 흐려진다(F303~F317·F658~F679, 약 1.2초)
+.d14v-topic__ring {
+  position: absolute;
+  left: -1.7em;
+  top: -1.7em;
+  width: 3.4em;
+  height: 3.4em;
+  box-sizing: border-box;
+  border: 0.13em solid $d14v-urgent;
+  border-radius: 50%;
+  opacity: 0.3;
+  animation: d14v-ring-breathe 1.2s ease-in-out infinite;
+}
+
+@keyframes d14v-ring-breathe {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.25;
+  }
+
+  70% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.25;
+  }
+}
+
+// 이름 칸 — 바탕과 같은 색으로 칠해 겹친 뒤 주제를 가린다(QUOTE FOLLOW-UP이 …TURE HABIT의 앞을 가린다).
+// 오른쪽 이름은 점 가운데 + 2.1em에서 시작하고, 왼쪽 이름은 − 2.35em에서 끝난다(잉크 기준, 상태 줄은 이름과 왼쪽을 맞춘다).
+// 한 줄 이름은 대문자 가운데가 점보다 0.15em 아래, 상태 줄이 있으면 두 줄 덩어리 가운데가 점 높이.
+.d14v-topic__text {
+  position: absolute;
+  top: 0.15em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1em;
+  padding: 0.3em 0.5em;
+  border-radius: 0.3em;
+  background: var(--d14v-label-bg, rgba(24, 18, 15, 0.94));
+  // 가장자리를 바탕에 풀어 칸이 보이지 않게 — 영상에서 칸 테두리는 보이지 않는다
+  box-shadow: 0 0 0.5em 0.2em var(--d14v-label-bg, rgba(24, 18, 15, 0.94));
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.d14v-topic.is-right .d14v-topic__text {
+  left: 1.55em;
+  align-items: flex-start;
+}
+
+.d14v-topic.is-left .d14v-topic__text {
+  right: 1.8em;
+  align-items: flex-start;
+}
+
+// 대문자 11px(높이 8px) 굵게 — OVERDUE ESCALATION 124px, SCOPE CHANGE HANDLING 149px
+.d14v-topic__label {
+  font-size: 1.1em;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 28;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  color: $d14v-label;
+}
+
+// waiting on you 59.5px
+.d14v-topic__status {
+  font-size: 0.94em;
+  font-weight: 500;
+  font-variation-settings: 'opsz' 28;
+  line-height: 1.15;
+  color: $d14v-status;
+}
+
+// YOU 원 — 지름 3.9em(x 342.5~381.5), 안 글 YOU 12px 굵게(대문자 높이 9px).
+// 숫자 원은 지름 1.46em, 가운데가 YOU 가운데에서 (+1.74em, −1.82em) — 원 테두리에 반쯤 걸친다.
+.d14v-founder__center {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+}
+
+.d14v-founder__node {
+  position: absolute;
+  left: -1.95em;
+  top: -1.95em;
+  display: grid;
+  place-items: center;
+  width: 3.9em;
+  height: 3.9em;
+  border-radius: 50%;
+  background: $d14v-node;
+}
+
+.d14v-founder__node-text {
+  font-size: 1.16em;
+  font-weight: 700;
+  font-variation-settings: 'opsz' 28;
+  color: #1f1b1a;
+}
+
+.d14v-founder__badge {
+  position: absolute;
+  left: calc(1.95em + 1.74em - 0.73em);
+  top: calc(1.95em - 1.82em - 0.73em);
+  display: grid;
+  place-items: center;
+  width: 1.46em;
+  height: 1.46em;
+  border-radius: 50%;
+  background: $d14v-gold;
+}
+
+.d14v-founder__badge-text {
+  font-size: 0.9em;
+  font-weight: 700;
+  color: #fff7e9;
+}
+
+// 원 아래 이름 YOU — 14.5px(대문자 488~498), 그 아래 작은 회색 줄(505~515)
+.d14v-founder__title,
+.d14v-founder__subtitle {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.d14v-founder__title {
+  top: calc(2.82em / 1.45);
+  font-size: 1.45em;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 28;
+  color: $d14v-title;
+}
+
+.d14v-founder__subtitle {
+  top: calc(4.62em / 1.02);
+  font-size: 1.02em;
+  font-weight: 400;
+  font-variation-settings: 'opsz' 24;
+  color: $d14v-sub;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .d14v-bar,
+  .d14v-topic__mark,
+  .d14v-topic__ring {
+    animation: none;
+  }
+
+  .d14v-topic__ring {
+    opacity: 0.6;
+  }
+}
+
+// ── 부품 견본(D14VoiceParts) ──────────────────────────────────────────────────────
+// 랩에서 부품을 하나씩 보는 칸과 대본 재생 무대. 무대의 SALES는 대역이다(진짜는 D14 지도).
+.d14v-parts {
+  display: grid;
+  gap: 16px;
+  padding: 0 24px 28px;
+}
+
+.d14v-part {
+  padding: 16px 18px 18px;
+  border: 1px solid #2a1d17;
+  border-radius: 14px;
+  background: #120b08;
+}
+
+.d14v-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: #b9b1ac;
+
+  code {
+    font-family: var(--font-mono);
+    color: #f2ece8;
+  }
+
+  button {
+    padding: 3px 10px;
+    border: 1px solid #4a3a32;
+    border-radius: 999px;
+    background: transparent;
+    color: #e6dfda;
+    font: inherit;
+    cursor: pointer;
+  }
+}
+
+.d14v-part__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 6px;
+  font-family: var(--font-mono);
+
+  input {
+    width: 140px;
+    accent-color: $d14v-accent;
+  }
+}
+
+.d14v-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 0;
+  }
+
+  figcaption {
+    font-size: 11.5px;
+    color: #9a918c;
+  }
+}
+
+// 우물 — 영상 지도 바탕(가운데 (39,25,17) → 가장자리 (13,8,6))
+.d14v-well {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+  background: radial-gradient(120% 120% at 50% 40%, #27180f, #0d0806 75%);
+  font-size: 10px;
+}
+
+.d14v-well--bar {
+  width: 34em;
+  height: 7em;
+}
+
+.d14v-well--orb {
+  width: 24em;
+  height: 24em;
+}
+
+.d14v-well--bubble {
+  align-items: end;
+  width: 37em;
+  height: 14em;
+  padding-bottom: 2.4em;
+  box-sizing: border-box;
+}
+
+.d14v-well--founder {
+  display: block;
+  width: 50em;
+  height: 20em;
+}
+
+.d14v-well__anchor {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+}
+
+.d14v-part__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12px;
+
+  button {
+    padding: 4px 12px;
+    border: 1px solid #4a3a32;
+    border-radius: 999px;
+    background: transparent;
+    color: #e6dfda;
+    font: inherit;
+    cursor: pointer;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+}
+
+.d14v-part__readout {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #9a918c;
+}
+
+// 무대 — 영상 화면(720×637)을 72em × 63.7em으로, 폭에 맞춰 줄인다
+.d14v-play {
+  container-type: inline-size;
+  max-width: 720px;
+}
+
+.d14v-play__scene {
+  position: relative;
+  overflow: hidden;
+  width: 72em;
+  height: 63.7em;
+  border-radius: 10px;
+  background: radial-gradient(90% 70% at 50% 55%, #2b1b12, #0d0806 80%);
+  font-size: min(10px, calc(100cqw / 72));
+}
+
+// 카메라 — YOU는 SALES 오른쪽 30em에 있다. 남은 거리가 프레임마다 ×0.84(τ 0.19초) → 0.95초 지수 감쇠
+.d14v-play__world {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.95s $d14v-ease-decay;
+
+  &.is-founder {
+    transform: translateX(-30em);
+  }
+
+  // 초점 밖 무리는 그 프레임에 사라진다 — YOU로 갈 때 SALES는 왼쪽 가장자리(6em)에 있을 자리인데 보이지 않고
+  // (F346), SALES로 돌아오면 카메라가 오는 동안 이미 그려져 있다(F347 x 108px)
+  &.is-founder .d14v-play__dept {
+    visibility: hidden;
+  }
+}
+
+.d14v-play__dept,
+.d14v-play__you {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+
+.d14v-play__dept {
+  left: 36.2em;
+  top: 42.5em;
+  font-family: $d14v-sans;
+}
+
+.d14v-play__you {
+  left: 66.2em;
+  top: 45.8em;
+  --d14v-label-bg: rgba(27, 18, 13, 0.94);
+}
+
+.d14v-play__hub {
+  position: absolute;
+  left: -2.6em;
+  top: -2.6em;
+  display: grid;
+  place-items: center;
+  width: 5.2em;
+  height: 5.2em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, #ff7f4a, #ea5523 62%, #b23812);
+  box-shadow: 0 0 2.6em rgba($d14v-accent, 0.4);
+  color: #3b1307;
+  font-size: 1em;
+  font-weight: 700;
+}
+
+.d14v-play__hub-name,
+.d14v-play__hub-sub {
+  position: absolute;
+  left: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.d14v-play__hub-name {
+  top: calc(3.1em / 1.45);
+  font-size: 1.45em;
+  font-weight: 600;
+  color: $d14v-title;
+}
+
+.d14v-play__hub-sub {
+  top: 4.6em;
+  font-size: 1em;
+  color: $d14v-sub;
+}
+
+// 화면에 붙은 셋 — 막대 가운데 y 2.725em, 말풍선 아래 끝 23.35em, 구슬 가운데 (35.925em, 31.62em)
+.d14v-play__bar {
+  position: absolute;
+  left: 35.95em;
+  top: 2.725em;
+  translate: -50% -50%;
+}
+
+.d14v-play__bubble {
+  position: absolute;
+  left: 35.95em;
+  bottom: calc(63.7em - 23.35em);
+  translate: -50% 0;
+}
+
+.d14v-play__orb {
+  position: absolute;
+  left: 35.925em;
+  top: 31.62em;
+  translate: -50% -50%;
+}

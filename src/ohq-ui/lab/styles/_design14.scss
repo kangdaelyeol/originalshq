@@ -1,0 +1,1114 @@
+// ── Design 14 — sample/design14-circle.mp4 ───────────────────────────────────
+// 회사 두뇌 지도 — 부서·자리·지식 코어·YOU가 3D로 놓인 구. 크기는 전부 em — 1em = 영상 10px(w).
+// 영상 기준은 전체 화면 구간(t=5.2~8.4, 720×1280)의 부서 초점 화면. 주석의 t는 영상 초, F는 30fps 프레임.
+// 노드 위치·배율은 엔진(brain-engine.ts)이 매 프레임 transform으로 쓴다 — 여기서는 모양과 상태만.
+
+// ── 색·글꼴 토큰(음성 모드 _design14-voice도 같이 쓴다) ────────────────────────
+.showcase-stage--d14 {
+  --d14-bg: #0e0b0a; // 구석(F218 #0f0c0b)
+  --d14-bar: #0b0908; // 위 줄 띠(F200 y 0~95)
+  --d14-orange: #ff5c2c; // 자리 점(F248 Lead Responder #f95c2d)
+  --d14-orange-fill: #f2590e; // 초점 부서 채움(F218 #ef5904)
+  --d14-orange-ring: #ea7440; // 전체 보기 부서 고리(F61 #e27c3b)
+  --d14-ember: #7a2a1d; // still in your head 점
+  --d14-olive: #a8822c; // not running yet 점(F248 #997326)
+  --d14-gold: #f2a51e; // 지식 코어(F61 #df9717)
+  --d14-yellow: #f2b13a; // ▲ waiting 표시(F46 #e0ad52)
+  --d14-wait: #d9ad3c; // waiting on you 글자
+  --d14-red: #d62c34; // 기다리는 자리 숨쉬는 고리
+  --d14-text-1: #efe7e0; // 부서 이름(F218 #ede5de)
+  --d14-text-2: #d6d0cb; // 자리 이름
+  --d14-text-3: #8e8781; // 상태·부제
+  --d14-text-4: #66615d; // HEAD·단위 글자
+  --d14-font: 'DM Sans', var(--font-sans);
+  --d14-mono: var(--font-mono);
+  // 초점이 바뀔 때 채움·이름표가 바뀌는 시간 — 그 프레임에 바로(t=11.533 → 11.567, 섞인 프레임 없음)
+  --d14-swap: 0ms;
+  // 음성 모드 별자리 이름 칸 바탕 — YOU 둘레 지도 바탕(음성 YOU 화면 #23150f 안팎)과 같게
+  --d14-label-bg: rgba(35, 21, 16, 0.94);
+}
+
+.showcase-stage--d14 .showcase-stage__body {
+  background: var(--d14-bg);
+  color: var(--d14-text-1);
+}
+
+// ── 장면 ─────────────────────────────────────────────────────────────────────
+.d14-scene {
+  container-type: inline-size;
+}
+
+// 16:9 무대, 1em = 폭 / 150. 둥근 테두리(전체 보기 반지름 28.1em)가 위 줄·아래 안내 사이에 들어간다.
+.d14-view {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  font-size: calc(100cqw / 150);
+  font-family: var(--d14-font);
+  line-height: 1.2;
+  color: var(--d14-text-1);
+  outline: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  // 성운 — 테두리 밖 #1a120f(t=47.8 1.1R), 구석 #0f0c0b로 어두워진다
+  background:
+    radial-gradient(ellipse 46% 62% at 50% 52%, rgba(52, 28, 19, 0.85), rgba(40, 22, 16, 0.45) 55%, transparent 100%),
+    radial-gradient(ellipse 30% 26% at 30% 74%, rgba(70, 28, 18, 0.32), transparent 100%),
+    radial-gradient(ellipse 28% 22% at 72% 30%, rgba(60, 26, 18, 0.22), transparent 100%), var(--d14-bg);
+
+  &:focus-visible {
+    box-shadow: inset 0 0 0 1px rgba(255, 140, 90, 0.22);
+  }
+}
+
+// 좁으면 영상처럼 세로로 긴 무대
+@container (max-width: 760px) {
+  .d14-view {
+    aspect-ratio: 4 / 5;
+    font-size: calc(100cqw / 76);
+  }
+}
+
+.d14-view__stars,
+.d14-view__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.d14-stars {
+  display: block;
+}
+
+// 구 안 노을빛 — 코어를 따라 엔진이 옮긴다. 확대 1에서 지름 2R = 74em. 코어 둘레가 짙은 붉은 안개(t=1~5).
+// t=0·47.8 구 안 평균(먼지 포함): 0.2R #552d1b · 0.4R #3f2215 · 0.6R #321c12 · 0.8R #291912 · 0.95R #261913
+.d14-view__haze {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 74em;
+  height: 74em;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    rgba(172, 80, 36, 0.54) 0%,
+    rgba(136, 60, 30, 0.34) 20%,
+    rgba(100, 46, 26, 0.2) 45%,
+    rgba(70, 36, 24, 0.12) 72%,
+    rgba(60, 32, 22, 0.08) 92%,
+    rgba(60, 32, 22, 0) 100%
+  );
+  transition: opacity 0.45s ease-out;
+}
+
+// 초점이면 구 안이 어두워진다(F218 0.2R #342319)
+.d14-view:not([data-focus='overview']) .d14-view__haze {
+  opacity: 0.62;
+}
+
+// 둥근 테두리 — 화면 가운데에 붙어 확대만 따라간다(F232 위 256·아래 1030)
+.d14-view__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 74em;
+  height: 74em;
+  border: 0.12em solid rgba(240, 210, 192, 0.17);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.d14-view__nodes {
+  position: absolute;
+  inset: 0;
+}
+
+// 노드 자리 — 크기 0, (0,0)이 노드 가운데. 엔진이 translate3d + scale을 쓴다.
+.d14-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+}
+
+// 공통 — 노드 단추
+.d14-hub,
+.d14-seat,
+.d14-core,
+.d14-you {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 0.15em solid rgba(255, 150, 100, 0.7);
+    outline-offset: 0.3em;
+  }
+
+  > span {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+  }
+}
+
+// ── 부서 고리 ─────────────────────────────────────────────────────────────────
+// 전체 보기 F61: 어두운 속(#131112) 반지름 17, 주황 고리 18~22(굵기 4), 어두운 둘레 ~36 → 앞쪽 원근 1.12배를 뺀 값
+// 초점 F218: 주황 원 반지름 25, 노을빛 27~44(#682a06 → #57280f, 바깥 가장자리가 또렷) → 1.125배를 뺀 값
+.d14-hub {
+  width: 4.4em;
+  height: 4.4em;
+  margin: -2.2em 0 0 -2.2em;
+  transition: opacity var(--d14-swap) ease-out;
+}
+
+.d14-hub__halo {
+  width: 6.8em;
+  height: 6.8em;
+  margin: -3.4em 0 0 -3.4em;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 6, 4, 0.92) 52%, rgba(10, 6, 4, 0.5) 74%, rgba(10, 6, 4, 0) 100%);
+}
+
+.d14-hub__glow {
+  width: 8em;
+  height: 8em;
+  margin: -4em 0 0 -4em;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(150, 56, 8, 0.85) 0 54%,
+    rgba(112, 44, 8, 0.72) 86%,
+    rgba(100, 40, 10, 0.3) 96%,
+    rgba(100, 40, 10, 0) 100%
+  );
+  box-shadow: 0 0 2.4em 0.6em rgba(160, 60, 10, 0.18);
+  opacity: 0;
+  transition: opacity var(--d14-swap) ease-out;
+}
+
+.d14-hub__ring {
+  box-sizing: border-box;
+  width: 4.1em;
+  height: 4.1em;
+  margin: -2.05em 0 0 -2.05em;
+  border: 0.35em solid var(--d14-orange-ring);
+  border-radius: 50%;
+  background: #141010;
+  transition:
+    background-color var(--d14-swap) ease-out,
+    border-color var(--d14-swap) ease-out,
+    transform var(--d14-swap) ease-out;
+}
+
+.d14-hub__count {
+  transform: translate(-50%, -54%);
+  font-size: 1.15em;
+  font-weight: 500;
+  color: #bdb6b0;
+  transition: color var(--d14-swap) ease-out;
+}
+
+// 이름 — F218 "MARKETING" 대문자 위가 부서 가운데에서 34w 아래, 높이 11.6w
+.d14-hub__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 3.15em;
+  transform: translateX(-50%);
+  transform-origin: 0 0; // 엔진이 원근만큼 되돌리는 scale을 쓴다
+  white-space: nowrap;
+  transition: filter var(--d14-swap) ease-out;
+}
+
+.d14-hub__name {
+  font-size: 1.82em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.15;
+  color: var(--d14-text-1);
+}
+
+.d14-hub__sub {
+  margin-top: 0.12em;
+  font-size: 1.18em;
+  color: var(--d14-text-3);
+}
+
+.d14-hub[data-state='focused'] {
+  .d14-hub__glow {
+    opacity: 1;
+  }
+
+  .d14-hub__halo {
+    opacity: 0;
+  }
+
+  .d14-hub__ring {
+    border-color: var(--d14-orange-fill);
+    background: var(--d14-orange-fill);
+    transform: scale(1.083); // 반지름 20.5 → 22.2
+  }
+
+  .d14-hub__count {
+    font-weight: 600;
+    color: #6b1200;
+  }
+}
+
+// 다른 부서에 초점 — 흐리고 이름이 번진다(F218 STRATEGY·OPERATIONS)
+.d14-hub[data-state='dim'] {
+  opacity: 0.3;
+
+  .d14-hub__label {
+    filter: blur(0.07em);
+  }
+}
+
+.d14-hub:hover:not([data-state='focused']) {
+  .d14-hub__ring {
+    border-color: #ff8a52;
+  }
+
+  .d14-hub__name {
+    color: #fff6ee;
+  }
+}
+
+.d14-hub[data-state='dim']:hover {
+  opacity: 0.6;
+}
+
+// ── 자리 ──────────────────────────────────────────────────────────────────────
+// 점·고리는 SVG(viewBox −30~30 = 6em). F248: 점 반지름 7, 고리 14 → 1.125배를 뺀 6.2·12.4
+.d14-seat {
+  width: 3em;
+  height: 3em;
+  margin: -1.5em 0 0 -1.5em;
+  transition: opacity var(--d14-swap) ease-out;
+}
+
+.d14-seat__mark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6em;
+  height: 6em;
+  margin: -3em 0 0 -3em;
+  overflow: visible;
+  pointer-events: none;
+  transition: transform 0.15s ease-out;
+}
+
+.d14-seat__dot {
+  fill: var(--d14-orange);
+}
+
+.d14-seat__ring {
+  fill: none;
+  stroke: rgba(255, 118, 82, 0.62);
+  stroke-width: 1.6;
+}
+
+// working — 자리마다 길이가 다른 호(t=12.4~20.4 그대로)
+.d14-seat__arc {
+  fill: none;
+  stroke: rgba(255, 124, 86, 0.85);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+// runs itself — 바깥에 옅은 고리 하나 더(t=33.17 Pipeline Keeper)
+.d14-seat__outer {
+  fill: none;
+  stroke: rgba(255, 92, 44, 0.2);
+  stroke-width: 1;
+}
+
+// waiting — 바깥 붉은 고리가 숨쉰다: 반지름 17.6 → 22w, 1.75초(t=13.2·14.9·16.7에 가장 크다)
+.d14-seat__pulse {
+  fill: none;
+  stroke: var(--d14-red);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: d14-wait 1.75s ease-in-out infinite;
+}
+
+@keyframes d14-wait {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.28;
+  }
+
+  50% {
+    transform: scale(1.32);
+    opacity: 0.85;
+  }
+}
+
+// ▲ — 점 바로 위 24w(F218 Repurposer, F248 Deal Chaser)
+.d14-seat__flag {
+  fill: var(--d14-yellow);
+}
+
+.d14-seat[data-status='head'] {
+  .d14-seat__dot {
+    fill: #ff5a28;
+  }
+
+  .d14-seat__ring {
+    stroke: rgba(255, 108, 70, 0.32);
+    stroke-width: 1.2;
+  }
+}
+
+.d14-seat[data-status='not-running'] .d14-seat__dot {
+  fill: var(--d14-olive);
+}
+
+.d14-seat[data-status='in-head'] .d14-seat__dot {
+  fill: var(--d14-ember);
+}
+
+// 이름표 — 왼쪽 자리는 점 왼쪽(오른끝이 가운데에서 19w), 오른쪽 자리는 점 오른쪽, 머리는 점 위(18w).
+// 어두운 반투명 상자(F218 Community Manager #24170f, 바탕보다 조금 어둡다)
+.d14-seat__label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  padding: 0.38em 0.62em 0.42em;
+  border-radius: 0.6em;
+  background: rgba(12, 8, 6, 0.3);
+  white-space: nowrap;
+  text-align: left;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-46%);
+  transition:
+    opacity var(--d14-swap) ease-out,
+    visibility 0s linear var(--d14-swap);
+}
+
+.d14-seat[data-side='left'] .d14-seat__label {
+  left: auto;
+  right: calc(50% + 1.85em);
+}
+
+.d14-seat[data-side='right'] .d14-seat__label {
+  margin-left: 1.85em;
+}
+
+.d14-seat[data-side='top'] .d14-seat__label {
+  top: auto;
+  bottom: calc(50% + 1.65em);
+  align-items: center;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.d14-seat[data-labelled] .d14-seat__label {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--d14-swap) ease-out;
+}
+
+.d14-seat__tag {
+  font-size: 0.86em;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--d14-text-4);
+}
+
+.d14-seat__name {
+  font-size: 1.2em;
+  font-weight: 600;
+  color: var(--d14-text-2);
+}
+
+.d14-seat[data-status='head'] .d14-seat__name {
+  font-size: 1.33em;
+  color: #e8e2dc;
+}
+
+.d14-seat__status {
+  font-size: 0.92em;
+  color: var(--d14-text-3);
+}
+
+.d14-seat[data-status='waiting'] .d14-seat__status {
+  color: var(--d14-wait);
+}
+
+.d14-seat[data-dim] {
+  opacity: 0.3;
+}
+
+.d14-seat:hover .d14-seat__mark {
+  transform: scale(1.14);
+}
+
+// 누른 자리 — 점이 커지고 흰 고리, 이름표가 밝아진다(영상에서 자리를 누르는 장면은 없다)
+.d14-seat[data-selected] {
+  .d14-seat__mark {
+    transform: scale(1.28);
+  }
+
+  .d14-seat__label {
+    background: rgba(40, 22, 14, 0.78);
+    box-shadow: inset 0 0 0 0.1em rgba(255, 140, 90, 0.35);
+  }
+
+  .d14-seat__name {
+    color: #fff;
+  }
+}
+
+.d14-seat[data-selected]::after {
+  content: '';
+  position: absolute;
+  inset: -0.2em;
+  border: 0.12em solid rgba(255, 240, 230, 0.55);
+  border-radius: 50%;
+}
+
+// 머리 자리를 음성 모드 구슬이 대신할 때
+.d14-node[data-replaced] .d14-seat {
+  opacity: 0;
+  pointer-events: none;
+}
+
+// ── 지식 코어 ─────────────────────────────────────────────────────────────────
+// F61(확대 약 1): 금빛 원 반지름 16, 어두운 테두리 18, 노을빛 ~34
+.d14-core {
+  width: 3.6em;
+  height: 3.6em;
+  margin: -1.8em 0 0 -1.8em;
+  transition: opacity 0.3s ease-out;
+}
+
+.d14-core__halo {
+  width: 9em;
+  height: 9em;
+  margin: -4.5em 0 0 -4.5em;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(210, 136, 30, 0.5) 0,
+    rgba(160, 98, 20, 0.26) 50%,
+    rgba(110, 64, 10, 0) 100%
+  );
+}
+
+.d14-core__disc {
+  display: grid;
+  place-items: center;
+  width: 3.37em;
+  height: 3.37em;
+  margin: -1.684em 0 0 -1.684em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 46% 40%, #f8b432, var(--d14-gold) 70%, #d98a10);
+  box-shadow: 0 0 0 0.16em rgba(48, 24, 0, 0.6);
+  font-size: 0.95em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #5c3300;
+}
+
+.d14-core__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2.5em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  transition: filter 0.3s ease-out;
+}
+
+.d14-core__name {
+  font-size: 1.9em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(222, 212, 202, 0.78);
+}
+
+.d14-core__sub {
+  margin-top: 0.1em;
+  font-size: 1.12em;
+  color: rgba(160, 150, 142, 0.72);
+}
+
+.d14-core[data-dim] {
+  opacity: 0.42;
+
+  .d14-core__label {
+    filter: blur(0.07em);
+  }
+}
+
+// ── YOU ───────────────────────────────────────────────────────────────────────
+// 밝은 회백 원(반지름 14w) 안에 짙은 "YOU", 오른쪽 위 금빛 배지(t=10.4 F61, t=5.3)
+.d14-you {
+  width: 3em;
+  height: 3em;
+  margin: -1.5em 0 0 -1.5em;
+  transition: opacity var(--d14-swap) ease-out;
+}
+
+// 원·배지 묶음 — 크기 0, (0,0)이 YOU 가운데
+.d14-you__mark {
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+
+  > span {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
+
+.d14-you__halo {
+  width: 5.4em;
+  height: 5.4em;
+  margin: -2.7em 0 0 -2.7em;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(10, 6, 4, 0.85) 50%, rgba(10, 6, 4, 0) 100%);
+}
+
+.d14-you__disc {
+  display: grid;
+  place-items: center;
+  width: 2.95em;
+  height: 2.95em;
+  margin: -1.475em 0 0 -1.475em;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 38%, #f2eee8, #d9d3cb 70%, #bdb6ad);
+  font-size: 0.95em;
+  font-weight: 700;
+  color: #2c2724;
+}
+
+// 배지 — 가운데가 원 가운데에서 (0.89r, −0.93r), 지름은 원의 0.37배(F660 1.46em : 3.9em)
+.d14-you__badge {
+  display: grid;
+  place-items: center;
+  width: 1.4em;
+  height: 1.4em;
+  margin: -2.43em 0 0 0.97em;
+  border-radius: 50%;
+  background: #e8a02a;
+  font-size: 0.75em;
+  font-weight: 700;
+  color: #fff8ec;
+}
+
+.d14-you__label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 2.2em;
+  transform: translateX(-50%);
+  transform-origin: 0 0;
+  white-space: nowrap;
+  transition: filter var(--d14-swap) ease-out;
+}
+
+.d14-you__name {
+  font-size: 1.82em;
+  font-weight: 600;
+  color: rgba(214, 208, 202, 0.8);
+}
+
+.d14-you__sub {
+  margin-top: 0.1em;
+  font-size: 1.18em;
+  color: var(--d14-text-3);
+}
+
+// 초점 — 원이 커진다: 음성 화면 지름 3.9em(F660), 전체 화면 YOU 초점 약 50w(t=5.3) → 1.63배.
+// 이름은 가운데 아래 3.0em에서 시작한다(F660 대문자 위 488 − 가운데 458)
+.d14-you[data-state='focused'] {
+  .d14-you__mark {
+    transform: scale(1.63);
+  }
+
+  .d14-you__disc {
+    box-shadow: 0 0 1.2em 0.2em rgba(255, 240, 220, 0.14);
+  }
+
+  .d14-you__label {
+    margin-top: 3.5em;
+  }
+}
+
+.d14-you[data-state='dim'] {
+  opacity: 0.32;
+
+  .d14-you__label {
+    filter: blur(0.07em);
+  }
+}
+
+// ── 덮개 층(위 줄·안내·음성 모드 자리) ──────────────────────────────────────────
+.d14-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.d14-overlay__top {
+  position: absolute;
+  left: 50%;
+  top: 2.725em; // 음성 모드 막대 가운데(F330 y 27.25px)
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+// 화면에 붙은 층 — 장면 전체 크기, 자식이 장면 가운데(= 둥근 테두리 가운데)를 기준으로 선다
+.d14-overlay__screen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.d14-overlay__hint {
+  position: absolute;
+  left: 2em;
+  right: 2em;
+  bottom: 2.4em;
+}
+
+// 머리 자리·YOU에 붙는 칸 — (0,0)이 그 자리 가운데, 엔진이 옮긴다. --d14-s = 원근 × 확대
+.d14-anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease-out,
+    visibility 0s linear 0.2s;
+
+  &[data-on] {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.2s ease-out;
+  }
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.d14-anchor__head {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+// YOU 칸 — 엔진이 배율까지 transform으로 준다: 음성 화면 정면(확대 0.76 × 원근 1.125 = 0.855)에서 1배,
+// 지도 초점(1.125)에서 1.32배. 별자리 이름 칸 바탕을 지도 바탕에 맞춘다
+.d14-anchor--you {
+  transform-origin: 0 0;
+}
+
+.d14-anchor__you {
+  position: absolute;
+  left: 0;
+  top: 0;
+  --d14v-label-bg: var(--d14-label-bg);
+}
+
+.d14-anchor__above {
+  position: absolute;
+  left: 0;
+  bottom: var(--d14-above-gap, 4em); // 머리 자리 가운데에서 말풍선 아래끝까지 — 음성 모드가 바꿔 쓸 수 있다
+  transform: translateX(-50%);
+}
+
+// ── 음성 모드 화면(mode='voice') ─────────────────────────────────────────────────
+// F330·F480: 초점 밖 무리는 사라지고(허브·이름·YOU·코어·코어로 가는 줄) 자리 고리만 남는다. 지도는 누를 수 없다.
+.d14-view[data-mode='voice'] {
+  .d14-view__nodes {
+    pointer-events: none;
+  }
+
+  .d14-hub[data-state='dim'],
+  .d14-you[data-state='dim'],
+  .d14-core[data-dim] {
+    opacity: 0;
+  }
+
+  // 초점 밖 자리는 속 점 없이 고리·▲만 반쯤 남는다(F330 YOU 화면 둘레의 빈 붉은 고리·금색 ▲)
+  .d14-seat[data-dim] {
+    opacity: 0.5;
+
+    .d14-seat__dot {
+      opacity: 0;
+    }
+  }
+}
+
+// 음성 부품 자리(장면 가운데 기준, em = 음성 화면 10px) — 구슬 가운데 (−0.17, −0.73)em,
+// 말풍선 아래 끝 가운데 위 9.0em(design14-data VOICE_ORB_AT·VOICE_BUBBLE_AT)
+// (부품 쪽 .d14v-orb·.d14v-bubble의 position: relative보다 앞서게 화면 층 아래로 적는다)
+.d14-voice-screen {
+  position: absolute;
+  inset: 0;
+}
+
+.d14-voice-screen > .d14-voice-orb {
+  position: absolute;
+  left: calc(50% - 0.17em);
+  top: calc(50% - 0.73em);
+  translate: -50% -50%;
+}
+
+.d14-voice-screen > .d14-voice-bubble {
+  position: absolute;
+  left: calc(50% - 0.15em);
+  bottom: calc(50% + 9em);
+  translate: -50% 0;
+}
+
+// ── 위 줄 ─────────────────────────────────────────────────────────────────────
+// F200: 띠 95px, "BRAIN" 대문자 높이 12 · 숫자 13 · 단위 11, LIVE 알약 80×28, 오른쪽 알약 높이 41
+.d14-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2em;
+  height: 7.6em;
+  padding: 0 2.4em;
+  background: var(--d14-bar);
+  font-family: var(--d14-mono);
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.d14-overlay > .d14-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+}
+
+.d14-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 2em;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.d14-bar__brand {
+  font-size: 1.4em;
+  letter-spacing: 0.3em;
+  color: #8a8785;
+}
+
+.d14-bar__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55em;
+  height: 2.35em;
+  padding: 0 1em;
+  border: 0.08em solid rgba(190, 74, 44, 0.5);
+  border-radius: 1.2em;
+  background: rgba(74, 24, 14, 0.42);
+  font-size: 1.2em;
+  letter-spacing: 0.16em;
+  color: #e2603a;
+
+  i {
+    width: 0.62em;
+    height: 0.62em;
+    border-radius: 50%;
+    background: #e2603a;
+    animation: d14-live 1.75s ease-in-out infinite; // t=5.2~8.4 밝기 238 ↔ 122, 3.2배 빨리 돈 구간에서 0.58초
+  }
+}
+
+@keyframes d14-live {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.d14-bar__stat {
+  font-size: 1.12em;
+  letter-spacing: 0.14em;
+  color: #67635f;
+
+  b {
+    margin-right: 0.4em;
+    font-size: 1.22em;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: #cac6c3;
+  }
+}
+
+.d14-bar__sep {
+  margin: 0 -0.8em;
+  font-size: 1.2em;
+  color: #4d4946;
+}
+
+// 오른쪽 알약 — 영상은 "AU…"에서 잘린다. 자동 둘러보기(AUTO TOUR)로 썼다.
+.d14-bar__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6em;
+  height: 3.4em;
+  padding: 0 1.5em;
+  border: 0.08em solid rgba(255, 255, 255, 0.14);
+  border-radius: 1.7em;
+  background: transparent;
+  font: inherit;
+  font-size: 1.2em;
+  letter-spacing: 0.16em;
+  color: #bdbab8;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease-out,
+    color 0.15s ease-out;
+
+  i {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: #5d5955;
+    transition: background-color 0.15s ease-out;
+  }
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  &[aria-pressed='true'] {
+    border-color: rgba(230, 100, 60, 0.5);
+    color: #f0936a;
+
+    i {
+      background: #e2603a;
+    }
+  }
+}
+
+// ── 아래 안내 ─────────────────────────────────────────────────────────────────
+// F200 y=1222: "click a seat to see what it does" 폭 228px(글자 크기 약 14.5px), #6d6b6a
+.d14-hint {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  font-size: 1.45em;
+  color: #79746f;
+}
+
+.d14-hint__item {
+  white-space: nowrap;
+
+  > i {
+    display: inline-block;
+    width: 0.48em;
+    height: 0.48em;
+    margin-right: 0.4em;
+    border-radius: 50%;
+    vertical-align: 0.08em;
+    background: var(--d14-orange);
+  }
+
+  &[data-status='runs-itself'] > i {
+    box-shadow: 0 0 0 0.14em rgba(255, 118, 82, 0.45);
+  }
+
+  &[data-status='waiting'] > i {
+    background: var(--d14-yellow);
+  }
+
+  &[data-status='not-running'] > i {
+    background: var(--d14-olive);
+  }
+
+  &[data-status='in-head'] > i {
+    background: var(--d14-ember);
+  }
+}
+
+.d14-hint__sep {
+  white-space: pre;
+}
+
+// 움직임 줄이기 — 숨쉬는 고리·LIVE 깜빡임을 멈춘다(엔진도 돌기·신호를 멈춘다)
+@media (prefers-reduced-motion: reduce) {
+  .d14-seat__pulse,
+  .d14-bar__live i {
+    animation: none;
+  }
+
+  .d14-seat__pulse {
+    opacity: 0.6;
+  }
+}
+
+// ── 부품 견본 ────────────────────────────────────────────────────────────────
+.d14-parts {
+  display: grid;
+  gap: 16px;
+  padding: 20px 24px 28px;
+  font-family: var(--d14-font);
+}
+
+.d14-part {
+  padding: 16px 18px 18px;
+  border: 1px solid #241a15;
+  border-radius: 14px;
+  background: #110d0b;
+}
+
+.d14-part__name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0 0 14px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: #a39a93;
+
+  code {
+    padding: 1px 6px;
+    border-radius: 6px;
+    background: #1f1712;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: #f2c9b2;
+  }
+}
+
+.d14-part__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 20px;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  figcaption {
+    font-family: var(--font-sans);
+    font-size: 11.5px;
+    color: #a39a93;
+  }
+}
+
+.d14-part__stack {
+  display: grid;
+  gap: 12px;
+}
+
+// 견본 칸 — 장면과 같은 바탕, 1em = 9px
+.d14-part__well {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #2a1f19;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 45%, #2a1912, #140e0b 75%);
+  font-size: 9px;
+
+  > .d14-hub,
+  > .d14-seat,
+  > .d14-core,
+  > .d14-you {
+    left: 50%;
+    top: 42%;
+  }
+}
+
+.d14-part__well--hub {
+  width: 19em;
+  height: 15em;
+}
+
+.d14-part__well--seat {
+  width: 24em;
+  height: 11em;
+
+  > .d14-seat {
+    left: 22%;
+    top: 55%;
+  }
+
+  > .d14-seat[data-side='top'] {
+    left: 50%;
+    top: 68%;
+  }
+}
+
+.d14-part__well--core {
+  width: 17em;
+  height: 13em;
+
+  > .d14-core,
+  > .d14-you {
+    top: 38%;
+  }
+}
+
+.d14-part__well--line {
+  width: 30em;
+  height: 13em;
+}
+
+.d14-part__well--stars {
+  width: 30em;
+  height: 13em;
+  background: var(--d14-bg);
+}
+
+.d14-part__well--line > canvas,
+.d14-part__well--stars > canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.d14-part__well--bar {
+  width: 100%;
+  font-size: 8px;
+  background: var(--d14-bar);
+
+  > .d14-hint {
+    padding: 1.6em 1em;
+  }
+}
