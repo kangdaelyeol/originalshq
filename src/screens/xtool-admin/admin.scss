@@ -3,6 +3,8 @@
 // 불러, 아래 관리 화면 스타일이 같은 우선순위로 덮어쓸 수 있게 한다.
 @use '../../ohq-ui/styles';
 @use '../../ohq-ui/styles/mixins' as *;
+@use '../../ohq-ui/water/styles/tokens' as water;
+@use '../xtool-tech/styles/theme-monday' as tech-monday;
 
 // /admin/xtool — 화면 루트(.ohq-ui.xtool-admin) 아래에서만. 유리 판·표·버튼·로그인 칸은 공용 디자인을 그대로
 // 쓰고, 여기엔 관리 화면에만 있는 배치만 둔다.
@@ -658,3 +660,135 @@
 
 // Monday 테마 — 공용 디자인 테마(색·기본 부품). 맨 뒤에 와야 같은 우선순위의 위 스타일보다 이긴다.
 @include meta.load-css('../../ohq-ui/styles/themes');
+
+// ── 설정 탭 — 기술팀 보드 설정과 같은 카드(xtool-tech/pages/settings·물 카드)의 스타일을 관리 화면 아래로 ────────
+.xtool-admin {
+  @include meta.load-css('../xtool-tech/styles/settings-swatches');
+  @include meta.load-css('../xtool-tech/styles/settings');
+  @include meta.load-css('../xtool-tech/components/water/styles/settings');
+}
+
+// Monday — 설정 타일(선택은 Monday 선택 색) 등 기술팀 보드의 Monday 덮개를 그대로
+.xtool-admin.theme-monday {
+  @include tech-monday.theme-monday;
+}
+
+// ── 물 디자인 — 부품(카드·버튼·탭·알약·입력)은 물 부품으로 바뀌고(basic-parts), 여기서는 관리 화면에만 있는 칸을 밝은
+// 벽 위에 맞게: 글자 토큰을 진한 잉크로, 어두운 우물(well)·체크·선택 칸은 옅은 흰 유리로. 물 벽·사진은 AdminBackground.
+.ohq-ui.theme-water.xtool-admin:has(.admin-water-stage) {
+  color-scheme: light;
+  background: var(--w-stage-mid, #{water.$w-stage});
+}
+
+.xtool-admin {
+  // 물 부품 스타일(.ohq-ui .water-stage — 물 묶음과 함께 나중에 들어온다)보다 세게
+  .admin-water-stage.water-stage {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    padding: 0;
+    border-radius: 0;
+    pointer-events: none;
+  }
+
+  // 벽 아래 사진 — 벽은 색조 그러데이션을 반투명으로 바꿔 막처럼 덮는다(기술팀 보드 물 셸과 같게)
+  .admin-water-photo {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background: center / cover no-repeat;
+    pointer-events: none;
+  }
+
+  .admin-water-stage.water-stage.has-photo {
+    --w-wall-hi: color-mix(in srgb, var(--w-stage-hi, #{water.$w-stage-hi}) 68%, transparent);
+    --w-wall-lo: color-mix(in srgb, var(--w-stage-lo, #{water.$w-stage-lo}) 68%, transparent);
+  }
+}
+
+.xtool-admin.theme-water .admin {
+  --text-1: #{water.$w-ink};
+  --text-2: #{water.$w-ink-2};
+  --text-3: #{water.$w-ink-3};
+  --text-4: #6f6d72;
+  --line: rgba(63, 62, 67, 0.12);
+  --accent: #{water.$w-ink};
+  --accent-hi: #{water.$w-ink};
+  --accent-rgb: 63, 62, 67;
+  --accent-ink: #fff;
+  --good: #285c41;
+  --warn: #6e4b0e;
+  --crit: #8f2f2b;
+  --info: #2d4c80;
+  font-family: water.$w-font;
+  color: var(--text-1);
+
+  // 상단 — 유리 판 대신 물 유리
+  .admin-header.glass {
+    @include water.w-glass(1, 0.3);
+    backdrop-filter: none;
+  }
+
+  // 어두운 우물 → 옅은 흰 유리
+  .admin-header__link,
+  .admin-search,
+  .admin-chips,
+  .log-select,
+  .field__input {
+    border: 1px solid rgba(63, 62, 67, 0.14);
+    background-color: rgba(255, 255, 255, 0.32);
+  }
+
+  .field__input:focus {
+    border-color: rgba(63, 62, 67, 0.45);
+    background: rgba(255, 255, 255, 0.5);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.6);
+  }
+
+  .log-select option {
+    background: #f1f0f3;
+  }
+
+  .admin-chip.is-on,
+  .admin-chip[aria-pressed='true'] {
+    border-color: rgba(63, 62, 67, 0.2);
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text-1);
+  }
+
+  .check input {
+    border-color: rgba(63, 62, 67, 0.35);
+    background: rgba(255, 255, 255, 0.4);
+
+    &:checked {
+      border-color: #{water.$w-ink};
+      background: #{water.$w-ink};
+    }
+  }
+
+  .credential-note__copy {
+    background: rgba(255, 255, 255, 0.4);
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.16);
+  }
+
+  // 설정 견본 칸 — 옅은 흰 판, 고른 칸은 잉크 고리(기술팀 보드 물 화면과 같게)
+  .glass-preset {
+    border-color: rgba(255, 255, 255, 0.42);
+    background: rgba(255, 255, 255, 0.14);
+
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.7);
+    }
+
+    &.is-selected {
+      border-color: rgba(63, 62, 67, 0.7);
+    }
+  }
+}

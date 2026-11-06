@@ -3,11 +3,9 @@ import { httpsCallable } from 'firebase/functions'
 import { RefreshCw, Webhook } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { Button } from '@/ohq-ui/components/button'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { StatusPill } from '@/ohq-ui/components/status-pill'
 import type { TechBoardMeta } from '@xtool-core/tech-boards'
 import { relativeTime } from './errors'
+import { Button, GlassCard, StatusPill } from '@/screens/xtool-tech/components/basic-parts'
 
 // 보드 순서 — functions-xtool/src/tech-boards/boards.ts의 TECH_BOARDS와 같게.
 const ORDER = ['fieldService', 'repair', 'techInquiry', 'techTask', 'asRequests', 'parts', 'rentals', 'serials']

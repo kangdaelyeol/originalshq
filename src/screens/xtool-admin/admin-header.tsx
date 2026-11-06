@@ -4,9 +4,9 @@ import { signOutXtool } from '@/xtool-auth/auth-actions'
 import type { XtoolMember } from '@xtool-core/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { BrandMark } from '@/ohq-ui/brand/brand-mark'
-import { Avatar } from '@/ohq-ui/components/avatar'
 import { useProfilePhoto } from '@/screens/xtool-tech/data/tech-profiles'
 import { XT_BASE } from '@/screens/xtool-tech/paths'
+import { Avatar } from '@/screens/xtool-tech/components/basic-parts'
 
 export function AdminHeader({ member }: { member: XtoolMember }) {
   const photo = useProfilePhoto(member.email)

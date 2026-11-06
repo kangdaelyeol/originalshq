@@ -16,14 +16,11 @@ import {
 import { generateTempPassword } from '@/xtool-auth/members'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { usePhotoOf } from '@/screens/xtool-tech/data/tech-profiles'
-import { Avatar } from '@/ohq-ui/components/avatar'
-import { Button } from '@/ohq-ui/components/button'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
-import { StatusPill } from '@/ohq-ui/components/status-pill'
 import { cx } from '@/ohq-ui/lib/cx'
 import { CredentialNote } from './credential-note'
 import { firestoreErrorMessage, functionErrorMessage, relativeTime } from './errors'
+import { Avatar, Button, GlassCard, StatusPill } from '@/screens/xtool-tech/components/basic-parts'
 
 
 // 표 위 팀 버튼 — 전체·팀별(TEAMS)·관리자. 검색과 같이 걸린다.

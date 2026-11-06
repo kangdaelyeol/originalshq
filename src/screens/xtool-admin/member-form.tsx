@@ -9,11 +9,9 @@ import {
   type TeamKey,
 } from '@xtool-core/members'
 import { generateTempPassword } from '@/xtool-auth/members'
-import { Button } from '@/ohq-ui/components/button'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
-import { TextField } from '@/ohq-ui/components/text-field'
 import { CredentialNote } from './credential-note'
 import { firestoreErrorMessage, functionErrorMessage } from './errors'
+import { Button, GlassCard, TextField } from '@/screens/xtool-tech/components/basic-parts'
 
 type Result = { tone: 'good' | 'crit'; text: string }
 

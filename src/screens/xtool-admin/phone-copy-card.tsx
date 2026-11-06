@@ -2,10 +2,9 @@ import { httpsCallable } from 'firebase/functions'
 import { Eye, Phone } from 'lucide-react'
 import { useState } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { functionErrorMessage } from './errors'
+import { Button, GlassCard } from '@/screens/xtool-tech/components/basic-parts'
 
 // 함수 제한 시간(300초)만큼 기다린다 — 출장 건 전부를 Monday에 쓰는 데 1분이 넘을 수 있다.
 const LONG_CALL = { timeout: 300_000 }

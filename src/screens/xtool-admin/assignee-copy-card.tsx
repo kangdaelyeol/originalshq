@@ -2,11 +2,10 @@ import { httpsCallable } from 'firebase/functions'
 import { Eye, UserRoundCheck } from 'lucide-react'
 import { useState } from 'react'
 import { xtoolFirebase } from '@/xtool-auth/firebase'
-import { Button } from '@/ohq-ui/components/button'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
-import { GlassCard } from '@/ohq-ui/components/glass-card'
 import { BOARD_TABS, type TechBoardKey } from '@xtool-core/tech-boards'
 import { functionErrorMessage } from './errors'
+import { Button, GlassCard } from '@/screens/xtool-tech/components/basic-parts'
 
 // 함수 제한 시간(300초)만큼 기다린다 — 한 번에 3분까지 쓰고 남은 건은 다시 불러 이어서 쓴다.
 const LONG_CALL = { timeout: 300_000 }
