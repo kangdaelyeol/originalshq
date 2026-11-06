@@ -1,6 +1,6 @@
 import { Check, RotateCcw } from 'lucide-react'
 import { BackgroundArt } from '@/ohq-ui/backgrounds/background-art'
-import { Button, GlassCard } from '../../components/layout-parts'
+import { Button, GlassCard } from '../../components/basic-parts'
 import type { useSharedBackgrounds } from '../../data/tech-backgrounds'
 import { cx } from '@/ohq-ui/lib/cx'
 import { SharedPhotoPicker } from './shared-photo-picker'

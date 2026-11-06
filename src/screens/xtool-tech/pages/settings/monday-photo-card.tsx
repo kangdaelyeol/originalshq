@@ -1,5 +1,5 @@
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
-import { GlassCard } from '../../components/layout-parts'
+import { GlassCard } from '../../components/basic-parts'
 import { SharedPhotoPicker, type SharedPhotoPickerProps } from './shared-photo-picker'
 
 /**

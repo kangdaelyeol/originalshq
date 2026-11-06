@@ -1,6 +1,6 @@
 import { Info } from 'lucide-react'
 import type { CSSProperties } from 'react'
-import { GlassCard, SegmentedControl } from '../../components/layout-parts'
+import { GlassCard, SegmentedControl } from '../../components/basic-parts'
 import { cx } from '@/ohq-ui/lib/cx'
 import { MONDAY_PALETTES } from '@/ohq-ui/theme/monday'
 import { useAppearance } from '@/ohq-ui/appearance/appearance'
@@ -81,8 +81,11 @@ function LayoutArt({ layout }: { layout: ThemeName }) {
   )
 }
 
-/** 레이아웃 — 구조(Monday 표·대시보드)를 고르고, 대시보드면 디자인(유리·물), Monday 표면 Monday 색상과 개요 보드를 고른다. */
-export function LayoutCard() {
+/**
+ * 레이아웃 — 구조(Monday 표·대시보드)를 고르고, 대시보드면 디자인(유리·물), Monday 표면 Monday 색상과 개요 보드를
+ * 고른다. techOptions가 false면(관리 화면) tech 화면에만 쓰는 개요 보드 고르기를 뺀다.
+ */
+export function LayoutCard({ techOptions = true }: { techOptions?: boolean }) {
   const { theme, setTheme, mondayPalette, setMondayPalette } = useAppearance()
   const { structure, design } = layoutKind(theme)
   const monday = design === 'monday'
@@ -170,7 +173,7 @@ export function LayoutCard() {
           </div>
         </>
       )}
-      {monday && (
+      {monday && techOptions && (
         <>
           <h3 className="bg-section-label">개요 보드</h3>
           <SegmentedControl

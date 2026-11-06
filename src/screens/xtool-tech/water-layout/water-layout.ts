@@ -14,6 +14,7 @@ export {
   WaterSegmented,
   WaterStatCard,
   WaterStatusPill,
+  WaterTextField,
 } from '@/ohq-ui/water'
 export {
   WaterAssignees,
