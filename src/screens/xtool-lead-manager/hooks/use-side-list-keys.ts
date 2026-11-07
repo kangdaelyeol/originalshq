@@ -22,6 +22,8 @@ export const useSideListKeys = (
     if (!enabled) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+      // 안쪽에서 이미 처리한 키(리드 분석 메뉴의 묶음 사이 이동 등)는 건너뛴다.
+      if (e.defaultPrevented) return
       const target = e.target as HTMLElement | null
       if (target && FOCUSABLE_TAGS.has(target.tagName)) return
 

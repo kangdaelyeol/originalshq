@@ -19,6 +19,9 @@ export const useArrowTabs = <T extends string>(
     if (!enabled || tabs.length < 2) return
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+      // 이 탭에 초점이 있어 화면 공통 처리(segmented-keys.ts)가 이미 옮겼으면
+      // 한 번 더 옮기지 않는다.
+      if (e.defaultPrevented) return
       const target = e.target as HTMLElement | null
       if (target && FOCUSABLE_TAGS.has(target.tagName)) return
       const index = Math.max(0, tabs.indexOf(active))

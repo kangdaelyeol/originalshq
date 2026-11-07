@@ -2,8 +2,10 @@ import { Outlet } from 'react-router-dom'
 import { useGlassTheme } from '@/components/glass'
 import {
   Footer,
+  focusSegment,
   Header,
   LoginPage,
+  moveSegmentSideways,
 } from '@/screens/xtool-lead-manager/components'
 import { usePageTabViewModel } from '@/screens/xtool-lead-manager/view-model'
 import { signOutXtool } from '@/xtool-auth/auth-actions'
@@ -27,8 +29,14 @@ export const XtoolPage = () => {
     )
   }
 
+  // 버튼 묶음(맨 위 탭·각 탭의 메뉴·카드 머리·모달)은 누르면 초점이 가고 좌/우
+  // 방향키로 옆 버튼을 고른다 — 화면 전체에 한 번만 붙인다.
   return (
-    <div className="xtool-lead-manager glass_root">
+    <div
+      className="xtool-lead-manager glass_root"
+      onClick={focusSegment}
+      onKeyDown={moveSegmentSideways}
+    >
       <Header
         tab={state.tab}
         onSelectTab={actions.selectTab}
