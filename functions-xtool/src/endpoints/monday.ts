@@ -469,8 +469,9 @@ export const getMondayAttribution = onRequest(
 const LEAD_FEED_MAX_DAYS = 92
 
 export const getMondayLeadFeed = onRequest(
-  // 전체를 고르면 상담 보드의 기록(수천 건)을 다 읽어 넉넉히 둔다.
-  { memory: '1GiB' },
+  // 전체를 고르면 상담 보드의 기록(수천 건)을 다 읽어 넉넉히 둔다. 기본 제한
+  // 시간(60초)은 리드가 늘면 '전체'에서 넘을 수 있어 늘려 둔다.
+  { memory: '1GiB', timeoutSeconds: 300 },
   endpoint(
     { name: 'getMondayLeadFeed', method: 'GET', member: true },
     async ({ request, response }) => {
