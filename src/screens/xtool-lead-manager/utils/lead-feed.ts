@@ -7,7 +7,7 @@ import type {
   MondayLeadFeedRow,
 } from '../entity'
 import type { SortDirection } from '../types'
-import { DAY_MS, daysBetween, koreaDate, koreaIso } from './calc'
+import { DAY_MS, daysBetween, formatKoreaTime, koreaDate } from './calc'
 
 export type LeadFeedPeriod = 'all' | 'today' | 'yesterday' | 'week' | 'month'
 
@@ -67,16 +67,20 @@ export const leadFeedRange = (
 }
 
 /** 리드의 인입 날짜 — Monday에 만들어진 시각, 없으면 접수일. */
-export const leadDate = (row: MondayLeadFeedRow): string | null =>
-  row.createdAt
-    ? koreaDate(Date.parse(row.createdAt))
-    : (row.receivedAt?.slice(0, 10) ?? null)
+export const leadDate = (row: MondayLeadFeedRow): string | null => {
+  // 만든 시각을 못 읽으면(잘못된 값) 접수일로 — koreaDate는 잘못된 값에 오류를 던진다.
+  const created = row.createdAt ? Date.parse(row.createdAt) : NaN
+  return Number.isNaN(created)
+    ? (row.receivedAt?.slice(0, 10) ?? null)
+    : koreaDate(created)
+}
 
 /** 인입 시각 "11/6 14:03" — 만든 시각이 없으면 접수일. */
 export const formatLeadTime = (row: MondayLeadFeedRow): string => {
-  if (!row.createdAt) return row.receivedAt ?? '-'
-  const iso = koreaIso(Date.parse(row.createdAt))
-  return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, 16)}`
+  const created = row.createdAt ? Date.parse(row.createdAt) : NaN
+  return Number.isNaN(created)
+    ? (row.receivedAt ?? '-')
+    : formatKoreaTime(created)
 }
 
 /** 첫 콜까지 걸린 일수 — 콜백 진행일 중 가장 이른 날 − 인입 날짜. 콜백 칸은
@@ -85,7 +89,9 @@ export const firstCallDays = (row: MondayLeadFeedRow): number | null => {
   const date = leadDate(row)
   if (!date || row.callbackDates.length === 0) return null
   const first = row.callbackDates.map((each) => each.slice(0, 10)).sort()[0]
-  return Math.max(0, daysBetween(date, first))
+  const days = daysBetween(date, first)
+  // 날짜 칸에 날짜가 아닌 글이 적혀 있으면 계산하지 않는다.
+  return Number.isNaN(days) ? null : Math.max(0, days)
 }
 
 export const isMisentry = (row: MondayLeadFeedRow): boolean =>
@@ -192,6 +198,7 @@ export const LEAD_CHANNEL_TITLE: Partial<Record<MondayLeadChannel, string>> = {
 /** 같은 번호의 리드 묶음 — head가 가장 최근 리드, rest는 그 앞의 리드(최근
  * 것부터). */
 export interface LeadGroup {
+  kind: 'customer'
   key: string
   head: MondayLeadFeedRow
   rest: MondayLeadFeedRow[]
@@ -205,7 +212,7 @@ export const groupLeads = (rows: readonly MondayLeadFeedRow[]): LeadGroup[] => {
     const key = row.phone ?? `item:${row.itemId}`
     const group = groups.get(key)
     if (group) group.rest.push(row)
-    else groups.set(key, { key, head: row, rest: [] })
+    else groups.set(key, { kind: 'customer', key, head: row, rest: [] })
   }
   return [...groups.values()]
 }
@@ -223,19 +230,117 @@ export const sortLeadGroups = (
   )
 }
 
-/** 고객 상세 왼쪽 목록 — 지금 표의 묶음 순서대로, 번호가 있어 고객 목록에서
- * 찾은 묶음만. */
-export const leadGroupCustomers = (
-  groups: readonly LeadGroup[],
+/** 고객 상세 왼쪽 목록 — 표에 보이는 리드 순서대로(고객별이면 묶음의 맨 앞
+ * 리드, 소재별이면 소재 묶음 안의 리드 순), 번호가 있어 고객 목록에서 찾은
+ * 고객만, 한 번씩. */
+export const customersInOrder = (
+  rows: readonly MondayLeadFeedRow[],
   customers: readonly MondayCustomerListItem[],
 ): MondayCustomerListItem[] => {
   const byPhone = new Map(
     customers.map((customer) => [customer.phone, customer]),
   )
-  return groups.flatMap((group) => {
-    const customer = group.head.phone
-      ? byPhone.get(group.head.phone)
-      : undefined
-    return customer ? [customer] : []
+  const seen = new Set<string>()
+  return rows.flatMap((row) => {
+    const customer = row.phone ? byPhone.get(row.phone) : undefined
+    if (!customer || seen.has(customer.phone)) return []
+    seen.add(customer.phone)
+    return [customer]
   })
+}
+
+/** 표를 무엇으로 묶을지 — 같은 번호(고객), 같은 소재(utm_campaign). */
+export type LeadGroupBy = 'customer' | 'creative'
+
+export const LEAD_GROUP_BYS: readonly LeadGroupBy[] = ['customer', 'creative']
+
+export const LEAD_GROUP_BY_LABEL: Record<LeadGroupBy, string> = {
+  customer: '고객별',
+  creative: '소재별',
+}
+
+/** 같은 소재로 들어온 리드 묶음 — Meta는 utm_campaign이 광고(소재) 이름이고,
+ * 다른 매체는 캠페인 이름이다(소재명 utm_content를 받기 전까지). */
+export interface CreativeGroup {
+  kind: 'creative'
+  key: string
+  channel: MondayLeadChannel
+  /** utm_campaign — 없으면 null. */
+  campaign: string | null
+  /** 묶음 안의 리드 — 인입 시각 순(정렬 방향을 따른다). */
+  leads: MondayLeadFeedRow[]
+}
+
+/** 리드를 매체·utm_campaign으로 묶는다 — 리드가 많은 묶음부터(같으면 최근
+ * 리드가 있는 묶음부터), UTM 없는 묶음은 맨 뒤. 묶음 안은 인입 시각 순. */
+export const groupByCreative = (
+  rows: readonly MondayLeadFeedRow[],
+  direction: SortDirection,
+): CreativeGroup[] => {
+  const groups = new Map<string, CreativeGroup>()
+  for (const row of rows) {
+    const campaign = row.utmCampaign?.trim() || null
+    const key = `${row.channel}:${campaign ?? ''}`
+    const group = groups.get(key)
+    if (group) group.leads.push(row)
+    else
+      groups.set(key, {
+        kind: 'creative',
+        key,
+        channel: row.channel,
+        campaign,
+        leads: [row],
+      })
+  }
+  const latest = (group: CreativeGroup) =>
+    group.leads.reduce((max, row) => {
+      const at = row.createdAt ?? ''
+      return at > max ? at : max
+    }, '')
+  const sign = direction === 'desc' ? -1 : 1
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      leads: [...group.leads].sort(
+        (a, b) => (a.createdAt ?? '').localeCompare(b.createdAt ?? '') * sign,
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        // UTM 없이 들어온 리드는 소재가 아니라 맨 뒤로.
+        Number(a.channel === 'unknown') - Number(b.channel === 'unknown') ||
+        b.leads.length - a.leads.length ||
+        latest(b).localeCompare(latest(a)),
+    )
+}
+
+/** 문의 원문·상담 메모에서 눈여겨볼 말 — 소재 품질이나 렌탈 오해 같은 신호.
+ * 표에서 색으로 칠하고, 걸린 것을 태그로 모아 보인다. */
+export const LEAD_KEYWORDS: readonly { label: string; pattern: RegExp }[] = [
+  { label: '렌탈', pattern: /렌탈|렌트|대여|임대/ },
+  { label: '할부', pattern: /할부|분할/ },
+  { label: '가격', pattern: /가격|금액|비용|얼마|단가/ },
+  { label: '원거리', pattern: /원거리|먼\s?거리|거리가\s?멀|지방/ },
+  {
+    label: '학교·기관',
+    pattern: /학교|대학|기관|교육청|관공서|공공|도서관|구청|시청/,
+  },
+  { label: '견적', pattern: /견적/ },
+]
+
+const KEYWORD_SPLIT = new RegExp(
+  `(${LEAD_KEYWORDS.map((keyword) => keyword.pattern.source).join('|')})`,
+  'g',
+)
+
+/** 글을 키워드와 나머지로 나눈다 — 홀수 번째 조각이 키워드다. */
+export const splitKeywords = (text: string): string[] =>
+  text.split(KEYWORD_SPLIT)
+
+/** 리드의 문의 원문·상담 메모에 걸린 키워드 이름(LEAD_KEYWORDS 순서). */
+export const leadKeywords = (row: MondayLeadFeedRow): string[] => {
+  const text = `${row.inquiryMessage ?? ''}\n${row.notes ?? ''}`
+  return LEAD_KEYWORDS.filter((keyword) => keyword.pattern.test(text)).map(
+    (keyword) => keyword.label,
+  )
 }

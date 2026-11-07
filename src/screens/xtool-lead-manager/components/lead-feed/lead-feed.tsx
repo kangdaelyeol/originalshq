@@ -7,6 +7,8 @@ import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
 import '@/screens/xtool-lead-manager/styles/lead-feed.scss'
 import { ArrowDown, ArrowUp, ChevronRight, RefreshCw } from 'lucide-react'
 import {
+  memo,
+  useCallback,
   useEffect,
   useRef,
   type KeyboardEvent,
@@ -32,13 +34,17 @@ import {
   isMisentry,
   LEAD_CHANNEL_LABEL,
   LEAD_CHANNEL_TITLE,
+  LEAD_GROUP_BY_LABEL,
+  leadKeywords,
+  splitKeywords,
   LEAD_FEED_PAGE_SIZES,
   LEAD_FEED_PERIOD_LABEL,
   shortBoardName,
+  type CreativeGroup,
   type GaTrackingRow,
   type LeadGroup,
 } from '@/screens/xtool-lead-manager/utils'
-import { koreaIso } from '@/screens/xtool-lead-manager/utils/calc'
+import { formatKoreaTime } from '@/screens/xtool-lead-manager/utils/calc'
 import {
   ALL_BOARDS,
   type useLeadFeedViewModel,
@@ -50,6 +56,7 @@ import { MondayCapiModal } from '../monday/monday-capi-modal'
 import { MondayDetail } from '../monday/monday-detail'
 import { MondaySideList } from '../monday/monday-side-list'
 import { PaginationBar } from '../pagination-bar'
+import { isOutsideTopModal, segmentButtonOf } from '../segmented-keys'
 import { LeadTrackingModal, LeadTrackingPanel } from './lead-tracking'
 
 type LeadFeedProps = ReturnType<typeof useLeadFeedViewModel> & {
@@ -96,14 +103,30 @@ const COLUMNS: [string, string | undefined][] = [
   ],
 ]
 
+/** 표의 칸 수 — 맨 앞 펼침 칸 + 인입 시각 + 나머지. 소재 묶음의 머리 줄이 쓴다. */
+const COLUMN_COUNT = COLUMNS.length + 2
+
+/** 글 속 키워드(렌탈·할부·가격·원거리·학교·기관·견적)를 칠한다. */
+const Highlighted = ({ text }: { text: string }) => (
+  <>
+    {splitKeywords(text).map((part, index) =>
+      index % 2 === 1 ? (
+        <mark key={index} className="lead_feed_mark">
+          {part}
+        </mark>
+      ) : (
+        part
+      ),
+    )}
+  </>
+)
+
 /** 보드 버튼의 키 — 보드 id가 숫자라 객체 키 순서가 바뀌지 않게 글자를 붙인다. */
 const boardKey = (id: string) => `board:${id}`
 
-/** ms → "11/6 14:03"(KST). */
-const formatSyncTime = (ms: number): string => {
-  const iso = koreaIso(ms)
-  return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, 16)}`
-}
+/** 소재 묶음에서 처음 보이는 리드 수 — 나머지는 '더 보기'로. 한 쪽에 소재가
+ * 30개라, 다 펼치면 수백~수천 줄이 된다. */
+const CREATIVE_PREVIEW = 10
 
 const firstCallLabel = (row: MondayLeadFeedRow): string => {
   const days = firstCallDays(row)
@@ -111,50 +134,22 @@ const firstCallLabel = (row: MondayLeadFeedRow): string => {
   return days === 0 ? '당일' : `${days}일`
 }
 
-/** 버튼 묶음(기간·보드·매체)의 버튼 — 이벤트가 그 안에서 났으면 그 버튼. */
-const segmentButtonOf = (target: EventTarget) =>
-  target instanceof Element
-    ? target.closest<HTMLButtonElement>('.glass_segmented > button')
-    : null
-
-/** 버튼 묶음을 누르면 그 버튼에 초점을 둔다 — 사파리(맥)는 눌러도 단추에
- * 초점이 가지 않아, 다음 방향키가 어느 묶음을 움직일지 알 수 없다. */
-const focusSegment = (event: MouseEvent<HTMLElement>) => {
-  segmentButtonOf(event.target)?.focus()
-}
-
-/** 초점이 있는 버튼 묶음에서 좌/우 방향키로 바로 옆 버튼을 누르고(끝에서 더
- * 가면 반대쪽 끝), 위/아래 방향키로 위아래 묶음의 고른 버튼에 초점을 옮긴다
- * (고른 값은 그대로, 맨 위·맨 아래에서는 멈춘다). 메뉴 상자에 붙여 그 안의
- * 묶음끼리만 오가고, 검색창 같은 다른 칸의 방향키는 건드리지 않는다. */
-const moveSegment = (event: KeyboardEvent<HTMLElement>) => {
-  const button = segmentButtonOf(event.target)
-  const group = button?.parentElement
-  if (!button || !group) return
-  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-    const groups = [
-      ...event.currentTarget.querySelectorAll<HTMLElement>('.glass_segmented'),
-    ]
-    const to =
-      groups[groups.indexOf(group) + (event.key === 'ArrowUp' ? -1 : 1)]
-    // 끝에서도 막는다 — 안 막으면 화면이 스크롤된다.
-    event.preventDefault()
-    to?.querySelector<HTMLButtonElement>(':scope > button.active')?.focus()
-    return
-  }
-  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
-  const buttons = [
-    ...group.querySelectorAll<HTMLButtonElement>(
-      ':scope > button:not(:disabled)',
-    ),
+/** 위/아래 방향키로 위아래 버튼 묶음(기간·보드·매체)의 고른 버튼에 초점을
+ * 옮긴다(고른 값은 그대로, 맨 위·맨 아래에서는 멈춘다). 메뉴 상자에 붙여 그
+ * 안의 묶음끼리만 오간다. 누르면 초점이 가는 것과 좌/우는 화면 공통
+ * (segmented-keys.ts). */
+const moveBetweenRows = (event: KeyboardEvent<HTMLElement>) => {
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return
+  const group = segmentButtonOf(event.target)?.parentElement
+  // 모달이 떠 있는데 초점이 그 뒤에 남아 있으면 건드리지 않는다(모달의 ↑/↓가 먼저).
+  if (!group || isOutsideTopModal(event.target)) return
+  const groups = [
+    ...event.currentTarget.querySelectorAll<HTMLElement>('.glass_segmented'),
   ]
-  if (buttons.length < 2) return
-  const step = event.key === 'ArrowLeft' ? -1 : 1
-  const next =
-    buttons[(buttons.indexOf(button) + step + buttons.length) % buttons.length]
+  const to = groups[groups.indexOf(group) + (event.key === 'ArrowUp' ? -1 : 1)]
+  // 끝에서도 막는다 — 안 막으면 화면이 스크롤된다.
   event.preventDefault()
-  next.focus()
-  next.click()
+  to?.querySelector<HTMLButtonElement>(':scope > button.active')?.focus()
 }
 
 /** 보드·매체 버튼의 이름과 건수 배지. 배지는 chars 글자만큼 자리를 미리 잡아
@@ -208,22 +203,35 @@ const LeadName = ({
 }
 
 /** 리드 한 줄. 묶음의 맨 앞 줄(head)이면 맨 앞 칸에 펼침 갈매기를 두고 줄
- * 어디를 눌러도 펼친다. 펼친 줄(sub)은 옅게 칠한 모양을 쓴다. */
-const LeadRow = ({
+ * 어디를 눌러도 펼친다. 펼친 줄(sub)은 옅게 칠한 모양을 쓴다. 줄이 수백 개라,
+ * 받는 값이 그대로면 다시 그리지 않는다(memo — 그래서 값만 받고 함수는 고정된
+ * 것만 받는다). */
+const LeadRow = memo(function LeadRow({
   row,
-  toggle,
+  groupKey,
+  moreCount = 0,
+  open = false,
+  onToggle,
   sub = false,
   onOpenLead,
 }: {
   row: MondayLeadFeedRow
-  /** 같은 번호의 다른 리드가 있으면 — 펼침 단추. */
-  toggle?: { count: number; open: boolean; onToggle: () => void }
+  /** 같은 번호의 다른 리드가 있으면 — 그 묶음의 키·남은 리드 수·펼쳤는지. */
+  groupKey?: string
+  moreCount?: number
+  open?: boolean
+  onToggle?: (key: string) => void
   sub?: boolean
   onOpenLead: (row: MondayLeadFeedRow) => void
-}) => {
+}) {
+  const toggle =
+    groupKey !== undefined && moreCount > 0 && onToggle
+      ? { count: moreCount, open, onToggle: () => onToggle(groupKey) }
+      : null
   const misentry = isMisentry(row)
   const source = [row.utmSource, row.utmMedium].filter(Boolean).join(' / ')
   const statusHasCallback = /콜백/.test(row.status ?? '')
+  const keywords = leadKeywords(row)
   // 줄을 누르면 펼친다 — 이름(고객 상세)·링크·갈매기 단추를 누른 것이거나 글자를
   // 끌어 고르던 중이면 펼치지 않는다(갈매기는 제 단추가 펼친다).
   const onRowClick = toggle
@@ -305,12 +313,26 @@ const LeadRow = ({
         )}
       </td>
       <td className="lead_feed_text">
-        {row.inquiryMessage ?? <span className="lead_feed_none">-</span>}
+        {/* 문의 원문·메모에 걸린 키워드 — 메모는 세 줄까지만 보여서 여기 모은다. */}
+        {keywords.length > 0 && (
+          <div className="lead_feed_tags">
+            {keywords.map((keyword) => (
+              <span key={keyword} className="lead_feed_tag">
+                {keyword}
+              </span>
+            ))}
+          </div>
+        )}
+        {row.inquiryMessage ? (
+          <Highlighted text={row.inquiryMessage} />
+        ) : (
+          <span className="lead_feed_none">-</span>
+        )}
       </td>
       <td className="lead_feed_text">
         {row.notes ? (
           <div className="lead_feed_memo" title={row.notes}>
-            {row.notes}
+            <Highlighted text={row.notes} />
           </div>
         ) : (
           <span className="lead_feed_none">-</span>
@@ -340,9 +362,9 @@ const LeadRow = ({
       <td className="lead_feed_first_call">{firstCallLabel(row)}</td>
     </tr>
   )
-}
+})
 
-const LeadGroupRows = ({
+const LeadGroupRows = memo(function LeadGroupRows({
   group,
   open,
   onToggle,
@@ -350,31 +372,97 @@ const LeadGroupRows = ({
 }: {
   group: LeadGroup
   open: boolean
-  onToggle: () => void
+  onToggle: (key: string) => void
   onOpenLead: (row: MondayLeadFeedRow) => void
-}) => (
-  <>
-    <LeadRow
-      row={group.head}
-      toggle={
-        group.rest.length > 0
-          ? { count: group.rest.length, open, onToggle }
-          : undefined
-      }
-      onOpenLead={onOpenLead}
-    />
-    {open &&
-      group.rest.map((row) => (
-        <LeadRow key={row.itemId} row={row} sub onOpenLead={onOpenLead} />
+}) {
+  return (
+    <>
+      <LeadRow
+        row={group.head}
+        groupKey={group.key}
+        moreCount={group.rest.length}
+        open={open}
+        onToggle={onToggle}
+        onOpenLead={onOpenLead}
+      />
+      {open &&
+        group.rest.map((row) => (
+          <LeadRow key={row.itemId} row={row} sub onOpenLead={onOpenLead} />
+        ))}
+    </>
+  )
+})
+
+/** 소재 묶음 — 머리 줄(매체·소재 이름·건수) 아래 그 소재로 들어온 리드를
+ * 펼쳐, 원문과 메모를 한 덩어리로 읽게 한다. 처음에는 앞 CREATIVE_PREVIEW건만,
+ * 나머지는 '더 보기'로. */
+const CreativeRows = memo(function CreativeRows({
+  group,
+  open,
+  onToggle,
+  onOpenLead,
+}: {
+  group: CreativeGroup
+  /** 나머지까지 다 펼쳤는지. */
+  open: boolean
+  onToggle: (key: string) => void
+  onOpenLead: (row: MondayLeadFeedRow) => void
+}) {
+  const shown = open ? group.leads : group.leads.slice(0, CREATIVE_PREVIEW)
+  const hidden = group.leads.length - CREATIVE_PREVIEW
+  const misentry = group.leads.filter(isMisentry).length
+  const customers = new Set(group.leads.map((row) => row.phone ?? row.itemId))
+    .size
+  const kind =
+    group.channel === 'unknown'
+      ? null
+      : group.channel === 'meta'
+        ? '소재'
+        : '캠페인'
+  return (
+    <>
+      <tr className="lead_feed_creative_head">
+        <td colSpan={COLUMN_COUNT}>
+          <span className="lead_feed_creative_channel">
+            {LEAD_CHANNEL_LABEL[group.channel]}
+            {kind && ` ${kind}`}
+          </span>
+          <strong>
+            {group.campaign ??
+              (group.channel === 'unknown'
+                ? 'UTM 없이 들어온 리드'
+                : '캠페인 없음')}
+          </strong>
+          <span className="lead_feed_creative_counts">
+            리드 {group.leads.length.toLocaleString('ko-KR')}건 · 고객{' '}
+            {customers.toLocaleString('ko-KR')}명 · 오기입{' '}
+            {misentry.toLocaleString('ko-KR')}건
+          </span>
+        </td>
+      </tr>
+      {shown.map((row) => (
+        <LeadRow key={row.itemId} row={row} onOpenLead={onOpenLead} />
       ))}
-  </>
-)
+      {hidden > 0 && (
+        <tr className="lead_feed_creative_more">
+          <td colSpan={COLUMN_COUNT}>
+            <button type="button" onClick={() => onToggle(group.key)}>
+              {open
+                ? '접기'
+                : `남은 ${hidden.toLocaleString('ko-KR')}건 더 보기`}
+            </button>
+          </td>
+        </tr>
+      )}
+    </>
+  )
+})
 
 /**
  * 리드 분석 탭 — 상담 보드에 들어온 리드를 클릭 없이 스크롤로 읽는 표(신규 인입
  * 피드). 위 줄에서 검색(이름·연락처)·상태와 쪽을, 아래 세 줄에서 기간·보드·
  * 매체를 고른다.
- * 같은 번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고, 왼쪽 단추로
+ * 같은 번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고, 그 줄을 누르면
  * 나머지를 펼친다. 이름을 누르면 Monday 고객 탭과 같은 고객 상세가 뜬다.
  */
 export const LeadFeed = ({
@@ -404,6 +492,8 @@ export const LeadFeed = ({
     sortDirection,
     groups,
     pagedGroups,
+    groupBy,
+    pageRowCount,
     pageSize,
     page,
     totalPages,
@@ -414,9 +504,19 @@ export const LeadFeed = ({
     trackingLead,
     syncedAt,
   } = state
-  const { detailPhone, detailSummary, detail, detailFailed, itemUpdates } =
-    monday.state
-  const { openDetail, closeDetail, loadItemUpdates } = monday.actions
+  const {
+    detailPhone,
+    detailOwner,
+    detailSummary,
+    detail,
+    detailFailed,
+    itemUpdates,
+  } = monday.state
+  const { openDetail, closeDetail, loadItemUpdates, prefetchCustomers } =
+    monday.actions
+  const { openTracking, closeTracking, toggleGroup } = actions
+  // 이 탭에서 연 상세만 그린다 — Monday 고객 탭에서 연 상세는 그 탭의 것.
+  const feedDetail = detailOwner === 'feed'
   // 표 상자 — 쪽·거르기·정렬이 바뀌면(그려지는 줄이 바뀌면) 맨 위로 되돌린다.
   // 줄이 이 상자 안에서 스크롤해서, 그대로 두면 새 쪽의 중간부터 보인다.
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -427,14 +527,21 @@ export const LeadFeed = ({
   const detailHead = detailSummary ?? detail
 
   // 이름을 누르면 — 번호가 있으면 고객 상세를 열고, 오기입이면 그 리드의 오기입
-  // 추적을 붙인다(번호가 없으면 추적만 따로 뜬다).
-  const openLead = (row: MondayLeadFeedRow) => {
-    actions.openTracking(isMisentry(row) ? row : null)
-    if (row.phone) openDetail(row.phone)
-  }
+  // 추적을 붙인다(번호가 없으면 추적만 따로 뜬다). 줄(memo)에 넘기므로 고정한다.
+  const openLead = useCallback(
+    (row: MondayLeadFeedRow) => {
+      openTracking(isMisentry(row) ? row : null)
+      if (row.phone) openDetail(row.phone, 'feed')
+    },
+    [openTracking, openDetail],
+  )
+  const openFeedDetail = useCallback(
+    (phone: string) => openDetail(phone, 'feed'),
+    [openDetail],
+  )
   const closeLead = () => {
     closeDetail()
-    actions.closeTracking()
+    closeTracking()
   }
   const trackingRow = trackingLead
     ? (tracking.rows.find(
@@ -491,8 +598,7 @@ export const LeadFeed = ({
           고르며 위/아래 방향키로 묶음 사이를 오간다. */}
       <div
         className="lead_manager_nav monday_stats_nav lead_feed_nav glass_theme"
-        onClick={focusSegment}
-        onKeyDown={moveSegment}
+        onKeyDown={moveBetweenRows}
       >
         <div className="inner">
           <div className="search-box">
@@ -520,6 +626,14 @@ export const LeadFeed = ({
             onChange={actions.changeStatus}
             label="상담 진행 상태"
           />
+          {/* 묶기 — 같은 번호(고객)로, 또는 같은 소재(utm_campaign)로. */}
+          <Segmented
+            options={LEAD_GROUP_BY_LABEL}
+            value={groupBy}
+            onChange={actions.changeGroupBy}
+            label="묶기"
+            size="md"
+          />
           <button
             type="button"
             className="stats_reset"
@@ -539,7 +653,7 @@ export const LeadFeed = ({
             pageSize={pageSize}
             page={page}
             totalPages={totalPages}
-            totalRows={groups.length}
+            totalRows={pageRowCount}
             onSetPageSize={actions.changePageSize}
             onPrevPage={actions.goToPrevPage}
             onNextPage={actions.goToNextPage}
@@ -619,20 +733,27 @@ export const LeadFeed = ({
                       Monday 상담 보드에 들어온 기록을 한 건씩 보여 줍니다. 같은
                       번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고,
                       그 줄을 누르면 나머지가 펼쳐집니다. 이름을 누르면 그
-                      고객의 전체 기록이 열립니다. Monday 동기화는 하루 여섯
+                      고객의 전체 기록이 열립니다. '소재별'로 보면 같은
+                      utm_campaign(Meta는 광고 이름)으로 들어온 리드를 한
+                      덩어리로 보여 주고, 렌탈·할부·가격·원거리·학교·기관·견적은
+                      색으로 칠합니다. Monday 동기화는 하루 여섯
                       번(09·11·13·15·17·22시)이라 Monday 화면보다 늦을 수
                       있습니다.
-                      {syncedAt && ` 마지막 동기화 ${formatSyncTime(syncedAt)}`}
+                      {syncedAt &&
+                        ` 마지막 동기화 ${formatKoreaTime(syncedAt)}`}
                     </p>
-                    {detailPhone && !detailHead && detailFailed && (
-                      <p className="lead_feed_notice">
-                        이 고객의 전체 기록을 찾지 못했습니다 — 다음 동기화 뒤에
-                        다시 열어 보세요.
-                        <button type="button" onClick={closeDetail}>
-                          닫기
-                        </button>
-                      </p>
-                    )}
+                    {feedDetail &&
+                      detailPhone &&
+                      !detailHead &&
+                      detailFailed && (
+                        <p className="lead_feed_notice">
+                          이 고객의 전체 기록을 찾지 못했습니다 — 다음 동기화
+                          뒤에 다시 열어 보세요.
+                          <button type="button" onClick={closeDetail}>
+                            닫기
+                          </button>
+                        </p>
+                      )}
                     {groups.length === 0 ? (
                       <p className="lead_feed_empty">
                         조건에 맞는 리드가 없습니다.
@@ -681,15 +802,25 @@ export const LeadFeed = ({
                             </tr>
                           </thead>
                           <tbody>
-                            {pagedGroups.map((group) => (
-                              <LeadGroupRows
-                                key={group.key}
-                                group={group}
-                                open={openKeys.has(group.key)}
-                                onToggle={() => actions.toggleGroup(group.key)}
-                                onOpenLead={openLead}
-                              />
-                            ))}
+                            {pagedGroups.map((group) =>
+                              group.kind === 'creative' ? (
+                                <CreativeRows
+                                  key={group.key}
+                                  group={group}
+                                  open={openKeys.has(group.key)}
+                                  onToggle={toggleGroup}
+                                  onOpenLead={openLead}
+                                />
+                              ) : (
+                                <LeadGroupRows
+                                  key={group.key}
+                                  group={group}
+                                  open={openKeys.has(group.key)}
+                                  onToggle={toggleGroup}
+                                  onOpenLead={openLead}
+                                />
+                              ),
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -706,7 +837,7 @@ export const LeadFeed = ({
           스타일)이 들도록 같은 이름의 틀로 감싼다. 틀은 상자를 만들지 않는다
           (lead-feed.scss). */}
       <div className="xtool-main monday_main glass_theme lead_feed_detail">
-        {detailPhone && detailHead && (
+        {feedDetail && detailPhone && detailHead && (
           <MondayDetail
             summary={detailHead}
             customer={detail}
@@ -720,8 +851,8 @@ export const LeadFeed = ({
               <MondaySideList
                 customers={detailCustomers}
                 activePhone={detailHead.phone}
-                onSelect={openDetail}
-                onPrefetch={monday.actions.prefetchCustomers}
+                onSelect={openFeedDetail}
+                onPrefetch={prefetchCustomers}
                 keysEnabled={!capi.state.source}
               />
             }
@@ -742,10 +873,10 @@ export const LeadFeed = ({
             lead={trackingLead}
             row={trackingRow}
             status={tracking.status}
-            onClose={actions.closeTracking}
+            onClose={closeTracking}
           />
         )}
-        {capi.state.source && <MondayCapiModal capi={capi} />}
+        {capi.state.source && feedDetail && <MondayCapiModal capi={capi} />}
       </div>
     </>
   )

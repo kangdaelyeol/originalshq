@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useUsageTracking } from '@/hooks'
 import { FilterContextProvider } from '@/screens/xtool-lead-manager/context'
 import {
@@ -94,6 +95,19 @@ const XtoolLeadManagerScreen = () => {
     tab === 'tracking' ||
       (tab === 'feed' && leadFeed.state.trackingLead !== null),
   )
+  // 리드 분석에서 연 창(고객 상세·오기입 추적)은 그 탭을 떠나면 닫는다 — 뒤로
+  // 가기로 다른 탭에 갔다 돌아와도 다시 뜨지 않게. (Monday 고객 탭에서 연 상세는
+  // 닫지 않는다 — 퍼널 통계에서 고객을 누르면 탭이 바뀌기 전에 상세가 먼저 열린다.)
+  const { detailOwner } = monday.state
+  const { closeDetail } = monday.actions
+  const { trackingLead } = leadFeed.state
+  const { closeTracking } = leadFeed.actions
+  useEffect(() => {
+    if (tab === 'feed') return
+    if (detailOwner === 'feed') closeDetail()
+    if (trackingLead) closeTracking()
+  }, [tab, detailOwner, trackingLead, closeDetail, closeTracking])
+
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
 

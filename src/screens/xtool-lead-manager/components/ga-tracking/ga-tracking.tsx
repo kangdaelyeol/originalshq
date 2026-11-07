@@ -21,7 +21,7 @@ import type {
   GaTrackingFilter,
   useGaTrackingViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
-import { koreaIso } from '@/screens/xtool-lead-manager/utils/calc'
+import { formatKoreaTime } from '@/screens/xtool-lead-manager/utils/calc'
 
 type GaTrackingProps = ReturnType<typeof useGaTrackingViewModel>
 
@@ -30,12 +30,8 @@ const FILTER_LABEL: Record<GaTrackingFilter, string> = {
   all: 'GA ClientId 있는 상담 전체',
 }
 
-/** ms → "10/21 14:03:21"(KST). */
-const formatTime = (ms: number | null): string => {
-  if (ms === null) return '-'
-  const iso = koreaIso(ms)
-  return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, 19)}`
-}
+/** ms → "10/21 14:03:21"(KST) — 못 읽으면 '-'. */
+const formatTime = (ms: number | null): string => formatKoreaTime(ms, true)
 
 /** GA ClientId를 짧게 — 앞 4자리…뒤 4자리. */
 const shortClientId = (id: string) =>

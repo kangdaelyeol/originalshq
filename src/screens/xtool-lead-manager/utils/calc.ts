@@ -8,6 +8,18 @@ const KST_MS = 9 * 3_600_000
 export const koreaIso = (ms: number): string =>
   new Date(ms + KST_MS).toISOString()
 
+/** ms → "11/6 14:03"(한국 시각, withSeconds면 "11/6 14:03:21"). 시각을 못
+ * 읽으면(null·NaN) '-' — koreaIso는 잘못된 값에 오류를 던져, 화면 하나가 통째로
+ * 멈출 수 있다. 화면에 찍는 시각은 이것으로. */
+export const formatKoreaTime = (
+  ms: number | null,
+  withSeconds = false,
+): string => {
+  if (ms === null || !Number.isFinite(ms)) return '-'
+  const iso = koreaIso(ms)
+  return `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))} ${iso.slice(11, withSeconds ? 19 : 16)}`
+}
+
 /** 한국 날짜(YYYY-MM-DD) — 기본은 오늘. */
 export const koreaDate = (ms: number = Date.now()): string =>
   koreaIso(ms).slice(0, 10)

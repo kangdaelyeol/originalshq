@@ -77,6 +77,10 @@ const fetchCustomers = async () => {
 /** Monday 고객 탭의 상태 — 목록(검색·분류·정렬·페이지), 고객 상세, 확인이
  * 필요한 기록(번호·결제). `active`가 처음 true가 될 때 목록을 받아온다(리드
  * 탭만 쓰는 동안에는 받지 않는다). */
+/** 고객 상세를 연 탭 — 그 탭에서만 상세(와 그 위 CAPI 창)를 그린다. 탭은
+ * 주소(?tab=)라, 상세를 연 채 뒤로 가기로 다른 탭에 가도 따라가지 않게. */
+export type DetailOwner = 'monday' | 'feed'
+
 /** 받아 둔 고객 상세를 다시 쓰는 시간. */
 const DETAIL_CACHE_MS = 10 * 60_000
 /** 미리 받기를 한 번에 몇 건씩 — 지금 보는 고객 응답이 밀리지 않게 조금씩. */
@@ -108,6 +112,7 @@ export const useMondayViewModel = (active: boolean) => {
   )
 
   const [detailPhone, setDetailPhone] = useState<string | null>(null)
+  const [detailOwner, setDetailOwner] = useState<DetailOwner | null>(null)
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
   const [detailFailed, setDetailFailed] = useState(false)
   // 받아 둔 고객 — 왼쪽 목록에서 방향키로 오가거나 상세를 다시 열 때 바로
@@ -206,7 +211,8 @@ export const useMondayViewModel = (active: boolean) => {
   }, [])
 
   const openDetail = useCallback(
-    async (phone: string) => {
+    async (phone: string, owner: DetailOwner = 'monday') => {
+      setDetailOwner(owner)
       setDetailPhone(phone)
       setDetailFailed(false)
       const cached = freshCustomer(detailCache.current, phone)
@@ -277,6 +283,7 @@ export const useMondayViewModel = (active: boolean) => {
 
   const closeDetail = useCallback(() => {
     setItemUpdates({})
+    setDetailOwner(null)
     setDetailPhone(null)
     setDetail(null)
     setDetailFailed(false)
@@ -327,6 +334,8 @@ export const useMondayViewModel = (active: boolean) => {
       totalPages: pagination.totalPages,
       totalRows: pagination.totalRows,
       detailPhone,
+      /** 상세를 연 탭 — 그 탭만 상세를 그린다. */
+      detailOwner,
       detailSummary,
       detail,
       detailFailed,

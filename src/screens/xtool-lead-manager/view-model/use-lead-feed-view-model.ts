@@ -1,4 +1,10 @@
-import { useCallback, useDeferredValue, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import { useLoadWhenActive } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
@@ -14,21 +20,28 @@ import {
   ALL_STATUSES,
   countLeadsBy,
   filterLeads,
+  groupByCreative,
   groupLeads,
   isMisentry,
   LEAD_FEED_PERIODS,
+  LEAD_GROUP_BYS,
   leadFeedFrom,
   leadFeedRange,
-  leadGroupCustomers,
+  customersInOrder,
   leadStatusKey,
   leadStatuses,
   searchLeads,
   sortLeadGroups,
   type LeadFeedPageSize,
+  type CreativeGroup,
   type LeadFeedPeriod,
   type LeadGroup,
+  type LeadGroupBy,
 } from '@/screens/xtool-lead-manager/utils'
 import { koreaDate } from '@/screens/xtool-lead-manager/utils/calc'
+
+/** 기간을 '전체'로 바꾼 뒤 전부를 받기 시작할 때까지 기다리는 시간. */
+const PERIOD_SETTLE_MS = 400
 
 /** 보드 거르기의 "전체". */
 export const ALL_BOARDS = 'all'
@@ -67,8 +80,18 @@ export const useLeadFeedViewModel = (
     oneOf(LEAD_FEED_PERIODS),
   )
   const wantAll = period === 'all'
+  // '전체'는 무거운 조회라 잠깐 머물러야 받기 시작한다 — 방향키로 기간을 지나가기만
+  // 해도 전부를 받지 않게. 처음부터 '전체'면(기억된 값) 바로 받는다.
+  const [settledPeriod, setSettledPeriod] = useState(period)
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => setSettledPeriod(period),
+      PERIOD_SETTLE_MS,
+    )
+    return () => window.clearTimeout(timer)
+  }, [period])
   const all = useLoadWhenActive<MondayLeadFeed | null>(
-    active && wantAll,
+    active && wantAll && settledPeriod === 'all',
     fetchAllLeadFeed,
     null,
   )
@@ -89,6 +112,13 @@ export const useLeadFeedViewModel = (
   // 늦게 따라온다.
   const deferredSearch = useDeferredValue(search)
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  // 표를 고객(같은 번호)으로 묶을지, 소재(utm_campaign)로 묶을지 — 이 브라우저에
+  // 남는다.
+  const [groupBy, setGroupBy] = usePersistentState<LeadGroupBy>(
+    'xtool.leadFeed.groupBy',
+    'customer',
+    oneOf(LEAD_GROUP_BYS),
+  )
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
   // 이름을 눌러 연 오기입 리드 — 고객 상세 오른쪽(번호가 없으면 따로 뜨는 창)에
   // 그 리드의 오기입 추적(GA4 이벤트)을 붙인다.
@@ -156,15 +186,28 @@ export const useLeadFeedViewModel = (
     () => sortLeadGroups(groupLeads(leads), sortDirection),
     [leads, sortDirection],
   )
-  // 거르기·검색·정렬이 바뀌면 1쪽으로.
-  const pagination = usePagination<LeadGroup, LeadFeedPageSize>(
-    groups,
-    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}`,
+  // 소재별로 볼 때의 묶음 — 같은 소재로 들어온 리드를 한 덩어리로.
+  const creativeGroups = useMemo(
+    () => (groupBy === 'creative' ? groupByCreative(leads, sortDirection) : []),
+    [groupBy, leads, sortDirection],
+  )
+  // 거르기·검색·정렬·묶기가 바뀌면 1쪽으로.
+  const pagination = usePagination<LeadGroup | CreativeGroup, LeadFeedPageSize>(
+    groupBy === 'creative' ? creativeGroups : groups,
+    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}|${groupBy}`,
     30,
   )
+  // 고객 상세 왼쪽 목록 — 표에 보이는 순서(소재별이면 소재 묶음 안의 리드 순)라
+  // ↑/↓가 표의 바로 옆 줄로 간다.
   const detailCustomers = useMemo(
-    () => leadGroupCustomers(groups, customers),
-    [groups, customers],
+    () =>
+      customersInOrder(
+        groupBy === 'creative'
+          ? creativeGroups.flatMap((group) => group.leads)
+          : groups.map((group) => group.head),
+        customers,
+      ),
+    [groupBy, creativeGroups, groups, customers],
   )
 
   const toggleGroup = useCallback((key: string) => {
@@ -206,7 +249,11 @@ export const useLeadFeedViewModel = (
       countChars,
       sortDirection,
       groups,
-      /** 지금 쪽의 묶음 — 표가 그린다. */
+      groupBy,
+      /** 쪽 넘기기의 줄 수 — 고객별이면 고객 수, 소재별이면 소재 수. */
+      pageRowCount:
+        groupBy === 'creative' ? creativeGroups.length : groups.length,
+      /** 지금 쪽의 묶음(고객 또는 소재) — 표가 그린다. */
       pagedGroups: pagination.pagedItems,
       pageSize: pagination.pageSize,
       page: pagination.page,
@@ -228,6 +275,7 @@ export const useLeadFeedViewModel = (
       changeChannel: setChannelFilter,
       toggleSort,
       toggleGroup,
+      changeGroupBy: setGroupBy,
       openTracking: setTrackingLead,
       closeTracking,
       changePageSize: pagination.setPageSize,

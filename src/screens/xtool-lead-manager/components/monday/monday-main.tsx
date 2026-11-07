@@ -38,6 +38,7 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
     rows,
     filteredRows,
     detailSummary,
+    detailOwner,
     detail,
     detailFailed,
     missingItems,
@@ -143,7 +144,8 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
           </>
         )}
       </div>
-      {detailSummary && (
+      {/* 다른 탭(리드 분석)에서 연 상세는 그리지 않는다. */}
+      {detailSummary && detailOwner === 'monday' && (
         <MondayDetail
           summary={detailSummary}
           customer={detail}
@@ -164,7 +166,9 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
           }
         />
       )}
-      {capi.state.source && <MondayCapiModal capi={capi} />}
+      {capi.state.source && detailOwner === 'monday' && (
+        <MondayCapiModal capi={capi} />
+      )}
       {missingOpen && (
         <MondayReviewPanel
           missingItems={missingItems}
