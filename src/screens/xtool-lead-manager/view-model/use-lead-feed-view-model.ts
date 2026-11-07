@@ -16,6 +16,7 @@ import type {
 } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
+  ALL_BOARDS,
   ALL_CHANNELS,
   ALL_STATUSES,
   countLeadsBy,
@@ -25,10 +26,10 @@ import {
   isMisentry,
   LEAD_FEED_PERIODS,
   LEAD_GROUP_BYS,
+  leadFacets,
   leadFeedFrom,
   leadFeedRange,
   customersInOrder,
-  leadStatusKey,
   leadStatuses,
   searchLeads,
   sortLeadGroups,
@@ -42,9 +43,6 @@ import { koreaDate } from '@/screens/xtool-lead-manager/utils/calc'
 
 /** 기간을 '전체'로 바꾼 뒤 전부를 받기 시작할 때까지 기다리는 시간. */
 const PERIOD_SETTLE_MS = 400
-
-/** 보드 거르기의 "전체". */
-export const ALL_BOARDS = 'all'
 
 const fetchLeadFeed = async (from?: string) => {
   const res = await mondayClient.getLeadFeed(from)
@@ -137,29 +135,16 @@ export const useLeadFeedViewModel = (
         : [],
     [data, range, deferredSearch],
   )
-  // 상태·보드·매체 거르기 — 위에서 아래로 좁혀 간다(기간·검색 → 상태 → 보드 →
-  // 매체). 건수는 저마다 위쪽 선택만 반영한다: 상태 건수는 기간·검색 안에서
-  // (보드·매체를 골라도 그대로), 보드 건수는 고른 상태 안에서(매체를 골라도
-  // 그대로), 매체 건수는 고른 상태·보드 안에서 센다.
-  const facets = useMemo(() => {
-    const inBoard = (row: MondayLeadFeedRow) =>
-      boardId === ALL_BOARDS || row.boardId === boardId
-    const inStatus = (row: MondayLeadFeedRow) =>
-      statusFilter === ALL_STATUSES || leadStatusKey(row) === statusFilter
-    const inChannel = (row: MondayLeadFeedRow) =>
-      channelFilter === ALL_CHANNELS || row.channel === channelFilter
-    const forBoards = base.filter(inStatus)
-    const forChannels = forBoards.filter(inBoard)
-    return {
-      boardCounts: countLeadsBy(forBoards, (row) => row.boardId),
-      boardTotal: forBoards.length,
-      statusCounts: countLeadsBy(base, leadStatusKey),
-      statusTotal: base.length,
-      channelCounts: countLeadsBy(forChannels, (row) => row.channel),
-      channelTotal: forChannels.length,
-      leads: forChannels.filter(inChannel),
-    }
-  }, [base, boardId, statusFilter, channelFilter])
+  // 상태·보드·매체 거르기와 버튼마다의 건수(위에서 아래로 좁혀 간다 — leadFacets).
+  const facets = useMemo(
+    () =>
+      leadFacets(base, {
+        status: statusFilter,
+        boardId,
+        channel: channelFilter,
+      }),
+    [base, boardId, statusFilter, channelFilter],
+  )
   const { leads } = facets
   // 건수 배지의 자리(글자 수) — 받은 리드 전체에서 그 버튼이 가질 수 있는 가장
   // 큰 건수의 글자 수. 기간·검색·거르기는 건수를 줄이기만 해서, 무엇을 바꿔도

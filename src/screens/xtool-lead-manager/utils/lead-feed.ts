@@ -178,6 +178,9 @@ export const countLeadsBy = (
 /** 매체 거르기의 "전체". */
 export const ALL_CHANNELS = 'all'
 
+/** 보드 거르기의 "전체". */
+export const ALL_BOARDS = 'all'
+
 /** 매체 버튼 — 순서와 이름(cmip ROAS 탭과 같은 이름). */
 export const LEAD_CHANNEL_LABEL: Record<MondayLeadChannel, string> = {
   meta: 'Meta',
@@ -193,6 +196,44 @@ export const LEAD_CHANNEL_LABEL: Record<MondayLeadChannel, string> = {
 export const LEAD_CHANNEL_TITLE: Partial<Record<MondayLeadChannel, string>> = {
   other: 'UTM은 있지만 광고 매체가 아닌 곳(chatgpt.com 자연 유입·threads 등)',
   unknown: 'UTM 없이 들어온 리드(전화·매장 문의 등)',
+}
+
+/** 상태·보드·매체 거르기 — 저마다 고른 키, 또는 "전체"(ALL_STATUSES·
+ * ALL_BOARDS·ALL_CHANNELS). */
+export interface LeadFilters {
+  status: string
+  boardId: string
+  channel: string
+}
+
+/** 상태·보드·매체로 거른 리드와 거르기 버튼마다의 건수. 위에서 아래로 좁혀
+ * 간다(기간·검색 → 상태 → 보드 → 매체). 건수는 저마다 위쪽 선택만 반영한다:
+ * 상태 건수는 기간·검색 안에서(보드·매체를 골라도 그대로), 보드 건수는 고른
+ * 상태 안에서(매체를 골라도 그대로), 매체 건수는 고른 상태·보드 안에서 센다.
+ * base는 기간·검색까지 건 리드. */
+export const leadFacets = (
+  base: readonly MondayLeadFeedRow[],
+  filters: LeadFilters,
+) => {
+  const forBoards = base.filter(
+    (row) =>
+      filters.status === ALL_STATUSES || leadStatusKey(row) === filters.status,
+  )
+  const forChannels = forBoards.filter(
+    (row) => filters.boardId === ALL_BOARDS || row.boardId === filters.boardId,
+  )
+  return {
+    statusCounts: countLeadsBy(base, leadStatusKey),
+    statusTotal: base.length,
+    boardCounts: countLeadsBy(forBoards, (row) => row.boardId),
+    boardTotal: forBoards.length,
+    channelCounts: countLeadsBy(forChannels, (row) => row.channel),
+    channelTotal: forChannels.length,
+    leads: forChannels.filter(
+      (row) =>
+        filters.channel === ALL_CHANNELS || row.channel === filters.channel,
+    ),
+  }
 }
 
 /** 같은 번호의 리드 묶음 — head가 가장 최근 리드, rest는 그 앞의 리드(최근
@@ -328,14 +369,34 @@ export const LEAD_KEYWORDS: readonly { label: string; pattern: RegExp }[] = [
   { label: '견적', pattern: /견적/ },
 ]
 
-const KEYWORD_SPLIT = new RegExp(
-  `(${LEAD_KEYWORDS.map((keyword) => keyword.pattern.source).join('|')})`,
+// 키워드 전부를 한 번에 찾는 식 — 말마다 (?:)로 감싸 '|'가 서로 섞이지 않게.
+const KEYWORD_PATTERN = new RegExp(
+  LEAD_KEYWORDS.map((keyword) => `(?:${keyword.pattern.source})`).join('|'),
   'g',
 )
 
-/** 글을 키워드와 나머지로 나눈다 — 홀수 번째 조각이 키워드다. */
-export const splitKeywords = (text: string): string[] =>
-  text.split(KEYWORD_SPLIT)
+/** 글 조각 — 키워드인지와 그 글. */
+export interface KeywordPart {
+  text: string
+  keyword: boolean
+}
+
+/** 글을 키워드와 나머지 조각으로 나눈다 — 순서대로 이어 붙이면 원래 글이다.
+ * 찾은 위치로 자르므로 말 목록에 괄호(묶음)가 있어도 조각이 어긋나지 않는다. */
+export const splitKeywords = (text: string): KeywordPart[] => {
+  const parts: KeywordPart[] = []
+  let at = 0
+  for (const match of text.matchAll(KEYWORD_PATTERN)) {
+    if (match[0] === '') continue
+    if (match.index > at) {
+      parts.push({ text: text.slice(at, match.index), keyword: false })
+    }
+    parts.push({ text: match[0], keyword: true })
+    at = match.index + match[0].length
+  }
+  if (at < text.length) parts.push({ text: text.slice(at), keyword: false })
+  return parts
+}
 
 /** 리드의 문의 원문·상담 메모에 걸린 키워드 이름(LEAD_KEYWORDS 순서). */
 export const leadKeywords = (row: MondayLeadFeedRow): string[] => {

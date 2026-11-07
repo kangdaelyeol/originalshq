@@ -560,53 +560,11 @@ export interface MondayItemUpdates {
   files: MondayAsset[]
 }
 
-/** 리드의 매체 — functions-xtool attributionChannel과 같은 값. other는 UTM은
- * 있지만 광고 매체가 아닌 곳, unknown은 UTM 없음. */
-export type MondayLeadChannel =
-  'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown'
-
-/** 리드 분석 탭의 한 줄 — 상담 보드 기록 1건. 번호가 없거나 틀린 기록(오기입
- * 등)도 들어 있다(functions-xtool getMondayLeadFeed). */
-export interface MondayLeadFeedRow {
-  itemId: string
-  boardId: string
-  boardName: string
-  name: string
-  url: string | null
-  /** 인입 시각 — Monday에 기록이 만들어진 시각(ISO, UTC). */
-  createdAt: string | null
-  /** 접수일 칸(YYYY-MM-DD). */
-  receivedAt: string | null
-  /** 관심 기기 — 그 칸이 있는 보드(기타 오프라인)만. */
-  product: string | null
-  /** 상담 진행 상태(신규 상담 유입·콜백n단계·오기입 등). */
-  status: string | null
-  assignee: string | null
-  /** 구매확률 — 진성 등급 칸이 생기기 전까지 비슷한 값으로 보여 준다. */
-  probability: string | null
-  /** 상담내역 칸(상담원이 적는 메모). */
-  notes: string | null
-  /** 고객이 문의 폼에 적은 내용 — 그 칸이 있는 보드만. */
-  inquiryMessage: string | null
-  /** 콜백 1~4단계 진행일(날짜만). */
-  callbackDates: string[]
-  callbackStage: number
-  utmSource: string | null
-  utmMedium: string | null
-  utmCampaign: string | null
-  /** 고객 번호(숫자만) — Monday 고객 탭의 고객 번호와 같은 규칙이라 그
-   * 고객의 상세를 열 수 있다. 같은 고객의 리드를 묶는다. 못 읽었으면 null. */
-  phone: string | null
-  /** 적힌 그대로의 번호. */
-  phoneRaw: string | null
-  /** 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */
-  channel: MondayLeadChannel
-}
-
-export interface MondayLeadFeed {
-  /** 상담 보드 전부(이름 순) — 보드 거르기 버튼. */
-  boards: { id: string; name: string }[]
-  /** 기간 안에(전체면 전부) 만들어진 상담 기록 — 최근 것부터. */
-  leads: MondayLeadFeedRow[]
-  syncedAt: number | null
-}
+// 리드 분석 탭의 한 줄과 응답(getMondayLeadFeed) — 서버 타입을 그대로 쓴다.
+// 칸을 더할 때 서버(functions-xtool/src/monday/types.ts)만 고치면 화면도 따라온다.
+// 매체(channel)는 utm_source를 광고 채널로 묶은 값이다(cmip ROAS 탭과 같은 규칙).
+export type {
+  MondayAttributionChannel as MondayLeadChannel,
+  MondayLeadFeed,
+  MondayLeadFeedRow,
+} from '../../../../functions-xtool/src/monday/types'

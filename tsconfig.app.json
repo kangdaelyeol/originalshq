@@ -30,7 +30,9 @@
     // 기술팀 보드 웹·앱 공용 데이터 코드(@xtool-core/*)
     "packages/xtool-core/src",
     // 퍼셉트론 화면과 소재 분석 API가 함께 쓰는 프롬프트 망 모듈(의존성 없는 순수 파일).
-    "functions-cmip/src/prompt-graph/compose.ts"
+    "functions-cmip/src/prompt-graph/compose.ts",
+    // 리드 매니저가 서버와 같이 쓰는 Monday 타입(import 없는 타입 파일).
+    "functions-xtool/src/monday/types.ts"
   ],
   "extends": "./tsconfig.paths.json"
 }

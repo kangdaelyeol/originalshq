@@ -25,7 +25,9 @@ import {
 import type { MondayLeadFeedRow } from '@/screens/xtool-lead-manager/entity'
 import type { LoadStatus } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
+import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
+  ALL_BOARDS,
   ALL_CHANNELS,
   ALL_STATUSES,
   firstCallDays,
@@ -45,11 +47,10 @@ import {
   type LeadGroup,
 } from '@/screens/xtool-lead-manager/utils'
 import { formatKoreaTime } from '@/screens/xtool-lead-manager/utils/calc'
-import {
-  ALL_BOARDS,
-  type useLeadFeedViewModel,
-  type useMondayCapiViewModel,
-  type useMondayViewModel,
+import type {
+  useLeadFeedViewModel,
+  useMondayCapiViewModel,
+  useMondayViewModel,
 } from '@/screens/xtool-lead-manager/view-model'
 import { CloseIcon } from '../close-icon'
 import { MondayCapiModal } from '../monday/monday-capi-modal'
@@ -68,54 +69,16 @@ type LeadFeedProps = ReturnType<typeof useLeadFeedViewModel> & {
   tracking: { status: LoadStatus; rows: readonly GaTrackingRow[] }
 }
 
-/** 표 머리 — [이름, 마우스를 올리면 보이는 설명]. 맨 앞은 펼침 칸(이름 없음),
- * 그다음 인입 시각은 정렬 단추다. */
-const TIME_COLUMN: [string, string] = [
-  '인입 시각',
-  'Monday에 기록이 만들어진 시각(웹 문의는 접수 직후) — 누르면 최신순·오래된 순이 바뀝니다',
-]
-const COLUMNS: [string, string | undefined][] = [
-  ['보드', undefined],
-  [
-    '이름·연락처',
-    '이름을 누르면 그 고객의 전체 기록(Monday 고객 상세)이 열립니다',
-  ],
-  [
-    '유입',
-    '매체(utm_source / utm_medium)와 캠페인(utm_campaign). 소재명(utm_content)은 아직 받지 않습니다 — Meta 광고는 캠페인 자리에 광고(소재) 이름이 들어옵니다.',
-  ],
-  [
-    '문의 원문',
-    '고객이 문의 폼에 적은 내용 — 그 칸이 있는 보드(기타 온라인 문의·[B2B] 보드)만',
-  ],
-  [
-    '상담 메모',
-    "Monday '상담내역' 칸 — 세 줄까지 보이고, 마우스를 올리면 전체가 뜹니다",
-  ],
-  [
-    '콜백·진성·오기입',
-    '상담 진행 상태와 콜백 단계. 진성 등급 칸이 아직 없어 구매확률을 대신 보입니다.',
-  ],
-  ['담당자', undefined],
-  [
-    '첫 콜',
-    '인입 날부터 콜백 진행일(가장 이른 날)까지 — 콜백 칸이 날짜만 있어 일 단위입니다',
-  ],
-]
-
-/** 표의 칸 수 — 맨 앞 펼침 칸 + 인입 시각 + 나머지. 소재 묶음의 머리 줄이 쓴다. */
-const COLUMN_COUNT = COLUMNS.length + 2
-
 /** 글 속 키워드(렌탈·할부·가격·원거리·학교·기관·견적)를 칠한다. */
 const Highlighted = ({ text }: { text: string }) => (
   <>
     {splitKeywords(text).map((part, index) =>
-      index % 2 === 1 ? (
+      part.keyword ? (
         <mark key={index} className="lead_feed_mark">
-          {part}
+          {part.text}
         </mark>
       ) : (
-        part
+        part.text
       ),
     )}
   </>
@@ -202,10 +165,266 @@ const LeadName = ({
   )
 }
 
-/** 리드 한 줄. 묶음의 맨 앞 줄(head)이면 맨 앞 칸에 펼침 갈매기를 두고 줄
- * 어디를 눌러도 펼친다. 펼친 줄(sub)은 옅게 칠한 모양을 쓴다. 줄이 수백 개라,
- * 받는 값이 그대로면 다시 그리지 않는다(memo — 그래서 값만 받고 함수는 고정된
- * 것만 받는다). */
+/** 칸이 줄을 그릴 때 받는 것 — 같은 번호의 리드 묶음(그 묶음의 맨 앞 줄일
+ * 때만)과 이름 단추. */
+interface LeadCellContext {
+  toggle: { count: number; open: boolean; onToggle: () => void } | null
+  onOpenLead: (row: MondayLeadFeedRow) => void
+}
+
+/** 표의 칸 하나 — 머리글과 그 칸의 값을 한곳에 둔다. */
+interface LeadColumn {
+  key: string
+  /** 머리글. */
+  label: string
+  /** 머리글에 마우스를 올리면 보이는 설명. */
+  title?: string
+  /** 머리글을 비우고 label은 화면 읽기 프로그램에만(맨 앞 펼침 칸). */
+  hideLabel?: boolean
+  /** 머리글이 정렬 단추다(인입 시각). */
+  sortable?: boolean
+  /** 머리글·칸에 같이 붙는 클래스(lead-feed.scss). */
+  className?: string
+  /** 칸에 마우스를 올리면 보이는 것. */
+  cellTitle?: (row: MondayLeadFeedRow) => string
+  cell: (row: MondayLeadFeedRow, context: LeadCellContext) => ReactNode
+}
+
+/** 리드 표의 칸 — 머리글과 줄이 이 순서대로 그린다. 칸을 더하거나 옮길 때는
+ * 여기만 고친다(소재 묶음의 머리 줄 폭도 칸 수를 따라간다). */
+const LEAD_COLUMNS: readonly LeadColumn[] = [
+  {
+    key: 'toggle',
+    label: '같은 번호의 리드 펼치기',
+    hideLabel: true,
+    className: 'lead_feed_chevron_cell',
+    cell: (_row, { toggle }) =>
+      toggle && (
+        <button
+          type="button"
+          className="lead_feed_chevron"
+          aria-expanded={toggle.open}
+          aria-label={`같은 번호의 리드 ${toggle.count}건 ${toggle.open ? '접기' : '펼치기'}`}
+          onClick={toggle.onToggle}
+        >
+          <ChevronRight strokeWidth={2} aria-hidden="true" />
+        </button>
+      ),
+  },
+  {
+    key: 'time',
+    label: '인입 시각',
+    title:
+      'Monday에 기록이 만들어진 시각(웹 문의는 접수 직후) — 누르면 최신순·오래된 순이 바뀝니다',
+    sortable: true,
+    className: 'lead_feed_time',
+    cell: (row, { toggle }) => (
+      <div className="lead_feed_time_cell">
+        <span>{formatLeadTime(row)}</span>
+        {toggle && (
+          <span
+            className="lead_feed_more"
+            title={`같은 번호로 ${toggle.count}건 더 들어왔습니다`}
+          >
+            +{toggle.count}
+          </span>
+        )}
+      </div>
+    ),
+  },
+  {
+    key: 'board',
+    label: '보드',
+    cellTitle: (row) => row.boardName,
+    cell: (row) => (
+      <>
+        {shortBoardName(row.boardName)}
+        {row.product && <small className="lead_feed_sub">{row.product}</small>}
+      </>
+    ),
+  },
+  {
+    key: 'name',
+    label: '이름·연락처',
+    title: '이름을 누르면 그 고객의 전체 기록(Monday 고객 상세)이 열립니다',
+    cell: (row, { onOpenLead }) => (
+      <>
+        <LeadName row={row} onOpenLead={onOpenLead} />
+        {row.phone ? (
+          <small className="lead_feed_sub">
+            {formatPhoneNumber(row.phone)}
+          </small>
+        ) : (
+          <small
+            className="lead_feed_sub is-warn"
+            title="번호를 읽지 못했습니다 — Monday에서 확인이 필요합니다"
+          >
+            {row.phoneRaw ?? '번호 없음'}
+          </small>
+        )}
+      </>
+    ),
+  },
+  {
+    key: 'source',
+    label: '유입',
+    title:
+      '매체(utm_source / utm_medium)와 캠페인(utm_campaign). 소재명(utm_content)은 아직 받지 않습니다 — Meta 광고는 캠페인 자리에 광고(소재) 이름이 들어옵니다.',
+    className: 'lead_feed_source',
+    cell: (row) => {
+      const source = [row.utmSource, row.utmMedium].filter(Boolean).join(' / ')
+      if (!source && !row.utmCampaign) {
+        return <span className="lead_feed_none">UTM 없음</span>
+      }
+      return (
+        <>
+          {source && <span>{source}</span>}
+          {row.utmCampaign && (
+            <small className="lead_feed_sub" title={row.utmCampaign}>
+              {row.utmCampaign}
+            </small>
+          )}
+        </>
+      )
+    },
+  },
+  {
+    key: 'inquiry',
+    label: '문의 원문',
+    title:
+      '고객이 문의 폼에 적은 내용 — 그 칸이 있는 보드(기타 온라인 문의·[B2B] 보드)만',
+    className: 'lead_feed_text',
+    cell: (row) => {
+      const keywords = leadKeywords(row)
+      return (
+        <>
+          {/* 문의 원문·메모에 걸린 키워드 — 메모는 세 줄까지만 보여서 여기 모은다. */}
+          {keywords.length > 0 && (
+            <div className="lead_feed_tags">
+              {keywords.map((keyword) => (
+                <span key={keyword} className="lead_feed_tag">
+                  {keyword}
+                </span>
+              ))}
+            </div>
+          )}
+          {row.inquiryMessage ? (
+            <Highlighted text={row.inquiryMessage} />
+          ) : (
+            <span className="lead_feed_none">-</span>
+          )}
+        </>
+      )
+    },
+  },
+  {
+    key: 'notes',
+    label: '상담 메모',
+    title:
+      "Monday '상담내역' 칸 — 세 줄까지 보이고, 마우스를 올리면 전체가 뜹니다",
+    className: 'lead_feed_text',
+    cell: (row) =>
+      row.notes ? (
+        <div className="lead_feed_memo" title={row.notes}>
+          <Highlighted text={row.notes} />
+        </div>
+      ) : (
+        <span className="lead_feed_none">-</span>
+      ),
+  },
+  {
+    key: 'status',
+    label: '콜백·진성·오기입',
+    title:
+      '상담 진행 상태와 콜백 단계. 진성 등급 칸이 아직 없어 구매확률을 대신 보입니다.',
+    className: 'lead_feed_status',
+    cell: (row) => {
+      const statusHasCallback = /콜백/.test(row.status ?? '')
+      return (
+        <>
+          {row.status && (
+            <span
+              className={
+                isMisentry(row)
+                  ? 'lead_feed_badge is-danger'
+                  : 'lead_feed_badge'
+              }
+            >
+              {row.status}
+            </span>
+          )}
+          {row.callbackStage > 0 && !statusHasCallback && (
+            <small className="lead_feed_sub">
+              콜백 {row.callbackStage}단계
+            </small>
+          )}
+          {row.probability && (
+            <small className="lead_feed_sub">구매확률 {row.probability}</small>
+          )}
+          {!row.status && row.callbackStage === 0 && !row.probability && (
+            <span className="lead_feed_none">-</span>
+          )}
+        </>
+      )
+    },
+  },
+  {
+    key: 'assignee',
+    label: '담당자',
+    cell: (row) => row.assignee ?? <span className="lead_feed_none">-</span>,
+  },
+  {
+    key: 'firstCall',
+    label: '첫 콜',
+    title:
+      '인입 날부터 콜백 진행일(가장 이른 날)까지 — 콜백 칸이 날짜만 있어 일 단위입니다',
+    className: 'lead_feed_first_call',
+    cell: firstCallLabel,
+  },
+]
+
+/** 머리글 한 칸 — 정렬 칸이면 누르면 최신순 ↔ 오래된 순이 바뀌는 단추. */
+const LeadHead = ({
+  column,
+  sortDirection,
+  onToggleSort,
+}: {
+  column: LeadColumn
+  sortDirection: SortDirection
+  onToggleSort: () => void
+}) => {
+  if (column.hideLabel) {
+    return <th className={column.className} aria-label={column.label} />
+  }
+  if (!column.sortable) {
+    return (
+      <th className={column.className} title={column.title}>
+        {column.label}
+      </th>
+    )
+  }
+  return (
+    <th
+      className={column.className}
+      title={column.title}
+      aria-sort={sortDirection === 'desc' ? 'descending' : 'ascending'}
+    >
+      <button type="button" className="lead_feed_sort" onClick={onToggleSort}>
+        {column.label}
+        {sortDirection === 'desc' ? (
+          <ArrowDown strokeWidth={2} aria-label="최신순" />
+        ) : (
+          <ArrowUp strokeWidth={2} aria-label="오래된 순" />
+        )}
+      </button>
+    </th>
+  )
+}
+
+/** 리드 한 줄 — 칸은 LEAD_COLUMNS 순서. 묶음의 맨 앞 줄(head)이면 맨 앞 칸에
+ * 펼침 갈매기를 두고 줄 어디를 눌러도 펼친다. 펼친 줄(sub)은 옅게 칠한 모양을
+ * 쓴다. 줄이 수백 개라, 받는 값이 그대로면 다시 그리지 않는다(memo — 그래서
+ * 값만 받고 함수는 고정된 것만 받는다). */
 const LeadRow = memo(function LeadRow({
   row,
   groupKey,
@@ -228,10 +447,6 @@ const LeadRow = memo(function LeadRow({
     groupKey !== undefined && moreCount > 0 && onToggle
       ? { count: moreCount, open, onToggle: () => onToggle(groupKey) }
       : null
-  const misentry = isMisentry(row)
-  const source = [row.utmSource, row.utmMedium].filter(Boolean).join(' / ')
-  const statusHasCallback = /콜백/.test(row.status ?? '')
-  const keywords = leadKeywords(row)
   // 줄을 누르면 펼친다 — 이름(고객 상세)·링크·갈매기 단추를 누른 것이거나 글자를
   // 끌어 고르던 중이면 펼치지 않는다(갈매기는 제 단추가 펼친다).
   const onRowClick = toggle
@@ -241,6 +456,7 @@ const LeadRow = memo(function LeadRow({
         toggle.onToggle()
       }
     : undefined
+  const context: LeadCellContext = { toggle, onOpenLead }
   return (
     <tr
       className={[
@@ -253,113 +469,15 @@ const LeadRow = memo(function LeadRow({
         .trim()}
       onClick={onRowClick}
     >
-      <td className="lead_feed_chevron_cell">
-        {toggle && (
-          <button
-            type="button"
-            className="lead_feed_chevron"
-            aria-expanded={toggle.open}
-            aria-label={`같은 번호의 리드 ${toggle.count}건 ${toggle.open ? '접기' : '펼치기'}`}
-            onClick={toggle.onToggle}
-          >
-            <ChevronRight strokeWidth={2} aria-hidden="true" />
-          </button>
-        )}
-      </td>
-      <td className="lead_feed_time">
-        <div className="lead_feed_time_cell">
-          <span>{formatLeadTime(row)}</span>
-          {toggle && (
-            <span
-              className="lead_feed_more"
-              title={`같은 번호로 ${toggle.count}건 더 들어왔습니다`}
-            >
-              +{toggle.count}
-            </span>
-          )}
-        </div>
-      </td>
-      <td title={row.boardName}>
-        {shortBoardName(row.boardName)}
-        {row.product && <small className="lead_feed_sub">{row.product}</small>}
-      </td>
-      <td>
-        <LeadName row={row} onOpenLead={onOpenLead} />
-        {row.phone ? (
-          <small className="lead_feed_sub">
-            {formatPhoneNumber(row.phone)}
-          </small>
-        ) : (
-          <small
-            className="lead_feed_sub is-warn"
-            title="번호를 읽지 못했습니다 — Monday에서 확인이 필요합니다"
-          >
-            {row.phoneRaw ?? '번호 없음'}
-          </small>
-        )}
-      </td>
-      <td className="lead_feed_source">
-        {source || row.utmCampaign ? (
-          <>
-            {source && <span>{source}</span>}
-            {row.utmCampaign && (
-              <small className="lead_feed_sub" title={row.utmCampaign}>
-                {row.utmCampaign}
-              </small>
-            )}
-          </>
-        ) : (
-          <span className="lead_feed_none">UTM 없음</span>
-        )}
-      </td>
-      <td className="lead_feed_text">
-        {/* 문의 원문·메모에 걸린 키워드 — 메모는 세 줄까지만 보여서 여기 모은다. */}
-        {keywords.length > 0 && (
-          <div className="lead_feed_tags">
-            {keywords.map((keyword) => (
-              <span key={keyword} className="lead_feed_tag">
-                {keyword}
-              </span>
-            ))}
-          </div>
-        )}
-        {row.inquiryMessage ? (
-          <Highlighted text={row.inquiryMessage} />
-        ) : (
-          <span className="lead_feed_none">-</span>
-        )}
-      </td>
-      <td className="lead_feed_text">
-        {row.notes ? (
-          <div className="lead_feed_memo" title={row.notes}>
-            <Highlighted text={row.notes} />
-          </div>
-        ) : (
-          <span className="lead_feed_none">-</span>
-        )}
-      </td>
-      <td className="lead_feed_status">
-        {row.status && (
-          <span
-            className={
-              misentry ? 'lead_feed_badge is-danger' : 'lead_feed_badge'
-            }
-          >
-            {row.status}
-          </span>
-        )}
-        {row.callbackStage > 0 && !statusHasCallback && (
-          <small className="lead_feed_sub">콜백 {row.callbackStage}단계</small>
-        )}
-        {row.probability && (
-          <small className="lead_feed_sub">구매확률 {row.probability}</small>
-        )}
-        {!row.status && row.callbackStage === 0 && !row.probability && (
-          <span className="lead_feed_none">-</span>
-        )}
-      </td>
-      <td>{row.assignee ?? <span className="lead_feed_none">-</span>}</td>
-      <td className="lead_feed_first_call">{firstCallLabel(row)}</td>
+      {LEAD_COLUMNS.map((column) => (
+        <td
+          key={column.key}
+          className={column.className}
+          title={column.cellTitle?.(row)}
+        >
+          {column.cell(row, context)}
+        </td>
+      ))}
     </tr>
   )
 })
@@ -422,7 +540,7 @@ const CreativeRows = memo(function CreativeRows({
   return (
     <>
       <tr className="lead_feed_creative_head">
-        <td colSpan={COLUMN_COUNT}>
+        <td colSpan={LEAD_COLUMNS.length}>
           <span className="lead_feed_creative_channel">
             {LEAD_CHANNEL_LABEL[group.channel]}
             {kind && ` ${kind}`}
@@ -445,7 +563,7 @@ const CreativeRows = memo(function CreativeRows({
       ))}
       {hidden > 0 && (
         <tr className="lead_feed_creative_more">
-          <td colSpan={COLUMN_COUNT}>
+          <td colSpan={LEAD_COLUMNS.length}>
             <button type="button" onClick={() => onToggle(group.key)}>
               {open
                 ? '접기'
@@ -763,41 +881,13 @@ export const LeadFeed = ({
                         <table className="stats_table lead_feed_table">
                           <thead>
                             <tr>
-                              <th
-                                className="lead_feed_chevron_cell"
-                                aria-label="같은 번호의 리드 펼치기"
-                              />
-                              <th
-                                title={TIME_COLUMN[1]}
-                                aria-sort={
-                                  sortDirection === 'desc'
-                                    ? 'descending'
-                                    : 'ascending'
-                                }
-                              >
-                                <button
-                                  type="button"
-                                  className="lead_feed_sort"
-                                  onClick={actions.toggleSort}
-                                >
-                                  {TIME_COLUMN[0]}
-                                  {sortDirection === 'desc' ? (
-                                    <ArrowDown
-                                      strokeWidth={2}
-                                      aria-label="최신순"
-                                    />
-                                  ) : (
-                                    <ArrowUp
-                                      strokeWidth={2}
-                                      aria-label="오래된 순"
-                                    />
-                                  )}
-                                </button>
-                              </th>
-                              {COLUMNS.map(([label, title]) => (
-                                <th key={label} title={title}>
-                                  {label}
-                                </th>
+                              {LEAD_COLUMNS.map((column) => (
+                                <LeadHead
+                                  key={column.key}
+                                  column={column}
+                                  sortDirection={sortDirection}
+                                  onToggleSort={actions.toggleSort}
+                                />
                               ))}
                             </tr>
                           </thead>
