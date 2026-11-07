@@ -390,8 +390,8 @@ export function LoginScreen({ setupPending, onHold }: LoginScreenProps) {
       />
 
       {/*
-        collapsable={false} — 쉬는 동안 움직임이 0이면 Fabric이 이 뷰를 합쳐(flatten) 없애 두었다가, 키보드에 맞춰
-        올리는 순간 새로 만들며 입력칸을 옮겨 단다. 그때 입력칸이 포커스를 잃어 키보드가 바로 내려갔다.
+        collapsable={false} — 움직임(transform·opacity)이 0 ↔ 값으로 바뀌면 Fabric이 이 뷰가 자식을 품을지 다시 정해 입력칸을
+        다른 부모로 옮겨 달 수 있다(옮겨지면 키보드가 내려간다 — login-field.tsx 주석). 늘 품게 고정해 둔다.
       */}
       <Animated.View
         style={[styles.stage, { paddingTop: insets.top + 32 }, stageStyle]}
