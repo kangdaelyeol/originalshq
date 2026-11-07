@@ -752,7 +752,36 @@ export type MondayAttributionRow = [
   /** 그 UTM 상담의 utm_campaign — Meta는 광고(소재) 이름이 들어 있다. cmip
    * "광고 성과" 탭이 광고 단위 광고비와 이 이름으로 맞춘다. 없으면 ''. */
   string,
+  // 아래 셋은 광고 채널 고객만 있다(광고 성과표 — 방문체험 예약률·결제 전환).
+  // 없으면 ''.
+  /** 그 UTM 상담 접수일 이후 처음 방문체험을 예약한 날. */
+  string?,
+  /** 첫 오프라인 결제일(Monday 결제 보드, 취소 제외). */
+  string?,
+  /** 첫 온라인 주문 결제일(Cafe24, 취소 제외). */
+  string?,
 ]
+
+/** 오기입률 재료 1줄 — [상담 접수일, 매체, utm_campaign, 상담 수, 그중 판정이
+ * 끝난 상담 수, 그중 오기입 수]. 접수일·매체·utm_campaign이 같은 UTM 상담을
+ * 합친 것이다(lead-feed.ts의 readLeadQuality). 판정이 끝난 상담은 상태가
+ * 비었거나 '신규 상담 유입'인 것을 뺀 것. 번호를 못 읽어 고객 통합에서 빠진
+ * 상담도 들어간다(오기입은 대개 번호가 틀려서). */
+export type MondayLeadQualityRow = [
+  string,
+  MondayAttributionChannel,
+  string,
+  number,
+  number,
+  number,
+]
+
+/** getMondayLeadQuality의 응답 — cmip "광고 성과" 탭의 오기입률. */
+export interface MondayLeadQuality {
+  rows: MondayLeadQualityRow[]
+  /** 상담 보드의 마지막 동기화 시각(ms) — 아직 없으면 null. */
+  syncedAt: number | null
+}
 
 /** 오프라인 매출 원장 1줄(결제 보드의 품목 줄 하나) — purchases.ts의
  * buildOfflineSaleLines가 만들고 offlineSales 컬렉션에 저장한다. cmip가

@@ -24,6 +24,7 @@ import {
   listWorkspaces,
   previewBoard,
   readLeadFeed,
+  readLeadQuality,
   rebuildCustomers,
   rebuildCustomersSafely,
   registerBoard,
@@ -496,6 +497,40 @@ export const getMondayLeadFeed = onRequest(
       // 저장된 createdAt("2026-11-06T05:23:11Z")과 같은 꼴로 맞춰 비교한다.
       const sinceIso = new Date(since).toISOString().replace(/\.\d{3}Z$/, 'Z')
       response.status(200).send(await readLeadFeed(db, sinceIso))
+    },
+  ),
+)
+
+// ────────────────────────────────
+// getMondayLeadQuality — cmip "광고 성과" 탭의 오기입률. 상담 접수일이
+// [from, to](한국 날짜)인 UTM 상담을 접수일·매체·utm_campaign별로 센 것
+// (상담 수, 판정이 끝난 상담 수, 그중 오기입 수). 광고와 맞추는 것은 화면이 한다.
+//   GET ?from=2026-11-02&to=2026-11-08
+// ────────────────────────────────
+const LEAD_QUALITY_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+export const getMondayLeadQuality = onRequest(
+  // 리드 줄 묶음에서 기간에 닿는 것만 읽는다 — 아직 묶음이 없으면 원본 기록을
+  // 읽어 리드 분석 탭과 같이 넉넉히 둔다.
+  { memory: '1GiB', timeoutSeconds: 300 },
+  endpoint(
+    { name: 'getMondayLeadQuality', method: 'GET', member: true },
+    async ({ request, response }) => {
+      const from = String(request.query.from ?? '')
+      const to = String(request.query.to ?? '')
+      if (
+        !LEAD_QUALITY_DATE.test(from) ||
+        !LEAD_QUALITY_DATE.test(to) ||
+        Number.isNaN(Date.parse(from)) ||
+        Number.isNaN(Date.parse(to)) ||
+        from > to
+      ) {
+        response
+          .status(400)
+          .send({ error: 'from·to는 YYYY-MM-DD이고 from이 to보다 늦으면 안 됩니다' })
+        return
+      }
+      response.status(200).send(await readLeadQuality(db, from, to))
     },
   ),
 )

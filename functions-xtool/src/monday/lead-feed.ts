@@ -2,6 +2,7 @@ import * as logger from 'firebase-functions/logger'
 import { Firestore } from 'firebase-admin/firestore'
 import { attributionChannel } from './attribution'
 import { detectBoardKind, toConsultation } from './customers'
+import { koreaDate } from './fields'
 import {
   listBoardItems,
   listBoards,
@@ -15,6 +16,8 @@ import {
   MondayItem,
   MondayLeadFeed,
   MondayLeadFeedRow,
+  MondayLeadQuality,
+  MondayLeadQualityRow,
 } from './types'
 
 /** 리드 줄의 모양 — 칸을 더하거나 바꾸면 올린다. 묶어 둔 줄(mondayLeadFeed)의
@@ -122,4 +125,40 @@ export async function readLeadFeed(
     leads,
     syncedAt,
   }
+}
+
+/** 판정 전인 상담 — 상태가 비었거나 처음 상태('신규 상담 유입')인 것. 오기입률의
+ * 분모에서 뺀다(공통 정의 D2 — 최근 상담은 아직 판정 전인 것이 많아 넣으면
+ * 오기입률이 낮게 보인다). */
+const isUndecided = (status: string | null): boolean =>
+  !status || /^신규/.test(status.replace(/\s/g, ''))
+
+/** 오기입률 재료 — 상담 접수일이 [from, to](한국 날짜)인 UTM 상담을 접수일·
+ * 매체·utm_campaign별로 센다(상담 수, 판정이 끝난 상담 수, 그중 오기입 수).
+ * 리드 줄(묶어 둔 것, 없으면 원본 기록)에서 읽는다 — 번호를 못 읽어 고객
+ * 통합에서 빠진 상담도 들어간다. 기록은 접수 뒤에 만들어지므로 from 0시
+ * (KST) 이후에 만든 줄만 보면 된다. 접수일 칸이 비었으면 만든 날로 본다. */
+export async function readLeadQuality(
+  db: Firestore,
+  from: string,
+  to: string,
+): Promise<MondayLeadQuality> {
+  const since = new Date(Date.parse(`${from}T00:00:00+09:00`))
+    .toISOString()
+    .replace(/\.\d{3}Z$/, 'Z')
+  const { leads, syncedAt } = await readLeadFeed(db, since)
+  const rows = new Map<string, MondayLeadQualityRow>()
+  for (const lead of leads) {
+    if (lead.channel === 'unknown') continue
+    const date = koreaDate(lead.receivedAt) ?? koreaDate(lead.createdAt)
+    if (!date || date < from || date > to) continue
+    const campaign = lead.utmCampaign?.trim() ?? ''
+    const key = `${date}\n${lead.channel}\n${campaign}`
+    const row = rows.get(key) ?? [date, lead.channel, campaign, 0, 0, 0]
+    row[3] += 1
+    if (!isUndecided(lead.status)) row[4] += 1
+    if (lead.status === '오기입') row[5] += 1
+    rows.set(key, row)
+  }
+  return { rows: [...rows.values()], syncedAt }
 }

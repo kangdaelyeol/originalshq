@@ -1,5 +1,9 @@
 import { koreaDate } from './fields'
-import { MondayAttributionRow, MondayCustomer } from './types'
+import {
+  MondayAttributionChannel,
+  MondayAttributionRow,
+  MondayCustomer,
+} from './types'
 
 // Meta 광고셋 이름이 utm_source에 그대로 들어간 값 — 일부 광고의 URL
 // 파라미터가 utm_source={{adset.name}}처럼 잡혀 있어 생긴다(예:
@@ -33,10 +37,53 @@ export const attributionChannel = (
   return 'other'
 }
 
+/** 광고비가 있는 채널 — 광고 성과표 재료(leadOutcomes)를 붙이는 고객. */
+const AD_CHANNELS: ReadonlySet<MondayAttributionChannel> = new Set([
+  'meta',
+  'google',
+  'naver',
+  'openai',
+  'daangn',
+])
+
+/** 광고 성과표(cmip "광고 성과" 탭)의 방문체험 예약률·결제 전환 재료 —
+ * [utmAt 이후 처음 방문체험을 예약한 날, 첫 오프라인 결제일, 첫 온라인 주문
+ * 결제일], 없으면 ''. 예약한 날은 방문체험 보드에 기록이 생긴 날(만든 시각,
+ * 없으면 체험일)이나, 상담에서 "방문체험확정"이 체크된 그 상담의 접수일이다
+ * (리드 매니저 퍼널의 "방문체험 예약"과 같은 기록). UTM 상담 전에 예약한 것은
+ * 이 리드의 예약이 아니라 뺀다. */
+const leadOutcomes = (
+  customer: MondayCustomer,
+  utmAt: string,
+): [string, string, string] => {
+  const booked = [
+    ...customer.visits.map(
+      (visit) => koreaDate(visit.createdAt) ?? koreaDate(visit.visitAt),
+    ),
+    ...customer.consultations
+      .filter((record) => record.visitConfirmed)
+      .map(
+        (record) => koreaDate(record.receivedAt) ?? koreaDate(record.createdAt),
+      ),
+  ]
+    .filter((date): date is string => date !== null && date >= utmAt)
+    .sort()
+  const firstPaid = (origin: 'offline' | 'online'): string =>
+    customer.purchases
+      .filter(
+        (purchase) =>
+          purchase.origin === origin && !purchase.cancelled && purchase.paidAt,
+      )
+      .map((purchase) => purchase.paidAt as string)
+      .sort()[0] ?? ''
+  return [booked[0] ?? '', firstPaid('offline'), firstPaid('online')]
+}
+
 /**
  * 광고 기여 ROAS 재료 — 고객 1명당 한 줄(순수 함수). cmip ROAS 탭이 광고비와
  * 맞춰 "광고로 확인된 신규 고객 매출"(ROAS 하한)과 고객 유입 월 코호트
- * ROAS를 계산한다. 오기입 고객과 처음 나타난 날을 모르는 고객은 뺀다.
+ * ROAS를 계산하고, "광고 성과" 탭이 광고별 유효 리드(공통 정의 D1)·방문체험
+ * 예약률·결제 전환을 센다. 오기입 고객과 처음 나타난 날을 모르는 고객은 뺀다.
  */
 export const buildAttributionRows = (
   customers: MondayCustomer[],
@@ -70,14 +117,20 @@ export const buildAttributionRows = (
     const purchases = [...byDate.entries()].sort((a, b) =>
       a[0].localeCompare(b[0]),
     )
+    const channel = attributionChannel(utmSource)
+    // 광고 채널 고객만 광고 성과표 재료를 붙인다(문서 크기 — 나머지는 안 쓴다).
+    const outcomes: [string, string, string] | [] = AD_CHANNELS.has(channel)
+      ? leadOutcomes(customer, utmAt)
+      : []
     return [
       [
         firstContactAt,
-        attributionChannel(utmSource),
+        channel,
         utmSource ?? '',
         purchases,
         utmAt,
         utmRecord?.utmCampaign ?? '',
+        ...outcomes,
       ],
     ]
   })
