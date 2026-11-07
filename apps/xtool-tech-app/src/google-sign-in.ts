@@ -22,7 +22,7 @@ export async function signInWithGoogle(target: AccessTarget): Promise<AuthOutcom
   if (!isGoogleSignInReady)
     return { ok: false, message: 'Google 로그인 설정이 아직 안 됐어요. 이메일로 로그인해 주세요.' };
   try {
-    // 지난번 계정을 그대로 쓰지 않고 매번 계정을 고르게(웹 prompt: select_account).
+    // SDK에 남은 지난 로그인을 지워 매번 Google 창을 거치게 한다(웹 select_account처럼 계정 고르기가 늘 뜨는지는 보장 안 됨).
     await GoogleSignin.signOut().catch(() => null);
     const response = await GoogleSignin.signIn();
     if (isCancelledResponse(response)) return { ok: false, message: '', cancelled: true };

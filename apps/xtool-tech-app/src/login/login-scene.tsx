@@ -36,8 +36,8 @@ import type { Choreography } from './use-login-choreography';
 // 유리(배경 흐림)·외곽선·흐르는 빛·모서리 조각·링·로고. 유리가 뒤의 입자를 흐리게 보려면 같은 판에 있어야 해서
 // 카드 겉모습까지 여기서 그리고, 글자·입력칸(폼)은 RN 화면이 같은 자리 위에 얹는다.
 //
-// ⚠️ 배경 흐림(BackdropBlur)을 감싼 Group에는 opacity를 걸지 않는다 — 새 층이 생겨 그 안의 흐림이 뒤를 못 본다
-// (웹 login-card.tsx 주석과 같은 이유). 나타나기·사라지기는 흐림 반경과 칠 불투명도로 대신한다.
+// ⚠️ 배경 흐림(BackdropBlur)은 Group의 opacity를 무시하고(칠 없이 층을 열어 흐림만 적용), Group에 `layer`를 걸면
+// 새 층 안이라 뒤를 못 본다. 그래서 나타나기·사라지기는 opacity가 아니라 흐림 반경과 칠 불투명도로 한다.
 
 export interface CardFrame {
   x: number;
