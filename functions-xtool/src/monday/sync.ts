@@ -31,6 +31,7 @@ import { buildDailySales, buildOfflineSaleLines } from './purchases'
 import { buildDailyRepeatRevenue } from './repeat-revenue'
 import { buildAttributionRows } from './attribution'
 import { buildGaConsultations } from './ga-tracking'
+import { saveLeadFeed } from './lead-feed'
 import {
   MondayBoard,
   MondayBoardPreview,
@@ -270,6 +271,8 @@ export async function rebuildCustomers(
   await step('techFacts', () =>
     saveTechFacts(db, buildTechFacts(items, kindByBoardId)),
   )
+  // 리드 분석의 리드 줄(상담 보드 기록 한 건이 한 줄 — 번호 없는 기록 포함).
+  await step('leadFeed', () => saveLeadFeed(db, items, boards))
   return {
     customerCount: customers.length,
     ...counts,

@@ -1,31 +1,30 @@
+import * as logger from 'firebase-functions/logger'
 import { Firestore } from 'firebase-admin/firestore'
 import { attributionChannel } from './attribution'
 import { detectBoardKind, toConsultation } from './customers'
-import { listBoardItems, listBoards, listItemsCreatedSince } from './firestore'
-import { extractMondayPhones, isMobilePhone } from './helper'
-import { MondayBoard, MondayItem, MondayLeadFeedRow } from './types'
+import {
+  listBoardItems,
+  listBoards,
+  listItemsCreatedSince,
+  readLeadFeedRows,
+  saveLeadFeedRows,
+} from './firestore'
+import { extractMondayPhones, representativePhone } from './helper'
+import {
+  MondayBoard,
+  MondayItem,
+  MondayLeadFeed,
+  MondayLeadFeedRow,
+} from './types'
 
-export interface MondayLeadFeed {
-  /** 상담 보드(리드를 받는 보드) 전부 — 이름 순. 화면의 보드 거르기 버튼. */
-  boards: { id: string; name: string }[]
-  /** 기간 안에(전체를 고르면 전부) 만들어진 상담 기록 — 최근 것부터. */
-  leads: MondayLeadFeedRow[]
-  /** 상담 보드의 마지막 동기화 시각(ms) — 아직 없으면 null. */
-  syncedAt: number | null
-}
+/** 리드 줄의 모양 — 칸을 더하거나 바꾸면 올린다. 묶어 둔 줄(mondayLeadFeed)의
+ * 판이 다르면 다음 동기화가 새로 묶을 때까지 원본 기록에서 읽는다. */
+const LEAD_FEED_ROW_VERSION = 1
 
 const consultationBoards = (boards: MondayBoard[]): MondayBoard[] =>
   boards
     .filter((board) => detectBoardKind(board.columns) === 'consultation')
     .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-
-/** 리드의 고객 번호 — 고객 통합(buildCustomers)과 같은 규칙(적힌 번호에서
- * 휴대폰을 먼저, 없으면 첫 번호)이라 mondayCustomers 문서 id와 같다. 저장된
- * item.phone은 동기화 때의 첫 번호라 유선 번호가 먼저 적힌 고객에서 다르다. */
-const customerPhoneOf = (item: MondayItem): string | null => {
-  const phones = extractMondayPhones(item.phoneRaw)
-  return phones.find(isMobilePhone) ?? phones[0] ?? null
-}
 
 /** 상담 보드의 item을 리드 줄로 바꾼다(순수 함수) — 최근 것부터. */
 export const buildLeadFeed = (
@@ -55,31 +54,62 @@ export const buildLeadFeed = (
         utmSource: consultation.utmSource,
         utmMedium: consultation.utmMedium,
         utmCampaign: consultation.utmCampaign,
-        phone: customerPhoneOf(item),
+        // 고객 통합과 같은 규칙이라 mondayCustomers 문서 id와 같다. 저장된
+        // item.phone도 같은 규칙이지만 그 item을 동기화하던 때의 규칙으로 뽑은
+        // 값이라, 규칙이 바뀐 뒤 그대로인 item에서는 다를 수 있어 다시 뽑는다.
+        phone: representativePhone(extractMondayPhones(item.phoneRaw)),
         phoneRaw: item.phoneRaw,
         channel: attributionChannel(consultation.utmSource),
       }
     })
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
 
+/** 리드 줄을 묶어 저장한다 — 동기화가 끝날 때 고객 통합(rebuildCustomers)이
+ * 같은 item으로 부른다. 리드 분석 탭이 열 때마다 상담 기록 수천 건을 읽지 않게. */
+export async function saveLeadFeed(
+  db: Firestore,
+  items: MondayItem[],
+  boards: MondayBoard[],
+): Promise<void> {
+  const boardIds = new Set(consultationBoards(boards).map((board) => board.id))
+  await saveLeadFeedRows(
+    db,
+    buildLeadFeed(items, boardIds),
+    LEAD_FEED_ROW_VERSION,
+  )
+}
+
 /** 리드 분석 탭 — since(ISO) 이후 Monday에 만들어진 상담 기록과 상담 보드 목록.
- * since가 null이면 상담 보드의 기록 전부(보드마다 읽는다). 인입 시각은 Monday에
- * 기록이 만들어진 시각이다(웹 문의는 접수 직후 만들어지고, 접수일 칸은
- * 날짜뿐이라). */
+ * since가 null이면 상담 보드의 기록 전부. 인입 시각은 Monday에 기록이 만들어진
+ * 시각이다(웹 문의는 접수 직후 만들어지고, 접수일 칸은 날짜뿐이라).
+ * 동기화 때 묶어 둔 리드 줄을 읽고, 아직 없으면(첫 배포 직후 등) 원본 기록에서
+ * 만든다 — 기간이면 그 기간에 만들어진 기록만, 전체면 상담 보드마다 읽는다. */
 export async function readLeadFeed(
   db: Firestore,
   since: string | null,
 ): Promise<MondayLeadFeed> {
-  const boards = await listBoards(db)
+  const [boards, saved] = await Promise.all([
+    listBoards(db),
+    readLeadFeedRows(db, since, LEAD_FEED_ROW_VERSION),
+  ])
   const consultation = consultationBoards(boards)
-  const items =
-    since === null
-      ? (
-          await Promise.all(
-            consultation.map((board) => listBoardItems(db, board.id)),
-          )
-        ).flat()
-      : await listItemsCreatedSince(db, since)
+  const boardIds = new Set(consultation.map((board) => board.id))
+  let leads: MondayLeadFeedRow[]
+  if (saved) {
+    // 묶은 뒤 등록이 풀린 보드의 줄은 뺀다 — 원본에서 읽을 때와 같게.
+    leads = saved.filter((row) => boardIds.has(row.boardId))
+  } else {
+    logger.info('리드 분석: 묶어 둔 리드 줄이 없어 원본 기록에서 읽습니다')
+    const items =
+      since === null
+        ? (
+            await Promise.all(
+              consultation.map((board) => listBoardItems(db, board.id)),
+            )
+          ).flat()
+        : await listItemsCreatedSince(db, since)
+    leads = buildLeadFeed(items, boardIds)
+  }
   const syncedAt = consultation.reduce<number | null>(
     (latest, board) =>
       board.lastSync?.ok && board.lastSync.at > (latest ?? 0)
@@ -89,7 +119,7 @@ export async function readLeadFeed(
   )
   return {
     boards: consultation.map((board) => ({ id: board.id, name: board.name })),
-    leads: buildLeadFeed(items, new Set(consultation.map((board) => board.id))),
+    leads,
     syncedAt,
   }
 }

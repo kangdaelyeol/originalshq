@@ -32,6 +32,6 @@ export type {
 export { listWorkspaceBoards, listWorkspaces } from './workspace'
 export type { MondayWorkspace, MondayWorkspaceBoard } from './workspace'
 export { readLeadFeed } from './lead-feed'
-export type { MondayLeadFeed } from './lead-feed'
+export type { MondayLeadFeed } from './types'
 export { fetchItemUpdates } from './updates'
 export type { MondayAsset, MondayItemUpdates, MondayUpdate } from './updates'

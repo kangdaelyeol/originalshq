@@ -727,13 +727,24 @@ export interface MondayDailyRepeatRevenue {
   onlineRepeat: number
 }
 
+/** 광고 채널 — utm_source를 묶은 값(attribution.ts의 attributionChannel).
+ * other는 UTM은 있지만 광고 매체가 아닌 곳, unknown은 UTM 없음. */
+export type MondayAttributionChannel =
+  | 'meta'
+  | 'google'
+  | 'naver'
+  | 'openai'
+  | 'daangn'
+  | 'other'
+  | 'unknown'
+
 /** 광고 기여 ROAS 재료 1줄(고객 1명) — monday/attribution.ts가 만든다.
  * [처음 나타난 날, 광고 채널, 가장 이른 상담의 UTM source, 구매([결제일, 금액] — 날짜별로
  * 합침, 취소 제외, 오래된 순)]. 처음 나타난 날은 상담 접수·방문체험 예약·
  * 샘플 요청·결제 중 가장 이른 날이라, 문의 없이 산 고객은 첫 결제일이다. */
 export type MondayAttributionRow = [
   string,
-  'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown',
+  MondayAttributionChannel,
   string,
   [string, number][],
   /** 그 UTM 상담의 접수일 — UTM이 없으면 ''. */
@@ -764,7 +775,10 @@ export interface MondayOfflineSaleLine {
 }
 
 /** 리드 분석 탭의 한 줄 — 상담 보드 기록 1건(lead-feed.ts가 만든다). 번호가
- * 없거나 틀려 통합 고객에서 빠진 기록도 들어간다(오기입도 봐야 해서). */
+ * 없거나 틀려 통합 고객에서 빠진 기록도 들어간다(오기입도 봐야 해서). 화면
+ * (src/screens/xtool-lead-manager/entity)도 이 타입을 그대로 가져다 쓴다 —
+ * 칸을 더할 때는 여기와 lead-feed.ts의 buildLeadFeed만 고치고, 묶어 둔 줄의
+ * 판(LEAD_FEED_ROW_VERSION)을 올린다. */
 export type MondayLeadFeedRow = Pick<
   MondayConsultation,
   | 'itemId'
@@ -789,12 +803,20 @@ export type MondayLeadFeedRow = Pick<
   /** 고객 번호(정규화) — 고객 통합과 같은 규칙이라 mondayCustomers 문서 id와
    * 같다. 같은 고객의 리드를 묶는 데 쓴다. 못 읽었으면 null. */
   phone: string | null
-  /** 매체 — utm_source를 광고 채널로 묶은 값(attribution.ts의
-   * attributionChannel — cmip ROAS 탭과 같은 규칙). other는 UTM은 있지만 광고
-   * 매체가 아닌 곳, unknown은 UTM 없음. */
-  channel: MondayAttributionRow[1]
+  /** 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */
+  channel: MondayAttributionChannel
   /** 적힌 그대로의 번호. */
   phoneRaw: string | null
+}
+
+/** getMondayLeadFeed의 응답 — 리드 분석 탭. */
+export interface MondayLeadFeed {
+  /** 상담 보드(리드를 받는 보드) 전부 — 이름 순. 화면의 보드 거르기 버튼. */
+  boards: { id: string; name: string }[]
+  /** 기간 안에(전체를 고르면 전부) 만들어진 상담 기록 — 최근 것부터. */
+  leads: MondayLeadFeedRow[]
+  /** 상담 보드의 마지막 동기화 시각(ms) — 아직 없으면 null. */
+  syncedAt: number | null
 }
 
 /** GA ClientId가 적힌 상담 기록 1건 — monday/ga-tracking.ts가 만든다. "오기입

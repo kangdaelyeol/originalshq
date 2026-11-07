@@ -23,6 +23,7 @@ import {
   MondayFollowUp,
   MondayKpiFacts,
   MondayItem,
+  MondayLeadFeedRow,
   MondayTechFact,
   MondayMissingPhoneItem,
   MondayPaymentIssue,
@@ -255,22 +256,21 @@ export async function replaceCustomers(
   return result
 }
 
-// ── 고객 목록 묶음 ─────────────────────────────────────────────────────
-// 목록 화면(listMondayCustomers)이 열 때마다 고객 문서 8천여 개를 하나씩 읽던
-// 것을, 동기화 때 목록에 필요한 필드만 JSON으로 묶어 문서 열 개 남짓에 저장해
-// 두고 그것만 읽게 한다(읽기 8천여 회 → 열 몇 회). 문서 하나는 1MB까지라
-// 900KB씩 나눈다.
-//   · mondayCustomerList/head — 지금 쓰는 판(version)과 묶음 수, 내용 지문.
+// ── 목록 묶음 ──────────────────────────────────────────────────────────
+// 화면이 열 때마다 문서 수천 개를 하나씩 읽던 목록을, 동기화 때 화면에 필요한
+// 필드만 JSON으로 묶어 문서 몇 개에 저장해 두고 그것만 읽게 한다(읽기 수천 회 →
+// 열 몇 회). 문서 하나는 1MB까지라 900KB씩 나눈다. 고객 목록과 리드 분석의 리드
+// 줄이 쓴다.
+//   · {컬렉션}/head — 지금 쓰는 판(version)과 묶음 수, 내용 지문.
 //     묶음 문서는 {판}-{번호}.
 //   · 새 판을 다 쓴 뒤 head를 바꾸고, 그 전전 판을 지운다 — 막 head를 읽은
 //     화면이 바로 전 판을 읽는 중일 수 있어 한 판은 남겨 둔다.
-//   · 고객 내용 지문이 head와 같으면 다시 쓰지 않는다(바뀐 게 없는 동기화).
-//   · 읽다가 묶음이 빠져 있으면(바뀌는 중 등) 예전처럼 문서마다 읽는다.
-const CUSTOMER_LIST_COLLECTION = 'mondayCustomerList'
-const CUSTOMER_LIST_HEAD = 'head'
-const CUSTOMER_LIST_CHUNK_BYTES = 900_000
+//   · 내용 지문이 head와 같으면 다시 쓰지 않는다(바뀐 게 없는 동기화).
+//   · 읽다가 묶음이 빠져 있으면(바뀌는 중 등) 부르는 쪽이 원본에서 읽는다.
+const CHUNKED_HEAD = 'head'
+const CHUNK_BYTES = 900_000
 
-type CustomerListHead = {
+type ChunkedHead = {
   version: string
   chunkCount: number
   count: number
@@ -278,6 +278,109 @@ type CustomerListHead = {
   previous: { version: string; chunkCount: number } | null
   syncedAt: number
 }
+
+/** 목록을 묶어 저장한다.
+ *   · fingerprint를 주면 그것으로 바뀜을 본다 — 같으면 JSON으로 바꾸지도 않는다.
+ *     안 주면 목록 JSON과 extra로 지문을 만든다.
+ *   · extra는 head에 같이 둘 값 — 묶음마다 마지막 줄의 번호를 받는다. */
+async function saveChunked<T>(
+  collection: CollectionReference,
+  items: readonly T[],
+  options: {
+    fingerprint?: string
+    extra?: (lastIndexes: number[]) => Record<string, unknown>
+  } = {},
+): Promise<void> {
+  const headRef = collection.doc(CHUNKED_HEAD)
+  const old = (await headRef.get()).data() as ChunkedHead | undefined
+  if (
+    options.fingerprint !== undefined &&
+    old?.fingerprint === options.fingerprint
+  ) {
+    return
+  }
+
+  const chunks: string[] = []
+  const lastIndexes: number[] = []
+  let current: string[] = []
+  let bytes = 2
+  const jsons = items.map((item) => JSON.stringify(item))
+  jsons.forEach((json, index) => {
+    const size = Buffer.byteLength(json) + 1
+    if (current.length > 0 && bytes + size > CHUNK_BYTES) {
+      chunks.push(`[${current.join(',')}]`)
+      lastIndexes.push(index - 1)
+      current = []
+      bytes = 2
+    }
+    current.push(json)
+    bytes += size
+  })
+  if (current.length > 0) {
+    chunks.push(`[${current.join(',')}]`)
+    lastIndexes.push(jsons.length - 1)
+  }
+  const extra = options.extra?.(lastIndexes) ?? {}
+  const fingerprint =
+    options.fingerprint ??
+    createHash('sha1')
+      .update(JSON.stringify(extra))
+      .update(chunks.join('\n'))
+      .digest('hex')
+  if (old?.fingerprint === fingerprint) return
+
+  const version = Date.now().toString(36)
+  await Promise.all(
+    chunks.map((text, index) =>
+      collection.doc(`${version}-${index}`).set({ items: text }),
+    ),
+  )
+  const head: ChunkedHead = {
+    version,
+    chunkCount: chunks.length,
+    count: items.length,
+    fingerprint,
+    previous: old ? { version: old.version, chunkCount: old.chunkCount } : null,
+    syncedAt: Date.now(),
+  }
+  await headRef.set({ ...extra, ...head })
+  // 전전 판 지우기 — 실패해도 목록에는 지장이 없다(다음 판 때 남은 채로 둔다).
+  if (old?.previous) {
+    const stale = old.previous
+    await Promise.all(
+      Array.from({ length: stale.chunkCount }, (_, index) =>
+        collection.doc(`${stale.version}-${index}`).delete(),
+      ),
+    ).catch(() => undefined)
+  }
+}
+
+/** 묶어 둔 목록의 head — 아직 없으면 undefined. Extra는 저장 때 같이 둔 값. */
+async function readChunkedHead<Extra>(
+  collection: CollectionReference,
+): Promise<(ChunkedHead & Partial<Extra>) | undefined> {
+  return (await collection.doc(CHUNKED_HEAD).get()).data() as
+    | (ChunkedHead & Partial<Extra>)
+    | undefined
+}
+
+/** head가 가리키는 묶음(indexes를 주면 그 묶음만)을 읽어 목록으로 되돌린다 —
+ * 하나라도 빠졌으면(바뀌는 중 등) null. */
+async function readChunks<T>(
+  collection: CollectionReference,
+  head: ChunkedHead,
+  indexes = Array.from({ length: head.chunkCount }, (_, index) => index),
+): Promise<T[] | null> {
+  if (indexes.length === 0) return []
+  const docs = await collection.firestore.getAll(
+    ...indexes.map((index) => collection.doc(`${head.version}-${index}`)),
+  )
+  if (!docs.every((doc) => doc.exists)) return null
+  return docs.flatMap((doc) => JSON.parse(doc.get('items') as string) as T[])
+}
+
+// 고객 목록(listMondayCustomers) — 고객 8천여 명의 목록 필드.
+const CUSTOMER_LIST_COLLECTION = 'mondayCustomerList'
 
 const toListItem = (customer: MondayCustomer): MondayCustomerListItem => ({
   phone: customer.phone,
@@ -292,58 +395,19 @@ async function saveCustomerList(
   db: Firestore,
   customers: MondayCustomer[],
 ): Promise<void> {
-  const collection = db.collection(CUSTOMER_LIST_COLLECTION)
-  const headRef = collection.doc(CUSTOMER_LIST_HEAD)
   // 문서 id(전화번호) 순 — 예전처럼 컬렉션을 읽었을 때와 같은 순서.
   const sorted = [...customers].sort((a, b) =>
     a.phone < b.phone ? -1 : a.phone > b.phone ? 1 : 0,
   )
+  // 고객 문서의 지문(hash)으로 — 바뀐 게 없으면 목록을 JSON으로 바꾸지 않는다.
   const fingerprint = createHash('sha1')
     .update(sorted.map(({ phone, hash }) => `${phone}:${hash}`).join('|'))
     .digest('hex')
-  const old = (await headRef.get()).data() as CustomerListHead | undefined
-  if (old?.fingerprint === fingerprint) return
-
-  const chunks: string[] = []
-  let current: string[] = []
-  let bytes = 2
-  for (const customer of sorted) {
-    const json = JSON.stringify(toListItem(customer))
-    const size = Buffer.byteLength(json) + 1
-    if (current.length > 0 && bytes + size > CUSTOMER_LIST_CHUNK_BYTES) {
-      chunks.push(`[${current.join(',')}]`)
-      current = []
-      bytes = 2
-    }
-    current.push(json)
-    bytes += size
-  }
-  if (current.length > 0) chunks.push(`[${current.join(',')}]`)
-
-  const version = Date.now().toString(36)
-  await Promise.all(
-    chunks.map((items, index) =>
-      collection.doc(`${version}-${index}`).set({ items }),
-    ),
+  await saveChunked(
+    db.collection(CUSTOMER_LIST_COLLECTION),
+    sorted.map(toListItem),
+    { fingerprint },
   )
-  const head: CustomerListHead = {
-    version,
-    chunkCount: chunks.length,
-    count: sorted.length,
-    fingerprint,
-    previous: old ? { version: old.version, chunkCount: old.chunkCount } : null,
-    syncedAt: Date.now(),
-  }
-  await headRef.set(head)
-  // 전전 판 지우기 — 실패해도 목록에는 지장이 없다(다음 판 때 남은 채로 둔다).
-  if (old?.previous) {
-    const stale = old.previous
-    await Promise.all(
-      Array.from({ length: stale.chunkCount }, (_, index) =>
-        collection.doc(`${stale.version}-${index}`).delete(),
-      ),
-    ).catch(() => undefined)
-  }
 }
 
 /** 목록 화면용 — 고객 전체의 요약 필드. 동기화가 만들어 둔 묶음(문서 열 개
@@ -352,21 +416,10 @@ export async function listCustomerSummaries(
   db: Firestore,
 ): Promise<MondayCustomerListItem[]> {
   const collection = db.collection(CUSTOMER_LIST_COLLECTION)
-  const head = (await collection.doc(CUSTOMER_LIST_HEAD).get()).data() as
-    | CustomerListHead
-    | undefined
+  const head = await readChunkedHead(collection)
   if (head && head.chunkCount > 0) {
-    const docs = await db.getAll(
-      ...Array.from({ length: head.chunkCount }, (_, index) =>
-        collection.doc(`${head.version}-${index}`),
-      ),
-    )
-    if (docs.every((doc) => doc.exists)) {
-      return docs.flatMap(
-        (doc) =>
-          JSON.parse(doc.get('items') as string) as MondayCustomerListItem[],
-      )
-    }
+    const items = await readChunks<MondayCustomerListItem>(collection, head)
+    if (items) return items
   }
   const snapshot = await db
     .collection(CUSTOMERS_COLLECTION)
@@ -380,6 +433,65 @@ export async function listCustomerSummaries(
     )
     .get()
   return snapshot.docs.map((doc) => doc.data() as MondayCustomerListItem)
+}
+
+// 리드 분석의 리드 줄(getMondayLeadFeed) — 상담 보드 기록 한 건이 한 줄, 최근
+// 것부터 묶는다. head에 묶음마다 가장 최근 줄의 만든 시각을 둬서, 기간을 볼
+// 때는 그 기간에 만들어진 줄이 든 묶음(대개 맨 앞 하나)만 읽는다.
+const LEAD_FEED_COLLECTION = 'mondayLeadFeed'
+
+type LeadFeedHeadExtra = {
+  /** 줄 모양의 판(lead-feed.ts) — 다르면 읽지 않는다. */
+  rowVersion: number
+  /** 묶음마다 가장 최근 줄의 createdAt(ISO) — 만든 시각이 하나도 없으면 ''. */
+  newest: string[]
+}
+
+/** 리드 줄(최근 것부터)을 묶어 저장한다 — 동기화 뒤 고객 통합이 부른다. */
+export async function saveLeadFeedRows(
+  db: Firestore,
+  rows: MondayLeadFeedRow[],
+  rowVersion: number,
+): Promise<void> {
+  await saveChunked(db.collection(LEAD_FEED_COLLECTION), rows, {
+    extra: (lastIndexes): LeadFeedHeadExtra => ({
+      rowVersion,
+      newest: lastIndexes.map((last, chunk) =>
+        rows
+          .slice(chunk === 0 ? 0 : lastIndexes[chunk - 1] + 1, last + 1)
+          .reduce(
+            (max, row) =>
+              row.createdAt !== null && row.createdAt > max
+                ? row.createdAt
+                : max,
+            '',
+          ),
+      ),
+    }),
+  })
+}
+
+/** 묶어 둔 리드 줄 — since(ISO) 이후에 만들어진 것만(null이면 전부). 아직
+ * 묶지 않았거나, 줄 모양의 판이 다르거나, 바뀌는 중이면 null — 부르는 쪽이
+ * 원본 기록에서 읽는다. */
+export async function readLeadFeedRows(
+  db: Firestore,
+  since: string | null,
+  rowVersion: number,
+): Promise<MondayLeadFeedRow[] | null> {
+  const collection = db.collection(LEAD_FEED_COLLECTION)
+  const head = await readChunkedHead<LeadFeedHeadExtra>(collection)
+  if (!head || head.rowVersion !== rowVersion) return null
+  const indexes = Array.from(
+    { length: head.chunkCount },
+    (_, index) => index,
+  ).filter(
+    (index) =>
+      since === null || (head.newest?.[index] ?? since) >= since,
+  )
+  const rows = await readChunks<MondayLeadFeedRow>(collection, head, indexes)
+  if (rows === null || since === null) return rows
+  return rows.filter((row) => row.createdAt !== null && row.createdAt >= since)
 }
 
 export async function getCustomer(
