@@ -42,10 +42,11 @@ interface InsightLoadResult {
   attributionResult: AttributionRow[] | null
 }
 
-// 끝의 버전은 캐시에 담는 결과의 모양이 바뀌면 올린다 — 예전 모양(재구매
-// 금액이 없던 때, OpenAI·당근 결과가 없던 때)으로 저장된 캐시를 다시 쓰지 않게.
+// 끝의 버전은 캐시에 담는 결과의 모양이나 계산이 바뀌면 올린다 — 예전 모양(재구매
+// 금액이 없던 때, OpenAI·당근 결과가 없던 때)이나 예전 계산(Meta 전환에 랜딩 조회가
+// 섞이던 때)으로 저장된 캐시를 다시 쓰지 않게.
 const cacheKeyFor = (start: ISODate, end: ISODate): string =>
-  `${start}:${end}:v5`
+  `${start}:${end}:v6`
 
 /** 기본 조회 기간 — 최근 7일. 오늘은 아직 데이터가 다 안 쌓였을 수 있어 어제까지로
  * 센다(date-range-picker의 "지난 7일" 프리셋과 동일한 정의). */

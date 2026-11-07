@@ -130,7 +130,13 @@ function FullListTableRow({
         </span>
       </td>
       {visibleFields.map((f) => (
-        <td key={f.key}>{f.formatCompact(row.metrics[f.key])}</td>
+        <td key={f.key}>
+          {/* 전환이 없으면 CPA는 정해지지 않는다 — 0.00이면 가장 싼 줄로 읽혔다
+              (트래픽 목표 캠페인처럼 전환을 세지 않는 줄). */}
+          {f.key === 'cpa' && row.metrics.conversions <= 0
+            ? '-'
+            : f.formatCompact(row.metrics[f.key])}
+        </td>
       ))}
     </tr>
   )

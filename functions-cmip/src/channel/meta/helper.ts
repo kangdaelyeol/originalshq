@@ -19,8 +19,11 @@ export const summarizeTotal = (data: MetaInsight): MetricsSummary => {
   return sumRows(data)
 }
 
-// 기간(일자)별 합계
-export const summarizeByDate = (data: MetaInsight): DateSummary[] => {
+// 기간(일자)별 합계 — count는 전환으로 셀 값(sumRows 참고).
+export const summarizeByDate = (
+  data: MetaInsight,
+  count?: (row: DataSetInsight) => number,
+): DateSummary[] => {
   const grouped = new Map<string, DataSetInsight[]>()
 
   for (const row of data) {
@@ -30,7 +33,7 @@ export const summarizeByDate = (data: MetaInsight): DateSummary[] => {
   }
 
   return Array.from(grouped.entries())
-    .map(([date, rows]) => ({ date, ...sumRows(rows) }))
+    .map(([date, rows]) => ({ date, ...sumRows(rows, count) }))
     .sort((a, b) => a.date.localeCompare(b.date))
 }
 

@@ -38,8 +38,25 @@ function sumIndicatorValues(indicators?: Indicator[]): number {
   }, 0)
 }
 
-export const getConversions = (row: DataSetInsight): number =>
+/** 전환으로 치지 않는 결과 — 트래픽·참여·도달을 목표로 한 광고셋의 '결과'(랜딩
+ * 페이지 조회·링크 클릭·콘텐츠 조회·참여·동영상 조회·도달·노출). results에는
+ * 광고셋마다 고른 목표의 건수가 들어와서, 그대로 더하면 랜딩 조회 1회가 전환
+ * 1건이 됐다(기획전 캠페인이 전환 856건·CPA 309원으로 보였다). Meta 결과
+ * 지표(indicator) 이름의 일부로 찾는다 — 'actions:' 접두어와 상관없이. */
+const NON_CONVERSION_RESULT =
+  /landing_page_view|link_click|view_content|engagement|video|thruplay|reach|impressions|ad_recall/
+
+/** 광고셋 '결과'의 합 — 목표가 무엇이든 그 목표의 건수. 광고 테스트처럼 같은
+ * 목표끼리 단가를 비교할 때 쓴다(랜딩 조회 목표면 랜딩 조회 단가). */
+export const getResults = (row: DataSetInsight): number =>
   sumIndicatorValues(row.results)
+
+/** 전환 — '결과' 중 트래픽·참여·도달류(NON_CONVERSION_RESULT)를 뺀 것. 분석
+ * 화면의 Conversions·CPA·CVR가 쓴다. */
+export const getConversions = (row: DataSetInsight): number =>
+  sumIndicatorValues(
+    row.results?.filter((r) => !NON_CONVERSION_RESULT.test(r.indicator)),
+  )
 
 /** 전환매출액 — action_values 합계. results와 같은 방식(전부 합산)으로,
  * 특정 action_type만 골라내지 않는다 — 필드 자체를 요청한 시점에 이미 그
@@ -58,14 +75,18 @@ export const getResultType = (row: DataSetInsight): string | null => {
   return indicator.startsWith('actions:') ? indicator.slice(8) : indicator
 }
 
-export const sumRows = (rows: DataSetInsight[]): MetricsSummary => {
+/** count — 행 하나의 전환 수(기본 getConversions, 광고 테스트는 getResults). */
+export const sumRows = (
+  rows: DataSetInsight[],
+  count: (row: DataSetInsight) => number = getConversions,
+): MetricsSummary => {
   const impressions = rows.reduce((s, r) => s + (Number(r.impressions) || 0), 0)
   const clicks = rows.reduce(
     (s, r) => s + (Number(r.inline_link_clicks) || 0),
     0,
   )
   const spend = rows.reduce((s, r) => s + (Number(r.spend) || 0), 0)
-  const conversions = rows.reduce((s, r) => s + getConversions(r), 0)
+  const conversions = rows.reduce((s, r) => s + count(r), 0)
   const revenue = rows.reduce((s, r) => s + getRevenue(r), 0)
   const reach = rows.reduce((s, r) => s + (Number(r.reach) || 0), 0)
 

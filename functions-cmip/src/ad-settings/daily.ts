@@ -1,5 +1,6 @@
 import { db } from '../data'
 import { summarizeByDate as summarizeMetaByDate } from '../channel/meta/helper'
+import { getResults } from '../channel/meta/utils'
 import { summarizeByDate as summarizeRowsByDate } from '../channel/naver/helper'
 import type { DataSetInsight, DateSummary } from '../channel/meta/types'
 import type { NaverInsightRow } from '../channel/naver/types'
@@ -72,7 +73,12 @@ export async function getAdEntityDaily(
     .where(idField, '==', platformId)
     .get()
   const rows = snap.docs.map((d) => d.data())
-  if (channel === 'meta') return summarizeMetaByDate(rows as DataSetInsight[])
+  // Meta는 결과 전체(getResults) — 광고 테스트는 같은 전환 목표끼리 단가를
+  // 비교하므로, 랜딩 조회 목표면 랜딩 조회가 그 목표의 전환이다. 분석 화면의
+  // 전환(getConversions)은 트래픽·참여류 결과를 뺀다.
+  if (channel === 'meta') {
+    return summarizeMetaByDate(rows as DataSetInsight[], getResults)
+  }
   if (channel === 'google') {
     return summarizeRowsByDate(
       (rows as GoogleCampaignInsightRow[]).map(googleAsRow),

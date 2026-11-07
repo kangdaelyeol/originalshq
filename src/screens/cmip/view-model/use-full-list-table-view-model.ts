@@ -139,6 +139,13 @@ export const useFullListTableViewModel = (rows: readonly FullListRow[]) => {
     const sortRows = (list: readonly FullListRow[]) =>
       [...list].sort((a, b) => {
         if (sort.key === 'name') return a.name.localeCompare(b.name) * dir
+        // 전환이 없는 줄은 CPA가 정해지지 않는다(0으로 온다) — 오름차순이면
+        // 가장 싼 줄처럼 맨 위에 와서, 방향과 상관없이 맨 뒤로 보낸다.
+        if (sort.key === 'cpa') {
+          const aNone = a.metrics.conversions <= 0
+          const bNone = b.metrics.conversions <= 0
+          if (aNone !== bNone) return aNone ? 1 : -1
+        }
         return (a.metrics[sort.key] - b.metrics[sort.key]) * dir
       })
     return sortRows(searchedRows).map((r) =>
