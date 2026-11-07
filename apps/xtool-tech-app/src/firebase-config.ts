@@ -13,4 +13,4 @@ export const XTOOL_FIREBASE_CONFIG = {
 // Google 로그인용 iOS OAuth 클라이언트 ID — Firebase 콘솔에 iOS 앱(번들 ID com.originalshq.xtooltech)을 등록하고 받은
 // GoogleService-Info.plist의 CLIENT_ID. 넣을 때 Info.plist의 URL 스킴(REVERSED_CLIENT_ID)도 함께 넣는다. 비어 있으면
 // 로그인 화면이 Google 버튼을 누를 때 "설정이 아직"이라고 알린다.
-export const GOOGLE_IOS_CLIENT_ID = '';
+export const GOOGLE_IOS_CLIENT_ID: string = '225759276300-ejff7egpvjvg9jmfcpfei0ga5r45lvl8.apps.googleusercontent.com';
