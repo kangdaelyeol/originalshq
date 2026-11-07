@@ -34,6 +34,7 @@ import {
   type TableSort,
   type KpiUnit,
   type PurchaseScope,
+  type SalesChartMetric,
 } from '@/screens/xtool-lead-manager/utils'
 // 날짜 계산은 cmip과 같은 함수를 쓴다 — 기간 선택기(DateRangePicker)도 cmip
 // 것이라, "오늘"·"지난 7일"의 기준이 두 화면에서 어긋나지 않게 한다.
@@ -61,6 +62,8 @@ export const TREND_SECTION_LABEL: Record<TrendSection, string> = {
 /** 보드 현황 보기 — 보드별 추이(목록) / 표(히트맵). */
 export type InflowView = 'trend' | 'table'
 export const INFLOW_VIEWS: readonly InflowView[] = ['trend', 'table']
+
+const SALES_CHART_METRICS: readonly SalesChartMetric[] = ['quantity', 'amount']
 
 /** 현재 파이프라인 보기 — 그래프 / 표. */
 export type PipelineView = 'chart' | 'table'
@@ -169,6 +172,13 @@ export const useMondayTrendViewModel = (active: boolean) => {
     'trend',
     oneOf(INFLOW_VIEWS),
   )
+  // 판매통계 그래프 — 판매 수량 / 판매 금액(만원). 이 브라우저에 남긴다.
+  const [salesChartMetric, setSalesChartMetric] =
+    usePersistentState<SalesChartMetric>(
+      'xtool.trend.salesChart',
+      'quantity',
+      oneOf(SALES_CHART_METRICS),
+    )
   // 개인 KPI 카드마다 그래프 / 표.
   const [cardViews, setCardViews] = usePersistentState<
     Record<string, CardView>
@@ -229,6 +239,19 @@ export const useMondayTrendViewModel = (active: boolean) => {
         unit,
       ),
     [salesRows, salesScope, range, unit],
+  )
+  // 그래프 — 수량이면 표와 같은 칸을, 금액이면 같은 기간을 금액(만원)으로.
+  const salesChartPoints = useMemo(
+    () =>
+      salesChartMetric === 'quantity'
+        ? salesPoints
+        : inflowSeries(
+            salesAsDays(salesRows, salesScope, 'amount'),
+            range.start,
+            range.end,
+            unit,
+          ),
+    [salesChartMetric, salesPoints, salesRows, salesScope, range, unit],
   )
   const salesColumns = useMemo(
     () => summarizeInflow(salesPoints).boards,
@@ -421,8 +444,12 @@ export const useMondayTrendViewModel = (active: boolean) => {
         tableRows: salesTableRows,
         sortKey: salesSortKey,
         sortDirection: salesSortDirection,
-        /** 기간 칸(오래된 것부터) — 그래프용. */
+        /** 기간 칸(오래된 것부터) — 제품별 추이용(수량). */
         points: salesPoints,
+        /** 그래프가 보는 값 — 수량 / 금액(만원). */
+        chartMetric: salesChartMetric,
+        /** 그래프의 기간 칸 — chartMetric 기준. */
+        chartPoints: salesChartPoints,
         /** 제품별 추이(수량 많은 순). */
         trends: salesTrends,
         columnMax: salesColumnMax,
@@ -442,6 +469,7 @@ export const useMondayTrendViewModel = (active: boolean) => {
       toggleSort,
       changeInflowView: setInflowView,
       changeSalesView: setSalesView,
+      changeSalesChartMetric: setSalesChartMetric,
       changeCardView: (id: string, view: CardView) =>
         setCardViews((prev) => ({ ...prev, [id]: view })),
       changePipelineView: setPipelineView,

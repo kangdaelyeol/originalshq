@@ -146,7 +146,7 @@ export const InflowChart = ({
                             .map(([name, boardCount]) => (
                               <Fragment key={name}>
                                 <dt>{shortBoardName(name)}</dt>
-                                <dd>{boardCount}</dd>
+                                <dd>{boardCount.toLocaleString('ko-KR')}</dd>
                               </Fragment>
                             ))}
                           {rest > 0 && (

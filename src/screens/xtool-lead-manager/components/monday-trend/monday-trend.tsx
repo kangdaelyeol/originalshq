@@ -73,6 +73,7 @@ export const MondayTrend = ({
     changeRange,
     changeUnit,
     changeSalesView,
+    changeSalesChartMetric,
     changeCardView,
     reload,
     changeSection,
@@ -222,6 +223,7 @@ export const MondayTrend = ({
                 unit={unit}
                 onSort={toggleSalesSort}
                 onView={changeSalesView}
+                onChartMetric={changeSalesChartMetric}
                 drawKey={drawKey}
               />
             ) : (

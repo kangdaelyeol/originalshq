@@ -1,5 +1,15 @@
 import type { MondayDailyInflow, MondayDailySale } from '../entity'
 import type { PurchaseScope } from './monday-stats'
+import { toManwon } from './sales-team'
+
+/** 판매통계 그래프를 무엇으로 볼지 — 판매 수량 / 판매 금액(만원). 아래 제품
+ * 현황(추이·표)은 늘 수량이다. */
+export type SalesChartMetric = 'quantity' | 'amount'
+
+export const SALES_CHART_METRIC_LABEL: Record<SalesChartMetric, string> = {
+  quantity: '수량',
+  amount: '금액',
+}
 
 /** 제품 하나의 판매 합계 — 조회 기간 안에서. */
 export interface SalesProduct {
@@ -65,23 +75,38 @@ export const summarizeSales = (products: SalesProduct[]): SalesSummary => ({
 /** 판매 줄을 "날짜별 · 제품별 수량"으로 바꾼다 — 인입 통계의 "날짜별 ·
  * 보드별 건수"와 같은 모양이라, 일/주/월로 묶기·정렬·합계 계산을 인입
  * 통계의 함수(inflowSeries, summarizeInflow, sortInflowRows)로 그대로 한다.
- * 여기서 total은 그날 팔린 전체 수량, boards는 제품명별 수량이다. */
+ * 여기서 total은 그날 팔린 전체 수량, boards는 제품명별 수량이다. metric이
+ * 'amount'면 수량 대신 금액(만원)이다 — 그래프만 쓴다. */
 export const salesAsDays = (
   rows: MondayDailySale[],
   scope: PurchaseScope,
+  metric: SalesChartMetric = 'quantity',
 ): MondayDailyInflow[] => {
   const byDate = new Map<string, MondayDailyInflow>()
   for (const row of rows) {
     if (scope !== 'all' && row.origin !== scope) continue
+    const value = metric === 'amount' ? row.amount : row.quantity
     const day = byDate.get(row.date) ?? {
       date: row.date,
       total: 0,
       misentry: 0,
       boards: {},
     }
-    day.total += row.quantity
-    day.boards[row.name] = (day.boards[row.name] ?? 0) + row.quantity
+    day.total += value
+    day.boards[row.name] = (day.boards[row.name] ?? 0) + value
     byDate.set(row.date, day)
   }
-  return [...byDate.values()]
+  const days = [...byDate.values()]
+  if (metric === 'quantity') return days
+  // 만원으로 — 날마다 반올림하면 합이 어긋나므로 원으로 모은 뒤 바꾼다.
+  return days.map((day) => ({
+    ...day,
+    total: toManwon(day.total),
+    boards: Object.fromEntries(
+      Object.entries(day.boards).map(([name, value]) => [
+        name,
+        toManwon(value),
+      ]),
+    ),
+  }))
 }

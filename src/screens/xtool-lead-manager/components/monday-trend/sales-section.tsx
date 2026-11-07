@@ -9,8 +9,10 @@ import {
   INFLOW_UNIT_AVERAGE,
   INFLOW_UNIT_LABEL,
   INFLOW_UNIT_NOUN,
+  SALES_CHART_METRIC_LABEL,
   type InflowSortKey,
   type InflowUnit,
+  type SalesChartMetric,
 } from '@/screens/xtool-lead-manager/utils'
 import { BoardTrendList } from './board-trend-list'
 import { HeatmapTable } from './heatmap-table'
@@ -21,6 +23,7 @@ type SalesProps = {
   unit: InflowUnit
   onSort: (key: InflowSortKey) => void
   onView: (view: InflowView) => void
+  onChartMetric: (metric: SalesChartMetric) => void
   /** 기간이 바뀌면 그래프를 새로 그리게 하는 키(monday-trend.tsx). */
   drawKey: string
 }
@@ -28,6 +31,12 @@ type SalesProps = {
 const VIEW_LABEL: Record<InflowView, string> = {
   trend: '제품별 추이',
   table: '표',
+}
+
+// 그래프 툴팁의 이름·단위 — 금액은 만원으로 그린다(원은 자릿수가 너무 길다).
+const CHART_METRIC: Record<SalesChartMetric, { name: string; unit: string }> = {
+  quantity: { name: '판매', unit: '개' },
+  amount: { name: '판매', unit: '만원' },
 }
 
 // 제품별 추이에 보여 줄 제품 수 — 제품이 백 개가 넘어 목록이 너무 길어진다.
@@ -46,14 +55,15 @@ const units = (value: number): string => `${value.toLocaleString('ko-KR')}개`
  * 제품은 이름으로 구분한다. 오프라인과 온라인이 같은 제품을 다른 이름으로
  * 적는 경우가 많아 그런 제품은 두 칸으로 따로 나온다.
  *
- * 인입통계와 같은 모양 — 숫자 타일, 기간별 판매 수량 그래프, 그 아래 제품
- * 현황([제품별 추이 | 표]).
+ * 인입통계와 같은 모양 — 숫자 타일, 기간별 판매 그래프([수량 | 금액]), 그
+ * 아래 제품 현황([제품별 추이 | 표] — 늘 수량).
  */
 export const SalesSection = ({
   sales,
   unit,
   onSort,
   onView,
+  onChartMetric,
   drawKey,
 }: SalesProps) => {
   const {
@@ -64,11 +74,14 @@ export const SalesSection = ({
     sortKey,
     sortDirection,
     points,
+    chartMetric,
+    chartPoints,
     trends,
     columnMax,
     view,
   } = sales
   const noun = INFLOW_UNIT_NOUN[unit]
+  const chartTotal = chartPoints.reduce((sum, point) => sum + point.total, 0)
 
   /** 합계를 표의 줄 수로 나눈 평균 — 소수 첫째 자리까지. */
   const average = (total: number): string =>
@@ -88,10 +101,25 @@ export const SalesSection = ({
 
   return (
     <section className="stats_card">
-      <h2>{INFLOW_UNIT_LABEL[unit]} 판매 수량</h2>
-      <p className="stats_desc">
-        오프라인 결제와 온라인몰 주문 품목 · 취소·반품과 제품이 아닌 줄 제외
-      </p>
+      <div className="kpi_head">
+        <div>
+          <h2>
+            {INFLOW_UNIT_LABEL[unit]} 판매{' '}
+            {SALES_CHART_METRIC_LABEL[chartMetric]}
+          </h2>
+          <p className="stats_desc">
+            오프라인 결제와 온라인몰 주문 품목 · 취소·반품과 제품이 아닌 줄 제외
+            {chartMetric === 'amount' &&
+              ' · 그래프는 만원 단위, 제품 현황은 수량'}
+          </p>
+        </div>
+        <Segmented
+          options={SALES_CHART_METRIC_LABEL}
+          value={chartMetric}
+          onChange={onChartMetric}
+          label="그래프 기준"
+        />
+      </div>
 
       <div className="stats_tiles trend_tiles">
         <StatTile
@@ -132,10 +160,10 @@ export const SalesSection = ({
 
       {columns.length > 0 && (
         <InflowChart
-          key={drawKey}
-          points={points}
-          average={periodCount === 0 ? 0 : summary.quantity / periodCount}
-          metric={{ name: '판매', unit: '개' }}
+          key={`${drawKey}:${chartMetric}`}
+          points={chartPoints}
+          average={periodCount === 0 ? 0 : chartTotal / periodCount}
+          metric={CHART_METRIC[chartMetric]}
         />
       )}
 
