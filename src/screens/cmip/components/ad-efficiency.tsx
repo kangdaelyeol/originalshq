@@ -6,6 +6,9 @@ export type EfficiencySort = 'spend' | 'roas' | 'revenue'
 
 const LEVEL_LABEL = ['캠페인', '광고셋', '광고'] as const
 
+// 오기입률 기준선(주간 매체 성과표 원문) — 넘으면 경고 색.
+const MISENTRY_RATE_LIMIT = 30
+
 // "돈은 쓰는데 구매가 안 나는" 줄 — 광고비 몫이 이만큼 넘는데 구매가 없으면
 // (나눠 가진 0.x명도 구매로 본다 — "구매 0.5명"에 "구매 없음"이 붙지 않게).
 const NO_BUY_SPEND_SHARE = 0.05
@@ -58,6 +61,9 @@ const Row = ({
   const spendShare = total.spend > 0 ? node.spend / total.spend : 0
   const revenueShare = total.revenue > 0 ? node.revenue / total.revenue : 0
   const roas = roasOf(node)
+  // 오기입률 — 판정이 끝난 상담이 있을 때만(재료를 아직 못 받았으면 0건).
+  const misentryRate =
+    node.decided > 0 ? (node.misentry / node.decided) * 100 : null
   const noBuy = spendShare >= NO_BUY_SPEND_SHARE && node.buyers < 0.05
   const width = (value: number) =>
     `${scale > 0 ? Math.min(100, (value / scale) * 100) : 0}%`
@@ -120,7 +126,18 @@ const Row = ({
 
         <div className="ad-efficiency__stats">
           <span>
-            문의 <b>{people(node.leads)}</b>
+            유효 리드 <b>{people(node.leads)}</b>
+          </span>
+          {/* 칸 자리가 고정이라 재료가 없어도 그린다('-'). */}
+          <span
+            className={
+              misentryRate !== null && misentryRate > MISENTRY_RATE_LIMIT
+                ? 'ad-efficiency__misentry is-high'
+                : 'ad-efficiency__misentry'
+            }
+          >
+            오기입{' '}
+            <b>{misentryRate === null ? '-' : `${misentryRate.toFixed(1)}%`}</b>
           </span>
           <span>
             구매 <b>{people(node.buyers)}</b>

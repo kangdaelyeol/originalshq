@@ -17,9 +17,11 @@ export type AttributionChannel =
   'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown'
 
 /** 고객 1명 — [처음 나타난 날, 채널, UTM source, [결제일, 금액][], 그 UTM
- * 상담의 접수일, 그 UTM 상담의 utm_campaign]. 구매는 날짜별로 합쳐져 있고
- * 취소는 빠져 있다(오래된 순). 접수일·utm_campaign은 없으면 ''(예전 형식의
- * 데이터엔 아예 없을 수 있다). Meta의 utm_campaign은 광고(소재) 이름이다. */
+ * 상담의 접수일, 그 UTM 상담의 utm_campaign, 그 접수일 이후 처음 방문체험을
+ * 예약한 날, 첫 오프라인 결제일, 첫 온라인 주문 결제일]. 구매는 날짜별로
+ * 합쳐져 있고 취소는 빠져 있다(오래된 순). 접수일부터는 없으면 ''(예전 형식의
+ * 데이터엔 아예 없을 수 있다). 뒤의 셋(광고 성과표 재료)은 광고 채널 고객만
+ * 있다. Meta의 utm_campaign은 광고(소재) 이름이다. */
 export type AttributionRow = [
   ISODate,
   AttributionChannel,
@@ -27,6 +29,9 @@ export type AttributionRow = [
   [ISODate, number][],
   (ISODate | '')?,
   string?,
+  (ISODate | '')?,
+  (ISODate | '')?,
+  (ISODate | '')?,
 ]
 
 export async function getAttribution(): Promise<AttributionRow[]> {
@@ -90,6 +95,41 @@ export function attributedFirstPurchase(
   const first = row[3][0]
   if (!window || !first) return null
   return first[0] >= window.start && first[0] <= window.end ? first : null
+}
+
+/** 결제 전환의 구매 범위(공통 정의 D4) — 통합(오프라인 결제 + 온라인 주문)·
+ * 오프라인만·온라인만. 온라인 소모품 구매가 전환을 부풀릴 수 있어 나눠 본다. */
+export type PurchaseScope = 'all' | 'offline' | 'online'
+
+/** 광고 성과표 재료(방문체험 예약일·범위별 첫 결제일)가 있는 줄인지 — 서버가
+ * 이 재료를 만든 뒤의 동기화부터 광고 채널 고객에 붙는다. */
+export const hasLeadOutcomes = (row: AttributionRow): boolean => row.length > 6
+
+/** 리드일 — 그 UTM 상담의 접수일(공통 정의 D3), 없으면 처음 나타난 날. */
+export const leadDateOf = (row: AttributionRow): ISODate => row[4] || row[0]
+
+/** date가 start부터 days일 안(당일 포함)인지. */
+const withinDays = (date: ISODate, start: ISODate, days: number): boolean =>
+  date >= start && date <= plusDays(start, days - 1)
+
+/** 리드가 리드일부터 days일 안에 (구매 범위의) 첫 구매를 했는지 — 그
+ * 범위에서 리드 전에 이미 산 고객은 아니다. 통합·90일은 ROAS 하한의 귀속 첫
+ * 구매(attributedFirstPurchase)와 같은 규칙이다. */
+export function convertedWithin(
+  row: AttributionRow,
+  scope: PurchaseScope,
+  days: number,
+): boolean {
+  const first =
+    scope === 'all' ? row[3][0]?.[0] : scope === 'offline' ? row[7] : row[8]
+  return !!first && withinDays(first, leadDateOf(row), days)
+}
+
+/** 리드가 리드일부터 days일 안에 방문체험을 예약했는지(리드 전 예약은 서버가
+ * 뺀다). */
+export function visitBookedWithin(row: AttributionRow, days: number): boolean {
+  const booked = row[6]
+  return !!booked && withinDays(booked, leadDateOf(row), days)
 }
 
 /** 날짜별 "UTM 광고 매출" — attributedFirstPurchase를 그 결제일에 놓는다.

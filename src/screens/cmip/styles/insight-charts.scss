@@ -562,10 +562,10 @@ $delta-down: #ff7b72;
   font-variant-numeric: tabular-nums;
 }
 
-// 문의 · 구매 · ROAS · (구매 없음) — 칸 폭을 정해 줄마다 같은 자리에.
+// 유효 리드 · 오기입 · 구매 · ROAS · (구매 없음) — 칸 폭을 정해 줄마다 같은 자리에.
 .ad-efficiency__stats {
   display: grid;
-  grid-template-columns: 86px 76px 106px 68px;
+  grid-template-columns: 96px 92px 76px 106px 68px;
   align-items: center;
   gap: 6px;
   font-size: 12px;
@@ -593,6 +593,15 @@ $delta-down: #ff7b72;
   &.is-low {
     background: color-mix(in srgb, var(--glass-danger) 16%, transparent);
     color: var(--glass-danger);
+  }
+}
+// 오기입률 — 기준선(30%)을 넘으면 경고 색.
+.ad-efficiency__stats .ad-efficiency__misentry.is-high {
+  background: color-mix(in srgb, var(--glass-warn) 18%, transparent);
+  color: var(--glass-warn);
+
+  b {
+    color: inherit;
   }
 }
 .ad-efficiency__stats .ad-efficiency__warn {

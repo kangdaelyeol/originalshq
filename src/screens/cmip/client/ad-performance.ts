@@ -1,29 +1,48 @@
 /**
  * "광고 성과" 탭 계산(순수 함수) — Monday 고객의 utm_campaign(Meta 광고
- * 이름)을 Meta 광고 단위 데이터와 맞춰, 광고 → 광고셋 → 캠페인별로 문의
- * 고객·구매 고객·귀속 매출을 광고비와 나란히 놓는다.
+ * 이름)을 Meta 광고 단위 데이터와 맞춰, 광고 → 광고셋 → 캠페인별로 유효
+ * 리드·오기입·방문체험 예약·결제 전환·귀속 매출을 광고비와 나란히 놓는다
+ * (주간 매체 성과표 R2 — 공통 정의 D1~D4).
  *
- * 귀속 규칙은 ROAS 탭의 하한(attributedFirstPurchase)과 같다: UTM 상담 접수일
+ * 귀속 매출은 ROAS 탭의 하한(attributedFirstPurchase)과 같다: UTM 상담 접수일
  * 이후 90일 안의 첫 구매만, 그 결제일이 조회 기간 안이면 센다. 그래서 이
  * 탭의 귀속 매출 합계(이름을 못 찾은 것 포함)는 하한의 Meta 매출과 같다.
+ * 방문체험 예약·결제 전환은 리드 쪽에서 센다 — 조회 기간에 들어온 유효 리드
+ * 중 리드일부터 90일 안에 예약·첫 구매를 한 사람.
  */
 import type { ISODate } from '../types'
 import {
+  AD_ATTRIBUTION_DAYS,
   attributedFirstPurchase,
+  convertedWithin,
+  visitBookedWithin,
   type AttributionRow,
+  type PurchaseScope,
 } from './attribution-client'
+import type { LeadQualityRow } from './lead-quality-client'
 import type { MetaAdInsights } from './meta-ads-client'
 
 export interface AdPerformanceMetrics {
   spend: number
   impressions: number
   clicks: number
-  /** 조회 기간에 UTM 상담이 접수된 고객 수. 같은 이름의 광고가 여럿이면
-   * 나눠 가져서 소수일 수 있다. */
+  /** 유효 리드(공통 정의 D1) — 조회 기간에 처음 UTM 상담이 접수된 고객 수
+   * (오기입 고객 제외). 같은 이름의 광고가 여럿이면 나눠 가져서 소수일 수
+   * 있다. */
   leads: number
   /** 조회 기간에 귀속 첫 구매를 한 고객 수(소수일 수 있다). */
   buyers: number
   revenue: number
+  /** 유효 리드 중 리드일부터 90일 안에 방문체험을 예약한 사람. */
+  visitBooked: number
+  /** 유효 리드 중 리드일부터 90일 안에 (구매 범위의) 첫 구매를 한 사람 —
+   * 결제 전환(공통 정의 D3·D4). */
+  converted: number
+  /** 조회 기간에 접수된 UTM 상담 수(오기입·재문의 포함), 그중 판정이 끝난
+   * 상담, 그중 오기입 — 오기입률(공통 정의 D2)의 재료. */
+  consultations: number
+  decided: number
+  misentry: number
 }
 
 export interface AdPerformanceNode extends AdPerformanceMetrics {
@@ -34,11 +53,11 @@ export interface AdPerformanceNode extends AdPerformanceMetrics {
 
 /** Meta 광고 이름으로 찾지 못한 utm_campaign 값 — 광고 이름이 바뀌었거나,
  * 수집 기간 밖에서만 돌았거나, utm에 다른 값을 넣은 경우다. */
-export interface UnmatchedUtm {
+export interface UnmatchedUtm extends Omit<
+  AdPerformanceMetrics,
+  'spend' | 'impressions' | 'clicks'
+> {
   utmCampaign: string
-  leads: number
-  buyers: number
-  revenue: number
 }
 
 /** 하루치 합계 — 광고비는 그날 쓴 돈, 문의는 그날 접수된 상담, 구매·매출은
@@ -74,14 +93,46 @@ const daysBetween = (start: ISODate, end: ISODate): ISODate[] => {
   return out
 }
 
+/** 리드 쪽 숫자(광고비·노출·클릭 빼고 전부) — 나눠 더할 때 쓴다. */
+type LeadCounts = Omit<UnmatchedUtm, 'utmCampaign'>
+
+const emptyLeadCounts = (): LeadCounts => ({
+  leads: 0,
+  buyers: 0,
+  revenue: 0,
+  visitBooked: 0,
+  converted: 0,
+  consultations: 0,
+  decided: 0,
+  misentry: 0,
+})
+
 const emptyMetrics = (): AdPerformanceMetrics => ({
   spend: 0,
   impressions: 0,
   clicks: 0,
-  leads: 0,
-  buyers: 0,
-  revenue: 0,
+  ...emptyLeadCounts(),
 })
+
+const LEAD_KEYS: readonly (keyof LeadCounts)[] = [
+  'leads',
+  'buyers',
+  'revenue',
+  'visitBooked',
+  'converted',
+  'consultations',
+  'decided',
+  'misentry',
+]
+
+/** source의 리드 쪽 숫자에 weight를 곱해 target에 더한다. */
+const addLeadCounts = (
+  target: LeadCounts,
+  source: Partial<LeadCounts>,
+  weight = 1,
+): void => {
+  for (const key of LEAD_KEYS) target[key] += (source[key] ?? 0) * weight
+}
 
 const addInto = (
   target: AdPerformanceMetrics,
@@ -90,13 +141,11 @@ const addInto = (
   target.spend += source.spend
   target.impressions += source.impressions
   target.clicks += source.clicks
-  target.leads += source.leads
-  target.buyers += source.buyers
-  target.revenue += source.revenue
+  addLeadCounts(target, source)
 }
 
 const isActive = (m: AdPerformanceMetrics) =>
-  m.spend > 0 || m.leads > 0 || m.buyers > 0
+  m.spend > 0 || m.leads > 0 || m.buyers > 0 || m.consultations > 0
 
 const byRevenueThenSpend = (a: AdPerformanceNode, b: AdPerformanceNode) =>
   b.revenue - a.revenue || b.spend - a.spend || a.name.localeCompare(b.name)
@@ -105,12 +154,17 @@ const byRevenueThenSpend = (a: AdPerformanceNode, b: AdPerformanceNode) =>
  * @param ads 조회 시작 89일 전부터 끝까지의 광고 단위 데이터 — 기간 앞쪽의
  *   구매는 그 전에 접수된 상담에서 왔을 수 있어서, 상담일 무렵 어느 광고가
  *   돌았는지 보려면 그만큼 앞까지 필요하다. 광고비는 [start, end]만 센다.
+ * @param quality 상담 접수일이 [start, end]인 UTM 상담 수(오기입률 재료) —
+ *   아직 못 받았으면 null(오기입률 칸이 0건으로 남는다).
+ * @param scope 결제 전환을 셀 구매 범위.
  */
 export function buildAdPerformance(
   rows: readonly AttributionRow[],
   ads: MetaAdInsights,
   start: ISODate,
   end: ISODate,
+  quality: readonly LeadQualityRow[] | null = null,
+  scope: PurchaseScope = 'all',
 ): AdPerformance {
   const metrics = ads.ads.map(emptyMetrics)
   const daily = new Map<ISODate, AdPerformanceDay>(
@@ -159,7 +213,19 @@ export function buildAdPerformance(
     return candidates.map(() => 1 / candidates.length)
   }
 
+  // 광고 이름으로 못 찾은 utm_campaign — 대소문자·공백만 다른 값은 한 줄로.
   const unmatched = new Map<string, UnmatchedUtm>()
+  const addUnmatched = (utmCampaign: string, counts: Partial<LeadCounts>) => {
+    const name = utmCampaign.trim() || '(utm_campaign 없음)'
+    const key = normalizeName(name)
+    const entry = unmatched.get(key) ?? {
+      utmCampaign: name,
+      ...emptyLeadCounts(),
+    }
+    addLeadCounts(entry, counts)
+    unmatched.set(key, entry)
+  }
+
   for (const row of rows) {
     if (row[1] !== 'meta') continue
     const utmAt = row[4] || row[0]
@@ -167,25 +233,22 @@ export function buildAdPerformance(
     const first = attributedFirstPurchase(row)
     const bought = first !== null && first[0] >= start && first[0] <= end
     if (!lead && !bought) continue
-    const revenue = bought ? first[1] : 0
-    const buyer = bought ? 1 : 0
+    const counts: Partial<LeadCounts> = {
+      leads: lead,
+      buyers: bought ? 1 : 0,
+      revenue: bought ? first[1] : 0,
+      // 리드 쪽 — 이 기간에 들어온 리드만.
+      visitBooked: lead && visitBookedWithin(row, AD_ATTRIBUTION_DAYS) ? 1 : 0,
+      converted:
+        lead && convertedWithin(row, scope, AD_ATTRIBUTION_DAYS) ? 1 : 0,
+    }
 
     const utmCampaign = row[5] ?? ''
     const candidates = utmCampaign
       ? adsByName.get(normalizeName(utmCampaign))
       : undefined
     if (!candidates) {
-      const key = utmCampaign || '(utm_campaign 없음)'
-      const entry = unmatched.get(key) ?? {
-        utmCampaign: key,
-        leads: 0,
-        buyers: 0,
-        revenue: 0,
-      }
-      entry.leads += lead
-      entry.buyers += buyer
-      entry.revenue += revenue
-      unmatched.set(key, entry)
+      addUnmatched(utmCampaign, counts)
       continue
     }
     // 광고를 찾은 것만 하루치에 — 합계(total)와 같은 기준.
@@ -193,15 +256,40 @@ export function buildAdPerformance(
     if (leadDay) leadDay.leads += lead
     const buyDay = bought ? daily.get(first[0]) : undefined
     if (buyDay) {
-      buyDay.buyers += buyer
-      buyDay.revenue += revenue
+      buyDay.buyers += counts.buyers ?? 0
+      buyDay.revenue += counts.revenue ?? 0
     }
-    weightsFor(candidates, utmAt).forEach((weight, i) => {
-      const target = metrics[candidates[i]]
-      target.leads += lead * weight
-      target.buyers += buyer * weight
-      target.revenue += revenue * weight
-    })
+    weightsFor(candidates, utmAt).forEach((weight, i) =>
+      addLeadCounts(metrics[candidates[i]], counts, weight),
+    )
+  }
+
+  // 오기입률 재료 — 상담 한 건 단위(번호를 못 읽은 상담 포함)라 고객 단위인
+  // 위와 따로 센다. 광고는 같은 방법(이름, 상담일 광고비 비율)으로 찾는다.
+  for (const [
+    date,
+    channel,
+    utmCampaign,
+    total,
+    decided,
+    misentry,
+  ] of quality ?? []) {
+    if (channel !== 'meta' || date < start || date > end) continue
+    const counts: Partial<LeadCounts> = {
+      consultations: total,
+      decided,
+      misentry,
+    }
+    const candidates = utmCampaign
+      ? adsByName.get(normalizeName(utmCampaign))
+      : undefined
+    if (!candidates) {
+      addUnmatched(utmCampaign, counts)
+      continue
+    }
+    weightsFor(candidates, date).forEach((weight, i) =>
+      addLeadCounts(metrics[candidates[i]], counts, weight),
+    )
   }
 
   // 광고 → 광고셋 → 캠페인으로 묶는다.
@@ -246,17 +334,18 @@ export function buildAdPerformance(
   const total = emptyMetrics()
   for (const campaign of sorted) addInto(total, campaign)
   const unmatchedList = [...unmatched.values()].sort(
-    (a, b) => b.revenue - a.revenue || b.leads - a.leads,
+    (a, b) =>
+      b.revenue - a.revenue ||
+      b.leads - a.leads ||
+      b.consultations - a.consultations,
   )
+  const unmatchedTotal = emptyLeadCounts()
+  for (const entry of unmatchedList) addLeadCounts(unmatchedTotal, entry)
   return {
     campaigns: sorted,
     total,
     daily: [...daily.values()],
     unmatched: unmatchedList,
-    unmatchedTotal: {
-      leads: unmatchedList.reduce((s, u) => s + u.leads, 0),
-      buyers: unmatchedList.reduce((s, u) => s + u.buyers, 0),
-      revenue: unmatchedList.reduce((s, u) => s + u.revenue, 0),
-    },
+    unmatchedTotal,
   }
 }

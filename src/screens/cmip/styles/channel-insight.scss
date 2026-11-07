@@ -1558,6 +1558,17 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
   &__row--캠페인 td {
     font-weight: 600;
   }
+
+  // 기준선(유효 리드당 13만 원·오기입률 30%)을 넘은 칸 — 경고 색 글자. 값과
+  // 함께 표 아래 설명에 기준선을 적어 색만으로 알리지 않는다.
+  &__table td.ad-performance__over {
+    color: var(--glass-warn);
+    font-weight: 600;
+  }
+
+  &__table-note {
+    margin-top: 10px;
+  }
 }
 
 // 요약 카드에서 누른 줄 — 누르는 색이 한 번 옅게 차올랐다 빠진다(빛줄기·
