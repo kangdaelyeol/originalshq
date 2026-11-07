@@ -54,6 +54,14 @@ const SCOPE_DESC: Record<PurchaseScope, string> = {
     '구매는 온라인몰 주문만 봅니다. 문의 기록 없이 오프라인에서만 산 고객은 모수에서 뺍니다.',
 }
 
+// 맨 아래 각주의 구매 범위 — 위 구매 기준을 바꾸면 같이 바뀐다(늘 "모두
+// 포함"이라고 적혀 있어 '온라인'·'오프라인'을 고르면 틀린 말이 됐다).
+const SCOPE_FOOTNOTE: Record<PurchaseScope, string> = {
+  all: '구매에는 오프라인 결제(Monday)와 온라인몰(Cafe24) 주문이 모두 포함됩니다.',
+  offline: '구매는 오프라인 결제(Monday)만 셉니다.',
+  online: '구매는 온라인몰(Cafe24) 주문만 셉니다.',
+}
+
 const people = (count: number): string => `${count.toLocaleString('ko-KR')}명`
 const days = (value: number | null): string =>
   value === null ? '-' : `${Math.round(value * 10) / 10}일`
@@ -489,16 +497,18 @@ export const MondayStats = ({
                   <h2>유입 경로별 전환</h2>
                   <p className="stats_desc">
                     가장 이른 상담의 UTM source, 없으면 방문체험 보드의
-                    유입경로. 유효 고객 {people(valid)} 기준.
+                    유입경로. 유효 고객 {people(valid)} 기준. '(문의 없이
+                    구매)'는 상담·방문체험·샘플테스트 기록 없이 매장이나
+                    온라인몰에서 바로 산 고객이라 유입을 적을 곳이 없었던 경우,
+                    '(유입 미기록)'은 문의는 있는데 유입이 비어 있는 경우입니다.
                   </p>
                   <RateTable head="유입 경로" rows={sources} />
                 </section>
 
                 <p className="stats_footnote">
                   기간은 고객이 처음 기록에 나타난 달입니다. 최근 달의 고객은
-                  아직 구매까지 갈 시간이 없었을 수 있어 전환율이 낮게 보입니다.
-                  구매에는 오프라인 결제(Monday)와 온라인몰(Cafe24) 주문이 모두
-                  포함됩니다.
+                  아직 구매까지 갈 시간이 없었을 수 있어 전환율이 낮게 보입니다.{' '}
+                  {SCOPE_FOOTNOTE[scope]}
                 </p>
               </>
             )}

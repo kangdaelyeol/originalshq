@@ -177,6 +177,15 @@ const toRateRow = (
   }
 }
 
+/** 유입 경로 줄 이름 — 기록된 유입(상담 UTM source, 없으면 방문체험
+ * 유입경로)이 없으면 이유에 따라 둘로 나눈다. 문의 기록(상담·방문체험·
+ * 샘플테스트)이 아예 없이 산 고객(매장 바로 결제·온라인몰 주문)은 유입을 적을
+ * 기록 자체가 없고, 문의는 있는데 비어 있으면 적지 않은 것이다 — 한 줄로
+ * 묶으면 어느 쪽을 고쳐야 할지 알 수 없었다. */
+const sourceLabel = (customer: MondayCustomerListItem): string =>
+  customer.summary.funnel.source ??
+  (hasInquiry(customer) ? '(유입 미기록)' : '(문의 없이 구매)')
+
 const groupBy = (
   customers: MondayCustomerListItem[],
   keyOf: (customer: MondayCustomerListItem) => string,
@@ -400,10 +409,6 @@ export const computeFunnelStats = (
       reached: inquirers.filter((c) => c.summary.funnel.callbackStage >= stage)
         .length,
     })),
-    sources: topRows(
-      groupBy(valid, (c) => c.summary.funnel.source ?? '(미기록)'),
-      8,
-      scope,
-    ),
+    sources: topRows(groupBy(valid, sourceLabel), 8, scope),
   }
 }
