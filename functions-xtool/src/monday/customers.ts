@@ -20,7 +20,7 @@ import {
   toOnlinePurchase,
 } from './cafe24'
 import { checked, cleanName, koreaDate, pick, source, squash } from './fields'
-import { extractMondayPhones, isMobilePhone } from './helper'
+import { extractMondayPhones, representativePhone } from './helper'
 import { buildPurchaseRecords } from './purchases'
 import {
   isTechDone,
@@ -460,7 +460,7 @@ export const buildCustomers = (
     // 규칙이 바뀐 뒤에도 옛 값이 남아 있을 수 있다 — 원래 값에서 지금 규칙으로
     // 다시 뽑아 쓴다.
     const phones = extractMondayPhones(item.phoneRaw)
-    const phone = phones.find(isMobilePhone) ?? phones[0]
+    const phone = representativePhone(phones)
     if (!phone) {
       excludedItemCount += 1
       continue
@@ -475,7 +475,7 @@ export const buildCustomers = (
     a.orderId.localeCompare(b.orderId),
   )) {
     const phones = extractMondayPhones(order.buyerPhone)
-    const phone = phones.find(isMobilePhone) ?? phones[0]
+    const phone = representativePhone(phones)
     // 결제 전 주문(무통장 입금 대기 등)은 아직 구매가 아니다 — 입금되면 다음
     // 동기화 때 들어오고, 안 되면 자동 취소된다.
     if (!phone || !order.paid) {

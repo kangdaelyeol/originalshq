@@ -1,6 +1,6 @@
 import { buildPurchaseRecords } from './purchases'
 import { koreaDate, pick } from './fields'
-import { extractMondayPhones, isMobilePhone } from './helper'
+import { extractMondayPhones, representativePhone } from './helper'
 import { MondayBoardKind, MondayItem, MondayKpiFacts } from './types'
 
 // 개인 KPI(통계 탭)의 재료 — 기간·담당자별로 묶는 것은 화면이 한다. 여기서는
@@ -13,10 +13,8 @@ const assigneesOf = (item: MondayItem): string[] =>
     .map((name) => name.trim())
     .filter(Boolean)
 
-const phoneOf = (item: MondayItem): string | null => {
-  const phones = extractMondayPhones(item.phoneRaw)
-  return phones.find(isMobilePhone) ?? phones[0] ?? null
-}
+const phoneOf = (item: MondayItem): string | null =>
+  representativePhone(extractMondayPhones(item.phoneRaw))
 
 const isPaid = (item: MondayItem): boolean =>
   pick(item, /^상담진행상태$/) === '결제' || pick(item, /^결제일$/) !== null

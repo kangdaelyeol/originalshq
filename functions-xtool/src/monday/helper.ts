@@ -81,6 +81,14 @@ export const extractMondayPhones = (raw: string | null): string[] => {
   return [...new Set(phones)]
 }
 
+/** 뽑은 번호들(extractMondayPhones)에서 대표 번호를 고른다 — 휴대폰과
+ * 유선번호가 같이 적혀 있으면 적힌 순서와 상관없이 휴대폰을, 없으면 첫 번호.
+ * 다른 보드와 겹치는 건 대개 휴대폰 쪽이다. 고객 통합(mondayCustomers 문서 id)의
+ * 규칙이라 기록·주문을 고객에 붙이는 곳은 모두 이것을 쓴다. 번호가 없으면 null. */
+export const representativePhone = (
+  phones: readonly string[],
+): string | null => phones.find(isMobilePhone) ?? phones[0] ?? null
+
 const toItemColumns = (
   item: RawMondayItem,
   columnsById: Map<string, MondayColumn>,
@@ -145,9 +153,7 @@ export const buildMondayItems = (
       groupId: item.group?.id ?? null,
       groupTitle: item.group?.title ?? null,
       url: item.url ?? null,
-      // 휴대폰과 유선번호가 같이 적혀 있으면 적힌 순서와 상관없이 휴대폰을
-      // 대표 번호로 쓴다 — 다른 보드와 겹치는 건 대개 휴대폰 쪽이다.
-      phone: phones.find(isMobilePhone) ?? phones[0] ?? null,
+      phone: representativePhone(phones),
       phones,
       phoneRaw,
       columns,
