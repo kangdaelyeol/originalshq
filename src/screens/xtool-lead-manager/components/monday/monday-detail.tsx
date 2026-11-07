@@ -39,7 +39,8 @@ import { RecordTabs } from './detail/record-tabs'
  * 원본이 Monday라서 고칠 것은 각 기록의 "Monday에서 열기"로 가서 고친다.
  * 상담·구매 기록은 "CAPI 전송"으로 Meta에 보내며 리드 탭으로 옮길 수 있다
  * (onSendCapi — 확인 모달은 부모가 띄운다). 왼쪽에는 고객 목록(sideList)을
- * 두어 다른 고객으로 바로 넘어간다.
+ * 두어 다른 고객으로 바로 넘어간다. 오른쪽에는 부르는 쪽이 패널(sidePanel)을 더
+ * 붙일 수 있다(리드 분석 탭의 오기입 추적).
  *
  * 머리(이름·번호)는 목록에서 이미 아는 값(summary)으로 바로 그리고, 기록은
  * 받아오는 대로(customer) 채운다.
@@ -51,6 +52,7 @@ export const MondayDetail = ({
   onClose,
   onSendCapi,
   sideList,
+  sidePanel,
   itemUpdates,
   onLoadUpdates,
   keysEnabled = true,
@@ -62,6 +64,8 @@ export const MondayDetail = ({
   onSendCapi?: (source: MondayCapiSource) => void
   /** 왼쪽 고객 목록(monday-side-list.tsx). */
   sideList?: ReactNode
+  /** 오른쪽에 붙는 패널 — 없으면 상세만. */
+  sidePanel?: ReactNode
   /** 기록별 메모·파일(받아 둔 것)과 받는 함수. */
   itemUpdates?: Record<string, ItemUpdatesState>
   onLoadUpdates?: (itemId: string, force?: boolean) => void
@@ -282,6 +286,7 @@ export const MondayDetail = ({
               </AutoHeight>
             </div>
           </div>
+          {sidePanel}
         </div>
       </div>
     </UpdatesContext.Provider>

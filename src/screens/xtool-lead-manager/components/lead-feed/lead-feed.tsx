@@ -6,7 +6,13 @@ import '@/screens/xtool-lead-manager/styles/monday-glass.scss'
 import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
 import '@/screens/xtool-lead-manager/styles/lead-feed.scss'
 import { ArrowDown, ArrowUp, ChevronRight, RefreshCw } from 'lucide-react'
-import type { ReactNode } from 'react'
+import {
+  useEffect,
+  useRef,
+  type KeyboardEvent,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 import {
   AutoHeight,
   LoadingPanel,
@@ -15,15 +21,21 @@ import {
   type SelectOption,
 } from '@/components/glass'
 import type { MondayLeadFeedRow } from '@/screens/xtool-lead-manager/entity'
+import type { LoadStatus } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
 import {
+  ALL_CHANNELS,
   ALL_STATUSES,
   firstCallDays,
   formatLeadTime,
   formatPhoneNumber,
   isMisentry,
+  LEAD_CHANNEL_LABEL,
+  LEAD_CHANNEL_TITLE,
+  LEAD_FEED_PAGE_SIZES,
   LEAD_FEED_PERIOD_LABEL,
   shortBoardName,
+  type GaTrackingRow,
   type LeadGroup,
 } from '@/screens/xtool-lead-manager/utils'
 import { koreaIso } from '@/screens/xtool-lead-manager/utils/calc'
@@ -37,15 +49,20 @@ import { CloseIcon } from '../close-icon'
 import { MondayCapiModal } from '../monday/monday-capi-modal'
 import { MondayDetail } from '../monday/monday-detail'
 import { MondaySideList } from '../monday/monday-side-list'
+import { PaginationBar } from '../pagination-bar'
+import { LeadTrackingModal, LeadTrackingPanel } from './lead-tracking'
 
 type LeadFeedProps = ReturnType<typeof useLeadFeedViewModel> & {
   /** 이름을 누르면 여는 고객 상세 — Monday 고객 탭과 같은 상태·모달을 쓴다. */
   monday: Pick<ReturnType<typeof useMondayViewModel>, 'state' | 'actions'>
   /** 고객 상세의 상담·구매 기록 CAPI 전송 확인 모달. */
   capi: ReturnType<typeof useMondayCapiViewModel>
+  /** 오기입 추적 재료(오기입 추적 탭과 같은 데이터) — 오기입 리드를 열 때 받는다. */
+  tracking: { status: LoadStatus; rows: readonly GaTrackingRow[] }
 }
 
-/** 표 머리 — [이름, 마우스를 올리면 보이는 설명]. 첫 칸(인입 시각)은 정렬 단추다. */
+/** 표 머리 — [이름, 마우스를 올리면 보이는 설명]. 맨 앞은 펼침 칸(이름 없음),
+ * 그다음 인입 시각은 정렬 단추다. */
 const TIME_COLUMN: [string, string] = [
   '인입 시각',
   'Monday에 기록이 만들어진 시각(웹 문의는 접수 직후) — 누르면 최신순·오래된 순이 바뀝니다',
@@ -94,27 +111,88 @@ const firstCallLabel = (row: MondayLeadFeedRow): string => {
   return days === 0 ? '당일' : `${days}일`
 }
 
+/** 버튼 묶음(기간·보드·매체)의 버튼 — 이벤트가 그 안에서 났으면 그 버튼. */
+const segmentButtonOf = (target: EventTarget) =>
+  target instanceof Element
+    ? target.closest<HTMLButtonElement>('.glass_segmented > button')
+    : null
+
+/** 버튼 묶음을 누르면 그 버튼에 초점을 둔다 — 사파리(맥)는 눌러도 단추에
+ * 초점이 가지 않아, 다음 방향키가 어느 묶음을 움직일지 알 수 없다. */
+const focusSegment = (event: MouseEvent<HTMLElement>) => {
+  segmentButtonOf(event.target)?.focus()
+}
+
+/** 초점이 있는 버튼 묶음에서 좌/우 방향키로 바로 옆 버튼을 누르고(끝에서 더
+ * 가면 반대쪽 끝), 위/아래 방향키로 위아래 묶음의 고른 버튼에 초점을 옮긴다
+ * (고른 값은 그대로, 맨 위·맨 아래에서는 멈춘다). 메뉴 상자에 붙여 그 안의
+ * 묶음끼리만 오가고, 검색창 같은 다른 칸의 방향키는 건드리지 않는다. */
+const moveSegment = (event: KeyboardEvent<HTMLElement>) => {
+  const button = segmentButtonOf(event.target)
+  const group = button?.parentElement
+  if (!button || !group) return
+  if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+    const groups = [
+      ...event.currentTarget.querySelectorAll<HTMLElement>('.glass_segmented'),
+    ]
+    const to =
+      groups[groups.indexOf(group) + (event.key === 'ArrowUp' ? -1 : 1)]
+    // 끝에서도 막는다 — 안 막으면 화면이 스크롤된다.
+    event.preventDefault()
+    to?.querySelector<HTMLButtonElement>(':scope > button.active')?.focus()
+    return
+  }
+  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+  const buttons = [
+    ...group.querySelectorAll<HTMLButtonElement>(
+      ':scope > button:not(:disabled)',
+    ),
+  ]
+  if (buttons.length < 2) return
+  const step = event.key === 'ArrowLeft' ? -1 : 1
+  const next =
+    buttons[(buttons.indexOf(button) + step + buttons.length) % buttons.length]
+  event.preventDefault()
+  next.focus()
+  next.click()
+}
+
+/** 보드·매체 버튼의 이름과 건수 배지. 배지는 chars 글자만큼 자리를 미리 잡아
+ * 건수가 바뀌어도 버튼 폭이 그대로다. 0건은 흐리게 — 리드가 있는 버튼이 한눈에
+ * 보이게(누를 수는 있다). */
+const optionLabel = (label: string, count: number, chars = 1): ReactNode => (
+  <span
+    className={count === 0 ? 'lead_feed_option is-empty' : 'lead_feed_option'}
+  >
+    {label}
+    <small className="lead_feed_count" style={{ minWidth: `${chars}ch` }}>
+      {count.toLocaleString('ko-KR')}
+    </small>
+  </span>
+)
+
 /** 상태 드롭다운에 보이는 이름 — 빈 상태는 따로 이름을 붙인다. */
 const statusLabel = (status: string) => status || '(상태 없음)'
 
-/** 이름 칸 — 번호가 있으면 고객 상세를 여는 단추, 없으면(고객 통합에 없는
- * 기록) 예전처럼 Monday 링크. */
+/** 이름 칸 — 번호가 있으면 고객 상세를, 오기입이면 그 리드의 오기입 추적도
+ * 여는 단추. 둘 다 아니면(고객 통합에 없는 기록) 예전처럼 Monday 링크. */
 const LeadName = ({
   row,
-  onOpenCustomer,
+  onOpenLead,
 }: {
   row: MondayLeadFeedRow
-  onOpenCustomer: (phone: string) => void
+  onOpenLead: (row: MondayLeadFeedRow) => void
 }) => {
   const name = row.name || '(이름 없음)'
-  if (row.phone) {
-    const phone = row.phone
+  if (row.phone || isMisentry(row)) {
     return (
       <button
         type="button"
         className="lead_feed_name"
-        title="이 고객의 전체 기록 보기"
-        onClick={() => onOpenCustomer(phone)}
+        title={
+          row.phone ? '이 고객의 전체 기록 보기' : '이 리드의 오기입 추적 보기'
+        }
+        onClick={() => onOpenLead(row)}
       >
         {name}
       </button>
@@ -129,50 +207,68 @@ const LeadName = ({
   )
 }
 
-/** 리드 한 줄. 묶음의 맨 앞 줄(head)이면 펼침 단추를, 펼친 줄(sub)이면 들여쓴
- * 모양을 쓴다. */
+/** 리드 한 줄. 묶음의 맨 앞 줄(head)이면 맨 앞 칸에 펼침 갈매기를 두고 줄
+ * 어디를 눌러도 펼친다. 펼친 줄(sub)은 옅게 칠한 모양을 쓴다. */
 const LeadRow = ({
   row,
   toggle,
   sub = false,
-  onOpenCustomer,
+  onOpenLead,
 }: {
   row: MondayLeadFeedRow
   /** 같은 번호의 다른 리드가 있으면 — 펼침 단추. */
   toggle?: { count: number; open: boolean; onToggle: () => void }
   sub?: boolean
-  onOpenCustomer: (phone: string) => void
+  onOpenLead: (row: MondayLeadFeedRow) => void
 }) => {
   const misentry = isMisentry(row)
   const source = [row.utmSource, row.utmMedium].filter(Boolean).join(' / ')
   const statusHasCallback = /콜백/.test(row.status ?? '')
+  // 줄을 누르면 펼친다 — 이름(고객 상세)·링크·갈매기 단추를 누른 것이거나 글자를
+  // 끌어 고르던 중이면 펼치지 않는다(갈매기는 제 단추가 펼친다).
+  const onRowClick = toggle
+    ? (event: MouseEvent<HTMLTableRowElement>) => {
+        if ((event.target as HTMLElement).closest('a, button')) return
+        if (window.getSelection()?.toString()) return
+        toggle.onToggle()
+      }
+    : undefined
   return (
     <tr
       className={[
         'lead_feed_row',
         sub ? 'is-sub' : '',
+        toggle ? 'is-group' : '',
         toggle?.open ? 'is-open' : '',
       ]
         .join(' ')
         .trim()}
+      onClick={onRowClick}
     >
+      <td className="lead_feed_chevron_cell">
+        {toggle && (
+          <button
+            type="button"
+            className="lead_feed_chevron"
+            aria-expanded={toggle.open}
+            aria-label={`같은 번호의 리드 ${toggle.count}건 ${toggle.open ? '접기' : '펼치기'}`}
+            onClick={toggle.onToggle}
+          >
+            <ChevronRight strokeWidth={2} aria-hidden="true" />
+          </button>
+        )}
+      </td>
       <td className="lead_feed_time">
         <div className="lead_feed_time_cell">
-          {toggle ? (
-            <button
-              type="button"
-              className="lead_feed_toggle"
-              aria-expanded={toggle.open}
-              aria-label={`같은 번호의 리드 ${toggle.count}건 ${toggle.open ? '접기' : '펼치기'}`}
-              onClick={toggle.onToggle}
-            >
-              <ChevronRight strokeWidth={2} aria-hidden="true" />
-              <span>+{toggle.count}</span>
-            </button>
-          ) : (
-            <span className="lead_feed_toggle_space" aria-hidden="true" />
-          )}
           <span>{formatLeadTime(row)}</span>
+          {toggle && (
+            <span
+              className="lead_feed_more"
+              title={`같은 번호로 ${toggle.count}건 더 들어왔습니다`}
+            >
+              +{toggle.count}
+            </span>
+          )}
         </div>
       </td>
       <td title={row.boardName}>
@@ -180,7 +276,7 @@ const LeadRow = ({
         {row.product && <small className="lead_feed_sub">{row.product}</small>}
       </td>
       <td>
-        <LeadName row={row} onOpenCustomer={onOpenCustomer} />
+        <LeadName row={row} onOpenLead={onOpenLead} />
         {row.phone ? (
           <small className="lead_feed_sub">
             {formatPhoneNumber(row.phone)}
@@ -250,12 +346,12 @@ const LeadGroupRows = ({
   group,
   open,
   onToggle,
-  onOpenCustomer,
+  onOpenLead,
 }: {
   group: LeadGroup
   open: boolean
   onToggle: () => void
-  onOpenCustomer: (phone: string) => void
+  onOpenLead: (row: MondayLeadFeedRow) => void
 }) => (
   <>
     <LeadRow
@@ -265,27 +361,29 @@ const LeadGroupRows = ({
           ? { count: group.rest.length, open, onToggle }
           : undefined
       }
-      onOpenCustomer={onOpenCustomer}
+      onOpenLead={onOpenLead}
     />
     {open &&
       group.rest.map((row) => (
-        <LeadRow
-          key={row.itemId}
-          row={row}
-          sub
-          onOpenCustomer={onOpenCustomer}
-        />
+        <LeadRow key={row.itemId} row={row} sub onOpenLead={onOpenLead} />
       ))}
   </>
 )
 
 /**
  * 리드 분석 탭 — 상담 보드에 들어온 리드를 클릭 없이 스크롤로 읽는 표(신규 인입
- * 피드). 위 줄에서 기간·검색(이름·연락처)·상태를, 아래 줄에서 보드를 고른다.
+ * 피드). 위 줄에서 검색(이름·연락처)·상태와 쪽을, 아래 세 줄에서 기간·보드·
+ * 매체를 고른다.
  * 같은 번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고, 왼쪽 단추로
  * 나머지를 펼친다. 이름을 누르면 Monday 고객 탭과 같은 고객 상세가 뜬다.
  */
-export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
+export const LeadFeed = ({
+  state,
+  actions,
+  monday,
+  capi,
+  tracking,
+}: LeadFeedProps) => {
   const {
     status,
     loaded,
@@ -299,37 +397,75 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
     statuses,
     statusCounts,
     statusTotal,
+    channelFilter,
+    channelCounts,
+    channelTotal,
+    countChars,
     sortDirection,
     groups,
+    pagedGroups,
+    pageSize,
+    page,
+    totalPages,
     leadCount,
     misentryCount,
     openKeys,
     detailCustomers,
+    trackingLead,
     syncedAt,
   } = state
   const { detailPhone, detailSummary, detail, detailFailed, itemUpdates } =
     monday.state
   const { openDetail, closeDetail, loadItemUpdates } = monday.actions
+  // 표 상자 — 쪽·거르기·정렬이 바뀌면(그려지는 줄이 바뀌면) 맨 위로 되돌린다.
+  // 줄이 이 상자 안에서 스크롤해서, 그대로 두면 새 쪽의 중간부터 보인다.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 })
+  }, [pagedGroups])
   // 상세 머리(이름·번호) — 고객 목록을 아직 못 받았으면 받아 온 전체 기록으로.
   const detailHead = detailSummary ?? detail
+
+  // 이름을 누르면 — 번호가 있으면 고객 상세를 열고, 오기입이면 그 리드의 오기입
+  // 추적을 붙인다(번호가 없으면 추적만 따로 뜬다).
+  const openLead = (row: MondayLeadFeedRow) => {
+    actions.openTracking(isMisentry(row) ? row : null)
+    if (row.phone) openDetail(row.phone)
+  }
+  const closeLead = () => {
+    closeDetail()
+    actions.closeTracking()
+  }
+  const trackingRow = trackingLead
+    ? (tracking.rows.find(
+        (row) => row.consultation.itemId === trackingLead.itemId,
+      ) ?? null)
+    : null
   const typed = search.trim() !== ''
 
   const boardOptions: Record<string, ReactNode> = {
-    [ALL_BOARDS]: (
-      <>
-        전체 <small>{boardTotal.toLocaleString('ko-KR')}</small>
-      </>
-    ),
+    [ALL_BOARDS]: optionLabel('전체', boardTotal, countChars.total),
   }
   const boardTitles: Record<string, string> = {}
   for (const board of boards) {
-    boardOptions[boardKey(board.id)] = (
-      <>
-        {shortBoardName(board.name)}{' '}
-        <small>{(boardCounts[board.id] ?? 0).toLocaleString('ko-KR')}</small>
-      </>
+    boardOptions[boardKey(board.id)] = optionLabel(
+      shortBoardName(board.name),
+      boardCounts[board.id] ?? 0,
+      countChars.boards[board.id],
     )
     boardTitles[boardKey(board.id)] = board.name
+  }
+
+  // 매체 — 전체 + 다섯 매체 + 기타 UTM + UTM 없음, 이름 옆에 건수.
+  const channelOptions: Record<string, ReactNode> = {
+    [ALL_CHANNELS]: optionLabel('전체', channelTotal, countChars.total),
+  }
+  for (const [channel, label] of Object.entries(LEAD_CHANNEL_LABEL)) {
+    channelOptions[channel] = optionLabel(
+      label,
+      channelCounts[channel] ?? 0,
+      countChars.channels[channel],
+    )
   }
 
   // 상태 — 받은 리드에 나온 상태 전부, 진행 순서. 고른 상태는 목록에 없어도 남긴다.
@@ -351,15 +487,14 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
 
   return (
     <>
-      <div className="lead_manager_nav monday_stats_nav lead_feed_nav glass_theme">
+      {/* 버튼 묶음(기간·보드·매체)은 누르면 초점이 가고, 좌/우 방향키로 옆 버튼을
+          고르며 위/아래 방향키로 묶음 사이를 오간다. */}
+      <div
+        className="lead_manager_nav monday_stats_nav lead_feed_nav glass_theme"
+        onClick={focusSegment}
+        onKeyDown={moveSegment}
+      >
         <div className="inner">
-          <Segmented
-            options={LEAD_FEED_PERIOD_LABEL}
-            value={period}
-            onChange={actions.changePeriod}
-            label="기간"
-            size="md"
-          />
           <div className="search-box">
             <SearchIcon />
             <div className="search-container">
@@ -398,8 +533,30 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
             />
             새로 고침
           </button>
+          {/* 쪽 넘기기 — 줄은 묶음(고객) 단위라 건수도 묶음 수다. */}
+          <PaginationBar
+            sizes={LEAD_FEED_PAGE_SIZES}
+            pageSize={pageSize}
+            page={page}
+            totalPages={totalPages}
+            totalRows={groups.length}
+            onSetPageSize={actions.changePageSize}
+            onPrevPage={actions.goToPrevPage}
+            onNextPage={actions.goToNextPage}
+          />
         </div>
-        <div className="inner lead_feed_boards">
+        <div className="inner lead_feed_filter_row">
+          <span className="stats_nav_label">기간</span>
+          <Segmented
+            options={LEAD_FEED_PERIOD_LABEL}
+            value={period}
+            onChange={actions.changePeriod}
+            label="기간"
+            size="md"
+          />
+        </div>
+        <div className="inner lead_feed_filter_row">
+          <span className="stats_nav_label">보드</span>
           <Segmented
             options={boardOptions}
             value={boardId === ALL_BOARDS ? ALL_BOARDS : boardKey(boardId)}
@@ -410,6 +567,18 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
             }
             optionTitles={boardTitles}
             label="보드"
+            size="md"
+          />
+        </div>
+        {/* 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */}
+        <div className="inner lead_feed_filter_row">
+          <span className="stats_nav_label">매체</span>
+          <Segmented
+            options={channelOptions}
+            value={channelFilter}
+            onChange={actions.changeChannel}
+            optionTitles={LEAD_CHANNEL_TITLE}
+            label="매체"
             size="md"
           />
         </div>
@@ -449,8 +618,8 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
                     <p className="stats_desc">
                       Monday 상담 보드에 들어온 기록을 한 건씩 보여 줍니다. 같은
                       번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고,
-                      왼쪽 단추로 나머지를 펼칩니다. 이름을 누르면 그 고객의
-                      전체 기록이 열립니다. Monday 동기화는 하루 여섯
+                      그 줄을 누르면 나머지가 펼쳐집니다. 이름을 누르면 그
+                      고객의 전체 기록이 열립니다. Monday 동기화는 하루 여섯
                       번(09·11·13·15·17·22시)이라 Monday 화면보다 늦을 수
                       있습니다.
                       {syncedAt && ` 마지막 동기화 ${formatSyncTime(syncedAt)}`}
@@ -469,10 +638,14 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
                         조건에 맞는 리드가 없습니다.
                       </p>
                     ) : (
-                      <div className="lead_feed_scroll">
+                      <div className="lead_feed_scroll" ref={scrollRef}>
                         <table className="stats_table lead_feed_table">
                           <thead>
                             <tr>
+                              <th
+                                className="lead_feed_chevron_cell"
+                                aria-label="같은 번호의 리드 펼치기"
+                              />
                               <th
                                 title={TIME_COLUMN[1]}
                                 aria-sort={
@@ -508,13 +681,13 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
                             </tr>
                           </thead>
                           <tbody>
-                            {groups.map((group) => (
+                            {pagedGroups.map((group) => (
                               <LeadGroupRows
                                 key={group.key}
                                 group={group}
                                 open={openKeys.has(group.key)}
                                 onToggle={() => actions.toggleGroup(group.key)}
-                                onOpenCustomer={openDetail}
+                                onOpenLead={openLead}
                               />
                             ))}
                           </tbody>
@@ -538,7 +711,7 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
             summary={detailHead}
             customer={detail}
             failed={detailFailed}
-            onClose={closeDetail}
+            onClose={closeLead}
             itemUpdates={itemUpdates}
             onLoadUpdates={loadItemUpdates}
             keysEnabled={!capi.state.source}
@@ -551,6 +724,24 @@ export const LeadFeed = ({ state, actions, monday, capi }: LeadFeedProps) => {
                 keysEnabled={!capi.state.source}
               />
             }
+            sidePanel={
+              // 왼쪽 목록으로 다른 고객으로 넘어가면 그 리드의 추적은 접는다.
+              trackingLead && trackingLead.phone === detailHead.phone ? (
+                <LeadTrackingPanel
+                  lead={trackingLead}
+                  row={trackingRow}
+                  status={tracking.status}
+                />
+              ) : undefined
+            }
+          />
+        )}
+        {trackingLead && !trackingLead.phone && (
+          <LeadTrackingModal
+            lead={trackingLead}
+            row={trackingRow}
+            status={tracking.status}
+            onClose={actions.closeTracking}
           />
         )}
         {capi.state.source && <MondayCapiModal capi={capi} />}

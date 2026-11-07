@@ -86,10 +86,14 @@ const XtoolLeadManagerScreen = () => {
     trend.state.range,
     trend.state.unit,
   )
-  // 오기입 추적 — BigQuery를 부르는 조회라 그 탭을 처음 열 때만 받는다.
-  const gaTracking = useGaTrackingViewModel(tab === 'tracking')
   // 리드 분석 — 상담 기록 단위라 고객 목록과 따로, 그 탭을 처음 열 때 받는다.
   const leadFeed = useLeadFeedViewModel(tab === 'feed', monday.state.customers)
+  // 오기입 추적 — 그 탭을 처음 열 때, 또는 리드 분석에서 오기입 리드를 열 때
+  // (고객 상세 옆의 추적 패널) 받는다.
+  const gaTracking = useGaTrackingViewModel(
+    tab === 'tracking' ||
+      (tab === 'feed' && leadFeed.state.trackingLead !== null),
+  )
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
 
@@ -118,6 +122,10 @@ const XtoolLeadManagerScreen = () => {
         actions={leadFeed.actions}
         monday={monday}
         capi={mondayCapi}
+        tracking={{
+          status: gaTracking.state.status,
+          rows: gaTracking.state.allRows,
+        }}
       />
     )
   }

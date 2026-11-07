@@ -72,6 +72,8 @@ export const useGaTrackingViewModel = (active: boolean) => {
       status,
       filter,
       rows,
+      /** 거르지 않은 전체 — 리드 분석 탭이 리드 하나의 추적을 찾는 데 쓴다. */
+      allRows,
       totalCount: allRows.length,
       misentryCount: allRows.filter((row) => row.consultation.misentry).length,
       matchedCount: rows.filter((row) => row.events.length > 0).length,

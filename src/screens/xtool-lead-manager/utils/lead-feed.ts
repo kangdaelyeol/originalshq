@@ -1,7 +1,11 @@
 // 리드 분석 탭(신규 인입 피드) — 기간 범위, 검색, 상태, 같은 번호끼리 묶기와
 // 정렬, 표에 쓰는 값. 날짜는 전부 한국 날짜(YYYY-MM-DD)다.
 
-import type { MondayCustomerListItem, MondayLeadFeedRow } from '../entity'
+import type {
+  MondayCustomerListItem,
+  MondayLeadChannel,
+  MondayLeadFeedRow,
+} from '../entity'
 import type { SortDirection } from '../types'
 import { DAY_MS, daysBetween, koreaDate, koreaIso } from './calc'
 
@@ -22,6 +26,10 @@ export const LEAD_FEED_PERIOD_LABEL: Record<LeadFeedPeriod, string> = {
   week: '이번 주',
   month: '지난 30일',
 }
+
+/** 한 쪽에 보일 줄(묶음) 수 — 전체를 고르면 줄이 수천이라 나눠 그린다. */
+export const LEAD_FEED_PAGE_SIZES = [30, 50, 100] as const
+export type LeadFeedPageSize = (typeof LEAD_FEED_PAGE_SIZES)[number]
 
 /** 한 번에 받아 두는 기간(일) — 전체를 빼고 가장 긴 보기(지난 30일)만큼 받고,
  * 보기를 바꿀 때는 다시 받지 않고 거르기만 한다(전체는 따로 한 번 받는다). */
@@ -148,25 +156,37 @@ export const leadStatuses = (rows: readonly MondayLeadFeedRow[]): string[] =>
     (a, b) => statusRank(a) - statusRank(b) || a.localeCompare(b, 'ko'),
   )
 
-/** 상태별 리드 수 — 드롭다운 항목에 붙인다. */
-export const countByStatus = (
+/** 키별 리드 수 — 보드·매체 버튼과 상태 드롭다운의 건수. */
+export const countLeadsBy = (
   rows: readonly MondayLeadFeedRow[],
+  keyOf: (row: MondayLeadFeedRow) => string,
 ): Record<string, number> => {
   const counts: Record<string, number> = {}
   for (const row of rows) {
-    const key = leadStatusKey(row)
+    const key = keyOf(row)
     counts[key] = (counts[key] ?? 0) + 1
   }
   return counts
 }
 
-/** 보드별 리드 수 — 보드 거르기 버튼에 붙인다. */
-export const countByBoard = (
-  rows: readonly MondayLeadFeedRow[],
-): Record<string, number> => {
-  const counts: Record<string, number> = {}
-  for (const row of rows) counts[row.boardId] = (counts[row.boardId] ?? 0) + 1
-  return counts
+/** 매체 거르기의 "전체". */
+export const ALL_CHANNELS = 'all'
+
+/** 매체 버튼 — 순서와 이름(cmip ROAS 탭과 같은 이름). */
+export const LEAD_CHANNEL_LABEL: Record<MondayLeadChannel, string> = {
+  meta: 'Meta',
+  google: 'Google',
+  naver: 'Naver',
+  openai: 'OpenAI',
+  daangn: '당근',
+  other: '기타 UTM',
+  unknown: 'UTM 없음',
+}
+
+/** 매체 버튼에 마우스를 올리면 보이는 설명 — 광고 매체가 아닌 두 칸만. */
+export const LEAD_CHANNEL_TITLE: Partial<Record<MondayLeadChannel, string>> = {
+  other: 'UTM은 있지만 광고 매체가 아닌 곳(chatgpt.com 자연 유입·threads 등)',
+  unknown: 'UTM 없이 들어온 리드(전화·매장 문의 등)',
 }
 
 /** 같은 번호의 리드 묶음 — head가 가장 최근 리드, rest는 그 앞의 리드(최근

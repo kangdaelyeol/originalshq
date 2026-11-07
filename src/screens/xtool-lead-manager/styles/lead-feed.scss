@@ -9,6 +9,96 @@
 // (.xtool-main의 높이·배경이 화면에 끼어들지 않게).
 .xtool-main.lead_feed_detail {
   display: contents;
+
+  // 오기입 추적 패널(lead-tracking.tsx) — 판·머리·본문 칸은 리드 상세의 Monday
+  // 패널(detail_monday_panel)을 그대로 쓰고, 여기에는 안의 요약·이벤트만 둔다.
+  // 혼자 뜬 창(번호를 못 읽은 리드)은 조금 넓게.
+  .lead_feed_tracking.is-alone {
+    width: 440px;
+    max-width: calc(100vw - 40px);
+  }
+  .lead_feed_tracking_actions {
+    display: flex;
+    gap: 6px;
+  }
+  .lead_feed_tracking_facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 16px;
+
+    > div {
+      padding: 8px 10px;
+      border-radius: 12px;
+      background-color: $fill-1;
+    }
+    dt {
+      font-size: 11.5px;
+      color: $text-3;
+    }
+    dd {
+      margin: 2px 0 0;
+      font-size: 12.5px;
+      color: $text;
+      word-break: break-all;
+    }
+  }
+  .lead_feed_tracking_events {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      padding: 7px 10px;
+      border-radius: 12px;
+    }
+    li:nth-child(even) {
+      background-color: color-mix(in srgb, var(--glass-ink) 3%, transparent);
+    }
+    small {
+      display: block;
+      margin-top: 3px;
+      font-size: 12px;
+      color: $text-2;
+      word-break: break-all;
+    }
+  }
+  // 새 방문(GA4 세션)이 시작되는 이벤트 위 — 몇 번째 방문인지.
+  .lead_feed_tracking_session {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--glass-link);
+  }
+  .lead_feed_tracking_event {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+
+    time {
+      font-size: 12px;
+      color: $text-3;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+  .lead_feed_tracking_name {
+    padding: 1px 8px;
+    border-radius: 999px;
+    background-color: $fill-2;
+    font-size: 12px;
+    color: $text;
+  }
+}
+
+// 고객 상세 옆에 오기입 추적 패널까지 붙으면 세 판(고객 목록·상세·추적)이 다
+// 들어가지 않는 화면에서는 고객 목록을 접는다 — 이때는 상세와 추적이 본론이다.
+@media (max-width: 1480px) {
+  .lead_manager_detail_modal
+    .monday_detail_layout:has(.lead_feed_tracking)
+    .monday_side_list {
+    display: none;
+  }
 }
 
 .lead_manager_nav.lead_feed_nav.glass_theme {
@@ -56,11 +146,38 @@
   .lead_feed_select {
     flex-shrink: 0;
   }
+
+  // 초점이 있는 버튼 묶음 — 좌/우 방향키가 이 묶음을 움직인다는 표시로 옅은
+  // 청록을 깐다.
+  .glass_segmented:focus-within {
+    background-color: color-mix(in srgb, var(--glass-link) 14%, transparent);
+  }
+
+  // 쪽 넘기기 — 리드·Monday 고객 탭(_xtool-glass.scss의 list-nav)과 같은 모양.
+  .pagination_bar {
+    flex-shrink: 0;
+
+    .total_count {
+      color: $text-3;
+      white-space: nowrap;
+    }
+  }
+  .pagination_bar .page_nav .page_nav_btn {
+    @include glass.icon-button;
+  }
 }
 
 .lead_manager_nav.lead_feed_nav {
-  // 보드 버튼 줄 — 보드가 많아 좁은 화면에서는 옆으로 민다.
-  .lead_feed_boards {
+  // 위 줄(검색·상태·새로 고침·쪽 넘기기) — 좁은 화면에서는 다음 줄로 내린다.
+  .inner:not(.lead_feed_filter_row) {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+
+  // 기간·보드·매체 버튼 줄 — 앞에 작은 이름을 두고, 버튼이 많아 좁은 화면에서는
+  // 옆으로 민다.
+  .lead_feed_filter_row {
+    gap: 10px;
     margin-top: 10px;
     overflow-x: auto;
     scrollbar-width: none;
@@ -71,10 +188,33 @@
     .glass_segmented {
       flex-shrink: 0;
     }
-    small {
-      margin-left: 2px;
-      color: $text-3;
+    .stats_nav_label {
+      flex-shrink: 0;
+      min-width: 28px;
+    }
+    // 버튼 이름 + 건수 배지. 0건은 흐리게(누를 수는 있다).
+    .lead_feed_option {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+
+      &.is-empty {
+        opacity: 0.45;
+      }
+    }
+    // 건수 배지 — 자리(min-width)는 화면이 버튼마다 잡는다(받은 리드에서 그
+    // 버튼이 가질 수 있는 가장 큰 건수의 글자 수). 숫자는 폭이 같은 글꼴이라
+    // 그 안에서는 건수가 바뀌어도 배지 폭이 그대로다.
+    .lead_feed_count {
+      box-sizing: content-box;
+      padding: 0 6px;
+      border-radius: 999px;
+      background-color: $fill-2;
+      color: $text-2;
+      font-size: 11.5px;
+      line-height: 18px;
       font-variant-numeric: tabular-nums;
+      text-align: center;
     }
   }
 }
@@ -97,8 +237,27 @@
     color: $text-2;
   }
 
+  // 표 상자 — 줄은 이 안에서 스크롤하고 머리글은 위에 붙는다. 높이는 화면에서
+  // 위 메뉴(네 줄)·카드 머리를 뺀 만큼(좁은 화면에서도 320px은 둔다).
   .lead_feed_scroll {
-    overflow-x: auto;
+    max-height: max(320px, calc(100vh - 500px));
+    overflow: auto;
+    // 표 끝까지 내린 뒤 더 굴려도 페이지가 따라 내려가지 않게 — 따라 내려가면
+    // 머리글이 위 메뉴 줄 밑으로 숨는다.
+    overscroll-behavior: contain;
+    // 붙은 머리글의 z-index가 이 표 안에서만 비교되게 — 없으면 페이지를 내릴 때
+    // 머리글이 위 메뉴 줄 위로 올라온다.
+    isolation: isolate;
+  }
+
+  // 머리글 — 표 상자 위에 붙는다. 밑으로 줄이 지나가도 비치지 않게 불투명 띠
+  // (목록 표의 머리글과 같은 색). 유리 표의 반투명 띠(funnel-glass.scss)보다
+  // 우선하게 클래스를 더 붙인다.
+  &.glass_theme .lead_feed_scroll .lead_feed_table.stats_table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--glass-solid-2);
   }
 
   .lead_feed_table {
@@ -126,14 +285,55 @@
     }
   }
 
-  // 같은 번호의 이전 리드(펼친 줄) — 옅은 청록을 깔고 시각 칸을 들여 쓴다.
-  // 유리 표의 한 줄 걸러 칠하기(funnel-glass.scss)보다 우선하게 클래스를 더 붙인다.
+  // 같은 번호의 이전 리드(펼친 줄) — 옅은 청록을 깐다. 유리 표의 한 줄 걸러
+  // 칠하기(funnel-glass.scss)보다 우선하게 클래스를 더 붙인다.
   &.glass_theme .lead_feed_table.stats_table tbody tr.lead_feed_row.is-sub td {
     background-color: color-mix(in srgb, var(--glass-link) 10%, transparent);
     color: $text-2;
   }
-  .lead_feed_table tbody tr.is-sub .lead_feed_time_cell {
-    padding-left: 12px;
+
+  // 맨 앞 칸 — 같은 번호의 리드가 더 있는 줄에만 펼침 갈매기. 줄 어디를 눌러도
+  // 펼친다(lead-feed.tsx). 칸은 갈매기 폭만큼만.
+  .lead_feed_table th.lead_feed_chevron_cell,
+  .lead_feed_table td.lead_feed_chevron_cell {
+    width: 20px;
+    padding-right: 0;
+  }
+  .lead_feed_chevron {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    color: $text-2;
+    cursor: pointer;
+
+    svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.15s;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+    }
+  }
+  tr.is-open .lead_feed_chevron svg {
+    transform: rotate(90deg);
+  }
+  // 펼칠 수 있는 줄 — 마우스를 올리면 한 겹 밝게. 유리 표의 한 줄 걸러
+  // 칠하기(funnel-glass.scss)보다 우선하게 클래스를 더 붙인다.
+  .lead_feed_table tbody tr.is-group {
+    cursor: pointer;
+  }
+  &.glass_theme
+    .lead_feed_table.stats_table
+    tbody
+    tr.lead_feed_row.is-group:hover
+    td {
+    background-color: $fill-2;
   }
 
   .lead_feed_time {
@@ -142,42 +342,13 @@
   }
   .lead_feed_time_cell {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
   }
-  .lead_feed_toggle {
-    all: unset;
-    box-sizing: border-box;
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    min-width: 46px;
-    height: 24px;
-    padding: 0 8px 0 4px;
-    border-radius: 999px;
-    background-color: $fill-2;
-    font-size: 11.5px;
-    color: $text;
-    cursor: pointer;
-
-    svg {
-      width: 14px;
-      height: 14px;
-      transition: transform 0.15s;
-    }
-    &:hover {
-      background-color: $fill-3;
-    }
-    &:focus-visible {
-      outline: 2px solid var(--glass-link);
-    }
-  }
-  tr.is-open .lead_feed_toggle svg {
-    transform: rotate(90deg);
-  }
-  .lead_feed_toggle_space {
-    display: inline-block;
-    min-width: 46px;
+  // 시간 옆 "+N" — 같은 번호로 더 들어온 리드 수.
+  .lead_feed_more {
+    font-size: 12px;
+    color: $text-3;
   }
 
   // 칸 안의 둘째 줄(번호·캠페인·관심 기기 등).

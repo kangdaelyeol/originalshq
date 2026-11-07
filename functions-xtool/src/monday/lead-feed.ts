@@ -1,4 +1,5 @@
 import { Firestore } from 'firebase-admin/firestore'
+import { attributionChannel } from './attribution'
 import { detectBoardKind, toConsultation } from './customers'
 import { listBoardItems, listBoards, listItemsCreatedSince } from './firestore'
 import { extractMondayPhones, isMobilePhone } from './helper'
@@ -56,6 +57,7 @@ export const buildLeadFeed = (
         utmCampaign: consultation.utmCampaign,
         phone: customerPhoneOf(item),
         phoneRaw: item.phoneRaw,
+        channel: attributionChannel(consultation.utmSource),
       }
     })
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))

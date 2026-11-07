@@ -5,8 +5,10 @@ import {
 } from '@/screens/xtool-lead-manager/types'
 
 /** 표 페이지네이션 컨트롤 — 원래 표 바로 아래 있었는데, 표가 길면 스크롤을
- * 내려야만 보여서 상단 nav(검색·기기 필터 옆)로 옮겼다. */
-export const PaginationBar = ({
+ * 내려야만 보여서 상단 nav(검색·기기 필터 옆)로 옮겼다. 고를 수 있는 개수는
+ * sizes(기본은 리드·Monday 고객 표의 15·30·50). */
+export const PaginationBar = <S extends number = PageSize>({
+  sizes = PAGE_SIZE_OPTIONS as readonly number[] as readonly S[],
   pageSize,
   page,
   totalPages,
@@ -15,11 +17,12 @@ export const PaginationBar = ({
   onPrevPage,
   onNextPage,
 }: {
-  pageSize: PageSize
+  sizes?: readonly S[]
+  pageSize: S
   page: number
   totalPages: number
   totalRows: number
-  onSetPageSize: (size: PageSize) => void
+  onSetPageSize: (size: S) => void
   onPrevPage: () => void
   onNextPage: () => void
 }) => {
@@ -30,7 +33,7 @@ export const PaginationBar = ({
       <Select
         className="page_size_select"
         value={pageSize}
-        options={PAGE_SIZE_OPTIONS.map((size) => ({
+        options={sizes.map((size) => ({
           value: size,
           label: `${size}개씩 보기`,
         }))}

@@ -2,15 +2,17 @@ import { useCallback, useDeferredValue, useMemo, useState } from 'react'
 import { oneOf, usePersistentState } from '@/hooks/use-persistent-state'
 import { mondayClient } from '@/screens/xtool-lead-manager/client'
 import { useLoadWhenActive } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
+import { usePagination } from '@/screens/xtool-lead-manager/hooks/use-pagination'
 import type {
   MondayCustomerListItem,
   MondayLeadFeed,
+  MondayLeadFeedRow,
 } from '@/screens/xtool-lead-manager/entity'
 import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
+  ALL_CHANNELS,
   ALL_STATUSES,
-  countByBoard,
-  countByStatus,
+  countLeadsBy,
   filterLeads,
   groupLeads,
   isMisentry,
@@ -22,7 +24,9 @@ import {
   leadStatuses,
   searchLeads,
   sortLeadGroups,
+  type LeadFeedPageSize,
   type LeadFeedPeriod,
+  type LeadGroup,
 } from '@/screens/xtool-lead-manager/utils'
 import { koreaDate } from '@/screens/xtool-lead-manager/utils/calc'
 
@@ -45,10 +49,11 @@ const fetchAllLeadFeed = () => fetchLeadFeed()
 
 /**
  * "리드 분석" 탭 — 상담 보드에 들어온 리드를 한 건씩, 클릭 없이 읽는 표.
- * 탭을 처음 열 때 지난 30일 치를 한 번 받고, 기간·검색·상태·보드는 받은 것에서
+ * 탭을 처음 열 때 지난 30일 치를 한 번 받고, 기간·검색·상태·보드·매체는 받은 것에서
  * 거른다. 기간에서 "전체"를 고르면 그때 전부를 한 번 받고, 그 뒤로는 다른 기간도
  * 그것으로 거른다. 같은 번호의 리드는 한 묶음으로 — 가장 최근 리드가 맨 앞
- * 줄이고, 나머지는 그 줄을 펼치면 보인다. 기간은 이 브라우저에 남는다.
+ * 줄이고, 나머지는 그 줄을 펼치면 보인다. 표는 묶음 30개씩(50·100개로 바꿀 수
+ * 있다) 쪽으로 나눠 그린다. 기간은 이 브라우저에 남는다.
  *
  * customers(Monday 고객 목록)는 이름을 눌러 여는 고객 상세의 왼쪽 목록에 쓴다.
  */
@@ -78,17 +83,23 @@ export const useLeadFeedViewModel = (
 
   const [boardId, setBoardId] = useState<string>(ALL_BOARDS)
   const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
+  const [channelFilter, setChannelFilter] = useState<string>(ALL_CHANNELS)
   const [search, setSearch] = useState('')
   // 전체(수천 건)를 글자마다 거르면 입력이 밀린다 — 입력창은 바로, 표는 한 박자
   // 늦게 따라온다.
   const deferredSearch = useDeferredValue(search)
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(new Set())
+  // 이름을 눌러 연 오기입 리드 — 고객 상세 오른쪽(번호가 없으면 따로 뜨는 창)에
+  // 그 리드의 오기입 추적(GA4 이벤트)을 붙인다.
+  const [trackingLead, setTrackingLead] = useState<MondayLeadFeedRow | null>(
+    null,
+  )
+  const closeTracking = useCallback(() => setTrackingLead(null), [])
 
   const today = koreaDate()
   const range = useMemo(() => leadFeedRange(period, today), [period, today])
-  // 기간·검색까지 건 리드 — 보드 버튼과 상태 드롭다운의 건수는 여기서 서로의
-  // 거르기만 더해 센다(고르면 그 건수만큼 보이게).
+  // 기간·검색까지 건 리드.
   const base = useMemo(
     () =>
       data
@@ -96,34 +107,60 @@ export const useLeadFeedViewModel = (
         : [],
     [data, range, deferredSearch],
   )
-  const inStatus = useMemo(
-    () =>
-      statusFilter === ALL_STATUSES
-        ? base
-        : base.filter((row) => leadStatusKey(row) === statusFilter),
-    [base, statusFilter],
-  )
-  const inBoard = useMemo(
-    () =>
-      boardId === ALL_BOARDS
-        ? base
-        : base.filter((row) => row.boardId === boardId),
-    [base, boardId],
-  )
-  const boardCounts = useMemo(() => countByBoard(inStatus), [inStatus])
-  const statusCounts = useMemo(() => countByStatus(inBoard), [inBoard])
+  // 상태·보드·매체 거르기 — 위에서 아래로 좁혀 간다(기간·검색 → 상태 → 보드 →
+  // 매체). 건수는 저마다 위쪽 선택만 반영한다: 상태 건수는 기간·검색 안에서
+  // (보드·매체를 골라도 그대로), 보드 건수는 고른 상태 안에서(매체를 골라도
+  // 그대로), 매체 건수는 고른 상태·보드 안에서 센다.
+  const facets = useMemo(() => {
+    const inBoard = (row: MondayLeadFeedRow) =>
+      boardId === ALL_BOARDS || row.boardId === boardId
+    const inStatus = (row: MondayLeadFeedRow) =>
+      statusFilter === ALL_STATUSES || leadStatusKey(row) === statusFilter
+    const inChannel = (row: MondayLeadFeedRow) =>
+      channelFilter === ALL_CHANNELS || row.channel === channelFilter
+    const forBoards = base.filter(inStatus)
+    const forChannels = forBoards.filter(inBoard)
+    return {
+      boardCounts: countLeadsBy(forBoards, (row) => row.boardId),
+      boardTotal: forBoards.length,
+      statusCounts: countLeadsBy(base, leadStatusKey),
+      statusTotal: base.length,
+      channelCounts: countLeadsBy(forChannels, (row) => row.channel),
+      channelTotal: forChannels.length,
+      leads: forChannels.filter(inChannel),
+    }
+  }, [base, boardId, statusFilter, channelFilter])
+  const { leads } = facets
+  // 건수 배지의 자리(글자 수) — 받은 리드 전체에서 그 버튼이 가질 수 있는 가장
+  // 큰 건수의 글자 수. 기간·검색·거르기는 건수를 줄이기만 해서, 무엇을 바꿔도
+  // 버튼 폭이 그대로다(받은 데이터가 바뀔 때만 — 전체를 처음 불러올 때 — 다시 잰다).
+  const countChars = useMemo(() => {
+    const all = data?.leads ?? []
+    const chars = (count: number) => count.toLocaleString('ko-KR').length
+    const charsBy = (keyOf: (row: MondayLeadFeedRow) => string) =>
+      Object.fromEntries(
+        Object.entries(countLeadsBy(all, keyOf)).map(([key, count]) => [
+          key,
+          chars(count),
+        ]),
+      )
+    return {
+      total: chars(all.length),
+      boards: charsBy((row) => row.boardId),
+      channels: charsBy((row) => row.channel),
+    }
+  }, [data])
   // 상태 항목은 받은 리드 전체에서 — 거르기에 따라 항목이 사라지지 않게.
   const statuses = useMemo(() => (data ? leadStatuses(data.leads) : []), [data])
-  const leads = useMemo(
-    () =>
-      boardId === ALL_BOARDS
-        ? inStatus
-        : inStatus.filter((row) => row.boardId === boardId),
-    [inStatus, boardId],
-  )
   const groups = useMemo(
     () => sortLeadGroups(groupLeads(leads), sortDirection),
     [leads, sortDirection],
+  )
+  // 거르기·검색·정렬이 바뀌면 1쪽으로.
+  const pagination = usePagination<LeadGroup, LeadFeedPageSize>(
+    groups,
+    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}`,
+    30,
   )
   const detailCustomers = useMemo(
     () => leadGroupCustomers(groups, customers),
@@ -153,21 +190,34 @@ export const useLeadFeedViewModel = (
       search,
       boardId,
       boards: data?.boards ?? [],
-      boardCounts,
+      boardCounts: facets.boardCounts,
       /** 보드 "전체" 버튼의 건수. */
-      boardTotal: inStatus.length,
+      boardTotal: facets.boardTotal,
       statusFilter,
       statuses,
-      statusCounts,
+      statusCounts: facets.statusCounts,
       /** 상태 "전체" 항목의 건수. */
-      statusTotal: inBoard.length,
+      statusTotal: facets.statusTotal,
+      channelFilter,
+      channelCounts: facets.channelCounts,
+      /** 매체 "전체" 버튼의 건수. */
+      channelTotal: facets.channelTotal,
+      /** 보드·매체 버튼 건수 배지의 자리(글자 수) — 키가 없으면 한 글자. */
+      countChars,
       sortDirection,
       groups,
+      /** 지금 쪽의 묶음 — 표가 그린다. */
+      pagedGroups: pagination.pagedItems,
+      pageSize: pagination.pageSize,
+      page: pagination.page,
+      totalPages: pagination.totalPages,
       leadCount: leads.length,
       misentryCount: leads.filter(isMisentry).length,
       openKeys,
       /** 이름을 눌러 연 고객 상세의 왼쪽 목록 — 표의 묶음 순서. */
       detailCustomers,
+      /** 오기입 추적을 붙일 리드(이름을 누른 오기입 리드) — 없으면 null. */
+      trackingLead,
       syncedAt: data?.syncedAt ?? null,
     },
     actions: {
@@ -175,8 +225,14 @@ export const useLeadFeedViewModel = (
       changeSearch: setSearch,
       changeBoard: setBoardId,
       changeStatus: setStatusFilter,
+      changeChannel: setChannelFilter,
       toggleSort,
       toggleGroup,
+      openTracking: setTrackingLead,
+      closeTracking,
+      changePageSize: pagination.setPageSize,
+      goToPrevPage: pagination.goToPrevPage,
+      goToNextPage: pagination.goToNextPage,
       reload: source.reload,
     },
   }

@@ -560,6 +560,11 @@ export interface MondayItemUpdates {
   files: MondayAsset[]
 }
 
+/** 리드의 매체 — functions-xtool attributionChannel과 같은 값. other는 UTM은
+ * 있지만 광고 매체가 아닌 곳, unknown은 UTM 없음. */
+export type MondayLeadChannel =
+  'meta' | 'google' | 'naver' | 'openai' | 'daangn' | 'other' | 'unknown'
+
 /** 리드 분석 탭의 한 줄 — 상담 보드 기록 1건. 번호가 없거나 틀린 기록(오기입
  * 등)도 들어 있다(functions-xtool getMondayLeadFeed). */
 export interface MondayLeadFeedRow {
@@ -594,6 +599,8 @@ export interface MondayLeadFeedRow {
   phone: string | null
   /** 적힌 그대로의 번호. */
   phoneRaw: string | null
+  /** 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */
+  channel: MondayLeadChannel
 }
 
 export interface MondayLeadFeed {

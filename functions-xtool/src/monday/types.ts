@@ -789,6 +789,10 @@ export type MondayLeadFeedRow = Pick<
   /** 고객 번호(정규화) — 고객 통합과 같은 규칙이라 mondayCustomers 문서 id와
    * 같다. 같은 고객의 리드를 묶는 데 쓴다. 못 읽었으면 null. */
   phone: string | null
+  /** 매체 — utm_source를 광고 채널로 묶은 값(attribution.ts의
+   * attributionChannel — cmip ROAS 탭과 같은 규칙). other는 UTM은 있지만 광고
+   * 매체가 아닌 곳, unknown은 UTM 없음. */
+  channel: MondayAttributionRow[1]
   /** 적힌 그대로의 번호. */
   phoneRaw: string | null
 }
