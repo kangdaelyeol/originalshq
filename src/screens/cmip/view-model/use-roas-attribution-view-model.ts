@@ -146,6 +146,9 @@ export interface CohortCell {
   roas: number
   adRevenue: number
   adRoas: number
+  /** UTM 광고 고객 중 이 기간 안에 광고 몫(adRevenue) 구매가 있는 사람 수 —
+   * adRoas가 0.0%일 때 "아무도 안 샀다"인지 바로 보이게. */
+  adBuyers: number
   /** 기간(30·60·90일)이 얼마나 지났는지.
    *   · complete — 이 달의 마지막 고객까지 다 지났다(값이 확정).
    *   · partial  — 일부 고객만 지났다(값이 아직 오른다).
@@ -192,6 +195,7 @@ export function computeCohorts(
         roas: 0,
         adRevenue: 0,
         adRoas: 0,
+        adBuyers: 0,
         status: 'pending',
       })
       cohort = {
@@ -231,7 +235,7 @@ export function computeCohorts(
         .reduce((sum, [, amount]) => sum + amount, 0)
       cohort.cells[window].revenue += revenue
       if (adWindow) {
-        cohort.cells[window].adRevenue += purchases
+        const adRevenue = purchases
           .filter(
             ([date]) =>
               date >= firstSeen &&
@@ -240,6 +244,8 @@ export function computeCohorts(
               date <= adWindow.end,
           )
           .reduce((sum, [, amount]) => sum + amount, 0)
+        cohort.cells[window].adRevenue += adRevenue
+        if (adRevenue > 0) cohort.cells[window].adBuyers += 1
       }
     }
   }

@@ -506,7 +506,7 @@ const ONLINE_FIELDS: readonly RoasField[] = [
     getValue: (m) => m.onlineRefundAmount + m.onlineUnrecordedRefundAmount,
     format: won,
     formatCompact: won,
-    note: '네이버페이와 같은 환불건은 카페24 통계시스템에서 집계되지 않음. 따라서 통계에서 잡히는 환불과 카페24에서 안 잡히는 환불을 합친 값',
+    note: '환불이 끝난 날 기준(주문의 결제일과 다를 수 있음). 네이버페이와 같은 환불건은 카페24 통계시스템에서 집계되지 않음. 따라서 통계에서 잡히는 환불과 카페24에서 안 잡히는 환불을 합친 값',
   },
   // 위 환불액 중 카페24 환불 기록(/admin/refunds)에 없는 몫만 따로 — 스마트
   // 스토어(shopn)·네이버페이(NCHECKOUT)처럼 네이버 쪽에서 환불이 처리되는
@@ -1678,7 +1678,11 @@ export function RoasPanel({
                 },
                 {
                   key: 'refund',
-                  label: '환불률',
+                  // 반품률이 아니다 — 분자(환불 완료일)와 분모(결제일)의 날짜
+                  // 기준이 달라 지난 기간 주문의 환불이 이번 기간에 들어오고,
+                  // 결제수단을 바꾸려는 취소·오프라인 결제로 옮긴 취소도 환불로
+                  // 센다. 이름표만 보고 반품률로 읽혀서(60%대) 기준을 이름에 적는다.
+                  label: '환불률(환불일 기준)',
                   value: pct2(
                     ratio(
                       total.onlineRefundAmount +
@@ -1686,7 +1690,7 @@ export function RoasPanel({
                       total.onlineGrossPayment,
                     ),
                   ),
-                  note: '총 환불액 ÷ 총 주문 금액',
+                  note: '이 기간에 환불이 끝난 금액 ÷ 이 기간에 결제된 금액. 환불은 환불 완료일, 결제는 결제일로 세서 지난 기간 주문의 환불도 들어갑니다. 결제수단을 바꾸려는 취소, 오프라인 결제로 옮긴 취소도 환불로 셉니다 — 반품률이 아닙니다.',
                   tone:
                     ratio(
                       total.onlineRefundAmount +

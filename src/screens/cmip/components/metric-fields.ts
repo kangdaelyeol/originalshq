@@ -139,6 +139,8 @@ export const METRIC_FIELDS: readonly MetricField[] = [
   //   color: '#c026d3',
   //   note: '전환 추적 설정이나 캠페인 목표에 따라 값이 안 잡힐 수 있습니다(예: 리드 목표 캠페인, 전환 추적 미설정 네이버 계정) — 0이 "매출 없음"과 "측정 안 됨"을 구분하지 않고 함께 나타냅니다.',
   // },
+  // 전환은 매체마다 세는 것이 달라(아래 note) 종합 값은 서로 다른 것을 더한
+  // 값이다 — 문의(CRM) 기준 단가와 다르다는 것을 지표 설명으로 알린다.
   {
     key: 'conversions',
     label: 'Conversions',
@@ -146,6 +148,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num3,
     unit: '건',
     color: '#c98500',
+    note: '매체가 알려 주는 전환 수라 매체마다 세는 것이 다릅니다. Meta: 광고셋마다 고른 목표의 결과(랜딩 조회·링크 클릭·참여·도달은 뺌), Google: 계정에서 전환으로 잡은 액션의 합(소수가 나올 수 있음), 네이버: 검색광고 전환수, OpenAI: 광고 API 전환수, 당근: 구매만. 종합은 이 값들의 단순 합이라 CRM 문의 수와 다릅니다.',
   },
   {
     key: 'cpa',
@@ -154,6 +157,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2,
     unit: '원',
     color: '#9085e9',
+    note: '광고비 ÷ Conversions. Conversions가 매체마다 다른 것을 세서 매체끼리 그대로 비교할 수 없습니다. 문의(CRM) 기준 단가는 "광고 성과" 탭(Meta)에 있습니다.',
   },
   {
     key: 'cvr',
@@ -162,6 +166,7 @@ export const METRIC_FIELDS: readonly MetricField[] = [
     formatCompact: num2,
     unit: '%',
     color: '#e66767',
+    note: 'Conversions ÷ 클릭 수 — Conversions가 매체마다 다른 것을 셉니다.',
   },
   {
     key: 'clicks',

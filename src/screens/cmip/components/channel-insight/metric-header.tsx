@@ -1,7 +1,7 @@
 import type { MetricField } from '../metric-fields'
 import { InfoIcon, type SortDir, SortArrows } from '../icons'
 
-/** 지표 컬럼 헤더 라벨 — field.note가 있으면(현재 frequency만) 옆에 "?" 아이콘을
+/** 지표 컬럼 헤더 라벨 — field.note가 있으면(frequency·Conversions·CPA 등) 옆에 "?" 아이콘을
  * 달아, 호버(또는 포커스, 키보드 접근성)하면 설명이 뜬다. 채널마다 그 지표를
  * 지원하는 범위가 달라(예: 네이버는 frequency 자체가 없고, Google은 캠페인
  * 단위에만 있음) 값만 보고는 헷갈릴 수 있는 지표를 위한 것 — 표 헤더 여러 곳

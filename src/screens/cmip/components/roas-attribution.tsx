@@ -22,8 +22,18 @@ const pct = (v: number): string =>
     ? `${v.toLocaleString(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
     : '-'
 const share = (v: number): string => `${(v * 100).toFixed(1)}%`
-/** 달 이름 — "2026.09"(며칠부터 며칠인지는 달 이름으로 안다). */
-const monthLabel = (month: string): string => month.replace('-', '.')
+/** 달 이름 — "2026.09". 상단 조회 기간이 달 중간에서 잘렸으면 실제로 들어간
+ * 날짜를 같이 적는다("2026.10 (10/7~10/31)") — 그 달의 광고비·고객이 그
+ * 날짜만큼만 들어 있어서, 달 이름만 보면 그 달 전체로 읽혔다. */
+const monthLabel = ({ month, start, end }: CohortRow): string => {
+  const label = month.replace('-', '.')
+  const [year, monthNumber] = month.split('-').map(Number)
+  const lastDay = new Date(year, monthNumber, 0).getDate()
+  if (start === `${month}-01` && end === `${month}-${lastDay}`) return label
+  const md = (date: string) =>
+    `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
+  return `${label} (${md(start)}~${md(end)})`
+}
 
 /** 코호트 칸 색 — 손익분기(100%) 위는 데이터색, 아래는 위험색. 100%에서 멀수록
  * 진하게(로그 — 50%·200%가 같은 진하기). */
@@ -285,7 +295,9 @@ export function RoasAttribution({
           </h3>
         </div>
         <p className="roas-attribution__note">
-          아래 작은 글씨는 UTM이 광고 채널인 고객만 센 값(하한, 같은 90일 규칙).
+          아래 작은 글씨는 UTM이 광고 채널인 고객만 센 값(하한, 같은 90일
+          규칙)과 그중 그 기간 안에 산 사람 수. 유입 월은 상단 조회 기간과
+          겹치는 날만 셉니다 — 달 중간에서 잘린 달은 날짜를 같이 적습니다.
         </p>
         {cohorts.length === 0 ? (
           <p className="channel-insight__result-empty">데이터 없음</p>
@@ -306,7 +318,7 @@ export function RoasAttribution({
               <tbody>
                 {cohorts.map((cohort) => (
                   <tr key={cohort.month}>
-                    <td>{monthLabel(cohort.month)}</td>
+                    <td>{monthLabel(cohort)}</td>
                     <td>
                       {cohort.customers.toLocaleString()}명
                       <span className="roas-attribution__sub">
@@ -347,7 +359,9 @@ export function RoasAttribution({
                             {pct(cell.roas)}
                           </span>
                           <span className="roas-attribution__sub">
-                            {won(cell.revenue)} · UTM 광고 {pct(cell.adRoas)}
+                            {won(cell.revenue)} · UTM 광고 {pct(cell.adRoas)}{' '}
+                            (구매 {cell.adBuyers.toLocaleString()}/
+                            {cohort.adCustomers.toLocaleString()}명)
                           </span>
                         </td>
                       )
