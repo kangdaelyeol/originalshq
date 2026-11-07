@@ -71,7 +71,7 @@ const callbackStage = (item: MondayItem): number => {
   return Math.max(dated ?? 0, status ? Number(status[1]) : 0)
 }
 
-const toConsultation = (item: MondayItem): MondayConsultation => ({
+export const toConsultation = (item: MondayItem): MondayConsultation => ({
   ...source(item),
   product: pick(item, /^관심기기$/),
   status: pick(item, /^상담진행상태$/),

@@ -8,6 +8,7 @@ import type {
   MondayGaTracking,
   MondayItemUpdates,
   MondayKpiFacts,
+  MondayLeadFeed,
   MondayMissingPhoneItem,
   MondayPaymentIssueItem,
   MondayTechFact,
@@ -77,6 +78,15 @@ export const mondayClient = {
     get<{ facts: MondayTechFact[]; syncedAt: number | null }>(
       'getMondayTechFacts',
       '기술 통계를 불러오지 못했습니다',
+    ),
+  /** 리드 분석 — from(한국 날짜) 이후 만들어진 상담 기록과 상담 보드 목록.
+   * from이 없으면 상담 보드의 기록 전부. */
+  getLeadFeed: (from?: string) =>
+    get<MondayLeadFeed>(
+      from
+        ? `getMondayLeadFeed?from=${encodeURIComponent(from)}`
+        : 'getMondayLeadFeed',
+      '리드 목록을 불러오지 못했습니다',
     ),
   /** 오기입 추적 — GA ClientId가 적힌 상담과 그 GA4 이벤트. */
   getGaTracking: () =>

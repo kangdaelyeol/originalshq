@@ -7,12 +7,14 @@ import {
   MondayStats,
   MondayTrend,
   GaTracking,
+  LeadFeed,
   Nav,
 } from '@/screens/xtool-lead-manager/components'
 import {
   useCreateLeadViewModel,
   useCsTeamViewModel,
   useGaTrackingViewModel,
+  useLeadFeedViewModel,
   useLeadMondayMatchViewModel,
   useLiveInflowViewModel,
   useMainViewModel,
@@ -46,8 +48,11 @@ const XtoolLeadManagerScreen = () => {
     showToast: main.actions.showToast,
   })
   // 고객 목록은 Monday 고객 탭과 퍼널 통계 탭이 쓴다(통계 탭은 따로 받는
-  // 날짜별 집계만 쓴다).
-  const monday = useMondayViewModel(tab === 'monday' || tab === 'stats')
+  // 날짜별 집계만 쓴다). 리드 분석 탭은 이름을 눌러 여는 고객 상세(같은 모달)의
+  // 왼쪽 목록에 쓴다.
+  const monday = useMondayViewModel(
+    tab === 'monday' || tab === 'stats' || tab === 'feed',
+  )
   // Monday 고객 상세의 상담·구매 → Meta CAPI 전송 + 리드 탭으로 옮기기.
   const mondayCapi = useMondayCapiViewModel({
     fetchLeads: main.actions.fetchLeads,
@@ -83,6 +88,8 @@ const XtoolLeadManagerScreen = () => {
   )
   // 오기입 추적 — BigQuery를 부르는 조회라 그 탭을 처음 열 때만 받는다.
   const gaTracking = useGaTrackingViewModel(tab === 'tracking')
+  // 리드 분석 — 상담 기록 단위라 고객 목록과 따로, 그 탭을 처음 열 때 받는다.
+  const leadFeed = useLeadFeedViewModel(tab === 'feed', monday.state.customers)
   // 퍼널 통계는 Monday 고객 목록을 그대로 집계한다.
   const stats = useMondayStatsViewModel(monday.state.customers)
 
@@ -102,6 +109,17 @@ const XtoolLeadManagerScreen = () => {
     main.actions.hideDetail()
     pageTab.actions.selectTab('monday')
     monday.actions.openDetail(phone)
+  }
+
+  if (tab === 'feed') {
+    return (
+      <LeadFeed
+        state={leadFeed.state}
+        actions={leadFeed.actions}
+        monday={monday}
+        capi={mondayCapi}
+      />
+    )
   }
 
   if (tab === 'tracking') {

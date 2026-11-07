@@ -1,0 +1,299 @@
+@use '../../../components/glass/styles/tokens' as *;
+@use '../../../components/glass/styles/mixins' as glass;
+
+// 리드 분석 탭 — 카드·표·내비의 유리 모양은 funnel-glass.scss(퍼널 통계와 같이),
+// 여기에는 검색·상태·보드 줄과 리드 표의 칸 모양만 둔다.
+
+// 고객 상세를 감싸는 틀 — Monday 고객 탭의 이름(xtool-main monday_main)을 달아
+// 그 탭의 상세 모달 스타일을 그대로 받되, 틀 자체는 상자를 만들지 않는다
+// (.xtool-main의 높이·배경이 화면에 끼어들지 않게).
+.xtool-main.lead_feed_detail {
+  display: contents;
+}
+
+.lead_manager_nav.lead_feed_nav.glass_theme {
+  // 이름·연락처 검색 — Monday 고객 탭(monday-glass.scss)의 검색창과 같은 모양.
+  .search-box {
+    position: relative;
+  }
+  .search-box svg.search {
+    z-index: 1;
+    top: 9px;
+    left: 12px;
+    stroke: $text-3;
+  }
+  .search-container,
+  .search-container .search-input {
+    width: 220px;
+  }
+  .search-container {
+    height: 38px;
+  }
+  .search-container .search-input {
+    @include glass.field;
+    height: 38px;
+    padding-left: 40px;
+    border-radius: 999px;
+    font-size: 14px;
+    filter: none;
+
+    // 입력한 채 초점이 빠져도 옅은 청록이 남는다.
+    &.typed:not(:focus) {
+      background-color: color-mix(in srgb, var(--glass-link) 14%, transparent);
+    }
+    &:hover,
+    &:focus {
+      filter: none;
+    }
+    &::placeholder {
+      color: $text-3;
+    }
+  }
+  .search-container .reset-btn svg.close-icon:hover {
+    background-color: $fill-2;
+  }
+
+  .lead_feed_select {
+    flex-shrink: 0;
+  }
+}
+
+.lead_manager_nav.lead_feed_nav {
+  // 보드 버튼 줄 — 보드가 많아 좁은 화면에서는 옆으로 민다.
+  .lead_feed_boards {
+    margin-top: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    .glass_segmented {
+      flex-shrink: 0;
+    }
+    small {
+      margin-left: 2px;
+      color: $text-3;
+      font-variant-numeric: tabular-nums;
+    }
+  }
+}
+
+.xtool-main.lead_feed_main {
+  // 칸이 많아 다른 탭보다 넓게 쓴다.
+  .wrapper {
+    max-width: 1680px;
+  }
+
+  h2 {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .lead_feed_counts {
+    font-size: 13px;
+    font-weight: 500;
+    color: $text-2;
+  }
+
+  .lead_feed_scroll {
+    overflow-x: auto;
+  }
+
+  .lead_feed_table {
+    th,
+    td {
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      white-space: nowrap;
+    }
+    th[title] {
+      cursor: help;
+    }
+    td {
+      line-height: 1.5;
+    }
+    a {
+      color: var(--glass-link);
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  // 같은 번호의 이전 리드(펼친 줄) — 옅은 청록을 깔고 시각 칸을 들여 쓴다.
+  // 유리 표의 한 줄 걸러 칠하기(funnel-glass.scss)보다 우선하게 클래스를 더 붙인다.
+  &.glass_theme .lead_feed_table.stats_table tbody tr.lead_feed_row.is-sub td {
+    background-color: color-mix(in srgb, var(--glass-link) 10%, transparent);
+    color: $text-2;
+  }
+  .lead_feed_table tbody tr.is-sub .lead_feed_time_cell {
+    padding-left: 12px;
+  }
+
+  .lead_feed_time {
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .lead_feed_time_cell {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .lead_feed_toggle {
+    all: unset;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 46px;
+    height: 24px;
+    padding: 0 8px 0 4px;
+    border-radius: 999px;
+    background-color: $fill-2;
+    font-size: 11.5px;
+    color: $text;
+    cursor: pointer;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.15s;
+    }
+    &:hover {
+      background-color: $fill-3;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+    }
+  }
+  tr.is-open .lead_feed_toggle svg {
+    transform: rotate(90deg);
+  }
+  .lead_feed_toggle_space {
+    display: inline-block;
+    min-width: 46px;
+  }
+
+  // 칸 안의 둘째 줄(번호·캠페인·관심 기기 등).
+  .lead_feed_sub {
+    display: block;
+    font-size: 12px;
+    color: $text-3;
+
+    &.is-warn {
+      color: var(--glass-warn);
+    }
+  }
+  .lead_feed_none {
+    color: $text-3;
+  }
+
+  // 표 기본(stats_table td의 nowrap)보다 우선하도록 표 이름까지 붙인다.
+  .lead_feed_table td.lead_feed_source small {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // 문의 원문은 전체를, 상담 메모는 세 줄까지(마우스를 올리면 title로 전체).
+  .lead_feed_table td.lead_feed_text {
+    min-width: 200px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .lead_feed_memo {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    overflow: hidden;
+  }
+
+  .lead_feed_status {
+    white-space: nowrap;
+  }
+  .lead_feed_badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background-color: $fill-2;
+    font-size: 12px;
+
+    &.is-danger {
+      background-color: color-mix(
+        in srgb,
+        var(--glass-danger) 22%,
+        transparent
+      );
+      color: color-mix(in srgb, var(--glass-danger) 60%, var(--glass-ink));
+    }
+  }
+
+  .lead_feed_first_call {
+    white-space: nowrap;
+  }
+
+  // 인입 시각 머리 — 누르면 최신순 ↔ 오래된 순.
+  .lead_feed_table th .lead_feed_sort {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+
+    svg {
+      width: 14px;
+      height: 14px;
+      color: var(--glass-link);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+      border-radius: 4px;
+    }
+  }
+
+  // 이름 — 누르면 고객 상세(링크처럼 보이는 단추).
+  .lead_feed_name {
+    all: unset;
+    color: var(--glass-link);
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--glass-link);
+      border-radius: 4px;
+    }
+  }
+
+  .lead_feed_notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background-color: color-mix(in srgb, var(--glass-warn) 16%, transparent);
+    font-size: 13px;
+
+    button {
+      all: unset;
+      margin-left: auto;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background-color: $fill-2;
+      cursor: pointer;
+    }
+  }
+
+  .lead_feed_empty {
+    color: $text-3;
+  }
+}

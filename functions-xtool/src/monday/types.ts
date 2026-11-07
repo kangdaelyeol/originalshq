@@ -763,6 +763,36 @@ export interface MondayOfflineSaleLine {
   isDeferredBalance: boolean
 }
 
+/** 리드 분석 탭의 한 줄 — 상담 보드 기록 1건(lead-feed.ts가 만든다). 번호가
+ * 없거나 틀려 통합 고객에서 빠진 기록도 들어간다(오기입도 봐야 해서). */
+export type MondayLeadFeedRow = Pick<
+  MondayConsultation,
+  | 'itemId'
+  | 'boardId'
+  | 'boardName'
+  | 'name'
+  | 'url'
+  | 'createdAt'
+  | 'receivedAt'
+  | 'product'
+  | 'status'
+  | 'assignee'
+  | 'probability'
+  | 'notes'
+  | 'inquiryMessage'
+  | 'callbackDates'
+  | 'callbackStage'
+  | 'utmSource'
+  | 'utmMedium'
+  | 'utmCampaign'
+> & {
+  /** 고객 번호(정규화) — 고객 통합과 같은 규칙이라 mondayCustomers 문서 id와
+   * 같다. 같은 고객의 리드를 묶는 데 쓴다. 못 읽었으면 null. */
+  phone: string | null
+  /** 적힌 그대로의 번호. */
+  phoneRaw: string | null
+}
+
 /** GA ClientId가 적힌 상담 기록 1건 — monday/ga-tracking.ts가 만든다. "오기입
  * 추적" 탭이 gaClientId로 GA4 BigQuery 이벤트를 찾는다. */
 export interface MondayGaConsultation extends MondayRecordSource {

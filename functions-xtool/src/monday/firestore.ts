@@ -212,6 +212,19 @@ export async function listBoardItems(
   return snapshot.docs.map((doc) => doc.data() as MondayItem)
 }
 
+/** Monday에 만들어진 시각(createdAt, ISO)이 since 이후인 item — 리드 분석
+ * 탭이 최근 기간만 읽는다(전체를 읽지 않게 createdAt 단일 필드 색인으로 거른다). */
+export async function listItemsCreatedSince(
+  db: Firestore,
+  since: string,
+): Promise<MondayItem[]> {
+  const snapshot = await db
+    .collection(ITEMS_COLLECTION)
+    .where('createdAt', '>=', since)
+    .get()
+  return snapshot.docs.map((doc) => doc.data() as MondayItem)
+}
+
 /** 저장된 item 수 — count 집계라 1,000건당 읽기 1회. */
 export async function countItems(db: Firestore): Promise<number> {
   const snapshot = await db.collection(ITEMS_COLLECTION).count().get()

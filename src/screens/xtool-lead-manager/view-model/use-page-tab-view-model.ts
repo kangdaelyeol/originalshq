@@ -2,10 +2,13 @@ import { useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { startGlassTransition } from '@/components/glass'
 
-export type PageTab = 'leads' | 'monday' | 'stats' | 'trend' | 'tracking'
+export type PageTab =
+  'leads' | 'monday' | 'feed' | 'stats' | 'trend' | 'tracking'
 
 export const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'monday', label: 'Monday 고객' },
+  // 상담 보드에 들어온 리드를 한 건씩 읽는 표(신규 인입 피드).
+  { id: 'feed', label: '리드 분석' },
   { id: 'stats', label: '퍼널 통계' },
   { id: 'trend', label: '통계' },
   { id: 'tracking', label: '오기입 추적' },
@@ -13,7 +16,7 @@ export const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'leads', label: 'cmip 관리' },
 ]
 
-/** 최상위 탭(Monday 고객 / 퍼널 통계 / 통계 / 오기입 추적 / cmip 관리). 어느 탭인지는 주소의 ?tab= 에 둔다 — 헤더
+/** 최상위 탭(Monday 고객 / 리드 분석 / 퍼널 통계 / 통계 / 오기입 추적 / cmip 관리). 어느 탭인지는 주소의 ?tab= 에 둔다 — 헤더
  * (pages/xtool-page)와 화면(index.tsx)이 서로 다른 곳에서 같은 값을 봐야 하고,
  * 새로고침하거나 주소를 공유해도 같은 탭이 열리게 하기 위해서다. 탭 지정이
  * 없으면 Monday 고객(기본 탭 — 주소에 ?tab을 붙이지 않는다). */

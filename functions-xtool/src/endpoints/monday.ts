@@ -23,6 +23,7 @@ import {
   listWorkspaceBoards,
   listWorkspaces,
   previewBoard,
+  readLeadFeed,
   rebuildCustomers,
   rebuildCustomersSafely,
   registerBoard,
@@ -455,6 +456,45 @@ export const getMondayAttribution = onRequest(
     { name: 'getMondayAttribution', method: 'GET', member: true },
     async ({ response }) => {
       response.status(200).send(await getAttributionRows(db))
+    },
+  ),
+)
+
+// ────────────────────────────────
+// getMondayLeadFeed — 리드 분석 탭. from(한국 날짜) 이후 Monday에 만들어진 상담
+// 기록 한 건이 한 줄이고, 상담 보드 목록과 같이 준다. from이 없으면 상담 보드의
+// 기록 전부("전체" 기간). 기간·보드로 거르고 같은 번호끼리 묶는 것은 화면이 한다.
+//   GET ?from=2026-10-09 | GET (전체)
+// ────────────────────────────────
+const LEAD_FEED_MAX_DAYS = 92
+
+export const getMondayLeadFeed = onRequest(
+  // 전체를 고르면 상담 보드의 기록(수천 건)을 다 읽어 넉넉히 둔다.
+  { memory: '1GiB' },
+  endpoint(
+    { name: 'getMondayLeadFeed', method: 'GET', member: true },
+    async ({ request, response }) => {
+      const from = String(request.query.from ?? '')
+      if (from === '') {
+        response.status(200).send(await readLeadFeed(db, null))
+        return
+      }
+      const since = /^\d{4}-\d{2}-\d{2}$/.test(from)
+        ? Date.parse(`${from}T00:00:00+09:00`)
+        : NaN
+      if (Number.isNaN(since)) {
+        response.status(400).send({ error: 'from은 YYYY-MM-DD여야 합니다' })
+        return
+      }
+      if (Date.now() - since > LEAD_FEED_MAX_DAYS * 86_400_000) {
+        response
+          .status(400)
+          .send({ error: `최근 ${LEAD_FEED_MAX_DAYS}일까지만 볼 수 있습니다` })
+        return
+      }
+      // 저장된 createdAt("2026-11-06T05:23:11Z")과 같은 꼴로 맞춰 비교한다.
+      const sinceIso = new Date(since).toISOString().replace(/\.\d{3}Z$/, 'Z')
+      response.status(200).send(await readLeadFeed(db, sinceIso))
     },
   ),
 )

@@ -2,13 +2,14 @@
 @use '../../../components/glass/styles/mixins' as glass;
 @use './xtool-glass' as theme;
 
-// 퍼널 통계·오기입 추적 탭의 유리 모양 — 카드·스켈레톤·기간 선택은
+// 퍼널 통계·오기입 추적·리드 분석 탭의 유리 모양 — 카드·스켈레톤·기간 선택은
 // _xtool-glass.scss의 nav·page, 여기에는 두 탭의 막대·전환율 표·모달만 둔다.
 // 두 탭은 퍼널 통계의 카드·표(monday-stats.scss)를 같이 쓴다.
 
 // ── 상단 줄 ─────────────────────────────────────────────────────────────
 .lead_manager_nav.monday_stats_nav.funnel_nav.glass_theme,
-.lead_manager_nav.monday_stats_nav.ga_nav.glass_theme {
+.lead_manager_nav.monday_stats_nav.ga_nav.glass_theme,
+.lead_manager_nav.monday_stats_nav.lead_feed_nav.glass_theme {
   @include theme.nav;
 
   .stats_nav_note {
@@ -45,7 +46,8 @@
 
 // ── 본문 ────────────────────────────────────────────────────────────────
 .xtool-main.monday_stats.funnel_main.glass_theme,
-.xtool-main.monday_stats.ga_main.glass_theme {
+.xtool-main.monday_stats.ga_main.glass_theme,
+.xtool-main.monday_stats.lead_feed_main.glass_theme {
   @include theme.page;
 
   .wrapper {
