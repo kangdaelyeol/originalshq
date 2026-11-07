@@ -77,6 +77,20 @@ const fetchCustomers = async () => {
 /** Monday 고객 탭의 상태 — 목록(검색·분류·정렬·페이지), 고객 상세, 확인이
  * 필요한 기록(번호·결제). `active`가 처음 true가 될 때 목록을 받아온다(리드
  * 탭만 쓰는 동안에는 받지 않는다). */
+/** 받아 둔 고객 상세를 다시 쓰는 시간. */
+const DETAIL_CACHE_MS = 10 * 60_000
+/** 미리 받기를 한 번에 몇 건씩 — 지금 보는 고객 응답이 밀리지 않게 조금씩. */
+const PREFETCH_CONCURRENCY = 2
+
+/** 받아 둔 고객 — 없거나 10분이 지났으면 null. */
+const freshCustomer = (
+  cache: Map<string, { customer: MondayCustomer; at: number }>,
+  phone: string,
+): MondayCustomer | null => {
+  const hit = cache.get(phone)
+  return hit && Date.now() - hit.at < DETAIL_CACHE_MS ? hit.customer : null
+}
+
 export const useMondayViewModel = (active: boolean) => {
   const {
     status,
@@ -96,9 +110,16 @@ export const useMondayViewModel = (active: boolean) => {
   const [detailPhone, setDetailPhone] = useState<string | null>(null)
   const [detail, setDetail] = useState<MondayCustomer | null>(null)
   const [detailFailed, setDetailFailed] = useState(false)
-  // 상세를 연 동안 받아 둔 고객 — 왼쪽 목록에서 방향키로 오가며 다시 볼 때
-  // 바로 보이게. 상세를 닫으면 비운다(다시 열 땐 새로 받는다).
-  const detailCache = useRef(new Map<string, MondayCustomer>())
+  // 받아 둔 고객 — 왼쪽 목록에서 방향키로 오가거나 상세를 다시 열 때 바로
+  // 보이게. 상세를 닫아도 10분은 남겨 두고, 그보다 오래된 것은 다시 받는다
+  // (동기화는 하루 여섯 번이라 10분 안에는 거의 바뀌지 않는다).
+  const detailCache = useRef(
+    new Map<string, { customer: MondayCustomer; at: number }>(),
+  )
+  // 받는 중인 고객 — 미리 받기와 상세 열기가 같은 고객을 두 번 부르지 않게.
+  const detailRequests = useRef(
+    new Map<string, Promise<MondayCustomer | null>>(),
+  )
   // 상세에서 펼친 기록의 메모·파일 — itemId별. 파일 주소가 한 시간쯤 뒤
   // 만료되어, 상세를 닫으면 비우고 오래된 것은 다시 받는다.
   const [itemUpdates, setItemUpdates] = useState<
@@ -161,30 +182,69 @@ export const useMondayViewModel = (active: boolean) => {
     `${search}|${category}|${consultationBoard ?? ''}|${sort}`,
   )
 
-  const openDetail = useCallback(async (phone: string) => {
-    setDetailPhone(phone)
-    setDetailFailed(false)
-    const cached = detailCache.current.get(phone)
-    setDetail(cached ?? null)
-    if (cached) return
+  /** 고객 한 명의 전체 기록을 받는다 — 이미 받는 중이면 그 요청을 같이 기다린다.
+   * 실패면 null. */
+  const fetchCustomer = useCallback((phone: string) => {
+    const pending = detailRequests.current.get(phone)
+    if (pending) return pending
+    const request = mondayClient.getCustomer(phone).then((res) => {
+      detailRequests.current.delete(phone)
+      if (!res.ok) {
+        console.error('Monday 고객 상세 실패:', res.error)
+        return null
+      }
+      const now = Date.now()
+      // 오래된 것은 버린다 — 오래 켜 둔 화면에서 쌓이지 않게.
+      for (const [key, hit] of detailCache.current) {
+        if (now - hit.at >= DETAIL_CACHE_MS) detailCache.current.delete(key)
+      }
+      detailCache.current.set(phone, { customer: res.data.customer, at: now })
+      return res.data.customer
+    })
+    detailRequests.current.set(phone, request)
+    return request
+  }, [])
 
-    const res = await mondayClient.getCustomer(phone)
-    if (!res.ok) {
-      console.error('Monday 고객 상세 실패:', res.error)
-      // 받아오는 사이 다른 고객으로 넘어갔으면 그 고객의 실패가 아니다.
+  const openDetail = useCallback(
+    async (phone: string) => {
+      setDetailPhone(phone)
+      setDetailFailed(false)
+      const cached = freshCustomer(detailCache.current, phone)
+      setDetail(cached)
+      if (cached) return
+
+      const customer = await fetchCustomer(phone)
+      // 받아오는 사이 다른 고객을 눌렀으면 늦게 온 응답(실패도)은 버린다.
       setDetailPhone((current) => {
-        if (current === phone) setDetailFailed(true)
+        if (current === phone) {
+          if (customer) setDetail(customer)
+          else setDetailFailed(true)
+        }
         return current
       })
-      return
-    }
-    detailCache.current.set(phone, res.data.customer)
-    // 받아오는 사이 다른 고객을 눌렀으면 늦게 온 응답은 버린다.
-    setDetailPhone((current) => {
-      if (current === phone) setDetail(res.data.customer)
-      return current
-    })
-  }, [])
+    },
+    [fetchCustomer],
+  )
+
+  /** 고객 상세 왼쪽 목록에서 지금 고객 둘레를 미리 받는다(monday-side-list.tsx가
+   * 순서대로 넘긴다) — 지금 고객(after)을 다 받은 뒤, 두 건씩. 받아 둔 것과
+   * 받는 중인 것은 건너뛴다. */
+  const prefetchCustomers = useCallback(
+    (phones: readonly string[], after: string) => {
+      void (async () => {
+        await detailRequests.current.get(after)
+        const todo = phones.filter(
+          (phone) => !freshCustomer(detailCache.current, phone),
+        )
+        for (let i = 0; i < todo.length; i += PREFETCH_CONCURRENCY) {
+          await Promise.all(
+            todo.slice(i, i + PREFETCH_CONCURRENCY).map(fetchCustomer),
+          )
+        }
+      })()
+    },
+    [fetchCustomer],
+  )
 
   /** 기록 하나의 메모·파일을 받는다 — 이미 받았고 아직 주소가 살아 있으면
    * 그대로 둔다. */
@@ -217,7 +277,6 @@ export const useMondayViewModel = (active: boolean) => {
 
   const closeDetail = useCallback(() => {
     setItemUpdates({})
-    detailCache.current.clear()
     setDetailPhone(null)
     setDetail(null)
     setDetailFailed(false)
@@ -287,6 +346,7 @@ export const useMondayViewModel = (active: boolean) => {
       goToNextPage: pagination.goToNextPage,
       openDetail,
       closeDetail,
+      prefetchCustomers,
       loadItemUpdates,
       openMissing,
       closeMissing,

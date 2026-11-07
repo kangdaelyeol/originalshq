@@ -721,6 +721,7 @@ export const LeadFeed = ({
                 customers={detailCustomers}
                 activePhone={detailHead.phone}
                 onSelect={openDetail}
+                onPrefetch={monday.actions.prefetchCustomers}
                 keysEnabled={!capi.state.source}
               />
             }

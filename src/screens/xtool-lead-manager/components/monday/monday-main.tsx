@@ -158,6 +158,7 @@ export const MondayMain = ({ state, actions, capi }: MondayMainProps) => {
               customers={filteredRows}
               activePhone={detailSummary.phone}
               onSelect={openDetail}
+              onPrefetch={actions.prefetchCustomers}
               keysEnabled={!capi.state.source}
             />
           }

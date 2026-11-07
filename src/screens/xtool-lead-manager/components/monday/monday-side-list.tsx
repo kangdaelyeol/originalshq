@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { MondayCustomerListItem } from '@/screens/xtool-lead-manager/entity'
 import { useSideListKeys } from '@/screens/xtool-lead-manager/hooks/use-side-list-keys'
 import { formatMondayPhone } from '@/screens/xtool-lead-manager/utils'
@@ -8,6 +8,22 @@ import { formatMondayPhone } from '@/screens/xtool-lead-manager/utils'
 const ROW_HEIGHT = 36
 // 보이는 범위 위아래로 더 그려 둘 줄 수 — 빠르게 스크롤해도 빈칸이 안 보이게.
 const OVERSCAN = 10
+// 미리 받을 고객 — 지금 고객에서 움직이는 쪽으로 다섯, 반대쪽으로 둘.
+const PREFETCH_AHEAD = 5
+const PREFETCH_BEHIND = 2
+
+/** 미리 받을 번호 — 가까운 것부터, 움직이는 쪽(step) 먼저. */
+const neighborPhones = (
+  phones: readonly string[],
+  index: number,
+  step: 1 | -1,
+): string[] => {
+  const at = (offset: number) => phones[index + offset]
+  return [
+    ...Array.from({ length: PREFETCH_AHEAD }, (_, k) => at((k + 1) * step)),
+    ...Array.from({ length: PREFETCH_BEHIND }, (_, k) => at(-(k + 1) * step)),
+  ].filter((phone): phone is string => phone !== undefined)
+}
 
 /**
  * Monday 고객 상세 왼쪽의 고객 목록 — 지금 검색·분류·정렬이 걸린 전체 고객
@@ -23,11 +39,15 @@ export const MondaySideList = ({
   customers,
   activePhone,
   onSelect,
+  onPrefetch,
   keysEnabled,
 }: {
   customers: MondayCustomerListItem[]
   activePhone: string
   onSelect: (phone: string) => void
+  /** 지금 고객 둘레를 미리 받는다(phones를 after를 받은 뒤에) — 목록을 내릴 때
+   * 다음 고객이 바로 보이게. */
+  onPrefetch?: (phones: readonly string[], after: string) => void
   /** 위에 다른 모달(CAPI 전송)이 떠 있으면 방향키를 듣지 않는다. */
   keysEnabled: boolean
 }) => {
@@ -40,6 +60,17 @@ export const MondaySideList = ({
     [customers],
   )
   useSideListKeys(phones, activePhone, onSelect, keysEnabled)
+
+  // 고객이 바뀔 때마다 움직인 쪽으로 앞 다섯·뒤 둘을 미리 받는다.
+  const lastIndex = useRef<number | null>(null)
+  useEffect(() => {
+    const index = phones.indexOf(activePhone)
+    if (!onPrefetch || index === -1) return
+    const step =
+      lastIndex.current !== null && index < lastIndex.current ? -1 : 1
+    lastIndex.current = index
+    onPrefetch(neighborPhones(phones, index, step), activePhone)
+  }, [phones, activePhone, onPrefetch])
 
   // 보이는 범위 — 스크롤하거나 상자 크기가 바뀔 때.
   useLayoutEffect(() => {
