@@ -10,17 +10,28 @@ const projectRoot = __dirname;
 const coreSrc = path.resolve(projectRoot, '../../packages/xtool-core/src');
 const CORE_PREFIX = '@xtool-core/';
 
+// 공용 코드(앱 폴더 밖)가 부르는 패키지는 앱 폴더에서 부른 것처럼 찾는다 — 위로 올라가며 찾게 두면 저장소 루트의
+// node_modules가 먼저 걸린다. 앱 안 패키지끼리는 그대로(패키지 안 node_modules에 든 다른 판도 찾게).
+const appEntry = path.join(projectRoot, 'index.js');
+const isPackageName = name => !name.startsWith('.') && !path.isAbsolute(name);
+
 const config = {
+  // 개발 서버 포트 — 이 맥의 8081은 다른 프로젝트가 쓴다. 앱(SceneDelegate.swift metroPort)도 8082로 붙는다.
+  server: { port: 8082 },
   watchFolders: [path.resolve(projectRoot, '../../packages/xtool-core')],
   resolver: {
     nodeModulesPaths: [path.resolve(projectRoot, 'node_modules')],
-    disableHierarchicalLookup: true,
-    resolveRequest: (context, moduleName, platform) =>
-      context.resolveRequest(
-        context,
-        moduleName.startsWith(CORE_PREFIX) ? path.join(coreSrc, moduleName.slice(CORE_PREFIX.length)) : moduleName,
+    resolveRequest: (context, moduleName, platform) => {
+      const name = moduleName.startsWith(CORE_PREFIX)
+        ? path.join(coreSrc, moduleName.slice(CORE_PREFIX.length))
+        : moduleName;
+      const outside = !context.originModulePath.startsWith(projectRoot + path.sep);
+      return context.resolveRequest(
+        outside && isPackageName(name) ? { ...context, originModulePath: appEntry } : context,
+        name,
         platform,
-      ),
+      );
+    },
   },
 };
 

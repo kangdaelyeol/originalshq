@@ -17,6 +17,10 @@ end
 target 'XtoolTechApp' do
   config = use_native_modules!
 
+  # Google 로그인(GoogleSignIn)이 쓰는 Swift 모듈(AppCheckCore)이 이 둘을 모듈로 불러온다.
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

@@ -1,5 +1,6 @@
 // 웹과 같이 쓰는 데이터 코드(xtool-core)에 앱의 Firebase 초기화를 먼저 끼운다 — 다른 import보다 앞에.
 import './src/firebase';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { DENIED_MESSAGE } from '@xtool-core/access';
@@ -16,16 +17,30 @@ import { LoginScreen } from './src/screens/login-screen';
 function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" />
-      <SafeAreaView style={styles.root}>
-        <Gate />
-      </SafeAreaView>
+      <Gate />
     </SafeAreaProvider>
   );
 }
 
 function Gate() {
   const session = useXtoolSession('tech');
+  // 로그인 화면이 연출 중이면(검증 → 성공 로고 → 사라지기) 로그인 상태가 바뀌어도 화면을 붙잡아 둔다.
+  const [holding, setHolding] = useState(false);
+  // 임시 비밀번호로 들어와 있다 — 로그인 화면이 비밀번호 설정 폼으로 연다.
+  const setupPending = session.status === 'denied' && session.reason === 'password-setup';
+  if (holding || session.status === 'signedOut' || setupPending) {
+    // 로그인 화면은 화면 끝까지(바탕이 어둡다) — 안전 영역은 화면이 스스로 비운다.
+    return <LoginScreen setupPending={setupPending} onHold={setHolding} />;
+  }
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="dark-content" />
+      <SignedInGate session={session} />
+    </SafeAreaView>
+  );
+}
+
+function SignedInGate({ session }: { session: ReturnType<typeof useXtoolSession> }) {
   switch (session.status) {
     case 'unconfigured':
       return <Message text="Firebase 설정이 비어 있어요(src/firebase-config.ts)." />;
@@ -36,18 +51,9 @@ function Gate() {
         </View>
       );
     case 'signedOut':
-      return <LoginScreen />;
+      return null;
     case 'denied':
-      return (
-        <Message
-          text={
-            session.reason === 'password-setup'
-              ? '임시 비밀번호로 로그인했어요. 웹에서 첫 비밀번호를 정한 뒤 다시 로그인해 주세요.'
-              : DENIED_MESSAGE[session.reason]
-          }
-          action={{ label: '로그아웃', run: signOutXtool }}
-        />
-      );
+      return <Message text={DENIED_MESSAGE[session.reason]} action={{ label: '로그아웃', run: signOutXtool }} />;
     case 'ready':
       return (
         <MemberContext.Provider value={session.member}>
