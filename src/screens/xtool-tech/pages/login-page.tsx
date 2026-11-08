@@ -467,7 +467,7 @@ export function LoginPage() {
         </button>
       )}
 
-      <footer className="login__footer">© {YEAR} xtool tech · 사내 전용 서비스</footer>
+      <footer className="login__footer">© {YEAR} Originals Inc. · 사내 전용 서비스</footer>
     </div>
   )
 }
