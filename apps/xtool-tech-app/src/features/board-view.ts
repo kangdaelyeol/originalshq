@@ -1,0 +1,197 @@
+import { useMemo, useState } from 'react';
+import {
+  groupIdOf,
+  ITEM_NOUN,
+  matchesItem,
+  NAME_TITLE,
+  nextSort,
+  OTHER_GROUP,
+  PHONE_IN_NAME_BOARDS,
+  splitNamePhone,
+  splitNames,
+  UPDATE_BOARDS,
+  viewColumns,
+  visibleColumns,
+  type MonSort,
+} from '@xtool-core/monday-values';
+import { BOARD_TABS, type TechBoardKey, type TechColumn, type TechItemDoc } from '@xtool-core/tech-boards';
+import { useTechBoard } from '@xtool-core/tech-boards-store';
+import { createItem } from '@xtool-core/tech-outbox';
+import { applyViewRules, NAME_COLUMN, ruleReady, useBoardViews, type BoardView } from '@xtool-core/tech-views';
+import { buildGroups, type GroupBlock } from './board-model';
+import { usePref } from './prefs';
+
+// 보드 화면의 동작 — 모든 레이아웃(Monday 표·대시보드·물)이 같이 쓴다. 보기(저장된 조건·정렬·숨길 칸), 검색, 담당자로
+// 거르기, 정렬, 그룹(접기 — 이 기기에 남긴다), 새 항목. 모양(카드·표·숫자 카드)은 각 테마 화면이 그린다.
+
+export const boardLabel = (key: TechBoardKey) => BOARD_TABS.find(t => t.key === key)?.label ?? key;
+const PEOPLE_TYPES = new Set(['people', 'assignee']);
+
+export interface BoardViewModel {
+  boardKey: TechBoardKey;
+  /** Monday 보드 이름(없으면 메뉴 이름) */
+  title: string;
+  /** 메뉴 이름(출장업무·AS …) */
+  label: string;
+  /** 항목을 부르는 말(고객·업무 …)과 이름 칸 머리글 */
+  noun: string;
+  nameTitle: string;
+  state: ReturnType<typeof useTechBoard>;
+  /** 보기 탭 — 첫 탭은 메인 테이블(value '') */
+  viewTabs: { value: string; label: string }[];
+  viewId: string;
+  setViewId: (id: string) => void;
+  /** 보이는 칸 전부 / 고른 보기에서 숨긴 칸을 뺀 것 */
+  columns: TechColumn[];
+  shownColumns: TechColumn[];
+  peopleColumns: TechColumn[];
+  statusColumn: TechColumn | undefined;
+  query: string;
+  setQuery: (q: string) => void;
+  person: string | null;
+  setPerson: (name: string | null) => void;
+  /** 담당자로 거를 사람 — [이름, 건수], 많은 순 */
+  people: [string, number][];
+  sort: MonSort;
+  /** 누를 때마다 오름차순 → 내림차순 → 해제(웹 머리글 정렬) */
+  cycleSort: (columnId: string) => void;
+  clearSort: () => void;
+  sortLabel: string;
+  /** 정렬할 수 있는 칸 — 이름 칸 + 보이는 칸 */
+  sortChoices: TechColumn[];
+  /** 보기·검색·사람으로 거른 항목 */
+  filtered: TechItemDoc[];
+  filtering: boolean;
+  /** 그룹 — 거르는 중이면 빈 그룹은 뺀다 */
+  groups: GroupBlock[];
+  /** 모든 그룹(빈 그룹 포함 — 새 항목 그룹 고르기) */
+  allGroups: GroupBlock[];
+  isCollapsed: (groupId: string) => boolean;
+  toggleGroup: (groupId: string) => void;
+  allCollapsed: boolean;
+  toggleAll: () => void;
+  /** 보일 이름 — 출장업무는 이름에 적힌 전화번호를 뗀다 */
+  nameOf: (item: TechItemDoc) => string;
+  /** 업데이트 말풍선 개수 — 업데이트가 없는 보드·만드는 중인 항목은 undefined */
+  updatesOf: (item: TechItemDoc) => number | undefined;
+  /** 새 항목 — 그룹 맨 아래에 바로 생기고 뒤에서 저장된다 */
+  create: (name: string, groupId: string) => void;
+  // ── 아래는 웹 Monday 표(monday-board.tsx)에 맞춘 것 ──
+  /** 팀이 저장한 보기 전부(불러오는 중이면 null) · 고른 보기 */
+  views: BoardView[] | null;
+  view: BoardView | null;
+  /** 보기 고르기 — 정렬은 그 보기의 정렬로 다시 시작한다(웹과 같다) */
+  selectView: (id: string) => void;
+  /** 검색어·사람으로 거르는 중 — "N개 찾음" */
+  searching: boolean;
+  /** 고른 보기의 다 적은 조건 수 — 도구 줄 "조건 / N" */
+  readyRules: number;
+  /** 빈 그룹을 숨길 때(검색·사람·조건) — 웹 hideEmptyGroups */
+  hideEmptyGroups: boolean;
+  /** 정렬 메뉴 — 다른 칸이면 오름차순, 같은 칸이면 방향만 바꾼다(웹 정렬 메뉴 "한 번 더 누르면 반대로") */
+  pickSort: (columnId: string) => void;
+  /** 그룹 맨 아래 "+ 추가" — "그 밖의 항목"이면 그룹 없이 만든다(웹 addItem) */
+  addItem: (groupId: string, name: string) => void;
+}
+
+export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
+  const state = useTechBoard(boardKey);
+  const { meta, items } = state;
+  const { views } = useBoardViews(boardKey);
+  const [viewId, setViewId] = usePref<string>(`xtool-tech:monday-view:${boardKey}`, '');
+  const [collapsed, setCollapsed] = usePref<string[]>(`xtool-tech:monday-collapsed:${boardKey}`, []);
+  const [query, setQuery] = useState('');
+  const [person, setPerson] = useState<string | null>(null);
+  const [localSort, setLocalSort] = useState<MonSort | undefined>(undefined);
+
+  const view = views?.find(v => v.id === viewId) ?? null;
+  const columns = useMemo(() => (meta ? visibleColumns(meta) : []), [meta]);
+  const shownColumns = useMemo(() => columns.filter(c => !view?.hidden.includes(c.id)), [columns, view]);
+  const peopleColumns = useMemo(() => columns.filter(c => PEOPLE_TYPES.has(c.type)), [columns]);
+  const statusColumn = shownColumns.find(c => c.type === 'status');
+  // 직접 고른 정렬이 있으면 그것, 없으면 보기의 정렬(해제했으면 null)
+  const sort = localSort !== undefined ? localSort : view?.sort ?? null;
+  const sortColumn = sort && sort.columnId !== NAME_COLUMN ? columns.find(c => c.id === sort.columnId) : undefined;
+
+  const needle = query.trim().toLowerCase();
+  const filtered = useMemo(() => {
+    if (!meta || !items) return [];
+    const ruled = view ? applyViewRules(items, view, viewColumns(meta, boardKey), item => groupIdOf(meta, item)) : items;
+    return ruled.filter(item => matchesItem(item, peopleColumns, needle, person));
+  }, [meta, items, view, boardKey, peopleColumns, needle, person]);
+  const filtering = Boolean(needle || person || view);
+
+  const allGroups = useMemo(
+    () => (meta ? buildGroups(meta, filtered, { statusColumn, sortColumn, sort }) : []),
+    [meta, filtered, statusColumn, sortColumn, sort],
+  );
+  const groups = filtering ? allGroups.filter(g => g.items.length > 0) : allGroups;
+  const allCollapsed = groups.length > 0 && groups.every(g => collapsed.includes(g.id));
+
+  const people = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const item of items ?? [])
+      for (const c of peopleColumns)
+        for (const name of splitNames(item.values[c.id]?.text)) count.set(name, (count.get(name) ?? 0) + 1);
+    return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko'));
+  }, [items, peopleColumns]);
+
+  const nameTitle = NAME_TITLE[boardKey];
+  const sortLabel = sort
+    ? `${sort.columnId === NAME_COLUMN ? nameTitle : sortColumn?.title ?? '정렬'} ${sort.dir === 1 ? '↑' : '↓'}`
+    : '정렬';
+
+  return {
+    boardKey,
+    title: meta?.name || boardLabel(boardKey),
+    label: boardLabel(boardKey),
+    noun: ITEM_NOUN[boardKey],
+    nameTitle,
+    state,
+    viewTabs: [{ value: '', label: '메인 테이블' }, ...(views ?? []).map(v => ({ value: v.id, label: v.name }))],
+    viewId: view ? view.id : '',
+    setViewId,
+    columns,
+    shownColumns,
+    peopleColumns,
+    statusColumn,
+    query,
+    setQuery,
+    person,
+    setPerson,
+    people,
+    sort,
+    cycleSort: columnId => setLocalSort(nextSort(sort, columnId)),
+    clearSort: () => setLocalSort(null),
+    sortLabel,
+    sortChoices: [{ id: NAME_COLUMN, title: nameTitle, type: 'name', writable: false }, ...shownColumns],
+    filtered,
+    filtering,
+    groups,
+    allGroups,
+    isCollapsed: id => collapsed.includes(id),
+    toggleGroup: id => setCollapsed(collapsed.includes(id) ? collapsed.filter(g => g !== id) : [...collapsed, id]),
+    allCollapsed,
+    toggleAll: () => setCollapsed(allCollapsed ? [] : groups.map(g => g.id)),
+    nameOf: item => (PHONE_IN_NAME_BOARDS.has(boardKey) ? splitNamePhone(item.name).label : item.name),
+    updatesOf: item => (UPDATE_BOARDS.has(boardKey) && !item.draft ? item.updateCount ?? 0 : undefined),
+    create: (name, groupId) => {
+      createItem(boardKey, { name, groupId });
+    },
+    views,
+    view,
+    selectView: id => {
+      setViewId(id);
+      setLocalSort(undefined);
+    },
+    searching: Boolean(needle || person),
+    readyRules: view?.rules.filter(ruleReady).length ?? 0,
+    hideEmptyGroups: Boolean(needle || person) || (view?.rules.some(ruleReady) ?? false),
+    pickSort: columnId =>
+      setLocalSort(sort?.columnId === columnId ? { columnId, dir: sort.dir === 1 ? -1 : 1 } : { columnId, dir: 1 }),
+    addItem: (groupId, name) => {
+      const next = name.trim();
+      if (next) createItem(boardKey, { name: next, groupId: groupId === OTHER_GROUP ? undefined : groupId });
+    },
+  };
+}
