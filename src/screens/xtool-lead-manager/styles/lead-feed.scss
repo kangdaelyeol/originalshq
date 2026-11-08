@@ -1,6 +1,9 @@
 @use '../../../components/glass/styles/tokens' as *;
 @use '../../../components/glass/styles/mixins' as glass;
 
+// 리드 표 머리글 높이 — 소재 머리 줄이 이 밑에 붙는다(sticky top).
+$lead-feed-head-h: 32px;
+
 // 리드 분석 탭 — 카드·표·내비의 유리 모양은 funnel-glass.scss(퍼널 통계와 같이),
 // 여기에는 검색·상태·보드 줄과 리드 표의 칸 모양만 둔다.
 
@@ -143,10 +146,6 @@
     background-color: $fill-2;
   }
 
-  .lead_feed_select {
-    flex-shrink: 0;
-  }
-
   // 초점이 있는 버튼 묶음 — 좌/우 방향키가 이 묶음을 움직인다는 표시로 옅은
   // 청록을 깐다.
   .glass_segmented:focus-within {
@@ -168,6 +167,13 @@
 }
 
 .lead_manager_nav.lead_feed_nav {
+  // 거르기 줄을 감싼 높이 상자(AutoHeight) — 안쪽 상자가 줄의 위 여백(margin)을
+  // 늘 품게 한다. 안 그러면 높이를 옮기는 동안(넘침 자름 = 여백이 안 빠져나감)과
+  // 끝난 뒤(여백이 상자 밖으로 빠져나감)의 높이가 여백만큼 달라, 끝에서 툭 튄다.
+  .lead_feed_filters > div {
+    display: flow-root;
+  }
+
   // 위 줄(검색·상태·새로 고침·쪽 넘기기) — 좁은 화면에서는 다음 줄로 내린다.
   .inner:not(.lead_feed_filter_row) {
     flex-wrap: wrap;
@@ -179,20 +185,79 @@
   .lead_feed_filter_row {
     gap: 10px;
     margin-top: 10px;
-    overflow-x: auto;
-    scrollbar-width: none;
 
-    &::-webkit-scrollbar {
-      display: none;
+    // 버튼 묶음만 옆으로 민다 — 줄 이름(기간·상태…)은 제자리에 둔다. 줄 전체를
+    // 밀면 이름까지 같이 밀려 나간다.
+    .lead_feed_filter_scroll {
+      min-width: 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+
+      &::-webkit-scrollbar {
+        display: none;
+      }
     }
     .glass_segmented {
       flex-shrink: 0;
+      width: max-content;
     }
     .stats_nav_label {
       flex-shrink: 0;
       min-width: 28px;
     }
-    // 버튼 이름 + 건수 배지. 0건은 흐리게(누를 수는 있다).
+    // 소재 버튼 — 매체 이름(작게) + 소재 이름(길면 …, 전체는 title로) + 건수.
+    .lead_feed_creative_option {
+      &__channel {
+        font-size: 11px;
+        color: $text-3;
+      }
+      &__name {
+        max-width: 220px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+    // 접힌 거르기 — 고른 값만 적은 알약 한 개. 누르면 네 줄로 펼친다. '전체'가
+    // 아닌 값은 밝게.
+    .lead_feed_filter_summary {
+      @include glass.pill-button;
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 16px;
+      height: 38px;
+      padding: 0 16px;
+      font-size: 13px;
+      color: $text-2;
+
+      > span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .stats_nav_label {
+        min-width: 0;
+        font-size: 12px;
+      }
+      b {
+        font-weight: 500;
+      }
+      b.is-set {
+        font-weight: 600;
+        color: $text;
+      }
+      &__more {
+        margin-left: -6px;
+        color: $text-3;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+      }
+    }
+    // 버튼 이름 + 건수 배지. 0건은 흐리게(누를 수도 없다 — disabledOptions).
     .lead_feed_option {
       display: inline-flex;
       align-items: center;
@@ -241,6 +306,9 @@
   // 위 메뉴(네 줄)·카드 머리를 뺀 만큼(좁은 화면에서도 320px은 둔다).
   .lead_feed_scroll {
     max-height: max(320px, calc(100vh - 500px));
+    // 거르기를 접고 펼 때 위 메뉴가 줄어드는 것(AutoHeight, 0.55초)과 같이
+    // 늘었다 줄었다 — 따로 바뀌면 표가 먼저 튀어나간다.
+    transition: max-height 0.55s cubic-bezier(0.22, 1, 0.36, 1);
     overflow: auto;
     // 표 끝까지 내린 뒤 더 굴려도 페이지가 따라 내려가지 않게 — 따라 내려가면
     // 머리글이 위 메뉴 줄 밑으로 숨는다.
@@ -249,6 +317,10 @@
     // 머리글이 위 메뉴 줄 위로 올라온다.
     isolation: isolate;
   }
+  // 거르기를 한 줄로 접으면 세 줄만큼(lead_feed_filter_row 48px × 3) 더 높게.
+  &.is-filters-folded .lead_feed_scroll {
+    max-height: max(320px, calc(100vh - 356px));
+  }
 
   // 머리글 — 표 상자 위에 붙는다. 밑으로 줄이 지나가도 비치지 않게 불투명 띠
   // (목록 표의 머리글과 같은 색). 유리 표의 반투명 띠(funnel-glass.scss)보다
@@ -256,7 +328,7 @@
   &.glass_theme .lead_feed_scroll .lead_feed_table.stats_table thead th {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
     background-color: var(--glass-solid-2);
   }
 
@@ -373,16 +445,17 @@
     white-space: nowrap;
   }
 
-  // 문의 원문은 전체를, 상담 메모는 세 줄까지(마우스를 올리면 title로 전체).
+  // 문의 원문·상담 메모 — 글은 두 줄까지(넘치면 …), 마우스를 올리면 두 글 전체
+  // 판(.lead_feed_text_pop).
   .lead_feed_table td.lead_feed_text {
     min-width: 200px;
     white-space: pre-wrap;
     word-break: break-word;
   }
-  .lead_feed_memo {
+  .lead_feed_clamp {
     display: -webkit-box;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     overflow: hidden;
   }
 
@@ -465,39 +538,32 @@
   }
 
   // 키워드(렌탈·할부·가격·원거리·학교·기관·견적) — 글 속에서는 옅은 주의색으로
-  // 칠하고, 문의 원문 칸 위에 걸린 것을 태그로 모은다.
+  // 칠한다.
   .lead_feed_mark {
     padding: 0 2px;
     border-radius: 4px;
     background-color: color-mix(in srgb, var(--glass-warn) 32%, transparent);
     color: inherit;
   }
-  .lead_feed_tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-bottom: 4px;
-    white-space: normal;
-  }
-  .lead_feed_tag {
-    padding: 0 7px;
-    border-radius: 999px;
-    background-color: color-mix(in srgb, var(--glass-warn) 22%, transparent);
-    font-size: 11.5px;
-    line-height: 18px;
-    color: $text;
-  }
 
   // 소재 묶음의 머리 줄 — 매체·소재 이름·건수. 아래 리드 줄들과 구분되게 한 겹
   // 밝게(유리 표의 한 줄 걸러 칠하기보다 우선하게 클래스를 더 붙인다).
+  // 표 머리글 바로 밑에 붙어(sticky) 그 소재의 리드를 내려 읽는 동안 남는다.
+  // 머리 줄은 모두 표에 붙으므로 다음 소재의 머리 줄이 올라오면 그 위를 덮는다
+  // (뒤에 그린 것이 위) — 불투명 바탕(머리글과 같은 바탕 + 한 겹 밝게)이라
+  // 지나간 머리 줄이 비치지 않는다. top은 머리글 높이(한 줄, 줄바꿈 없음).
   &.glass_theme
     .lead_feed_table.stats_table
     tbody
     tr.lead_feed_creative_head
     td {
+    position: sticky;
+    top: $lead-feed-head-h;
+    z-index: 1;
     padding-top: 12px;
     padding-bottom: 12px;
-    background-color: $fill-2;
+    background-color: var(--glass-solid-2);
+    background-image: linear-gradient($fill-2, $fill-2);
     white-space: normal;
   }
   .lead_feed_creative_head td {
@@ -543,5 +609,194 @@
 
   .lead_feed_empty {
     color: $text-3;
+  }
+}
+
+// 문의 원문·상담 메모 전체(lead-feed.tsx useTextPreview) — 잘린 글이 있는 줄의
+// 두 칸에 마우스를 올리면 그 아래에 뜨는 판. 표의 스크롤 상자에 잘리지 않게 화면 맨 위 층(glass_root 바로 아래)에
+// 그려서 표 안의 규칙을 받지 않는다 — 키워드 칠하기도 여기에 다시 둔다.
+.lead_feed_text_pop {
+  position: fixed;
+  z-index: 60;
+  box-sizing: border-box;
+  width: 560px;
+  max-width: calc(100vw - 16px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background-color: var(--glass-solid-2);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.32);
+  color: var(--glass-ink);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+
+  &__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 6px;
+    white-space: normal;
+
+    span {
+      font-size: 12px;
+      color: $text-3;
+    }
+  }
+  // 문의 원문 · 상담 메모 — 위아래로, 사이에 옅은 선.
+  section + section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid $fill-2;
+  }
+  h4 {
+    margin: 0 0 4px;
+    font-size: 12px;
+    font-weight: 600;
+    color: $text-2;
+    white-space: normal;
+  }
+  &__none {
+    color: $text-3;
+  }
+  .lead_feed_mark {
+    padding: 0 2px;
+    border-radius: 4px;
+    background-color: color-mix(in srgb, var(--glass-warn) 32%, transparent);
+    color: inherit;
+  }
+}
+
+// 표 왼쪽 위 줄 — 전체보기 단추. 전체보기 중에는 닫기·제목·건수·쪽 넘기기가
+// 한 줄에 놓인다(좁으면 줄바꿈).
+.xtool-main.lead_feed_main.glass_theme {
+  .lead_feed_table_bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    margin: 4px 0 10px;
+
+    h2 {
+      margin: 0;
+    }
+    // 쪽 넘기기는 오른쪽 끝으로.
+    > :last-child:not(:first-child) {
+      margin-left: auto;
+    }
+  }
+  .lead_feed_expand {
+    @include glass.pill-button;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    height: 32px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    color: $text;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+// 전체보기 — 표 카드가 화면 전체를 덮는다. .glass_root 안(쌓임이 그 안에서만
+// 비교된다)에서 헤더(z-index 6) 위, 고객 상세 같은 모달(10~)·메모 미리보기(60)
+// 아래. 표 상자는 남은 높이를 다 쓴다.
+.xtool-main.lead_feed_main.glass_theme.lead_feed_expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  min-height: 0;
+  padding: 12px;
+  overflow: hidden;
+  background-color: var(--glass-base);
+
+  .stats_card {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    padding: 14px 18px 16px;
+  }
+  .lead_feed_table_bar {
+    margin-top: 0;
+  }
+  .lead_feed_scroll {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+
+  // 쪽 넘기기 — 위 메뉴 줄(nav.scss·이 파일의 lead_feed_nav)에 걸린 모양을
+  // 여기에도. 위 메뉴는 전체보기 중에 숨는다.
+  .pagination_bar {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 12px;
+
+    .total_count {
+      font-size: 13px;
+      color: $text-3;
+      white-space: nowrap;
+    }
+    .page_nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .page_indicator {
+      min-width: 48px;
+      font-size: 12.5px;
+      color: $text-2;
+      text-align: center;
+    }
+    .page_nav .page_nav_btn {
+      @include glass.icon-button;
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+}
+
+// 전체보기를 열고 닫는 전환(lead-feed.tsx morph) — 표 카드가 제자리에서 화면
+// 전체로 자란다. 카드 그림은 늘리지 않고(object-fit: none) 왼쪽 위에 붙인 채
+// 상자만 자라며 잘라 보여, 글자가 늘어나 보이지 않는다. 나머지 화면은 짧게
+// 겹쳐 바뀐다.
+:root.lead_feed_morphing {
+  .lead_feed_card {
+    view-transition-name: lead-feed-card;
+  }
+  &::view-transition-group(lead-feed-card) {
+    overflow: clip;
+    border-radius: 24px;
+    animation-duration: 0.45s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &::view-transition-old(lead-feed-card),
+  &::view-transition-new(lead-feed-card) {
+    height: 100%;
+    object-fit: none;
+    object-position: left top;
+    animation-duration: 0.3s;
+  }
+  &::view-transition-old(root),
+  &::view-transition-new(root) {
+    animation-duration: 0.3s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .xtool-main.lead_feed_main .lead_feed_scroll {
+    transition: none;
   }
 }

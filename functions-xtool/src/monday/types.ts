@@ -320,9 +320,10 @@ export interface MondayConsultation extends MondayRecordSource {
   closedAt: string | null
   probability: string | null
   notes: string | null
-  /** 고객이 웹사이트 폼에 적은 문의 내용("고객 문의 상세 내용" 컬럼) — 그
-   * 컬럼이 있는 보드(기타 온라인 문의, [B2B] 보드)만. 상담내역(notes)은
-   * 상담원이 적는 것이다. */
+  /** 고객이 웹사이트 폼에 적은 문의 내용("고객 문의 상세 내용" 컬럼) — 웹
+   * 문의를 받는 보드(INQUIRY_BOARDS 열두 개)에만 그 컬럼이 있다. 오프라인·
+   * 영업 담당자·방문체험 보드에는 없어 null. 상담내역(notes)은 상담원이 적는
+   * 것이다. */
   inquiryMessage: string | null
   visitConfirmed: boolean
   quoteIssued: boolean

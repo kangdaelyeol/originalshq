@@ -105,7 +105,8 @@ export interface MondayConsultation extends MondayRecordSource {
   closedAt: string | null
   probability: string | null
   notes: string | null
-  /** 고객이 웹사이트 폼에 적은 문의 내용 — 그 컬럼이 있는 보드만. 이 필드가
+  /** 고객이 웹사이트 폼에 적은 문의 내용(Monday '고객 문의 상세 내용' 칸) —
+   * 웹 문의를 받는 보드에만 그 칸이 있다(오프라인·개인 보드는 없음). 이 필드가
    * 생기기 전에 동기화된 고객 문서에는 없다. */
   inquiryMessage?: string | null
   visitConfirmed: boolean

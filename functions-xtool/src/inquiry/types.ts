@@ -32,8 +32,9 @@ export interface InquiryInput {
   phone: string
   email: string
   installment: string
-  /** 고객이 적은 문의 내용 — 보드의 "고객 문의 상세 내용" 컬럼에 넣는다(기타
-   * 온라인 문의와 [B2B] 보드에 있다 — 없는 보드는 건너뛴다). */
+  /** 고객이 적은 문의 내용 — 보드의 "고객 문의 상세 내용" 컬럼에 넣는다.
+   * INQUIRY_BOARDS 열두 개 모두에 그 컬럼이 있다(2026-11-08 Monday API로
+   * 확인). 나중에 빠진 보드가 생기면 그 보드는 건너뛴다. */
   message: string
   /** 도입 시기(예: "3개월 이내") — 메탈팹 보드의 "도입시기" 컬럼에 넣는다(다른
    * 보드에는 그 컬럼이 없다). */

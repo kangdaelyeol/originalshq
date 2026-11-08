@@ -18,6 +18,7 @@ import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   ALL_BOARDS,
   ALL_CHANNELS,
+  ALL_CREATIVES,
   ALL_STATUSES,
   countLeadsBy,
   filterLeads,
@@ -30,6 +31,7 @@ import {
   leadFeedFrom,
   leadFeedRange,
   customersInOrder,
+  leadStatusKey,
   leadStatuses,
   searchLeads,
   sortLeadGroups,
@@ -105,6 +107,8 @@ export const useLeadFeedViewModel = (
   const [boardId, setBoardId] = useState<string>(ALL_BOARDS)
   const [statusFilter, setStatusFilter] = useState<string>(ALL_STATUSES)
   const [channelFilter, setChannelFilter] = useState<string>(ALL_CHANNELS)
+  // 소재별로 볼 때 소재 하나만 — 소재 묶음 키(매체:utm_campaign).
+  const [creativeFilter, setCreativeFilter] = useState<string>(ALL_CREATIVES)
   const [search, setSearch] = useState('')
   // 전체(수천 건)를 글자마다 거르면 입력이 밀린다 — 입력창은 바로, 표는 한 박자
   // 늦게 따라온다.
@@ -163,6 +167,7 @@ export const useLeadFeedViewModel = (
       total: chars(all.length),
       boards: charsBy((row) => row.boardId),
       channels: charsBy((row) => row.channel),
+      statuses: charsBy(leadStatusKey),
     }
   }, [data])
   // 상태 항목은 받은 리드 전체에서 — 거르기에 따라 항목이 사라지지 않게.
@@ -176,23 +181,48 @@ export const useLeadFeedViewModel = (
     () => (groupBy === 'creative' ? groupByCreative(leads, sortDirection) : []),
     [groupBy, leads, sortDirection],
   )
-  // 거르기·검색·정렬·묶기가 바뀌면 1쪽으로.
-  const pagination = usePagination<LeadGroup | CreativeGroup, LeadFeedPageSize>(
-    groupBy === 'creative' ? creativeGroups : groups,
-    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}|${groupBy}`,
+  // 고른 소재 — 위 거르기를 바꿔 그 소재가 목록에서 빠지면 "전체"로 본다.
+  const selectedCreative =
+    groupBy === 'creative' && creativeFilter !== ALL_CREATIVES
+      ? (creativeGroups.find((group) => group.key === creativeFilter) ?? null)
+      : null
+  // 쪽 넘기기 — 고객별이면 고객 묶음, 소재별이면 소재 묶음, 소재 하나를 고르면
+  // 그 소재의 리드 한 건씩. 거르기·검색·정렬·묶기가 바뀌면 1쪽으로.
+  const pagination = usePagination<
+    LeadGroup | CreativeGroup | MondayLeadFeedRow,
+    LeadFeedPageSize
+  >(
+    selectedCreative
+      ? selectedCreative.leads
+      : groupBy === 'creative'
+        ? creativeGroups
+        : groups,
+    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}|${groupBy}|${selectedCreative?.key ?? ''}`,
     30,
   )
+  // 표가 그리는 지금 쪽 — 소재 하나를 골랐으면 그 소재 묶음 하나에 이 쪽의
+  // 리드만 담는다(머리 줄의 건수는 소재 전체).
+  const pagedGroups: (LeadGroup | CreativeGroup)[] = selectedCreative
+    ? [
+        {
+          ...selectedCreative,
+          pageLeads: pagination.pagedItems as MondayLeadFeedRow[],
+        },
+      ]
+    : (pagination.pagedItems as (LeadGroup | CreativeGroup)[])
   // 고객 상세 왼쪽 목록 — 표에 보이는 순서(소재별이면 소재 묶음 안의 리드 순)라
   // ↑/↓가 표의 바로 옆 줄로 간다.
   const detailCustomers = useMemo(
     () =>
       customersInOrder(
-        groupBy === 'creative'
-          ? creativeGroups.flatMap((group) => group.leads)
-          : groups.map((group) => group.head),
+        selectedCreative
+          ? selectedCreative.leads
+          : groupBy === 'creative'
+            ? creativeGroups.flatMap((group) => group.leads)
+            : groups.map((group) => group.head),
         customers,
       ),
-    [groupBy, creativeGroups, groups, customers],
+    [groupBy, selectedCreative, creativeGroups, groups, customers],
   )
 
   const toggleGroup = useCallback((key: string) => {
@@ -235,11 +265,19 @@ export const useLeadFeedViewModel = (
       sortDirection,
       groups,
       groupBy,
-      /** 쪽 넘기기의 줄 수 — 고객별이면 고객 수, 소재별이면 소재 수. */
-      pageRowCount:
-        groupBy === 'creative' ? creativeGroups.length : groups.length,
+      /** 소재별 보기의 소재 묶음(소재 거르기 버튼) — 고객별이면 빈 배열. */
+      creativeGroups,
+      /** 고른 소재(키) — 목록에서 빠졌으면 "전체". */
+      creativeFilter: selectedCreative ? selectedCreative.key : ALL_CREATIVES,
+      /** 쪽 넘기기의 줄 수 — 고객별이면 고객 수, 소재별이면 소재 수, 소재 하나를
+       * 골랐으면 그 소재의 리드 수. */
+      pageRowCount: selectedCreative
+        ? selectedCreative.leads.length
+        : groupBy === 'creative'
+          ? creativeGroups.length
+          : groups.length,
       /** 지금 쪽의 묶음(고객 또는 소재) — 표가 그린다. */
-      pagedGroups: pagination.pagedItems,
+      pagedGroups,
       pageSize: pagination.pageSize,
       page: pagination.page,
       totalPages: pagination.totalPages,
@@ -258,6 +296,7 @@ export const useLeadFeedViewModel = (
       changeBoard: setBoardId,
       changeStatus: setStatusFilter,
       changeChannel: setChannelFilter,
+      changeCreative: setCreativeFilter,
       toggleSort,
       toggleGroup,
       changeGroupBy: setGroupBy,

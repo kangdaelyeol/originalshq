@@ -12,7 +12,6 @@ import {
   leadDate,
   leadFacets,
   leadFeedRange,
-  leadKeywords,
   searchLeads,
   sortLeadGroups,
   splitKeywords,
@@ -67,17 +66,6 @@ describe('splitKeywords', () => {
 
   it('띄어쓰기가 들어간 말(먼 거리)도 한 조각', () => {
     expect(splitKeywords('먼 거리라서요').filter((part) => part.keyword)).toEqual([{ text: '먼 거리', keyword: true }])
-  })
-})
-
-describe('leadKeywords', () => {
-  it('문의 원문과 메모에서 찾은 말 — 목록 순서, 한 번씩', () => {
-    expect(leadKeywords(row({ inquiryMessage: '견적 주세요. 렌트도 되나요?', notes: '대여 문의, 지방' }))).toEqual([
-      '렌탈',
-      '원거리',
-      '견적',
-    ])
-    expect(leadKeywords(row())).toEqual([])
   })
 })
 

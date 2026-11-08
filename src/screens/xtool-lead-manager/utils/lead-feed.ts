@@ -181,6 +181,10 @@ export const ALL_CHANNELS = 'all'
 /** 보드 거르기의 "전체". */
 export const ALL_BOARDS = 'all'
 
+/** 소재 거르기(소재별 보기)의 "전체" — 소재 묶음 키는 '매체:utm_campaign'이라
+ * 겹치지 않는다. */
+export const ALL_CREATIVES = 'all'
+
 /** 매체 버튼 — 순서와 이름(cmip ROAS 탭과 같은 이름). */
 export const LEAD_CHANNEL_LABEL: Record<MondayLeadChannel, string> = {
   meta: 'Meta',
@@ -310,6 +314,9 @@ export interface CreativeGroup {
   campaign: string | null
   /** 묶음 안의 리드 — 인입 시각 순(정렬 방향을 따른다). */
   leads: MondayLeadFeedRow[]
+  /** 소재 하나를 골라 그 리드를 쪽으로 나눠 볼 때 이 쪽의 리드 — 있으면 표는
+   * '더 보기' 없이 이것만 그린다(머리 줄 건수는 leads 전체). */
+  pageLeads?: MondayLeadFeedRow[]
 }
 
 /** 리드를 매체·utm_campaign으로 묶는다 — 리드가 많은 묶음부터(같으면 최근
@@ -356,7 +363,7 @@ export const groupByCreative = (
 }
 
 /** 문의 원문·상담 메모에서 눈여겨볼 말 — 소재 품질이나 렌탈 오해 같은 신호.
- * 표에서 색으로 칠하고, 걸린 것을 태그로 모아 보인다. */
+ * 두 글 모두 글 속에서 색으로 칠한다. */
 export const LEAD_KEYWORDS: readonly { label: string; pattern: RegExp }[] = [
   { label: '렌탈', pattern: /렌탈|렌트|대여|임대/ },
   { label: '할부', pattern: /할부|분할/ },
@@ -396,12 +403,4 @@ export const splitKeywords = (text: string): KeywordPart[] => {
   }
   if (at < text.length) parts.push({ text: text.slice(at), keyword: false })
   return parts
-}
-
-/** 리드의 문의 원문·상담 메모에 걸린 키워드 이름(LEAD_KEYWORDS 순서). */
-export const leadKeywords = (row: MondayLeadFeedRow): string[] => {
-  const text = `${row.inquiryMessage ?? ''}\n${row.notes ?? ''}`
-  return LEAD_KEYWORDS.filter((keyword) => keyword.pattern.test(text)).map(
-    (keyword) => keyword.label,
-  )
 }

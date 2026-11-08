@@ -5,23 +5,28 @@ import '@/screens/xtool-lead-manager/styles/monday.scss'
 import '@/screens/xtool-lead-manager/styles/monday-glass.scss'
 import '@/screens/xtool-lead-manager/styles/funnel-glass.scss'
 import '@/screens/xtool-lead-manager/styles/lead-feed.scss'
-import { ArrowDown, ArrowUp, ChevronRight, RefreshCw } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+} from 'lucide-react'
 import {
   memo,
   useCallback,
   useEffect,
   useRef,
+  useState,
+  type CSSProperties,
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
 } from 'react'
-import {
-  AutoHeight,
-  LoadingPanel,
-  Segmented,
-  Select,
-  type SelectOption,
-} from '@/components/glass'
+import { createPortal, flushSync } from 'react-dom'
+import { AutoHeight, LoadingPanel, Segmented } from '@/components/glass'
 import type { MondayLeadFeedRow } from '@/screens/xtool-lead-manager/entity'
 import type { LoadStatus } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
@@ -29,6 +34,7 @@ import type { SortDirection } from '@/screens/xtool-lead-manager/types'
 import {
   ALL_BOARDS,
   ALL_CHANNELS,
+  ALL_CREATIVES,
   ALL_STATUSES,
   firstCallDays,
   formatLeadTime,
@@ -37,7 +43,6 @@ import {
   LEAD_CHANNEL_LABEL,
   LEAD_CHANNEL_TITLE,
   LEAD_GROUP_BY_LABEL,
-  leadKeywords,
   splitKeywords,
   LEAD_FEED_PAGE_SIZES,
   LEAD_FEED_PERIOD_LABEL,
@@ -84,6 +89,154 @@ const Highlighted = ({ text }: { text: string }) => (
   </>
 )
 
+// 전체보기를 열고 닫을 때 — 표 카드가 제자리에서 화면 전체로(닫으면 거꾸로)
+// 자라는 전환(View Transitions). 카드 이름(view-transition-name)은 전환하는
+// 동안에만 붙인다(lead-feed.scss) — 이름이 붙은 요소는 흐림의 경계가 돼서.
+const MORPHING = 'lead_feed_morphing'
+const morph = (update: () => void) => {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (!document.startViewTransition || reduced) {
+    update()
+    return
+  }
+  const root = document.documentElement
+  root.classList.add(MORPHING)
+  const transition = document.startViewTransition(() => flushSync(update))
+  transition.finished.finally(() => root.classList.remove(MORPHING))
+}
+
+// 문의 원문·상담 메모 전체 판 — 마우스를 올리고 이만큼 머물면 띄우고, 떠난 뒤
+// 이만큼 지나면 닫는다(칸 사이, 칸에서 판으로 옮겨 가는 틈에 닫히지 않게).
+const TEXT_POP_OPEN_MS = 250
+const TEXT_POP_CLOSE_MS = 150
+const TEXT_POP_W = 560
+
+/** 판 자리 — 두 칸 바로 아래, 아래 공간이 모자라면 위. 화면 밖으로 나가지
+ * 않게 왼쪽·높이를 맞춘다. */
+const textPopStyle = (rect: DOMRect): CSSProperties => {
+  const left = Math.max(
+    8,
+    Math.min(rect.left, window.innerWidth - TEXT_POP_W - 8),
+  )
+  const below = window.innerHeight - rect.bottom
+  return below >= 260 || below >= rect.top
+    ? { left, top: rect.bottom + 6, maxHeight: below - 14 }
+    : {
+        left,
+        bottom: window.innerHeight - rect.top + 6,
+        maxHeight: rect.top - 14,
+      }
+}
+
+/**
+ * 문의 원문·상담 메모 전체 판(줄 하나). 두 칸은 두 줄까지 보이고 넘치면 …로
+ * 끝난다. 두 칸을 한 범위로 보아 어느 칸에 마우스를 올려도 같은 판이 두 글을
+ * 다 보인다 — 칸 사이를 옮겨도 닫혔다 열리지 않는다. 두 칸 다 잘리지 않았으면
+ * 띄우지 않는다. 판으로 마우스를 옮겨도 닫히지 않아 긴 글은 스크롤해 읽고 글자를
+ * 고를 수 있다. 판은 표의 스크롤 상자에 잘리지 않게 화면 맨 위 층에 띄우고,
+ * 표·화면을 스크롤(판 안 스크롤은 빼고)하거나 Esc를 누르면 닫는다(자리가
+ * 어긋나서).
+ */
+const useTextPreview = (row: MondayLeadFeedRow) => {
+  const timer = useRef(0)
+  const popRef = useRef<HTMLDivElement>(null)
+  // 띄운 판 — 두 칸을 합친 자리와 그릴 곳(화면 맨 위 층). 열 때 재 둔다.
+  const [pop, setPop] = useState<{ rect: DOMRect; host: Element } | null>(null)
+  const later = (next: () => void, ms: number) => {
+    window.clearTimeout(timer.current)
+    timer.current = window.setTimeout(next, ms)
+  }
+  const keep = () => window.clearTimeout(timer.current)
+  const close = () => later(() => setPop(null), TEXT_POP_CLOSE_MS)
+  const open = (event: MouseEvent<HTMLElement>) => {
+    if (pop) {
+      keep()
+      return
+    }
+    const tr = event.currentTarget.closest('tr')
+    if (!tr) return
+    const clipped = [
+      ...tr.querySelectorAll<HTMLElement>('.lead_feed_clamp'),
+    ].some((box) => box.scrollHeight > box.clientHeight + 1)
+    if (!clipped) return
+    later(() => {
+      const cells = [
+        ...tr.querySelectorAll<HTMLElement>('td.lead_feed_text'),
+      ].map((cell) => cell.getBoundingClientRect())
+      const left = Math.min(...cells.map((cell) => cell.left))
+      const top = Math.min(...cells.map((cell) => cell.top))
+      const right = Math.max(...cells.map((cell) => cell.right))
+      const bottom = Math.max(...cells.map((cell) => cell.bottom))
+      setPop({
+        rect: new DOMRect(left, top, right - left, bottom - top),
+        host: tr.closest('.glass_root') ?? document.body,
+      })
+    }, TEXT_POP_OPEN_MS)
+  }
+  useEffect(() => () => window.clearTimeout(timer.current), [])
+  useEffect(() => {
+    if (!pop) return
+    const hide = () => setPop(null)
+    const onScroll = (event: Event) => {
+      if (popRef.current?.contains(event.target as Node)) return
+      hide()
+    }
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') hide()
+    }
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', hide)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', hide)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [pop])
+
+  const popup =
+    pop &&
+    createPortal(
+      <div
+        ref={popRef}
+        className="lead_feed_text_pop"
+        role="dialog"
+        aria-label="문의 원문·상담 메모 전체"
+        style={textPopStyle(pop.rect)}
+        onMouseEnter={keep}
+        onMouseLeave={close}
+        // 판은 표 밖에 그려도 React 이벤트는 줄(tr)로 올라간다 — 판을 눌러도
+        // 줄이 펼쳐지지 않게.
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="lead_feed_text_pop__head">
+          <b>{row.name || '(이름 없음)'}</b>
+          <span>
+            {formatLeadTime(row)} · {row.boardName}
+          </span>
+        </div>
+        <section>
+          <h4>문의 원문</h4>
+          {row.inquiryMessage ? (
+            <Highlighted text={row.inquiryMessage} />
+          ) : (
+            <span className="lead_feed_text_pop__none">없음</span>
+          )}
+        </section>
+        <section>
+          <h4>상담 메모</h4>
+          {row.notes ? (
+            <Highlighted text={row.notes} />
+          ) : (
+            <span className="lead_feed_text_pop__none">없음</span>
+          )}
+        </section>
+      </div>,
+      pop.host,
+    )
+  return { cell: { onMouseEnter: open, onMouseLeave: close }, popup }
+}
+
 /** 보드 버튼의 키 — 보드 id가 숫자라 객체 키 순서가 바뀌지 않게 글자를 붙인다. */
 const boardKey = (id: string) => `board:${id}`
 
@@ -91,13 +244,18 @@ const boardKey = (id: string) => `board:${id}`
  * 30개라, 다 펼치면 수백~수천 줄이 된다. */
 const CREATIVE_PREVIEW = 10
 
+/** 소재 묶음의 이름 — utm_campaign, 없으면 그 까닭. */
+const creativeName = (group: CreativeGroup): string =>
+  group.campaign ??
+  (group.channel === 'unknown' ? 'UTM 없이 들어온 리드' : '캠페인 없음')
+
 const firstCallLabel = (row: MondayLeadFeedRow): string => {
   const days = firstCallDays(row)
   if (days === null) return isMisentry(row) ? '-' : '아직'
   return days === 0 ? '당일' : `${days}일`
 }
 
-/** 위/아래 방향키로 위아래 버튼 묶음(기간·보드·매체)의 고른 버튼에 초점을
+/** 위/아래 방향키로 위아래 버튼 묶음(기간·상태·보드·매체)의 고른 버튼에 초점을
  * 옮긴다(고른 값은 그대로, 맨 위·맨 아래에서는 멈춘다). 메뉴 상자에 붙여 그
  * 안의 묶음끼리만 오간다. 누르면 초점이 가는 것과 좌/우는 화면 공통
  * (segmented-keys.ts). */
@@ -117,7 +275,7 @@ const moveBetweenRows = (event: KeyboardEvent<HTMLElement>) => {
 
 /** 보드·매체 버튼의 이름과 건수 배지. 배지는 chars 글자만큼 자리를 미리 잡아
  * 건수가 바뀌어도 버튼 폭이 그대로다. 0건은 흐리게 — 리드가 있는 버튼이 한눈에
- * 보이게(누를 수는 있다). */
+ * 보이게(누를 수도 없다 — disabledOptions). */
 const optionLabel = (label: string, count: number, chars = 1): ReactNode => (
   <span
     className={count === 0 ? 'lead_feed_option is-empty' : 'lead_feed_option'}
@@ -131,6 +289,10 @@ const optionLabel = (label: string, count: number, chars = 1): ReactNode => (
 
 /** 상태 드롭다운에 보이는 이름 — 빈 상태는 따로 이름을 붙인다. */
 const statusLabel = (status: string) => status || '(상태 없음)'
+
+/** 상태 버튼의 키 — 빈 상태('')도 키가 되게 글자를 붙인다. */
+const STATUS_KEY_PREFIX = 'status:'
+const statusKey = (status: string) => `${STATUS_KEY_PREFIX}${status}`
 
 /** 이름 칸 — 번호가 있으면 고객 상세를, 오기입이면 그 리드의 오기입 추적도
  * 여는 단추. 둘 다 아니면(고객 통합에 없는 기록) 예전처럼 Monday 링크. */
@@ -185,6 +347,8 @@ interface LeadColumn {
   sortable?: boolean
   /** 머리글·칸에 같이 붙는 클래스(lead-feed.scss). */
   className?: string
+  /** 마우스를 올리면 문의 원문·상담 메모 전체 판을 띄우는 칸(useTextPreview). */
+  preview?: boolean
   /** 칸에 마우스를 올리면 보이는 것. */
   cellTitle?: (row: MondayLeadFeedRow) => string
   cell: (row: MondayLeadFeedRow, context: LeadCellContext) => ReactNode
@@ -292,40 +456,29 @@ const LEAD_COLUMNS: readonly LeadColumn[] = [
     key: 'inquiry',
     label: '문의 원문',
     title:
-      '고객이 문의 폼에 적은 내용 — 그 칸이 있는 보드(기타 온라인 문의·[B2B] 보드)만',
+      "Monday '고객 문의 상세 내용' 칸 — 고객이 웹 문의 폼에 적은 내용(웹 문의를 받는 보드에만 있어 오프라인·개인 보드는 '-'). 두 줄까지 보이고, 마우스를 올리면 상담 메모와 같이 전체가 뜹니다",
     className: 'lead_feed_text',
-    cell: (row) => {
-      const keywords = leadKeywords(row)
-      return (
-        <>
-          {/* 문의 원문·메모에 걸린 키워드 — 메모는 세 줄까지만 보여서 여기 모은다. */}
-          {keywords.length > 0 && (
-            <div className="lead_feed_tags">
-              {keywords.map((keyword) => (
-                <span key={keyword} className="lead_feed_tag">
-                  {keyword}
-                </span>
-              ))}
-            </div>
-          )}
-          {row.inquiryMessage ? (
-            <Highlighted text={row.inquiryMessage} />
-          ) : (
-            <span className="lead_feed_none">-</span>
-          )}
-        </>
-      )
-    },
+    preview: true,
+    // 글은 두 줄까지 — 키워드는 글 속에서 칠하기만 한다(상담 메모와 같이).
+    cell: (row) =>
+      row.inquiryMessage ? (
+        <div className="lead_feed_clamp">
+          <Highlighted text={row.inquiryMessage} />
+        </div>
+      ) : (
+        <span className="lead_feed_none">-</span>
+      ),
   },
   {
     key: 'notes',
     label: '상담 메모',
     title:
-      "Monday '상담내역' 칸 — 세 줄까지 보이고, 마우스를 올리면 전체가 뜹니다",
+      "Monday '상담내역' 칸 — 두 줄까지 보이고, 마우스를 올리면 문의 원문과 같이 전체가 뜹니다",
     className: 'lead_feed_text',
+    preview: true,
     cell: (row) =>
       row.notes ? (
-        <div className="lead_feed_memo" title={row.notes}>
+        <div className="lead_feed_clamp">
           <Highlighted text={row.notes} />
         </div>
       ) : (
@@ -457,28 +610,33 @@ const LeadRow = memo(function LeadRow({
       }
     : undefined
   const context: LeadCellContext = { toggle, onOpenLead }
+  const preview = useTextPreview(row)
   return (
-    <tr
-      className={[
-        'lead_feed_row',
-        sub ? 'is-sub' : '',
-        toggle ? 'is-group' : '',
-        toggle?.open ? 'is-open' : '',
-      ]
-        .join(' ')
-        .trim()}
-      onClick={onRowClick}
-    >
-      {LEAD_COLUMNS.map((column) => (
-        <td
-          key={column.key}
-          className={column.className}
-          title={column.cellTitle?.(row)}
-        >
-          {column.cell(row, context)}
-        </td>
-      ))}
-    </tr>
+    <>
+      <tr
+        className={[
+          'lead_feed_row',
+          sub ? 'is-sub' : '',
+          toggle ? 'is-group' : '',
+          toggle?.open ? 'is-open' : '',
+        ]
+          .join(' ')
+          .trim()}
+        onClick={onRowClick}
+      >
+        {LEAD_COLUMNS.map((column) => (
+          <td
+            key={column.key}
+            className={column.className}
+            title={column.cellTitle?.(row)}
+            {...(column.preview ? preview.cell : undefined)}
+          >
+            {column.cell(row, context)}
+          </td>
+        ))}
+      </tr>
+      {preview.popup}
+    </>
   )
 })
 
@@ -526,8 +684,11 @@ const CreativeRows = memo(function CreativeRows({
   onToggle: (key: string) => void
   onOpenLead: (row: MondayLeadFeedRow) => void
 }) {
-  const shown = open ? group.leads : group.leads.slice(0, CREATIVE_PREVIEW)
-  const hidden = group.leads.length - CREATIVE_PREVIEW
+  // 소재 하나를 골라 쪽으로 나눠 볼 때는 이 쪽의 리드만, '더 보기' 없이.
+  const shown =
+    group.pageLeads ??
+    (open ? group.leads : group.leads.slice(0, CREATIVE_PREVIEW))
+  const hidden = group.pageLeads ? 0 : group.leads.length - CREATIVE_PREVIEW
   const misentry = group.leads.filter(isMisentry).length
   const customers = new Set(group.leads.map((row) => row.phone ?? row.itemId))
     .size
@@ -545,12 +706,7 @@ const CreativeRows = memo(function CreativeRows({
             {LEAD_CHANNEL_LABEL[group.channel]}
             {kind && ` ${kind}`}
           </span>
-          <strong>
-            {group.campaign ??
-              (group.channel === 'unknown'
-                ? 'UTM 없이 들어온 리드'
-                : '캠페인 없음')}
-          </strong>
+          <strong>{creativeName(group)}</strong>
           <span className="lead_feed_creative_counts">
             리드 {group.leads.length.toLocaleString('ko-KR')}건 · 고객{' '}
             {customers.toLocaleString('ko-KR')}명 · 오기입{' '}
@@ -578,7 +734,7 @@ const CreativeRows = memo(function CreativeRows({
 
 /**
  * 리드 분석 탭 — 상담 보드에 들어온 리드를 클릭 없이 스크롤로 읽는 표(신규 인입
- * 피드). 위 줄에서 검색(이름·연락처)·상태와 쪽을, 아래 세 줄에서 기간·보드·
+ * 피드). 위 줄에서 검색(이름·연락처)과 쪽을, 아래 네 줄에서 기간·상태·보드·
  * 매체를 고른다.
  * 같은 번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고, 그 줄을 누르면
  * 나머지를 펼친다. 이름을 누르면 Monday 고객 탭과 같은 고객 상세가 뜬다.
@@ -611,6 +767,8 @@ export const LeadFeed = ({
     groups,
     pagedGroups,
     groupBy,
+    creativeGroups,
+    creativeFilter,
     pageRowCount,
     pageSize,
     page,
@@ -644,6 +802,103 @@ export const LeadFeed = ({
   // 상세 머리(이름·번호) — 고객 목록을 아직 못 받았으면 받아 온 전체 기록으로.
   const detailHead = detailSummary ?? detail
 
+  // 전체보기 — 표 카드를 화면 전체에 띄우고 위 메뉴(검색·거르기)는 숨긴다. 카드는
+  // .glass_root로 옮겨 그린다(포털): 제자리의 조상(유리 카드의 backdrop-filter
+  // 등)이 position: fixed의 기준이 되면 화면 전체로 못 펴진다. 띄울 곳은 누를 때
+  // 정해 둔다(그릴 때 DOM을 읽지 않게).
+  // 거르기 접기 — 기간·상태·보드·매체(소재별이면 소재까지) 줄을 고른 값만 적은
+  // 한 줄로 접어 둔다(처음에도 접힌 채). 그 줄을 누르면 펼치고, 표 카드를
+  // 누르거나 펼친 줄에서 Enter·Esc를 누르면 다시 접는다.
+  const [filtersFolded, setFiltersFolded] = useState(true)
+  const filtersRef = useRef<HTMLDivElement>(null)
+  // 펼치면 첫 줄(기간)의 고른 버튼에, 키로 접으면 접힌 줄에 초점 — 방향키로
+  // 바로 고르고 Enter로 접게. 마우스로 표를 눌러 접을 때는 옮기지 않는다.
+  const foldFocus = useRef(false)
+  const foldFilters = (focus = false) => {
+    foldFocus.current = focus
+    setFiltersFolded(true)
+  }
+  const unfoldFilters = () => {
+    foldFocus.current = true
+    setFiltersFolded(false)
+  }
+  useEffect(() => {
+    if (!foldFocus.current) return
+    foldFocus.current = false
+    filtersRef.current
+      ?.querySelector<HTMLButtonElement>(
+        filtersFolded
+          ? '.lead_feed_filter_summary'
+          : '.glass_segmented > button.active',
+      )
+      ?.focus()
+  }, [filtersFolded])
+  // 펼친 동안 Esc는 어디서 눌러도 접는다(모달·전체 판·전체보기가 떠 있으면
+  // 그쪽이 먼저).
+  useEffect(() => {
+    if (filtersFolded) return
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (
+        document.querySelector(
+          '[aria-modal="true"], .lead_feed_text_pop, .lead_feed_expanded',
+        )
+      ) {
+        return
+      }
+      foldFocus.current = true
+      setFiltersFolded(true)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [filtersFolded])
+  // 펼친 줄 안의 Enter — 방향키로 고른 뒤 Enter로 끝낸다.
+  const onFiltersKey = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key !== 'Enter' || filtersFolded) return
+    if (!(event.target as HTMLElement).closest('.glass_segmented')) return
+    event.preventDefault()
+    foldFilters(true)
+  }
+
+  const [expandHost, setExpandHost] = useState<Element | null>(null)
+  const expanded = expandHost !== null
+  const expandButtonRef = useRef<HTMLButtonElement>(null)
+  // 열고 닫은 뒤 같은 자리의 버튼(열기 ↔ 닫기)에 초점을 둔다 — 처음 그릴 때는
+  // 두지 않는다(페이지를 열자마자 초점을 가져가지 않게).
+  const expandToggled = useRef(false)
+  const openExpanded = (event: MouseEvent<HTMLElement>) => {
+    expandToggled.current = true
+    const host = event.currentTarget.closest('.glass_root') ?? document.body
+    morph(() => setExpandHost(host))
+  }
+  const closeExpanded = () => {
+    expandToggled.current = true
+    morph(() => setExpandHost(null))
+  }
+  useEffect(() => {
+    if (expandToggled.current) expandButtonRef.current?.focus()
+  }, [expanded])
+  useEffect(() => {
+    if (!expanded) return
+    // 뒤 페이지가 같이 스크롤되지 않게 잠그고, Esc로 닫는다 — 고객 상세 같은
+    // 모달이나 메모 미리보기가 떠 있으면 그쪽이 먼저 닫히게 넘긴다.
+    const root = document.documentElement
+    const overflow = root.style.overflow
+    root.style.overflow = 'hidden'
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      if (document.querySelector('[aria-modal="true"], .lead_feed_text_pop')) {
+        return
+      }
+      closeExpanded()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      root.style.overflow = overflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [expanded])
+
   // 이름을 누르면 — 번호가 있으면 고객 상세를 열고, 오기입이면 그 리드의 오기입
   // 추적을 붙인다(번호가 없으면 추적만 따로 뜬다). 줄(memo)에 넘기므로 고정한다.
   const openLead = useCallback(
@@ -668,6 +923,12 @@ export const LeadFeed = ({
     : null
   const typed = search.trim() !== ''
 
+  // 0건 버튼은 누를 수 없게(좌/우 방향키도 건너뛴다) — 지금 골라 둔 버튼은 0건이
+  // 돼도 남긴다(다른 거르기를 바꿔 0건이 된 경우 — 끄면 고른 버튼이 사라진다).
+  const disabledBoards: string[] = []
+  const disabledChannels: string[] = []
+  const disabledStatuses: string[] = []
+
   const boardOptions: Record<string, ReactNode> = {
     [ALL_BOARDS]: optionLabel('전체', boardTotal, countChars.total),
   }
@@ -679,6 +940,9 @@ export const LeadFeed = ({
       countChars.boards[board.id],
     )
     boardTitles[boardKey(board.id)] = board.name
+    if (!boardCounts[board.id] && boardId !== board.id) {
+      disabledBoards.push(boardKey(board.id))
+    }
   }
 
   // 매체 — 전체 + 다섯 매체 + 기타 UTM + UTM 없음, 이름 옆에 건수.
@@ -691,132 +955,355 @@ export const LeadFeed = ({
       channelCounts[channel] ?? 0,
       countChars.channels[channel],
     )
+    if (!channelCounts[channel] && channelFilter !== channel) {
+      disabledChannels.push(channel)
+    }
   }
 
-  // 상태 — 받은 리드에 나온 상태 전부, 진행 순서. 고른 상태는 목록에 없어도 남긴다.
-  const statusOptions: SelectOption<string>[] = [
-    {
-      value: ALL_STATUSES,
-      label: `상태 전체 ${statusTotal.toLocaleString('ko-KR')}`,
-    },
-    ...[
-      ...statuses,
-      ...(statusFilter !== ALL_STATUSES && !statuses.includes(statusFilter)
-        ? [statusFilter]
-        : []),
-    ].map((each) => ({
-      value: each,
-      label: `${statusLabel(each)} ${(statusCounts[each] ?? 0).toLocaleString('ko-KR')}`,
-    })),
+  // 상태 — 받은 리드에 나온 상태 전부, 진행 순서. 고른 상태는 목록에 없어도
+  // 남긴다. 상태 값('' = 상태 없음)이 버튼 키와 섞이지 않게 앞에 글자를 붙인다.
+  const statusOptions: Record<string, ReactNode> = {
+    [ALL_STATUSES]: optionLabel('전체', statusTotal, countChars.total),
+  }
+  for (const each of [
+    ...statuses,
+    ...(statusFilter !== ALL_STATUSES && !statuses.includes(statusFilter)
+      ? [statusFilter]
+      : []),
+  ]) {
+    statusOptions[statusKey(each)] = optionLabel(
+      statusLabel(each),
+      statusCounts[each] ?? 0,
+      countChars.statuses[each],
+    )
+    if (!statusCounts[each] && statusFilter !== each) {
+      disabledStatuses.push(statusKey(each))
+    }
+  }
+
+  // 소재 거르기(소재별 보기) — 전체 + 소재 묶음마다(리드가 있는 것만).
+  const creativeOptions: Record<string, ReactNode> = {
+    [ALL_CREATIVES]: optionLabel(
+      '전체',
+      creativeGroups.reduce((sum, group) => sum + group.leads.length, 0),
+    ),
+  }
+  const creativeTitles: Record<string, string> = {}
+  for (const group of creativeGroups) {
+    const name = creativeName(group)
+    creativeOptions[group.key] = (
+      <span className="lead_feed_option lead_feed_creative_option">
+        <small className="lead_feed_creative_option__channel">
+          {LEAD_CHANNEL_LABEL[group.channel]}
+        </small>
+        <span className="lead_feed_creative_option__name">{name}</span>
+        <small className="lead_feed_count">
+          {group.leads.length.toLocaleString('ko-KR')}
+        </small>
+      </span>
+    )
+    creativeTitles[group.key] = `${LEAD_CHANNEL_LABEL[group.channel]} · ${name}`
+  }
+  const selectedCreative = creativeGroups.find(
+    (group) => group.key === creativeFilter,
+  )
+
+  const boardName = boards.find((board) => board.id === boardId)?.name
+  const filterSummary: [string, string][] = [
+    ['기간', LEAD_FEED_PERIOD_LABEL[period]],
+    [
+      '상태',
+      statusFilter === ALL_STATUSES ? '전체' : statusLabel(statusFilter),
+    ],
+    [
+      '보드',
+      boardId === ALL_BOARDS || !boardName ? '전체' : shortBoardName(boardName),
+    ],
+    [
+      '매체',
+      channelFilter === ALL_CHANNELS
+        ? '전체'
+        : (LEAD_CHANNEL_LABEL[
+            channelFilter as keyof typeof LEAD_CHANNEL_LABEL
+          ] ?? channelFilter),
+    ],
+    ...(groupBy === 'creative'
+      ? [
+          [
+            '소재',
+            selectedCreative ? creativeName(selectedCreative) : '전체',
+          ] as [string, string],
+        ]
+      : []),
   ]
+
+  const pagination = (
+    <PaginationBar
+      sizes={LEAD_FEED_PAGE_SIZES}
+      pageSize={pageSize}
+      page={page}
+      totalPages={totalPages}
+      totalRows={pageRowCount}
+      onSetPageSize={actions.changePageSize}
+      onPrevPage={actions.goToPrevPage}
+      onNextPage={actions.goToNextPage}
+    />
+  )
+  const countsLabel = (
+    <span className="lead_feed_counts">
+      리드 {leadCount.toLocaleString('ko-KR')}건 · 고객{' '}
+      {groups.length.toLocaleString('ko-KR')}명 · 오기입{' '}
+      {misentryCount.toLocaleString('ko-KR')}건
+    </span>
+  )
+  // 표 왼쪽 위 — 전체보기 열기/닫기(한 번에 한 곳에만 그린다: 초점용 ref가 하나).
+  const expandButton = (
+    <button
+      type="button"
+      ref={expandButtonRef}
+      className="lead_feed_expand"
+      aria-pressed={expanded}
+      onClick={expanded ? closeExpanded : openExpanded}
+    >
+      {expanded ? (
+        <Minimize2 strokeWidth={1.8} aria-hidden="true" />
+      ) : (
+        <Maximize2 strokeWidth={1.8} aria-hidden="true" />
+      )}
+      {expanded ? '전체보기 닫기' : '전체보기'}
+    </button>
+  )
+  const tableBlock =
+    groups.length === 0 ? (
+      <p className="lead_feed_empty">조건에 맞는 리드가 없습니다.</p>
+    ) : (
+      <div className="lead_feed_scroll" ref={scrollRef}>
+        <table className="stats_table lead_feed_table">
+          <thead>
+            <tr>
+              {LEAD_COLUMNS.map((column) => (
+                <LeadHead
+                  key={column.key}
+                  column={column}
+                  sortDirection={sortDirection}
+                  onToggleSort={actions.toggleSort}
+                />
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {pagedGroups.map((group) =>
+              group.kind === 'creative' ? (
+                <CreativeRows
+                  key={group.key}
+                  group={group}
+                  open={openKeys.has(group.key)}
+                  onToggle={toggleGroup}
+                  onOpenLead={openLead}
+                />
+              ) : (
+                <LeadGroupRows
+                  key={group.key}
+                  group={group}
+                  open={openKeys.has(group.key)}
+                  onToggle={toggleGroup}
+                  onOpenLead={openLead}
+                />
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
+    )
 
   return (
     <>
-      {/* 버튼 묶음(기간·보드·매체)은 누르면 초점이 가고, 좌/우 방향키로 옆 버튼을
+      {/* 버튼 묶음(기간·상태·보드·매체)은 누르면 초점이 가고, 좌/우 방향키로 옆 버튼을
           고르며 위/아래 방향키로 묶음 사이를 오간다. */}
-      <div
-        className="lead_manager_nav monday_stats_nav lead_feed_nav glass_theme"
-        onKeyDown={moveBetweenRows}
-      >
-        <div className="inner">
-          <div className="search-box">
-            <SearchIcon />
-            <div className="search-container">
-              <input
-                className={['search-input', typed ? 'typed' : ''].join(' ')}
-                type="text"
-                name="lead-feed-search"
-                placeholder="이름 · 연락처"
-                value={search}
-                onChange={(e) => actions.changeSearch(e.target.value)}
-              />
-              {typed && (
-                <div className="reset-btn">
-                  <CloseIcon onClick={() => actions.changeSearch('')} />
-                </div>
-              )}
+      {/* 전체보기 중에는 위 메뉴(검색·거르기)를 숨긴다. */}
+      {!expanded && (
+        <div
+          className="lead_manager_nav monday_stats_nav lead_feed_nav glass_theme"
+          onKeyDown={moveBetweenRows}
+        >
+          <div className="inner">
+            <div className="search-box">
+              <SearchIcon />
+              <div className="search-container">
+                <input
+                  className={['search-input', typed ? 'typed' : ''].join(' ')}
+                  type="text"
+                  name="lead-feed-search"
+                  placeholder="이름 · 연락처"
+                  value={search}
+                  onChange={(e) => actions.changeSearch(e.target.value)}
+                />
+                {typed && (
+                  <div className="reset-btn">
+                    <CloseIcon onClick={() => actions.changeSearch('')} />
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-          <Select
-            className="lead_feed_select"
-            value={statusFilter}
-            options={statusOptions}
-            onChange={actions.changeStatus}
-            label="상담 진행 상태"
-          />
-          {/* 묶기 — 같은 번호(고객)로, 또는 같은 소재(utm_campaign)로. */}
-          <Segmented
-            options={LEAD_GROUP_BY_LABEL}
-            value={groupBy}
-            onChange={actions.changeGroupBy}
-            label="묶기"
-            size="md"
-          />
-          <button
-            type="button"
-            className="stats_reset"
-            disabled={status === 'loading'}
-            onClick={() => void actions.reload()}
-          >
-            <RefreshCw
-              strokeWidth={1.8}
-              className={status === 'loading' ? 'is-spinning' : undefined}
-              aria-hidden="true"
+            {/* 묶기 — 같은 번호(고객)로, 또는 같은 소재(utm_campaign)로. */}
+            <Segmented
+              options={LEAD_GROUP_BY_LABEL}
+              value={groupBy}
+              onChange={actions.changeGroupBy}
+              label="묶기"
+              size="md"
             />
-            새로 고침
-          </button>
-          {/* 쪽 넘기기 — 줄은 묶음(고객) 단위라 건수도 묶음 수다. */}
-          <PaginationBar
-            sizes={LEAD_FEED_PAGE_SIZES}
-            pageSize={pageSize}
-            page={page}
-            totalPages={totalPages}
-            totalRows={pageRowCount}
-            onSetPageSize={actions.changePageSize}
-            onPrevPage={actions.goToPrevPage}
-            onNextPage={actions.goToNextPage}
-          />
+            <button
+              type="button"
+              className="stats_reset"
+              disabled={status === 'loading'}
+              onClick={() => void actions.reload()}
+            >
+              <RefreshCw
+                strokeWidth={1.8}
+                className={status === 'loading' ? 'is-spinning' : undefined}
+                aria-hidden="true"
+              />
+              새로 고침
+            </button>
+            {/* 쪽 넘기기 — 줄은 묶음(고객) 단위라 건수도 묶음 수다. */}
+            {pagination}
+          </div>
+          {/* 기간·상태·보드·매체 — 표를 누르면 고른 값만 적은 한 줄로 접힌다. */}
+          <div ref={filtersRef} onKeyDown={onFiltersKey}>
+            <AutoHeight className="lead_feed_filters">
+              {filtersFolded ? (
+                <div className="inner lead_feed_filter_row">
+                  <button
+                    type="button"
+                    className="lead_feed_filter_summary"
+                    aria-expanded={false}
+                    aria-label={`거르기 펼치기 — ${filterSummary
+                      .map(([name, value]) => `${name} ${value}`)
+                      .join(', ')}`}
+                    title="거르기 펼치기"
+                    onClick={unfoldFilters}
+                  >
+                    {filterSummary.map(([name, value]) => (
+                      <span key={name}>
+                        <span className="stats_nav_label">{name}</span>
+                        <b className={value === '전체' ? undefined : 'is-set'}>
+                          {value}
+                        </b>
+                      </span>
+                    ))}
+                    <span className="lead_feed_filter_summary__more">
+                      <ChevronDown strokeWidth={1.8} aria-hidden="true" />
+                    </span>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="inner lead_feed_filter_row">
+                    <span className="stats_nav_label">기간</span>
+                    <div className="lead_feed_filter_scroll">
+                      <Segmented
+                        options={LEAD_FEED_PERIOD_LABEL}
+                        value={period}
+                        onChange={actions.changePeriod}
+                        label="기간"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                  {/* 상담 진행 상태 — 기간·검색 안의 건수(보드·매체를 골라도 그대로). */}
+                  <div className="inner lead_feed_filter_row">
+                    <span className="stats_nav_label">상태</span>
+                    <div className="lead_feed_filter_scroll">
+                      <Segmented
+                        options={statusOptions}
+                        value={
+                          statusFilter === ALL_STATUSES
+                            ? ALL_STATUSES
+                            : statusKey(statusFilter)
+                        }
+                        onChange={(next) =>
+                          actions.changeStatus(
+                            next === ALL_STATUSES
+                              ? ALL_STATUSES
+                              : next.slice(STATUS_KEY_PREFIX.length),
+                          )
+                        }
+                        disabledOptions={disabledStatuses}
+                        label="상담 진행 상태"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                  <div className="inner lead_feed_filter_row">
+                    <span className="stats_nav_label">보드</span>
+                    <div className="lead_feed_filter_scroll">
+                      <Segmented
+                        options={boardOptions}
+                        value={
+                          boardId === ALL_BOARDS
+                            ? ALL_BOARDS
+                            : boardKey(boardId)
+                        }
+                        onChange={(next) =>
+                          actions.changeBoard(
+                            next === ALL_BOARDS
+                              ? ALL_BOARDS
+                              : next.slice('board:'.length),
+                          )
+                        }
+                        optionTitles={boardTitles}
+                        disabledOptions={disabledBoards}
+                        label="보드"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                  {/* 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */}
+                  <div className="inner lead_feed_filter_row">
+                    <span className="stats_nav_label">매체</span>
+                    <div className="lead_feed_filter_scroll">
+                      <Segmented
+                        options={channelOptions}
+                        value={channelFilter}
+                        onChange={actions.changeChannel}
+                        optionTitles={LEAD_CHANNEL_TITLE}
+                        disabledOptions={disabledChannels}
+                        label="매체"
+                        size="md"
+                      />
+                    </div>
+                  </div>
+                  {/* 소재 — 소재별로 볼 때만. 하나를 고르면 그 소재의 리드를 쪽으로
+                    나눠 한 건씩 본다. */}
+                  {groupBy === 'creative' && (
+                    <div className="inner lead_feed_filter_row">
+                      <span className="stats_nav_label">소재</span>
+                      <div className="lead_feed_filter_scroll">
+                        <Segmented
+                          options={creativeOptions}
+                          value={creativeFilter}
+                          onChange={actions.changeCreative}
+                          optionTitles={creativeTitles}
+                          label="소재"
+                          size="md"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </AutoHeight>
+          </div>
         </div>
-        <div className="inner lead_feed_filter_row">
-          <span className="stats_nav_label">기간</span>
-          <Segmented
-            options={LEAD_FEED_PERIOD_LABEL}
-            value={period}
-            onChange={actions.changePeriod}
-            label="기간"
-            size="md"
-          />
-        </div>
-        <div className="inner lead_feed_filter_row">
-          <span className="stats_nav_label">보드</span>
-          <Segmented
-            options={boardOptions}
-            value={boardId === ALL_BOARDS ? ALL_BOARDS : boardKey(boardId)}
-            onChange={(next) =>
-              actions.changeBoard(
-                next === ALL_BOARDS ? ALL_BOARDS : next.slice('board:'.length),
-              )
-            }
-            optionTitles={boardTitles}
-            label="보드"
-            size="md"
-          />
-        </div>
-        {/* 매체 — utm_source를 광고 채널로 묶은 값(cmip ROAS 탭과 같은 규칙). */}
-        <div className="inner lead_feed_filter_row">
-          <span className="stats_nav_label">매체</span>
-          <Segmented
-            options={channelOptions}
-            value={channelFilter}
-            onChange={actions.changeChannel}
-            optionTitles={LEAD_CHANNEL_TITLE}
-            label="매체"
-            size="md"
-          />
-        </div>
-      </div>
+      )}
 
-      <div className="xtool-main monday_stats lead_feed_main glass_theme">
+      <div
+        className={[
+          'xtool-main monday_stats lead_feed_main glass_theme',
+          filtersFolded ? 'is-filters-folded' : '',
+        ].join(' ')}
+      >
         <div className="wrapper">
           {status === 'error' ? (
             <div className="monday_error">
@@ -826,7 +1313,13 @@ export const LeadFeed = ({
               </button>
             </div>
           ) : (
-            <section className="stats_card">
+            // 표 카드 어디를 눌러도 거르기를 접는다.
+            <section
+              className={expanded ? 'stats_card' : 'stats_card lead_feed_card'}
+              onClick={() => {
+                if (!filtersFolded) foldFilters()
+              }}
+            >
               <AutoHeight>
                 {!loaded ? (
                   <LoadingPanel
@@ -841,11 +1334,7 @@ export const LeadFeed = ({
                   <div className="glass_reveal">
                     <h2>
                       신규 인입 리드
-                      <span className="lead_feed_counts">
-                        리드 {leadCount.toLocaleString('ko-KR')}건 · 고객{' '}
-                        {groups.length.toLocaleString('ko-KR')}명 · 오기입{' '}
-                        {misentryCount.toLocaleString('ko-KR')}건
-                      </span>
+                      {countsLabel}
                     </h2>
                     <p className="stats_desc">
                       Monday 상담 보드에 들어온 기록을 한 건씩 보여 줍니다. 같은
@@ -872,49 +1361,10 @@ export const LeadFeed = ({
                           </button>
                         </p>
                       )}
-                    {groups.length === 0 ? (
-                      <p className="lead_feed_empty">
-                        조건에 맞는 리드가 없습니다.
-                      </p>
-                    ) : (
-                      <div className="lead_feed_scroll" ref={scrollRef}>
-                        <table className="stats_table lead_feed_table">
-                          <thead>
-                            <tr>
-                              {LEAD_COLUMNS.map((column) => (
-                                <LeadHead
-                                  key={column.key}
-                                  column={column}
-                                  sortDirection={sortDirection}
-                                  onToggleSort={actions.toggleSort}
-                                />
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pagedGroups.map((group) =>
-                              group.kind === 'creative' ? (
-                                <CreativeRows
-                                  key={group.key}
-                                  group={group}
-                                  open={openKeys.has(group.key)}
-                                  onToggle={toggleGroup}
-                                  onOpenLead={openLead}
-                                />
-                              ) : (
-                                <LeadGroupRows
-                                  key={group.key}
-                                  group={group}
-                                  open={openKeys.has(group.key)}
-                                  onToggle={toggleGroup}
-                                  onOpenLead={openLead}
-                                />
-                              ),
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+                    <div className="lead_feed_table_bar">
+                      {!expanded && expandButton}
+                    </div>
+                    {!expanded && tableBlock}
                   </div>
                 )}
               </AutoHeight>
@@ -922,6 +1372,31 @@ export const LeadFeed = ({
           )}
         </div>
       </div>
+
+      {/* 전체보기 — 머리(닫기·건수·쪽 넘기기)와 표만. 헤더(z-index 6) 위, 고객
+          상세 같은 모달(10~) 아래(lead-feed.scss). 모달이 아니라(aria-modal 없음)
+          그 위에 뜨는 고객 상세의 방향키를 막지 않는다. */}
+      {expandHost &&
+        createPortal(
+          <div
+            className="xtool-main monday_stats lead_feed_main glass_theme lead_feed_expanded"
+            role="region"
+            aria-label="신규 인입 리드 전체보기"
+          >
+            <section className="stats_card lead_feed_card">
+              <div className="lead_feed_table_bar">
+                {expandButton}
+                <h2>
+                  신규 인입 리드
+                  {countsLabel}
+                </h2>
+                {pagination}
+              </div>
+              {tableBlock}
+            </section>
+          </div>,
+          expandHost,
+        )}
 
       {/* 고객 상세 — Monday 고객 탭과 같은 유리 모양(그 탭 이름 아래에 걸린
           스타일)이 들도록 같은 이름의 틀로 감싼다. 틀은 상자를 만들지 않는다
