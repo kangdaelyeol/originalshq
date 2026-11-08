@@ -240,6 +240,10 @@ const useTextPreview = (row: MondayLeadFeedRow) => {
 /** 보드 버튼의 키 — 보드 id가 숫자라 객체 키 순서가 바뀌지 않게 글자를 붙인다. */
 const boardKey = (id: string) => `board:${id}`
 
+/** 표 상자의 가장 작은 높이 — 화면이 아주 낮으면 이보다 줄이지 않고 페이지가
+ * 스크롤한다. */
+const LEAD_FEED_MIN_SCROLL = 240
+
 /** 소재 묶음에서 처음 보이는 리드 수 — 나머지는 '더 보기'로. 한 쪽에 소재가
  * 30개라, 다 펼치면 수백~수천 줄이 된다. */
 const CREATIVE_PREVIEW = 10
@@ -899,6 +903,68 @@ export const LeadFeed = ({
     }
   }, [expanded])
 
+  // 표 상자 높이 — 페이지(헤더·메뉴·카드·푸터)가 화면 높이에 딱 맞게. 표 상자
+  // 위(헤더·메뉴·카드 머리)는 자리로, 아래(카드·본문의 아래 여백·테두리와 푸터
+  // 높이)는 스타일 값으로 재서 남는 만큼을 준다 — 그래서 페이지는 스크롤하지
+  // 않고 표만 스크롤한다. 아래를 자리로 재지 않는 건, 표 높이가 바뀌면 카드가
+  // 높이를 따라 천천히 자라서(AutoHeight) 그동안 잰 자리가 어긋나기 때문이다.
+  // 메뉴를 접고 펴는 동안(높이가 매 프레임 바뀜)·창 크기·쪽이 바뀔 때 다시 잰다.
+  const mainRef = useRef<HTMLDivElement>(null)
+  const hasRows = groups.length > 0
+  // 카드가 높이를 따라 천천히 자라는 것(AutoHeight)은 처음 불러올 때(불러오는 판
+  // → 표)만 — 그 뒤 표 상자 높이가 바뀔 때(메뉴 접기·창 크기)까지 천천히
+  // 따라가면 카드 아래가 표보다 늦어 페이지가 잠깐 길어지거나 표 끝이 잘린다.
+  const [settled, setSettled] = useState(false)
+  useEffect(() => {
+    if (!loaded) return
+    const timer = window.setTimeout(() => setSettled(true), 900)
+    return () => window.clearTimeout(timer)
+  }, [loaded])
+  useEffect(() => {
+    const main = mainRef.current
+    if (!main) return
+    const fit = () => {
+      const box = main.querySelector<HTMLElement>('.lead_feed_scroll')
+      if (!box) return
+      const footer = document.querySelector('.lead_manager_footer')
+      let below = footer ? footer.getBoundingClientRect().height : 0
+      for (
+        let el: HTMLElement | null = box;
+        el && el !== main.parentElement;
+        el = el.parentElement
+      ) {
+        const style = getComputedStyle(el)
+        below += parseFloat(style.marginBottom) || 0
+        if (el !== box) {
+          below += parseFloat(style.paddingBottom) || 0
+          below += parseFloat(style.borderBottomWidth) || 0
+        }
+      }
+      const above = box.getBoundingClientRect().top + window.scrollY
+      const height = Math.max(
+        LEAD_FEED_MIN_SCROLL,
+        Math.floor(window.innerHeight - above - below),
+      )
+      main.style.setProperty('--lead-feed-fit', `${height}px`)
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(document.body)
+    const nav = document.querySelector('.lead_feed_nav')
+    if (nav) observer.observe(nav)
+    window.addEventListener('resize', fit)
+    // 크기는 그대로 자리만 옮기는 움직임(카드가 떠오르는 glass_reveal 등)이
+    // 끝난 뒤에도 — 크기 감시로는 안 잡힌다.
+    document.addEventListener('animationend', fit, true)
+    document.addEventListener('transitionend', fit, true)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', fit)
+      document.removeEventListener('animationend', fit, true)
+      document.removeEventListener('transitionend', fit, true)
+    }
+  }, [loaded, expanded, hasRows])
+
   // 이름을 누르면 — 번호가 있으면 고객 상세를 열고, 오기입이면 그 리드의 오기입
   // 추적을 붙인다(번호가 없으면 추적만 따로 뜬다). 줄(memo)에 넘기므로 고정한다.
   const openLead = useCallback(
@@ -1054,6 +1120,15 @@ export const LeadFeed = ({
       리드 {leadCount.toLocaleString('ko-KR')}건 · 고객{' '}
       {groups.length.toLocaleString('ko-KR')}명 · 오기입{' '}
       {misentryCount.toLocaleString('ko-KR')}건
+    </span>
+  )
+  // 표 머리 줄 오른쪽 — 마지막 동기화 시각(동기화 시간표는 마우스를 올리면).
+  const syncedLabel = syncedAt && (
+    <span
+      className="lead_feed_synced"
+      title="Monday 동기화는 하루 여섯 번(09·11·13·15·17·22시)이라 Monday 화면보다 늦을 수 있습니다"
+    >
+      마지막 동기화 {formatKoreaTime(syncedAt)}
     </span>
   )
   // 표 왼쪽 위 — 전체보기 열기/닫기(한 번에 한 곳에만 그린다: 초점용 ref가 하나).
@@ -1299,9 +1374,10 @@ export const LeadFeed = ({
       )}
 
       <div
+        ref={mainRef}
         className={[
           'xtool-main monday_stats lead_feed_main glass_theme',
-          filtersFolded ? 'is-filters-folded' : '',
+          settled ? 'is-settled' : '',
         ].join(' ')}
       >
         <div className="wrapper">
@@ -1336,19 +1412,6 @@ export const LeadFeed = ({
                       신규 인입 리드
                       {countsLabel}
                     </h2>
-                    <p className="stats_desc">
-                      Monday 상담 보드에 들어온 기록을 한 건씩 보여 줍니다. 같은
-                      번호로 여러 번 들어온 리드는 가장 최근 리드 한 줄로 묶고,
-                      그 줄을 누르면 나머지가 펼쳐집니다. 이름을 누르면 그
-                      고객의 전체 기록이 열립니다. '소재별'로 보면 같은
-                      utm_campaign(Meta는 광고 이름)으로 들어온 리드를 한
-                      덩어리로 보여 주고, 렌탈·할부·가격·원거리·학교·기관·견적은
-                      색으로 칠합니다. Monday 동기화는 하루 여섯
-                      번(09·11·13·15·17·22시)이라 Monday 화면보다 늦을 수
-                      있습니다.
-                      {syncedAt &&
-                        ` 마지막 동기화 ${formatKoreaTime(syncedAt)}`}
-                    </p>
                     {feedDetail &&
                       detailPhone &&
                       !detailHead &&
@@ -1363,6 +1426,7 @@ export const LeadFeed = ({
                       )}
                     <div className="lead_feed_table_bar">
                       {!expanded && expandButton}
+                      {syncedLabel}
                     </div>
                     {!expanded && tableBlock}
                   </div>
@@ -1390,6 +1454,7 @@ export const LeadFeed = ({
                   신규 인입 리드
                   {countsLabel}
                 </h2>
+                {syncedLabel}
                 {pagination}
               </div>
               {tableBlock}
