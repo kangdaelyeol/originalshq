@@ -186,7 +186,12 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
       />
       {!blocked && <MondayNumbers boardKey={boardKey} />}
       {ready ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.toolbar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.toolbarScroll}
+          contentContainerStyle={s.toolbar}
+        >
           <ToolChip primary label={`새로운 ${v.noun}`} onPress={() => setSheet('new')} />
           <ToolChip icon={Search} label="검색" on={searching || !!v.query} onPress={() => setSearching(!searching)} />
           <ToolChip
@@ -473,6 +478,8 @@ function NewItemSheet({
 
 const styles = (p: MonPalette) => ({
   screen: { flex: 1, backgroundColor: p.bg },
+  // 가로 스크롤은 세로로 늘어나지 않게(그대로 두면 남는 높이를 차지해 도구 줄이 아래로 밀린다)
+  toolbarScroll: { flexGrow: 0 },
   toolbar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 4, alignItems: 'center' as const },
   count: { marginLeft: 8 },
   search: { paddingHorizontal: 16, paddingTop: 6 },

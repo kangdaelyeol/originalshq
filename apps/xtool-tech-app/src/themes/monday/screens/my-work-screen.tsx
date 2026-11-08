@@ -59,7 +59,12 @@ export function MyWorkScreen({ who, onBack }: { who?: string; onBack?: () => voi
     <View style={s.screen}>
       <ScreenHeader title={v.title} onBack={onBack} />
       <UnderlineTabs tabs={MAIN_TAB} value="main" onChange={() => undefined} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.toolbar}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.toolbarScroll}
+        contentContainerStyle={s.toolbar}
+      >
         <ToolChip icon={CircleUserRound} label={v.personLabel} on onPress={() => setPicking(true)} />
         <ToolChip icon={Search} label="검색" on={searching || !!query} onPress={() => setSearching(!searching)} />
         <ToolTabs tabs={WORK_STATES} value={state} onChange={setState} style={s.states} />
@@ -315,6 +320,8 @@ function WorkBoxSkeleton({ rows }: { rows: number }) {
 const styles = (p: MonPalette) => ({
   screen: { flex: 1, backgroundColor: p.bg },
   flex: { flex: 1 },
+  // 가로 스크롤은 세로로 늘어나지 않게(그대로 두면 남는 높이를 차지해 도구 줄이 아래로 밀린다)
+  toolbarScroll: { flexGrow: 0 },
   toolbar: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4, gap: 4, alignItems: 'center' as const },
   states: { marginHorizontal: 6 },
   count: { marginLeft: 8 },
