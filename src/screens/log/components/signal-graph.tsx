@@ -468,6 +468,10 @@ type MotionDot = {
 // 이 정도면 곡선도 매끈해 보인다.
 const SAMPLE_STEP = 6
 
+// 빛 점을 다시 만들기 전에 기다리는 시간(ms) — 창 폭이 바뀌는 동안은 만들지
+// 않고, 멈춘 뒤 이만큼 지나면 만든다.
+const MOTION_REBUILD_MS = 180
+
 /** 그림을 가로로 벌린다 — 노드 크기는 그대로, 가운데 x·열·기둥·꺾는 자리만
  * k배. 넓은 화면에서 노드가 한쪽에 몰리지 않고 고르게 퍼지게. */
 const stretchX = (
@@ -573,11 +577,15 @@ export const SignalGraph = ({
 
   // 지금 보이는 배치 — 데이터가 바뀌어 배치가 달라지면 잠깐 섞인 값.
   const target = geometryOf(nodes, edges, height)
-  const targetKey = geometryKey(target)
+  // 넘어가기의 열쇠는 벌리기 전(배치한 그대로)의 좌표로 — 데이터가 바뀌어 배치가
+  // 달라질 때만 미끄러지고, 창 폭만 바뀌어 노드 자리를 벌릴 때(stretchX)는 바로
+  // 옮긴다. 열쇠에 벌린 좌표를 쓰면 창 크기를 바꿀 때마다 0.65초씩 늦게 따라온다.
+  const targetKey = geometryKey(geometryOf(baseNodes, baseEdges, height))
   const shown = useTween(target, targetKey, mixGeometry)
   // 넘어가는 중에는 빛 점을 숨긴다 — 매 프레임 길이 바뀌어 좌표를 다시 짚을 수
-  // 없다. 다 넘어가면 새 길로 다시 만든다.
-  const settled = shown === target || geometryKey(shown) === targetKey
+  // 없다. 다 넘어가면 새 길로 다시 만든다. 넘어가는 중이 아니면 useTween은
+  // 지금 값(target)을 그대로 돌려준다.
+  const settled = shown === target
   const currentNodes = new Map(nodes.map((node) => [node.id, node]))
   const currentEdges = new Map(edges.map((edge) => [edgeKey(edge), edge]))
   const boxes = new Map<string, Box>(
@@ -764,6 +772,10 @@ export const SignalGraph = ({
   // (같은 간격이라 같은 빠르기). transform 애니메이션은 GPU 합성 단계에서 돌아
   // 매 프레임 다시 칠하지 않는다(SVG 점선을 움직이던 때는 이 층을 초당 60번
   // 다시 칠해 화면을 켜 둔 동안 브라우저 일의 대부분이었다).
+  // 창 폭이 바뀌는 동안(노드 자리가 매 프레임 바뀜)에는 다시 만들지 않고 비워
+  // 두었다가, 멈추면 MOTION_REBUILD_MS 뒤에 만든다 — 점 수백 개의 좌표를 매
+  // 프레임 다시 짚으면 그 일 때문에 노드가 늦게 따라온다. 처음에는 바로.
+  const motionBuilt = useRef(false)
   useEffect(() => {
     const layer = motionRef.current
     const measure = measureRef.current
@@ -773,40 +785,49 @@ export const SignalGraph = ({
       top: number
       dots: MotionDot[]
     }
-    const animations = dots.map((dot) => {
-      measure.setAttribute('d', dot.d)
-      const total = measure.getTotalLength()
-      const count = Math.max(2, Math.min(200, Math.ceil(total / SAMPLE_STEP)))
-      const frames = Array.from({ length: count + 1 }, (_, i) => {
-        const point = measure.getPointAtLength((total * i) / count)
-        return {
-          transform: `translate(${point.x.toFixed(1)}px,${(point.y + offset).toFixed(1)}px)`,
-        }
+    let animations: Animation[] = []
+    const build = () => {
+      animations = dots.map((dot) => {
+        measure.setAttribute('d', dot.d)
+        const total = measure.getTotalLength()
+        const count = Math.max(2, Math.min(200, Math.ceil(total / SAMPLE_STEP)))
+        const frames = Array.from({ length: count + 1 }, (_, i) => {
+          const point = measure.getPointAtLength((total * i) / count)
+          return {
+            transform: `translate(${point.x.toFixed(1)}px,${(point.y + offset).toFixed(1)}px)`,
+          }
+        })
+        const element = document.createElement('i')
+        element.className = [
+          'sig-dot',
+          `is-${dot.kind}`,
+          dot.tone && `is-${dot.tone}`,
+          dot.dim && 'is-dim',
+          dot.litSpine && 'is-lit-spine',
+        ]
+          .filter(Boolean)
+          .join(' ')
+        if (dot.color) element.style.setProperty('--col', dot.color)
+        layer.append(element)
+        return element.animate(frames, {
+          duration: dot.duration * 1000,
+          delay: -dot.delay * 1000,
+          iterations: Infinity,
+          easing: 'linear',
+          direction: dot.reverse ? 'reverse' : 'normal',
+        })
       })
-      const element = document.createElement('i')
-      element.className = [
-        'sig-dot',
-        `is-${dot.kind}`,
-        dot.tone && `is-${dot.tone}`,
-        dot.dim && 'is-dim',
-        dot.litSpine && 'is-lit-spine',
-      ]
-        .filter(Boolean)
-        .join(' ')
-      if (dot.color) element.style.setProperty('--col', dot.color)
-      layer.append(element)
-      return element.animate(frames, {
-        duration: dot.duration * 1000,
-        delay: -dot.delay * 1000,
-        iterations: Infinity,
-        easing: 'linear',
-        direction: dot.reverse ? 'reverse' : 'normal',
-      })
-    })
-    if (stageRef.current?.classList.contains('is-paused')) {
-      for (const animation of animations) animation.pause()
+      if (stageRef.current?.classList.contains('is-paused')) {
+        for (const animation of animations) animation.pause()
+      }
     }
+    const timer = window.setTimeout(
+      build,
+      motionBuilt.current ? MOTION_REBUILD_MS : 0,
+    )
+    motionBuilt.current = true
     return () => {
+      window.clearTimeout(timer)
       for (const animation of animations) animation.cancel()
       layer.replaceChildren()
     }
