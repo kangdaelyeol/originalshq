@@ -130,7 +130,7 @@
 // 452px(폭 420 + 여백)를 차지하고, 본문 바깥 여백이 그만큼을 덜어 준다.
 @media (min-width: 1100px) {
   .batch-log:has(.log-insp:not(.is-closed)) .log-main {
-    padding-right: max(0px, calc(452px - max(28px, (100vw - 1320px) / 2)));
+    padding-right: max(0px, calc(452px - max(28px, (100vw - #{$log-page-max}) / 2)));
   }
 }
 

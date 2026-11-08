@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { INQUIRY_DEVICES } from '../client/inquiry-client'
 import {
   COST_RESOURCES,
@@ -11,7 +12,6 @@ import { MAX_FLOW_VIEWS as MAX_VIEWS, SCHEDULE_HOURS } from '../constants'
 import {
   formatAgo,
   formatDateTime,
-  formatDuration,
   nextScheduledAt,
   STATUS_LABEL,
   summarizeRun,
@@ -25,6 +25,7 @@ import {
   type ViewUsage,
 } from '../utils/usage'
 import type { useBatchLogViewModel } from '../view-model/use-batch-log-view-model'
+import { GRAPH_SCALE, useElementWidth } from './graph-size'
 import {
   SignalGraph,
   type SignalColumn,
@@ -42,12 +43,6 @@ const COL = {
 } as const
 
 // 열 이름 — 영상의 "TYPES / QUESTIONS"처럼 두 낱말.
-const BATCH_COLUMNS: SignalColumn[] = [
-  { x: 98, width: 170, label: 'SCHEDULE / IN', color: COL.cyan },
-  { x: 390, width: 210, label: 'JOBS / RUN', color: COL.pink },
-  { x: 660, width: 210, label: 'FOLLOW / UP', color: COL.purple },
-  { x: 912, width: 160, label: 'STORE / OUT', color: COL.yellow },
-]
 const INQUIRY_COLUMNS: SignalColumn[] = [
   { x: 82, width: 140, label: 'FORM / IN', color: COL.cyan },
   { x: 262, width: 168, label: 'FUNCTION / API', color: COL.pink },
@@ -64,8 +59,54 @@ const COST_COLUMNS: SignalColumn[] = [
   { x: 860, width: 200, label: 'RESOURCE / BILL', color: COL.purple },
 ]
 
-// 카드 사이 세로 간격 — 줄 셋 카드(높이 87.5)·줄 하나 카드(62.5)에 맞춘다.
-const JOB_GAP = 102
+// 작업 카드 격자 — 작업이 스무 개 가까워 한 줄로 쌓으면 그림이 너무 길어서,
+// 줄 하나 카드(높이 62.5)를 여러 열로 놓는다. 고른 카드의 결과 띠가 아랫줄과
+// 겹치지 않게 줄 간격을 넉넉히 둔다.
+const JOB_CARD_W = 160
+const JOB_PITCH = 166
+const JOB_ROW_GAP = 80
+const JOB_TOP = 50
+const JOB_GRID_LEFT = 190
+const STORE_W = 120
+// 그림 틀이 좁아지면 줄이는 열 수 — 노드 크기는 그대로 두고 열을 줄인다. 열을
+// 줄이기 전에 이만큼까지는 그림을 줄여 버틴다(조금 좁아졌다고 바로 줄이 늘지
+// 않게).
+const JOB_GRID_COLUMNS = [3, 2, 1] as const
+const JOB_GRID_MIN_SCALE = 0.85
+
+/** 작업 격자 열 수에 따른 배치 — 스케줄러 | 작업 격자 | 뒤따르는 작업 | 저장소.
+ * 열 사이 기둥(spines)은 카드 사이 틈에 둔다. */
+const batchLayout = (gridColumns: number) => {
+  const gridX = Array.from(
+    { length: gridColumns },
+    (_, i) => JOB_GRID_LEFT + JOB_CARD_W / 2 + i * JOB_PITCH,
+  )
+  const gridEnd = JOB_GRID_LEFT + gridColumns * JOB_PITCH - 6
+  const followSpine = gridEnd + 8
+  const followX = followSpine + 8 + JOB_CARD_W / 2
+  const storeSpine = followSpine + JOB_CARD_W + 8
+  const storeX = storeSpine + 8 + STORE_W / 2
+  const columns: SignalColumn[] = [
+    { x: 80, width: 150, label: 'SCHEDULE / IN', color: COL.cyan },
+    {
+      x: (JOB_GRID_LEFT + gridEnd) / 2,
+      width: gridEnd - JOB_GRID_LEFT,
+      label: 'JOBS / RUN',
+      color: COL.pink,
+    },
+    { x: followX, width: JOB_CARD_W, label: 'FOLLOW / UP', color: COL.purple },
+    { x: storeX, width: STORE_W, label: 'STORE / OUT', color: COL.yellow },
+  ]
+  return {
+    gridX,
+    followX,
+    storeX,
+    width: storeX + STORE_W / 2 + 6,
+    columns,
+    spines: [172, followSpine, storeSpine],
+  }
+}
+// 카드 사이 세로 간격 — 줄 하나 카드(62.5)에 맞춘다(사용 흐름).
 const ROW_GAP = 70
 
 // 탭마다 맨 위에 두는 흐름 그림 — 데이터가 어디서 어디로 가는지와 지금 상태를
@@ -108,11 +149,29 @@ export const BatchFlow = ({
   onSelectJob: (jobId: string) => void
 }) => {
   const { jobs, now, jobFilter } = state
-  const primary = jobs.filter((view) => !FOLLOWS[view.job.id])
-  const yById = new Map(
-    primary.map((view, index) => [view.job.id, 56 + index * JOB_GAP]),
+  // 그림 틀 폭에 들어가는 가장 많은 열 — 노드 크기(GRAPH_SCALE)는 그대로라
+  // 좁아지면 열을 줄여 겹치지 않게 한다. 재기 전에는 가장 넓게.
+  const frameRef = useRef<HTMLDivElement>(null)
+  const framePx = useElementWidth(frameRef)
+  const layout = batchLayout(
+    JOB_GRID_COLUMNS.find(
+      (count) =>
+        framePx === 0 ||
+        batchLayout(count).width * GRAPH_SCALE * JOB_GRID_MIN_SCALE <= framePx,
+    ) ?? 1,
   )
-  const height = 56 + Math.max(0, primary.length - 1) * JOB_GAP + 56
+  const primary = jobs.filter((view) => !FOLLOWS[view.job.id])
+  // 작업 자리 — 왼쪽에서 오른쪽, 위에서 아래로 3열.
+  const placeOf = (index: number) => ({
+    x: layout.gridX[index % layout.gridX.length],
+    y: JOB_TOP + Math.floor(index / layout.gridX.length) * JOB_ROW_GAP,
+  })
+  const placeById = new Map(
+    primary.map((view, index) => [view.job.id, placeOf(index)]),
+  )
+  const yById = new Map([...placeById].map(([id, place]) => [id, place.y]))
+  const rowCount = Math.ceil(primary.length / layout.gridX.length)
+  const height = JOB_TOP + Math.max(0, rowCount - 1) * JOB_ROW_GAP + JOB_TOP
   // 저장소는 그 저장소에 쓰는 작업들의 가운데 높이.
   const storeY = (codebase: string) => {
     const ys = primary
@@ -123,7 +182,8 @@ export const BatchFlow = ({
       : height / 2
   }
 
-  // 작업 카드 — 상태·마지막 실행·소요 줄, 켜지면(고른 작업·실패) 결과 요약 띠.
+  // 작업 카드 — 상태와 마지막 실행 한 줄(소요 등은 누르면 열리는 작업 상세에),
+  // 켜지면(고른 작업·실패) 결과 요약 띠.
   const jobNode = (
     view: (typeof jobs)[number],
     x: number,
@@ -134,28 +194,20 @@ export const BatchFlow = ({
       id: view.job.id,
       x,
       y,
+      // 저장소(xtool·cmip)는 오른쪽 선이 보여 줘서 이름 자리를 넓게 쓴다.
       label: view.job.label,
-      tag: view.job.codebase,
       rows: [
         {
-          label: '상태',
-          value: view.latestStatus
+          label: view.latestStatus
             ? STATUS_LABEL[view.latestStatus]
             : '기록 없음',
-          tone,
-        },
-        {
-          label: '마지막',
           value: view.latest ? formatAgo(view.latest.startedAt, now) : '-',
-        },
-        {
-          label: '소요',
-          value: view.latest ? formatDuration(view.latest.durationMs) : '-',
+          tone,
         },
       ],
       result: view.latest ? summarizeRun(view.latest) : undefined,
       tone,
-      width: 210,
+      width: JOB_CARD_W,
       active: jobFilter === view.job.id,
       onClick: () => onSelectJob(view.job.id),
     }
@@ -164,7 +216,7 @@ export const BatchFlow = ({
   const nodes: SignalNode[] = [
     {
       id: 'scheduler',
-      x: 98,
+      x: 80,
       y: height / 2,
       label: 'SCHEDULER',
       rows: [
@@ -181,19 +233,24 @@ export const BatchFlow = ({
         },
       ],
       tone: 'accent',
-      width: 170,
+      width: 150,
     },
-    ...primary.map((view) =>
-      jobNode(view, 390, yById.get(view.job.id) ?? height / 2),
-    ),
+    ...primary.map((view) => {
+      const place = placeById.get(view.job.id)
+      return jobNode(view, place?.x ?? layout.gridX[0], place?.y ?? height / 2)
+    }),
     ...jobs
       .filter((view) => FOLLOWS[view.job.id])
       .map((view) =>
-        jobNode(view, 660, yById.get(FOLLOWS[view.job.id]) ?? height / 2),
+        jobNode(
+          view,
+          layout.followX,
+          yById.get(FOLLOWS[view.job.id]) ?? height / 2,
+        ),
       ),
     {
       id: 'store:xtool',
-      x: 912,
+      x: layout.storeX,
       y: storeY('xtool'),
       label: 'xtool DB',
       rows: [
@@ -201,11 +258,11 @@ export const BatchFlow = ({
         { label: '내용', value: '고객·통계' },
       ],
       tone: 'idle',
-      width: 160,
+      width: STORE_W,
     },
     {
       id: 'store:cmip',
-      x: 912,
+      x: layout.storeX,
       y: storeY('cmip'),
       label: 'cmip DB',
       rows: [
@@ -213,7 +270,7 @@ export const BatchFlow = ({
         { label: '내용', value: '채널 성과' },
       ],
       tone: 'idle',
-      width: 160,
+      width: STORE_W,
     },
   ]
 
@@ -240,16 +297,18 @@ export const BatchFlow = ({
   })
 
   return (
-    <SignalGraph
-      width={1000}
-      height={height}
-      nodes={nodes}
-      edges={edges}
-      label="배치 파이프라인 — 스케줄러에서 작업, 저장소까지"
-      columns={BATCH_COLUMNS}
-      spines={[240, 525, 786]}
-      focus={jobFilter === 'all' ? null : jobFilter}
-    />
+    <div ref={frameRef}>
+      <SignalGraph
+        width={layout.width}
+        height={height}
+        nodes={nodes}
+        edges={edges}
+        label="배치 파이프라인 — 스케줄러에서 작업, 저장소까지"
+        columns={layout.columns}
+        spines={layout.spines}
+        focus={jobFilter === 'all' ? null : jobFilter}
+      />
+    </div>
   )
 }
 

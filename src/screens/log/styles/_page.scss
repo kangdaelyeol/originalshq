@@ -50,7 +50,7 @@
   > * {
     position: relative;
     z-index: 1;
-    max-width: 1320px;
+    max-width: $log-page-max;
     margin-right: auto;
     margin-left: auto;
   }

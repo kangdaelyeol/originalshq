@@ -161,7 +161,7 @@
 
 .sig-edge {
   @include edge-tones;
-  // 선 하나가 처음 그려질 때 살짝 늦게 떠오른다(순서는 g의 animationDelay).
+  // 선이 처음 그려질 때 떠오른다(모든 선이 같이).
   animation: log-fade 0.6s ease both;
 
   // 그라데이션 — 양끝은 옅게(카드에 스며든다), 가운데는 흰빛을 조금 섞어 진하게.
@@ -215,7 +215,6 @@
     stroke-linecap: round;
     stroke-dasharray: 100;
     animation: sig-draw 0.9s cubic-bezier(0.3, 0.6, 0.2, 1) both;
-    animation-delay: inherit;
 
     &.is-dashed {
       stroke-dasharray: 1.4 1.8;

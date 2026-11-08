@@ -8,6 +8,10 @@ $fail: #ff4d6a;
 $timeout: #ff9a4d;
 $run: #7aa7ff;
 
+// 본문 최대 폭: 보통 모니터(1920px 안팎)에서는 화면에 맞춰 넓게 쓰고, 그보다 넓은
+// 화면에서만 멈춘다. 흐름 그림의 노드 크기는 폭과 상관없이 같다(signal-graph.tsx).
+$log-page-max: 1920px;
+
 $bg: #0c0b10;
 $line: rgba(255, 255, 255, 0.075);
 $line-2: rgba(255, 255, 255, 0.14);

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { useTween } from '../view-model/use-tween'
+import { GRAPH_SCALE, useElementWidth } from './graph-size'
 
 // 신호 그래프 — 프롬프트 퍼셉트론 영상(perceptron.mp4)의 신경망 화면을 옮긴
 // 것(기울기·카메라 이동은 뺐다).
@@ -467,22 +468,51 @@ type MotionDot = {
 // 이 정도면 곡선도 매끈해 보인다.
 const SAMPLE_STEP = 6
 
+/** 그림을 가로로 벌린다 — 노드 크기는 그대로, 가운데 x·열·기둥·꺾는 자리만
+ * k배. 넓은 화면에서 노드가 한쪽에 몰리지 않고 고르게 퍼지게. */
+const stretchX = (
+  k: number,
+  nodes: SignalNode[],
+  edges: SignalEdge[],
+  columns: SignalColumn[],
+  spines: number[],
+) =>
+  k === 1
+    ? { nodes, edges, columns, spines }
+    : {
+        nodes: nodes.map((node) => ({ ...node, x: node.x * k })),
+        edges: edges.map((edge) => ({
+          ...edge,
+          turnX: edge.turnX === undefined ? undefined : edge.turnX * k,
+          via: edge.via?.map((point) => ({ ...point, x: point.x * k })),
+        })),
+        columns: columns.map((column) => ({
+          ...column,
+          x: column.x * k,
+          width: column.width * k,
+        })),
+        spines: spines.map((x) => x * k),
+      }
+
 /**
  * 신호 그래프 — 노드(작업·단계·탭)와 그 사이 흐름을 퍼셉트론 영상의 신경망처럼
  * 그린다. 데이터가 실제로 오가는 선(flow)에는 빛 점이 흐르고, 카드 값의 색이
  * 상태를 뜻한다(색만으로 구분하지 않게 글자도 같이 쓴다). 그림 좌표
- * (width × height) 안에 그려 화면 폭에 맞춰 늘고 준다.
+ * (width × height)으로 배치하고, 노드·글자는 화면 폭과 상관없이
+ * GRAPH_SCALE 크기로 둔다 — 그림 틀이 더 넓으면 노드 자리만 가로로 벌리고,
+ * 더 좁으면 통째로 줄인다(좁은 화면에서 줄 수를 바꾸는 것은 부르는 쪽 몫).
  */
 export const SignalGraph = ({
-  width,
+  width: baseWidth,
   height,
-  nodes,
-  edges,
+  nodes: baseNodes,
+  edges: baseEdges,
   label,
   focus = null,
-  columns = [],
-  spines = [],
+  columns: baseColumns = [],
+  spines: baseSpines = [],
 }: {
+  /** 배치한 그림 좌표의 폭 — 이 폭 × GRAPH_SCALE보다 넓으면 가로로 벌린다. */
   width: number
   height: number
   nodes: SignalNode[]
@@ -500,6 +530,17 @@ export const SignalGraph = ({
   // 애니메이션은 is-paused로, 빛 점(Web Animations)은 직접 멈춘다.
   const stageRef = useRef<HTMLDivElement>(null)
   const motionRef = useRef<HTMLDivElement>(null)
+  // 그림 좌표 폭 — 그림 틀(px)을 GRAPH_SCALE로 나눈 만큼(배치한 폭보다 좁아지지
+  // 않게). 넓어진 만큼 노드 자리를 벌린다.
+  const stagePx = useElementWidth(stageRef)
+  const width = Math.max(baseWidth, stagePx / GRAPH_SCALE)
+  const { nodes, edges, columns, spines } = stretchX(
+    width / baseWidth,
+    baseNodes,
+    baseEdges,
+    baseColumns,
+    baseSpines,
+  )
   const measureRef = useRef<SVGPathElement>(null)
   useEffect(() => {
     const stage = stageRef.current
@@ -963,10 +1004,7 @@ export const SignalGraph = ({
                 <g key={key} opacity={alpha < 1 ? alpha : undefined}>
                   <g
                     className={`sig-edge is-${edge.tone}${lit ? ' is-lit' : ''}${dim ? ' is-dim' : ''}`}
-                    style={{
-                      ['--col' as string]: color,
-                      animationDelay: `${(index % 12) * 0.04}s`,
-                    }}
+                    style={{ ['--col' as string]: color }}
                   >
                     {lit ? (
                       <>
