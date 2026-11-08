@@ -28,6 +28,42 @@ export class HttpError extends Error {
 export const insightQuery = (request: Request) =>
   validateGetInsightBody(request.query)
 
+// 광고 성과 탭의 조회(광고 단위·광고그룹 단위) — 하루 × 광고(그룹)마다 문서라
+// 기간이 길면 문서 수만 건을 읽고, 날짜가 비면 저장된 것을 전부 읽는다.
+const AD_PERFORMANCE_MAX_DAYS = 500
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+/** insightQuery에 형식(YYYY-MM-DD)·순서·길이(최대 AD_PERFORMANCE_MAX_DAYS일)
+ * 검사를 더한다. */
+export const adPerformanceQuery = (
+  request: Request,
+): ValidationResponse<{ dateStart: string; dateEnd: string }> => {
+  const query = insightQuery(request)
+  if (!query.ok) return query
+  const { dateStart, dateEnd } = query.data
+  const start = Date.parse(dateStart)
+  const end = Date.parse(dateEnd)
+  if (
+    !ISO_DATE.test(dateStart) ||
+    !ISO_DATE.test(dateEnd) ||
+    Number.isNaN(start) ||
+    Number.isNaN(end) ||
+    dateStart > dateEnd
+  ) {
+    return {
+      ok: false,
+      error: 'dateStart·dateEnd는 YYYY-MM-DD이고 dateStart가 dateEnd보다 늦으면 안 됩니다',
+    }
+  }
+  if ((end - start) / 86_400_000 + 1 > AD_PERFORMANCE_MAX_DAYS) {
+    return {
+      ok: false,
+      error: `최대 ${AD_PERFORMANCE_MAX_DAYS}일까지 조회할 수 있습니다`,
+    }
+  }
+  return query
+}
+
 interface EndpointOptions<T> {
   /** 허용 메서드 — 그 밖은 405. */
   method: Method | Method[]

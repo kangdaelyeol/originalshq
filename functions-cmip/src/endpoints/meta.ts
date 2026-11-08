@@ -2,7 +2,7 @@
 import { metaAdsId } from '../config'
 import { getMetaInsightWithHistory, syncMetaInsightRows } from '../channel/meta'
 import { readMetaAdInsights, syncMetaAdRows } from '../channel/meta/ads'
-import { endpoint, insightQuery } from '../http'
+import { adPerformanceQuery, endpoint, insightQuery } from '../http'
 import { requestedRange, scheduledSync } from '../scheduled-sync'
 import { onRequest } from '../trace/functions'
 
@@ -97,7 +97,7 @@ export const syncMetaAdInsights = onRequest(
  * 6번 다시 받는다). */
 export const getMetaAdInsights = onRequest(
   { memory: '512MiB' },
-  endpoint({ method: 'GET', validate: insightQuery }, ({ data }) =>
+  endpoint({ method: 'GET', validate: adPerformanceQuery }, ({ data }) =>
     readMetaAdInsights(data.dateStart, data.dateEnd),
   ),
 )
