@@ -1,16 +1,11 @@
-import type { Option } from '@/ohq-ui/types'
 import { MY_WORK_PATH, xtPath } from '../paths'
 
 import type { Period } from '@xtool-core/period'
 
 export type { Period }
 
-export const PERIOD_OPTIONS: readonly Option<Period>[] = [
-  { value: 'today', label: '오늘' },
-  { value: '7d', label: '7일' },
-  { value: '30d', label: '30일' },
-  { value: '1y', label: '1년' },
-]
+// 기간 고르는 단추·비교 이름은 앱과 같이 쓴다(@xtool-core/period).
+export { PERIOD_COMPARE, PERIOD_OPTIONS } from '@xtool-core/period'
 
 /**
  * 상단바에 기간 고르기를 보일 화면 — 보드·내 업무에서만(숫자 카드의 "… 완료"가 이 기간을 센다). 대시보드 상단바와
@@ -18,14 +13,6 @@ export const PERIOD_OPTIONS: readonly Option<Period>[] = [
  */
 export const showsPeriodPicker = (pathname: string): boolean =>
   pathname.startsWith(xtPath('/boards/')) || pathname.startsWith(MY_WORK_PATH)
-
-/** 직전 기간과 비교할 때 쓰는 이름 — 차트 범례와 KPI 캡션에 들어간다. */
-export const PERIOD_COMPARE: Record<Period, { current: string; previous: string }> = {
-  today: { current: '오늘', previous: '어제' },
-  '7d': { current: '이번 주', previous: '지난주' },
-  '30d': { current: '최근 30일', previous: '직전 30일' },
-  '1y': { current: '최근 1년', previous: '직전 1년' },
-}
 
 const TODAY = new Date()
 
