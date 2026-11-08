@@ -41,15 +41,24 @@ export const GAP = 20;
 export const EDGE = 12;
 
 // ── 글자 ───────────────────────────────────────────────────────────────────────────────────────────────
-// 웹은 Pretendard(CDN)를 쓴다. 앱에는 없어서 iOS 시스템 글꼴(SF + Apple SD Gothic Neo — Pretendard가 본뜬 글꼴)로
-// 그린다. 굵기는 fontWeight, 글자 사이는 웹 em 값을 pt로 바꿔 쓴다.
+// 웹과 같은 Pretendard(앱에 다섯 굵기 번들 — ios/XtoolTechApp/Fonts). 굵기는 fontWeight 대신 패밀리 이름으로 고른다
+// (iOS가 굵기를 흉내 내지 않게). 글자 사이는 웹 em 값을 pt로 바꿔 쓴다.
 
 export type Weight = 400 | 500 | 600 | 700 | 800;
+
+/** 굵기 → 번들한 Pretendard 패밀리(PostScript 이름) */
+export const FAMILY: Record<Weight, string> = {
+  400: 'Pretendard-Regular',
+  500: 'Pretendard-Medium',
+  600: 'Pretendard-SemiBold',
+  700: 'Pretendard-Bold',
+  800: 'Pretendard-ExtraBold',
+};
 
 /** 글자 모양 — 크기·굵기 + 웹 letter-spacing(em)·line-height(배수) */
 export const font = (size: number, weight: Weight = 400, opts: { ls?: number; lh?: number } = {}): TextStyle => ({
   fontSize: size,
-  fontWeight: String(weight) as TextStyle['fontWeight'],
+  fontFamily: FAMILY[weight],
   ...(opts.ls !== undefined ? { letterSpacing: round(size * opts.ls, 3) } : {}),
   ...(opts.lh !== undefined ? { lineHeight: Math.round(size * opts.lh) } : {}),
 });

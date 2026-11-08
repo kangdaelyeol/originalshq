@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, TextInput, View, type TextInputProps } from 'react-native';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, MapPin, X } from 'lucide-react-native';
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View, type TextInputProps } from 'react-native';
+import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, MapPin, Search, X } from 'lucide-react-native';
 import { labelColor } from '@xtool-core/monday-colors';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import {
@@ -19,6 +19,7 @@ import {
   type CellEditorKind,
   type PickModel,
 } from '../../../features/cell-edit';
+import { useAddressSearch, type LocationState } from '../../../features/address-search';
 import { FONT, INK, type MonPalette } from '../theme';
 import { useMon, useStyles } from '../theme-context';
 import { Avatar, MText } from './basics';
@@ -26,7 +27,7 @@ import { SearchField, Sheet, SheetRow } from './chrome';
 
 // 칸 편집기 — 웹 Monday 팝오버(monday-editors·monday-date-picker)를 폰에서는 아래 시트로, 안의 짜임은 같게(§11.6).
 // 고르기·달력·칸 입력은 바깥을 누르면 저장(웹 바깥 누르기), 긴 글·링크는 "취소"·"적용"(바깥은 저장). 값 다루기는
-// features/cell-edit, 저장은 부르는 쪽(onCommit → item-view commitCell).
+// features/cell-edit(주소 검색은 features/address-search), 저장은 부르는 쪽(onCommit → item-view commitCell).
 
 type EditorProps = {
   column: TechColumn;
@@ -604,20 +605,124 @@ function LinkSheet({ column, cell, onCommit, onClose }: EditorProps) {
   );
 }
 
-/** 주소 — 앱엔 주소 검색(카카오)이 아직 없어 지금 주소와 안내만(웹에서 고친다) */
-function LocationSheet({ column, cell, onClose }: EditorProps) {
+/**
+ * 주소(웹 FormEditor location + LocationInput) — 지금 주소(좌표 없으면 안내)·지우기, 상세 주소, 검색 칸 + "검색" → 결과 줄
+ * (장소·도로명 + 지번)을 누르면 좌표까지 들어간다. 오류·빈 결과는 안내, 좌표 없는 주소는 저장하지 않는다(적용 흐림).
+ * 검색·고르기는 features/address-search, 저장 규칙은 cell-edit useFormEditor.
+ */
+function LocationSheet({ column, cell, onCommit, onClose }: EditorProps) {
   const p = useMon();
   const s = useStyles(styles);
-  const text = cell?.text?.trim();
+  const m = useFormEditor<LocationState>(column, cell);
+  const a = useAddressSearch(m.value, m.setValue);
+  const value = m.value;
+  const apply = () => finishWith(m.finish(), { onCommit, onClose });
   return (
-    <Sheet visible onClose={onClose} title={column.title}>
-      <View style={s.form}>
-        <View style={s.address}>
-          <MapPin size={15} color={p.text2} />
-          <MText style={s.flex}>{text || '—'}</MText>
+    <Sheet
+      visible
+      onClose={apply}
+      title={column.title}
+      closeButton={false}
+      tall
+      footer={<FormActions onCancel={onClose} onApply={apply} disabled={!m.changed || !m.savable} />}
+    >
+      <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={s.form}>
+        {value.address ? (
+          <View style={s.address}>
+            <MapPin size={15} color={p.text2} style={s.addressPin} />
+            <View style={s.flex}>
+              <MText style={s.addressText}>{value.address}</MText>
+              {!a.hasCoords && (
+                <MText size={12} color={p.dangerText} style={s.addressText}>
+                  좌표 없음 — 다시 검색해 고르면 저장할 수 있어요
+                </MText>
+              )}
+            </View>
+            <Pressable onPress={a.clear} hitSlop={8} accessibilityRole="button">
+              <MText size={13} color={p.link}>
+                지우기
+              </MText>
+            </Pressable>
+          </View>
+        ) : (
+          <MText size={13} color={p.text2} style={s.addressEmpty}>
+            주소 없음 — 아래에서 검색해 골라 주세요
+          </MText>
+        )}
+        {!!value.address && (
+          <FieldInput
+            value={value.detail}
+            onChangeText={a.setDetail}
+            placeholder="상세 주소(동·호수, 층 등)"
+            editable={a.hasCoords}
+            style={!a.hasCoords && s.disabled}
+          />
+        )}
+        <View style={s.searchRow}>
+          <FieldInput
+            value={a.query}
+            onChangeText={a.setQuery}
+            placeholder={value.address ? '다른 주소로 바꾸기 — 도로명·지번, 장소' : '도로명·지번 주소나 장소 이름'}
+            returnKeyType="search"
+            onSubmitEditing={() => void a.run()}
+            autoFocus={!value.address}
+            style={s.flex}
+          />
+          <Pressable
+            onPress={() => void a.run()}
+            disabled={a.searching}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              s.searchButton,
+              a.searching && s.disabled,
+              pressed && { backgroundColor: p.overlay },
+            ]}
+          >
+            {a.searching ? <ActivityIndicator size="small" color={p.text2} /> : <Search size={14} color={p.text} />}
+            <MText size={14}>{a.searching ? '찾는 중…' : '검색'}</MText>
+          </Pressable>
         </View>
-        <Notice>주소는 웹에서 주소 검색으로 고쳐요 — 앱에는 아직 주소 검색이 없어요.</Notice>
-      </View>
+        {!!a.error && (
+          <View style={s.addressError}>
+            <MText size={13} color={p.dangerText} style={s.flex}>
+              {a.error}
+            </MText>
+            {a.query.trim().length >= 2 && !a.searching && (
+              <Pressable onPress={() => void a.run()} hitSlop={8}>
+                <MText size={13} color={p.link}>
+                  다시 찾기
+                </MText>
+              </Pressable>
+            )}
+          </View>
+        )}
+        {a.results?.length === 0 && (
+          <Notice>{`‘${a.searched}’에 맞는 주소가 없어요\n도로명·지번 주소나 건물 이름으로 다시 찾아 보세요.`}</Notice>
+        )}
+        {!!a.results?.length && (
+          <View style={s.results}>
+            {a.results.map((r, i) => (
+              <Pressable
+                key={`${r.lat},${r.lng},${r.label}`}
+                onPress={() => a.pick(r)}
+                style={({ pressed }) => [s.result, i > 0 && s.resultLine, pressed && { backgroundColor: p.overlay }]}
+              >
+                <MText numberOfLines={2}>{r.label}</MText>
+                {r.label !== r.address && (
+                  <MText size={13} color={p.textSoft} numberOfLines={2}>
+                    {r.address}
+                  </MText>
+                )}
+                {!!r.jibun && (
+                  <MText size={12} color={p.text2} numberOfLines={1}>
+                    지번 {r.jibun}
+                  </MText>
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </ScrollView>
     </Sheet>
   );
 }
@@ -765,6 +870,24 @@ const styles = (p: MonPalette) => ({
   },
   disabled: { opacity: 0.45 },
   address: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8, paddingVertical: 6 },
+  addressPin: { marginTop: 3 },
+  addressText: { lineHeight: 21 },
+  addressEmpty: { paddingVertical: 6 },
+  searchRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
+  searchButton: {
+    height: 42,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: p.control,
+    borderRadius: 4,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  addressError: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 10 },
+  results: { borderWidth: 1, borderColor: p.line, borderRadius: 4, overflow: 'hidden' as const },
+  result: { paddingHorizontal: 12, paddingVertical: 10, gap: 2 },
+  resultLine: { borderTopWidth: 1, borderColor: p.line },
   notice: { borderRadius: 6, backgroundColor: p.overlay, paddingHorizontal: 12, paddingVertical: 10 },
   noticeText: { lineHeight: 19 },
 });

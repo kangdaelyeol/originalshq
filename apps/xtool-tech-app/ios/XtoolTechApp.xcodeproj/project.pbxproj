@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		AE07833BE285DB2216E12D6D /* Pretendard-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = 52F857332D399BA9A4F092CC /* Pretendard-Regular.otf */; };
+		81E5D021893B9D5FE77017A4 /* Pretendard-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = A51630AB394EF3BF282FD1A5 /* Pretendard-Medium.otf */; };
+		8BCD5033118EA23D869C249A /* Pretendard-SemiBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 68CF9961B079F221653E5A06 /* Pretendard-SemiBold.otf */; };
+		65D6AC5E455B3795F7ED583F /* Pretendard-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = DAE048D66ADF712D8BE71725 /* Pretendard-Bold.otf */; };
+		D2FAC119A3791BAA4D91E8E6 /* Pretendard-ExtraBold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 8436306656F664F11C9225C7 /* Pretendard-ExtraBold.otf */; };
 		07EECE49EC2883624DA1BE17 /* Figtree-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C8A63E1CBBEC82D6EE1BFCC8 /* Figtree-Regular.ttf */; };
 		0C80B921A6F3F58F76C31292 /* libPods-XtoolTechApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-XtoolTechApp.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
@@ -20,6 +25,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		52F857332D399BA9A4F092CC /* Pretendard-Regular.otf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Pretendard-Regular.otf"; sourceTree = "<group>"; };
+		A51630AB394EF3BF282FD1A5 /* Pretendard-Medium.otf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Pretendard-Medium.otf"; sourceTree = "<group>"; };
+		68CF9961B079F221653E5A06 /* Pretendard-SemiBold.otf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Pretendard-SemiBold.otf"; sourceTree = "<group>"; };
+		DAE048D66ADF712D8BE71725 /* Pretendard-Bold.otf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Pretendard-Bold.otf"; sourceTree = "<group>"; };
+		8436306656F664F11C9225C7 /* Pretendard-ExtraBold.otf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Pretendard-ExtraBold.otf"; sourceTree = "<group>"; };
 		018814344FEC2659DD83116C /* Figtree-Medium.ttf */ = {isa = PBXFileReference; includeInIndex = 1; path = "Figtree-Medium.ttf"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* XtoolTechApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = XtoolTechApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = XtoolTechApp/Images.xcassets; sourceTree = "<group>"; };
@@ -108,6 +118,11 @@
 				018814344FEC2659DD83116C /* Figtree-Medium.ttf */,
 				8D5CB7E47505EE62EC08F53A /* Figtree-SemiBold.ttf */,
 				C14B2C60CBCC672400B62D5E /* Figtree-Bold.ttf */,
+				52F857332D399BA9A4F092CC /* Pretendard-Regular.otf */,
+				A51630AB394EF3BF282FD1A5 /* Pretendard-Medium.otf */,
+				68CF9961B079F221653E5A06 /* Pretendard-SemiBold.otf */,
+				DAE048D66ADF712D8BE71725 /* Pretendard-Bold.otf */,
+				8436306656F664F11C9225C7 /* Pretendard-ExtraBold.otf */,
 			);
 			name = Fonts;
 			path = XtoolTechApp/Fonts;
@@ -189,6 +204,11 @@
 				1FD3C9FC9D062999C3108657 /* Figtree-Medium.ttf in Resources */,
 				62141F1D1807769A03863E37 /* Figtree-SemiBold.ttf in Resources */,
 				C9F09613A67C8EEDB7C1EC9B /* Figtree-Bold.ttf in Resources */,
+				AE07833BE285DB2216E12D6D /* Pretendard-Regular.otf in Resources */,
+				81E5D021893B9D5FE77017A4 /* Pretendard-Medium.otf in Resources */,
+				8BCD5033118EA23D869C249A /* Pretendard-SemiBold.otf in Resources */,
+				65D6AC5E455B3795F7ED583F /* Pretendard-Bold.otf in Resources */,
+				D2FAC119A3791BAA4D91E8E6 /* Pretendard-ExtraBold.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

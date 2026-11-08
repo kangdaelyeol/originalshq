@@ -30,13 +30,14 @@ import {
 import { ConfirmDialog } from '../parts/confirm';
 import { MoveSheet } from '../parts/move-sheet';
 import { SelectionBar } from '../parts/selection-bar';
+import { UpdatesSheet, type UpdatesTarget } from '../parts/updates-sheet';
 import { MONDAY_ACCENT, type MonPalette } from '../theme';
 import { useMon, useStyles } from '../theme-context';
 
 // 내 업무 — 웹 Monday 내 업무(monday-my-work.tsx)처럼 판 하나: 탭 줄은 "메인 테이블" 하나, 도구 줄에 누구의 업무인지
 // (나 · 이름 — 늘 켜짐)·검색·상태 밑줄 탭(진행 중·완료·전체)·개수. 아래 보드마다 상자 하나(머리: 아이콘 칸·보드 이름·N건,
 // 누르면 그 보드) 안에 그 보드의 그룹과 항목 카드. 새로운 …·보기 탭·"+ 추가"는 없다(웹과 같다). 카드를 길게 누르면
-// 고르기 — 여러 보드에 걸쳐 고를 수 있고, 옮기기는 한 보드에서만 골랐을 때.
+// 고르기 — 여러 보드에 걸쳐 고를 수 있고, 옮기기는 한 보드에서만 골랐을 때. 카드 말풍선은 업데이트 시트.
 // 동작(누구의 업무·거르기·보드별 묶음·고르기)은 공용 훅(features/my-work-view·work-selection)이 한다.
 
 const MAIN_TAB = [{ value: 'main', label: '메인 테이블' }] as const;
@@ -50,6 +51,7 @@ export function MyWorkScreen({ who, onBack }: { who?: string; onBack?: () => voi
   const { me, isTech, mine, viewing, setViewing, people, state, setState, query, setQuery, all, shown, loading } = v;
   const [searching, setSearching] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [updatesFor, setUpdatesFor] = useState<UpdatesTarget | null>(null);
   const selection = useWorkSelection();
   const selecting = selection.count > 0;
 
@@ -91,6 +93,7 @@ export function MyWorkScreen({ who, onBack }: { who?: string; onBack?: () => voi
             selection={selection}
             onOpenBoard={() => navigation.navigate('Board', { boardKey: box.boardKey })}
             onOpenItem={itemId => navigation.navigate('Item', { boardKey: box.boardKey, itemId })}
+            onOpenUpdates={setUpdatesFor}
           />
         ))}
         {/* 아직 안 온 보드 자리 — 하나도 안 왔으면 상자 둘(5·3줄), 몇 개 왔으면 아래에 하나(3줄) */}
@@ -156,6 +159,7 @@ export function MyWorkScreen({ who, onBack }: { who?: string; onBack?: () => voi
             ))}
         </ScrollView>
       </Sheet>
+      <UpdatesSheet target={updatesFor} onClose={() => setUpdatesFor(null)} />
     </View>
   );
 }
@@ -198,6 +202,7 @@ function WorkBox({
   selection,
   onOpenBoard,
   onOpenItem,
+  onOpenUpdates,
 }: {
   boardKey: TechBoardKey;
   label: string;
@@ -206,6 +211,8 @@ function WorkBox({
   selection: WorkSelection;
   onOpenBoard: () => void;
   onOpenItem: (itemId: string) => void;
+  /** 카드 말풍선 — 업데이트 시트 */
+  onOpenUpdates: (target: UpdatesTarget) => void;
 }) {
   const p = useMon();
   const s = useStyles(styles);
@@ -262,15 +269,18 @@ function WorkBox({
               {open &&
                 g.items.map(item => {
                   const id = rowKey(item);
+                  const name = PHONE_IN_NAME_BOARDS.has(boardKey) ? splitNamePhone(item.name).label : item.name;
+                  const updates = UPDATE_BOARDS.has(boardKey) && !item.draft ? item.updateCount ?? 0 : undefined;
                   return (
                     <ItemCard
                       key={id}
-                      name={PHONE_IN_NAME_BOARDS.has(boardKey) ? splitNamePhone(item.name).label : item.name}
+                      name={name}
                       color={g.color}
                       columns={onCard}
                       values={item.values}
                       subitemCount={item.subitems?.length}
-                      updates={UPDATE_BOARDS.has(boardKey) ? item.updateCount ?? 0 : undefined}
+                      updates={updates}
+                      onUpdates={() => onOpenUpdates({ boardKey, itemId: id, name, count: updates })}
                       picked={selection.has(boardKey, id)}
                       selecting={selecting}
                       onPress={() => (selecting ? selection.toggle(boardKey, id) : onOpenItem(id))}

@@ -13,7 +13,7 @@ import {
   WEEKDAYS,
 } from '../../../features/dashboard/part-data';
 import type { CheckFieldProps, ChoiceFieldProps, ChoiceOption, DateFieldProps } from '../../dashboard/parts';
-import { alpha, font, RADIUS, T, TABULAR, WELL } from '../theme';
+import { alpha, FAMILY, font, RADIUS, T, TABULAR, WELL } from '../theme';
 import { useGlass, useStyles, type GlassState } from '../theme-context';
 import { Button, CheckBox, FieldLabel, FieldNote, SearchField } from './controls';
 import { OptionRow, Sheet } from './overlays';
@@ -380,7 +380,7 @@ const dateStyles = ({ a }: GlassState) => ({
     borderColor: 'rgba(255, 255, 255, 0.14)',
   },
   dayText: { ...font(13.5, 500), ...TABULAR, color: T.text1 },
-  pickedText: { color: a.ink, fontWeight: '700' as const },
+  pickedText: { color: a.ink, fontFamily: FAMILY[700] },
   time: { gap: 12 },
   noTime: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 9, alignSelf: 'flex-start' as const },
   noTimeText: { ...font(12.5), color: T.text2 },

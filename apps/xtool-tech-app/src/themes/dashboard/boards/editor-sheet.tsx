@@ -1,7 +1,8 @@
 import { View } from 'react-native';
-import { Save } from 'lucide-react-native';
+import { MapPin, Save, Search } from 'lucide-react-native';
 import { koreaToday } from '@xtool-core/dates';
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards';
+import { useAddressSearch } from '../../../features/address-search';
 import {
   useItemEditor,
   useRelationOptions,
@@ -12,7 +13,7 @@ import { layout } from '../layout';
 import { useParts } from '../parts';
 
 // 편집 시트 — 웹 ItemEditor(상세 위에 겹쳐 뜨는 편집 패널)를 폰에서는 아래에서 올라오는 긴 시트로. 이름(필수) → 비고 →
-// 진행 단계·상태 → 나머지 칸(날짜 모아서·드롭다운) → 하위 줄(보기만) → "Monday에서만 / 웹에서만 고칠 수 있는 칸" →
+// 진행 단계·상태 → 나머지 칸(날짜 모아서·드롭다운·주소는 카카오 검색) → 하위 줄(보기만) → "Monday에서만 / 웹에서만 고칠 수 있는 칸" →
 // 취소·저장(만들기). 저장하면 바로 닫고 Monday에는 뒤에서 쓴다(대기열 — 실패는 토스트). 규칙은 features/dashboard/item-editor.
 
 interface EditorSheetProps {
@@ -159,6 +160,8 @@ function FieldEditor({ field, editor }: { field: EditorField; editor: ItemEditor
       );
     case 'relation':
       return <RelationEditor field={field} editor={editor} />;
+    case 'location':
+      return <LocationEditor field={field} editor={editor} />;
     case 'date':
       return (
         <P.DateField
@@ -205,5 +208,103 @@ function RelationEditor({
       hint={loading ? '목록을 불러오는 중…' : null}
       onChange={next => editor.setValue(field.id, next)}
     />
+  );
+}
+
+/**
+ * 주소 칸(웹 LocationInput) — 지금 주소(지우기) · 상세 주소 · 검색 칸 + 찾기 → 결과 줄(장소 이름·도로명·지번)을 고르면
+ * 좌표까지 들어간다(Monday 주소 칸은 좌표가 있어야 써진다). 시트 안에 바로 펼친다(시트 위에 시트를 또 띄우지 않게).
+ * 검색·고르기 규칙은 features/address-search.
+ */
+function LocationEditor({
+  field,
+  editor,
+}: {
+  field: Extract<EditorField, { kind: 'location' }>;
+  editor: ItemEditorModel;
+}) {
+  const P = useParts();
+  const value = field.value;
+  const a = useAddressSearch(value, next => editor.setValue(field.id, next));
+  const search = () => {
+    a.run().catch(() => undefined);
+  };
+  // '두 글자 이상' 안내가 아닌 오류(함수·연결)면 다시 찾기
+  const canRetry = !!a.error && a.query.trim().length >= 2 && !a.searching;
+  return (
+    <View style={layout.tight}>
+      <View style={layout.row}>
+        <P.Text variant="label">{field.label}</P.Text>
+        {field.changed && (
+          <P.Text variant="caption" tone="accent">
+            바뀜
+          </P.Text>
+        )}
+      </View>
+      {value.address ? (
+        <View style={layout.row}>
+          <P.Icon icon={MapPin} size={16} tone="muted" />
+          <P.Text variant="body" selectable style={layout.flex}>
+            {value.address}
+          </P.Text>
+          <P.Button variant="plain" size="sm" label="지우기" onPress={a.clear} />
+        </View>
+      ) : (
+        <P.Text variant="small" tone="muted">
+          주소 없음 — 아래에서 검색해 골라 주세요
+        </P.Text>
+      )}
+      {value.address && !a.hasCoords ? (
+        <P.Notice tone="warn" text="좌표 없음 — 다시 검색해 고르면 저장할 수 있어요." />
+      ) : null}
+      {value.address ? (
+        <P.TextField
+          value={value.detail}
+          placeholder="상세 주소(동·호수, 층 등)"
+          autoCapitalize="none"
+          editable={a.hasCoords}
+          onChangeText={a.setDetail}
+        />
+      ) : null}
+      <View style={layout.row}>
+        <P.SearchField
+          style={layout.flex}
+          value={a.query}
+          onChangeText={a.setQuery}
+          placeholder={value.address ? '다른 주소로 바꾸기 — 도로명·지번·장소' : '도로명·지번 주소나 장소 이름'}
+          onSubmitEditing={search}
+        />
+        <P.Button
+          variant="secondary"
+          size="sm"
+          icon={Search}
+          label={a.searching ? '찾는 중…' : '찾기'}
+          loading={a.searching}
+          onPress={search}
+        />
+      </View>
+      {a.error ? (
+        <P.Notice tone="error" text={a.error} action={canRetry ? { label: '다시 찾기', onPress: search } : undefined} />
+      ) : null}
+      {a.results?.length === 0 ? (
+        <P.Notice
+          tone="info"
+          text={`‘${a.searched}’에 맞는 주소가 없어요 — 도로명·지번 주소나 건물 이름으로 다시 찾아 보세요.`}
+        />
+      ) : null}
+      {a.results?.map(r => (
+        <P.OptionRow
+          key={`${r.lat},${r.lng},${r.label}`}
+          icon={MapPin}
+          label={r.label}
+          description={
+            [r.label !== r.address ? r.address : null, r.jibun ? `지번 ${r.jibun}` : null]
+              .filter(Boolean)
+              .join(' · ') || undefined
+          }
+          onPress={() => a.pick(r)}
+        />
+      ))}
+    </View>
   );
 }

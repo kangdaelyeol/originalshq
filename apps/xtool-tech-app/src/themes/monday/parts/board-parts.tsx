@@ -153,12 +153,29 @@ const groupStyles = (p: MonPalette) => ({
   },
 });
 
-/** 업데이트 말풍선 — 0이면 + 말풍선, 있으면 말풍선과 파란 개수(웹 이름 칸 오른쪽, 선 2.6) */
-export function UpdatesBubble({ count }: { count: number }) {
+/**
+ * 업데이트 말풍선 — 0이면 + 말풍선, 있으면 말풍선과 파란 개수(웹 이름 칸 오른쪽, 선 2.6). onPress가 있으면 눌러서
+ * 업데이트 시트를 연다(카드 누르기와 따로).
+ */
+export function UpdatesBubble({ count, onPress }: { count: number; onPress?: () => void }) {
   const p = useMon();
   const Icon = count > 0 ? MessageCircle : MessageCirclePlus;
   return (
-    <View style={{ width: 30, height: 28, alignItems: 'center', justifyContent: 'center' }}>
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      hitSlop={8}
+      accessibilityRole={onPress ? 'button' : undefined}
+      accessibilityLabel={onPress ? `업데이트 ${count}개 보기` : undefined}
+      style={({ pressed }) => ({
+        width: 30,
+        height: 28,
+        borderRadius: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? p.overlay : 'transparent',
+      })}
+    >
       <Icon size={19} strokeWidth={2.6} color={count > 0 ? p.text : p.text2} />
       {count > 0 && (
         <View
@@ -180,13 +197,14 @@ export function UpdatesBubble({ count }: { count: number }) {
           </MText>
         </View>
       )}
-    </View>
+    </Pressable>
   );
 }
 
 /**
  * 항목 카드 — 왼쪽 6pt 그룹 색 막대(웹 이름 칸의 막대), 첫 줄 (고르기 체크)·이름·하위 아이템 수·업데이트 말풍선, 둘째 줄
- * 미니 칸(상태 칸·담당자·날짜·하나 더). 누르면 항목 화면, 길게 누르면 고르기(고르는 중이면 누르기도 고르기).
+ * 미니 칸(상태 칸·담당자·날짜·하나 더). 누르면 항목 화면, 말풍선은 업데이트 시트, 길게 누르면 고르기(고르는 중이면
+ * 누르기도 고르기).
  */
 export function ItemCard({
   name,
@@ -195,6 +213,7 @@ export function ItemCard({
   values,
   subitemCount,
   updates,
+  onUpdates,
   onPress,
   onLongPress,
   faded,
@@ -208,6 +227,8 @@ export function ItemCard({
   subitemCount?: number;
   /** 업데이트 말풍선을 보이는 보드면 개수(0 포함), 아니면 undefined */
   updates?: number;
+  /** 말풍선 누르기 — 업데이트 시트(고르는 중에는 넘기지 않는다) */
+  onUpdates?: () => void;
   onPress?: () => void;
   onLongPress?: () => void;
   /** 만드는 중인 항목 */
@@ -241,7 +262,7 @@ export function ItemCard({
             {name}
           </MText>
           {!!subitemCount && <CountBadge count={subitemCount} />}
-          {updates !== undefined && <UpdatesBubble count={updates} />}
+          {updates !== undefined && <UpdatesBubble count={updates} onPress={selecting ? undefined : onUpdates} />}
         </View>
         {shown.length > 0 && (
           <View style={s.line2}>

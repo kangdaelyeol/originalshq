@@ -43,13 +43,15 @@ import { ConfirmDialog } from '../parts/confirm';
 import { MoveSheet } from '../parts/move-sheet';
 import { MondayNumbers } from '../parts/numbers';
 import { SelectionBar } from '../parts/selection-bar';
+import { UpdatesSheet, type UpdatesTarget } from '../parts/updates-sheet';
 import { ViewEditorSheet } from '../parts/view-editor';
 import { FONT, INK, type MonPalette } from '../theme';
 import { useMon, useStyles } from '../theme-context';
 
 // 보드 — 웹 Monday 표(monday-board.tsx)를 폰에 맞게: 머리(보드 이름) · 보기 탭(메뉴·"+") · 요약 줄 · 도구 줄(새로운 …·
 // 검색·사람·조건·정렬·모두 접기·개수) · 그룹(색 제목, 접기, 상태 요약 막대) · 항목 카드 · 그룹 끝 "+ 추가"와 숫자 합계.
-// 카드를 길게 누르면 고르기(웹 체크) — 아래 고르기 막대에서 옮기기·지우기. 칸을 고치는 것은 항목 화면에서 한다.
+// 카드 말풍선은 업데이트 시트(화면 이동 없이). 카드를 길게 누르면 고르기(웹 체크) — 아래 고르기 막대에서 옮기기·지우기.
+// 칸을 고치는 것은 항목 화면에서 한다.
 // 동작(거르기·정렬·그룹·새 항목·보기)은 공용 훅(features/board-view·view-editor)이 한다.
 
 type SheetKind = 'person' | 'sort' | 'new' | 'view' | null;
@@ -66,6 +68,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [editor, setEditor] = useState<ViewEditing>(null);
   const [deletingView, setDeletingView] = useState<BoardView | null>(null);
+  const [updatesFor, setUpdatesFor] = useState<UpdatesTarget | null>(null);
   // 보기 메뉴에서 고른 다음 일(고치기·복제·지우기) — 메뉴 시트가 다 닫힌 뒤에 연다
   const next = useRef<(() => void) | null>(null);
   const afterMenu = (run: () => void) => {
@@ -145,6 +148,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
               values={item.values}
               subitemCount={item.subitems?.length}
               updates={v.updatesOf(item)}
+              onUpdates={() => setUpdatesFor({ boardKey, itemId: key, name: v.nameOf(item), count: v.updatesOf(item) })}
               faded={item.draft}
               picked={selection.selected.has(key)}
               selecting={selecting}
@@ -371,6 +375,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         groups={v.allGroups.filter(g => meta?.groups.some(m => m.id === g.id))}
         onCreate={v.create}
       />
+      <UpdatesSheet target={updatesFor} onClose={() => setUpdatesFor(null)} />
     </View>
   );
 }

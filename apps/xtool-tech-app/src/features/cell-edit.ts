@@ -13,6 +13,7 @@ import {
   PHONE_PREFIX,
   sameState,
   type EditState,
+  type LocationState,
 } from '@xtool-core/tech-edit';
 import { useTechMembers } from '@xtool-core/tech-members';
 import { pushToast } from '@xtool-core/tech-save-queue';
@@ -47,7 +48,7 @@ export type CellEditorKind =
 
 /**
  * 칸의 편집기 — null이면 보기만(웹 "{칸} — Monday에서만 고칠 수 있어요"). 파일 칸은 고칠 수 없어도 파일 보기를 연다.
- * 주소 칸은 고를 수 있는 칸이지만 앱은 주소 검색이 없어 안내만 한다(location).
+ * 주소 칸은 카카오 주소 검색으로 고른다(location — features/address-search).
  */
 export function cellEditorKind(column: TechColumn): CellEditorKind | null {
   if (column.type === 'file') return 'file';
@@ -321,26 +322,34 @@ export function useRelationPick(column: TechColumn, cell: TechCellValue | undefi
   );
 }
 
-// ── 긴 글·링크 ────────────────────────────────────────────────────────────────────────────────────────────
+// ── 긴 글·링크·주소 ───────────────────────────────────────────────────────────────────────────────────────
 
 export interface FormModel<T extends EditState> {
   value: T;
   setValue: (next: T) => void;
   changed: boolean;
-  /** 적용(또는 바깥 누르기) — 바뀌었으면 저장할 것 */
+  /** 저장할 수 있는 값인지 — 주소는 좌표가 있거나 비어 있어야 한다(그 밖의 칸은 늘 true) */
+  savable: boolean;
+  /** 적용(또는 바깥 누르기) — 바뀌었고 저장할 수 있으면 저장할 것 */
   finish: () => CellCommit | null;
 }
 
-/** 긴 글·링크 작은 입력 판(웹 FormEditor) — 바깥 누르기·"적용"은 저장, "취소"는 그대로 */
+/**
+ * 긴 글·링크·주소 작은 입력 판(웹 FormEditor) — 바깥 누르기·"적용"은 저장, "취소"는 그대로. 주소는 좌표가 있어야
+ * Monday에 써진다 — 검색해 고르지 않은 주소(옛 값의 좌표 없음)로 닫으면 그대로 둔다(웹과 같다).
+ */
 export function useFormEditor<T extends EditState>(column: TechColumn, cell: TechCellValue | undefined): FormModel<T> {
   const [initial] = useState(() => initialState(column, cell) as T);
   const [value, setValue] = useState<T>(initial);
   const changed = !sameState(initial, value);
+  const location = column.type === 'location' ? (value as LocationState) : null;
+  const savable = !location || !location.address || Boolean(location.lat && location.lng);
   return {
     value,
     setValue,
     changed,
-    finish: () => (changed ? { state: value, preview: previewCell(column, value) } : null),
+    savable,
+    finish: () => (changed && savable ? { state: value, preview: previewCell(column, value) } : null),
   };
 }
 

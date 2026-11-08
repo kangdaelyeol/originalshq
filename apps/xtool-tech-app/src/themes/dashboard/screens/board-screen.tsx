@@ -4,17 +4,17 @@ import { ArrowRight, ArrowUpDown, CloudOff, Plus, Trash2 } from 'lucide-react-na
 import { koreaToday } from '@xtool-core/dates';
 import { useTechBoard } from '@xtool-core/tech-boards-store';
 import { useDashboardBoard, type DashboardBoardModel } from '../../../features/dashboard/board-screen';
-import { requestPanel } from '../../../features/dashboard/item-detail';
 import { DELETE_CONFIRM_MESSAGE } from '../../../features/dashboard/record-rows';
 import type { RootScreenProps } from '../../../navigation/types';
 import { EditorSheet } from '../boards/editor-sheet';
 import { SidePanelCard } from '../boards/side-panel';
+import { UpdatesSheet, type UpdatesTarget } from '../boards/updates-sheet';
 import { layout } from '../layout';
 import { useParts } from '../parts';
 import { PickSheet } from '../pick-sheet';
 
 // 보드 — 웹 board-page(대시보드 짜임): 기간 → 숫자 카드 네 장 → 목록(진행 상태·검색·담당자·정렬·새로 만들기·더 보기,
-// 길게 눌러 고르기 → 이동·삭제) → 옆 판 두 장(폰에서는 아래로). 줄을 누르면 상세 화면. 불러오는 중·오류·동기화 안 됨도
+// 길게 눌러 고르기 → 이동·삭제) → 옆 판 두 장(폰에서는 아래로). 줄을 누르면 상세 화면, 말풍선은 업데이트 시트. 불러오는 중·오류·동기화 안 됨도
 // 웹처럼. 보드마다 다른 것(칸·옆 판·상세)은 features/dashboard/boards의 정의가 정한다.
 
 type Picker = 'people' | 'sort' | null;
@@ -30,6 +30,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
   const { meta } = useTechBoard(boardKey);
   const [creating, setCreating] = useState(false);
   const [picker, setPicker] = useState<Picker>(null);
+  const [updatesFor, setUpdatesFor] = useState<UpdatesTarget | null>(null);
   const today = koreaToday();
   const selecting = m.selection.selected.size > 0;
 
@@ -128,10 +129,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         onLongPressRow={m.canEdit ? m.selection.toggle : undefined}
         onPressUpdates={
           m.updatesBoard
-            ? id => {
-                requestPanel(id, 'updates');
-                open(id);
-              }
+            ? id => setUpdatesFor({ boardKey, itemId: id, title: m.rows.find(r => r.id === id)?.title ?? '' })
             : undefined
         }
         selecting={selecting}
@@ -204,6 +202,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         onConfirm={m.actions.confirmDelete}
         onCancel={m.actions.cancelDelete}
       />
+      <UpdatesSheet target={updatesFor} onClose={() => setUpdatesFor(null)} />
       <EditorSheet visible={creating} boardKey={boardKey} meta={meta} item={null} onClose={() => setCreating(false)} />
     </P.Screen>
   );

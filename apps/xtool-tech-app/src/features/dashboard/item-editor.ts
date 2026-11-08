@@ -18,6 +18,7 @@ import {
   toEditValue,
   withoutLegacyAssignee,
   type EditState,
+  type LocationState,
 } from '@xtool-core/tech-edit';
 import { useTechMembers } from '@xtool-core/tech-members';
 import { createItem, editItem, type CellEdit } from '@xtool-core/tech-outbox';
@@ -29,12 +30,11 @@ import { formatInt } from './part-data';
 // 항목 편집·새로 만들기 — 웹 components/board/item-editor.tsx(EditorForm)의 규칙 그대로: 쓸 수 있는 칸(담당자(엑스툴)이
 // 있으면 원래 사람 칸은 뺀다), 처음 값(새로 만들 때 접수일은 지금), 바뀐 칸만 보내기, 이름 필수, 배치(이름 → 비고 →
 // 진행 단계·상태 → 날짜 모아서 → 드롭다운 → 나머지), 저장은 대기열(editItem·createItem — 바로 보이고 뒤에서, 실패는 토스트).
-// 폰에서 아직 못 고치는 것: 주소(카카오 주소 검색), 파일 올리기, 하위 줄(설치 품목·청구 부품) — 웹에서 고친다.
+// 주소는 카카오 검색으로 고른다(features/address-search — 좌표가 있어야 써진다). 폰에서 아직 못 고치는 것: 파일 올리기,
+// 하위 줄(설치 품목·청구 부품) — 웹에서 고친다.
 
 // 편집 칸에서 아예 안 보이는 타입 — 값이 아닌 것(웹과 같다)
 const HIDDEN_TYPES = new Set(['button', 'item_id', 'subtasks', 'last_updated', 'creation_log', 'auto_number']);
-/** 앱에서 아직 못 고치는 쓸 수 있는 칸 종류 — 웹에서 고친다 */
-const WEB_ONLY_TYPES = new Set(['location']);
 
 interface FieldBase {
   /** 칸 id */
@@ -69,6 +69,7 @@ export type EditorField =
     })
   | (FieldBase & { kind: 'relation'; linkedBoardKey: TechBoardKey; value: string[]; fallbackText: string })
   | (FieldBase & { kind: 'date'; value: DateTimeValue })
+  | (FieldBase & { kind: 'location'; value: LocationState })
   | (FieldBase & { kind: 'check'; value: boolean });
 
 interface FormState {
@@ -181,10 +182,8 @@ export function useItemEditor(boardKey: TechBoardKey, meta: TechBoardMeta, item:
     ),
   );
 
-  const webOnlyColumns = columns.filter(c => WEB_ONLY_TYPES.has(c.type));
-  const editable = columns.filter(c => !WEB_ONLY_TYPES.has(c.type));
   const changedOf = (c: TechColumn) => !sameState(form.values[c.id], item ? initial.values[c.id] : emptyState(c));
-  const changedColumns = editable.filter(changedOf);
+  const changedColumns = columns.filter(changedOf);
   const nameChanged = form.name.trim() !== initial.name;
   const groupChanged = form.groupId !== initial.groupId;
   const dirty = !item || nameChanged || groupChanged || changedColumns.length > 0;
@@ -266,6 +265,8 @@ export function useItemEditor(boardKey: TechBoardKey, meta: TechBoardMeta, item:
         return { ...base, kind: 'date', value: value as DateTimeValue };
       case 'link':
         return { ...base, kind: 'link', value: value as { url: string; text: string } };
+      case 'location':
+        return { ...base, kind: 'location', value: value as LocationState };
       default: {
         if (isAssigneeColumn(column)) {
           const selected = String(value ?? '')
@@ -308,9 +309,9 @@ export function useItemEditor(boardKey: TechBoardKey, meta: TechBoardMeta, item:
   };
 
   // 진행 단계 옆 상태 칸(보드의 첫 상태 칸), 이름 밑 비고 칸 — 나머지는 배치 순서로
-  const statusColumn = meta.groups.length > 0 ? editable.find(c => c.type === 'status') : undefined;
-  const noteColumns = editable.filter(c => c.title.replace(/\s/g, '') === '비고');
-  const order = layoutOrder(editable, [...noteColumns, ...(statusColumn ? [statusColumn] : [])]);
+  const statusColumn = meta.groups.length > 0 ? columns.find(c => c.type === 'status') : undefined;
+  const noteColumns = columns.filter(c => c.title.replace(/\s/g, '') === '비고');
+  const order = layoutOrder(columns, [...noteColumns, ...(statusColumn ? [statusColumn] : [])]);
 
   const subLabelForLock = subLabel;
   const locked = meta.columns
@@ -320,7 +321,6 @@ export function useItemEditor(boardKey: TechBoardKey, meta: TechBoardMeta, item:
     .map(c => c.title);
   const fileColumns = meta.columns.filter(c => c.type === 'file');
   const webOnly = [
-    ...webOnlyColumns.map(columnLabel),
     ...(fileColumns.length ? [`${fileColumns.map(c => c.title).join('·')}(파일 올리기)`] : []),
     ...(subLabel ? [subLabel] : []),
   ];

@@ -460,7 +460,7 @@ export interface RecordRowProps extends Outer {
   row: RecordRowData;
   onPress: () => void;
   onLongPress?: () => void;
-  /** 말풍선을 누르면 업데이트 탭으로 상세를 연다 */
+  /** 말풍선을 누르면 — 화면이 업데이트 시트를 연다 */
   onPressUpdates?: () => void;
   /** 고르는 중 — 왼쪽에 체크 칸 */
   selecting?: boolean;
@@ -578,7 +578,7 @@ export interface DetailAction {
 /**
  * 상세 화면 틀(웹 RecordDrawer + DrawerShell — 가운데 뜨는 유리 판을 폰에서는 한 화면으로) — 위 안전 영역, 머리
  * (뒤로 · 이름 위 보드 이름(누르면 그 보드로) · 이름 · 단계 알약 · 동작 단추), 탭(정보·업데이트 N), 본문 스크롤.
- * 본문 스크롤은 키보드를 피한다(업데이트 쓰기 칸이 본문 안에 있다).
+ * 본문 스크롤은 키보드를 피한다.
  */
 export interface DetailShellProps {
   title: string;
@@ -590,7 +590,7 @@ export interface DetailShellProps {
   onBack: () => void;
   /** 오른쪽 위 동작 — 수정·삭제(웹 서랍 머리 단추) */
   actions?: readonly DetailAction[];
-  /** 정보·업데이트 탭 — 업데이트 보드(출장업무·아톡문의)만 */
+  /** 본문 위 탭 — 지금 화면은 쓰지 않는다(업데이트는 머리 단추 → 시트, 2차) */
   tabs?: { options: readonly SegmentOption<string>[]; value: string; onChange: (value: string) => void } | null;
   /** 본문(스크롤 안) — 상세 부품들이 차례로 온다. 그 사이 간격·좌우 여백은 테마가(Screen처럼) */
   children: ReactNode;

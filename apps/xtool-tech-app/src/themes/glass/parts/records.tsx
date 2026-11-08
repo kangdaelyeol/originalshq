@@ -2,7 +2,7 @@ import { Pressable, Text as RNText, View } from 'react-native';
 import { MessageCircle, MessageCirclePlus } from 'lucide-react-native';
 import { upcomingRow } from '../../../features/dashboard/part-data';
 import type { MiniListProps, RecordListProps, RecordRowProps, UpcomingListProps } from '../../dashboard/parts';
-import { alpha, font, RADIUS, RAISED, T, TABULAR, WELL } from '../theme';
+import { alpha, FAMILY, font, RADIUS, RAISED, T, TABULAR, WELL } from '../theme';
 import { useGlass, useStyles, type GlassState } from '../theme-context';
 import { Assignees, CheckBox, StagePill, StatusPill } from './controls';
 import { Bleed, Card, EmptyText, markRow, Skeleton } from './surfaces';
@@ -130,7 +130,7 @@ const rowStyles = () => ({
   main: { flex: 1, minWidth: 0, gap: 3 },
   titleRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8 },
   title: { ...font(13.5, 600, { lh: 1.45 }), color: T.text1, flexShrink: 1 },
-  titleDone: { fontWeight: '500' as const, color: T.text3 },
+  titleDone: { fontFamily: FAMILY[500], color: T.text3 },
   // 웹 .record-row__updates — 말풍선 + 수, 없으면 쓰기 아이콘만
   updates: {
     flexDirection: 'row' as const,

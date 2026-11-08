@@ -12,7 +12,7 @@ import type {
   TeamCardProps,
   WorkRowProps,
 } from '../../dashboard/parts';
-import { alpha, font, RADIUS, RAISED, T, TABULAR, TONE, WELL } from '../theme';
+import { alpha, FAMILY, font, RADIUS, RAISED, T, TABULAR, TONE, WELL } from '../theme';
 import { useGlass, useStyles, type GlassState } from '../theme-context';
 import { GlassSurface } from '../glass-surface';
 import { Avatar, AvatarBox, StagePill, StatusPill } from './controls';
@@ -345,7 +345,7 @@ const workStyles = () => ({
   pressed: { backgroundColor: 'rgba(255, 255, 255, 0.05)' },
   body: { flex: 1, minWidth: 0, gap: 4 },
   name: { ...font(13.5, 600), color: T.text1 },
-  done: { fontWeight: '500' as const, color: T.text3 },
+  done: { fontFamily: FAMILY[500], color: T.text3 },
   metaRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
   // 웹 .my-work__board — 볼록 칸 px8 py2 r6 11/600
   board: { ...RAISED, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, flexShrink: 0 },
