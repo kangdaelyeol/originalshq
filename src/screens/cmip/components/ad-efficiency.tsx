@@ -1,10 +1,9 @@
 import '../styles/insight-charts.scss'
 import type { CSSProperties } from 'react'
 import type { AdPerformanceMetrics, AdPerformanceNode } from '../client'
+import { KIND_LABEL, nodeName } from './ad-performance-labels'
 
 export type EfficiencySort = 'spend' | 'roas' | 'revenue'
-
-const LEVEL_LABEL = ['캠페인', '광고셋', '광고'] as const
 
 // 오기입률 기준선(주간 매체 성과표 원문) — 넘으면 경고 색.
 const MISENTRY_RATE_LIMIT = 30
@@ -38,7 +37,7 @@ const sorted = (nodes: readonly AdPerformanceNode[], sort: EfficiencySort) =>
 
 const Row = ({
   node,
-  level,
+  depth,
   total,
   scale,
   sort,
@@ -47,9 +46,10 @@ const Row = ({
   order,
 }: {
   node: AdPerformanceNode
-  level: 0 | 1 | 2
+  /** 매체 0, 캠페인 1, 광고셋·광고그룹 2, 광고 3 — 들여쓰기. */
+  depth: number
   total: AdPerformanceMetrics
-  /** 막대 100% 폭이 되는 몫 — 가장 큰 캠페인 몫. */
+  /** 막대 100% 폭이 되는 몫 — 가장 큰 매체 몫. */
   scale: number
   sort: EfficiencySort
   expanded: ReadonlySet<string>
@@ -57,7 +57,8 @@ const Row = ({
   order: number
 }) => {
   const open = expanded.has(node.id)
-  const canOpen = level < 2 && node.children.length > 0
+  const canOpen = node.children.length > 0
+  const name = nodeName(node)
   const spendShare = total.spend > 0 ? node.spend / total.spend : 0
   const revenueShare = total.revenue > 0 ? node.revenue / total.revenue : 0
   const roas = roasOf(node)
@@ -71,16 +72,16 @@ const Row = ({
   return (
     <>
       <div
-        className={`ad-efficiency__row is-level-${level}${noBuy ? ' is-no-buy' : ''}`}
+        className={`ad-efficiency__row is-level-${depth}${noBuy ? ' is-no-buy' : ''}`}
         style={{ '--glass-i': Math.min(order, 14) } as CSSProperties}
       >
         <button
           type="button"
           className="ad-efficiency__name"
-          style={{ paddingLeft: 10 + level * 18 }}
+          style={{ paddingLeft: 10 + depth * 18 }}
           disabled={!canOpen}
           aria-expanded={canOpen ? open : undefined}
-          title={node.name}
+          title={name}
           onClick={() => toggle(node.id)}
         >
           <svg
@@ -99,8 +100,8 @@ const Row = ({
               />
             )}
           </svg>
-          <span className="ad-efficiency__level">{LEVEL_LABEL[level]}</span>
-          <span className="ad-efficiency__text">{node.name}</span>
+          <span className="ad-efficiency__level">{KIND_LABEL[node.kind]}</span>
+          <span className="ad-efficiency__text">{name}</span>
         </button>
 
         <div className="ad-efficiency__bars">
@@ -153,7 +154,7 @@ const Row = ({
           <Row
             key={child.id}
             node={child}
-            level={(level + 1) as 1 | 2}
+            depth={depth + 1}
             total={total}
             scale={scale}
             sort={sort}
@@ -167,32 +168,33 @@ const Row = ({
 }
 
 /**
- * 광고 성과 · 캠페인 효율 — 캠페인마다 전체 광고비 중 몫(회색)과 귀속 매출
- * 중 몫(색) 막대를 나란히. 매출 막대가 더 길면 쓴 돈보다 많이 벌어 온
- * 캠페인이다. 광고비 몫이 5% 넘는데 구매가 없으면 "구매 없음"을 붙인다.
- * 줄을 누르면 광고셋 → 광고로 펼친다(표와 같은 펼침 상태).
+ * 광고 성과 · 효율 — 매체마다 전체 광고비 중 몫(회색)과 귀속 매출 중 몫(색)
+ * 막대를 나란히. 매출 막대가 더 길면 쓴 돈보다 많이 벌어 온 줄이다. 광고비
+ * 몫이 5% 넘는데 구매가 없으면 "구매 없음"을 붙인다. 줄을 누르면 캠페인 →
+ * 광고셋·광고그룹 → 광고로 펼친다(표와 같은 펼침 상태).
  */
 export function AdEfficiency({
-  campaigns,
+  nodes,
   total,
   sort,
   expanded,
   toggle,
 }: {
-  campaigns: readonly AdPerformanceNode[]
+  /** 맨 위 줄 — 매체. */
+  nodes: readonly AdPerformanceNode[]
   total: AdPerformanceMetrics
   sort: EfficiencySort
   expanded: ReadonlySet<string>
   toggle: (id: string) => void
 }) {
-  // 막대 폭의 기준 — 가장 큰 캠페인 몫을 꽉 찬 폭으로(광고셋·광고는 그
-  // 안이라 넘지 않는다).
+  // 막대 폭의 기준 — 가장 큰 매체 몫을 꽉 찬 폭으로(그 아래 줄은 그 안이라
+  // 넘지 않는다).
   const scale = Math.max(
     0,
-    ...campaigns.map((c) =>
+    ...nodes.map((node) =>
       Math.max(
-        total.spend > 0 ? c.spend / total.spend : 0,
-        total.revenue > 0 ? c.revenue / total.revenue : 0,
+        total.spend > 0 ? node.spend / total.spend : 0,
+        total.revenue > 0 ? node.revenue / total.revenue : 0,
       ),
     ),
   )
@@ -208,14 +210,14 @@ export function AdEfficiency({
           <i className="is-revenue" />
           귀속 매출 몫
         </span>
-        <small>매출 막대가 더 길면 쓴 돈보다 많이 벌어 온 캠페인</small>
+        <small>매출 막대가 더 길면 쓴 돈보다 많이 벌어 온 줄</small>
       </div>
       <div className="ad-efficiency__rows">
-        {sorted(campaigns, sort).map((campaign, index) => (
+        {sorted(nodes, sort).map((node, index) => (
           <Row
-            key={campaign.id}
-            node={campaign}
-            level={0}
+            key={node.id}
+            node={node}
+            depth={0}
             total={total}
             scale={scale}
             sort={sort}

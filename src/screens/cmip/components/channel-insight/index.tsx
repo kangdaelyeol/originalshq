@@ -23,6 +23,7 @@ import { ChannelInsightChartModal } from '../channel-insight-chart-modal'
 import { RoasPanel } from '../roas-panel'
 import { AdPerformancePanel } from '../ad-performance'
 import { CampaignHighlightCards } from '../campaign-highlights'
+import { TabErrorBoundary } from '../tab-error-boundary'
 import { defaultRangeOf } from '../../utils'
 import { ResultLoading, ResultPanel } from './result-panel'
 import { MultiSelectDropdown } from './multi-select-dropdown'
@@ -43,8 +44,19 @@ const ExcelExportModal = lazy(() =>
  * 간격만 준다. 재조회 중에는 각 탭이 이 안에 로딩 판(TabLoading)을 대신
  * 그린다 — combinedInsight는 재조회가 끝나야 새 값으로 바뀌어서, 그동안 이전
  * 기간 값을 그대로 보여 주지 않기 위해서다. */
-function TabContent({ children }: { children: ReactNode }) {
-  return <div className="channel-insight__tab-content">{children}</div>
+function TabContent({
+  children,
+  resetKey,
+}: {
+  children: ReactNode
+  /** 오류로 멈춘 탭을 다시 그려 볼 때를 정하는 값 — 기간이 바뀌면 다시 그린다. */
+  resetKey: string
+}) {
+  return (
+    <div className="channel-insight__tab-content">
+      <TabErrorBoundary resetKey={resetKey}>{children}</TabErrorBoundary>
+    </div>
+  )
 }
 
 /** 탭 하나를 불러오는 동안 — 섹션 카드 하나에 로딩. */
@@ -250,7 +262,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
           (resultTab === 'total' ? (
             <ResultLoading />
           ) : (
-            <TabContent>
+            <TabContent resetKey={`${dateStart}_${dateEnd}`}>
               <TabLoading />
             </TabContent>
           ))}
@@ -268,7 +280,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
               />
             )}
             {resultTab === 'campaignAdset' && (
-              <TabContent>
+              <TabContent resetKey={`${dateStart}_${dateEnd}`}>
                 {loading ? (
                   <TabLoading />
                 ) : (
@@ -346,7 +358,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
               </TabContent>
             )}
             {resultTab === 'roas' && (
-              <TabContent>
+              <TabContent resetKey={`${dateStart}_${dateEnd}`}>
                 {loading ? (
                   <TabLoading />
                 ) : (
@@ -362,7 +374,7 @@ export const ChannelInsight = ({ resultTab }: { resultTab: ResultTab }) => {
               </TabContent>
             )}
             {resultTab === 'adPerformance' && (
-              <TabContent>
+              <TabContent resetKey={`${dateStart}_${dateEnd}`}>
                 {loading ? (
                   <TabLoading />
                 ) : (

@@ -23,6 +23,7 @@ import {
 import { readSessionCache, writeSessionCache } from '../client/session-cache'
 import { addDays, fromISO, toISO, todayISO } from '../utils'
 import type { ISODate } from '../types'
+import { clearAdPerformanceCaches } from './use-ad-performance-view-model'
 
 /** 한 번의 조회(loadRange)가 만들어내는 결과들 — 세션 캐시에 이 통째로
  * 저장해두고, 같은 기간을 다시 조회할 때 그대로 복원한다. */
@@ -245,10 +246,12 @@ export const useChannelInsightViewModel = () => {
   )
 
   // 새로고침 — 지금 보고 있는 기간을 세션 캐시 무시하고 강제로 다시 조회한다.
-  const refresh = useCallback(
-    () => loadRange(dateStart, dateEnd, { force: true }),
-    [loadRange, dateStart, dateEnd],
-  )
+  // 광고 성과 탭이 따로 받아 둔 광고비·오기입률 재료도 버린다 — 새 고객
+  // 데이터와 다른 때의 값이 섞이지 않게.
+  const refresh = useCallback(() => {
+    clearAdPerformanceCaches()
+    return loadRange(dateStart, dateEnd, { force: true })
+  }, [loadRange, dateStart, dateEnd])
 
   return {
     // 입력

@@ -1,5 +1,5 @@
 /**
- * 유입월 결제 전환(광고 성과표 — 공통 정의 D1·D3·D4) — 한 채널의 유효 리드를 리드일(UTM 상담 접수일)의
+ * 유입월 결제 전환(광고 성과표 — 공통 정의 D1·D3·D4) — 고른 채널의 유효 리드를 리드일(UTM 상담 접수일)의
  * 달로 묶고, 리드일부터 30·60·90일 안에 (구매 범위의) 첫 구매를 한 비율을 낸다. 결제는 문의 뒤 몇 주
  * 지나 일어나서(중앙값 22일), 같은 달에 들어온 리드끼리 기간이 다 찬 값을 견준다. 달은 조회 기간과
  * 상관없이 달 전체를 센다.
@@ -46,7 +46,7 @@ export interface LeadCohortRow {
  */
 export function buildLeadCohorts(
   rows: readonly AttributionRow[],
-  channel: AttributionChannel,
+  channels: ReadonlySet<AttributionChannel>,
   endDate: ISODate,
   months: number,
   scope: PurchaseScope,
@@ -61,7 +61,7 @@ export function buildLeadCohorts(
   }
 
   for (const row of rows) {
-    if (row[1] !== channel) continue
+    if (!channels.has(row[1])) continue
     const cohort = cohorts.get(leadDateOf(row).slice(0, 7))
     if (!cohort) continue
     cohort.leads += 1

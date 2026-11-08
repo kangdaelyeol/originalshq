@@ -1555,7 +1555,10 @@ $pivot-average-bg: color-mix(in srgb, $color-accent 12%, $color-canvas-subtle);
     color: $color-muted;
   }
 
-  &__row--캠페인 td {
+  &__row--channel td {
+    font-weight: 700;
+  }
+  &__row--campaign td {
     font-weight: 600;
   }
 

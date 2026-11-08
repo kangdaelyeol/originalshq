@@ -225,6 +225,7 @@ export const DateRangePicker = ({
     handleDayClick,
     handleTypedStart,
     handleTypedEnd,
+    canApply,
     handleApply,
     setPickingEnd,
   } = useDateRangePickerViewModel(dateStart, dateEnd, onChange)
@@ -354,6 +355,7 @@ export const DateRangePicker = ({
                 type="button"
                 className="date-range-picker__apply"
                 onClick={handleApply}
+                disabled={!canApply}
               >
                 업데이트
               </button>

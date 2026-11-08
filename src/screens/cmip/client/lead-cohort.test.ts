@@ -15,7 +15,7 @@ const rows: AttributionRow[] = [
 ]
 
 describe('buildLeadCohorts — 유입월 결제 전환', () => {
-  const cohorts = buildLeadCohorts(rows, 'meta', '2026-11-08', 3, 'all', '2026-11-08')
+  const cohorts = buildLeadCohorts(rows, new Set(['meta']), '2026-11-08', 3, 'all', '2026-11-08')
 
   it('끝 날짜의 달까지 최근 N개월, 최근 달이 위 — 다른 채널·범위 밖 달은 뺀다', () => {
     expect(cohorts.map((cohort) => [cohort.month, cohort.leads])).toEqual([

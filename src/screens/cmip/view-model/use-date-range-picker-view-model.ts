@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { addMonths, fromISO, startOfMonth, todayISO } from '../utils'
 import type { ISODate } from '../types'
-import { PRESETS, matchPreset, type Preset } from '../components/date-range-presets'
+import {
+  PRESETS,
+  matchPreset,
+  type Preset,
+} from '../components/date-range-presets'
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 /** date-range-picker(듀얼 월 팝오버) 전용 상태 — 팝오버를 열 때마다 draft를
  * dateStart/dateEnd로 리셋하고, "업데이트"를 눌러야만 onChange로 부모에 반영한다
@@ -83,11 +89,20 @@ export const useDateRangePickerViewModel = (
 
   const handleTypedEnd = (value: ISODate) => {
     setDraftEnd(value)
-    if (value < draftStart) setDraftStart(value)
+    // 칸을 지워 비운 값('')은 시작일보다 앞이라고 보지 않는다 — 시작일까지 비지 않게.
+    if (value && value < draftStart) setDraftStart(value)
     setPickingEnd(false)
   }
 
+  // 두 날짜가 다 있고 순서가 맞을 때만 적용한다 — 입력 칸을 지운 채로 넘기면
+  // 빈 기간으로 조회돼 날짜 계산을 하는 탭이 오류로 멈춘다.
+  const canApply =
+    ISO_DATE.test(draftStart) &&
+    ISO_DATE.test(draftEnd) &&
+    draftStart <= draftEnd
+
   const handleApply = () => {
+    if (!canApply) return
     onChange(draftStart, draftEnd)
     setOpen(false)
   }
@@ -137,6 +152,7 @@ export const useDateRangePickerViewModel = (
     handleDayClick,
     handleTypedStart,
     handleTypedEnd,
+    canApply,
     handleApply,
     setPickingEnd,
   }
