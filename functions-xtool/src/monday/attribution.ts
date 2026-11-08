@@ -2,6 +2,7 @@ import { koreaDate } from './fields'
 import {
   MondayAttributionChannel,
   MondayAttributionRow,
+  MondayConsultation,
   MondayCustomer,
 } from './types'
 
@@ -94,18 +95,18 @@ export const buildAttributionRows = (
     // 유입 경로는 UTM만 본다 — 가장 이른 상담의 utm_source. 방문체험 보드의
     // "유입경로"(영업전환·자연유입 등)는 방문체험을 어떻게 잡았는지를 적은
     // 값이라 처음 어디서 왔는지로 쓰지 않는다.
+    // 상담의 날 — 접수일, 비었으면 그 기록을 만든 날(KST). 오기입률 재료
+    // (lead-feed.ts)와 같은 규칙.
+    const dayOf = (record: MondayConsultation): string | null =>
+      koreaDate(record.receivedAt) ?? koreaDate(record.createdAt)
     const utmRecord = [...customer.consultations]
-      .sort((a, b) =>
-        (a.receivedAt ?? '9999').localeCompare(b.receivedAt ?? '9999'),
-      )
+      .sort((a, b) => (dayOf(a) ?? '9999').localeCompare(dayOf(b) ?? '9999'))
       .find((record) => record.utmSource)
     const utmSource = utmRecord?.utmSource ?? null
-    // 그 UTM 상담의 접수일 — 광고 성과로 인정하는 구매 기간의 시작이다
-    // (화면이 이 날 이후 90일 안의 첫 구매만 하한에 넣는다). 접수일이 비어
-    // 있으면 처음 나타난 날로 본다.
-    const utmAt = utmRecord
-      ? (koreaDate(utmRecord.receivedAt) ?? firstContactAt)
-      : ''
+    // 그 UTM 상담의 날 — 광고 성과로 인정하는 구매 기간의 시작이다(화면이 이
+    // 날 이후 90일 안의 첫 구매만 하한에 넣는다). 접수일도 만든 시각도 없으면
+    // 처음 나타난 날로 본다.
+    const utmAt = utmRecord ? (dayOf(utmRecord) ?? firstContactAt) : ''
     const byDate = new Map<string, number>()
     for (const purchase of customer.purchases) {
       if (purchase.cancelled || !purchase.paidAt) continue

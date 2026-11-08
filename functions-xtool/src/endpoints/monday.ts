@@ -1,4 +1,5 @@
 import * as logger from 'firebase-functions/logger'
+import type { Response } from 'express'
 import { onRequest } from 'firebase-functions/https'
 import { onSchedule } from 'firebase-functions/scheduler'
 import { readGaTracking, saveGaSyncError, syncGaEvents } from '../ga-sync'
@@ -22,6 +23,7 @@ import {
   listPaymentIssues,
   listWorkspaceBoards,
   listWorkspaces,
+  MondayBusyError,
   previewBoard,
   readLeadFeed,
   readLeadQuality,
@@ -29,6 +31,7 @@ import {
   rebuildCustomersSafely,
   registerBoard,
   syncBoards,
+  withMondayLock,
 } from '../monday'
 import {
   validateRegisterMondayBoard,
@@ -44,6 +47,21 @@ const MONDAY_SYNC_TIMEOUT_SECONDS = 540
 
 // 여러 보드의 응답(보드당 수 MB JSON)을 동시에 들고 있어 기본 256MB로는 부족하다.
 const MONDAY_SYNC_MEMORY = '1GiB'
+
+/** 잠금(monday/lock.ts)을 잡고 돌린다 — 다른 Monday 작업(예약 동기화 등)이 돌고
+ * 있으면 겹쳐 돌지 않고 409로 끝낸다. */
+const lockedOr409 = async (
+  response: Response,
+  holder: string,
+  run: () => Promise<void>,
+): Promise<void> => {
+  try {
+    await withMondayLock(db, holder, run)
+  } catch (error) {
+    if (!(error instanceof MondayBusyError)) throw error
+    response.status(409).send({ error: error.message })
+  }
+}
 
 // ────────────────────────────────
 // listMondayBoards — 등록된 보드와 각 보드의 마지막 동기화 결과
@@ -173,26 +191,27 @@ export const registerMondayBoard = onRequest(
       method: 'POST',
       validate: validateRegisterMondayBoard,
     },
-    async ({ response, data }) => {
-      const { boardId, phoneColumnId } = data
-      const board = await registerBoard(
-        db,
-        mondayApiKey.value(),
-        boardId,
-        phoneColumnId,
-      )
+    async ({ response, data }) =>
+      lockedOr409(response, 'registerMondayBoard', async () => {
+        const { boardId, phoneColumnId } = data
+        const board = await registerBoard(
+          db,
+          mondayApiKey.value(),
+          boardId,
+          phoneColumnId,
+        )
 
-      // 등록 자체는 됐지만 첫 동기화가 실패한 경우(보드 id 오타, 권한 없음
-      // 등) — 보드 문서의 lastSync.error에 이유가 남아 있다.
-      if (!board.lastSync?.ok) {
-        response.status(502).send({ board })
-        return
-      }
+        // 등록 자체는 됐지만 첫 동기화가 실패한 경우(보드 id 오타, 권한 없음
+        // 등) — 보드 문서의 lastSync.error에 이유가 남아 있다.
+        if (!board.lastSync?.ok) {
+          response.status(502).send({ board })
+          return
+        }
 
-      // 새 보드의 item을 통합 고객에 반영한다.
-      const customers = await rebuildCustomersSafely(db)
-      response.status(200).send({ board, customers })
-    },
+        // 새 보드의 item을 통합 고객에 반영한다.
+        const customers = await rebuildCustomersSafely(db)
+        response.status(200).send({ board, customers })
+      }),
   ),
 )
 
@@ -208,13 +227,14 @@ export const removeMondayBoard = onRequest(
       method: 'POST',
       validate: validateRemoveMondayBoard,
     },
-    async ({ response, data }) => {
-      const { boardId } = data
-      const deletedItemCount = await deleteBoard(db, boardId)
-      // 빠진 보드의 item을 통합 고객에서도 덜어낸다.
-      const customers = await rebuildCustomersSafely(db)
-      response.status(200).send({ boardId, deletedItemCount, customers })
-    },
+    async ({ response, data }) =>
+      lockedOr409(response, 'removeMondayBoard', async () => {
+        const { boardId } = data
+        const deletedItemCount = await deleteBoard(db, boardId)
+        // 빠진 보드의 item을 통합 고객에서도 덜어낸다.
+        const customers = await rebuildCustomersSafely(db)
+        response.status(200).send({ boardId, deletedItemCount, customers })
+      }),
   ),
 )
 
@@ -226,9 +246,10 @@ export const rebuildMondayCustomers = onRequest(
   { timeoutSeconds: 300, memory: MONDAY_SYNC_MEMORY },
   endpoint(
     { name: 'rebuildMondayCustomers', method: 'POST', admin: true },
-    async ({ response }) => {
-      response.status(200).send(await rebuildCustomers(db))
-    },
+    async ({ response }) =>
+      lockedOr409(response, 'rebuildMondayCustomers', async () => {
+        response.status(200).send(await rebuildCustomers(db))
+      }),
   ),
 )
 
@@ -250,12 +271,14 @@ export const syncMondayBoards = onRequest(
         return
       }
 
-      const summary = await syncBoards(
-        db,
-        mondayApiKey.value(),
-        validationRes.data.boardId,
-      )
-      response.status(200).send(summary)
+      await lockedOr409(response, 'syncMondayBoards', async () => {
+        const summary = await syncBoards(
+          db,
+          mondayApiKey.value(),
+          validationRes.data.boardId,
+        )
+        response.status(200).send(summary)
+      })
     },
   ),
 )
@@ -508,6 +531,8 @@ export const getMondayLeadFeed = onRequest(
 //   GET ?from=2026-11-02&to=2026-11-08
 // ────────────────────────────────
 const LEAD_QUALITY_DATE = /^\d{4}-\d{2}-\d{2}$/
+// 묶음이 없을 때(첫 배포 직후 등)는 from 이후의 기록을 다 읽어서 길이를 막는다.
+const LEAD_QUALITY_MAX_DAYS = 400
 
 export const getMondayLeadQuality = onRequest(
   // 리드 줄 묶음에서 기간에 닿는 것만 읽는다 — 아직 묶음이 없으면 원본 기록을
@@ -528,6 +553,15 @@ export const getMondayLeadQuality = onRequest(
         response
           .status(400)
           .send({ error: 'from·to는 YYYY-MM-DD이고 from이 to보다 늦으면 안 됩니다' })
+        return
+      }
+      if (
+        (Date.parse(to) - Date.parse(from)) / 86_400_000 + 1 >
+        LEAD_QUALITY_MAX_DAYS
+      ) {
+        response.status(400).send({
+          error: `최대 ${LEAD_QUALITY_MAX_DAYS}일까지 볼 수 있습니다`,
+        })
         return
       }
       response.status(200).send(await readLeadQuality(db, from, to))
@@ -601,7 +635,15 @@ export const syncMondayBoardsScheduled = onSchedule(
           trigger: 'scheduled',
           scheduledAt: event.scheduleTime,
         },
-        () => syncBoards(db, mondayApiKey.value()),
+        // 수동 동기화·재생성이 돌고 있으면 끝나길 기다렸다가 돈다(4분까지) —
+        // 하루 여섯 번이라 건너뛰지 않는다.
+        () =>
+          withMondayLock(
+            db,
+            'syncMondayBoardsScheduled',
+            () => syncBoards(db, mondayApiKey.value()),
+            { waitMs: 4 * 60_000 },
+          ),
         // 보드 일부가 실패했거나 고객 통합 단계가 실패해도 함수는 끝까지
         // 돈다 — 그런 실행은 "일부 실패"로 남긴다.
         (result) => {

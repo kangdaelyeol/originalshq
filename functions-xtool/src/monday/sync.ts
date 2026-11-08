@@ -12,6 +12,7 @@ import {
   replaceBoardItems,
   replaceCustomers,
   saveBoard,
+  saveCustomerList,
   saveDailyInflow,
   replaceOfflineSales,
   saveAttributionRows,
@@ -175,7 +176,14 @@ export async function syncBoard(
       missingPhoneCount: 0,
       error: error instanceof Error ? error.message : String(error),
     }
-    await updateBoard(db, board.id, { lastSync: result })
+    // 실패를 적는 것까지 실패하면(그사이 보드 등록이 풀렸거나 일시 오류) 로그만
+    // 남긴다 — 여기서 던지면 동기화 전체가 고객 통합 없이 끝난다.
+    await updateBoard(db, board.id, { lastSync: result }).catch((writeError) =>
+      logger.error(
+        `Monday 보드 실패 기록도 실패(boardId: ${board.id}):`,
+        writeError,
+      ),
+    )
     return result
   }
 }
@@ -194,7 +202,7 @@ export async function rebuildCustomers(
   timer?: Timer,
 ): Promise<MondayCustomerRebuildResult> {
   const time = timer?.time ?? untimed
-  const [boards, items, orders] = await time('rebuild.read', () =>
+  const [boards, storedItems, orders] = await time('rebuild.read', () =>
     Promise.all([
       listBoards(db),
       preloaded ?? listItems(db),
@@ -206,6 +214,16 @@ export async function rebuildCustomers(
   const kindByBoardId = new Map(
     boards.map((board) => [board.id, detectBoardKind(board.columns)]),
   )
+  // 등록된 보드의 item만 — 보드 등록 해제와 동기화가 겹쳐 남은 item이 있으면
+  // 통합에 넣지 않는다(종류를 몰라 엉뚱한 고객이 생긴다).
+  const items = storedItems.filter((item) => kindByBoardId.has(item.boardId))
+  if (items.length < storedItems.length) {
+    logger.warn(
+      `고객 통합: 등록되지 않은 보드의 item ${
+        storedItems.length - items.length
+      }건은 뺐습니다`,
+    )
+  }
   const { customers, ...counts } = await time(
     'rebuild.buildCustomers',
     async () => buildCustomers(items, kindByBoardId, Date.now(), orders),
@@ -235,6 +253,9 @@ export async function rebuildCustomers(
     (item) => kindByBoardId.get(item.boardId) === 'purchase',
   )
 
+  // 목록 화면용 고객 묶음 — 실패해도 목록은 고객 문서에서 읽을 수 있어 다른
+  // 단계를 막지 않는다.
+  await step('customerList', () => saveCustomerList(db, customers))
   // 같은 item들로 날짜별 인입 건수도 다시 센다(통계 탭).
   await step('dailyInflow', () =>
     saveDailyInflow(db, buildDailyInflow(items, kindByBoardId)),

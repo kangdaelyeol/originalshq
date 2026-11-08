@@ -32,6 +32,7 @@ export type {
 export { listWorkspaceBoards, listWorkspaces } from './workspace'
 export type { MondayWorkspace, MondayWorkspaceBoard } from './workspace'
 export { readLeadFeed, readLeadQuality } from './lead-feed'
+export { MondayBusyError, withMondayLock } from './lock'
 export type { MondayLeadFeed, MondayLeadQuality } from './types'
 export { fetchItemUpdates } from './updates'
 export type { MondayAsset, MondayItemUpdates, MondayUpdate } from './updates'

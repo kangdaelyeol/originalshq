@@ -236,7 +236,7 @@ export async function countItems(db: Firestore): Promise<number> {
  * (hash가 같은 것)는 다시 쓰지 않는다 — 하루 여섯 번 도는 동기화에서 실제로
  * 바뀌는 고객은 일부라서, 매번 전부 쓰는 것보다 쓰기가 훨씬 적다. 목록에
  * 없는 문서(그 번호의 item이 Monday에서 다 사라진 고객)는 지운다. 목록 화면용
- * 묶음(saveCustomerList)도 같이 맞춘다. */
+ * 묶음(saveCustomerList)은 고객 통합의 따로 된 단계가 맞춘다. */
 export async function replaceCustomers(
   db: Firestore,
   customers: MondayCustomer[],
@@ -252,7 +252,6 @@ export async function replaceCustomers(
       data: customer,
     })),
   })
-  await saveCustomerList(db, customers)
   return result
 }
 
@@ -276,7 +275,11 @@ type ChunkedHead = {
   count: number
   fingerprint: string
   previous: { version: string; chunkCount: number } | null
+  /** 이 판을 쓴 때. */
   syncedAt: number
+  /** 마지막으로 저장을 시도한 때 — 내용이 그대로라 다시 쓰지 않았어도
+   * 고친다(화면의 '마지막 동기화'). 예전 head에는 없다. */
+  checkedAt?: number
 }
 
 /** 목록을 묶어 저장한다.
@@ -293,10 +296,13 @@ async function saveChunked<T>(
 ): Promise<void> {
   const headRef = collection.doc(CHUNKED_HEAD)
   const old = (await headRef.get()).data() as ChunkedHead | undefined
+  // 내용이 그대로면 다시 쓰지 않고 확인한 때만 고친다.
+  const markChecked = () => headRef.update({ checkedAt: Date.now() })
   if (
     options.fingerprint !== undefined &&
     old?.fingerprint === options.fingerprint
   ) {
+    await markChecked()
     return
   }
 
@@ -327,7 +333,10 @@ async function saveChunked<T>(
       .update(JSON.stringify(extra))
       .update(chunks.join('\n'))
       .digest('hex')
-  if (old?.fingerprint === fingerprint) return
+  if (old?.fingerprint === fingerprint) {
+    await markChecked()
+    return
+  }
 
   const version = Date.now().toString(36)
   await Promise.all(
@@ -342,6 +351,7 @@ async function saveChunked<T>(
     fingerprint,
     previous: old ? { version: old.version, chunkCount: old.chunkCount } : null,
     syncedAt: Date.now(),
+    checkedAt: Date.now(),
   }
   await headRef.set({ ...extra, ...head })
   // 전전 판 지우기 — 실패해도 목록에는 지장이 없다(다음 판 때 남은 채로 둔다).
@@ -391,7 +401,7 @@ const toListItem = (customer: MondayCustomer): MondayCustomerListItem => ({
   lastUpdatedAt: customer.lastUpdatedAt,
 })
 
-async function saveCustomerList(
+export async function saveCustomerList(
   db: Firestore,
   customers: MondayCustomer[],
 ): Promise<void> {
@@ -471,14 +481,14 @@ export async function saveLeadFeedRows(
   })
 }
 
-/** 묶어 둔 리드 줄 — since(ISO) 이후에 만들어진 것만(null이면 전부). 아직
- * 묶지 않았거나, 줄 모양의 판이 다르거나, 바뀌는 중이면 null — 부르는 쪽이
- * 원본 기록에서 읽는다. */
+/** 묶어 둔 리드 줄 — since(ISO) 이후에 만들어진 것만(null이면 전부)과 그
+ * 줄을 마지막으로 확인한 때. 아직 묶지 않았거나, 줄 모양의 판이 다르거나,
+ * 바뀌는 중이면 null — 부르는 쪽이 원본 기록에서 읽는다. */
 export async function readLeadFeedRows(
   db: Firestore,
   since: string | null,
   rowVersion: number,
-): Promise<MondayLeadFeedRow[] | null> {
+): Promise<{ rows: MondayLeadFeedRow[]; checkedAt: number } | null> {
   const collection = db.collection(LEAD_FEED_COLLECTION)
   const head = await readChunkedHead<LeadFeedHeadExtra>(collection)
   if (!head || head.rowVersion !== rowVersion) return null
@@ -490,8 +500,16 @@ export async function readLeadFeedRows(
       since === null || (head.newest?.[index] ?? since) >= since,
   )
   const rows = await readChunks<MondayLeadFeedRow>(collection, head, indexes)
-  if (rows === null || since === null) return rows
-  return rows.filter((row) => row.createdAt !== null && row.createdAt >= since)
+  if (rows === null) return null
+  return {
+    rows:
+      since === null
+        ? rows
+        : rows.filter(
+            (row) => row.createdAt !== null && row.createdAt >= since,
+          ),
+    checkedAt: head.checkedAt ?? head.syncedAt,
+  }
 }
 
 export async function getCustomer(
@@ -694,23 +712,30 @@ const dailyRepeatRevenue = statsList<MondayDailyRepeatRevenue, 'rows'>(
 export const saveDailyRepeatRevenue = dailyRepeatRevenue.save
 export const getDailyRepeatRevenue = dailyRepeatRevenue.get
 
+// 광고 기여 ROAS 재료 — 고객 한 명이 한 줄(8천여 줄)이라 문서 하나(1MB)에
+// 넣던 것을, 고객이 늘어도 넘지 않게 목록 묶음(mondayAttribution)으로 옮겼다.
+// 묶음이 아직 없으면(옮긴 뒤 첫 동기화 전) 예전 문서(mondayStats/attribution)를
+// 읽는다.
+const ATTRIBUTION_COLLECTION = 'mondayAttribution'
 const ATTRIBUTION_DOC = 'attribution'
 
-/** 광고 기여 ROAS 재료 — 고객 수(수천)만큼이라 문서 하나에 넣는다. 줄 안에
- * 배열이 있어(Firestore는 배열 안의 배열을 못 담는다) 줄마다 JSON 문자열로
- * 저장하고 읽을 때 되돌린다. */
 export async function saveAttributionRows(
   db: Firestore,
   rows: MondayAttributionRow[],
 ): Promise<void> {
-  await saveStatsDoc(db, ATTRIBUTION_DOC, {
-    rows: rows.map((row) => JSON.stringify(row)),
-  })
+  await saveChunked(db.collection(ATTRIBUTION_COLLECTION), rows)
 }
 
 export async function getAttributionRows(
   db: Firestore,
 ): Promise<{ rows: MondayAttributionRow[]; syncedAt: number | null }> {
+  const collection = db.collection(ATTRIBUTION_COLLECTION)
+  const head = await readChunkedHead(collection)
+  if (head) {
+    const rows = await readChunks<MondayAttributionRow>(collection, head)
+    if (rows) return { rows, syncedAt: head.checkedAt ?? head.syncedAt }
+  }
+  // 예전 문서 — 줄마다 JSON 문자열(배열 안의 배열을 Firestore가 못 담아서).
   const { data, syncedAt } = await readStatsDoc<{ rows: string[] }>(
     db,
     ATTRIBUTION_DOC,

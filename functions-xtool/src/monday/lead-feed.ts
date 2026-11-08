@@ -65,7 +65,12 @@ export const buildLeadFeed = (
         channel: attributionChannel(consultation.utmSource),
       }
     })
-    .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+    // 같은 시각이면 item 번호 순 — 실행마다 순서(와 묶음 지문)가 같게.
+    .sort(
+      (a, b) =>
+        (b.createdAt ?? '').localeCompare(a.createdAt ?? '') ||
+        a.itemId.localeCompare(b.itemId),
+    )
 
 /** 리드 줄을 묶어 저장한다 — 동기화가 끝날 때 고객 통합(rebuildCustomers)이
  * 같은 item으로 부른다. 리드 분석 탭이 열 때마다 상담 기록 수천 건을 읽지 않게. */
@@ -100,7 +105,7 @@ export async function readLeadFeed(
   let leads: MondayLeadFeedRow[]
   if (saved) {
     // 묶은 뒤 등록이 풀린 보드의 줄은 뺀다 — 원본에서 읽을 때와 같게.
-    leads = saved.filter((row) => boardIds.has(row.boardId))
+    leads = saved.rows.filter((row) => boardIds.has(row.boardId))
   } else {
     logger.info('리드 분석: 묶어 둔 리드 줄이 없어 원본 기록에서 읽습니다')
     const items =
@@ -113,19 +118,27 @@ export async function readLeadFeed(
         : await listItemsCreatedSince(db, since)
     leads = buildLeadFeed(items, boardIds)
   }
-  const syncedAt = consultation.reduce<number | null>(
-    (latest, board) =>
-      board.lastSync?.ok && board.lastSync.at > (latest ?? 0)
-        ? board.lastSync.at
-        : latest,
-    null,
-  )
+  // 마지막 동기화 — 묶음에서 읽었으면 그 줄을 마지막으로 확인한 때(보드는
+  // 받았어도 고객 통합이 실패했으면 그 전 때가 맞다), 아니면 상담 보드를
+  // 마지막으로 받은 때.
+  const syncedAt = saved
+    ? saved.checkedAt
+    : consultation.reduce<number | null>(
+        (latest, board) =>
+          board.lastSync?.ok && board.lastSync.at > (latest ?? 0)
+            ? board.lastSync.at
+            : latest,
+        null,
+      )
   return {
     boards: consultation.map((board) => ({ id: board.id, name: board.name })),
     leads,
     syncedAt,
   }
 }
+
+/** 오기입률 재료를 읽을 때 from보다 앞서 읽는 날 수. */
+const LEAD_QUALITY_LOOKBACK_DAYS = 31
 
 /** 판정 전인 상담 — 상태가 비었거나 처음 상태('신규 상담 유입')인 것. 오기입률의
  * 분모에서 뺀다(공통 정의 D2 — 최근 상담은 아직 판정 전인 것이 많아 넣으면
@@ -136,14 +149,17 @@ const isUndecided = (status: string | null): boolean =>
 /** 오기입률 재료 — 상담 접수일이 [from, to](한국 날짜)인 UTM 상담을 접수일·
  * 매체·utm_campaign별로 센다(상담 수, 판정이 끝난 상담 수, 그중 오기입 수).
  * 리드 줄(묶어 둔 것, 없으면 원본 기록)에서 읽는다 — 번호를 못 읽어 고객
- * 통합에서 빠진 상담도 들어간다. 기록은 접수 뒤에 만들어지므로 from 0시
- * (KST) 이후에 만든 줄만 보면 된다. 접수일 칸이 비었으면 만든 날로 본다. */
+ * 통합에서 빠진 상담도 들어간다. 접수일 칸이 비었으면 만든 날로 본다. */
 export async function readLeadQuality(
   db: Firestore,
   from: string,
   to: string,
 ): Promise<MondayLeadQuality> {
-  const since = new Date(Date.parse(`${from}T00:00:00+09:00`))
+  // 접수일을 만든 날보다 늦게 적은 상담(금요일에 만들고 접수일을 월요일로
+  // 적은 것 등)도 잡게 31일 앞부터 읽는다 — 최근 것부터 묶어 더 읽는 묶음은
+  // 0~1개다.
+  const lookback = LEAD_QUALITY_LOOKBACK_DAYS * 86_400_000
+  const since = new Date(Date.parse(`${from}T00:00:00+09:00`) - lookback)
     .toISOString()
     .replace(/\.\d{3}Z$/, 'Z')
   const { leads, syncedAt } = await readLeadFeed(db, since)
