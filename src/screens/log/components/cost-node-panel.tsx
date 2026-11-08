@@ -116,6 +116,14 @@ export const CostNodePanel = ({
                 tone: fn.errors ? 'fail' : undefined,
               },
               { label: '콜드 스타트', value: `${fn.coldStarts}회` },
+              ...(fn.preflights !== undefined
+                ? [
+                    {
+                      label: '사전 요청(OPTIONS)',
+                      value: `${formatCount(fn.preflights)}회`,
+                    },
+                  ]
+                : []),
               {
                 label: '읽기 (호출당)',
                 value: `${formatCount(fn.reads)} (${fn.calls ? Math.round(fn.reads / fn.calls) : 0})`,
@@ -129,7 +137,37 @@ export const CostNodePanel = ({
             ]}
           />
         </PanelCell>
-        <PanelCell title="COST BREAKDOWN" index={2}>
+        {/* 지연 나눠 보기 — 걸린 시간 중 콜드 스타트 준비·Firestore·외부 호출 몫
+            (본 요청 평균). 그 값을 남기는 로그가 쌓이기 전에는 없다. */}
+        {fn.latency && (
+          <PanelCell title="LATENCY" index={2}>
+            <PanelStats
+              items={[
+                {
+                  label: '콜드 스타트 준비 (평균 · 최대)',
+                  value: fn.latency.coldInitAvgMs
+                    ? `${formatMs(fn.latency.coldInitAvgMs)} · ${formatMs(fn.latency.coldInitMaxMs)}`
+                    : '-',
+                },
+                {
+                  label: 'Firestore (호출당 왕복 · 시간)',
+                  value: `${fn.latency.readCallsAvg}회 · ${formatMs(fn.latency.readMsAvg)}`,
+                },
+                {
+                  label: '외부 호출 (호출당 시간)',
+                  value: fn.latency.externalMsAvg
+                    ? formatMs(fn.latency.externalMsAvg)
+                    : '-',
+                },
+                {
+                  label: '잰 요청',
+                  value: `${formatCount(fn.latency.samples)}회`,
+                },
+              ]}
+            />
+          </PanelCell>
+        )}
+        <PanelCell title="COST BREAKDOWN" index={fn.latency ? 3 : 2}>
           <PanelBars
             rows={usdRows(
               (Object.keys(fn.parts) as CostPart[]).map((part) => ({
@@ -142,7 +180,7 @@ export const CostNodePanel = ({
             onPick={onSelect}
           />
         </PanelCell>
-        <PanelCell title="DAILY" index={3}>
+        <PanelCell title="DAILY" index={fn.latency ? 4 : 3}>
           <PanelBars
             rows={daily.map((day) => ({
               key: day.date,
@@ -154,7 +192,7 @@ export const CostNodePanel = ({
           />
         </PanelCell>
         {hosts.length > 0 && (
-          <PanelCell title="EXTERNAL" index={4}>
+          <PanelCell title="EXTERNAL" index={fn.latency ? 5 : 4}>
             <PanelBars
               rows={hosts
                 .sort((a, b) => b[1] - a[1])
@@ -168,7 +206,7 @@ export const CostNodePanel = ({
             />
           </PanelCell>
         )}
-        <PanelCell title="HEAVY CALLS" index={5}>
+        <PanelCell title="HEAVY CALLS" index={fn.latency ? 6 : 5}>
           <PanelList
             items={calls.map((call) => ({
               key: `${call.at}`,

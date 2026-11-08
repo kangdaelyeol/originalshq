@@ -18,7 +18,7 @@ import {
   type ScheduleFunction,
   type ScheduleOptions,
 } from 'firebase-functions/v2/scheduler'
-import { traceRun, traced } from './cost-trace'
+import { attachServerTiming, traceRun, traced } from './cost-trace'
 
 const fnName = () =>
   process.env.FUNCTION_TARGET ?? process.env.K_SERVICE ?? 'unknown'
@@ -35,6 +35,9 @@ const traceHttp =
     traceRun(
       { fn: fnName(), trigger: 'http', method: request.method },
       (trace) => {
+        // 응답에 처리 시간(Server-Timing) — 걸린 시간 중 서버 몫을 화면에서
+        // 나눠 보게.
+        attachServerTiming(response)
         response.on('finish', () =>
           trace.end({
             status: response.statusCode,

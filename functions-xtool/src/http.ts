@@ -7,7 +7,7 @@ import * as logger from 'firebase-functions/logger'
 import type { Request } from 'firebase-functions/https'
 import { checkAdmin, checkMember } from './admin-auth'
 import { db } from './app'
-import { traceRun } from './cost-trace'
+import { traceRun, attachServerTiming } from './cost-trace'
 import { Lead, ValidationResponse } from './types'
 
 const corsHandler = cors({ origin: true })
@@ -67,6 +67,9 @@ export const endpoint =
             responseBytes: Number(response.getHeader('content-length') ?? 0),
             error,
           })
+        // 응답에 처리 시간(Server-Timing) — 걸린 시간 중 서버 몫을 화면에서
+        // 나눠 보게.
+        attachServerTiming(response)
         let entered = false
         response.on('finish', () => {
           if (!entered) endTrace()

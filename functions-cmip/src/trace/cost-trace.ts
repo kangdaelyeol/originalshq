@@ -20,6 +20,7 @@
 // 핸들러가 끝날 때까지만 센다.
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { readFileSync } from 'node:fs'
+import type { ServerResponse } from 'node:http'
 import * as logger from 'firebase-functions/logger'
 import {
   CollectionReference,
@@ -39,7 +40,16 @@ interface TraceState {
   method: string
   startedAt: number
   coldStart: boolean
+  /** 콜드 스타트면 인스턴스(프로세스)가 뜬 뒤 이 호출을 받기까지 걸린 시간(ms) —
+   * 컨테이너 시작·모듈 불러오기. 따뜻한 인스턴스면 0. */
+  initMs: number
   reads: number
+  /** Firestore 읽기를 몇 번 오갔는지(쿼리·문서 묶음 하나가 한 번)와 그 시간의
+   * 합(ms) — 동시에 읽으면 합이 실제 걸린 시간보다 클 수 있다. */
+  readCalls: number
+  readMs: number
+  /** 외부 HTTP 호출 시간의 합(ms). */
+  externalMs: number
   writes: number
   deletes: number
   /** 외부 HTTP 호출 — 호스트별 횟수(api.monday.com 등). */
@@ -59,6 +69,8 @@ const storage = new AsyncLocalStorage<TraceState>()
 
 // 인스턴스가 뜬 뒤 첫 호출 — 콜드 스타트(모듈을 불러오는 시간이 붙는다).
 let coldStart = true
+// 이 프로세스가 뜬 시각 — 첫 호출의 준비 시간(initMs)을 잰다.
+const processStartedAt = Date.now() - Math.round(process.uptime() * 1000)
 
 /** 이 인스턴스의 메모리 한도(MB) — Cloud Run 컨테이너의 cgroup에서 읽는다.
  * 못 읽으면 0. 실행 비용(메모리 × 시간)을 어림할 때 쓴다. */
@@ -105,7 +117,11 @@ const finish = (state: TraceState, end: TraceEnd) => {
     ok: end.status < 500 && !end.error,
     startedAtMs: state.startedAt,
     durationMs: Date.now() - state.startedAt,
+    initMs: state.initMs,
     reads: state.reads,
+    readCalls: state.readCalls,
+    readMs: Math.round(state.readMs),
+    externalMs: Math.round(state.externalMs),
     writes: state.writes,
     deletes: state.deletes,
     responseBytes: end.responseBytes ?? 0,
@@ -125,6 +141,41 @@ export interface Trace {
   end: (result: TraceEnd) => void
 }
 
+/** 응답 헤더 Server-Timing의 값 — 지금까지의 처리 시간(app), Firestore(db),
+ * 외부 호출(ext), 콜드 스타트 준비 시간(cold). 브라우저 개발자 도구의 Timing에
+ * 그대로 보여, 걸린 시간 중 서버 몫과 네트워크 몫을 나눠 볼 수 있다. 헤더 값은
+ * ASCII만 되므로 설명(desc)은 영어로. */
+const serverTimingOf = (state: TraceState): string =>
+  [
+    `app;dur=${Date.now() - state.startedAt};desc="handler"`,
+    `db;dur=${Math.round(state.readMs)};desc="firestore ` +
+      `${state.readCalls} calls ${state.reads} reads"`,
+    ...(state.externalMs > 0
+      ? [`ext;dur=${Math.round(state.externalMs)};desc="external calls"`]
+      : []),
+    ...(state.coldStart
+      ? [`cold;dur=${state.initMs};desc="new instance"`]
+      : []),
+  ].join(', ')
+
+/** HTTP 응답에 Server-Timing을 붙인다 — 헤더를 보내기 직전(writeHead)에 그때까지
+ * 잰 값으로. res.send·res.end가 모두 writeHead를 거친다. 다른 출처(화면)의
+ * 스크립트도 이 값을 읽을 수 있게 Timing-Allow-Origin을 같이 단다. */
+export const attachServerTiming = (response: ServerResponse) => {
+  const state = storage.getStore()
+  if (!state) return
+  const writeHead = response.writeHead.bind(response) as (
+    ...args: unknown[]
+  ) => ServerResponse
+  response.writeHead = ((...args: unknown[]) => {
+    if (!response.headersSent) {
+      response.setHeader('Server-Timing', serverTimingOf(state))
+      response.setHeader('Timing-Allow-Origin', '*')
+    }
+    return writeHead(...args)
+  }) as ServerResponse['writeHead']
+}
+
 /**
  * 측정 상자를 열고 body를 그 안에서 돌린다. body 안에서(그리고 거기서 이어진
  * 비동기 작업에서) 일어난 Firestore 읽기·쓰기와 외부 호출이 이 상자에 더해진다.
@@ -140,13 +191,18 @@ export const traceRun = <T>(
     method: info.method ?? '',
     startedAt: Date.now(),
     coldStart,
+    initMs: 0,
     reads: 0,
+    readCalls: 0,
+    readMs: 0,
+    externalMs: 0,
     writes: 0,
     deletes: 0,
     external: {},
     bigqueryBytes: 0,
     ended: false,
   }
+  if (state.coldStart) state.initMs = state.startedAt - processStartedAt
   coldStart = false
   return storage.run(state, () =>
     body({ end: (result) => finish(state, result) }),
@@ -228,15 +284,19 @@ const patch = (
   target[method] = wrapped
 }
 
-/** 결과(Promise)를 받으면 읽기 수를 더한다 — 측정 상자 밖이면 그대로. */
+/** 결과(Promise)를 받으면 읽기 수와 그 왕복 시간을 더한다 — 측정 상자 밖이면
+ * 그대로. */
 const countReadsOnResolve = (original: (...args: unknown[]) => unknown) =>
   function(this: unknown, ...args: unknown[]) {
     // SDK 메서드를 그 객체(this)로 그대로 부른다.
     const result = original.apply(this, args)
     const state = storage.getStore()
     if (!state || !(result instanceof Promise)) return result
+    const startedAt = performance.now()
     return result.then((value: unknown) => {
       state.reads += readsOf(value)
+      state.readCalls += 1
+      state.readMs += performance.now() - startedAt
       return value
     })
   }
@@ -309,6 +369,10 @@ const installCounters = (db: Firestore) => {
         // 주소를 못 읽으면 세지 않는다.
       }
     }
-    return originalFetch(input, init)
+    if (!state) return originalFetch(input, init)
+    const startedAt = performance.now()
+    return originalFetch(input, init).finally(() => {
+      state.externalMs += performance.now() - startedAt
+    })
   }
 }

@@ -24,9 +24,17 @@ export interface ApiCostByFn {
   /** 4xx(찾을 수 없음·잘못된 입력 등) — 실패가 아니다. */
   clientErrors: number
   coldStarts: number
+  /** CORS 사전 요청(OPTIONS) — 화면이 본 요청 앞에 보내는 확인. calls에
+   * 들어 있다(과금되는 호출). */
+  preflights: number
+  /** 걸린 시간 — 사전 요청은 빼고 본 요청만. */
   avgMs: number
   p95Ms: number
   maxMs: number
+  /** 지연 나눠 보기 — 콜드 스타트 준비 시간과 Firestore·외부 호출에 쓴 시간
+   * (본 요청 평균). 이 값을 남기기 시작한 로그(cost-trace.ts initMs 등)가
+   * 아직 없으면 null. */
+  latency: ApiLatency | null
   reads: number
   writes: number
   deletes: number
@@ -40,6 +48,20 @@ export interface ApiCostByFn {
   externalCalls: number
   bigqueryBytes: number
   memoryMb: number
+}
+
+/** 함수 하나의 지연 나눠 보기 — 값을 남기는 로그만으로 센다. */
+export interface ApiLatency {
+  /** 잰 본 요청 수. */
+  samples: number
+  /** 콜드 스타트 준비 시간(인스턴스가 뜬 뒤 첫 요청을 받기까지) 평균·최대(ms). */
+  coldInitAvgMs: number
+  coldInitMaxMs: number
+  /** 호출당 Firestore 왕복 수와 그 시간(ms) 평균. */
+  readCallsAvg: number
+  readMsAvg: number
+  /** 호출당 외부 호출 시간(ms) 평균. */
+  externalMsAvg: number
 }
 
 /** 날짜(KST) × 함수 하나. */
@@ -100,9 +122,16 @@ const BY_FN = `
     COUNTIF(jsonPayload.status >= 400 AND jsonPayload.status < 500)
       AS clientErrors,
     COUNTIF(jsonPayload.coldStart) AS coldStarts,
-    AVG(jsonPayload.durationMs) AS avgMs,
-    APPROX_QUANTILES(jsonPayload.durationMs, 100)[OFFSET(95)] AS p95Ms,
-    MAX(jsonPayload.durationMs) AS maxMs,
+    COUNTIF(jsonPayload.method = 'OPTIONS') AS preflights,
+    -- 걸린 시간은 본 요청만 — 사전 요청(OPTIONS)은 몇 ms라 섞으면 평균이
+    -- 실제보다 짧아 보인다(APPROX_QUANTILES는 NULL을 뺀다).
+    AVG(IF(jsonPayload.method != 'OPTIONS', jsonPayload.durationMs, NULL))
+      AS avgMs,
+    APPROX_QUANTILES(
+      IF(jsonPayload.method != 'OPTIONS', jsonPayload.durationMs, NULL), 100
+    )[OFFSET(95)] AS p95Ms,
+    MAX(IF(jsonPayload.method != 'OPTIONS', jsonPayload.durationMs, NULL))
+      AS maxMs,
     SUM(jsonPayload.reads) AS reads,
     SUM(jsonPayload.writes) AS writes,
     SUM(jsonPayload.deletes) AS deletes,
@@ -116,6 +145,25 @@ const BY_FN = `
     MAX(jsonPayload.memoryMb) AS memoryMb
   FROM ${TABLE}
   ${WHERE}
+  GROUP BY fn
+`
+
+// 지연 나눠 보기 — cost-trace.ts가 initMs·readCalls 등을 남기기 시작한 뒤의
+// 로그만. 이 열들은 그 로그가 처음 들어올 때 싱크가 테이블에 만들어서, 그 전에는
+// 쿼리가 실패한다 — 그래서 따로 돌리고 실패하면 latency를 비워 둔다.
+const LATENCY = `
+  SELECT
+    jsonPayload.fn AS fn,
+    COUNT(*) AS samples,
+    AVG(IF(jsonPayload.coldStart, jsonPayload.initMs, NULL)) AS coldInitAvgMs,
+    MAX(IF(jsonPayload.coldStart, jsonPayload.initMs, NULL)) AS coldInitMaxMs,
+    AVG(jsonPayload.readCalls) AS readCallsAvg,
+    AVG(jsonPayload.readMs) AS readMsAvg,
+    AVG(jsonPayload.externalMs) AS externalMsAvg
+  FROM ${TABLE}
+  ${WHERE}
+    AND jsonPayload.method != 'OPTIONS'
+    AND jsonPayload.readCalls IS NOT NULL
   GROUP BY fn
 `
 
@@ -209,16 +257,32 @@ const run = async (
   }
 }
 
-/** 최근 days일의 API 비용 보고서 — 쿼리 다섯 개를 같이 돌린다. */
+/** 최근 days일의 API 비용 보고서 — 쿼리 여섯 개를 같이 돌린다. */
 export async function buildApiCostReport(days: number): Promise<ApiCostReport> {
   const bigquery = new BigQuery()
-  const [fnRes, dayRes, readsRes, slowRes, extRes] = await Promise.all([
-    run(bigquery, BY_FN, days),
-    run(bigquery, BY_DAY, days),
-    run(bigquery, topCalls('reads'), days),
-    run(bigquery, topCalls('durationMs'), days),
-    run(bigquery, EXTERNAL, days),
-  ])
+  const [fnRes, dayRes, readsRes, slowRes, extRes, latencyRes] =
+    await Promise.all([
+      run(bigquery, BY_FN, days),
+      run(bigquery, BY_DAY, days),
+      run(bigquery, topCalls('reads'), days),
+      run(bigquery, topCalls('durationMs'), days),
+      run(bigquery, EXTERNAL, days),
+      // 열이 아직 없으면 실패한다(LATENCY 설명) — 그때는 지연 없이.
+      run(bigquery, LATENCY, days).catch(() => null),
+    ])
+  const latencyByFn = new Map<string, ApiLatency>(
+    (latencyRes?.rows ?? []).map((row) => [
+      String(row.fn ?? ''),
+      {
+        samples: int(row.samples),
+        coldInitAvgMs: int(row.coldInitAvgMs),
+        coldInitMaxMs: int(row.coldInitMaxMs),
+        readCallsAvg: Math.round(num(row.readCallsAvg) * 10) / 10,
+        readMsAvg: int(row.readMsAvg),
+        externalMsAvg: int(row.externalMsAvg),
+      },
+    ]),
+  )
 
   const external: ApiCostReport['external'] = {}
   for (const row of extRes.rows) {
@@ -235,10 +299,14 @@ export async function buildApiCostReport(days: number): Promise<ApiCostReport> {
     }
   }
 
-  const bytesProcessed = [fnRes, dayRes, readsRes, slowRes, extRes].reduce(
-    (sum, each) => sum + each.bytes,
-    0,
-  )
+  const bytesProcessed = [
+    fnRes,
+    dayRes,
+    readsRes,
+    slowRes,
+    extRes,
+    latencyRes ?? { bytes: 0 },
+  ].reduce((sum, each) => sum + each.bytes, 0)
   addBigQueryBytes(bytesProcessed)
 
   return {
@@ -252,9 +320,11 @@ export async function buildApiCostReport(days: number): Promise<ApiCostReport> {
         errors: int(row.errors),
         clientErrors: int(row.clientErrors),
         coldStarts: int(row.coldStarts),
+        preflights: int(row.preflights),
         avgMs: int(row.avgMs),
         p95Ms: int(row.p95Ms),
         maxMs: int(row.maxMs),
+        latency: latencyByFn.get(String(row.fn ?? '')) ?? null,
         reads: int(row.reads),
         writes: int(row.writes),
         deletes: int(row.deletes),
