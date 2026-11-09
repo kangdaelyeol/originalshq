@@ -3,6 +3,7 @@ import { usePhotoOf } from '../../../data/tech-profiles'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import { WaterAvatar, WaterStatusPill } from '@/ohq-ui/water/controls'
 import { personColor } from './edit-utils'
+import { useAssigneeHover } from '../../assignee-hover'
 
 /**
  * 진행 단계 칩(물) — 기본 부품 WaterStatusPill(반투명 흰 칩 + 상태 점). 점 색은 기존 StagePill과 같은
@@ -30,16 +31,18 @@ interface WaterAssigneesProps {
 
 /**
  * 담당자 — 기본 부품 WaterAvatar(사람 색이 물든 작은 유리 구슬, 이름 두 글자 · 프로필 사진)를 겹쳐 늘어놓고
- * 남은 수를 붙인다. 색은 이름으로 늘 같게 고른다. 전체 이름은 title과 화면 읽기용 글자로.
+ * 남은 수를 붙인다. 색은 이름으로 늘 같게 고른다. 칸에는 구슬만 보여서 마우스를 올리면 이름 카드를 띄운다
+ * (assignee-hover). 화면 읽기용 글자도 둔다.
  */
 export function WaterAssignees({ names, max = 3 }: WaterAssigneesProps) {
   const photoOf = usePhotoOf()
+  const hover = useAssigneeHover(names)
   if (names.length === 0)
     return <span className="water-assignees water-assignees--empty">—</span>
   const shown = names.slice(0, max)
   const rest = names.length - shown.length
   return (
-    <span className="water-assignees" title={names.join(', ')}>
+    <span className="water-assignees" {...hover.anchorProps}>
       <span className="water-assignees__stack" aria-hidden>
         {shown.map((name) => (
           <WaterAvatar
@@ -57,6 +60,7 @@ export function WaterAssignees({ names, max = 3 }: WaterAssigneesProps) {
         </span>
       )}
       <span className="sr-only">{names.join(', ')}</span>
+      {hover.card}
     </span>
   )
 }

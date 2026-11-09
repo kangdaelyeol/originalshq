@@ -895,3 +895,65 @@
     background: #e85f6e;
   }
 }
+
+// 마우스 오버 카드(lib/use-hover-card.tsx · components/hover-card.tsx) — 어느 테마에서나 짙은 판에 밝은 글자
+// (Monday 툴팁처럼). 누를 수 없는 설명이라 마우스를 막지 않는다.
+.hover-card {
+  position: fixed;
+  z-index: 1000;
+  min-width: 120px;
+  max-width: 240px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(22, 22, 28, 0.96);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.94);
+  font-size: 12.5px;
+  line-height: 1.4;
+  pointer-events: none;
+  animation: hover-card-in 0.12s ease-out;
+}
+
+@keyframes hover-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hover-card {
+    animation: none;
+  }
+}
+
+.hover-card__title {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.hover-card__list {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+// 한 줄 — 앞에 아바타 등, 뒤에 글자(길면 말줄임)
+.hover-card__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+
+  > :last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

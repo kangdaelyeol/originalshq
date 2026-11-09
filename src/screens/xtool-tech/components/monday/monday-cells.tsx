@@ -7,6 +7,7 @@ import { isPhoneColumn } from '@xtool-core/tech-edit'
 import { formatPhone } from '@xtool-core/tech-stage'
 import { cx } from '@/ohq-ui/lib/cx'
 import { personColor } from '../../lib/person-color'
+import { useAssigneeHover } from '../assignee-hover'
 import { fileCount, isChecked, mondayDate, parseJson, splitText } from './monday-values'
 
 // Monday 표 칸 하나 — 컬럼 타입마다 Monday 다크 모드처럼 그린다.
@@ -23,6 +24,8 @@ export function PersonAvatar({ name, photo }: { name: string; photo?: string }) 
 /** 사람 동그라미 — Monday처럼 둘까지 겹쳐 그리고 나머지는 +N, 비어 있으면 빈 사람 모양. */
 function People({ names }: { names: string[] }) {
   const photoOf = usePhotoOf()
+  // 칸에는 동그라미만 보여서 한 명이어도 마우스를 올리면 이름 카드를 띄운다.
+  const hover = useAssigneeHover(names)
   if (names.length === 0) {
     return (
       <span className="mon-people__empty" aria-label="담당자 없음">
@@ -32,12 +35,13 @@ function People({ names }: { names: string[] }) {
   }
   const shown = names.length > 2 ? names.slice(0, 1) : names
   return (
-    <span className="mon-people" title={names.join(', ')}>
+    <span className="mon-people" {...hover.anchorProps}>
       {shown.map((name, i) => (
         <PersonAvatar key={`${name}-${i}`} name={name} photo={photoOf(name)} />
       ))}
       {names.length > 2 && <span className="mon-avatar mon-avatar--more">+{names.length - 1}</span>}
       <span className="sr-only">{names.join(', ')}</span>
+      {hover.card}
     </span>
   )
 }
