@@ -586,7 +586,7 @@ export function LoginScreen({ setupPending, onHold }: LoginScreenProps) {
 
       {introDone && (
         <Animated.Text entering={FadeIn.duration(800)} style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
-          © {YEAR} xtool tech · 사내 전용 서비스
+          © {YEAR} Originals Inc. · 사내 전용 서비스
         </Animated.Text>
       )}
     </View>
