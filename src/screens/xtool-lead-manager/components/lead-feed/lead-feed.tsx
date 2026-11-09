@@ -27,6 +27,7 @@ import {
 } from 'react'
 import { createPortal, flushSync } from 'react-dom'
 import { AutoHeight, LoadingPanel, Segmented } from '@/components/glass'
+import { DateRangePicker } from '@/screens/cmip/components/date-range-picker'
 import type { MondayLeadFeedRow } from '@/screens/xtool-lead-manager/entity'
 import type { LoadStatus } from '@/screens/xtool-lead-manager/hooks/use-load-when-active'
 import { SearchIcon } from '@/screens/xtool-lead-manager/illustration'
@@ -754,6 +755,7 @@ export const LeadFeed = ({
     status,
     loaded,
     period,
+    customRange,
     search,
     boardId,
     boards,
@@ -814,6 +816,13 @@ export const LeadFeed = ({
   // 한 줄로 접어 둔다(처음에도 접힌 채). 그 줄을 누르면 펼치고, 표 카드를
   // 누르거나 펼친 줄에서 Enter·Esc를 누르면 다시 접는다.
   const [filtersFolded, setFiltersFolded] = useState(true)
+  // 기간에서 '직접 설정'을 누른 때만 달력을 펼친 채로 띄운다(기억된 '직접
+  // 설정'으로 화면을 열 때는 닫힌 채).
+  const [customPickerOpen, setCustomPickerOpen] = useState(false)
+  const changePeriod = (next: typeof period) => {
+    setCustomPickerOpen(next === 'custom')
+    actions.changePeriod(next)
+  }
   const filtersRef = useRef<HTMLDivElement>(null)
   // 펼치면 첫 줄(기간)의 고른 버튼에, 키로 접으면 접힌 줄에 초점 — 방향키로
   // 바로 고르고 Enter로 접게. 마우스로 표를 눌러 접을 때는 옮기지 않는다.
@@ -837,15 +846,16 @@ export const LeadFeed = ({
       )
       ?.focus()
   }, [filtersFolded])
-  // 펼친 동안 Esc는 어디서 눌러도 접는다(모달·전체 판·전체보기가 떠 있으면
-  // 그쪽이 먼저).
+  // 펼친 동안 Esc는 어디서 눌러도 접는다(모달·전체 판·전체보기·날짜 달력이
+  // 떠 있으면 그쪽이 먼저). 먼저 듣는다(capture) — 달력은 문서에서 Esc를 듣고
+  // 바로 닫혀서, 뒤에 들으면 달력이 이미 사라진 뒤라 같이 접혀 버린다.
   useEffect(() => {
     if (filtersFolded) return
     const onKey = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       if (
         document.querySelector(
-          '[aria-modal="true"], .lead_feed_text_pop, .lead_feed_expanded',
+          '[aria-modal="true"], .lead_feed_text_pop, .lead_feed_expanded, .date-range-picker__popover',
         )
       ) {
         return
@@ -853,8 +863,8 @@ export const LeadFeed = ({
       foldFocus.current = true
       setFiltersFolded(true)
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
   }, [filtersFolded])
   // 펼친 줄 안의 Enter — 방향키로 고른 뒤 Enter로 끝낸다.
   const onFiltersKey = (event: KeyboardEvent<HTMLElement>) => {
@@ -1076,7 +1086,12 @@ export const LeadFeed = ({
 
   const boardName = boards.find((board) => board.id === boardId)?.name
   const filterSummary: [string, string][] = [
-    ['기간', LEAD_FEED_PERIOD_LABEL[period]],
+    [
+      '기간',
+      period === 'custom'
+        ? `${customRange[0].slice(5).replace('-', '.')} ~ ${customRange[1].slice(5).replace('-', '.')}`
+        : LEAD_FEED_PERIOD_LABEL[period],
+    ],
     [
       '상태',
       statusFilter === ALL_STATUSES ? '전체' : statusLabel(statusFilter),
@@ -1280,11 +1295,22 @@ export const LeadFeed = ({
                       <Segmented
                         options={LEAD_FEED_PERIOD_LABEL}
                         value={period}
-                        onChange={actions.changePeriod}
+                        onChange={changePeriod}
                         label="기간"
                         size="md"
                       />
                     </div>
+                    {/* 직접 설정 — 날짜 고르기(인입통계·CMIP와 같은 달력). 버튼을
+                        누른 때는 달력을 펼친 채로 뜬다. 버튼 줄 밖에 두어 달력이
+                        옆 스크롤 상자에 잘리지 않게. */}
+                    {period === 'custom' && (
+                      <DateRangePicker
+                        dateStart={customRange[0]}
+                        dateEnd={customRange[1]}
+                        onChange={actions.changeCustomRange}
+                        defaultOpen={customPickerOpen}
+                      />
+                    )}
                   </div>
                   {/* 상담 진행 상태 — 기간·검색 안의 건수(보드·매체를 골라도 그대로). */}
                   <div className="inner lead_feed_filter_row">

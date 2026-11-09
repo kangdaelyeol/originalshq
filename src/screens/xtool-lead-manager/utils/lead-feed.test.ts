@@ -12,6 +12,7 @@ import {
   leadDate,
   leadFacets,
   leadFeedRange,
+  needsAllLeads,
   searchLeads,
   sortLeadGroups,
   splitKeywords,
@@ -184,6 +185,10 @@ describe('날짜', () => {
     expect(leadFeedRange('week', '2026-11-08')).toEqual(['2026-11-02', '2026-11-08'])
     expect(leadFeedRange('yesterday', '2026-11-01')).toEqual(['2026-10-31', '2026-10-31'])
     expect(leadFeedRange('all', '2026-11-07')).toBeNull()
+    // 저번 주 — 그 앞 월요일부터 일요일까지(오늘이 월요일·일요일이어도).
+    expect(leadFeedRange('lastWeek', '2026-11-09')).toEqual(['2026-11-02', '2026-11-08'])
+    expect(leadFeedRange('lastWeek', '2026-11-08')).toEqual(['2026-10-26', '2026-11-01'])
+    expect(leadFeedRange('custom', '2026-11-09', ['2026-09-01', '2026-09-30'])).toEqual(['2026-09-01', '2026-09-30'])
   })
 })
 
@@ -200,5 +205,14 @@ describe('searchLeads', () => {
     expect(ids('김 5678')).toEqual(['a'])
     expect(ids('김 555')).toEqual([])
     expect(ids('  ')).toEqual(['a', 'b'])
+  })
+})
+
+describe('needsAllLeads', () => {
+  it('전체이거나 지난 30일 앞까지 걸치면 전부를 받는다', () => {
+    expect(needsAllLeads('all', null, '2026-11-09')).toBe(true)
+    expect(needsAllLeads('custom', ['2026-10-11', '2026-11-09'], '2026-11-09')).toBe(false)
+    expect(needsAllLeads('custom', ['2026-10-09', '2026-10-20'], '2026-11-09')).toBe(true)
+    expect(needsAllLeads('lastWeek', ['2026-11-02', '2026-11-08'], '2026-11-09')).toBe(false)
   })
 })

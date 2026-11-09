@@ -381,11 +381,45 @@ $lead-feed-head-h: 32px;
     }
   }
 
-  // 같은 번호의 이전 리드(펼친 줄) — 옅은 청록을 깐다. 유리 표의 한 줄 걸러
+  // 펼친 묶음 — 같은 번호의 리드를 펼치면 맨 앞 줄(is-open)과 이전 리드
+  // 줄(is-sub)을 한 덩어리로 옅은 청록 위에 올린다. 맨 앞 줄은 조금 더 진하게,
+  // 왼쪽에 청록 띠를 이어 그려 어디까지가 한 고객인지 보이게. 줄 사이 모서리는
+  // 펴서(둥글림 없음) 묶음 위·아래 끝만 둥글다. 유리 표의 한 줄 걸러
   // 칠하기(funnel-glass.scss)보다 우선하게 클래스를 더 붙인다.
-  &.glass_theme .lead_feed_table.stats_table tbody tr.lead_feed_row.is-sub td {
-    background-color: color-mix(in srgb, var(--glass-link) 10%, transparent);
-    color: $text-2;
+  &.glass_theme .lead_feed_table.stats_table tbody tr.lead_feed_row {
+    &.is-open td {
+      background-color: color-mix(in srgb, var(--glass-link) 16%, transparent);
+    }
+    &.is-sub td {
+      background-color: color-mix(in srgb, var(--glass-link) 9%, transparent);
+      color: $text-2;
+    }
+    &.is-open td:first-child,
+    &.is-sub td:first-child {
+      box-shadow: inset 3px 0 0 var(--glass-link);
+    }
+    // 묶음 안쪽 모서리 — 맨 앞 줄의 아래, 이전 리드 줄의 위(마지막 줄은
+    // 아래를 둥글게 남긴다).
+    &.is-open td:first-child,
+    &.is-sub td:first-child {
+      border-bottom-left-radius: 0;
+    }
+    &.is-open td:last-child,
+    &.is-sub td:last-child {
+      border-bottom-right-radius: 0;
+    }
+    &.is-sub td:first-child {
+      border-top-left-radius: 0;
+    }
+    &.is-sub td:last-child {
+      border-top-right-radius: 0;
+    }
+    &.is-sub:not(:has(+ tr.is-sub)) td:first-child {
+      border-bottom-left-radius: 10px;
+    }
+    &.is-sub:not(:has(+ tr.is-sub)) td:last-child {
+      border-bottom-right-radius: 10px;
+    }
   }
 
   // 맨 앞 칸 — 같은 번호의 리드가 더 있는 줄에만 펼침 갈매기. 줄 어디를 눌러도
@@ -430,6 +464,15 @@ $lead-feed-head-h: 32px;
     tr.lead_feed_row.is-group:hover
     td {
     background-color: $fill-2;
+  }
+  // 펼친 맨 앞 줄에 마우스를 올리면 — 묶음 색을 한 겹 더 진하게(밝은 회색으로
+  // 바뀌면 묶음이 끊겨 보인다).
+  &.glass_theme
+    .lead_feed_table.stats_table
+    tbody
+    tr.lead_feed_row.is-group.is-open:hover
+    td {
+    background-color: color-mix(in srgb, var(--glass-link) 22%, transparent);
   }
 
   .lead_feed_time {

@@ -30,11 +30,13 @@ import {
   leadFacets,
   leadFeedFrom,
   leadFeedRange,
+  needsAllLeads,
   customersInOrder,
   leadStatusKey,
   leadStatuses,
   searchLeads,
   sortLeadGroups,
+  type LeadFeedCustomRange,
   type LeadFeedPageSize,
   type CreativeGroup,
   type LeadFeedPeriod,
@@ -45,6 +47,17 @@ import { koreaDate } from '@/screens/xtool-lead-manager/utils/calc'
 
 /** 기간을 '전체'로 바꾼 뒤 전부를 받기 시작할 때까지 기다리는 시간. */
 const PERIOD_SETTLE_MS = 400
+
+/** 직접 설정한 기간의 저장값 검사 — [첫날, 끝날](YYYY-MM-DD, 첫날 ≤ 끝날). */
+const isCustomRange = (stored: unknown): LeadFeedCustomRange | undefined =>
+  Array.isArray(stored) &&
+  stored.length === 2 &&
+  stored.every(
+    (each) => typeof each === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(each),
+  ) &&
+  stored[0] <= stored[1]
+    ? [stored[0], stored[1]]
+    : undefined
 
 const fetchLeadFeed = async (from?: string) => {
   const res = await mondayClient.getLeadFeed(from)
@@ -79,19 +92,34 @@ export const useLeadFeedViewModel = (
     'week',
     oneOf(LEAD_FEED_PERIODS),
   )
-  const wantAll = period === 'all'
-  // '전체'는 무거운 조회라 잠깐 머물러야 받기 시작한다 — 방향키로 기간을 지나가기만
-  // 해도 전부를 받지 않게. 처음부터 '전체'면(기억된 값) 바로 받는다.
-  const [settledPeriod, setSettledPeriod] = useState(period)
+  const today = koreaDate()
+  // 직접 설정한 기간 — 이 브라우저에 남는다(처음에는 오늘까지 7일).
+  const [customRange, setCustomRange] = usePersistentState<LeadFeedCustomRange>(
+    'xtool.leadFeed.customRange',
+    [
+      new Date(Date.parse(today) - 6 * 86_400_000).toISOString().slice(0, 10),
+      today,
+    ],
+    isCustomRange,
+  )
+  const range = useMemo(
+    () => leadFeedRange(period, today, customRange),
+    [period, today, customRange],
+  )
+  // 전부가 필요한 보기 — 전체, 또는 직접 설정이 처음에 받는 지난 30일 앞까지.
+  const wantAll = needsAllLeads(period, range, today)
+  // 전부 받기는 무거운 조회라 잠깐 머물러야 받기 시작한다 — 방향키로 기간을
+  // 지나가기만 해도 전부를 받지 않게. 처음부터 그런 보기면(기억된 값) 바로 받는다.
+  const [settledWantAll, setSettledWantAll] = useState(wantAll)
   useEffect(() => {
     const timer = window.setTimeout(
-      () => setSettledPeriod(period),
+      () => setSettledWantAll(wantAll),
       PERIOD_SETTLE_MS,
     )
     return () => window.clearTimeout(timer)
-  }, [period])
+  }, [wantAll])
   const all = useLoadWhenActive<MondayLeadFeed | null>(
-    active && wantAll && settledPeriod === 'all',
+    active && wantAll && settledWantAll,
     fetchAllLeadFeed,
     null,
   )
@@ -129,8 +157,6 @@ export const useLeadFeedViewModel = (
   )
   const closeTracking = useCallback(() => setTrackingLead(null), [])
 
-  const today = koreaDate()
-  const range = useMemo(() => leadFeedRange(period, today), [period, today])
   // 기간·검색까지 건 리드.
   const base = useMemo(
     () =>
@@ -197,7 +223,7 @@ export const useLeadFeedViewModel = (
       : groupBy === 'creative'
         ? creativeGroups
         : groups,
-    `${period}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}|${groupBy}|${selectedCreative?.key ?? ''}`,
+    `${range?.join('~') ?? 'all'}|${deferredSearch}|${boardId}|${statusFilter}|${channelFilter}|${sortDirection}|${groupBy}|${selectedCreative?.key ?? ''}`,
     30,
   )
   // 표가 그리는 지금 쪽 — 소재 하나를 골랐으면 그 소재 묶음 하나에 이 쪽의
@@ -244,6 +270,8 @@ export const useLeadFeedViewModel = (
       /** 보여 줄 데이터를 받았는지 — 다시 받는 중에는 받아 둔 것을 그대로 보인다. */
       loaded: data !== null,
       period,
+      /** 직접 설정한 기간 — 기간이 '직접 설정'일 때 쓴다. */
+      customRange,
       range,
       search,
       boardId,
@@ -292,6 +320,8 @@ export const useLeadFeedViewModel = (
     },
     actions: {
       changePeriod: setPeriod,
+      changeCustomRange: (start: string, end: string) =>
+        setCustomRange(start <= end ? [start, end] : [end, start]),
       changeSearch: setSearch,
       changeBoard: setBoardId,
       changeStatus: setStatusFilter,

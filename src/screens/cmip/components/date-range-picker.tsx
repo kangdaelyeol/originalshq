@@ -10,6 +10,8 @@ interface DateRangePickerProps {
   dateEnd: ISODate
   onChange: (start: ISODate, end: ISODate) => void
   disabled?: boolean
+  /** 처음 그릴 때 달력을 펼친 채로(리드 분석의 '직접 설정'을 누른 때). */
+  defaultOpen?: boolean
 }
 
 const WEEKDAY_LABELS = ['일', '월', '화', '수', '목', '금', '토']
@@ -204,6 +206,7 @@ export const DateRangePicker = ({
   dateEnd,
   onChange,
   disabled = false,
+  defaultOpen = false,
 }: DateRangePickerProps) => {
   const {
     draftStart,
@@ -228,7 +231,7 @@ export const DateRangePicker = ({
     canApply,
     handleApply,
     setPickingEnd,
-  } = useDateRangePickerViewModel(dateStart, dateEnd, onChange)
+  } = useDateRangePickerViewModel(dateStart, dateEnd, onChange, defaultOpen)
 
   return (
     <div className="date-range-picker" ref={containerRef}>

@@ -6,7 +6,7 @@
 // 앞자리: 1.0.0 리드가 서버에 저장되기 시작(08-19) · 2.0.0 검은 화면 개편(09-20) · 3.0.0 유리 디자인(10-29).
 // 업데이트 기록(LM_CHANGELOG)은 맨 위에 더한다. 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const LM_VERSION = '3.8.0'
+export const LM_VERSION = '3.9.0'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 
@@ -20,6 +20,15 @@ export interface LmRelease {
 
 /** 업데이트 기록 — 최근 것부터 */
 export const LM_CHANGELOG: readonly LmRelease[] = [
+  {
+    version: '3.9.0',
+    date: '2026-11-10',
+    title: '기간 더 고르기',
+    changes: [
+      { kind: 'new', text: '리드 분석 기간에 저번 주와 직접 설정(달력에서 날짜 고르기)이 생겼어요' },
+      { kind: 'improved', text: '여러 번 문의한 고객을 펼치면 그 줄들이 한 묶음으로 색칠돼 눈에 잘 띄어요' },
+    ],
+  },
   {
     version: '3.8.0',
     date: '2026-11-08',

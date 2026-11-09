@@ -16,8 +16,10 @@ export const useDateRangePickerViewModel = (
   dateStart: ISODate,
   dateEnd: ISODate,
   onChange: (start: ISODate, end: ISODate) => void,
+  /** 처음 그릴 때 펼친 채로 — 고르는 버튼을 누르자마자 달력이 뜨게. */
+  defaultOpen = false,
 ) => {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [draftStart, setDraftStart] = useState(dateStart)
   const [draftEnd, setDraftEnd] = useState(dateEnd)
   // true인 동안은 "시작일은 정했고 끝나는 날을 고르는 중" — 다음 클릭이 끝나는 날이 된다.

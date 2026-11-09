@@ -9,14 +9,17 @@ import type {
 import type { SortDirection } from '../types'
 import { DAY_MS, daysBetween, formatKoreaTime, koreaDate } from './calc'
 
-export type LeadFeedPeriod = 'all' | 'today' | 'yesterday' | 'week' | 'month'
+export type LeadFeedPeriod =
+  'all' | 'today' | 'yesterday' | 'week' | 'lastWeek' | 'month' | 'custom'
 
 export const LEAD_FEED_PERIODS: readonly LeadFeedPeriod[] = [
   'all',
   'today',
   'yesterday',
   'week',
+  'lastWeek',
   'month',
+  'custom',
 ]
 
 export const LEAD_FEED_PERIOD_LABEL: Record<LeadFeedPeriod, string> = {
@@ -24,8 +27,13 @@ export const LEAD_FEED_PERIOD_LABEL: Record<LeadFeedPeriod, string> = {
   today: '오늘',
   yesterday: '어제',
   week: '이번 주',
+  lastWeek: '저번 주',
   month: '지난 30일',
+  custom: '직접 설정',
 }
+
+/** 직접 설정한 기간 [첫날, 끝날](YYYY-MM-DD). */
+export type LeadFeedCustomRange = readonly [string, string]
 
 /** 한 쪽에 보일 줄(묶음) 수 — 전체를 고르면 줄이 수천이라 나눠 그린다. */
 export const LEAD_FEED_PAGE_SIZES = [30, 50, 100] as const
@@ -43,10 +51,12 @@ export const leadFeedFrom = (today: string): string =>
   shiftDate(today, -(LEAD_FEED_DAYS - 1))
 
 /** 보기의 날짜 범위 [첫날, 끝날] — 전체는 null(날짜로 거르지 않는다). 이번
- * 주는 월요일부터 오늘까지. */
+ * 주는 월요일부터 오늘까지, 저번 주는 그 앞 월요일부터 일요일까지, 직접 설정은
+ * custom. */
 export const leadFeedRange = (
   period: LeadFeedPeriod,
   today: string,
+  custom?: LeadFeedCustomRange,
 ): [string, string] | null => {
   switch (period) {
     case 'all':
@@ -61,10 +71,26 @@ export const leadFeedRange = (
       const fromMonday = (new Date(Date.parse(today)).getUTCDay() + 6) % 7
       return [shiftDate(today, -fromMonday), today]
     }
+    case 'lastWeek': {
+      const fromMonday = (new Date(Date.parse(today)).getUTCDay() + 6) % 7
+      const monday = shiftDate(today, -fromMonday - 7)
+      return [monday, shiftDate(monday, 6)]
+    }
     case 'month':
       return [leadFeedFrom(today), today]
+    case 'custom':
+      return custom ? [custom[0], custom[1]] : [leadFeedFrom(today), today]
   }
 }
+
+/** 이 보기에 리드 전부가 필요한지 — 전체이거나, 범위가 처음에 받는 지난 30일
+ * 앞까지 걸칠 때(직접 설정). */
+export const needsAllLeads = (
+  period: LeadFeedPeriod,
+  range: readonly [string, string] | null,
+  today: string,
+): boolean =>
+  period === 'all' || (range !== null && range[0] < leadFeedFrom(today))
 
 /** 리드의 인입 날짜 — Monday에 만들어진 시각, 없으면 접수일. */
 export const leadDate = (row: MondayLeadFeedRow): string | null => {
