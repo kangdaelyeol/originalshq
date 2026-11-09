@@ -1,6 +1,8 @@
 // 하위 아이템 — 줄 아래로 들여 펼친다. 이름 칸 갈매기 밑에서 내려오는 줄기에서 줄마다 둥글게
 // 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 체크박스 16·여백 2·간격 6
 // + 갈매기 반 폭 10.
+@use 'table';
+
 $sub-trunk: 49.5px;
 $sub-indent: 76px;
 $sub-row: 34px;
@@ -46,6 +48,27 @@ $sub-row: 34px;
   border-left: 1px solid var(--mon-line-strong);
   border-bottom-left-radius: 8px;
   pointer-events: none;
+}
+
+// 머리글 — 아래로 스크롤해도 큰 표 머리글(그룹 제목 아래 36px 줄)에서 10px 띄워 붙는다. 하위 표 안에서만 붙어
+// 있다가 하위 표가 끝나면 같이 올라간다(sticky가 .mon-sub 안에서만).
+.mon-sub__row--head {
+  position: sticky;
+  top: calc(var(--mon-sticky-top, 0px) + #{table.$group-title-h} + 36px + 10px);
+  z-index: 2;
+
+  // 위 10px 틈 가림막 — 붙어 있을 때 지나가는 하위 줄이 머리글 위로 비치지 않게 판 바탕색으로 덮는다. 줄기 오른쪽부터
+  // 덮어 줄기 선은 끊기지 않는다(내 업무는 박스 바탕색 — _my-work.scss).
+  &::before {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: -($sub-indent - $sub-trunk - 1px);
+    height: 10px;
+    background: var(--mon-bg);
+    pointer-events: none;
+  }
 }
 
 .mon-sub__row--head .mon-cell {

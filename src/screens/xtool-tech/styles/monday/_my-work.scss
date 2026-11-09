@@ -102,6 +102,11 @@ $workbox-head-h: 53px;
   .mon-summary__lead.mon-cell {
     background: var(--mon-workbox);
   }
+
+  // 하위 표 머리글 위 틈 가림막도 박스 바탕색으로
+  .mon-sub__row--head::before {
+    background: var(--mon-workbox);
+  }
 }
 
 .mon-section + .mon-section {
