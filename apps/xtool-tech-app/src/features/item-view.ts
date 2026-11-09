@@ -65,9 +65,9 @@ export interface SubitemModel {
   columns: TechColumn[];
   /** 연결 칸(AS 부품명) — 있으면 이름은 고른 부품을 따라가고 손으로 고치지 않는다, 줄마다 하나만 잇는다 */
   relationId: string | undefined;
-  /** 만드는 중인 줄 — 다 만들어질 때까지 보기만 */
+  /** 만드는 중인 줄 — 고치고 지울 수 있다(만들어진 뒤 보낸다). 모양만 조금 흐리게 */
   isDraft: (sub: TechSubitemDoc) => boolean;
-  /** 이 칸을 고칠 수 있는지(품명 빼고 쓸 수 있는 칸, 만드는 중이 아닌 줄) */
+  /** 이 칸을 고칠 수 있는지(품명 빼고 쓸 수 있는 칸 — 만드는 중인 줄도) */
   canEdit: (sub: TechSubitemDoc, column: TechColumn) => boolean;
   /** 이름을 손으로 바꿀 수 있는지 */
   canRename: (sub: TechSubitemDoc) => boolean;
@@ -203,12 +203,11 @@ function useSubitems(
     columns,
     relationId: relation?.id,
     isDraft: s => isDraftSubitem(s.id),
-    canEdit: (s, c) => !isDraftSubitem(s.id) && editable.has(c.id),
-    canRename: s => !relation && !isDraftSubitem(s.id),
-    lockedText: (s, c) =>
-      isDraftSubitem(s.id)
-        ? '만드는 중이에요 — 다 만들어지면 고칠 수 있어요'
-        : c.type === 'mirror' || c.type === 'formula'
+    // 만드는 중인 줄도 바로 고친다 — 저장 대기열이 만들어진 뒤 보낸다(tech-outbox).
+    canEdit: (_s, c) => editable.has(c.id),
+    canRename: () => !relation,
+    lockedText: (_s, c) =>
+      c.type === 'mirror' || c.type === 'formula'
         ? `${c.title} — Monday가 계산하는 칸이에요`
         : c.writable
         ? `${c.title} — 이름·수량을 고치면 저절로 맞춰져요`

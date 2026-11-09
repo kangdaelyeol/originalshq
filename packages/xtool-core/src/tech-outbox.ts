@@ -12,6 +12,7 @@ import {
   type TechEditValue,
   type TechItemDoc,
   type TechSubitemDoc,
+  type TechSubitemEdit,
 } from './tech-boards'
 import { dismissToast, hasToast, markSaving, pushToast, setToast } from './tech-save-queue'
 
@@ -22,6 +23,8 @@ import { dismissToast, hasToast, markSaving, pushToast, setToast } from './tech-
 // · 항목마다 한 번에 요청 하나 — 나가 있는 동안 고친 것은 모아 다음 요청 하나로 보낸다(같은 칸은
 //   마지막 값). 순서가 뒤집히지 않는다. 다른 항목끼리는 같이 나간다.
 // · 새 항목은 임시 id(temp-N)로 바로 줄이 생기고 고칠 수 있다. 그 사이 고친 것은 만들어진 뒤 보낸다.
+// · 새 하위 줄도 같다 — "만드는 중" 줄(id '<항목>:s:N')을 바로 고치거나 지울 수 있다. 만들기를 아직 안 보냈으면
+//   그 만들기에 싣고, 보내는 중이면 만들어진 뒤(서버가 돌려준 Monday id로 바꿔) 보낸다.
 // · 성공은 조용히(상단바 "저장 중 · 모두 저장됨"), 실패만 토스트 — 원래 값으로 돌아가고 "다시 시도".
 // · 겹침 — 칸을 처음 고칠 때 본 캐시 값을 같이 보낸다. 그사이 다른 사람이 같은 칸을 바꿨으면 서버가
 //   그 칸만 쓰지 않고 알려 준다 → 그 사람 값으로 돌아가고 토스트에 "내 값으로 덮기".
@@ -51,7 +54,7 @@ export interface PendingEdit {
 
 /**
  * 먼저 보여 주는 값 하나 — 열쇠는 'name' · 'group' · 'c:<칸 id>' · 's:<번호>'(새 하위 아이템) ·
- * 'sn:<id>'·'sc:<id>:<칸 id>'·'sd:<id>'(하위 아이템 이름·칸·지우기)
+ * 'sn:<id>'·'sc:<id>:<칸 id>'·'sd:<id>'(하위 아이템 이름·칸·지우기 — 만드는 중인 줄은 id 대신 'd<번호>')
  */
 interface Patch {
   value: TechCellValue | string
@@ -69,6 +72,8 @@ interface Outgoing {
   groupId?: string
   columns: Record<string, TechEditValue>
   subitems?: TechEditInput['subitems']
+  /** subitems.create 줄마다 붙인 번호(s:<번호>) — 응답의 createdSubitems와 같은 순서 */
+  subCreates: number[]
   /** 담은 열쇠와 그 차례 — 끝나면 이 차례까지의 미리 보기를 확인하거나 되돌린다 */
   seqs: Map<string, number>
   previews: Map<string, TechCellValue | string>
@@ -97,6 +102,8 @@ interface ItemState {
   deleteAfterCreate: boolean
   queued: Outgoing | null
   inFlight: Outgoing | null
+  /** 이 탭에서 만든 하위 줄 — 번호(s:<번호>) → Monday id */
+  subReal: Map<number, string>
 }
 
 const states = new Map<string, ItemState>()
@@ -307,15 +314,16 @@ function patched(item: TechItemDoc, s: ItemState | undefined, localKey: string |
   if (!s?.patches.size) return localKey ? { ...item, localKey } : item
   const values = { ...item.values }
   let { name, groupId } = item
-  const subs: TechSubitemDoc[] = []
-  // 고친 하위 아이템(id → 덮을 이름·칸) · 지운 하위 아이템 id
+  // 새로 만드는 하위 줄 — 번호와 이름
+  const drafts: { no: number; name: string }[] = []
+  // 고친 하위 아이템(id 또는 'd<번호>' → 덮을 이름·칸) · 지운 하위 아이템
   const subEdits = new Map<string, { name?: string; values: Record<string, TechCellValue> }>()
   const subGone = new Set<string>()
   for (const [field, patch] of s.patches) {
     if (field === 'name') name = patch.value as string
     else if (field === 'group') groupId = patch.value as string
     else if (field.startsWith('c:')) values[field.slice(2)] = patch.value as TechCellValue
-    else if (field.startsWith('s:')) subs.push({ id: `${s.key}:${field}`, name: patch.value as string, values: {} })
+    else if (field.startsWith('s:')) drafts.push({ no: Number(field.slice(2)), name: patch.value as string })
     else {
       const { kind, subId, columnId } = subField(field, undefined)
       if (kind === 'sd') subGone.add(subId)
@@ -327,30 +335,53 @@ function patched(item: TechItemDoc, s: ItemState | undefined, localKey: string |
       }
     }
   }
-  const subitems =
-    subs.length || subEdits.size || subGone.size
-      ? [
-          ...(item.subitems ?? [])
-            .filter((sub) => !subGone.has(sub.id))
-            .map((sub) => {
-              const edit = subEdits.get(sub.id)
-              return edit ? { ...sub, name: edit.name ?? sub.name, values: { ...sub.values, ...edit.values } } : sub
-            }),
-          ...subs,
-        ]
-      : null
+  if (!drafts.length && !subEdits.size && !subGone.size) {
+    return { ...item, name, groupId, values, ...(localKey ? { localKey } : {}) }
+  }
+  // 만든 하위 줄의 Monday id → 만드는 중에 쓰던 열쇠('d<번호>') — 그때 고친 값을 실제 줄에도 덮는다.
+  const draftKey = new Map([...s.subReal].map(([no, id]) => [id, `d${no}`]))
+  const gone = (...keys: (string | undefined)[]) => keys.some((key) => key !== undefined && subGone.has(key))
+  const withEdits = (sub: TechSubitemDoc, ...keys: (string | undefined)[]): TechSubitemDoc => {
+    let out = sub
+    for (const key of keys) {
+      const edit = key === undefined ? undefined : subEdits.get(key)
+      if (edit) out = { ...out, name: edit.name ?? out.name, values: { ...out.values, ...edit.values } }
+    }
+    return out
+  }
+  const rawIds = new Set((item.subitems ?? []).map((sub) => sub.id))
+  const subitems = [
+    ...(item.subitems ?? [])
+      .filter((sub) => !gone(sub.id, draftKey.get(sub.id)))
+      .map((sub) => withEdits(sub, draftKey.get(sub.id), sub.id)),
+    ...drafts.flatMap(({ no, name: draftName }) => {
+      const realId = s.subReal.get(no)
+      // 캐시에 실제 줄이 왔으면 그 줄이 대신한다.
+      if (realId && rawIds.has(realId)) return []
+      if (gone(`d${no}`, realId)) return []
+      // Monday id를 받았으면 그 id로(그 뒤로 고치는 것은 바로 그 줄로 간다), 아니면 만드는 중 열쇠로
+      const sub: TechSubitemDoc = { id: realId ?? `${s.key}:s:${no}`, name: draftName, values: {} }
+      return [withEdits(sub, `d${no}`, realId)]
+    }),
+  ]
   return {
     ...item,
     name,
     groupId,
     values,
-    ...(subitems ? { subitems } : {}),
+    subitems,
     ...(localKey ? { localKey } : {}),
   }
 }
 
-/** 만드는 중인 하위 아이템(아직 Monday id가 없다) — 다 만들어지기 전에는 고치거나 지울 수 없다. */
+/** 만드는 중인 하위 아이템(아직 Monday id가 없다) — 고치거나 지울 수 있다(만들어진 뒤 보낸다). 고르기만 안 된다. */
 export const isDraftSubitem = (id: string): boolean => /:s:\d+$/.test(id)
+
+/** 만드는 중인 하위 아이템 id → 번호(s:<번호>) */
+const draftNo = (id: string | undefined): number | null => {
+  const match = id ? /:s:(\d+)$/.exec(id) : null
+  return match ? Number(match[1]) : null
+}
 
 /** 아직 캐시에 없는 새 항목 — 표에 그릴 모양만(record는 비어 있다, draft) */
 function draftDoc(s: ItemState): TechItemDoc {
@@ -396,6 +427,7 @@ export function applyPending(boardKey: TechBoardKey, raw: TechItemDoc[]): TechIt
 const emptyOutgoing = (create = false): Outgoing => ({
   create,
   columns: {},
+  subCreates: [],
   seqs: new Map(),
   previews: new Map(),
   base: new Map(),
@@ -451,16 +483,98 @@ function mergeInto(s: ItemState, out: Outgoing, edit: PendingEdit, label: string
     show(`c:${id}`, cell.preview)
   }
   if (edit.subitems) {
-    out.subitems = mergeSubitems(out.subitems, edit.subitems)
-    for (const sub of edit.subitems.create ?? []) if (sub.name) show(`s:${++subNo}`, sub.name)
-    // 고친·지운 하위 아이템도 바로 보인다(칸은 미리 보기를 준 것만).
+    // 고친·지운 하위 아이템도 바로 보인다(칸은 미리 보기를 준 것만). 만드는 중인 줄은 열쇠가 'd<번호>'.
+    const previews = edit.subitemPreviews ?? {}
+    const showUpdate = (key: string, sub: TechSubitemEdit, preview: Record<string, TechCellValue> | undefined) => {
+      if (sub.name !== undefined) show(`sn:${key}`, sub.name)
+      for (const id of Object.keys(sub.columns ?? {})) show(`sc:${key}:${id}`, preview?.[id])
+    }
+    const update: TechSubitemEdit[] = []
+    const remove: string[] = []
     for (const sub of edit.subitems.update ?? []) {
       if (!sub.id) continue
-      if (sub.name !== undefined) show(`sn:${sub.id}`, sub.name)
-      for (const id of Object.keys(sub.columns ?? {})) show(`sc:${sub.id}:${id}`, edit.subitemPreviews?.[sub.id]?.[id])
+      const ref = resolveDraft(s, out, sub.id)
+      if (ref.kind === 'real') {
+        update.push(ref.id === sub.id ? sub : { ...sub, id: ref.id })
+        showUpdate(ref.id, sub, previews[sub.id])
+      } else if (ref.kind === 'queued') {
+        // 아직 안 보낸 만들기 — 그 만들기 줄에 싣는다(서버는 고치기를 만들기보다 먼저 해서 따로 보내면 실패한다).
+        foldIntoCreate(out, ref.index, sub)
+        if (sub.name !== undefined) show(`s:${ref.no}`, sub.name)
+        showUpdate(`d${ref.no}`, { columns: sub.columns }, previews[sub.id])
+      } else if (ref.kind === 'inFlight') {
+        // 만드는 중 — 만들어지면(settle) Monday id로 바꿔 보낸다.
+        update.push(sub)
+        showUpdate(`d${ref.no}`, sub, previews[sub.id])
+      }
+      // lost — 만들지 못한 줄: 버린다(실패 토스트의 "다시 시도"가 만들기와 함께 다시 보낸다).
     }
-    for (const id of edit.subitems.remove ?? []) show(`sd:${id}`, id)
+    for (const id of edit.subitems.remove ?? []) {
+      const ref = resolveDraft(s, out, id)
+      if (ref.kind === 'real') {
+        remove.push(ref.id)
+        show(`sd:${ref.id}`, ref.id)
+      } else if (ref.kind === 'queued') {
+        dropQueuedCreate(s, out, ref.index, ref.no)
+      } else if (ref.kind === 'inFlight') {
+        remove.push(id)
+        show(`sd:d${ref.no}`, id)
+      }
+    }
+    const create = [...(edit.subitems.create ?? [])]
+    out.subitems = mergeSubitems(out.subitems, { create, update, remove })
+    for (const sub of create) {
+      const no = ++subNo
+      out.subCreates.push(no)
+      if (sub.name) show(`s:${no}`, sub.name)
+    }
   }
+}
+
+/** 하위 아이템 id가 가리키는 것 — 실제 줄(Monday id) · 아직 안 보낸 만들기(out 안) · 보내는 중인 만들기 · 잃은 줄 */
+type DraftRef =
+  | { kind: 'real'; id: string }
+  | { kind: 'queued'; no: number; index: number }
+  | { kind: 'inFlight'; no: number }
+  | { kind: 'lost' }
+
+function resolveDraft(s: ItemState, out: Outgoing, id: string): DraftRef {
+  const no = draftNo(id)
+  if (no === null) return { kind: 'real', id }
+  const realId = s.subReal.get(no)
+  if (realId) return { kind: 'real', id: realId }
+  const index = out.subCreates.indexOf(no)
+  if (index >= 0) return { kind: 'queued', no, index }
+  if (s.inFlight?.subCreates.includes(no)) return { kind: 'inFlight', no }
+  return { kind: 'lost' }
+}
+
+/** 아직 안 보낸 만들기 줄에 이름·칸을 덮는다. */
+function foldIntoCreate(out: Outgoing, index: number, sub: TechSubitemEdit) {
+  const create = out.subitems?.create
+  const row = create?.[index]
+  if (!create || !row) return
+  create[index] = {
+    ...row,
+    ...(sub.name !== undefined ? { name: sub.name } : {}),
+    columns: { ...row.columns, ...sub.columns },
+  }
+}
+
+/** 아직 안 보낸 만들기 줄을 뺀다 — 만드는 중에 지운 줄(그 줄의 미리 보기도 뗀다). */
+function dropQueuedCreate(s: ItemState, out: Outgoing, index: number, no: number) {
+  out.subitems?.create?.splice(index, 1)
+  out.subCreates.splice(index, 1)
+  forgetDraft(s, out, no)
+}
+
+/** 만드는 중인 줄 하나의 미리 보기('s:<번호>'·'d<번호>' 열쇠)를 out에서 뗀다. */
+function forgetDraft(s: ItemState, out: Outgoing | null, no: number) {
+  const mine = (field: string) => field === `s:${no}` || (/^s[ncd]:/.test(field) && field.split(':')[1] === `d${no}`)
+  for (const field of [...s.patches.keys()]) if (mine(field)) s.patches.delete(field)
+  if (!out) return
+  for (const field of [...out.seqs.keys()]) if (mine(field)) out.seqs.delete(field)
+  for (const field of [...out.previews.keys()]) if (mine(field)) out.previews.delete(field)
 }
 
 /**
@@ -524,6 +638,16 @@ function toInput(s: ItemState, out: Outgoing): TechEditInput {
 const fieldOf = (conflict: TechConflict) =>
   conflict.field === 'name' ? 'name' : conflict.field === 'group' ? 'group' : `c:${conflict.field}`
 
+/** 보낼 것이 하나도 없는지 — 만들기는 늘 보낸다. */
+const isEmptyOutgoing = (out: Outgoing) =>
+  !out.create &&
+  out.name === undefined &&
+  out.groupId === undefined &&
+  Object.keys(out.columns).length === 0 &&
+  !out.subitems?.create?.length &&
+  !out.subitems?.update?.length &&
+  !out.subitems?.remove?.length
+
 function flush(s: ItemState) {
   if (s.inFlight || !s.queued) return
   // 지우는 중이면 보내지 않는다.
@@ -533,21 +657,33 @@ function flush(s: ItemState) {
   }
   // 아직 만드는 중 — 만들어지면 다시 부른다.
   if (!s.queued.create && !s.realId) return
+  // 보낼 게 남지 않았다(만드는 중에 만들고 지운 하위 줄 등) — 빈 요청은 보내지 않는다.
+  if (isEmptyOutgoing(s.queued)) {
+    s.queued = null
+    emitStatus()
+    return
+  }
   const out = s.queued
   s.queued = null
   s.inFlight = out
   if (s.realId) markSaving(s.realId, true)
   // 만들기는 겹침이 없다(conflicts 없음).
-  const request: Promise<{ data: { itemId: string | null; conflicts?: TechConflict[] } }> = out.create
-    ? createTechItem(toInput(s, out))
-    : updateTechItem(toInput(s, out))
+  const request: Promise<{
+    data: { itemId: string | null; conflicts?: TechConflict[]; createdSubitems?: string[] }
+  }> = out.create ? createTechItem(toInput(s, out)) : updateTechItem(toInput(s, out))
   request.then(
-    (res) => settle(s, out, res.data.itemId, res.data.conflicts ?? []),
+    (res) => settle(s, out, res.data.itemId, res.data.conflicts ?? [], res.data.createdSubitems),
     (error: unknown) => fail(s, out, error),
   )
 }
 
-function settle(s: ItemState, out: Outgoing, itemId: string | null, conflicts: TechConflict[] = []) {
+function settle(
+  s: ItemState,
+  out: Outgoing,
+  itemId: string | null,
+  conflicts: TechConflict[] = [],
+  createdSubitems?: string[],
+) {
   s.inFlight = null
   if (s.realId) markSaving(s.realId, false)
   if (out.create) {
@@ -558,6 +694,7 @@ function settle(s: ItemState, out: Outgoing, itemId: string | null, conflicts: T
       return
     }
   }
+  mapDrafts(s, out, createdSubitems)
   const now = Date.now()
   const raw = rawOf(s)
   const skipped = new Set(conflicts.map(fieldOf))
@@ -603,13 +740,15 @@ function fail(s: ItemState, out: Outgoing, error: unknown) {
   if (s.realId) markSaving(s.realId, false)
   // 이 요청이 건 미리 보기를 뗀다(그 뒤에 또 고친 칸은 남긴다).
   for (const [field, seq] of out.seqs) if (s.patches.get(field)?.seq === seq) s.patches.delete(field)
+  // 만들지 못한 하위 줄 — 그 사이 그 줄에 고친 것은 다음 요청에서 빼서 "다시 시도"의 만들기에 싣는다.
+  const drafts = takeDrafts(s, out.subCreates)
   const deleted = !!s.hidden || s.deleteAfterCreate
   if (out.create) {
     // 만들지 못했다 — 줄을 빼고, 그 사이 고친 것까지 모아 "다시 시도"에 싣는다.
     const later = s.queued
     states.delete(s.key)
     if (!deleted) {
-      const edit = editFrom(undefined, out)
+      const edit = withDraftEdits(editFrom(undefined, out), out.subCreates, drafts)
       if (later) Object.assign(edit.columns!, editFrom(undefined, later).columns)
       const name = later?.name ?? out.name ?? s.created?.name ?? ''
       reportFailure(`${name} — 만들지 못했어요`, error, () =>
@@ -618,13 +757,104 @@ function fail(s: ItemState, out: Outgoing, error: unknown) {
     }
   } else if (!deleted) {
     reportFailure(`${labelOf(out)} — 저장하지 못했어요`, error, () => {
-      const edit = editFrom(states.get(s.key), out)
+      const edit = withDraftEdits(editFrom(states.get(s.key), out), out.subCreates, drafts)
       if (hasChanges(edit)) editItem(s.boardKey, s.realId ?? s.key, edit, labelOf(out))
     })
   }
   sweep(s.boardKey)
   if (states.has(s.key)) flush(s)
   emit(s.boardKey)
+}
+
+/**
+ * 만든 하위 줄의 Monday id(createdSubitems — 보낸 만들기 순서)를 번호에 잇고, 그 사이 그 줄에 고친 것(다음 요청에
+ * '<항목>:s:<번호>'로 담겨 있다)을 Monday id로 바꾼다. id를 받지 못했으면(예전 서버) 보낼 곳이 없어 떼고 알린다.
+ */
+function mapDrafts(s: ItemState, out: Outgoing, created: string[] | undefined) {
+  if (out.subCreates.length === 0) return
+  if (created && created.length === out.subCreates.length) {
+    out.subCreates.forEach((no, i) => s.subReal.set(no, created[i]))
+  }
+  const queued = s.queued
+  if (!queued?.subitems) return
+  const lost = new Set<number>()
+  const toReal = (id: string): string | null => {
+    const no = draftNo(id)
+    if (no === null) return id
+    const realId = s.subReal.get(no) ?? null
+    if (!realId) lost.add(no)
+    return realId
+  }
+  const remove = (queued.subitems.remove ?? []).flatMap((id) => {
+    const realId = toReal(id)
+    return realId ? [realId] : []
+  })
+  const update = (queued.subitems.update ?? []).flatMap((sub) => {
+    if (!sub.id) return [sub]
+    const id = toReal(sub.id)
+    // 지울 줄은 고치지 않는다(mergeSubitems와 같다).
+    return id && !remove.includes(id) ? [{ ...sub, id }] : []
+  })
+  queued.subitems = { create: queued.subitems.create ?? [], update, remove }
+  for (const no of lost) forgetDraft(s, queued, no)
+  if (lost.size > 0) {
+    pushToast({
+      tone: 'error',
+      title: '새 줄에 고친 내용을 보내지 못했어요',
+      message: '만든 줄을 찾지 못했어요 — 새로고침한 뒤 다시 고쳐 주세요.',
+    })
+  }
+}
+
+/** 만드는 중에 고친 것 — 이름·칸·지우기 */
+interface DraftEdit {
+  name?: string
+  columns: Record<string, TechEditValue>
+  removed: boolean
+}
+
+/** 만들지 못한 하위 줄(번호들)에 고친 것을 다음 요청에서 빼 온다(미리 보기도 뗀다). */
+function takeDrafts(s: ItemState, nos: readonly number[]): Map<number, DraftEdit> {
+  const taken = new Map<number, DraftEdit>()
+  const queued = s.queued
+  if (nos.length === 0) return taken
+  const mine = (id: string | undefined) => {
+    const no = draftNo(id)
+    return no !== null && nos.includes(no) ? no : null
+  }
+  const entry = (no: number) => taken.get(no) ?? { columns: {}, removed: false }
+  if (queued?.subitems) {
+    for (const sub of queued.subitems.update ?? []) {
+      const no = mine(sub.id)
+      if (no === null) continue
+      const edit = entry(no)
+      taken.set(no, { ...edit, ...(sub.name !== undefined ? { name: sub.name } : {}), columns: { ...edit.columns, ...sub.columns } })
+    }
+    for (const id of queued.subitems.remove ?? []) {
+      const no = mine(id)
+      if (no !== null) taken.set(no, { ...entry(no), removed: true })
+    }
+    queued.subitems = {
+      create: queued.subitems.create ?? [],
+      update: (queued.subitems.update ?? []).filter((sub) => mine(sub.id) === null),
+      remove: (queued.subitems.remove ?? []).filter((id) => mine(id) === null),
+    }
+  }
+  for (const no of nos) forgetDraft(s, queued, no)
+  return taken
+}
+
+/** "다시 시도"의 만들기 줄에 만드는 중에 고친 것을 싣는다(지운 줄은 뺀다). nos는 만들기 줄 순서의 번호. */
+function withDraftEdits(edit: PendingEdit, nos: readonly number[], drafts: ReadonlyMap<number, DraftEdit>): PendingEdit {
+  const create = edit.subitems?.create
+  if (!create || drafts.size === 0) return edit
+  const rows = create.flatMap((row, i) => {
+    const draft = drafts.get(nos[i])
+    if (!draft) return [row]
+    if (draft.removed) return []
+    return [{ ...row, ...(draft.name !== undefined ? { name: draft.name } : {}), columns: { ...row.columns, ...draft.columns } }]
+  })
+  return { ...edit, subitems: { ...edit.subitems, create: rows } }
 }
 
 /** 항목 상태 — 이 탭에서 만든 항목은 Monday id로 불러도 임시 id 쪽을 찾는다. */
@@ -644,6 +874,7 @@ function stateFor(boardKey: TechBoardKey, id: string): ItemState | null {
     deleteAfterCreate: false,
     queued: null,
     inFlight: null,
+    subReal: new Map(),
   }
   states.set(realId, s)
   return s
@@ -680,6 +911,7 @@ export function createItem(boardKey: TechBoardKey, edit: PendingEdit & { name: s
     deleteAfterCreate: false,
     queued: { ...emptyOutgoing(true), name: edit.name, groupId: edit.groupId },
     inFlight: null,
+    subReal: new Map(),
   }
   states.set(key, s)
   mergeInto(s, s.queued!, { columns: edit.columns, subitems: edit.subitems }, label)

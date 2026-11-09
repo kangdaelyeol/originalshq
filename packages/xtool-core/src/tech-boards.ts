@@ -282,9 +282,10 @@ export interface TechConflict {
   theirs: string | null
 }
 
-/** item 고치기 — Monday에 쓰고 캐시를 맞춘다(화면은 실시간 구독으로 따라온다). */
+/** item 고치기 — Monday에 쓰고 캐시를 맞춘다(화면은 실시간 구독으로 따라온다). createdSubitems는 만든 하위 줄의
+ * Monday id(보낸 subitems.create 순서대로 — 예전 서버는 주지 않는다). */
 export const updateTechItem = (input: TechEditInput) =>
-  httpsCallable<TechEditInput, { itemId: string | null; conflicts?: TechConflict[] }>(
+  httpsCallable<TechEditInput, { itemId: string | null; conflicts?: TechConflict[]; createdSubitems?: string[] }>(
     xtoolFirebase().functions,
     'techUpdateItem',
   )(input)
@@ -318,9 +319,12 @@ export const deleteTechItems = async (boardKey: TechBoardKey, itemIds: string[])
     >(xtoolFirebase().functions, 'techDeleteItems', { timeout: 120_000 })({ boardKey, itemIds })
   ).data
 
-/** 새 item 만들기 */
+/** 새 item 만들기 — createdSubitems는 같이 만든 하위 줄의 Monday id(updateTechItem과 같다) */
 export const createTechItem = (input: TechEditInput) =>
-  httpsCallable<TechEditInput, { itemId: string | null }>(xtoolFirebase().functions, 'techCreateItem')(input)
+  httpsCallable<TechEditInput, { itemId: string | null; createdSubitems?: string[] }>(
+    xtoolFirebase().functions,
+    'techCreateItem',
+  )(input)
 
 /** 기술지원팀 보드 — 순서가 곧 사이드바 메뉴 순서(개요 바로 아래). slug는 주소(/xtool-tech/boards/<slug>). */
 export const BOARD_TABS: readonly {

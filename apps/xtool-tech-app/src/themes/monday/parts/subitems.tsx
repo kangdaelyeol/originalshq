@@ -58,6 +58,7 @@ export function SubitemsBlock({
         {label} {subitems.length}
       </MText>
       {subitems.map(sub => {
+        // 만드는 중인 줄(draft)도 고치고 지운다 — 저장 대기열이 만들어진 뒤 보낸다. 조금 흐리게만 둔다.
         const draft = model.isDraft(sub);
         const rename = model.canRename(sub);
         return (
@@ -71,23 +72,21 @@ export function SubitemsBlock({
                     disabled={!rename}
                     style={s.flex}
                     accessibilityHint={
-                      draft ? '만드는 중이에요' : model.relationId ? '부품을 고르면 이름이 따라가요' : undefined
+                      model.relationId ? '부품을 고르면 이름이 따라가요' : draft ? '만드는 중이에요' : undefined
                     }
                   >
                     <MText size={13.5} numberOfLines={1}>
                       {sub.name}
                     </MText>
                   </Pressable>
-                  {!draft && (
-                    <Pressable
-                      onPress={() => setMenu(sub)}
-                      hitSlop={6}
-                      accessibilityLabel={`${sub.name} 메뉴`}
-                      style={({ pressed }) => [s.more, pressed && { backgroundColor: p.overlay }]}
-                    >
-                      <Ellipsis size={16} color={p.text2} />
-                    </Pressable>
-                  )}
+                  <Pressable
+                    onPress={() => setMenu(sub)}
+                    hitSlop={6}
+                    accessibilityLabel={`${sub.name} 메뉴`}
+                    style={({ pressed }) => [s.more, pressed && { backgroundColor: p.overlay }]}
+                  >
+                    <Ellipsis size={16} color={p.text2} />
+                  </Pressable>
                 </View>
                 {model.columns.length > 0 && (
                   <View style={s.cells}>
@@ -235,7 +234,7 @@ const styles = (p: MonPalette) => ({
     borderRadius: 6,
     overflow: 'hidden' as const,
   },
-  draft: { opacity: 0.6 },
+  draft: { opacity: 0.8 },
   bar: { width: 6 },
   rowBody: { flex: 1, paddingLeft: 10, paddingRight: 4, paddingVertical: 6, gap: 6 },
   nameLine: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4, minHeight: 22 },

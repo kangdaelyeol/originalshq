@@ -111,13 +111,14 @@ export function planSubitems(
   return { create, update, remove }
 }
 
-/** 계획대로 Monday에 쓴다 — 지우기 → 고치기 → 만들기 순. */
+/** 계획대로 Monday에 쓴다 — 지우기 → 고치기 → 만들기 순. 만든 줄의 Monday id를 만든
+ * 순서(plan.create 순서)대로 돌려준다 — 화면은 이것으로 "만드는 중" 줄에 고친 것을 이어 보낸다. */
 export async function applySubitems(
   apiKey: string,
   meta: TechBoardMeta,
   parentId: string,
   plan: SubitemPlan,
-): Promise<void> {
+): Promise<string[]> {
   const boardId = meta.subitems?.boardId
   if (!boardId) throw new TechEditError('하위 항목이 없는 보드예요')
   for (const id of plan.remove) await deleteItem(apiKey, id)
@@ -126,9 +127,11 @@ export async function applySubitems(
       await changeColumnValues(apiKey, boardId, row.id, row.values)
     }
   }
+  const created: string[] = []
   for (const row of plan.create) {
-    await createSubitem(apiKey, parentId, row.name, row.values)
+    created.push(await createSubitem(apiKey, parentId, row.name, row.values))
   }
+  return created
 }
 
 /** 수정 기록용 — 하위 줄 목록 전후("이름 ×수량"을 " · "로 이어서). */

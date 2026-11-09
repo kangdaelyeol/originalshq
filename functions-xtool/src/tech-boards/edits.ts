@@ -197,6 +197,14 @@ function withoutConflicts(
 export interface UpdateResult {
   doc: TechItemDoc | null
   conflicts: TechConflict[]
+  /** 만든 하위 줄의 Monday id — 보낸 subitems.create 순서대로 */
+  createdSubitems: string[]
+}
+
+export interface CreateResult {
+  doc: TechItemDoc | null
+  /** 만든 하위 줄의 Monday id — 보낸 subitems.create 순서대로 */
+  createdSubitems: string[]
 }
 
 /**
@@ -260,7 +268,9 @@ async function applyUpdate(
 
   const hasValues = Object.keys(columnValues).length > 0
   // 겹친 칸만 있었으면 쓸 게 없다.
-  if (!hasValues && !moveTo && !subPlan) return { doc: before, conflicts }
+  if (!hasValues && !moveTo && !subPlan) {
+    return { doc: before, conflicts, createdSubitems: [] }
+  }
 
   // 마지막 쓰기만 바뀐 item을 실어 받는다(하위 줄을 고치면 그 뒤에 다시 읽는다).
   const shape = shapeOf(source)
@@ -282,7 +292,9 @@ async function applyUpdate(
       subPlan ? undefined : shape,
     )
   }
-  if (subPlan) await applySubitems(apiKey, meta, before.itemId, subPlan)
+  const createdSubitems = subPlan ?
+    await applySubitems(apiKey, meta, before.itemId, subPlan) :
+    []
 
   const saved = raw ?
     await saveRawItems(db, source, meta, [before.itemId], [raw]) :
@@ -301,7 +313,7 @@ async function applyUpdate(
   if (changes.length > 0) {
     await addEditLog(db, log({ changes, itemName: after?.name ?? before.name }))
   }
-  return { doc: after, conflicts }
+  return { doc: after, conflicts, createdSubitems }
 }
 
 /** 새 item 만들기 — 이름은 꼭 있어야 한다. */
@@ -310,7 +322,7 @@ async function applyCreate(
   apiKey: string,
   input: TechEditInput,
   editor: Editor,
-): Promise<TechItemDoc | null> {
+): Promise<CreateResult> {
   const source = sourceOf(input.boardKey)
   const meta = await getBoardMeta(db, source.key)
   if (!meta) throw new TechEditError('보드 정보가 아직 없어요. 동기화 후 다시 해 주세요')
@@ -334,7 +346,9 @@ async function applyCreate(
     subPlan ? undefined : shapeOf(source),
   )
   const itemId = created.id
-  if (subPlan) await applySubitems(apiKey, meta, itemId, subPlan)
+  const createdSubitems = subPlan ?
+    await applySubitems(apiKey, meta, itemId, subPlan) :
+    []
 
   const saved = created.item ?
     await saveRawItems(db, source, meta, [itemId], [created.item]) :
@@ -367,7 +381,7 @@ async function applyCreate(
     ],
     ok: true,
   })
-  return after
+  return { doc: after, createdSubitems }
 }
 
 /**
@@ -424,7 +438,7 @@ export async function createTechItem(
   apiKey: string,
   input: TechEditInput,
   editor: Editor,
-): Promise<TechItemDoc | null> {
+): Promise<CreateResult> {
   try {
     return await applyCreate(db, apiKey, input, editor)
   } catch (error) {

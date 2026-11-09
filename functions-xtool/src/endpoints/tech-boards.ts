@@ -117,14 +117,15 @@ export const techUpdateItem = onCall(
     async (request: CallableRequest<TechEditInput>) => {
     const editor = await requireMember(request)
     try {
-      const { doc, conflicts } = await updateTechItem(
+      const { doc, conflicts, createdSubitems } = await updateTechItem(
         db,
         mondayApiKey.value(),
         request.data,
         editor,
       )
-      // conflicts — 다른 사람이 먼저 바꿔서 쓰지 않은 칸(화면이 알리고 덮을지 묻는다)
-      return { itemId: doc?.itemId ?? null, conflicts }
+      // conflicts — 다른 사람이 먼저 바꿔서 쓰지 않은 칸(화면이 알리고 덮을지 묻는다).
+      // createdSubitems — 만든 하위 줄 id(화면이 "만드는 중" 줄에 고친 것을 이어 보낸다).
+      return { itemId: doc?.itemId ?? null, conflicts, createdSubitems }
     } catch (error) {
       throw toHttpsError(error)
     }
@@ -142,13 +143,13 @@ export const techCreateItem = onCall(
     async (request: CallableRequest<TechEditInput>) => {
     const editor = await requireMember(request)
     try {
-      const doc = await createTechItem(
+      const { doc, createdSubitems } = await createTechItem(
         db,
         mondayApiKey.value(),
         request.data,
         editor,
       )
-      return { itemId: doc?.itemId ?? null }
+      return { itemId: doc?.itemId ?? null, createdSubitems }
     } catch (error) {
       throw toHttpsError(error)
     }

@@ -225,7 +225,7 @@ interface SubRowProps {
   onPick?: (on: boolean) => void
 }
 
-/** 하위 아이템 한 줄 — 만드는 중인 줄(아직 Monday id가 없다)은 다 만들어질 때까지 보기만. */
+/** 하위 아이템 한 줄 — 만드는 중인 줄(아직 Monday id가 없다)도 바로 고치거나 지운다(만들어진 뒤 보낸다). 고르기만 안 된다. */
 function SubRow({
   sub,
   columns,
@@ -241,17 +241,14 @@ function SubRow({
   picked,
   onPick,
 }: SubRowProps) {
-  const draft = isDraftSubitem(sub.id)
   const nameKey = subKey(sub, 'name')
   // 고칠 수 없는 칸에 올렸을 때 까닭
   const lockedTitle = (c: TechColumn) =>
-    draft
-      ? '만드는 중이에요 — 다 만들어지면 고칠 수 있어요'
-      : c.type === 'mirror' || c.type === 'formula'
-        ? `${c.title} — Monday가 계산하는 칸이에요`
-        : c.writable
-          ? `${c.title} — 이름·수량을 고치면 저절로 맞춰져요`
-          : undefined
+    c.type === 'mirror' || c.type === 'formula'
+      ? `${c.title} — Monday가 계산하는 칸이에요`
+      : c.writable
+        ? `${c.title} — 이름·수량을 고치면 저절로 맞춰져요`
+        : undefined
   return (
     <div className={cx('mon-sub__row mon-sub__row--item', picked && 'is-selected')} role="row" aria-selected={picked}>
       <div className="mon-cell mon-sub__check">
@@ -268,25 +265,16 @@ function SubRow({
             }}
             onCancel={() => setEditing(null)}
           />
-        ) : onCommitName && !draft ? (
+        ) : onCommitName ? (
           <button type="button" className="mon-name" title={sub.name} onClick={(e) => setEditing({ key: nameKey, anchor: e.currentTarget })}>
             {sub.name}
           </button>
         ) : (
-          <span
-            className="mon-text mon-sub__label"
-            title={
-              draft
-                ? `${sub.name} — 만드는 중이에요`
-                : relationId
-                  ? `${sub.name} — 부품을 고르면 이름이 따라가요`
-                  : sub.name
-            }
-          >
+          <span className="mon-text mon-sub__label" title={relationId ? `${sub.name} — 부품을 고르면 이름이 따라가요` : sub.name}>
             {sub.name}
           </span>
         )}
-        {onMenu && !draft && (
+        {onMenu && (
           <button
             type="button"
             className={cx('mon-sub__more', menuOpen && 'is-active')}
@@ -306,7 +294,7 @@ function SubRow({
           editKey={subKey(sub, c.id)}
           column={c}
           cell={sub.values[c.id]}
-          writable={!!onCommitCell && !draft && editable.has(c.id)}
+          writable={!!onCommitCell && editable.has(c.id)}
           editing={editing}
           setEditing={setEditing}
           onCommit={(commit) => onCommitCell?.(sub, c, commit)}
