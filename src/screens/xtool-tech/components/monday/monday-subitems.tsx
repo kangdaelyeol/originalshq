@@ -1,5 +1,5 @@
 import { Ellipsis, Pencil, Trash2 } from 'lucide-react'
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 'react'
 import type { TechColumn, TechItemDoc, TechSubitemDoc } from '@xtool-core/tech-boards'
 import { isDraftSubitem } from '@xtool-core/tech-outbox'
 import { editableSubColumns, relationColumn } from '@xtool-core/tech-subitems'
@@ -44,7 +44,8 @@ interface SubTableProps {
 export function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd, onCommitCell, onCommitName, onRemove }: SubTableProps) {
   const subitems = item.subitems ?? []
   const shown = columns.filter((c) => !HIDDEN_TYPES.has(c.type) && !SUB_HIDDEN_TYPES.has(c.type))
-  const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')}`
+  // 마지막 칸 뒤 빈 칸(minmax(0, 1fr)) — 판 오른쪽 끝까지 줄을 늘인다(칸이 판보다 넓으면 0)
+  const template = `${SUB_NAME_WIDTH}px ${shown.map(() => `${SUB_WIDTH}px`).join(' ')} minmax(0, 1fr)`
   // 고칠 수 있는 칸 — 대시보드 편집 패널과 같은 규칙(품명은 서버가 이름·수량으로 맞춘다)
   const editable = new Set(editableSubColumns(columns).map((c) => c.id))
   // 연결 칸(AS 부품명)은 줄마다 하나만 잇는다. 이 칸이 있으면 이름은 부품을 따라가서 손으로 고치지 않는다.
@@ -54,9 +55,16 @@ export function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd,
   const [menu, setMenu] = useState<{ sub: TechSubitemDoc; anchor: HTMLElement } | null>(null)
   const [confirming, setConfirming] = useState<{ sub: TechSubitemDoc; anchor: HTMLElement } | null>(null)
   const ref = useRef<HTMLDivElement>(null)
+  const viewWidth = useScrollViewWidth(ref)
 
   return (
-    <div ref={ref} className="mon-sub" role="rowgroup" aria-label={`하위 아이템 ${subitems.length}개`} style={{ '--sub-cols': template } as CSSProperties}>
+    <div
+      ref={ref}
+      className="mon-sub"
+      role="rowgroup"
+      aria-label={`하위 아이템 ${subitems.length}개`}
+      style={{ '--sub-cols': template, minWidth: viewWidth || undefined } as CSSProperties}
+    >
       <span className="mon-sub__trunk" aria-hidden />
       <div className="mon-sub__row mon-sub__row--head" role="row">
         <div className="mon-cell mon-sub__name" role="columnheader">
@@ -67,6 +75,7 @@ export function SubTable({ item, columns, nameTitle, editing, setEditing, onAdd,
             <span className="mon-text">{c.title}</span>
           </div>
         ))}
+        <div className="mon-cell mon-sub__fill" aria-hidden />
       </div>
       {subitems.map((sub) => (
         <SubRow
@@ -236,6 +245,28 @@ function SubRow({ sub, columns, editable, relationId, nameTitle, editing, setEdi
           single={c.id === relationId}
         />
       ))}
+      <div className="mon-cell mon-sub__fill" aria-hidden />
     </div>
   )
+}
+
+/**
+ * 판(.mon-scroll)에서 보이는 안쪽 폭 — 하위 표가 판 오른쪽 끝까지 줄을 늘이는 최소 폭. 하위 표는 옆으로 밀어도 왼쪽에
+ * 붙어 있으니(sticky) 표 전체 폭이 아니라 보이는 폭이다. 판 크기가 바뀌면 다시 잰다.
+ */
+function useScrollViewWidth(ref: RefObject<HTMLDivElement | null>): number {
+  const [width, setWidth] = useState(0)
+  useEffect(() => {
+    const view = ref.current?.closest<HTMLElement>('.mon-scroll')
+    if (!view) return
+    const measure = () => {
+      const style = getComputedStyle(view)
+      setWidth(view.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(view)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
 }

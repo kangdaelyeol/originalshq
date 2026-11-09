@@ -52,6 +52,16 @@ $sub-row: 34px;
   border-top: 1px solid var(--mon-line);
 }
 
+// 마지막 칸 뒤 빈 칸 — 줄을 판 오른쪽 끝까지 늘인다(머리글·줄 바탕과 아래 선은 그대로, 오른쪽 선만 없다)
+.mon-sub__fill.mon-cell {
+  padding: 0;
+  border-right: 0;
+}
+
+.mon-sub__row--head .mon-sub__fill.mon-cell {
+  border-top-right-radius: 6px;
+}
+
 // 이름 칸 — 왼쪽에 옅은 그룹 색 막대
 .mon-sub__name.mon-cell {
   justify-content: flex-start;
