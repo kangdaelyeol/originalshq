@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useDeferredValue, useMemo, useState } from 'react';
 import {
   groupIdOf,
   ITEM_NOUN,
@@ -17,12 +17,16 @@ import {
 import { BOARD_TABS, type TechBoardKey, type TechColumn, type TechItemDoc } from '@xtool-core/tech-boards';
 import { useTechBoard } from '@xtool-core/tech-boards-store';
 import { createItem } from '@xtool-core/tech-outbox';
+import { isDone } from '@xtool-core/tech-stage';
 import { applyViewRules, NAME_COLUMN, ruleReady, useBoardViews, type BoardView } from '@xtool-core/tech-views';
 import { buildGroups, type GroupBlock } from './board-model';
 import { usePref } from './prefs';
 
 // 보드 화면의 동작 — 모든 레이아웃(Monday 표·대시보드·물)이 같이 쓴다. 보기(저장된 조건·정렬·숨길 칸), 검색, 담당자로
 // 거르기, 정렬, 그룹(접기 — 이 기기에 남긴다), 새 항목. 모양(카드·표·숫자 카드)은 각 테마 화면이 그린다.
+// 완료 그룹(이름에 "완료" — core isDone과 같은 기준)은 처음에 닫아 둔다. 보통 가장 커서 다 그리면 무겁기 때문이다
+// (대시보드도 처음엔 진행 중만 보인다). 펼치면 그 그룹은 펼친 채로 기억하고, 검색·사람·조건으로 거르는 중에는 찾은 것이
+// 가려지지 않게 닫아 두지 않는다.
 
 export const boardLabel = (key: TechBoardKey) => BOARD_TABS.find(t => t.key === key)?.label ?? key;
 const PEOPLE_TYPES = new Set(['people', 'assignee']);
@@ -68,6 +72,8 @@ export interface BoardViewModel {
   allGroups: GroupBlock[];
   isCollapsed: (groupId: string) => boolean;
   toggleGroup: (groupId: string) => void;
+  /** 이 기기에 남긴 보기·접힘을 다 읽었는지 — 읽기 전에 그리면 모든 그룹을 펼쳐 한 번 더 그린다 */
+  prefsReady: boolean;
   allCollapsed: boolean;
   toggleAll: () => void;
   /** 보일 이름 — 출장업무는 이름에 적힌 전화번호를 뗀다 */
@@ -98,8 +104,10 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
   const state = useTechBoard(boardKey);
   const { meta, items } = state;
   const { views } = useBoardViews(boardKey);
-  const [viewId, setViewId] = usePref<string>(`xtool-tech:monday-view:${boardKey}`, '');
-  const [collapsed, setCollapsed] = usePref<string[]>(`xtool-tech:monday-collapsed:${boardKey}`, []);
+  const [viewId, setViewId, viewReady] = usePref<string>(`xtool-tech:monday-view:${boardKey}`, '');
+  const [collapsed, setCollapsed, collapsedReady] = usePref<string[]>(`xtool-tech:monday-collapsed:${boardKey}`, []);
+  /** 처음에 닫아 두는 완료 그룹 중 펼친 것 */
+  const [opened, setOpened, openedReady] = usePref<string[]>(`xtool-tech:monday-opened:${boardKey}`, []);
   const [query, setQuery] = useState('');
   const [person, setPerson] = useState<string | null>(null);
   const [localSort, setLocalSort] = useState<MonSort | undefined>(undefined);
@@ -113,10 +121,14 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
   const sort = localSort !== undefined ? localSort : view?.sort ?? null;
   const sortColumn = sort && sort.columnId !== NAME_COLUMN ? columns.find(c => c.id === sort.columnId) : undefined;
 
-  const needle = query.trim().toLowerCase();
+  // 입력 칸은 바로 바뀌고, 거르기·그룹 만들기는 한 박자 늦게 따라간다(글자마다 전체 항목을 다시 거르지 않게)
+  const deferredQuery = useDeferredValue(query);
+  const needle = deferredQuery.trim().toLowerCase();
   const filtered = useMemo(() => {
     if (!meta || !items) return [];
-    const ruled = view ? applyViewRules(items, view, viewColumns(meta, boardKey), item => groupIdOf(meta, item)) : items;
+    const ruled = view
+      ? applyViewRules(items, view, viewColumns(meta, boardKey), item => groupIdOf(meta, item))
+      : items;
     return ruled.filter(item => matchesItem(item, peopleColumns, needle, person));
   }, [meta, items, view, boardKey, peopleColumns, needle, person]);
   const filtering = Boolean(needle || person || view);
@@ -126,7 +138,14 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
     [meta, filtered, statusColumn, sortColumn, sort],
   );
   const groups = filtering ? allGroups.filter(g => g.items.length > 0) : allGroups;
-  const allCollapsed = groups.length > 0 && groups.every(g => collapsed.includes(g.id));
+  const hideEmptyGroups = Boolean(needle || person) || (view?.rules.some(ruleReady) ?? false);
+  const doneGroups = useMemo(
+    () => new Set(allGroups.filter(g => isDone({ stage: g.title, status: null })).map(g => g.id)),
+    [allGroups],
+  );
+  const closesByDefault = (id: string) => !hideEmptyGroups && doneGroups.has(id);
+  const isCollapsed = (id: string) => (closesByDefault(id) ? !opened.includes(id) : collapsed.includes(id));
+  const allCollapsed = groups.length > 0 && groups.every(g => isCollapsed(g.id));
 
   const people = useMemo(() => {
     const count = new Map<string, number>();
@@ -169,10 +188,17 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
     filtering,
     groups,
     allGroups,
-    isCollapsed: id => collapsed.includes(id),
-    toggleGroup: id => setCollapsed(collapsed.includes(id) ? collapsed.filter(g => g !== id) : [...collapsed, id]),
+    isCollapsed,
+    toggleGroup: id => {
+      if (closesByDefault(id)) setOpened(opened.includes(id) ? opened.filter(g => g !== id) : [...opened, id]);
+      else setCollapsed(collapsed.includes(id) ? collapsed.filter(g => g !== id) : [...collapsed, id]);
+    },
+    prefsReady: viewReady && collapsedReady && openedReady,
     allCollapsed,
-    toggleAll: () => setCollapsed(allCollapsed ? [] : groups.map(g => g.id)),
+    toggleAll: () => {
+      setCollapsed(allCollapsed ? [] : groups.map(g => g.id));
+      setOpened(allCollapsed ? [...doneGroups] : []);
+    },
     nameOf: item => (PHONE_IN_NAME_BOARDS.has(boardKey) ? splitNamePhone(item.name).label : item.name),
     updatesOf: item => (UPDATE_BOARDS.has(boardKey) && !item.draft ? item.updateCount ?? 0 : undefined),
     create: (name, groupId) => {
@@ -186,7 +212,7 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
     },
     searching: Boolean(needle || person),
     readyRules: view?.rules.filter(ruleReady).length ?? 0,
-    hideEmptyGroups: Boolean(needle || person) || (view?.rules.some(ruleReady) ?? false),
+    hideEmptyGroups,
     pickSort: columnId =>
       setLocalSort(sort?.columnId === columnId ? { columnId, dir: sort.dir === 1 ? -1 : 1 } : { columnId, dir: 1 }),
     addItem: (groupId, name) => {

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -14,6 +14,7 @@ import {
 } from 'lucide-react-native';
 import { groupColor } from '@xtool-core/monday-colors';
 import { rowKey } from '@xtool-core/monday-values';
+import type { TechColumn, TechItemDoc } from '@xtool-core/tech-boards';
 import type { BoardView, BoardViewSpec } from '@xtool-core/tech-views';
 import { numberSum, type GroupBlock } from '../../../features/board-model';
 import { useBoardView } from '../../../features/board-view';
@@ -76,7 +77,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
     setSheet(null);
   };
 
-  const onCard = cardColumns(boardKey, v.shownColumns);
+  const onCard = useMemo(() => cardColumns(boardKey, v.shownColumns), [boardKey, v.shownColumns]);
   const numberColumns = v.shownColumns.filter(c => c.type === 'numbers');
   const groups = v.hideEmptyGroups ? v.allGroups.filter(g => g.items.length > 0) : v.allGroups;
   const sections = groups.map(g => ({ group: g, data: v.isCollapsed(g.id) ? [] : g.items }));
@@ -86,6 +87,22 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
   const selection = useRecordSelection(ids);
   const actions = useSelectionActions(boardKey, selection.selected, selection.clear);
   const selecting = selection.selected.size > 0;
+
+  // 카드 누르기 — 카드(BoardCard, memo)에 늘 같은 함수를 넘겨, 하나를 고르거나 저장해도 바뀐 카드만 다시 그린다
+  const latest = useRef({ selecting, toggle: selection.toggle });
+  useEffect(() => {
+    latest.current = { selecting, toggle: selection.toggle };
+  });
+  const openCard = useCallback(
+    (key: string) =>
+      latest.current.selecting ? latest.current.toggle(key) : navigation.navigate('Item', { boardKey, itemId: key }),
+    [navigation, boardKey],
+  );
+  const pickCard = useCallback((key: string) => latest.current.toggle(key), []);
+  const openUpdates = useCallback(
+    (key: string, name: string, count?: number) => setUpdatesFor({ boardKey, itemId: key, name, count }),
+    [boardKey],
+  );
 
   const blocked = Boolean(error && !items) || (metaLoaded && !meta);
   const ready = Boolean(meta && items);
@@ -102,7 +119,8 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         sub="관리자 화면의 “지금 동기화”나 정기 동기화(하루 여섯 번)가 한 번 돌고 나면 여기에 보여요."
       />
     );
-  } else if (!ready) {
+  } else if (!ready || !v.prefsReady) {
+    // 남긴 접힘을 읽기 전에는 그리지 않는다 — 다 펼쳐 그렸다가 다시 접지 않게
     body = <BoardSkeleton />;
   } else {
     body = (
@@ -114,9 +132,14 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
+        // 미리 그리는 양 — 기본(앞뒤 화면 10장씩)은 폰에서 너무 많다. 처음엔 화면 한 장 남짓, 앞뒤 4장씩
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={9}
         ListEmptyComponent={v.hideEmptyGroups ? <EmptyState text="조건에 맞는 항목이 없어요." /> : undefined}
         renderSectionHeader={({ section }) => {
-          const groupIds = section.group.items.map(rowKey);
+          // 그룹 체크는 고르는 중에만 — 그때만 그룹의 항목 id를 센다
+          const groupIds = selecting ? section.group.items.map(rowKey) : [];
           const picked = groupIds.filter(id => selection.selected.has(id)).length;
           return (
             <GroupHeader
@@ -138,27 +161,20 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
             />
           );
         }}
-        renderItem={({ item, section }) => {
-          const key = rowKey(item);
-          return (
-            <ItemCard
-              name={v.nameOf(item)}
-              color={(section.group as GroupBlock).color}
-              columns={onCard}
-              values={item.values}
-              subitemCount={item.subitems?.length}
-              updates={v.updatesOf(item)}
-              onUpdates={() => setUpdatesFor({ boardKey, itemId: key, name: v.nameOf(item), count: v.updatesOf(item) })}
-              faded={item.draft}
-              picked={selection.selected.has(key)}
-              selecting={selecting}
-              onPress={() =>
-                selecting ? selection.toggle(key) : navigation.navigate('Item', { boardKey, itemId: key })
-              }
-              onLongPress={() => selection.toggle(key)}
-            />
-          );
-        }}
+        renderItem={({ item, section }) => (
+          <BoardCard
+            item={item}
+            name={v.nameOf(item)}
+            color={(section.group as GroupBlock).color}
+            columns={onCard}
+            updates={v.updatesOf(item)}
+            picked={selection.selected.has(rowKey(item))}
+            selecting={selecting}
+            onOpen={openCard}
+            onPick={pickCard}
+            onUpdates={openUpdates}
+          />
+        )}
         renderSectionFooter={({ section }) =>
           v.isCollapsed(section.group.id) ? null : (
             <View>
@@ -475,6 +491,49 @@ function NewItemSheet({
     </Sheet>
   );
 }
+
+/** 보드 카드 한 장 — props가 같으면 다시 그리지 않는다(누르기 함수는 화면이 늘 같은 것을 넘긴다) */
+const BoardCard = memo(function BoardCard({
+  item,
+  name,
+  color,
+  columns,
+  updates,
+  picked,
+  selecting,
+  onOpen,
+  onPick,
+  onUpdates,
+}: {
+  item: TechItemDoc;
+  name: string;
+  color: string;
+  columns: TechColumn[];
+  updates?: number;
+  picked: boolean;
+  selecting: boolean;
+  onOpen: (key: string) => void;
+  onPick: (key: string) => void;
+  onUpdates: (key: string, name: string, count?: number) => void;
+}) {
+  const key = rowKey(item);
+  return (
+    <ItemCard
+      name={name}
+      color={color}
+      columns={columns}
+      values={item.values}
+      subitemCount={item.subitems?.length}
+      updates={updates}
+      onUpdates={() => onUpdates(key, name, updates)}
+      faded={item.draft}
+      picked={picked}
+      selecting={selecting}
+      onPress={() => onOpen(key)}
+      onLongPress={() => onPick(key)}
+    />
+  );
+});
 
 const styles = (p: MonPalette) => ({
   screen: { flex: 1, backgroundColor: p.bg },
