@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { TechBoardKey } from '@xtool-core/tech-boards'
 import { useTechBoard } from '@xtool-core/tech-boards-store'
+import { editItem } from '@xtool-core/tech-outbox'
 import { cx } from '@/ohq-ui/lib/cx'
 import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
@@ -11,7 +12,14 @@ import { useSelectionActions } from '../board/use-selection-actions'
 import { useCenterOnMain } from '../../lib/use-center-on-main'
 import { groupColor } from './monday-colors'
 import { MonPopover } from './monday-popover'
-import { selectedByBoard, SelectionContext, selectionKey, type SelectionState } from './monday-selection'
+import {
+  selectedByBoard,
+  SelectionContext,
+  selectionKey,
+  subSelectedByItem,
+  subSelectionKey,
+  type SelectionState,
+} from './monday-selection'
 import { ITEM_NOUN } from './monday-values'
 
 /** 줄 선택 상태를 아래 표에 나눠 준다. */
@@ -34,8 +42,36 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
       return next
     })
   }, [])
-  const clear = useCallback(() => setSelected(new Set()), [])
-  const value = useMemo<SelectionState>(() => ({ selected, set, remove, clear }), [selected, set, remove, clear])
+  const [subSelected, setSubSelected] = useState<ReadonlySet<string>>(new Set())
+  const setSubs = useCallback((boardKey: TechBoardKey, itemId: string, subIds: string[], on: boolean) => {
+    setSubSelected((prev) => {
+      const next = new Set(prev)
+      for (const id of subIds) {
+        if (on) next.add(subSelectionKey(boardKey, itemId, id))
+        else next.delete(subSelectionKey(boardKey, itemId, id))
+      }
+      return next
+    })
+  }, [])
+  const keepSubs = useCallback((boardKey: TechBoardKey, itemId: string, live: readonly string[]) => {
+    setSubSelected((prev) => {
+      const prefix = subSelectionKey(boardKey, itemId, '')
+      const alive = new Set(live)
+      const stale = [...prev].filter((key) => key.startsWith(prefix) && !alive.has(key.slice(prefix.length)))
+      if (stale.length === 0) return prev
+      const next = new Set(prev)
+      for (const key of stale) next.delete(key)
+      return next
+    })
+  }, [])
+  const clear = useCallback(() => {
+    setSelected(new Set())
+    setSubSelected(new Set())
+  }, [])
+  const value = useMemo<SelectionState>(
+    () => ({ selected, set, remove, subSelected, setSubs, keepSubs, clear }),
+    [selected, set, remove, subSelected, setSubs, keepSubs, clear],
+  )
   return (
     <SelectionContext.Provider value={value}>
       {children}
@@ -46,7 +82,7 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
 
 /**
  * 선택 막대 — 줄을 고르면 화면 아래 가운데에 뜬다(Monday). "N 고객명 선택"과 우리가 할 수
- * 있는 것만: 그룹 이동(한 보드만 골랐을 때), 삭제(Monday 휴지통), 닫기. 복제·내보내기·보관함·
+ * 있는 것만: 그룹 이동(한 보드의 항목만 골랐을 때), 삭제(Monday 휴지통 — 하위 아이템도), 닫기. 복제·내보내기·보관함·
  * 변환 등 Monday의 나머지는 우리에게 없어서 뺐다. 옮기기·지우기는 표에 바로 보이고(저장 대기열)
  * Monday에는 뒤에서 쓴다. 하는 일은 대시보드·물 고르기 막대와 같은 useSelectionActions(여러 보드는 보드마다
  * 지운다) — 옮긴 뒤에도 고른 채로 둔다.
@@ -54,13 +90,27 @@ export function SelectionProvider({ children }: { children: ReactNode }) {
 function SelectionBar({ state }: { state: SelectionState }) {
   const root = usePortalRoot()
   const actions = useSelectionActions({ byBoard: selectedByBoard(state.selected), clear: state.clear })
-  const { count, moveAnchor } = actions
-  const single = actions.moveBoard
+  const { moveAnchor } = actions
+  // 하위 아이템 — 지우기만(이동은 항목만 골랐을 때)
+  const subs = subSelectedByItem(state.subSelected)
+  const subCount = state.subSelected.size
+  const count = actions.count + subCount
+  const single = subCount === 0 ? actions.moveBoard : null
   // 창 가운데가 아니라 본문(사이드바 오른쪽) 가운데에
   const barRef = useCenterOnMain<HTMLDivElement>(count > 0)
 
   if (!root || count === 0) return null
-  const noun = single ? ITEM_NOUN[single] : '항목'
+  const noun = actions.count === 0 ? '하위 아이템' : single ? ITEM_NOUN[single] : '항목'
+
+  // 지우기 — 하위 아이템은 항목마다 한 번에(같이 지우는 항목의 하위 아이템은 항목과 함께 사라져서 뺀다), 항목은
+  // 고르기 막대 공용 동작으로. 둘 다 표에서 바로 빠지고 Monday에는 뒤에서 쓴다.
+  const confirmDelete = () => {
+    for (const [parent, { boardKey, itemId, subIds }] of subs) {
+      if (state.selected.has(parent)) continue
+      editItem(boardKey, itemId, { subitems: { remove: subIds } }, `하위 아이템 ${subIds.length}개 삭제`)
+    }
+    actions.confirmDelete()
+  }
 
   return createPortal(
     <>
@@ -98,7 +148,7 @@ function SelectionBar({ state }: { state: SelectionState }) {
         message={DELETE_CONFIRM_MESSAGE}
         confirmLabel="삭제"
         onCancel={actions.cancelDelete}
-        onConfirm={actions.confirmDelete}
+        onConfirm={confirmDelete}
       />
     </>,
     root,

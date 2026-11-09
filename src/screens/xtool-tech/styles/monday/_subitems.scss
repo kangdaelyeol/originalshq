@@ -1,10 +1,10 @@
-// 하위 아이템 — 줄 아래로 들여 펼친다. 이름 칸 갈매기 밑에서 내려오는 줄기에서 줄마다 둥글게
-// 꺾인 가지가 나온다(Monday). 줄기 x = 그룹 막대 6 + 이름 칸 여백 10 + 체크박스 16·여백 2·간격 6
-// + 갈매기 반 폭 10.
+// 하위 아이템 — 줄 아래로 들여 펼친다. 줄 맨 왼쪽(이름 칸 그룹 색 막대 6px 바로 오른쪽)에서 내려오는 줄기에서
+// 줄마다 둥글게 꺾인 가지가 나온다(Monday). 줄기는 부모 줄 아래부터 다음 줄 위까지 이어진다. 하위 표는 부모 줄
+// 체크박스 바로 뒤(펼치기 단추 자리)에서 시작하고, 맨 앞에 그룹 색 막대가 붙은 고르기 칸이 있다(Monday).
 @use 'table';
 
-$sub-trunk: 49.5px;
-$sub-indent: 76px;
+$sub-trunk: 6px;
+$sub-indent: 32px;
 $sub-row: 34px;
 
 .mon-sub {
@@ -19,8 +19,8 @@ $sub-row: 34px;
 .mon-sub__trunk {
   position: absolute;
   top: 0;
-  // 마지막 줄의 가지가 꺾이는 데서 끝난다 — 그 줄 가지가 나머지를 그린다.
-  bottom: 14px + $sub-row;
+  // 하위 표 끝까지 — 아래 줄의 그룹 색 막대와 이어진다(Monday).
+  bottom: 0;
   left: $sub-trunk;
   border-left: 1px solid var(--mon-line-strong);
 }
@@ -85,17 +85,43 @@ $sub-row: 34px;
   border-top-right-radius: 6px;
 }
 
-// 이름 칸 — 왼쪽에 옅은 그룹 색 막대
+// 고르기 칸 — 맨 앞, 왼쪽에 옅은 그룹 색 막대(Monday)
+.mon-sub__check.mon-cell {
+  padding: 0;
+  border-left: 6px solid color-mix(in srgb, var(--group) 45%, var(--mon-cell));
+
+  .mon-check-row {
+    margin: 0;
+  }
+}
+
+.mon-sub__row--head .mon-sub__check.mon-cell {
+  border-top-left-radius: 6px;
+}
+
+// "+ 추가" 줄의 빈 체크 자리 — 고를 수 없어 흐리게(Monday)
+.mon-sub__ghost-check {
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--mon-control);
+  border-radius: 3px;
+  opacity: 0.4;
+}
+
+// 고른 줄 — 항목 줄과 같은 선택 색(상태 칸은 라벨 색 그대로)
+.mon-sub__row.is-selected > .mon-cell:not(.mon-cell--status),
+.mon-sub__row.is-selected:hover > .mon-cell:not(.mon-cell--status) {
+  background: var(--mon-selected-row);
+}
+
 .mon-sub__name.mon-cell {
   justify-content: flex-start;
   padding-left: 12px;
-  border-left: 6px solid color-mix(in srgb, var(--group) 45%, var(--mon-cell));
   text-align: left;
 }
 
 .mon-sub__row--head .mon-sub__name.mon-cell {
   justify-content: center;
-  border-top-left-radius: 6px;
 }
 
 .mon-sub__row--item:hover > .mon-cell:not(.mon-cell--status) {
@@ -154,8 +180,11 @@ $sub-row: 34px;
   }
 }
 
-.mon-sub__row--add .mon-sub__name.mon-cell {
-  grid-column: 1 / -1;
-  padding-left: 6px;
+.mon-sub__row--add .mon-sub__check.mon-cell {
   border-bottom-left-radius: 6px;
+}
+
+.mon-sub__row--add .mon-sub__name.mon-cell {
+  grid-column: 2 / -1;
+  padding-left: 6px;
 }

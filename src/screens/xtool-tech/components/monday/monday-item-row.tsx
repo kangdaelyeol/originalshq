@@ -139,6 +139,7 @@ export const ItemRow = memo(function ItemRow({ item, ...props }: ItemRowProps) {
       </div>
       {open && subColumns && (
         <SubTable
+          boardKey={props.boardKey}
           item={item}
           columns={subColumns}
           nameTitle={props.subNameTitle}
