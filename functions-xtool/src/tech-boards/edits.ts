@@ -63,7 +63,7 @@ export async function refreshItems(
 }
 
 /** Monday에서 받은 item(다시 읽었거나 쓰기 응답에 실려 온 것)을 캐시에 쓴다. */
-async function saveRawItems(
+export async function saveRawItems(
   db: Firestore,
   source: TechBoardSource,
   boardMeta: TechBoardMeta | null,

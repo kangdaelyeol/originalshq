@@ -9,6 +9,7 @@ import {
 } from './firestore'
 import { toItemDocs } from './items'
 import { fetchMondayUsers, fetchTechBoard } from './monday-api'
+import { seedRuleStates } from './rules'
 import { TechBoardKey, TechSyncResult } from './types'
 
 export interface TechBoardsSyncSummary {
@@ -64,6 +65,16 @@ export async function syncTechBoard(
       syncedAt: result.at,
       lastSync: result,
     })
+    // 규칙 기록이 없는 item에 지금 값을 기록해 둔다(rules.ts). 실패해도
+    // 동기화는 성공으로 둔다.
+    await seedRuleStates(
+      db,
+      source.key,
+      { columns: toTechColumns(raw.columns, keyOfBoard), groups: raw.groups },
+      docs,
+    ).catch((error) =>
+      logger.warn(`규칙 기록 채우기 실패(${source.key}):`, error),
+    )
     return result
   } catch (error) {
     logger.error(`기술 보드 동기화 실패(${source.key}):`, error)

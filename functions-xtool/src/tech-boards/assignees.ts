@@ -63,15 +63,18 @@ async function createAssigneeColumn(
   return data.create_column.id
 }
 
-/** 사람 칸 한 칸에 보이는 이름들(글자 그대로) — Monday가 지운 계정("삭제된 팀원")은 뺀다. */
-function namesOf(
-  cell: TechRawItem['column_values'][number] | undefined,
-): string[] {
-  const names = (cell?.text ?? '').split(',').map((s) => s.trim())
+/** 사람 칸 글자에 보이는 이름들(글자 그대로) — Monday가 지운 계정("삭제된 팀원")은
+ * 빼고, 겹친 이름은 하나만. 담당자 규칙(rules.ts)도 쓴다. */
+export function peopleNames(text: string): string[] {
+  const names = text.split(',').map((s) => s.trim())
   return [
     ...new Set(names.filter((n) => n && !/^삭제된 팀원$/.test(n))),
   ]
 }
+
+/** 사람 칸 한 칸에 보이는 이름들 */
+const namesOf = (cell: TechRawItem['column_values'][number] | undefined) =>
+  peopleNames(cell?.text ?? '')
 
 export interface AssigneeCopyResult {
   column: { id: string | null; title: string; created: boolean }

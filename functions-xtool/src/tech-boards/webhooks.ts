@@ -5,6 +5,7 @@ import { refreshItems } from './edits'
 import { getBoardMeta, saveBoardMeta } from './firestore'
 import { createWebhook, deleteWebhook } from './monday-api'
 import { fillPhoneFromName, PHONE_COPY } from './phones'
+import { applyBoardRules } from './rules'
 import { refreshItemUpdates } from './updates'
 
 // Monday webhook — Monday에서 직접 고친 내용을 몇 초 안에 캐시에 반영한다.
@@ -80,6 +81,13 @@ export async function handleWebhookEvent(
   const refreshed = await refreshItems(db, apiKey, source, [itemId], meta)
   await updates
   const doc = refreshed.get(itemId)
+  // 보드 규칙(rules.ts) — Monday 자동화 대신 날짜·그룹·담당자 칸을 맞춘다. 실패해도 캐시는
+  // 맞췄으니 알림 처리는 성공으로 둔다.
+  if (doc && meta) {
+    await applyBoardRules(db, apiKey, source, meta, doc).catch((error) =>
+      logger.error(`보드 규칙 처리 실패(${itemId}):`, error),
+    )
+  }
   // 하위 아이템 이벤트(parentItemId)는 부모 이름이 바뀐 게 아니라 빼고 본다.
   if (
     doc &&
