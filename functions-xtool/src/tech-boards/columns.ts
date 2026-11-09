@@ -22,8 +22,36 @@ const WRITABLE_TYPES = new Set([
   'location',
 ])
 
-/** 상태·드롭다운 라벨 — 설정 JSON에서 화면에 보이는 순서대로. */
+/** 새 설정(settings)의 상태 라벨 — 끈 라벨(is_deactivated)은 뺀다.
+ * 새 설정이 없으면 undefined. */
+function activeStatusLabels(column: TechRawColumn): string[] | undefined {
+  let settings = column.settings
+  if (typeof settings === 'string') {
+    try {
+      settings = JSON.parse(settings)
+    } catch {
+      return undefined
+    }
+  }
+  const labels = (settings as { labels?: unknown } | null | undefined)?.labels
+  if (!Array.isArray(labels)) return undefined
+  type Label = { label?: string; index?: number; is_deactivated?: boolean }
+  return (labels as Label[])
+    .filter((l) => !l.is_deactivated && l.label?.trim())
+    .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    .map((l) => l.label as string)
+}
+
+/**
+ * 상태·드롭다운 라벨 — 설정 JSON에서 화면에 보이는 순서대로. 상태는 Monday에서
+ * 끈 라벨을 뺀다(고르면 Monday가 "label has been deactivated"로 거절한다).
+ * 그 표시는 새 설정(settings)에만 있어서 있으면 그것을 쓴다.
+ */
 export function parseOptions(column: TechRawColumn): string[] | undefined {
+  if (column.type === 'status') {
+    const active = activeStatusLabels(column)
+    if (active) return active
+  }
   if (!column.settings_str) return undefined
   let settings: Record<string, unknown>
   try {

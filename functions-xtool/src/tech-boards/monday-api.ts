@@ -7,8 +7,11 @@ import { MondayColumn } from '../monday/types'
 const PAGE_SIZE = 200
 
 export interface TechRawColumn extends MondayColumn {
-  /** 상태·드롭다운 라벨이 담긴 설정(JSON 문자열) */
+  /** 상태·드롭다운 라벨이 담긴 설정(JSON 문자열) — 2025-10부터 낡은 필드 */
   settings_str: string | null
+  /** 새 설정(JSON) — 상태 라벨마다 is_deactivated(Monday에서 끈 라벨)가
+   * 있다. settings_str에는 이 표시가 없다. */
+  settings?: unknown
 }
 
 export interface TechRawItem extends RawMondayItem {
@@ -92,7 +95,7 @@ const BOARD_QUERY = `
     boards(ids: [$boardId]) {
       id
       name
-      columns { id title type settings_str }
+      columns { id title type settings_str settings }
       groups { id title }
     }
   }
@@ -157,7 +160,10 @@ export async function fetchTechBoard(
     }>(
       apiKey,
       `query TechSubBoard($boardId: ID!) {
-        boards(ids: [$boardId]) { id columns { id title type settings_str } }
+        boards(ids: [$boardId]) {
+          id
+          columns { id title type settings_str settings }
+        }
       }`,
       { boardId: subId },
     )
