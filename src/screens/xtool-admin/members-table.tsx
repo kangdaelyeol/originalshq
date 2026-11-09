@@ -1,5 +1,5 @@
 import { KeyRound, Search, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   GROUP_ROLES,
   POSITIONS,
@@ -24,7 +24,7 @@ import { Avatar, Button, GlassCard, StatusPill } from '@/screens/xtool-tech/comp
 
 
 // 표 위 팀 버튼 — 전체·팀별(TEAMS)·관리자. 검색과 같이 걸린다.
-type MemberFilter = 'all' | TeamKey | 'admin'
+export type MemberFilter = 'all' | TeamKey | 'admin'
 
 const FILTERS: readonly { key: MemberFilter; label: string; match: (m: XtoolMember) => boolean }[] = [
   { key: 'all', label: '전체', match: () => true },
@@ -40,12 +40,21 @@ function statusOf(member: XtoolMember) {
   return { tone: 'good', label: '활성' } as const
 }
 
+interface MembersTableProps {
+  selfEmail: string
+  /** 강조할 사람(이메일) — 시스템 지도에서 자리를 누르고 왔을 때. 그 줄로 스크롤하고 칠한다 */
+  highlight?: string | null
+  /** 처음 팀 버튼 — 시스템 지도의 +N에서 왔을 때 */
+  initialFilter?: MemberFilter
+}
+
 /** 등록된 구성원 — 실시간. 자기 자신의 관리자 권한·정지·삭제는 막는다(규칙도 막는다). */
-export function MembersTable({ selfEmail }: { selfEmail: string }) {
+export function MembersTable({ selfEmail, highlight = null, initialFilter = 'all' }: MembersTableProps) {
   const [members, setMembers] = useState<XtoolMember[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [filter, setFilter] = useState<MemberFilter>('all')
+  const [filter, setFilter] = useState<MemberFilter>(initialFilter)
+  const tableRef = useRef<HTMLDivElement>(null)
   const [confirming, setConfirming] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
   const photoOf = usePhotoOf()
@@ -60,6 +69,18 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
       watchMembers(setMembers, (e) => setError(firestoreErrorMessage(e))),
     [],
   )
+
+  // 지도에서 고른 사람 — 목록이 처음 들어오면 그 줄을 화면 가운데로(카드가 나타나는 움직임 뒤에)
+  const loaded = members !== null
+  useEffect(() => {
+    if (!highlight || !loaded) return
+    const id = window.setTimeout(() => {
+      const row = tableRef.current?.querySelector(`tr[data-email="${CSS.escape(highlight)}"]`)
+      const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches
+      row?.scrollIntoView({ block: 'center', behavior: reduced ? 'auto' : 'smooth' })
+    }, 120)
+    return () => window.clearTimeout(id)
+  }, [highlight, loaded])
 
 
   const run = async (email: string, task: () => Promise<void>) => {
@@ -145,7 +166,7 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
           )
         })}
       </div>
-      <div className="table-wrap">
+      <div ref={tableRef} className="table-wrap">
         <table className="table table--roomy">
           <thead>
             <tr>
@@ -174,7 +195,12 @@ export function MembersTable({ selfEmail }: { selfEmail: string }) {
               const status = statusOf(member)
               const busy = pending === member.email
               return (
-                <tr key={member.email} className={cx(member.status === 'disabled' && 'is-disabled')} aria-busy={busy}>
+                <tr
+                  key={member.email}
+                  data-email={member.email}
+                  className={cx(member.status === 'disabled' && 'is-disabled', member.email === highlight && 'is-highlighted')}
+                  aria-busy={busy}
+                >
                   <td>
                     <div className="person">
                       <Avatar initials={initialsOf(member.name, member.email)} color="rgba(255, 255, 255, 0.12)" photo={photoOf(member.name)} />

@@ -2,6 +2,8 @@ import {
   Fragment,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -10,11 +12,19 @@ import {
   type Ref,
 } from 'react'
 import { cx } from '../../../lib/cx'
-import { BrainEngine, type BrainFocus, type BrainMode } from './brain-engine'
+import { BrainEngine, type BrainMode } from './brain-engine'
 import { BrainHint } from './brain-hint'
+import {
+  brainWorld,
+  resolveHub,
+  type BrainFocus,
+  type BrainMapData,
+  type BrainSlot,
+  type BrainStop,
+  type BrainWorld,
+} from './brain-map'
 import { BrainStatusBar } from './brain-status-bar'
 import { CoreNode } from './core-node'
-import { DEPARTMENTS, WAITING_COUNT, WALK_ORDER, type BrainStop, type DepartmentId } from './design14-data'
 import { HubNode, type NodeState } from './hub-node'
 import { SeatNode } from './seat-node'
 import { StarField } from './star-field'
@@ -49,6 +59,8 @@ export interface BrainSceneHandle {
  */
 export interface BrainSceneProps {
   ref?: Ref<BrainSceneHandle>
+  /** 그릴 지도 — 허브·자리·핵·YOU·글(brain-map.ts). D14 견본은 D14_MAP */
+  map: BrainMapData
   /** 지금 초점(제어) — 안 주면 안에서 관리 */
   focus?: BrainFocus
   defaultFocus?: BrainFocus
@@ -63,7 +75,9 @@ export interface BrainSceneProps {
   /** 지도(기본) 또는 음성 모드 화면 */
   mode?: BrainMode
   /** 초점 부서의 머리 자리를 눌렀을 때(음성 모드로 들어가기 등) — true를 돌려주면 자리 강조를 하지 않는다 */
-  onHeadSelect?: (department: DepartmentId) => boolean | void
+  onHeadSelect?: (hubId: string) => boolean | void
+  /** 초점 허브의 자리(+N·빈 자리 포함)를 눌렀을 때 — true를 돌려주면 자리 강조를 하지 않는다 */
+  onSeatSelect?: (hubId: string, slot: BrainSlot) => boolean | void
   /** 음성 모드에서 Esc를 눌렀을 때 */
   onEscape?: () => void
   /** 위 줄(BRAIN · LIVE · 숫자) */
@@ -79,6 +93,7 @@ export interface BrainSceneProps {
 /** 회사 두뇌 지도 — 전체 보기(천천히 돈다) ↔ 부서 초점(그 부서가 정면으로 돌아오고 자리 이름이 뜬다). */
 export function BrainScene({
   ref,
+  map,
   focus,
   defaultFocus = 'overview',
   onFocusChange,
@@ -90,6 +105,7 @@ export function BrainScene({
   screen,
   mode = 'map',
   onHeadSelect,
+  onSeatSelect,
   onEscape,
   statusBar = true,
   hint = true,
@@ -112,9 +128,25 @@ export function BrainScene({
   const engineRef = useRef<BrainEngine | null>(null)
   const currentRef = useRef(current)
 
+  // 허브마다 그릴 칸(자르기·배치)과 엔진 세계
+  const hubs = useMemo(() => map.hubs.map((hub) => resolveHub(hub, map)), [map])
+  const world = useMemo(() => brainWorld(map, hubs), [map, hubs])
+  const worldRef = useRef<BrainWorld>(world)
+  const worldKey = useRef('')
+
   useEffect(() => {
     currentRef.current = current
   }, [current])
+
+  // 데이터가 바뀌면(구성원 실시간 등) React가 노드를 그린 뒤, 칠하기 전에 엔진이 자리를 다시 잡는다.
+  // 자리 모양과 칸 키(같은 자리에 다른 사람이면 노드가 새로 생긴다)가 같으면 건너뛴다
+  useLayoutEffect(() => {
+    worldRef.current = world
+    const key = JSON.stringify([world, hubs.map((h) => h.slots.map((s) => s.key))])
+    if (key === worldKey.current) return
+    worldKey.current = key
+    engineRef.current?.setWorld(world)
+  }, [world, hubs])
 
   useEffect(() => {
     const root = viewRef.current
@@ -126,6 +158,7 @@ export function BrainScene({
     const engine = new BrainEngine(
       { root, canvas, ring, haze, nodes, headAnchor: headRef.current, youAnchor: youRef.current },
       { reduced },
+      worldRef.current,
     )
     engineRef.current = engine
     return () => {
@@ -162,14 +195,15 @@ export function BrainScene({
   }
 
   const walk = (step: 1 | -1) => {
+    const order = world.walk
     const from = currentRef.current
     let next: BrainStop
-    if (from === 'overview') next = engineRef.current?.nearestStop() ?? WALK_ORDER[1]
+    if (from === 'overview') next = engineRef.current?.nearestStop() ?? order[1] ?? order[0]
     else {
-      const n = WALK_ORDER.length
-      next = WALK_ORDER[(WALK_ORDER.indexOf(from) + step + n) % n]
+      const n = order.length
+      next = order[(order.indexOf(from) + step + n) % n]
     }
-    select(next)
+    if (next) select(next)
   }
 
   useImperativeHandle(ref, () => ({
@@ -226,7 +260,7 @@ export function BrainScene({
         tabIndex={0}
         role="group"
         aria-roledescription="brain map"
-        aria-label="BRAIN — ← → walk the departments, Esc for the whole brain"
+        aria-label={map.label ?? 'BRAIN — ← → walk the departments, Esc for the whole brain'}
         onKeyDown={onKeyDown}
         onClick={onClick}
       >
@@ -238,6 +272,9 @@ export function BrainScene({
         <div ref={nodesRef} className="d14-view__nodes">
           <div className="d14-node" data-d14-node="core">
             <CoreNode
+              name={map.core.name}
+              sub={map.core.sub}
+              label={map.core.label}
               dim={current !== 'overview'}
               tabIndex={-1}
               onSelect={() => {
@@ -246,14 +283,15 @@ export function BrainScene({
               }}
             />
           </div>
-          {DEPARTMENTS.map((d) => {
+          {hubs.map(({ hub: d, slots }) => {
             const state = stateOf(d.id)
             const open = state === 'focused'
+            const headKey = `${d.id}:~head`
             return (
               <Fragment key={d.id}>
                 <div className="d14-node" data-d14-node={`hub:${d.id}`}>
                   <HubNode
-                    count={d.seats.length + 1}
+                    count={d.count ?? d.seats.length + 1}
                     name={d.name}
                     sub={d.sub}
                     state={state}
@@ -271,44 +309,56 @@ export function BrainScene({
                   <SeatNode
                     head
                     name={d.head.name}
+                    tag={d.head.tag}
+                    sub={d.head.sub}
                     status="working"
                     labelled={open}
                     dim={state === 'dim'}
-                    selected={open && selected === `${d.id}:0`}
+                    selected={open && selected === headKey}
                     tabIndex={open ? 0 : -1}
                     onSelect={() => {
                       interact()
                       select(d.id)
                       if (open && onHeadSelect?.(d.id)) return
-                      setSelected(`${d.id}:0`)
+                      setSelected(headKey)
                     }}
                   />
                 </div>
-                {d.seats.map((s, i) => (
-                  <div key={s.name} className="d14-node" data-d14-node={`seat:${d.id}:${i + 1}`}>
-                    <SeatNode
-                      name={s.name}
-                      status={s.status}
-                      progress={s.progress}
-                      side={s.at[0] < 0 ? 'left' : 'right'}
-                      labelled={open}
-                      dim={state === 'dim'}
-                      selected={open && selected === `${d.id}:${i + 1}`}
-                      tabIndex={open ? 0 : -1}
-                      onSelect={() => {
-                        interact()
-                        select(d.id)
-                        setSelected((cur) => (cur === `${d.id}:${i + 1}` && open ? null : `${d.id}:${i + 1}`))
-                      }}
-                    />
-                  </div>
-                ))}
+                {slots.map((s, i) => {
+                  const key = `${d.id}:${s.key}`
+                  return (
+                    <div key={s.key} className="d14-node" data-d14-node={`seat:${d.id}:${i + 1}`}>
+                      <SeatNode
+                        name={s.name}
+                        status={s.status}
+                        statusText={s.note ?? (s.kind === 'seat' ? map.statusText[s.status] : '')}
+                        variant={s.kind === 'seat' ? undefined : s.kind}
+                        badge={s.kind === 'more' ? `+${s.rest}` : undefined}
+                        progress={s.progress}
+                        side={s.at[0] < 0 ? 'left' : 'right'}
+                        labelled={open}
+                        dim={state === 'dim'}
+                        selected={open && selected === key}
+                        tabIndex={open ? 0 : -1}
+                        onSelect={() => {
+                          interact()
+                          select(d.id)
+                          if (open && onSeatSelect?.(d.id, s)) return
+                          setSelected((cur) => (cur === key && open ? null : key))
+                        }}
+                      />
+                    </div>
+                  )
+                })}
               </Fragment>
             )
           })}
           <div className="d14-node" data-d14-node="you">
             <YouNode
-              badge={WAITING_COUNT}
+              badge={map.you.badge}
+              name={map.you.name}
+              sub={map.you.sub}
+              label={map.you.label}
               state={stateOf('you')}
               onSelect={() => {
                 interact()
@@ -335,9 +385,26 @@ export function BrainScene({
             {youSlot && <div className="d14-anchor__you">{youSlot}</div>}
           </div>
           {screen && <div className="d14-overlay__screen">{screen}</div>}
-          {statusBar && <BrainStatusBar autoTour={autoTour} onAutoTourChange={onAutoTourChange} />}
+          {statusBar && (
+            <BrainStatusBar
+              brand={map.bar?.brand}
+              live={map.bar?.live}
+              stats={map.bar?.stats}
+              autoTour={autoTour}
+              onAutoTourChange={onAutoTourChange}
+            />
+          )}
           {overlay && <div className="d14-overlay__top">{overlay}</div>}
-          {hint && <BrainHint className="d14-overlay__hint" />}
+          {hint && (
+            <BrainHint
+              className="d14-overlay__hint"
+              statusText={map.statusText}
+              statusOrder={map.statusOrder}
+              counts={map.hint.counts}
+              walk={map.hint.walk}
+              click={map.hint.click}
+            />
+          )}
         </div>
       </div>
     </div>

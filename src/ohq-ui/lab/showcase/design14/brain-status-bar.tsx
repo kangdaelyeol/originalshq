@@ -1,6 +1,13 @@
+import { Fragment } from 'react'
 import { cx } from '../../../lib/cx'
 
 interface BrainStatusBarProps {
+  /** 왼쪽 이름 */
+  brand?: string
+  /** 깜빡이는 알약 글 */
+  live?: string
+  /** 신호 수 대신 보일 값들(주면 엔진이 고치는 신호 수는 빠진다) */
+  stats?: readonly { value: string; unit: string }[]
   /** 분당 신호 수 — 장면 안에서는 엔진이 600ms마다 글자를 바로 고친다 */
   signals?: number
   /** 날아가는 중인 신호 수 */
@@ -18,6 +25,9 @@ const fmt = (n: number) => n.toLocaleString('en-US')
  * 영상 F200(t=6.6): 줄 높이 95px(#0b0908 띠), 글자 가운데 y=47, 숫자는 흰 고정폭, 단위는 회색.
  */
 export function BrainStatusBar({
+  brand = 'BRAIN',
+  live = 'LIVE',
+  stats,
   signals = 2078,
   inFlight = 56,
   autoTour,
@@ -27,20 +37,37 @@ export function BrainStatusBar({
   return (
     <div className={cx('d14-bar', className)}>
       <div className="d14-bar__left">
-        <span className="d14-bar__brand">BRAIN</span>
+        <span className="d14-bar__brand">{brand}</span>
         <span className="d14-bar__live">
           <i aria-hidden="true" />
-          LIVE
+          {live}
         </span>
-        <span className="d14-bar__stat">
-          <b data-d14-signals="">{fmt(signals)}</b> SIGNALS/MIN
-        </span>
-        <span className="d14-bar__sep" aria-hidden="true">
-          ·
-        </span>
-        <span className="d14-bar__stat">
-          <b data-d14-flight="">{fmt(inFlight)}</b> IN FLIGHT
-        </span>
+        {stats ? (
+          stats.map((stat, i) => (
+            <Fragment key={stat.unit}>
+              {i > 0 && (
+                <span className="d14-bar__sep" aria-hidden="true">
+                  ·
+                </span>
+              )}
+              <span className="d14-bar__stat">
+                <b>{stat.value}</b> {stat.unit}
+              </span>
+            </Fragment>
+          ))
+        ) : (
+          <>
+            <span className="d14-bar__stat">
+              <b data-d14-signals="">{fmt(signals)}</b> SIGNALS/MIN
+            </span>
+            <span className="d14-bar__sep" aria-hidden="true">
+              ·
+            </span>
+            <span className="d14-bar__stat">
+              <b data-d14-flight="">{fmt(inFlight)}</b> IN FLIGHT
+            </span>
+          </>
+        )}
       </div>
       {onAutoTourChange && (
         <button

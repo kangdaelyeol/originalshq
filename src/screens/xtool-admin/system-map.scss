@@ -1,0 +1,201 @@
+// 시스템 지도 탭 — D14 두뇌 지도 장면(ohq-ui lab design14)을 관리 화면 카드 안 어두운 별 판에 그린다.
+// 장면 규칙·색 토큰은 design14-map.scss(.ohq-ui .d14-theme)에서 오고, 여기엔 판·글꼴·목록 보기만 둔다.
+// 판은 외관(유리·물·Monday)과 상관없이 D14 색 그대로다.
+.xtool-admin {
+  .system-map__stage {
+    position: relative;
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--d14-bg);
+    color: var(--d14-text-1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+    isolation: isolate;
+  }
+
+  // 한글은 Pretendard — D14의 DM Sans는 견본에서만. 위 줄도 고정폭 대신 같은 글꼴
+  .system-map__stage.d14-theme {
+    --d14-font: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    --d14-mono: var(--d14-font);
+  }
+
+  // 한글에 넓은 자간은 어색하다 — 영상 대문자용 자간을 줄인다
+  .system-map__scene {
+    .d14-bar__live,
+    .d14-bar__stat {
+      letter-spacing: 0.04em;
+    }
+
+    .d14-bar__stat b {
+      letter-spacing: 0;
+    }
+
+    .d14-hub__name,
+    .d14-core__name {
+      letter-spacing: 0;
+    }
+
+    .d14-seat__tag {
+      letter-spacing: 0.02em;
+    }
+  }
+
+  // ── 목록 보기(폰 폭이면 이것만) ───────────────────────────────────────────────
+  .system-map__stage--list {
+    padding: 14px 14px 16px;
+    font-family: var(--d14-font);
+    font-size: 9px; // 범례 .d14-hint(1.45em) = 13px
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(52, 28, 19, 0.75), transparent 100%), var(--d14-bg);
+  }
+
+  .system-map-list__legend {
+    justify-content: flex-start;
+    row-gap: 4px;
+    margin-bottom: 12px;
+  }
+
+  .system-map-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .system-map-list__hub {
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #2a1f19;
+    border-radius: 12px;
+    background: rgba(17, 13, 11, 0.85);
+  }
+
+  .system-map-list__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  // 허브 고리 — 지도의 부서 고리(주황 테두리·어두운 속) 작게
+  .system-map-list__ring {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--d14-orange-ring);
+    border-radius: 50%;
+    background: #141010;
+    font-size: 12px;
+    font-weight: 600;
+    color: #bdb6b0;
+  }
+
+  .system-map-list__title {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    strong {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--d14-text-1);
+    }
+
+    span {
+      font-size: 11.5px;
+      color: var(--d14-text-3);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  .system-map-list__rule {
+    margin: 8px 0 6px;
+    font-size: 12px;
+    color: var(--d14-text-3);
+  }
+
+  .system-map-list__empty {
+    margin: 0;
+    padding: 6px 8px;
+    font-size: 12.5px;
+    color: var(--d14-text-4);
+  }
+
+  .system-map-list__people {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .system-map-list__person {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: rgba(255, 140, 90, 0.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid rgba(255, 150, 100, 0.7);
+      outline-offset: 1px;
+    }
+  }
+
+  // 점 — 지도 자리·범례와 같은 색(working 주황 · runs itself 옅은 고리 · 조치 필요 노랑 · 정지 올리브 · 준비 중 숯불)
+  .system-map-list__dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--d14-orange);
+  }
+
+  .system-map-list__person[data-status='runs-itself'] .system-map-list__dot {
+    box-shadow: 0 0 0 2px rgba(255, 118, 82, 0.45);
+  }
+
+  .system-map-list__person[data-status='waiting'] .system-map-list__dot {
+    background: var(--d14-yellow);
+  }
+
+  .system-map-list__person[data-status='not-running'] .system-map-list__dot {
+    background: var(--d14-olive);
+  }
+
+  .system-map-list__person[data-status='in-head'] .system-map-list__dot {
+    background: var(--d14-ember);
+  }
+
+  .system-map-list__name {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--d14-text-2);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .system-map-list__note {
+    flex: none;
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--d14-text-3);
+  }
+
+  .system-map-list__person[data-status='waiting'] .system-map-list__note {
+    color: var(--d14-wait);
+  }
+}

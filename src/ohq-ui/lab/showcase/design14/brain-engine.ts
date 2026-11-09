@@ -14,11 +14,10 @@ import {
   type Vec3,
   type Viewport,
 } from './brain-camera'
+import type { BrainFocus, BrainStop, BrainWorld } from './brain-map'
 import {
   CAMERA_D,
   CAMERA_TAU,
-  CORE_SATELLITES,
-  DEPARTMENTS,
   IDLE_SPIN,
   LOOK_FOCUS,
   LOOK_OVERVIEW,
@@ -27,16 +26,11 @@ import {
   SIGNALS_PER_MIN,
   SPHERE_R,
   STATS_MS,
-  WALK_ORDER,
-  YOU,
-  YOU_TOPICS,
   ZOOM_FOCUS,
   ZOOM_OVERVIEW,
-  type BrainStop,
-  type DepartmentId,
 } from './design14-data'
 
-export type BrainFocus = 'overview' | BrainStop
+export type { BrainFocus }
 /** map = 지도(걷기·전체 보기), voice = 음성 모드 화면(전체 보기 확대로 말하는 쪽을 정면에, 초점 밖은 사라진다) */
 export type BrainMode = 'map' | 'voice'
 
@@ -59,7 +53,8 @@ export interface BrainDom {
 }
 
 type PathKind = 'streak' | 'dot' | 'white' | 'gold'
-type Owner = DepartmentId | 'core' | 'you'
+/** 허브 id 또는 'core'·'you' */
+type Owner = string
 
 interface SignalPath {
   a: Vec3
@@ -234,6 +229,8 @@ export interface BrainEngineOptions {
 export class BrainEngine {
   readonly #dom: BrainDom
   readonly #reduced: boolean
+  /** 허브·자리·YOU 자리 — setWorld로 바뀐다(데이터가 실시간으로 바뀌는 화면) */
+  #world: BrainWorld
   readonly #ctx: CanvasRenderingContext2D | null
   readonly #dust = makeDust()
   /** 먼지 투영 자리(매 프레임 새로 만들지 않게) */
@@ -282,9 +279,10 @@ export class BrainEngine {
   /** 지난 프레임 깊이 순서 — 바뀔 때만 z-index를 쓴다 */
   #zOrder: NodeRef[] = []
 
-  constructor(dom: BrainDom, opts: BrainEngineOptions) {
+  constructor(dom: BrainDom, opts: BrainEngineOptions, world: BrainWorld) {
     this.#dom = dom
     this.#reduced = opts.reduced
+    this.#world = world
     this.#ctx = dom.canvas.getContext('2d')
     const theta = rad(opts.theta ?? 7)
     this.#pose = { theta, zoom: ZOOM_OVERVIEW, look: LOOK_OVERVIEW }
@@ -316,14 +314,27 @@ export class BrainEngine {
     return this.#focus
   }
 
+  /** 허브·자리가 바뀌었을 때 — 선·신호 자리를 다시 짓고 노드를 다시 읽는다(React가 노드를 그린 뒤에 부른다) */
+  setWorld(world: BrainWorld) {
+    this.#world = world
+    this.#buildWorld()
+    this.#applyVis()
+    this.collectNodes()
+    this.#render(performance.now() / 1000)
+  }
+
+  /** 멈춤의 방위각(도) — 없는 허브면 null */
+  #azOf(stop: BrainStop) {
+    if (stop === 'you') return this.#world.you.az
+    return this.#world.hubs.find((d) => d.id === stop)?.az ?? null
+  }
+
   /** 초점 바꾸기 — 카메라 방위각·확대·세로를 지수 감쇠로 옮긴다(시간 상수 0.195초) */
   setFocus(focus: BrainFocus) {
     this.#focus = focus
-    if (focus === 'overview') this.#target.theta = this.#pose.theta
-    else {
-      const az = rad(focus === 'you' ? YOU.az : DEPARTMENTS.find((d) => d.id === focus)!.az)
-      this.#target.theta = this.#pose.theta + wrapPi(az - this.#pose.theta)
-    }
+    const az = focus === 'overview' ? null : this.#azOf(focus)
+    if (az === null) this.#target.theta = this.#pose.theta
+    else this.#target.theta = this.#pose.theta + wrapPi(rad(az) - this.#pose.theta)
     this.#retarget()
   }
 
@@ -364,11 +375,12 @@ export class BrainEngine {
 
   /** 정면에 가장 가까운 멈춤 — 전체 보기에서 ← → 를 누르면 여기서 시작한다 */
   nearestStop(): BrainStop {
-    let best: BrainStop = WALK_ORDER[0]
+    let best: BrainStop = this.#world.walk[0] ?? 'you'
     let bestD = Infinity
-    for (const stop of WALK_ORDER) {
-      const az = rad(stop === 'you' ? YOU.az : DEPARTMENTS.find((d) => d.id === stop)!.az)
-      const d = Math.abs(wrapPi(az - this.#pose.theta))
+    for (const stop of this.#world.walk) {
+      const deg = this.#azOf(stop)
+      if (deg === null) continue
+      const d = Math.abs(wrapPi(rad(deg) - this.#pose.theta))
       if (d < bestD) {
         bestD = d
         best = stop
@@ -380,19 +392,20 @@ export class BrainEngine {
   /** 노드 DOM을 다시 읽는다(React가 노드를 새로 그렸을 때) */
   collectNodes() {
     const list: NodeRef[] = []
+    const { you, hubs } = this.#world
     for (const el of this.#dom.nodes.querySelectorAll<HTMLElement>('[data-d14-node]')) {
       const key = el.dataset.d14Node ?? ''
       const [kind, id, index] = key.split(':')
       const label = kind === 'seat' ? null : el.querySelector<HTMLElement>('.d14-hub__label, .d14-you__label')
       if (kind === 'core') list.push({ el, label: null, pos: { x: 0, y: 0, z: 0 }, owner: 'core', z: 0 })
-      else if (kind === 'you') list.push({ el, label, pos: placeAt(YOU.az, YOU.rho, YOU.h), owner: 'you', z: 0 })
+      else if (kind === 'you') list.push({ el, label, pos: placeAt(you.az, you.rho, you.h), owner: 'you', z: 0 })
       else {
-        const dept = DEPARTMENTS.find((d) => d.id === id)
+        const dept = hubs.find((d) => d.id === id)
         if (!dept) continue
         if (kind === 'hub') list.push({ el, label, pos: placeAt(dept.az, dept.rho, dept.h), owner: dept.id, z: 0 })
         else if (kind === 'seat') {
           const i = Number(index)
-          const at = i === 0 ? dept.head.at : dept.seats[i - 1]?.at
+          const at = dept.points[i]?.at
           if (!at) continue
           const f = this.#frames.get(dept.id)!
           const [u, v] = solveLocal(f, at)
@@ -407,6 +420,9 @@ export class BrainEngine {
 
   // ── 세계 ─────────────────────────────────────────────────────────────────
   #buildWorld() {
+    const world = this.#world
+    this.#frames.clear()
+    this.#vis = new Map()
     const paths: SignalPath[] = []
     const origin = { x: 0, y: 0, z: 0 }
     const add = (a: Vec3, b: Vec3, kind: PathKind, owner: Owner, weight: number) =>
@@ -419,24 +435,26 @@ export class BrainEngine {
         weight,
         core: a === origin || b === origin,
       })
-    for (const dept of DEPARTMENTS) {
+    for (const dept of world.hubs) {
       const f = localFrame(dept.az, dept.rho, dept.h)
       this.#frames.set(dept.id, f)
       this.#vis.set(dept.id, 1)
       const hub = f.origin
       add(origin, hub, 'streak', dept.id, 3)
-      for (const at of [dept.head.at, ...dept.seats.map((s) => s.at)]) {
+      // 0번이 머리 자리
+      dept.points.forEach(({ at, line }, i) => {
+        if (!line) return
         const [u, v] = solveLocal(f, at)
         add(hub, onFrame(f, u, v), 'dot', dept.id, 1)
-        if (at === dept.head.at) paths[paths.length - 1].head = true
-      }
+        if (i === 0) paths[paths.length - 1].head = true
+      })
     }
-    const you = localFrame(YOU.az, YOU.rho, YOU.h)
+    const you = localFrame(world.you.az, world.you.rho, world.you.h)
     this.#frames.set('you', you)
     this.#vis.set('you', 1)
     this.#vis.set('core', 1)
     add(you.origin, origin, 'white', 'you', 2)
-    this.#topics = YOU_TOPICS.map((t) => {
+    this.#topics = world.topics.map((t) => {
       const [u, v] = solveLocal(you, t.at)
       return { pos: onFrame(you, u, v), waiting: !!t.waiting }
     })
@@ -445,7 +463,7 @@ export class BrainEngine {
       paths[paths.length - 1].topic = true
     }
     // 코어 곁 노란 점 — 코어 둘레 작은 구에 놓여 같이 돈다
-    this.#satellites = CORE_SATELLITES.map((at) => ({ x: at[0], y: -at[1], z: 18 - Math.abs(at[0]) * 0.4 }))
+    this.#satellites = world.satellites.map((at) => ({ x: at[0], y: -at[1], z: 18 - Math.abs(at[0]) * 0.4 }))
     for (const sat of this.#satellites) add(origin, sat, 'gold', 'core', 0.5)
     this.#paths = paths
     this.#weightSum = paths.reduce((n, p) => n + p.weight, 0)
@@ -490,14 +508,19 @@ export class BrainEngine {
     const overview = this.#focus === 'overview' && this.#mode === 'map'
     this.#dustLevel = approach(this.#dustLevel, overview ? 1 : DUST_FOCUS, dt, this.#reduced ? 0 : 0.18)
     const moving = Math.abs(p.theta - t.theta) > 1e-4 || Math.abs(p.zoom - t.zoom) > 1e-4
-    // 초점 밖 무리는 그 프레임에 흐려진다(t=11.567) — 음성 모드에서는 거의 사라진다(F330 YOU 화면)
+    this.#applyVis()
+    if (!this.#reduced) this.#spawn(now)
+    return moving
+  }
+
+  /** 초점 밖 무리는 그 프레임에 흐려진다(t=11.567) — 음성 모드에서는 거의 사라진다(F330 YOU 화면) */
+  #applyVis() {
     const voice = this.#mode === 'voice'
+    const overview = this.#focus === 'overview' && !voice
     for (const owner of this.#vis.keys()) {
       const goal = overview || owner === this.#focus ? 1 : voice ? 0.08 : owner === 'core' ? 0.45 : 0.28
       this.#vis.set(owner, goal)
     }
-    if (!this.#reduced) this.#spawn(now)
-    return moving
   }
 
   #spawn(now: number) {

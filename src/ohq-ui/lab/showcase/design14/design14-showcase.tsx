@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../../components/button'
 import { ShowcaseStage } from '../showcase-stage'
 import { BrainScene, type BrainSceneHandle } from './brain-scene'
+import { D14_MAP } from './design14-data'
 import { Design14Parts } from './design14-parts'
 import { useBrainTour } from './use-brain-tour'
 import { useBrainVoice } from './use-brain-voice'
@@ -66,6 +67,7 @@ export function Design14Showcase() {
     >
       <BrainScene
         ref={scene}
+        map={D14_MAP}
         autoTour={touring}
         onAutoTourChange={setTour}
         onInteract={() => setTour(false)}

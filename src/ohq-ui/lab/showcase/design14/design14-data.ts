@@ -4,7 +4,9 @@
 // 주석의 t는 영상 초, F는 30fps 프레임. 영상 편집기가 확대·이동을 덧씌운 구간이 많아서(별 배경까지 같이
 // 커진다), 위치는 별이 멈춰 있는 구간(t=30.2~31.9)과 둥근 테두리 반지름으로 맞춘 비율로 쟀다.
 
-export type SeatStatus = 'working' | 'runs-itself' | 'waiting' | 'not-running' | 'in-head'
+import type { BrainMapData, SeatStatus } from './brain-map'
+
+export type { SeatStatus }
 
 /** 상태 글 — 영상 그대로 */
 export const STATUS_TEXT: Record<SeatStatus, string> = {
@@ -198,6 +200,17 @@ export const departmentById = (id: DepartmentId) => DEPARTMENTS.find((d) => d.id
 
 /** 기다리는 자리 수 — YOU 배지(영상 "3") */
 export const WAITING_COUNT = DEPARTMENTS.reduce((n, d) => n + d.seats.filter((s) => s.status === 'waiting').length, 0)
+
+/** 견본이 장면(BrainScene)에 넘기는 데이터 — 영상 그대로 */
+export const D14_MAP: BrainMapData = {
+  hubs: DEPARTMENTS,
+  core: { ...CORE, satellites: CORE_SATELLITES },
+  you: { name: YOU.name, sub: YOU.sub, badge: WAITING_COUNT, az: YOU.az, rho: YOU.rho, h: YOU.h, topics: YOU_TOPICS },
+  walk: WALK_ORDER,
+  statusText: STATUS_TEXT,
+  statusOrder: STATUS_ORDER,
+  hint: { walk: 'walk the departments', click: 'click a seat to see what it does' },
+}
 
 // ── 카메라·움직임(잰 값) ─────────────────────────────────────────────────────
 /** 둥근 테두리 반지름(w) — 초점 화면 F232: 위 256, 아래 1030 → 387, 좌우 10~704 → 347, 평균 */

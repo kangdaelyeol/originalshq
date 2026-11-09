@@ -477,6 +477,22 @@
     opacity: 0.6;
   }
 
+  // 시스템 지도에서 자리를 누르고 온 사람 — 강조색으로 칠하고 처음에 한 번 번쩍인다
+  .table tr.is-highlighted > td {
+    background: rgba(var(--accent-rgb), 0.12);
+    animation: admin-row-flash 2.4s ease-out;
+  }
+
+  .table tr.is-highlighted > td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .table tr.is-highlighted > td {
+      animation: none;
+    }
+  }
+
   .button--danger {
     color: var(--crit);
     border-color: rgba(248, 113, 113, 0.4);
@@ -506,6 +522,15 @@
 .xtool-admin {
   .admin__tabs {
     display: flex;
+  }
+
+  // 탭이 다섯이라 폰 폭에서는 넘친다 — 화면 대신 탭 줄만 옆으로 민다(넓을 때는 그림자가 잘리지 않게 그대로)
+  @media (max-width: 480px) {
+    .admin__tabs {
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
   }
 
   .sync-cell {
@@ -655,6 +680,13 @@
     .log-row__error {
       margin-left: 0;
     }
+  }
+}
+
+@keyframes admin-row-flash {
+  0%,
+  30% {
+    background: rgba(var(--accent-rgb), 0.32);
   }
 }
 

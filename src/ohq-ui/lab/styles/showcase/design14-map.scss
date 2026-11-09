@@ -1,0 +1,7 @@
+// 두뇌 지도 장면만(음성 모드 빼고) — 견본 무대 밖에서 장면(BrainScene)을 쓰는 화면이 불러온다(관리 화면 시스템 지도).
+// 규칙은 견본처럼 라이브러리 루트(.ohq-ui) 아래로만 들어가고, 토큰은 장면을 감싼 판의 .d14-theme에서 받는다.
+@use 'sass:meta';
+
+.ohq-ui {
+  @include meta.load-css('../design14');
+}

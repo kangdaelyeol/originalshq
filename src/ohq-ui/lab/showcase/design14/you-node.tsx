@@ -7,6 +7,8 @@ interface YouNodeProps {
   badge?: number
   name?: string
   sub?: string
+  /** 원 안 글자 */
+  label?: string
   state?: NodeState
   onSelect?: () => void
   tabIndex?: number
@@ -18,6 +20,7 @@ export function YouNode({
   badge = 0,
   name = YOU.name,
   sub = YOU.sub,
+  label = YOU.name,
   state = 'idle',
   onSelect,
   tabIndex,
@@ -39,7 +42,7 @@ export function YouNode({
       {/* 원·배지 — 초점이면 함께 1.63배(음성 화면 YOU 원 지름 3.9em, F660) */}
       <span className="d14-you__mark" aria-hidden="true">
         <span className="d14-you__halo" />
-        <span className="d14-you__disc">YOU</span>
+        <span className="d14-you__disc">{label}</span>
         {badge > 0 && <span className="d14-you__badge">{badge}</span>}
       </span>
       <span className="d14-you__label" aria-hidden="true">
