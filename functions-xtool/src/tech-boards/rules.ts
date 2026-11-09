@@ -19,8 +19,9 @@ import {
 
 // 보드 규칙 — Monday 보드 자동화를 우리 서버가 대신한다. Monday 자동화는 만든 사람의
 // 권한으로 돌아서 그 사람이 보드 권한을 잃거나 떠나면 꺼진다(2026-11-09 AS 보드
-// 자동화가 그렇게 꺼졌다). 두 가지다.
-//  - 상태 규칙: 상태 칸이 X로 바뀌면 날짜 칸에 오늘, 그룹 옮기기.
+// 자동화가 그렇게 꺼졌다). 세 가지다.
+//  - 상태 규칙: 상태 칸이 X로 바뀌면(또는 X에서 다른 값으로 바뀌면) 날짜 칸들에 오늘, 그룹 옮기기.
+//  - 만들 때 규칙: 새 item의 날짜 칸(AS 접수일)이 비어 있으면 오늘.
 //  - 담당자 규칙: Monday 사람 칸("담당자")이 바뀌면 보이는 이름을 담당자(엑스툴) 글자
 //    칸에 옮긴다(assignees.ts처럼 글자만 — Monday 사용자 조회·이메일 매핑 없음). 사람
 //    칸 → 글자 칸 한 방향이고 덮어쓴다. 사람 칸을 비우면 글자 칸도 비운다.
@@ -38,12 +39,14 @@ export interface TechStatusRule {
   board: TechBoardKey
   /** 상태 칸 제목 */
   status: string
-  /** 이 라벨로 바뀌면 */
+  /** 이 라벨로 바뀌면(when: 'leave'면 이 라벨에서 다른 값으로 바뀌면) */
   label: string
-  /** 오늘(한국 날짜)을 넣을 날짜 칸 제목 */
-  date: string
-  /** 옮길 그룹 제목 */
-  group: string
+  /** 'enter'(기본) — 라벨로 바뀔 때 · 'leave' — 라벨에서 벗어날 때(보류 종료일 등) */
+  when?: 'enter' | 'leave'
+  /** 오늘(한국 날짜)을 넣을 날짜 칸 제목들 — 날짜만(시각 없이), 이미 오늘이면 그대로 */
+  dates: string[]
+  /** 옮길 그룹 제목 — 없으면 옮기지 않는다 */
+  group?: string
 }
 
 export interface TechAssigneeRule {
@@ -54,23 +57,73 @@ export interface TechAssigneeRule {
   text: string
 }
 
-// 칸·그룹은 제목으로 찾는다(공백 무시). 못 찾으면 그 규칙은 돌지 않고 오류 로그만
-// 남는다.
+// 칸·그룹은 제목으로 찾는다(공백 무시). 못 찾은 칸·그룹·라벨은 오류 로그를 남기고(후보
+// 목록과 함께) 찾은 것만 한다. AS 2026 — 수리 진행 상태에 따라 단계별 날짜 칸과 그룹
+// (2026-11-09·11-10). 보류에서 다른 상태로 가면 보류 종료일과 새 상태 규칙이 같이 돈다.
+const REPAIR_STATUS = '수리 진행 상태'
+const REPAIR_NEW = '새로 인입된 건 <접수>'
+const REPAIR_WORKING = '현재 진행중인 업무'
 export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
   {
     board: 'repair',
-    status: '수리 진행 상태',
+    status: REPAIR_STATUS,
+    label: '입고 대기',
+    dates: [],
+    group: REPAIR_NEW,
+  },
+  {
+    board: 'repair',
+    status: REPAIR_STATUS,
+    label: '수령 후 1차 체크',
+    dates: ['수령 후 1차 체크'],
+    group: REPAIR_WORKING,
+  },
+  {
+    board: 'repair',
+    status: REPAIR_STATUS,
+    label: '수리 중',
+    dates: ['수리 중'],
+    group: REPAIR_WORKING,
+  },
+  {
+    board: 'repair',
+    status: REPAIR_STATUS,
+    label: '완료 후 견적 안내',
+    dates: ['완료 후 견적 안내'],
+    group: '발송 대기',
+  },
+  {
+    board: 'repair',
+    status: REPAIR_STATUS,
     label: '발송 완료',
-    date: '발송 완료',
+    dates: ['발송 완료', '완료일'],
     group: '완료',
   },
   {
     board: 'repair',
-    status: '수리 진행 상태',
-    label: '수령 후 1차 체크',
-    date: '수령 후 1차 체크',
-    group: '현재 진행중인 업무',
+    status: REPAIR_STATUS,
+    label: '보류',
+    dates: ['보류 시작일'],
+    group: '보류',
   },
+  {
+    board: 'repair',
+    status: REPAIR_STATUS,
+    label: '보류',
+    when: 'leave',
+    dates: ['보류 종료일'],
+  },
+]
+
+/** 만들 때 규칙 — 새 item(만든 지 NEW_ITEM_MS 안)의 날짜 칸이 비어 있으면 오늘을 넣는다. item마다
+ * 한 번만(규칙 기록의 created). 만들 때 이미 날짜를 넣었으면 그대로 둔다. */
+export interface TechCreateRule {
+  board: TechBoardKey
+  dates: string[]
+}
+
+export const TECH_CREATE_RULES: readonly TechCreateRule[] = [
+  { board: 'repair', dates: ['접수일'] },
 ]
 
 // 담당자(엑스툴) 칸이 있는 보드(ASSIGNEE_BOARDS)면 한 줄씩 더해 켤 수 있다.
@@ -97,13 +150,15 @@ interface RuleState {
   boardKey: TechBoardKey
   statuses: Record<string, string>
   at: number
+  /** 만들 때 규칙을 돌렸다(새 item에 한 번) */
+  created?: boolean
 }
 
-/** 칸·그룹을 찾은 상태 규칙. 날짜 칸이나 그룹 중 하나를 못 찾아도 찾은 쪽은 한다. */
+/** 칸·그룹을 찾은 상태 규칙. 날짜 칸이나 그룹 중 일부를 못 찾아도 찾은 쪽은 한다. */
 interface ResolvedStatusRule {
   rule: TechStatusRule
   statusId: string
-  date: { id: string; title: string } | null
+  dates: Array<{ id: string; title: string }>
   groupId: string | null
 }
 
@@ -116,6 +171,8 @@ interface ResolvedAssigneeRule {
 interface ResolvedRules {
   status: ResolvedStatusRule[]
   assignee: ResolvedAssigneeRule[]
+  /** 만들 때 채울 날짜 칸 */
+  create: Array<{ id: string; title: string }>
   /** 보는 칸 id */
   watched: string[]
 }
@@ -159,37 +216,40 @@ function resolveStatusRules(
       const status = board.columns.find(
         (c) => c.type === 'status' && same(c.title, rule.status),
       )
-      const date = findDateColumn(board.columns, rule.date)
-      const group = board.groups.find((g) => same(g.title, rule.group))
-      if (!status || !date || !group) {
+      const found = rule.dates.map((title) => ({
+        title,
+        column: findDateColumn(board.columns, title),
+      }))
+      const missing = found.filter((d) => !d.column).map((d) => d.title)
+      const group = rule.group ?
+        board.groups.find((g) => same(g.title, rule.group as string)) :
+        undefined
+      // 상태 칸에 그 라벨이 없으면(이름이 다르면) 규칙이 돌 일이 없다 — 라벨 목록을 남긴다.
+      const labels = status?.options
+      const noLabel = !!labels && !labels.some((l) => same(l, rule.label))
+      if (!status || missing.length || (rule.group && !group) || noLabel) {
         reportOnce(
-          `${key}:status:${rule.label}`,
+          `${key}:status:${rule.label}:${rule.when ?? 'enter'}`,
           `상태 규칙의 칸·그룹을 못 찾음(${key}):`,
           {
             rule,
             status: !!status,
-            date: !!date,
-            group: !!group,
-            ...(date ? {} : {
-              dateCandidates: columnList(
-                board,
-                (c) =>
-                  c.type === 'date' || norm(c.title).includes(norm(rule.date)),
-              ),
-            }),
-            ...(group ? {} : { groups: board.groups.map((g) => g.title) }),
+            ...(missing.length ? {
+              missingDates: missing,
+              dateCandidates: columnList(board, (c) => c.type === 'date'),
+            } : {}),
+            ...(rule.group && !group ?
+              { groups: board.groups.map((g) => g.title) } :
+              {}),
+            ...(noLabel ? { labels } : {}),
           },
         )
       }
-      if (!status || (!date && !group)) return []
-      return [
-        {
-          rule,
-          statusId: status.id,
-          date: date ? { id: date.id, title: date.title } : null,
-          groupId: group?.id ?? null,
-        },
-      ]
+      const dates = found.flatMap((d) =>
+        d.column ? [{ id: d.column.id, title: d.column.title }] : [],
+      )
+      if (!status || (dates.length === 0 && !group)) return []
+      return [{ rule, statusId: status.id, dates, groupId: group?.id ?? null }]
     },
   )
 }
@@ -235,18 +295,44 @@ function resolveAssigneeRules(
 
 const hasRules = (key: TechBoardKey) =>
   TECH_STATUS_RULES.some((rule) => rule.board === key) ||
-  TECH_ASSIGNEE_RULES.some((rule) => rule.board === key)
+  TECH_ASSIGNEE_RULES.some((rule) => rule.board === key) ||
+  TECH_CREATE_RULES.some((rule) => rule.board === key)
+
+function resolveCreateRules(
+  key: TechBoardKey,
+  board: BoardShape,
+): Array<{ id: string; title: string }> {
+  return TECH_CREATE_RULES.filter((rule) => rule.board === key).flatMap(
+    (rule) =>
+      rule.dates.flatMap((title) => {
+        const column = findDateColumn(board.columns, title)
+        if (!column) {
+          reportOnce(
+            `${key}:create:${title}`,
+            `만들 때 규칙의 칸을 못 찾음(${key}):`,
+            {
+              title,
+              dateCandidates: columnList(board, (c) => c.type === 'date'),
+            },
+          )
+          return []
+        }
+        return [{ id: column.id, title: column.title }]
+      }),
+  )
+}
 
 function resolveRules(key: TechBoardKey, board: BoardShape): ResolvedRules {
   const status = resolveStatusRules(key, board)
   const assignee = resolveAssigneeRules(key, board)
+  const create = resolveCreateRules(key, board)
   const watched = [
     ...new Set([
       ...status.map((r) => r.statusId),
       ...assignee.map((r) => r.peopleId),
     ]),
   ]
-  return { status, assignee, watched }
+  return { status, assignee, create, watched }
 }
 
 /** 보는 칸들의 지금 글자 */
@@ -281,12 +367,12 @@ export async function applyBoardRules(
 ): Promise<void> {
   if (!hasRules(source.key)) return
   const rules = resolveRules(source.key, meta)
-  if (rules.watched.length === 0) return
+  if (rules.watched.length === 0 && rules.create.length === 0) return
   const current = valuesOf(rules.watched, doc)
   const ref = db.collection(STATE).doc(doc.itemId)
 
-  // 바뀐 칸 → 바뀌기 전 글자
-  const changed = await db.runTransaction(async (tx) => {
+  // 바뀐 칸 → 바뀌기 전 글자, 만들 때 규칙을 돌릴지(새 item에 한 번)
+  const { changed, createDue } = await db.runTransaction(async (tx) => {
     const snap = await tx.get(ref)
     const state = snap.exists ? (snap.data() as RuleState) : null
     const isNew = isRecent(doc.createdAt)
@@ -298,30 +384,40 @@ export async function applyBoardRules(
       if (before(id) !== current[id]) result.set(id, before(id))
     }
     const unseen = rules.watched.some((id) => !hasKey(state, id))
-    if (unseen || result.size > 0) {
+    const due = rules.create.length > 0 && isNew && !state?.created
+    if (unseen || result.size > 0 || due) {
       const next: RuleState = {
         boardKey: source.key,
         statuses: { ...(state?.statuses ?? {}), ...current },
         at: Date.now(),
+        ...(state?.created || due ? { created: true } : {}),
       }
       tx.set(ref, next)
     }
-    return result
+    return { changed: result, createDue: due }
   })
 
   const context = { db, apiKey, source, meta, doc, ref }
+  if (createDue) {
+    await attempt(context, { created: false }, () =>
+      runCreateRule(context, rules.create),
+    )
+  }
   for (const resolved of rules.status) {
     const before = changed.get(resolved.statusId)
     if (before === undefined) continue
-    if (!same(current[resolved.statusId], resolved.rule.label)) continue
-    await attempt(context, resolved.statusId, before, () =>
+    const { label, when } = resolved.rule
+    const entered = same(current[resolved.statusId], label)
+    const fire = when === 'leave' ? same(before, label) && !entered : entered
+    if (!fire) continue
+    await attempt(context, { [`statuses.${resolved.statusId}`]: before }, () =>
       runStatusRule(context, resolved),
     )
   }
   for (const resolved of rules.assignee) {
     const before = changed.get(resolved.peopleId)
     if (before === undefined) continue
-    await attempt(context, resolved.peopleId, before, () =>
+    await attempt(context, { [`statuses.${resolved.peopleId}`]: before }, () =>
       runAssigneeRule(context, resolved),
     )
   }
@@ -336,21 +432,18 @@ interface RuleContext {
   ref: DocumentReference
 }
 
-/** 규칙 하나 실행 — 실패하면 그 칸의 기록을 되돌려 다음 알림 때 다시 해 보게 하고
- * 수정 기록에 실패를 남긴다. */
+/** 규칙 하나 실행 — 실패하면 기록을 되돌려(revert — 그 칸의 이전 글자 등) 다음 알림 때
+ * 다시 해 보게 하고 수정 기록에 실패를 남긴다. */
 async function attempt(
   context: RuleContext,
-  columnId: string,
-  before: string,
+  revert: Record<string, unknown>,
   run: () => Promise<void>,
 ): Promise<void> {
   const { db, source, meta, doc, ref } = context
   try {
     await run()
   } catch (error) {
-    await ref
-      .update({ [`statuses.${columnId}`]: before })
-      .catch(() => undefined)
+    await ref.update(revert).catch(() => undefined)
     logger.error(`보드 규칙 실행 실패(${doc.itemId}):`, error)
     await addEditLog(db, {
       ...logBase(source, meta, doc),
@@ -380,27 +473,29 @@ const shapeOf = (source: TechBoardSource) => ({
   updates: !!source.updates,
 })
 
-/** 상태 규칙 — 날짜 칸에 오늘, 그룹 옮기기. 이미 그렇게 돼 있으면 쓰지 않는다
+/** 상태 규칙 — 날짜 칸들에 오늘, 그룹 옮기기. 이미 그렇게 돼 있으면 쓰지 않는다
  * (Monday 자동화를 끄기 전 잠깐 같이 돌 때 두 번 쓰지 않게). */
 async function runStatusRule(
   { db, apiKey, source, meta, doc }: RuleContext,
   resolved: ResolvedStatusRule,
 ): Promise<void> {
   const today = koreaToday()
-  const { date, groupId } = resolved
-  const dateBefore = date ? doc.values[date.id]?.text ?? '' : ''
-  const needsDate = !!date && dateBefore.slice(0, 10) !== today
+  const { groupId } = resolved
+  const textOf = (id: string) => doc.values[id]?.text ?? ''
+  const dates = resolved.dates.filter(
+    (d) => textOf(d.id).slice(0, 10) !== today,
+  )
   const needsMove = !!groupId && doc.groupId !== groupId
-  if (!needsDate && !needsMove) return
+  if (dates.length === 0 && !needsMove) return
 
   const shape = shapeOf(source)
   let raw: TechRawItem | null = null
-  if (date && needsDate) {
+  if (dates.length > 0) {
     raw = await changeColumnValues(
       apiKey,
       source.boardId,
       doc.itemId,
-      { [date.id]: { date: today } },
+      Object.fromEntries(dates.map((d) => [d.id, { date: today }])),
       needsMove ? undefined : shape,
     )
   }
@@ -413,16 +508,12 @@ async function runStatusRule(
   const groupTitle = (id: string | null) =>
     meta.groups.find((g) => g.id === id)?.title ?? id
   const changes: TechChange[] = [
-    ...(date && needsDate ?
-      [
-        {
-          field: date.id,
-          title: date.title,
-          before: dateBefore || null,
-          after: today,
-        },
-      ] :
-      []),
+    ...dates.map((d) => ({
+      field: d.id,
+      title: d.title,
+      before: textOf(d.id) || null,
+      after: today,
+    })),
     ...(needsMove ?
       [
         {
@@ -435,6 +526,34 @@ async function runStatusRule(
       []),
   ]
   await addEditLog(db, { ...logBase(source, meta, doc), changes, ok: true })
+}
+
+/** 만들 때 규칙 — 비어 있는 날짜 칸에 오늘(한국 날짜)을 넣는다. */
+async function runCreateRule(
+  { db, apiKey, source, meta, doc }: RuleContext,
+  dates: Array<{ id: string; title: string }>,
+): Promise<void> {
+  const today = koreaToday()
+  const empty = dates.filter((d) => !(doc.values[d.id]?.text ?? '').trim())
+  if (empty.length === 0) return
+  const raw = await changeColumnValues(
+    apiKey,
+    source.boardId,
+    doc.itemId,
+    Object.fromEntries(empty.map((d) => [d.id, { date: today }])),
+    shapeOf(source),
+  )
+  if (raw) await saveRawItems(db, source, meta, [doc.itemId], [raw])
+  await addEditLog(db, {
+    ...logBase(source, meta, doc),
+    changes: empty.map((d) => ({
+      field: d.id,
+      title: d.title,
+      before: null,
+      after: today,
+    })),
+    ok: true,
+  })
 }
 
 /** 담당자 규칙 — 사람 칸에 보이는 이름을 글자 칸에 덮어쓴다(비었으면 비운다). 이미
