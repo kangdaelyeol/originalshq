@@ -56,7 +56,19 @@ export interface MondayWebhookEvent {
   itemId?: number | string
   parentItemId?: number | string
   parentItemBoardId?: number | string
+  /** 하위 아이템 삭제·보관 알림은 부모 보드 id를 이 이름으로 보낸다(다른 하위
+   * 아이템 알림은 parentItemBoardId). */
+  parentBoardId?: number | string
   updateId?: number | string
+}
+
+/** 하위 아이템 보드 id → 그 부모 보드 — 부모 보드 id가 빠진 하위 아이템 알림용. */
+async function findBySubitemBoard(db: Firestore, subitemBoardId: string) {
+  for (const source of TECH_BOARDS.filter((board) => board.subitems)) {
+    const meta = await getBoardMeta(db, source.key)
+    if (meta?.subitems?.boardId === subitemBoardId) return source
+  }
+  return undefined
 }
 
 /** webhook 하나 처리 — 우리 보드가 아니면 무시. */
@@ -65,12 +77,25 @@ export async function handleWebhookEvent(
   apiKey: string,
   event: MondayWebhookEvent,
 ): Promise<'ignored' | 'refreshed'> {
-  const boardId = String(event.parentItemBoardId ?? event.boardId ?? '')
+  const boardId = String(
+    event.parentItemBoardId ?? event.parentBoardId ?? event.boardId ?? '',
+  )
   const itemId = String(
     event.parentItemId ?? event.pulseId ?? event.itemId ?? '',
   )
-  const source = findTechBoard({ boardId })
-  if (!source || !/^\d+$/.test(itemId)) return 'ignored'
+  const source =
+    findTechBoard({ boardId }) ??
+    (event.parentItemId ? await findBySubitemBoard(db, boardId) : undefined)
+  if (!source || !/^\d+$/.test(itemId)) {
+    // 우리 보드 알림만 구독해서 무시되면 이상한 것 — 필드 이름만 남긴다(값·고객
+    // 이름 없이). 알림 모양이 바뀌었으면 이것으로 고친다.
+    logger.warn('webhook 무시:', {
+      type: event.type,
+      boardId,
+      fields: Object.keys(event),
+    })
+    return 'ignored'
+  }
   const meta = await getBoardMeta(db, source.key)
   const updates =
     source.updates && isUpdateEvent(event) ?
