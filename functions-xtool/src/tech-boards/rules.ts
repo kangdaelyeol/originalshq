@@ -76,6 +76,8 @@ export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
 // 담당자(엑스툴) 칸이 있는 보드(ASSIGNEE_BOARDS)면 한 줄씩 더해 켤 수 있다.
 export const TECH_ASSIGNEE_RULES: readonly TechAssigneeRule[] = [
   { board: 'techInquiry', people: '담당자', text: ASSIGNEE_TITLE },
+  { board: 'fieldService', people: '담당자', text: ASSIGNEE_TITLE },
+  { board: 'repair', people: '담당자', text: ASSIGNEE_TITLE },
 ]
 
 const STATE = 'techRuleState'
