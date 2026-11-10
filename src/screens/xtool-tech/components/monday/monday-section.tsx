@@ -1,13 +1,19 @@
-import { useCallback, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
+import { ArrowLeftRight, RotateCcw } from 'lucide-react'
 import type { TechBoardKey, TechBoardMeta, TechColumn, TechItemDoc, TechSubitemDoc } from '@xtool-core/tech-boards'
 import { initialState, toEditValue } from '@xtool-core/tech-edit'
 import { createItem, editItem } from '@xtool-core/tech-outbox'
 import { priceColumn, relationColumn } from '@xtool-core/tech-subitems'
+import { columnUnits, moveUnit, orderColumns } from '@xtool-core/column-order'
+import { TIMELINE_ID, timelineColumns } from '@xtool-core/tech-timeline'
 import { cx } from '@/ohq-ui/lib/cx'
+import { usePortalRoot } from '@/ohq-ui/lib/portal-root'
 import { useStableHandlers } from '../../lib/use-stable-handlers'
 import { groupColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
 import { GroupTable, type EditingCell, type MonGroup } from './monday-group'
+import type { ColumnReorder } from './monday-head-row'
 import {
   defaultWidth,
   groupIdOf,
@@ -26,7 +32,7 @@ import {
 } from './monday-values'
 import { FilesModal } from './monday-files-modal'
 import { UpdatesPanel } from './monday-updates-panel'
-import { useColumnWidths } from './use-monday-prefs'
+import { useColumnOrder, useColumnWidths } from './use-monday-prefs'
 
 // 그룹마다 처음 그릴 줄 수 — 완료 그룹은 수천 건이라 나눠 그린다.
 const PAGE = 50
@@ -51,6 +57,8 @@ export interface MondaySectionProps {
   allowAdd?: boolean
   /** 숨길 칸 id — 고른 보기의 숨길 칸 */
   hiddenColumns?: readonly string[]
+  /** 타임라인 펼치기 — 타임라인 칸은 맨 오른쪽에, 꺼져 있으면(기본) "타임라인" 칸 하나로 묶는다(tech-timeline). */
+  timelineOpen?: boolean
 }
 
 /**
@@ -60,11 +68,31 @@ export interface MondaySectionProps {
  * 쌓아도 보드마다 제 칸으로 그린다.
  */
 export function MondaySection(props: MondaySectionProps) {
-  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, boxed = false, allowAdd = true, hiddenColumns } = props
+  const { boardKey, meta, items, hideEmptyGroups, sort, onSort, collapsed, setCollapsed, boxed = false, allowAdd = true, hiddenColumns, timelineOpen = false } = props
   const nameTitle = NAME_TITLE[boardKey]
   const allColumns = useMemo(() => visibleColumns(meta), [meta])
-  // 그릴 칸 — 보기의 숨길 칸은 뺀다(정렬은 숨긴 칸으로도 된다 — allColumns)
-  const columns = useMemo(() => allColumns.filter((c) => !hiddenColumns?.includes(c.id)), [allColumns, hiddenColumns])
+  // 칸 순서 — 직원이 머리글을 꾹 눌러 끌어 바꾼 순서(이 브라우저에), 없으면 기본(xtool-core column-order)
+  const [order, setOrder] = useColumnOrder(boardKey)
+  const [reordering, setReordering] = useState(false)
+  // 그릴 칸 — 그 순서대로, 보기의 숨길 칸은 빼고(정렬은 숨긴 칸으로도 된다 — allColumns), 타임라인 칸은 한 덩이로
+  // (접어 두었으면 "타임라인" 칸 하나로 묶어서).
+  const columns = useMemo(
+    () => orderColumns(boardKey, allColumns, { open: timelineOpen, order, hidden: hiddenColumns }),
+    [allColumns, hiddenColumns, timelineOpen, boardKey, order],
+  )
+  const reorder: ColumnReorder = useMemo(() => {
+    const units = columnUnits(boardKey, allColumns, order)
+    const parts = new Set(timelineColumns(boardKey, allColumns).map((c) => c.id))
+    return {
+      active: reordering,
+      start: () => setReordering(true),
+      unitOf: (id) => (parts.has(id) ? TIMELINE_ID : id),
+      move: (unit, before) => {
+        const next = moveUnit(units, unit, before)
+        if (next.some((id, i) => id !== units[i])) setOrder(next)
+      },
+    }
+  }, [boardKey, allColumns, order, reordering, setOrder])
 
   const [widths, setWidth] = useColumnWidths(boardKey)
   const [editing, setEditing] = useState<EditingCell | null>(null)
@@ -223,6 +251,7 @@ export function MondaySection(props: MondaySectionProps) {
           columns={columns}
           widthOf={widthOf}
           onResize={setWidth}
+          reorder={reorder}
           nameTitle={nameTitle}
           collapsed={collapsed.has(group.id)}
           onToggle={() => setCollapsed([group.id], !collapsed.has(group.id))}
@@ -238,6 +267,9 @@ export function MondaySection(props: MondaySectionProps) {
           expanded={expanded}
         />
       ))}
+      {reordering && (
+        <ReorderBar canReset={order !== null} onReset={() => setOrder(null)} onDone={() => setReordering(false)} />
+      )}
       {filesItem && filesColumn && (
         <FilesModal
           boardKey={boardKey}
@@ -258,5 +290,35 @@ export function MondaySection(props: MondaySectionProps) {
         />
       )}
     </div>
+  )
+}
+
+/**
+ * 칸 순서 바꾸는 중 알림 막대(화면 아래 가운데) — "처음 순서로"는 Monday 기본 순서로 돌리고, "완료"·Esc로 끝낸다.
+ * 순서는 끌어 놓을 때마다 바로 기억한다.
+ */
+function ReorderBar({ canReset, onReset, onDone }: { canReset: boolean; onReset: () => void; onDone: () => void }) {
+  const root = usePortalRoot()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDone()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onDone])
+  return createPortal(
+    <div className="mon-selbar mon-reorder-bar" role="toolbar" aria-label="칸 순서 바꾸기">
+      <ArrowLeftRight size={18} aria-hidden />
+      <span className="mon-selbar__label">칸 순서 바꾸는 중 — 머리글을 끌어 옮기세요</span>
+      <button type="button" className="mon-selbar__action" disabled={!canReset} onClick={onReset}>
+        <RotateCcw size={18} aria-hidden />
+        처음 순서로
+      </button>
+      <span className="mon-selbar__divider" aria-hidden />
+      <button type="button" className="mon-reorder-bar__done" onClick={onDone}>
+        완료
+      </button>
+    </div>,
+    root ?? document.body,
   )
 }

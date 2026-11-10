@@ -1,9 +1,10 @@
-import { ArrowDownUp, ChevronDown, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Filter, Plus, Search, X } from 'lucide-react'
+import { ArrowDownUp, CalendarRange, ChevronDown, ChevronsDownUp, ChevronsUpDown, CircleUserRound, Filter, Plus, Search, X } from 'lucide-react'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards'
 import { pushToast } from '@xtool-core/tech-save-queue'
 import { applyViewRules, deleteBoardView, ruleReady, useBoardViews, type BoardView, type BoardViewSpec } from '@xtool-core/tech-views'
 import { errorText } from '@xtool-core/error-text'
+import { timelineColumns } from '@xtool-core/tech-timeline'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { cx } from '@/ohq-ui/lib/cx'
 import { Topbar } from '../layout/topbar'
@@ -23,7 +24,7 @@ import {
   visibleColumns,
   type MonSort,
 } from './monday-values'
-import { useCollapsedGroups, useSelectedView } from './use-monday-prefs'
+import { useCollapsedGroups, useSelectedView, useTimelineOpen } from './use-monday-prefs'
 
 interface MondayBoardProps {
   boardKey: TechBoardKey
@@ -48,6 +49,7 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
   const peopleColumns = useMemo(() => columns.filter((c) => c.type === 'people' || c.type === 'assignee'), [columns])
 
   const [collapsed, setCollapsed] = useCollapsedGroups(boardKey)
+  const [timelineOpen, setTimelineOpen] = useTimelineOpen(boardKey)
   const [query, setQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [person, setPerson] = useState<string | null>(null)
@@ -61,6 +63,11 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
   const [deleting, setDeleting] = useState<BoardView | null>(null)
   const conditionColumns = useMemo(() => viewColumns(meta, boardKey), [meta, boardKey])
   const readyRules = view?.rules.filter(ruleReady).length ?? 0
+  // "타임라인 펼치기"는 타임라인 칸(tech-timeline)이 보이는 보드에서만 — 보기가 모두 숨겼으면 뺀다
+  const hasTimeline = useMemo(
+    () => timelineColumns(boardKey, columns.filter((c) => !view?.hidden?.includes(c.id))).length > 0,
+    [boardKey, columns, view],
+  )
 
   // 정렬 — 보기를 고르면(또는 보기의 정렬이 바뀌면) 그 보기의 정렬로 시작하고, 도구 줄·머리글로 잠깐 바꿀 수 있다
   const sortKey = view ? `${view.id}:${JSON.stringify(view.sort)}` : ''
@@ -217,6 +224,19 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
           {allCollapsed ? '모두 펼치기' : '모두 접기'}
         </button>
 
+        {hasTimeline && (
+          <button
+            type="button"
+            className={cx('mon-tool', timelineOpen && 'is-on')}
+            aria-pressed={timelineOpen}
+            title={timelineOpen ? '타임라인 칸을 하나로 묶어요' : '타임라인 칸을 하나씩 펼쳐요'}
+            onClick={() => setTimelineOpen(!timelineOpen)}
+          >
+            <CalendarRange size={15} aria-hidden />
+            타임라인 펼치기
+          </button>
+        )}
+
         <span className="mon-toolbar__count">{searching ? `${shown.length}개 찾음` : `${shown.length}개 항목`}</span>
       </div>
 
@@ -233,6 +253,7 @@ export function MondayBoard({ boardKey, meta, items, summary }: MondayBoardProps
             collapsed={collapsed}
             setCollapsed={setCollapsed}
             hiddenColumns={view?.hidden}
+            timelineOpen={timelineOpen}
           />
         </SelectionProvider>
       </div>

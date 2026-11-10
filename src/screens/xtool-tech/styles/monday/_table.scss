@@ -168,6 +168,88 @@ $group-title-h: 40px;
   transition: opacity 0.15s;
 }
 
+// 칸 순서 바꾸기(monday-head-row.tsx) — 머리글을 꾹 누르면 켜지고 끌어 옮긴다. 누르는 동안 글자가 골라지거나 터치
+// 메뉴가 뜨지 않게 한다.
+.mon-row--head .mon-cell:not(.mon-cell--name):not(.mon-cell--end) {
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mon-row--head .mon-cell.is-reorderable {
+  background: color-mix(in srgb, var(--mon-primary) 10%, var(--mon-cell));
+  cursor: grab;
+  // 켜진 뒤에는 터치로 끌어도 표가 굴러가지 않게
+  touch-action: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.mon-row--head .mon-cell.is-dragging {
+  opacity: 0.4;
+}
+
+// 놓을 자리 — 머리글 사이 세로 선
+.mon-reorder-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 7;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: var(--mon-primary);
+  pointer-events: none;
+}
+
+// 끄는 칸 이름표 — 포인터를 따라온다
+.mon-reorder-ghost {
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: var(--mon-primary);
+  box-shadow: 0 8px 24px var(--mon-shadow);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.mon-reorder-bar {
+  gap: 10px;
+  padding-right: 10px;
+
+  > svg {
+    flex: none;
+    color: var(--mon-primary);
+  }
+
+  .mon-selbar__action:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
+}
+
+.mon-reorder-bar__done {
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--mon-primary);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+
+  &:hover {
+    filter: brightness(1.08);
+  }
+}
+
 .mon-row:not(.mon-row--head):not(.mon-summary):hover > .mon-cell:not(.mon-cell--status) {
   background: var(--mon-hover);
 }
@@ -411,6 +493,28 @@ $group-title-h: 40px;
   align-items: center;
   gap: 4px;
   color: var(--mon-text-2);
+}
+
+// 묶은 타임라인 칸의 "보기"(monday-timeline.tsx) — 마우스를 올리거나 누르면 단계별 날짜 카드
+.mon-timeline {
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--mon-link);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--mon-hover);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 1px var(--mon-primary);
+  }
 }
 
 // "+ 고객 추가"

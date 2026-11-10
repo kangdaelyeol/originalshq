@@ -4,6 +4,7 @@ import type { TechBoardKey, TechColumn, TechItemDoc, TechSubitemDoc } from '@xto
 import { cx } from '@/ohq-ui/lib/cx'
 import { formatInt } from '@/ohq-ui/lib/format'
 import { AddRow } from './monday-add-row'
+import { HeadRow, type ColumnReorder } from './monday-head-row'
 import { labelColor } from './monday-colors'
 import type { CellCommit } from './monday-editors'
 import { ItemRow } from './monday-item-row'
@@ -37,6 +38,8 @@ export interface GroupTableProps {
   /** 칸 너비(px) — 이름 칸은 'name' */
   widthOf: (id: string) => number
   onResize: (id: string, width: number) => void
+  /** 칸 순서 바꾸기(머리글 꾹 누르기) */
+  reorder: ColumnReorder
   /** 이름 칸 머리글(고객·업무 …) */
   nameTitle: string
   collapsed: boolean
@@ -166,7 +169,7 @@ export function GroupTable(props: GroupTableProps) {
 
       {!collapsed && (
         <>
-          <div className="mon-row mon-row--head" role="row">
+          <HeadRow columns={columns} sort={sort} onSort={onSort} widthOf={widthOf} onResize={onResize} reorder={props.reorder}>
             <div className="mon-cell mon-cell--name" role="columnheader" aria-sort={ariaSort(sort, 'name')}>
               {selection && (
                 <RowCheck
@@ -182,15 +185,7 @@ export function GroupTable(props: GroupTableProps) {
               <span className="mon-text mon-name-head">{nameTitle}</span>
               <ResizeHandle id="name" width={widthOf('name')} onResize={onResize} />
             </div>
-            {columns.map((c) => (
-              <div key={c.id} className="mon-cell" role="columnheader" title={c.title} aria-sort={ariaSort(sort, c.id)}>
-                <SortButton id={c.id} title={c.title} sort={sort} onSort={onSort} />
-                <span className="mon-text">{c.title}</span>
-                <ResizeHandle id={c.id} width={widthOf(c.id)} onResize={onResize} />
-              </div>
-            ))}
-            <div className="mon-cell mon-cell--end" aria-hidden />
-          </div>
+          </HeadRow>
 
           {group.items.slice(0, limit).map((item) => {
             const key = rowKey(item)

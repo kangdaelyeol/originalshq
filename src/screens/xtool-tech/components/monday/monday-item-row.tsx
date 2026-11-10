@@ -2,12 +2,14 @@ import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus } from 'luc
 import { memo } from 'react'
 import type { TechBoardKey, TechColumn, TechItemDoc } from '@xtool-core/tech-boards'
 import { isWritable } from '@xtool-core/tech-edit'
+import { isTimelineColumn } from '@xtool-core/tech-timeline'
 import { cx } from '@/ohq-ui/lib/cx'
 import { InlineInput } from './monday-editors'
 import { EditableCell } from './monday-editable-cell'
 import type { EditingCell, GroupTableProps } from './monday-group'
 import type { SelectionState } from './monday-selection'
 import { SubTable } from './monday-subitems'
+import { TimelineCell } from './monday-timeline'
 import { RowCheck } from './monday-table-controls'
 import { rowKey } from './monday-values'
 
@@ -132,9 +134,13 @@ export const ItemRow = memo(function ItemRow({ item, ...props }: ItemRowProps) {
             />
           )}
         </div>
-        {columns.map((column) => (
-          <ItemCell key={column.id} item={item} column={column} {...props} />
-        ))}
+        {columns.map((column) =>
+          isTimelineColumn(column) ? (
+            <TimelineCell key={column.id} item={item} column={column} />
+          ) : (
+            <ItemCell key={column.id} item={item} column={column} {...props} />
+          ),
+        )}
         <div className="mon-cell mon-cell--end" aria-hidden />
       </div>
       {open && subColumns && (

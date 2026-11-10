@@ -957,3 +957,25 @@
     white-space: nowrap;
   }
 }
+
+// 이름 · 값 한 줄(타임라인 단계 · 날짜 등) — 값은 오른쪽, 비어 있는 줄은 흐리게
+.hover-card__pair {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  white-space: nowrap;
+
+  > :last-child {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  &.is-empty {
+    color: rgba(255, 255, 255, 0.4);
+
+    > :last-child {
+      font-weight: 400;
+    }
+  }
+}

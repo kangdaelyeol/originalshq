@@ -13,7 +13,7 @@ import { MondaySection } from './monday-section'
 import { MondayWorkboxSkeleton, SkeletonText } from './monday-skeleton'
 import { SelectionProvider } from './monday-selection-bar'
 import { matchesItem, nextSort, type MonSort } from './monday-values'
-import { useCollapsedGroups } from './use-monday-prefs'
+import { useCollapsedGroups, useTimelineOpen } from './use-monday-prefs'
 
 export type MyWorkState = 'open' | 'done' | 'all'
 
@@ -182,6 +182,8 @@ function MyWorkBoardSection({
 }) {
   const board = useTechBoard(boardKey)
   const [collapsed, setCollapsed] = useCollapsedGroups(boardKey)
+  // 보드 화면에서 켠 "타임라인 펼치기"를 따른다(이 화면에는 단추가 없다)
+  const [timelineOpen] = useTimelineOpen(boardKey)
   const [sort, setSort] = useState<MonSort>(null)
   const meta = board.meta
   const items = useMemo(
@@ -217,6 +219,7 @@ function MyWorkBoardSection({
         onSort={(id) => setSort((current) => nextSort(current, id))}
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        timelineOpen={timelineOpen}
       />
     </section>
   )

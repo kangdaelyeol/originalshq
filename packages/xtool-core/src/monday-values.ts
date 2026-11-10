@@ -27,6 +27,8 @@ const WIDTH_BY_TYPE: Record<string, number> = {
   email: 180,
   file: 96,
   item_id: 110,
+  // 묶은 타임라인 칸(tech-timeline) — "보기"만 쓴다
+  timeline: 96,
 }
 export const NAME_WIDTH = 300
 export const MIN_WIDTH = 64
