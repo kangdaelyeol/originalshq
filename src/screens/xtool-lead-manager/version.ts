@@ -6,7 +6,7 @@
 // 앞자리: 1.0.0 리드가 서버에 저장되기 시작(08-19) · 2.0.0 검은 화면 개편(09-20) · 3.0.0 유리 디자인(10-29).
 // 업데이트 기록(LM_CHANGELOG)은 맨 위에 더한다. 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const LM_VERSION = '3.9.0'
+export const LM_VERSION = '3.10.0'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 
@@ -20,6 +20,17 @@ export interface LmRelease {
 
 /** 업데이트 기록 — 최근 것부터 */
 export const LM_CHANGELOG: readonly LmRelease[] = [
+  {
+    version: '3.10.0',
+    date: '2026-11-10',
+    title: '판매 채널 보기',
+    changes: [
+      {
+        kind: 'new',
+        text: '판매통계 그래프에 마우스를 올리면 제품마다 오프라인·온라인 중 어디서 팔렸는지 보여요',
+      },
+    ],
+  },
   {
     version: '3.9.0',
     date: '2026-11-10',

@@ -72,15 +72,43 @@ export const summarizeSales = (products: SalesProduct[]): SalesSummary => ({
   top: products[0] ?? null,
 })
 
+export type SalesChannel = MondayDailySale['origin']
+
+/** 판매 채널 이름 — 그래프 툴팁에 적는 순서대로. */
+export const SALES_CHANNEL_LABEL: Record<SalesChannel, string> = {
+  offline: '오프라인',
+  online: '온라인',
+}
+
+// 채널과 제품명 사이 구분자 — 제품명에 나올 일이 없는 제어 문자.
+const CHANNEL_SEP = '\u001f'
+
+const salesChannelKey = (channel: SalesChannel, name: string): string =>
+  `${channel}${CHANNEL_SEP}${name}`
+
+/** salesAsDays(…, byChannel)의 칸 이름을 채널과 제품명으로 되돌린다. */
+export const splitSalesKey = (
+  key: string,
+): { channel: SalesChannel; name: string } => {
+  const at = key.indexOf(CHANNEL_SEP)
+  return {
+    channel: key.slice(0, at) as SalesChannel,
+    name: key.slice(at + 1),
+  }
+}
+
 /** 판매 줄을 "날짜별 · 제품별 수량"으로 바꾼다 — 인입 통계의 "날짜별 ·
  * 보드별 건수"와 같은 모양이라, 일/주/월로 묶기·정렬·합계 계산을 인입
  * 통계의 함수(inflowSeries, summarizeInflow, sortInflowRows)로 그대로 한다.
  * 여기서 total은 그날 팔린 전체 수량, boards는 제품명별 수량이다. metric이
- * 'amount'면 수량 대신 금액(만원)이다 — 그래프만 쓴다. */
+ * 'amount'면 수량 대신 금액(만원)이다 — 그래프만 쓴다. byChannel이면 제품명
+ * 대신 "채널 + 제품명"(salesChannelKey)으로 나눠 담는다 — 그래프 툴팁이 온라인·
+ * 오프라인을 가르려고 쓴다(splitSalesKey로 되돌린다). */
 export const salesAsDays = (
   rows: MondayDailySale[],
   scope: PurchaseScope,
   metric: SalesChartMetric = 'quantity',
+  byChannel = false,
 ): MondayDailyInflow[] => {
   const byDate = new Map<string, MondayDailyInflow>()
   for (const row of rows) {
@@ -92,8 +120,9 @@ export const salesAsDays = (
       misentry: 0,
       boards: {},
     }
+    const key = byChannel ? salesChannelKey(row.origin, row.name) : row.name
     day.total += value
-    day.boards[row.name] = (day.boards[row.name] ?? 0) + value
+    day.boards[key] = (day.boards[key] ?? 0) + value
     byDate.set(row.date, day)
   }
   const days = [...byDate.values()]

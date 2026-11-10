@@ -110,6 +110,26 @@
       color: $text-3;
       font-weight: 400;
     }
+    // 판매통계 — 오프라인은 흰 유리, 온라인은 청록 유리.
+    .inflow_tag {
+      font-weight: 500;
+      color: $text-2;
+      background-color: color-mix(in srgb, white 10%, transparent);
+
+      &.tag_1 {
+        color: var(--glass-link);
+        background-color: color-mix(
+          in srgb,
+          var(--glass-link) 18%,
+          transparent
+        );
+      }
+    }
+    .inflow_tag_totals {
+      margin: -6px 0 10px;
+      color: $text;
+      font-weight: 600;
+    }
 
     @media (prefers-reduced-motion: reduce) {
       animation: none;

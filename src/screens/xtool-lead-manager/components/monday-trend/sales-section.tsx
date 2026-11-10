@@ -9,14 +9,16 @@ import {
   INFLOW_UNIT_AVERAGE,
   INFLOW_UNIT_LABEL,
   INFLOW_UNIT_NOUN,
+  SALES_CHANNEL_LABEL,
   SALES_CHART_METRIC_LABEL,
+  splitSalesKey,
   type InflowSortKey,
   type InflowUnit,
   type SalesChartMetric,
 } from '@/screens/xtool-lead-manager/utils'
 import { BoardTrendList } from './board-trend-list'
 import { HeatmapTable } from './heatmap-table'
-import { InflowChart } from './inflow-chart'
+import { InflowChart, type InflowSplit } from './inflow-chart'
 
 type SalesProps = {
   sales: ReturnType<typeof useMondayTrendViewModel>['state']['sales']
@@ -37,6 +39,15 @@ const VIEW_LABEL: Record<InflowView, string> = {
 const CHART_METRIC: Record<SalesChartMetric, { name: string; unit: string }> = {
   quantity: { name: '판매', unit: '개' },
   amount: { name: '판매', unit: '만원' },
+}
+
+// 그래프 툴팁 — 제품마다 오프라인·온라인 표시를 단다(같은 이름이면 한 줄로).
+const CHANNEL_SPLIT: InflowSplit = {
+  keyOf: (key) => {
+    const { channel, name } = splitSalesKey(key)
+    return { name, tag: SALES_CHANNEL_LABEL[channel] }
+  },
+  tags: [SALES_CHANNEL_LABEL.offline, SALES_CHANNEL_LABEL.online],
 }
 
 // 제품별 추이에 보여 줄 제품 수 — 제품이 백 개가 넘어 목록이 너무 길어진다.
@@ -164,6 +175,7 @@ export const SalesSection = ({
           points={chartPoints}
           average={periodCount === 0 ? 0 : chartTotal / periodCount}
           metric={CHART_METRIC[chartMetric]}
+          split={CHANNEL_SPLIT}
         />
       )}
 

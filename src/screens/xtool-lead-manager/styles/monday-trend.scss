@@ -291,6 +291,7 @@ $trend-y-axis-width: 44px;
     dl {
       display: grid;
       grid-template-columns: 1fr auto;
+      align-items: center;
       gap: 3px 16px;
       margin: 0;
       font-size: 12px;
@@ -306,6 +307,40 @@ $trend-y-axis-width: 44px;
     }
     .sub {
       color: variables.$color-text-faint;
+    }
+
+    // 판매통계 — 제품 옆 오프라인·온라인 표시(inflow-chart.tsx의 split).
+    // 오프라인은 회색, 온라인은 강조색.
+    .inflow_tag {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 0 5px;
+      border-radius: 4px;
+      font-size: 10.5px;
+      font-style: normal;
+      line-height: 16px;
+      vertical-align: 1px;
+      font-variant-numeric: tabular-nums;
+      color: variables.$color-text-muted;
+      background-color: variables.$color-border-soft;
+
+      &.tag_1 {
+        color: variables.$color-accent;
+        background-color: variables.$color-accent-soft;
+      }
+    }
+    // 합계 밑 채널별 합계 — "[오프라인] 12  [온라인] 3".
+    .inflow_tag_totals {
+      display: flex;
+      gap: 12px;
+      margin: -2px 0 8px;
+      font-size: 12px;
+      color: variables.$color-text;
+      font-variant-numeric: tabular-nums;
+
+      .inflow_tag {
+        margin: 0 5px 0 0;
+      }
     }
   }
 

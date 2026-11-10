@@ -9,6 +9,31 @@ import {
 /** 툴팁에 적는 항목 수 — 판매통계처럼 제품이 많아도 툴팁이 화면을 덮지 않게. */
 const TOOLTIP_ROWS = 10
 
+/** 툴팁 항목을 무리(채널)로 가르는 법 — 판매통계가 온라인·오프라인을 가를 때.
+ * keyOf는 칸 이름을 항목 이름과 무리로 나누고, tags는 무리를 적는 순서다. */
+export type InflowSplit = {
+  keyOf: (key: string) => { name: string; tag: string }
+  tags: readonly string[]
+}
+
+type TooltipRow = { name: string; total: number; parts: Map<string, number> }
+
+/** 툴팁 항목 — 무리로 가르면 같은 이름을 한 줄로 합치고 무리별 수를 단다. */
+const tooltipRows = (
+  boards: Record<string, number>,
+  split?: InflowSplit,
+): TooltipRow[] => {
+  const byName = new Map<string, TooltipRow>()
+  for (const [key, value] of Object.entries(boards)) {
+    const { name, tag } = split ? split.keyOf(key) : { name: key, tag: '' }
+    const row = byName.get(name) ?? { name, total: 0, parts: new Map() }
+    row.total += value
+    if (split) row.parts.set(tag, (row.parts.get(tag) ?? 0) + value)
+    byName.set(name, row)
+  }
+  return [...byName.values()].sort((a, b) => b.total - a.total)
+}
+
 /** x축 날짜 표기를 몇 칸마다 하나씩 보일지 — 많아야 10개쯤 보이게. */
 const labelEvery = (count: number): number => Math.max(1, Math.ceil(count / 10))
 
@@ -27,6 +52,7 @@ export const InflowChart = ({
   points,
   average,
   metric = { name: '인입', unit: '건' },
+  split,
 }: {
   points: InflowPoint[]
   /** 기간 평균 — 가로 기준선으로 그린다. */
@@ -34,6 +60,9 @@ export const InflowChart = ({
   /** 툴팁의 이름·단위 — 판매통계는 { name: '판매', unit: '개' }. 툴팁의
    * 항목(보드·제품)은 많은 순으로 TOOLTIP_ROWS개까지, 나머지는 "외 n개". */
   metric?: { name: string; unit: string }
+  /** 주면 툴팁의 항목마다 무리(예: 오프라인·온라인) 표시를 달고, 합계 밑에
+   * 무리별 합계를 적는다. */
+  split?: InflowSplit
 }) => {
   // 선은 그래프 상자의 실제 크기(px)로 그린다 — 늘려 맞추면 곡선이 찌그러진다.
   const [plotRef, plot] = useElementSize<HTMLDivElement>()
@@ -132,39 +161,76 @@ export const InflowChart = ({
                     {metric.name} {point.total.toLocaleString('ko-KR')}
                     {metric.unit}
                   </span>
-                  <dl>
-                    {/* 그 칸에 있던 항목(보드·제품)만, 많은 순으로. */}
-                    {(() => {
-                      const entries = Object.entries(point.boards ?? {}).sort(
-                        (a, b) => b[1] - a[1],
-                      )
-                      const rest = entries.length - TOOLTIP_ROWS
-                      return (
-                        <>
-                          {entries
-                            .slice(0, TOOLTIP_ROWS)
-                            .map(([name, boardCount]) => (
-                              <Fragment key={name}>
-                                <dt>{shortBoardName(name)}</dt>
-                                <dd>{boardCount.toLocaleString('ko-KR')}</dd>
-                              </Fragment>
+                  {(() => {
+                    const rows = tooltipRows(point.boards ?? {}, split)
+                    const rest = rows.length - TOOLTIP_ROWS
+                    // 무리별 합계 — 그 칸에 있던 무리만, 정해진 순서로.
+                    const tagTotals = split
+                      ? split.tags
+                          .map((tag) => ({
+                            tag,
+                            value: rows.reduce(
+                              (sum, row) => sum + (row.parts.get(tag) ?? 0),
+                              0,
+                            ),
+                          }))
+                          .filter((part) => part.value > 0)
+                      : []
+                    const tagClass = (tag: string) =>
+                      `inflow_tag tag_${split?.tags.indexOf(tag) ?? 0}`
+                    return (
+                      <>
+                        {tagTotals.length > 0 && (
+                          <span className="inflow_tag_totals">
+                            {tagTotals.map(({ tag, value }) => (
+                              <span key={tag}>
+                                <i className={tagClass(tag)}>{tag}</i>
+                                {value.toLocaleString('ko-KR')}
+                              </span>
                             ))}
+                          </span>
+                        )}
+                        <dl>
+                          {/* 그 칸에 있던 항목(보드·제품)만, 많은 순으로. */}
+                          {rows.slice(0, TOOLTIP_ROWS).map((row) => {
+                            const parts = (split?.tags ?? []).filter((tag) =>
+                              row.parts.has(tag),
+                            )
+                            return (
+                              <Fragment key={row.name}>
+                                <dt>
+                                  <span className="inflow_tip_name">
+                                    {shortBoardName(row.name)}
+                                  </span>
+                                  {/* 무리 하나면 이름만, 둘 이상이면 수까지. */}
+                                  {parts.map((tag) => (
+                                    <i key={tag} className={tagClass(tag)}>
+                                      {tag}
+                                      {parts.length > 1 &&
+                                        ` ${(row.parts.get(tag) ?? 0).toLocaleString('ko-KR')}`}
+                                    </i>
+                                  ))}
+                                </dt>
+                                <dd>{row.total.toLocaleString('ko-KR')}</dd>
+                              </Fragment>
+                            )
+                          })}
                           {rest > 0 && (
                             <>
                               <dt className="sub">외 {rest}개</dt>
                               <dd className="sub" />
                             </>
                           )}
-                        </>
-                      )
-                    })()}
-                    {point.misentry > 0 && (
-                      <>
-                        <dt className="sub">오기입</dt>
-                        <dd className="sub">{point.misentry}</dd>
+                          {point.misentry > 0 && (
+                            <>
+                              <dt className="sub">오기입</dt>
+                              <dd className="sub">{point.misentry}</dd>
+                            </>
+                          )}
+                        </dl>
                       </>
-                    )}
-                  </dl>
+                    )
+                  })()}
                 </div>
               )}
             </div>

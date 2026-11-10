@@ -240,18 +240,17 @@ export const useMondayTrendViewModel = (active: boolean) => {
       ),
     [salesRows, salesScope, range, unit],
   )
-  // 그래프 — 수량이면 표와 같은 칸을, 금액이면 같은 기간을 금액(만원)으로.
+  // 그래프 — 표와 같은 기간을 수량 또는 금액(만원)으로. 툴팁이 온라인·오프라인을
+  // 가를 수 있게 제품을 채널별로 나눠 담는다(byChannel).
   const salesChartPoints = useMemo(
     () =>
-      salesChartMetric === 'quantity'
-        ? salesPoints
-        : inflowSeries(
-            salesAsDays(salesRows, salesScope, 'amount'),
-            range.start,
-            range.end,
-            unit,
-          ),
-    [salesChartMetric, salesPoints, salesRows, salesScope, range, unit],
+      inflowSeries(
+        salesAsDays(salesRows, salesScope, salesChartMetric, true),
+        range.start,
+        range.end,
+        unit,
+      ),
+    [salesChartMetric, salesRows, salesScope, range, unit],
   )
   const salesColumns = useMemo(
     () => summarizeInflow(salesPoints).boards,
