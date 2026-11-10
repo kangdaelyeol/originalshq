@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TechColumn } from '@xtool-core/tech-boards'
-import { columnUnits, moveUnit, orderColumns } from '@xtool-core/column-order'
+import { columnUnits, missingDefaultMoves, moveUnit, orderColumns } from '@xtool-core/column-order'
 import { isTimelineColumn, TIMELINE_ID } from '@xtool-core/tech-timeline'
 
 // 칸 순서(xtool-core/column-order) — 기본 순서(보드별 옮기기·타임라인 맨 오른쪽)와 직원이 바꾼 순서.
@@ -81,5 +81,11 @@ describe('칸 순서', () => {
     expect(moveUnit(units, 'd', 'b')).toEqual(['a', 'd', 'b', 'c'])
     expect(moveUnit(units, 'a', null)).toEqual(['b', 'c', 'd', 'a'])
     expect(moveUnit(units, 'b', 'c')).toEqual(units)
+  })
+
+  it('칸 이름 점검 — 기본 자리 옮기기에 쓰는 칸이 없으면 알린다', () => {
+    expect(missingDefaultMoves('repair', REPAIR)).toEqual([])
+    const renamed = REPAIR.map((c) => (c.id === 'received' ? { ...c, title: '접수 날짜' } : c))
+    expect(missingDefaultMoves('repair', renamed)).toEqual([{ title: '접수일', after: '연락처', missing: ['접수일'] }])
   })
 })

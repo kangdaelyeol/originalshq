@@ -35,6 +35,7 @@ import {
   refreshItems,
   searchAddress,
   setupTechWebhooks,
+  checkColumnNames,
   checkInstallItems,
   syncTechBoard,
   syncTechBoards,
@@ -576,6 +577,20 @@ export const techCheckInstallItems = onCall(
       }
     },
   ),
+)
+
+// ────────────────────────────────
+// techCheckColumns — 칸 이름 점검(관리자). 코드가 칸·그룹·라벨을 이름으로 찾는 곳 중
+// 보드에 없는 것을 보드마다 돌려준다(tech-boards/column-check.ts). Monday에서 칸
+// 이름을 바꾸거나 지운 뒤 동기화하고 본다 — 캐시(Firestore)만 읽고 Monday는 부르지
+// 않는다.
+// ────────────────────────────────
+export const techCheckColumns = onCall(
+  { timeoutSeconds: 60 },
+  traced('techCheckColumns', 'callable', async (request: CallableRequest) => {
+    await requireMember(request, true)
+    return { boards: await checkColumnNames(db) }
+  }),
 )
 
 // ────────────────────────────────

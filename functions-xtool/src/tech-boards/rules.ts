@@ -421,6 +421,150 @@ function resolveAssigneeRules(
   )
 }
 
+/** 칸 이름 점검(관리 화면, column-check.ts) — 규칙이 찾는 칸·그룹·라벨 중 보드에 없는 것 */
+export interface RuleProblem {
+  /** 무엇이 쓰는지 — 상태 규칙·만들 때 규칙·담당자 규칙·하위 줄 규칙 */
+  where: string
+  /** 찾는 칸·그룹·라벨 */
+  expected: string
+  /** 못 찾으면 무엇이 안 되는지 */
+  effect: string
+  /** 같은 종류의 지금 이름들(바뀐 이름을 찾기 쉽게) */
+  candidates: string[]
+}
+
+// 후보 이름 수
+const CANDIDATES = 12
+const titlesOf = (columns: Column[], type?: string) =>
+  columns
+    .filter((c) => !type || c.type === type)
+    .map((c) => c.title)
+    .slice(0, CANDIDATES)
+
+/** 보드의 규칙이 찾는 것 중 없는 것 — 웹훅 규칙과 같은 찾기(제목 공백 무시·날짜 칸 비슷한 이름)로 본다. */
+export function ruleProblems(
+  key: TechBoardKey,
+  board: FullBoard,
+): RuleProblem[] {
+  const problems: RuleProblem[] = []
+  const add = (problem: RuleProblem) => {
+    const dup = problems.some(
+      (p) => p.where === problem.where && p.expected === problem.expected,
+    )
+    if (!dup) problems.push(problem)
+  }
+  for (const rule of TECH_STATUS_RULES.filter((r) => r.board === key)) {
+    const when = rule.when === 'leave' ? `'${rule.label}'에서 바뀔 때` :
+      `'${rule.label}'(으)로 바뀔 때`
+    const status = board.columns.find(
+      (c) => c.type === 'status' && same(c.title, rule.status),
+    )
+    if (!status) {
+      add({
+        where: '상태 규칙',
+        expected: `${rule.status} (상태 칸)`,
+        effect: '이 상태 칸의 그룹 옮기기·날짜 넣기가 모두 멈춰요',
+        candidates: titlesOf(board.columns, 'status'),
+      })
+      continue
+    }
+    if (status.options && !status.options.some((l) => same(l, rule.label))) {
+      add({
+        where: '상태 규칙',
+        expected: `${rule.status} 라벨 '${rule.label}'`,
+        effect: `${when}의 자동화가 돌지 않아요`,
+        candidates: status.options.slice(0, CANDIDATES),
+      })
+    }
+    for (const title of rule.dates) {
+      if (findDateColumn(board.columns, title)) continue
+      add({
+        where: '상태 규칙',
+        expected: `${title} (날짜 칸)`,
+        effect: `${when} 날짜를 못 넣어요`,
+        candidates: titlesOf(board.columns, 'date'),
+      })
+    }
+    const group = rule.group
+    if (group && !board.groups.some((g) => same(g.title, group))) {
+      add({
+        where: '상태 규칙',
+        expected: `${rule.group} (그룹)`,
+        effect: `${when} 그룹을 못 옮겨요`,
+        candidates: board.groups.map((g) => g.title).slice(0, CANDIDATES),
+      })
+    }
+  }
+  for (const rule of TECH_CREATE_RULES.filter((r) => r.board === key)) {
+    for (const title of rule.dates) {
+      if (findDateColumn(board.columns, title)) continue
+      add({
+        where: '만들 때 규칙',
+        expected: `${title} (날짜 칸)`,
+        effect: '새 항목에 오늘 날짜를 못 넣어요',
+        candidates: titlesOf(board.columns, 'date'),
+      })
+    }
+  }
+  for (const rule of TECH_ASSIGNEE_RULES.filter((r) => r.board === key)) {
+    const people = board.columns.some(
+      (c) => c.type === 'people' && same(c.title, rule.people),
+    )
+    const text = board.columns.some(
+      (c) => c.type === 'text' && same(c.title, rule.text),
+    )
+    const effect = 'Monday 담당자를 담당자(엑스툴) 칸에 못 옮겨요'
+    if (!people) {
+      add({
+        where: '담당자 규칙',
+        expected: `${rule.people} (사람 칸)`,
+        effect,
+        candidates: titlesOf(board.columns, 'people'),
+      })
+    }
+    if (!text) {
+      add({
+        where: '담당자 규칙',
+        expected: `${rule.text} (글자 칸)`,
+        effect,
+        candidates: titlesOf(board.columns, 'text'),
+      })
+    }
+  }
+  const sub = TECH_SUBITEM_RULES.find((r) => r.board === key)
+  if (sub) {
+    const subColumns = board.subitems?.columns ?? []
+    const effect = '하위 줄 품명을 "{품목명} {수량}개"로 못 맞춰요'
+    if (!board.subitems?.boardId) {
+      add({ where: '하위 줄 규칙', expected: '하위 아이템', effect, candidates: [] })
+    } else {
+      const quantity = subColumns.some(
+        (c) => c.type === 'numbers' && same(c.title, sub.quantity),
+      )
+      const label = subColumns.some(
+        (c) => c.type === 'text' && same(c.title, sub.label),
+      )
+      if (!quantity) {
+        add({
+          where: '하위 줄 규칙',
+          expected: `하위 아이템 ${sub.quantity} (숫자 칸)`,
+          effect,
+          candidates: titlesOf(subColumns, 'numbers'),
+        })
+      }
+      if (!label) {
+        add({
+          where: '하위 줄 규칙',
+          expected: `하위 아이템 ${sub.label} (글자 칸)`,
+          effect,
+          candidates: titlesOf(subColumns, 'text'),
+        })
+      }
+    }
+  }
+  return problems
+}
+
 const hasRules = (key: TechBoardKey) =>
   TECH_STATUS_RULES.some((rule) => rule.board === key) ||
   TECH_ASSIGNEE_RULES.some((rule) => rule.board === key) ||

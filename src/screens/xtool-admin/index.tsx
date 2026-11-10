@@ -14,6 +14,7 @@ import { AdminSignIn } from './admin-sign-in'
 import { AssigneeCopyCard } from './assignee-copy-card'
 import { InstallItemsCard } from './install-items-card'
 import { WorksTestCard } from './works-test-card'
+import { ColumnCheckCard } from './column-check-card'
 import { EditLogCard } from './edit-log-card'
 import { MemberForm } from './member-form'
 import { MembersTable, type MemberFilter } from './members-table'
@@ -128,6 +129,7 @@ function AdminScreen() {
                 <PhoneCopyCard />
                 <AssigneeCopyCard />
                 <InstallItemsCard />
+                <ColumnCheckCard />
                 <WorksTestCard />
               </>
             )}

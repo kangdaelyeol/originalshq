@@ -26,6 +26,18 @@ function naturalUnits(boardKey: TechBoardKey, columns: readonly TechColumn[], pa
   return parts.size > 0 ? [...ids, TIMELINE_ID] : ids
 }
 
+/** 기본 자리 옮기기 중 칸을 못 찾아 못 하는 것(관리 화면 칸 이름 점검) — 제목은 화면 이름(연락처 등) */
+export function missingDefaultMoves(
+  boardKey: TechBoardKey,
+  columns: readonly TechColumn[],
+): Array<{ title: string; after: string; missing: string[] }> {
+  return (DEFAULT_MOVES[boardKey] ?? []).flatMap((move) => {
+    const has = (title: string) => columns.some((c) => titleKey(c.title) === titleKey(title))
+    const missing = [move.title, move.after].filter((title) => !has(title))
+    return missing.length > 0 ? [{ ...move, missing }] : []
+  })
+}
+
 /** 칸 단위 순서 — 바꾼 순서(order)에 있는 것은 그 순서로, 없는 것은 기본 순서대로 끝에 */
 export function columnUnits(
   boardKey: TechBoardKey,

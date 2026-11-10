@@ -290,6 +290,29 @@
     font-size: 12px;
   }
 
+  // ── 칸 이름 점검 — 보드마다 이름·동기화 시각과 못 찾은 것 표 ─────────────────────
+  .column-check__board + .column-check__board {
+    margin-top: 14px;
+  }
+
+  .column-check__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    margin-bottom: 6px;
+
+    span {
+      font-size: 12px;
+      opacity: 0.65;
+    }
+  }
+
+  .column-check__candidates {
+    max-width: 260px;
+    font-size: 12px;
+  }
+
   // ── 네이버 웍스 연결 확인 — 보낼 곳 고르기·웍스 아이디(채널 ID) 입력 ───────────────
   .works-test__select,
   .works-test__input {
