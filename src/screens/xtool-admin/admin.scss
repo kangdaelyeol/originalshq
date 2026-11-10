@@ -290,6 +290,22 @@
     font-size: 12px;
   }
 
+  // ── 네이버 웍스 연결 확인 — 보낼 곳 고르기·웍스 아이디(채널 ID) 입력 ───────────────
+  .works-test__select,
+  .works-test__input {
+    width: auto;
+    height: 32px;
+    padding-block: 0;
+  }
+
+  .works-test__select {
+    min-width: 140px;
+  }
+
+  .works-test__input {
+    min-width: 220px;
+  }
+
   // ── 임시 비밀번호 ─────────────────────────────────────────────────────────
   .member-form__password {
     display: flex;

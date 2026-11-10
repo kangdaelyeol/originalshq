@@ -46,6 +46,15 @@ import {
 } from '../tech-boards'
 import { db, mondayApiKey } from '../app'
 import { endpoint } from '../http'
+import {
+  sendChannelText,
+  sendUserText,
+  WORKS_CHANNEL_LABELS,
+  WORKS_CHANNELS,
+  WORKS_SECRETS,
+  WorksChannel,
+  WorksError,
+} from '../works'
 
 // 기술지원팀 보드(tech 페이지) — Monday가 원본이고 Firestore(techItems ·
 // techBoardMeta)는 캐시다. 화면은 캐시를 규칙으로 직접 읽고(기술팀만), 고칠 때는
@@ -565,6 +574,79 @@ export const techCheckInstallItems = onCall(
       } catch (error) {
         throw toHttpsError(error)
       }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techWorksTest — 네이버 웍스 봇 연결 확인(관리자). 확인 메시지를 하나 보낸다 — 나에게
+// 1:1(userId — 웍스 아이디), 채널 ID를 직접 적은 채팅방(channelId), 정해 둔 채팅방
+// (channel) 중 하나. 비밀 값 5개(WORKS_*)·봇 초대가 맞는지 알림을 켜기 전에 본다.
+// 비밀 값을 넣기 전에는 이 함수만 배포되지 않는다(다른 함수는 웍스 비밀 값을 안 쓴다).
+// ────────────────────────────────
+// 웍스 아이디·채널 ID — 빈칸·빗금 없이 적당한 길이만 본다(주소에는 encodeURIComponent로
+// 넣는다). 웍스 아이디는 로그인 아이디(name@도메인)나 구성원 ID(UUID) 둘 다 받는다 —
+// 맞는 아이디인지는 웍스가 판단한다(틀리면 웍스 오류가 그대로 보인다).
+const WORKS_USER_ID = /^[^\s/]{2,128}$/
+const WORKS_CHANNEL_ID = /^[^\s/]{8,128}$/
+
+interface WorksTestInput {
+  channel?: string
+  channelId?: string
+  userId?: string
+}
+
+export const techWorksTest = onCall(
+  { secrets: WORKS_SECRETS, timeoutSeconds: 30 },
+  traced(
+    'techWorksTest',
+    'callable',
+    async (request: CallableRequest<WorksTestInput>) => {
+      const editor = await requireMember(request, true)
+      const userId = String(request.data?.userId ?? '').trim()
+      const channelId = String(request.data?.channelId ?? '').trim()
+      const channel = String(request.data?.channel ?? 'tech')
+      let send: (text: string) => Promise<void>
+      let label: string
+      if (userId) {
+        if (!WORKS_USER_ID.test(userId)) {
+          throw new HttpsError(
+            'invalid-argument',
+            '웍스 아이디에 빈칸·빗금 없이 적어 주세요',
+          )
+        }
+        send = (text) => sendUserText(userId, text)
+        label = `${userId}(1:1)`
+      } else if (channelId) {
+        if (!WORKS_CHANNEL_ID.test(channelId)) {
+          throw new HttpsError(
+            'invalid-argument',
+            '채널 ID에 빈칸·빗금 없이 적어 주세요',
+          )
+        }
+        send = (text) => sendChannelText(channelId, text)
+        label = '적은 채팅방'
+      } else {
+        if (!(channel in WORKS_CHANNELS)) {
+          throw new HttpsError('invalid-argument', '모르는 채팅방이에요')
+        }
+        const key = channel as WorksChannel
+        send = (text) => sendChannelText(WORKS_CHANNELS[key], text)
+        label = WORKS_CHANNEL_LABELS[key]
+      }
+      const now = new Date().toLocaleString('ko-KR', {
+        timeZone: 'Asia/Seoul',
+      })
+      try {
+        await send(`[xtool] 웍스 연결 확인 메시지예요.\n${editor.name} · ${now}`)
+      } catch (error) {
+        if (error instanceof WorksError) {
+          throw new HttpsError('failed-precondition', error.message)
+        }
+        logger.error('웍스 연결 확인 실패:', error)
+        throw new HttpsError('internal', '웍스에 보내지 못했어요')
+      }
+      return { ok: true, channel: label }
     },
   ),
 )
