@@ -6,6 +6,7 @@ import {
   MAX_DELETE,
   updateTechItem,
   type TechBoardKey,
+  type TechBoardMeta,
   type TechCellValue,
   type TechConflict,
   type TechEditInput,
@@ -14,7 +15,9 @@ import {
   type TechSubitemDoc,
   type TechSubitemEdit,
 } from './tech-boards'
+import { columnLabel, initialState, toEditValue, type LocationState } from './tech-edit'
 import { dismissToast, hasToast, markSaving, pushToast, setToast } from './tech-save-queue'
+import { revertText, undoText, type UndoChange } from './undo-text'
 
 // 저장 대기열 — 고친 것은 화면에 바로 보이고(RTDB처럼) Monday에는 뒤에서 쓴다.
 //
@@ -25,7 +28,8 @@ import { dismissToast, hasToast, markSaving, pushToast, setToast } from './tech-
 // · 새 항목은 임시 id(temp-N)로 바로 줄이 생기고 고칠 수 있다. 그 사이 고친 것은 만들어진 뒤 보낸다.
 // · 새 하위 줄도 같다 — "만드는 중" 줄(id '<항목>:s:N')을 바로 고치거나 지울 수 있다. 만들기를 아직 안 보냈으면
 //   그 만들기에 싣고, 보내는 중이면 만들어진 뒤(서버가 돌려준 Monday id로 바꿔) 보낸다.
-// · 성공은 조용히(상단바 "저장 중 · 모두 저장됨"), 실패만 토스트 — 원래 값으로 돌아가고 "다시 시도".
+// · 고치면 "…을 …로 수정했어요 · 되돌리기" 토스트(아래 되돌리기), 저장 상태는 상단바("저장 중 · 모두 저장됨").
+//   실패는 토스트 — 원래 값으로 돌아가고 "다시 시도".
 // · 겹침 — 칸을 처음 고칠 때 본 캐시 값을 같이 보낸다. 그사이 다른 사람이 같은 칸을 바꿨으면 서버가
 //   그 칸만 쓰지 않고 알려 준다 → 그 사람 값으로 돌아가고 토스트에 "내 값으로 덮기".
 
@@ -758,7 +762,8 @@ function fail(s: ItemState, out: Outgoing, error: unknown) {
   } else if (!deleted) {
     reportFailure(`${labelOf(out)} — 저장하지 못했어요`, error, () => {
       const edit = withDraftEdits(editFrom(states.get(s.key), out), out.subCreates, drafts)
-      if (hasChanges(edit)) editItem(s.boardKey, s.realId ?? s.key, edit, labelOf(out))
+      // 다시 보내기라 되돌리기 알림은 띄우지 않는다.
+      if (hasChanges(edit)) submitEdit(s.boardKey, s.realId ?? s.key, edit, labelOf(out), false)
     })
   }
   sweep(s.boardKey)
@@ -882,14 +887,27 @@ function stateFor(boardKey: TechBoardKey, id: string): ItemState | null {
 
 // ── 화면이 부르는 것 ────────────────────────────────────────────────────────────
 
-/** 항목 고치기 — 바로 보이고 뒤에서 보낸다. id는 Monday id나 임시 id(만드는 중인 줄). */
+/** 항목 고치기 — 바로 보이고 뒤에서 보낸다. id는 Monday id나 임시 id(만드는 중인 줄). "되돌리기" 토스트를 띄운다. */
 export function editItem(boardKey: TechBoardKey, id: string, edit: PendingEdit, label: string): void {
+  submitEdit(boardKey, id, edit, label, true)
+}
+
+/** 고치기 — undoable이면 고치기 전 보이던 값을 잡아 두고 "되돌리기" 토스트를 띄운다(되돌리기·다시 보내기는 끈다). */
+function submitEdit(boardKey: TechBoardKey, id: string, edit: PendingEdit, label: string, undoable: boolean): void {
   const s = stateFor(boardKey, id)
   if (!s || s.hidden) return
+  const before = undoable ? shownDoc(s) : null
   s.queued ??= emptyOutgoing()
+  const firstNew = s.queued.subCreates.length
   mergeInto(s, s.queued, edit, label)
+  // 이번에 새로 만든 하위 줄 — 되돌리면 지운다(만드는 중 열쇠로 — 만들어진 뒤면 Monday id로 바뀐다)
+  const drafts = s.queued.subCreates.slice(firstNew).map((no) => `${s.key}:s:${no}`)
   emit(boardKey)
   flush(s)
+  if (before) {
+    const entry = invertEdit(s, before, edit, drafts)
+    if (entry) recordUndo(entry)
+  }
 }
 
 /** 새 항목 — 임시 id로 바로 줄이 생긴다. 임시 id를 돌려준다. */
@@ -917,12 +935,20 @@ export function createItem(boardKey: TechBoardKey, edit: PendingEdit & { name: s
   mergeInto(s, s.queued!, { columns: edit.columns, subitems: edit.subitems }, label)
   emit(boardKey)
   flush(s)
+  recordUndo({ boardKey, id: key, inverse: null, itemName: edit.name, changes: [{ kind: 'create' }] })
   return key
 }
 
-/** 여러 항목을 그룹으로 옮기기 */
+/** 여러 항목을 그룹으로 옮기기 — 되돌리기 토스트는 하나로 */
 export function moveItems(boardKey: TechBoardKey, ids: string[], groupId: string): void {
-  for (const id of ids) editItem(boardKey, id, { groupId }, '그룹 이동')
+  undoBatch = []
+  try {
+    for (const id of ids) editItem(boardKey, id, { groupId }, '그룹 이동')
+  } finally {
+    const batch = undoBatch
+    undoBatch = null
+    if (batch.length > 0) announceUndo(batch)
+  }
 }
 
 /** 지우기 — 표에서 바로 빠지고 Monday 휴지통으로 보낸다. 만드는 중인 줄은 만들어진 뒤 지운다. */
@@ -972,4 +998,143 @@ function sendDeletes(boardKey: TechBoardKey, list: ItemState[]) {
       )
     }
   })()
+}
+
+// ── 되돌리기 ───────────────────────────────────────────────────────────────────
+// 고칠 때마다 "…을 …로 수정했어요 · 되돌리기" 토스트(성공, UNDO_MS 동안). 되돌리기는 고치기 전에 보이던 값(캐시 +
+// 대기 중 변경)을 같은 대기열로 다시 보낸다 — 항목마다 순서가 뒤집히지 않는다. 토스트는 하나라 새로 고치면 그것으로
+// 바뀐다(마지막 것만 되돌린다). 새 항목은 되돌리면 지우고(휴지통), 새 하위 줄은 지운다. 되돌릴 수 없는 것(하위 줄
+// 지우기·칸 정보가 없는 칸·좌표 없는 주소)이 섞인 고치기는 토스트를 띄우지 않는다. 서버 보드 규칙(상태 → 그룹·날짜
+// 칸)이 한 일은 되돌리지 않는다 — 되돌린 상태로 규칙이 다시 돈다.
+
+const UNDO_MS = 6000
+const EMPTY_CELL: TechCellValue = { text: '', value: null }
+
+/** 되돌릴 것 하나 — inverse가 null이면 새 항목(지운다) */
+interface UndoEntry {
+  boardKey: TechBoardKey
+  id: string
+  inverse: PendingEdit | null
+  itemName: string
+  changes: UndoChange[]
+}
+
+// 칸 정보(제목·종류) — 되돌릴 값을 Monday 값에서 다시 만들 때 쓴다. 보드 저장소가 넣는다.
+const metaIndex = new Map<TechBoardKey, TechBoardMeta>()
+let undoToast = 0
+// 여러 항목을 한 번에 고칠 때(그룹 옮기기) 모아서 토스트 하나로
+let undoBatch: UndoEntry[] | null = null
+
+/** 보드 저장소가 보드 정보(techBoardMeta)를 새로 받을 때마다 부른다 — 되돌리기가 칸 종류를 안다. */
+export function observeMeta(boardKey: TechBoardKey, meta: TechBoardMeta | null): void {
+  if (meta) metaIndex.set(boardKey, meta)
+  else metaIndex.delete(boardKey)
+}
+
+/** 지금 화면에 보이는 항목(캐시 + 대기 중 변경) */
+function shownDoc(s: ItemState): TechItemDoc | null {
+  const raw = rawOf(s)
+  if (raw) return patched(raw, s, undefined)
+  return s.created ? patched(draftDoc(s), s, undefined) : null
+}
+
+/** 고치기 전 값으로 되돌리는 고치기와 알림 글 — 되돌릴 수 없는 것이 섞였거나 바뀐 것이 없으면 null */
+function invertEdit(s: ItemState, before: TechItemDoc, edit: PendingEdit, drafts: string[]): UndoEntry | null {
+  const meta = metaIndex.get(s.boardKey)
+  const inverse: PendingEdit = {}
+  const changes: UndoChange[] = []
+  if (edit.name !== undefined && edit.name !== before.name) {
+    inverse.name = before.name
+    changes.push({ kind: 'name', to: edit.name })
+  }
+  if (edit.groupId !== undefined && edit.groupId !== before.groupId) {
+    if (!before.groupId) return null
+    inverse.groupId = before.groupId
+    changes.push({ kind: 'group', to: meta?.groups.find((g) => g.id === edit.groupId)?.title ?? '' })
+  }
+  for (const [id, cell] of Object.entries(edit.columns ?? {})) {
+    const column = meta?.columns.find((c) => c.id === id)
+    if (!column) return null
+    const prev = before.values[id]
+    if (cell.preview && cellKey(cell.preview) === cellKey(prev)) continue
+    const state = initialState(column, prev)
+    // 좌표 없는 주소는 Monday에 다시 쓸 수 없다(지워진다).
+    if (column.type === 'location' && prev?.text && !(state as LocationState).lat) return null
+    inverse.columns = { ...inverse.columns, [id]: { value: toEditValue(column, state), preview: prev ?? EMPTY_CELL } }
+    changes.push({ kind: 'column', title: columnLabel(column), to: cell.preview ? cell.preview.text : null })
+  }
+  const subs = edit.subitems
+  if (subs?.remove?.length) return null
+  if (subs?.update?.length) {
+    const subColumns = meta?.subitems?.columns ?? []
+    const update: TechSubitemEdit[] = []
+    const previews: Record<string, Record<string, TechCellValue>> = {}
+    for (const sub of subs.update) {
+      const prevSub = sub.id ? before.subitems?.find((x) => x.id === sub.id) : undefined
+      if (!sub.id || !prevSub) return null
+      const back: TechSubitemEdit = { id: sub.id }
+      if (sub.name !== undefined && sub.name !== prevSub.name) {
+        back.name = prevSub.name
+        changes.push({ kind: 'subitem', sub: prevSub.name, title: '이름', to: sub.name })
+      }
+      for (const columnId of Object.keys(sub.columns ?? {})) {
+        const column = subColumns.find((c) => c.id === columnId)
+        if (!column) return null
+        const prev = prevSub.values[columnId]
+        const preview = edit.subitemPreviews?.[sub.id]?.[columnId]
+        if (preview && cellKey(preview) === cellKey(prev)) continue
+        back.columns = { ...back.columns, [columnId]: toEditValue(column, initialState(column, prev)) }
+        previews[sub.id] = { ...previews[sub.id], [columnId]: prev ?? EMPTY_CELL }
+        changes.push({
+          kind: 'subitem',
+          sub: prevSub.name,
+          title: columnLabel(column),
+          to: preview ? preview.text : null,
+        })
+      }
+      if (back.name !== undefined || back.columns) update.push(back)
+    }
+    if (update.length > 0) {
+      inverse.subitems = { update }
+      inverse.subitemPreviews = previews
+    }
+  }
+  if (drafts.length > 0) {
+    inverse.subitems = { ...inverse.subitems, remove: drafts }
+    for (const sub of subs?.create ?? []) changes.push({ kind: 'subitemAdd', name: sub.name ?? '' })
+  }
+  if (changes.length === 0) return null
+  return { boardKey: s.boardKey, id: s.realId ?? s.key, inverse, itemName: before.name, changes }
+}
+
+function recordUndo(entry: UndoEntry) {
+  if (undoBatch) undoBatch.push(entry)
+  else announceUndo([entry])
+}
+
+function announceUndo(entries: UndoEntry[]) {
+  const { title, message } = undoText(entries)
+  const toast = {
+    tone: 'success' as const,
+    title,
+    message,
+    durationMs: UNDO_MS,
+    action: { label: '되돌리기', run: () => revertUndo(entries) },
+  }
+  if (undoToast && hasToast(undoToast)) setToast(undoToast, toast)
+  else undoToast = pushToast(toast)
+}
+
+function revertUndo(entries: UndoEntry[]) {
+  dismissToast(undoToast)
+  undoToast = 0
+  const created = entries.filter((e) => e.inverse === null)
+  for (const e of entries) if (e.inverse) submitEdit(e.boardKey, e.id, e.inverse, `${e.itemName} 되돌리기`, false)
+  // 새 항목은 지운다 — "지웠어요(휴지통)" 토스트가 따로 뜬다.
+  for (const boardKey of new Set(created.map((e) => e.boardKey))) {
+    const ids = created.filter((e) => e.boardKey === boardKey).map((e) => e.id)
+    deleteItems(boardKey, ids)
+  }
+  const edited = entries.filter((e) => e.inverse !== null)
+  if (edited.length > 0) pushToast({ tone: 'success', title: '되돌렸어요', message: revertText(edited) })
 }

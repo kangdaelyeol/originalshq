@@ -11,7 +11,7 @@ interface Call {
 }
 
 const calls: Call[] = []
-const toasts: { title: string; action?: { run: () => void } }[] = []
+const toasts: { title: string; message?: string; action?: { label: string; run: () => void } }[] = []
 
 const call = (input: TechEditInput) =>
   new Promise<{ data: unknown }>((resolve, reject) => {
@@ -26,7 +26,7 @@ vi.mock('@xtool-core/tech-boards', () => ({
 }))
 
 vi.mock('@xtool-core/tech-save-queue', () => ({
-  pushToast: (toast: { title: string; action?: { run: () => void } }) => {
+  pushToast: (toast: { title: string; message?: string; action?: { label: string; run: () => void } }) => {
     toasts.push(toast)
     return toasts.length
   },
@@ -148,7 +148,7 @@ describe('만드는 중인 하위 줄', () => {
     expect(calls).toHaveLength(1)
     expect(shown()).toHaveLength(0)
 
-    const retry = toasts.find((t) => t.action)?.action
+    const retry = toasts.find((t) => t.action?.label === '다시 시도')?.action
     expect(retry).toBeDefined()
     retry?.run()
     expect(calls).toHaveLength(2)

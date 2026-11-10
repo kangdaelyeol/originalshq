@@ -9,7 +9,7 @@ import {
   type TechItemDoc,
   type TechMondayUser,
 } from './tech-boards'
-import { applyPending, observeRaw, onPendingChange } from './tech-outbox'
+import { applyPending, observeMeta, observeRaw, onPendingChange } from './tech-outbox'
 
 // 보드 데이터 — Firestore 캐시를 실시간으로 구독한다(누가 고치면 모든 화면에 바로 반영).
 // 처음 그 보드 화면에 들어올 때 구독을 시작하고, 탭을 오가도 끊지 않는다(다시 받지 않게).
@@ -102,7 +102,12 @@ function ensureBoard(key: TechBoardKey) {
   update(key, { error: null })
   const offMeta = onSnapshot(
     doc(db, 'techBoardMeta', key),
-    (snap) => update(key, { meta: snap.exists() ? (snap.data() as TechBoardMeta) : null, metaLoaded: true }),
+    (snap) => {
+      const meta = snap.exists() ? (snap.data() as TechBoardMeta) : null
+      // 되돌리기가 칸 종류를 알게(tech-outbox)
+      observeMeta(key, meta)
+      update(key, { meta, metaLoaded: true })
+    },
     (error) => stop(key, error),
   )
   const offItems = onSnapshot(

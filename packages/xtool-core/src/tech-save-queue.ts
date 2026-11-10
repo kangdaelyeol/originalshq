@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
-// 토스트와 저장 표시 — 항목 수정·만들기·지우기·옮기기는 저장 대기열(tech-outbox.ts)이 조용히
-// 보내고 실패만 여기 토스트로 알린다. 파일 올리기·비우기(진행률 토스트)는 tech-file-actions.ts.
+// 토스트와 저장 표시 — 항목 수정·만들기·지우기·옮기기는 저장 대기열(tech-outbox.ts)이 보내고, 고친 것은
+// "되돌리기" 토스트로, 실패는 "다시 시도" 토스트로 알린다. 파일 올리기·비우기(진행률 토스트)는 tech-file-actions.ts.
 
 export type ToastTone = 'pending' | 'success' | 'error'
 
@@ -11,6 +11,8 @@ export interface Toast {
   title: string
   message?: string
   action?: { label: string; run: () => void }
+  /** 성공 토스트가 떠 있는 시간(기본 SUCCESS_MS) — 주면 setToast로 바꿀 때도 그때부터 다시 잰다 */
+  durationMs?: number
 }
 
 // 성공 토스트가 떠 있는 시간
@@ -19,6 +21,8 @@ const SUCCESS_MS = 2600
 let toasts: readonly Toast[] = []
 let pending: ReadonlySet<string> = new Set()
 let nextId = 1
+// 성공 토스트를 내릴 타이머 — 바꿔 띄우면(setToast) 다시 잰다
+const timers = new Map<number, ReturnType<typeof setTimeout>>()
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((listener) => listener())
 const subscribe = (listener: () => void) => {
@@ -35,17 +39,34 @@ const upsertToast = (toast: Toast) => {
 export function pushToast(toast: Omit<Toast, 'id'>): number {
   const id = nextId++
   upsertToast({ ...toast, id })
-  if (toast.tone === 'success') setTimeout(() => dismissToast(id), SUCCESS_MS)
+  if (toast.tone === 'success') scheduleDismiss(id, toast.durationMs ?? SUCCESS_MS)
   return id
 }
 
+function scheduleDismiss(id: number, ms: number) {
+  clearTimeout(timers.get(id))
+  timers.set(
+    id,
+    setTimeout(() => dismissToast(id), ms),
+  )
+}
+
 export function dismissToast(id: number) {
+  clearTimeout(timers.get(id))
+  timers.delete(id)
   toasts = toasts.filter((t) => t.id !== id)
   emit()
 }
 
-/** 떠 있는 토스트 바꾸기(없어졌으면 다시 띄운다) */
-export const setToast = (id: number, toast: Omit<Toast, 'id'>): void => upsertToast({ ...toast, id })
+/** 떠 있는 토스트 바꾸기(없어졌으면 다시 띄운다) — durationMs를 준 성공 토스트는 그때부터 다시 잰다 */
+export const setToast = (id: number, toast: Omit<Toast, 'id'>): void => {
+  upsertToast({ ...toast, id })
+  if (toast.tone === 'success' && toast.durationMs) scheduleDismiss(id, toast.durationMs)
+  else if (toast.tone !== 'success') {
+    clearTimeout(timers.get(id))
+    timers.delete(id)
+  }
+}
 
 export const hasToast = (id: number): boolean => toasts.some((t) => t.id === id)
 
