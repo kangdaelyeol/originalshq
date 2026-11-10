@@ -45,6 +45,22 @@
   }
 }
 
+// 주소 아래 지도·카카오맵 링크(AddressMap — 기본 모양은 tech boards/_address.scss) — 물 글자색·선
+.water-address__map {
+  .address-map__canvas {
+    border-color: $wb-rule;
+  }
+
+  .address-map__failed {
+    color: $w-ink-3;
+  }
+
+  .address-map__links a {
+    color: $w-ink-2;
+    font-weight: 600;
+  }
+}
+
 .water-address__error {
   display: flex;
   flex-wrap: wrap;

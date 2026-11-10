@@ -2,6 +2,7 @@ import { AlertCircle, MapPin, Search } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, type CSSProperties } from 'react'
 import type { AddressResult } from '@xtool-core/tech-boards'
 import type { LocationState } from '@xtool-core/tech-edit'
+import { AddressMap } from '../../board/address-map'
 import { useAddressSearch, type AddressPointer } from '../../board/use-address-search'
 import { cx } from '@/ohq-ui/lib/cx'
 import { WaterButton, WaterTextField } from '@/ohq-ui/water/controls'
@@ -52,6 +53,9 @@ export function WaterLocationInput({ id, value, onChange, search }: WaterLocatio
           disabled={!hasCoords}
           onChange={(e) => address.setDetail(e.target.value)}
         />
+      )}
+      {value.address && (
+        <AddressMap className="water-address__map" address={value.address} lat={value.lat} lng={value.lng} />
       )}
       <div className="water-address__search">
         <WaterTextField

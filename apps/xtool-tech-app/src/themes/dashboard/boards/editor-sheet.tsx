@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { MapPin, Save, Search } from 'lucide-react-native';
+import { ExternalLink, MapPin, Navigation, Save, Search } from 'lucide-react-native';
 import { koreaToday } from '@xtool-core/dates';
 import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards';
 import { useAddressSearch } from '../../../features/address-search';
@@ -265,6 +265,14 @@ function LocationEditor({
           editable={a.hasCoords}
           onChangeText={a.setDetail}
         />
+      ) : null}
+      {a.maps ? (
+        <View style={layout.row}>
+          <P.Button variant="plain" size="sm" icon={ExternalLink} label="카카오맵에서 보기" onPress={a.maps.view} />
+          {a.maps.route ? (
+            <P.Button variant="plain" size="sm" icon={Navigation} label="길찾기" onPress={a.maps.route} />
+          ) : null}
+        </View>
       ) : null}
       <View style={layout.row}>
         <P.SearchField

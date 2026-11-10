@@ -1,6 +1,17 @@
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View, type TextInputProps } from 'react-native';
-import { Check, ChevronDown, ChevronLeft, ChevronRight, Clock, MapPin, Search, X } from 'lucide-react-native';
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  ExternalLink,
+  MapPin,
+  Navigation,
+  Search,
+  X,
+} from 'lucide-react-native';
 import { labelColor } from '@xtool-core/monday-colors';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import {
@@ -658,6 +669,24 @@ function LocationSheet({ column, cell, onCommit, onClose }: EditorProps) {
             style={!a.hasCoords && s.disabled}
           />
         )}
+        {a.maps && (
+          <View style={s.mapLinks}>
+            <Pressable onPress={a.maps.view} hitSlop={8} accessibilityRole="link" style={s.mapLink}>
+              <ExternalLink size={14} color={p.link} />
+              <MText size={13} color={p.link}>
+                카카오맵에서 보기
+              </MText>
+            </Pressable>
+            {a.maps.route && (
+              <Pressable onPress={a.maps.route} hitSlop={8} accessibilityRole="link" style={s.mapLink}>
+                <Navigation size={14} color={p.link} />
+                <MText size={13} color={p.link}>
+                  길찾기
+                </MText>
+              </Pressable>
+            )}
+          </View>
+        )}
         <View style={s.searchRow}>
           <FieldInput
             value={a.query}
@@ -873,6 +902,8 @@ const styles = (p: MonPalette) => ({
   addressPin: { marginTop: 3 },
   addressText: { lineHeight: 21 },
   addressEmpty: { paddingVertical: 6 },
+  mapLinks: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 18, paddingVertical: 2 },
+  mapLink: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 5 },
   searchRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
   searchButton: {
     height: 42,
