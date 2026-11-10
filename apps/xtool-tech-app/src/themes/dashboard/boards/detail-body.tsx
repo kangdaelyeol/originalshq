@@ -1,12 +1,16 @@
 import { Linking } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
-import type { TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards';
+import { mondayDate, visibleColumns } from '@xtool-core/monday-values';
+import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards';
+import { timelineSteps, type TimelineStep } from '@xtool-core/tech-timeline';
+import { elapsedSeconds, formatDuration, timeTracking, useTickingNow } from '@xtool-core/time-tracking';
 import type { DetailSpec } from '../../../features/dashboard/boards';
 import { useItemFiles } from '../../../features/dashboard/item-files';
 import { useParts } from '../parts';
 
 // 상세 "정보" — 웹 RecordDrawer 본문: 이름/값 목록(연락처는 전화, 교체 영상은 열기), 긴 글(빈 것은 뺀다), 작은 목록
-// (설치 품목·청구 부품), 파일(사진은 썸네일 — 누르면 기기의 기본 보기로 연다). 칸·순서는 보드 정의가 정한다.
+// (설치 품목·청구 부품), 타임라인(단계별 날짜 — 웹 상세와 같은 tech-timeline), 파일(사진은 썸네일 — 누르면 기기의
+// 기본 보기로 연다). 칸·순서는 보드 정의가 정한다.
 
 export function DetailBody({
   detail,
@@ -44,8 +48,33 @@ export function DetailBody({
       {detail.lists.map(list => (
         <P.DetailList key={list.key} title={list.title} items={list.items} />
       ))}
+      {meta && item && <TimelineList meta={meta} item={item} />}
       <ItemFiles meta={meta} item={item} />
     </>
+  );
+}
+
+/** 단계 값 글자 — 날짜는 Monday 날짜, 시간 추적은 지금까지 쌓인 시간, 비었으면 — */
+function stepText(step: TimelineStep, now: number): string {
+  if (!step.filled) return '—';
+  if (step.column.type !== 'time_tracking') return mondayDate(step.cell?.text ?? '');
+  const t = timeTracking(step.cell);
+  if (!t) return step.cell?.text?.trim() || '—';
+  return `${formatDuration(elapsedSeconds(t, now))}${t.running ? ' · 진행 중' : ''}`;
+}
+
+/** 타임라인(웹 상세 "타임라인" 구역) — 타임라인 목록이 있는 보드만. 시간 추적이 켜져 있으면 1초마다 다시 그린다 */
+function TimelineList({ meta, item }: { meta: TechBoardMeta; item: TechItemDoc }) {
+  const P = useParts();
+  const steps = timelineSteps(meta.key as TechBoardKey, visibleColumns(meta), item);
+  const running = steps.some(s => s.column.type === 'time_tracking' && timeTracking(s.cell)?.running);
+  const now = useTickingNow(running);
+  if (steps.length === 0) return null;
+  return (
+    <P.DetailList
+      title="타임라인"
+      items={steps.map(step => ({ key: step.column.id, label: step.column.title, meta: stepText(step, now) }))}
+    />
   );
 }
 

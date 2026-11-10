@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { TechColumn } from '@xtool-core/tech-boards'
 import type { TechBoardKey } from '@xtool-core/tech-boards'
 import { orderColumns } from '@xtool-core/column-order'
-import { isTimelineColumn, missingTimelineTitles, TIMELINE_ID, timelineColumns } from '@xtool-core/tech-timeline'
+import {
+  isTimelineColumn,
+  missingTimelineTitles,
+  TIMELINE_ID,
+  timelineColumns,
+  timelineSteps,
+} from '@xtool-core/tech-timeline'
 
 // 타임라인 칸 묶기(xtool-core/tech-timeline) — 나머지 칸은 Monday 순서, 타임라인은 맨 오른쪽에 단계 순서.
 
@@ -120,5 +126,20 @@ describe('타임라인 칸', () => {
       '보류 종료일',
     ])
     expect(missingTimelineTitles('techTask', FIELD)).toEqual([])
+  })
+
+  it('상세 화면 단계 — 단계 순서로, 날짜는 글자·시간 추적은 쌓인 시간이 있으면 값이 있다', () => {
+    const columns = [col('timer', '시간추적', 'time_tracking'), col('first', '1차 안내일'), col('done', '완료일')]
+    const item = {
+      values: {
+        timer: { text: '', value: JSON.stringify({ running: 'true', startDate: 1, duration: 0 }) },
+        first: { text: '2026-11-10', value: null },
+      },
+    }
+    expect(timelineSteps('techInquiry', columns, item).map((s) => [s.column.id, s.filled])).toEqual([
+      ['timer', true],
+      ['first', true],
+      ['done', false],
+    ])
   })
 })

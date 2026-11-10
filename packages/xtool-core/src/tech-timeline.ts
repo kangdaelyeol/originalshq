@@ -1,4 +1,5 @@
-import type { TechBoardKey, TechColumn } from './tech-boards'
+import type { TechBoardKey, TechCellValue, TechColumn, TechItemDoc } from './tech-boards'
+import { hasTime, timeTracking } from './time-tracking'
 
 // 타임라인 칸 — 상태 단계마다 그날 날짜를 남기는 날짜 칸들(대개 서버 보드 규칙이 채운다, functions-xtool
 // tech-boards/rules.ts). Monday 표는 평소 이 칸들을 "타임라인" 칸 하나로 묶어 "보기"만 쓰고(누르거나 마우스를
@@ -66,6 +67,32 @@ function matchTimeline(
     return { title, column: column ?? null }
   })
 }
+
+/** 타임라인 한 단계 — 칸·값·값이 있는지 */
+export interface TimelineStep {
+  column: TechColumn
+  cell: TechCellValue | undefined
+  filled: boolean
+}
+
+/** 타임라인 칸에 값이 있는지 — 날짜는 글자, 시간 추적은 쌓인 시간(켜져 있거나 0초보다 많다) */
+export const stepFilled = (column: TechColumn, cell: TechCellValue | undefined): boolean =>
+  (column.type === 'time_tracking' && hasTime(timeTracking(cell))) || !!cell?.text?.trim()
+
+/**
+ * 항목의 타임라인 단계(단계 순서) — 상세 화면의 "타임라인" 구역(웹 대시보드·물 상세, 앱 상세)이 쓴다. columns는 보이는
+ * 칸(visibleColumns — 화면 이름). 타임라인 목록이 없는 보드면 빈 목록.
+ */
+export const timelineSteps = (
+  boardKey: TechBoardKey,
+  columns: readonly TechColumn[],
+  item: Pick<TechItemDoc, 'values'>,
+): TimelineStep[] =>
+  timelineColumns(boardKey, columns).map((column) => ({
+    column,
+    cell: item.values[column.id],
+    filled: stepFilled(column, item.values[column.id]),
+  }))
 
 export const isTimelineColumn = (column: TechColumn): column is TimelineColumn => column.type === TIMELINE_TYPE
 

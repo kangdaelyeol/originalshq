@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, View } from 'react-native';
 import type { TechColumn, TechItemDoc } from '@xtool-core/tech-boards';
 import { SUBITEM_LABEL } from '@xtool-core/tech-subitems';
+import { timelineColumns } from '@xtool-core/tech-timeline';
 import { checkCommit } from '../../../features/cell-edit';
 import { useItemView, type ItemViewModel } from '../../../features/item-view';
 import type { RootScreenProps } from '../../../navigation/types';
@@ -72,6 +73,20 @@ function ItemInfo({ view, item }: { view: ItemViewModel; item: TechItemDoc }) {
   const [files, setFiles] = useState<TechColumn | null>(null);
   const { group, sub } = view;
   const kind = editing ? view.editorOf(editing) : null;
+  // 타임라인 칸(단계별 날짜·시간 추적) — 흩어진 칸을 아래 "타임라인" 구역에 단계 순서로 모은다(웹 상세와 같은 tech-timeline)
+  const timeline = useMemo(() => timelineColumns(view.boardKey, view.columns), [view.boardKey, view.columns]);
+  const rest = useMemo(() => {
+    const ids = new Set(timeline.map(c => c.id));
+    return view.columns.filter(c => !ids.has(c.id));
+  }, [timeline, view.columns]);
+  const fieldOf = (c: TechColumn) => {
+    const editor = view.editorOf(c);
+    return (
+      <Field key={c.id} label={c.title} onPress={editor ? () => press(c) : undefined}>
+        <CellValue column={c} cell={item.values[c.id]} mode="full" />
+      </Field>
+    );
+  };
 
   // 칸 누르기 — 체크는 바로 바뀌고(웹과 같다), 파일은 파일 보기, 나머지는 편집 시트
   const press = (column: TechColumn) => {
@@ -97,14 +112,15 @@ function ItemInfo({ view, item }: { view: ItemViewModel; item: TechItemDoc }) {
           <MText color={group?.color}>{group?.title ?? '—'}</MText>
         </View>
       </Field>
-      {view.columns.map(c => {
-        const editor = view.editorOf(c);
-        return (
-          <Field key={c.id} label={c.title} onPress={editor ? () => press(c) : undefined}>
-            <CellValue column={c} cell={item.values[c.id]} mode="full" />
-          </Field>
-        );
-      })}
+      {rest.map(fieldOf)}
+      {timeline.length > 0 && (
+        <>
+          <MText size={12} color={p.text2} style={s.section}>
+            타임라인
+          </MText>
+          {timeline.map(fieldOf)}
+        </>
+      )}
       {sub && (
         <SubitemsBlock
           model={sub}
@@ -197,5 +213,6 @@ const styles = (p: MonPalette) => ({
   fieldValue: { flex: 1, minHeight: 28, justifyContent: 'center' as const },
   groupRow: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8 },
   dot: { width: 10, height: 10, borderRadius: 3 },
+  section: { marginTop: 18, marginBottom: 2, fontWeight: '600' as const, letterSpacing: 0.4 },
   sheetList: { paddingHorizontal: 8, paddingBottom: 8 },
 });

@@ -8,7 +8,9 @@ import {
   WaterIconButton,
   WaterSegmented,
 } from '@/ohq-ui/water/controls'
+import { visibleColumns } from '@xtool-core/monday-values'
 import { deleteItems } from '@xtool-core/tech-outbox'
+import { timelineSteps } from '@xtool-core/tech-timeline'
 import { UPDATE_BOARDS } from '@xtool-core/use-item-updates'
 import { useItemPanel, type ItemPanel } from '../../../lib/use-item-param'
 import { WaterStagePill } from './cells'
@@ -16,6 +18,7 @@ import { WaterDrawerShell } from './drawer-shell'
 import { techFileActions, type TechFileActions } from '../../../data/tech-file-actions'
 import { WaterItemFiles } from './water-item-files'
 import { WaterItemUpdates } from './water-item-updates'
+import { TimelineRows } from '../../timeline-rows'
 
 export interface WaterDrawerField {
   label: string
@@ -73,6 +76,11 @@ export function WaterRecordDrawer({
   const tab: ItemPanel = updatesBoard ? panel : 'info'
   const count = item?.updateCount ?? 0
   const [confirming, setConfirming] = useState(false)
+  // 타임라인 — 단계별 날짜(시간 추적은 흐르는 시간), 대시보드 상세와 같은 내용(tech-timeline)
+  const steps =
+    edit && item
+      ? timelineSteps(edit.boardKey, visibleColumns(edit.meta), item)
+      : []
   return (
     <WaterDrawerShell
       open={record !== null}
@@ -176,6 +184,17 @@ export function WaterRecordDrawer({
               {children && (
                 <div className="water-drawer__extra" data-water-reveal>
                   {children}
+                </div>
+              )}
+
+              {steps.length > 0 && (
+                <div data-water-reveal>
+                  <WaterDrawerList title="타임라인">
+                    <TimelineRows
+                      steps={steps}
+                      metaClassName="water-drawer__list-meta"
+                    />
+                  </WaterDrawerList>
                 </div>
               )}
 

@@ -142,6 +142,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+// 타임라인 구역(timeline-rows) — 아직 안 간 단계는 흐리게
+.drawer__list li.is-empty {
+  opacity: 0.5;
+}
+
 .drawer__footer {
   padding: 14px 20px;
   border-top: 1px solid var(--line);

@@ -2,9 +2,12 @@ import { PenLine, Trash2, X } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
 import { ConfirmDialog } from '@/ohq-ui/components/confirm-dialog'
 import { SegmentedControl } from '@/ohq-ui/components/segmented-control'
+import { visibleColumns } from '@xtool-core/monday-values'
 import { deleteItems } from '@xtool-core/tech-outbox'
+import { timelineSteps } from '@xtool-core/tech-timeline'
 import { UPDATE_BOARDS } from '@xtool-core/use-item-updates'
 import { useItemPanel, type ItemPanel } from '../../lib/use-item-param'
+import { TimelineRows } from '../timeline-rows'
 import { useBoardEdit } from './board-edit-context'
 import { StagePill } from './cells'
 import { DrawerShell } from './drawer-shell'
@@ -41,6 +44,9 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
   const tab: ItemPanel = updatesBoard ? panel : 'info'
   const count = (record && edit?.itemOf(record.itemId)?.updateCount) || 0
   const [confirming, setConfirming] = useState(false)
+  // 타임라인 — 단계별 날짜(시간 추적은 흐르는 시간), Monday 표 "보기" 카드와 같은 내용(tech-timeline)
+  const item = record && edit ? edit.itemOf(record.itemId) : undefined
+  const steps = edit && item ? timelineSteps(edit.boardKey, visibleColumns(edit.meta), item) : []
   return (
     <DrawerShell
       open={record !== null}
@@ -117,6 +123,12 @@ export function RecordDrawer({ record, eyebrow, fields = [], texts = [], childre
                 ))}
 
               {children}
+
+              {steps.length > 0 && (
+                <DrawerList title="타임라인">
+                  <TimelineRows steps={steps} metaClassName="drawer__list-meta" />
+                </DrawerList>
+              )}
 
               {/* 파일 칸(사진은 썸네일) — 칸 종류로 찾아서 모든 보드에 같이 나온다. */}
               {edit && edit.itemOf(record.itemId) && <ItemFiles meta={edit.meta} item={edit.itemOf(record.itemId)!} />}

@@ -138,6 +138,11 @@
   display: flex;
   flex-direction: column;
 
+  // 타임라인 구역(timeline-rows) — 아직 안 간 단계는 흐리게
+  li.is-empty {
+    opacity: 0.5;
+  }
+
   li {
     display: flex;
     justify-content: space-between;
@@ -151,4 +156,11 @@
       color: $w-ink-3;
     }
   }
+}
+
+// 작은 목록 오른쪽 값(타임라인 날짜·시간) — 숫자 폭을 맞춘다
+.water-drawer__list-meta {
+  flex: none;
+  color: $w-ink-2;
+  font-variant-numeric: tabular-nums;
 }
