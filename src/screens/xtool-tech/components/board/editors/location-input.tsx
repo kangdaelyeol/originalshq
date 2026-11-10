@@ -2,7 +2,6 @@ import { MapPin, Search } from 'lucide-react'
 import { useEffect } from 'react'
 import type { LocationState } from '@xtool-core/tech-edit'
 import { Button } from '../../layout-parts'
-import { AddressMap } from '../address-map'
 import { useAddressSearch } from '../use-address-search'
 
 // 편집 판·Monday 표 팝오버의 주소 칸 — 물 레이아웃은 같은 props의 WaterLocationInput
@@ -48,7 +47,6 @@ export function LocationInput({ id, value, onChange }: { id: string; value: Loca
           onChange={(e) => address.setDetail(e.target.value)}
         />
       )}
-      {value.address && <AddressMap address={value.address} lat={value.lat} lng={value.lng} />}
       <div className="address-input__search">
         <input
           id={id}

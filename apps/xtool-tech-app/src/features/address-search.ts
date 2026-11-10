@@ -1,7 +1,5 @@
 import { useRef, useState } from 'react';
-import { Linking } from 'react-native';
 import { addressErrorText } from '@xtool-core/error-text';
-import { kakaoMapLinks } from '@xtool-core/kakao-map';
 import { searchAddress, type AddressResult } from '@xtool-core/tech-boards';
 import type { LocationState } from '@xtool-core/tech-edit';
 
@@ -12,36 +10,6 @@ import type { LocationState } from '@xtool-core/tech-edit';
 export type { AddressResult, LocationState };
 
 export const EMPTY_LOCATION: LocationState = { address: '', detail: '', lat: '', lng: '' };
-
-/** 카카오맵 열기 — 카카오맵 앱이 있으면 앱으로, 없으면(열지 못하면) 웹 카카오맵을 브라우저로 */
-async function openKakaoMap(app: string | null, web: string) {
-  if (app) {
-    try {
-      await Linking.openURL(app);
-      return;
-    } catch {
-      // 카카오맵 앱이 없다 — 웹으로
-    }
-  }
-  await Linking.openURL(web).catch(() => undefined);
-}
-
-/** 주소 하나의 "카카오맵에서 보기"·"길찾기"(좌표가 없으면 길찾기 없음) — 주소가 없으면 null. 웹 AddressMap 링크와 같다. */
-export function kakaoMapActions(value: LocationState): { view: () => void; route: (() => void) | null } | null {
-  const links = kakaoMapLinks(value);
-  if (!links) return null;
-  const { route, appRoute } = links;
-  return {
-    view: () => {
-      openKakaoMap(links.appView, links.view).catch(() => undefined);
-    },
-    route: route
-      ? () => {
-          openKakaoMap(appRoute, route).catch(() => undefined);
-        }
-      : null,
-  };
-}
 
 export function useAddressSearch(value: LocationState, onChange: (value: LocationState) => void) {
   const [query, setQuery] = useState('');
@@ -93,8 +61,6 @@ export function useAddressSearch(value: LocationState, onChange: (value: Locatio
     error,
     /** Monday 주소 칸은 좌표가 있어야 써진다 */
     hasCoords: Boolean(value.lat && value.lng),
-    /** 카카오맵 열기 — 주소가 없으면 null */
-    maps: kakaoMapActions(value),
     run,
     pick,
     /** 주소 지우기 */

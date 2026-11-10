@@ -29,44 +29,6 @@
   }
 }
 
-// 주소 아래 지도·카카오맵 링크(components/board/address-map.tsx) — 물은 .water-address__map으로 색만 바꾼다
-.address-map {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.address-map__canvas {
-  height: 160px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.address-map__failed {
-  font-size: 12px;
-  color: var(--text-4);
-}
-
-.address-map__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  font-size: 12.5px;
-
-  a {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--accent);
-    text-decoration: none;
-
-    &:hover {
-      text-decoration: underline;
-    }
-  }
-}
-
 .address-input__search {
   display: flex;
   gap: 8px;
