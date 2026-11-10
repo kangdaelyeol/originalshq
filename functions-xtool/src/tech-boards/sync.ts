@@ -70,7 +70,18 @@ export async function syncTechBoard(
     await seedRuleStates(
       db,
       source.key,
-      { columns: toTechColumns(raw.columns, keyOfBoard), groups: raw.groups },
+      {
+        columns: toTechColumns(raw.columns, keyOfBoard),
+        groups: raw.groups,
+        ...(raw.subitemBoard ?
+          {
+            subitems: {
+              boardId: raw.subitemBoard.id,
+              columns: toTechColumns(raw.subitemBoard.columns, keyOfBoard),
+            },
+          } :
+          {}),
+      },
       docs,
     ).catch((error) =>
       logger.warn(`규칙 기록 채우기 실패(${source.key}):`, error),

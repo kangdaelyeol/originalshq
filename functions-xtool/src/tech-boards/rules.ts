@@ -3,7 +3,8 @@ import { DocumentReference, Firestore } from 'firebase-admin/firestore'
 import { squash } from '../monday/fields'
 import { ASSIGNEE_TITLE, peopleNames } from './assignees'
 import { TechBoardSource } from './boards'
-import { saveRawItems } from './edits'
+import { refreshItems, saveRawItems } from './edits'
+import { derivedLabel } from './subitems'
 import { addEditLog } from './firestore'
 import {
   changeColumnValues,
@@ -15,13 +16,16 @@ import {
   TechBoardMeta,
   TechChange,
   TechItemDoc,
+  TechSubitemDoc,
 } from './types'
 
 // 보드 규칙 — Monday 보드 자동화를 우리 서버가 대신한다. Monday 자동화는 만든 사람의
 // 권한으로 돌아서 그 사람이 보드 권한을 잃거나 떠나면 꺼진다(2026-11-09 AS 보드
-// 자동화가 그렇게 꺼졌다). 세 가지다.
+// 자동화가 그렇게 꺼졌다). 네 가지다.
 //  - 상태 규칙: 상태 칸이 X로 바뀌면(또는 X에서 다른 값으로 바뀌면) 날짜 칸들에 오늘, 그룹 옮기기.
-//  - 만들 때 규칙: 새 item의 날짜 칸(AS 접수일)이 비어 있으면 오늘.
+//  - 만들 때 규칙: 새 item의 날짜 칸(AS·출장 접수일)이 비어 있으면 오늘.
+//  - 하위 줄 규칙: 하위 줄(이름·수량)이 바뀌면 하위 줄 "품명"을 "{이름} {수량}개"로 맞춘다. 모음 칸을
+//    주면 품명을 ", "로 이어 부모에 쓴다(출장 설치 품목은 품명을 비추는 미러 칸이라 Monday가 잇는다).
 //  - 담당자 규칙: Monday 사람 칸("담당자")이 바뀌면 보이는 이름을 담당자(엑스툴) 글자
 //    칸에 옮긴다(assignees.ts처럼 글자만 — Monday 사용자 조회·이메일 매핑 없음). 사람
 //    칸 → 글자 칸 한 방향이고 덮어쓴다. 사람 칸을 비우면 글자 칸도 비운다.
@@ -60,9 +64,11 @@ export interface TechAssigneeRule {
 // 칸·그룹은 제목으로 찾는다(공백 무시). 못 찾은 칸·그룹·라벨은 오류 로그를 남기고(후보
 // 목록과 함께) 찾은 것만 한다. AS 2026 — 수리 진행 상태에 따라 단계별 날짜 칸과 그룹
 // (2026-11-09·11-10). 보류에서 다른 상태로 가면 보류 종료일과 새 상태 규칙이 같이 돈다.
+// 출장업무 2026 — 상태에 따라 단계별 그룹과 날짜 칸(2026-11-10).
 const REPAIR_STATUS = '수리 진행 상태'
 const REPAIR_NEW = '새로 인입된 건 <접수>'
 const REPAIR_WORKING = '현재 진행중인 업무'
+const FIELD_STATUS = '상태'
 export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
   {
     board: 'repair',
@@ -113,6 +119,55 @@ export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
     when: 'leave',
     dates: ['보류 종료일'],
   },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '신규 출장',
+    dates: [],
+    group: '신규 출장 건',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '입고 확정 (조율 가능)',
+    dates: ['일정 조율 시작일'],
+    group: '일정 조율가능 건',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '1차 안내',
+    dates: ['1차 안내'],
+    group: '일정 조율가능 건',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '일정 확정',
+    dates: ['일정 확정일'],
+    group: '일정 확정 건',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '완료',
+    dates: ['완료일'],
+    group: '완료',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '보류',
+    dates: ['보류 시작일'],
+    group: '보류',
+  },
+  {
+    board: 'fieldService',
+    status: FIELD_STATUS,
+    label: '보류',
+    when: 'leave',
+    dates: ['보류 종료일'],
+  },
 ]
 
 /** 만들 때 규칙 — 새 item(만든 지 NEW_ITEM_MS 안)의 날짜 칸이 비어 있으면 오늘을 넣는다. item마다
@@ -124,7 +179,28 @@ export interface TechCreateRule {
 
 export const TECH_CREATE_RULES: readonly TechCreateRule[] = [
   { board: 'repair', dates: ['접수일'] },
+  { board: 'fieldService', dates: ['접수일'] },
 ]
+
+/** 하위 줄 규칙 — 칸은 제목으로 찾는다. 품명은 하위 줄 칸, 모음은 부모 칸(긴 글자나 글자). */
+export interface TechSubitemRule {
+  board: TechBoardKey
+  /** 하위 줄 수량 칸(숫자) */
+  quantity: string
+  /** 하위 줄 품명 칸(글자) — "{이름} {수량}개" */
+  label: string
+  /** 부모의 모음 칸 — 품명들을 ", "로 잇는다. 없으면 품명만 맞춘다(미러 칸은 쓸 수 없다). */
+  rollup?: string
+}
+
+// 출장업무 2026(2026-11-10). 보드당 하나. 부모의 "설치 품목"은 하위 줄 품명을 비추는 미러 칸이라
+// Monday가 ", "로 이어 보여 준다 — 우리는 품명만 맞춘다("설치 품목(삭제 예정)" 긴 글자 칸은 쓰지 않는다).
+export const TECH_SUBITEM_RULES: readonly TechSubitemRule[] = [
+  { board: 'fieldService', quantity: '수량', label: '품명' },
+]
+
+// 규칙 기록에서 하위 줄 모양(id·이름·수량)을 담는 열쇠 — 칸 id와 겹치지 않는 이름
+const SUBITEMS_KEY = '_subitems'
 
 // 담당자(엑스툴) 칸이 있는 보드(ASSIGNEE_BOARDS)면 한 줄씩 더해 켤 수 있다.
 export const TECH_ASSIGNEE_RULES: readonly TechAssigneeRule[] = [
@@ -168,9 +244,18 @@ interface ResolvedAssigneeRule {
   text: { id: string; title: string }
 }
 
+export interface ResolvedSubitemRule {
+  rule: TechSubitemRule
+  subBoardId: string
+  quantityId: string
+  label: { id: string; title: string }
+  rollup: { id: string; title: string; type: string } | null
+}
+
 interface ResolvedRules {
   status: ResolvedStatusRule[]
   assignee: ResolvedAssigneeRule[]
+  subitem: ResolvedSubitemRule | null
   /** 만들 때 채울 날짜 칸 */
   create: Array<{ id: string; title: string }>
   /** 보는 칸 id */
@@ -296,7 +381,59 @@ function resolveAssigneeRules(
 const hasRules = (key: TechBoardKey) =>
   TECH_STATUS_RULES.some((rule) => rule.board === key) ||
   TECH_ASSIGNEE_RULES.some((rule) => rule.board === key) ||
-  TECH_CREATE_RULES.some((rule) => rule.board === key)
+  TECH_CREATE_RULES.some((rule) => rule.board === key) ||
+  TECH_SUBITEM_RULES.some((rule) => rule.board === key)
+
+export type FullBoard = BoardShape & Pick<TechBoardMeta, 'subitems'>
+
+/** 보드의 하위 줄 규칙(칸 id까지) — 없거나 칸을 못 찾으면 null. 설치 품목 점검(install-items.ts)도 쓴다. */
+export function resolveSubitemRule(
+  key: TechBoardKey,
+  board: FullBoard,
+): ResolvedSubitemRule | null {
+  const rule = TECH_SUBITEM_RULES.find((r) => r.board === key)
+  if (!rule) return null
+  const subColumns = board.subitems?.columns ?? []
+  const quantity = subColumns.find(
+    (c) => c.type === 'numbers' && same(c.title, rule.quantity),
+  )
+  const label = subColumns.find(
+    (c) => c.type === 'text' && same(c.title, rule.label),
+  )
+  const rollup = rule.rollup ?
+    board.columns.find(
+      (c) =>
+        (c.type === 'long_text' || c.type === 'text') &&
+        same(c.title, rule.rollup as string),
+    ) :
+    undefined
+  const missingRollup = !!rule.rollup && !rollup
+  if (!board.subitems?.boardId || !quantity || !label || missingRollup) {
+    reportOnce(`${key}:subitem`, `하위 줄 규칙의 칸을 못 찾음(${key}):`, {
+      rule,
+      subitemBoard: !!board.subitems?.boardId,
+      quantity: !!quantity,
+      label: !!label,
+      rollup: !missingRollup,
+      subitemColumns: subColumns.map((c) => `${c.id}:${c.title}:${c.type}`),
+      rollupCandidates: columnList(
+        board,
+        (c) => c.type === 'long_text' || norm(c.title).includes('품목'),
+      ),
+    })
+  }
+  // 모음 칸을 못 찾아도 품명은 맞춘다.
+  if (!board.subitems?.boardId || !quantity || !label) return null
+  return {
+    rule,
+    subBoardId: board.subitems.boardId,
+    quantityId: quantity.id,
+    label: { id: label.id, title: label.title },
+    rollup: rollup ?
+      { id: rollup.id, title: rollup.title, type: rollup.type } :
+      null,
+  }
+}
 
 function resolveCreateRules(
   key: TechBoardKey,
@@ -322,25 +459,48 @@ function resolveCreateRules(
   )
 }
 
-function resolveRules(key: TechBoardKey, board: BoardShape): ResolvedRules {
+function resolveRules(key: TechBoardKey, board: FullBoard): ResolvedRules {
   const status = resolveStatusRules(key, board)
   const assignee = resolveAssigneeRules(key, board)
   const create = resolveCreateRules(key, board)
+  const subitem = resolveSubitemRule(key, board)
   const watched = [
     ...new Set([
       ...status.map((r) => r.statusId),
       ...assignee.map((r) => r.peopleId),
+      ...(subitem ? [SUBITEMS_KEY] : []),
     ]),
   ]
-  return { status, assignee, create, watched }
+  return { status, assignee, subitem, create, watched }
 }
 
-/** 보는 칸들의 지금 글자 */
+/** 하위 줄 수량 글자(없으면 null) */
+const quantityText = (sub: TechSubitemDoc, quantityId: string) =>
+  sub.values[quantityId]?.text?.trim() || null
+
+/** 하위 줄 모양 — id·이름·수량. 품명·모음 칸은 넣지 않는다(우리가 쓴 것으로 다시 돌지 않게). */
+const subitemSignature = (doc: TechItemDoc, quantityId: string) =>
+  (doc.subitems ?? [])
+    .map((sub) => {
+      const quantity = quantityText(sub, quantityId) ?? ''
+      return `${sub.id}=${sub.name}*${quantity}`
+    })
+    .join('|')
+
+/** 보는 칸들의 지금 글자(하위 줄 규칙은 하위 줄 모양) */
 const valuesOf = (
+  rules: Pick<ResolvedRules, 'subitem'>,
   watched: string[],
   doc: TechItemDoc,
 ): Record<string, string> =>
-  Object.fromEntries(watched.map((id) => [id, doc.values[id]?.text ?? '']))
+  Object.fromEntries(
+    watched.map((id) => [
+      id,
+      id === SUBITEMS_KEY && rules.subitem ?
+        subitemSignature(doc, rules.subitem.quantityId) :
+        doc.values[id]?.text ?? '',
+    ]),
+  )
 
 const isRecent = (createdAt: string | null) => {
   const time = createdAt ? Date.parse(createdAt) : NaN
@@ -368,7 +528,7 @@ export async function applyBoardRules(
   if (!hasRules(source.key)) return
   const rules = resolveRules(source.key, meta)
   if (rules.watched.length === 0 && rules.create.length === 0) return
-  const current = valuesOf(rules.watched, doc)
+  const current = valuesOf(rules, rules.watched, doc)
   const ref = db.collection(STATE).doc(doc.itemId)
 
   // 바뀐 칸 → 바뀌기 전 글자, 만들 때 규칙을 돌릴지(새 item에 한 번)
@@ -419,6 +579,13 @@ export async function applyBoardRules(
     if (before === undefined) continue
     await attempt(context, { [`statuses.${resolved.peopleId}`]: before }, () =>
       runAssigneeRule(context, resolved),
+    )
+  }
+  const subBefore = changed.get(SUBITEMS_KEY)
+  const subRule = rules.subitem
+  if (subBefore !== undefined && subRule) {
+    await attempt(context, { [`statuses.${SUBITEMS_KEY}`]: subBefore }, () =>
+      runSubitemRule(context, subRule),
     )
   }
 }
@@ -556,6 +723,82 @@ async function runCreateRule(
   })
 }
 
+/** 하위 줄마다 맞는 품명("{이름} {수량}개" — 이름이 빈 줄은 뺀다), 그중 지금 품명이 다른 줄, 품명을
+ * ", "로 이은 글자(설치 품목에 보여야 할 값). */
+export function subitemLabels(
+  doc: TechItemDoc,
+  resolved: Pick<ResolvedSubitemRule, 'quantityId' | 'label'>,
+) {
+  const rows = (doc.subitems ?? []).flatMap((sub) => {
+    const name = sub.name.trim()
+    const quantity = quantityText(sub, resolved.quantityId)
+    return name ? [{ sub, label: derivedLabel(name, quantity) }] : []
+  })
+  const fixes = rows.filter(
+    (row) =>
+      (row.sub.values[resolved.label.id]?.text ?? '').trim() !== row.label,
+  )
+  return { rows, fixes, joined: rows.map((row) => row.label).join(', ') }
+}
+
+/** 하위 줄 규칙 — 품명을 "{이름} {수량}개"로 맞추고(다른 줄만), 품명들을 ", "로 이어 부모 모음 칸에
+ * 쓴다(다르면). 이름이 빈 줄은 건너뛴다. 하위 줄이 다 없어지면 모음 칸을 비운다. 하위 줄을 빠르게
+ * 여러 개 고치면 알림이 겹쳐 오므로, 늦게 처리된 알림이 옛 목록으로 덮지 않게 Monday에서 다시 읽고 계산한다. */
+async function runSubitemRule(
+  { db, apiKey, source, meta, doc: seen }: RuleContext,
+  resolved: ResolvedSubitemRule,
+): Promise<void> {
+  const fresh = await refreshItems(db, apiKey, source, [seen.itemId], meta)
+  const doc = fresh.get(seen.itemId)
+  if (!doc) return
+  const { subBoardId, label, rollup } = resolved
+  const { fixes, joined } = subitemLabels(doc, resolved)
+  for (const row of fixes) {
+    await changeColumnValues(apiKey, subBoardId, row.sub.id, {
+      [label.id]: row.label,
+    })
+  }
+  const rollupBefore = rollup ? (doc.values[rollup.id]?.text ?? '').trim() : ''
+  const needsRollup = !!rollup && rollupBefore !== joined
+  if (rollup && needsRollup) {
+    const value =
+      rollup.type === 'long_text' ? (joined ? { text: joined } : null) : joined
+    const raw = await changeColumnValues(
+      apiKey,
+      source.boardId,
+      doc.itemId,
+      { [rollup.id]: value },
+      shapeOf(source),
+    )
+    // 품명을 고친 하위 줄도 응답에 실려 와서 캐시가 한 번에 맞는다.
+    if (raw) await saveRawItems(db, source, meta, [doc.itemId], [raw])
+  }
+  if (fixes.length === 0 && !needsRollup) return
+  const changes: TechChange[] = [
+    ...(fixes.length ?
+      [
+        {
+          field: label.id,
+          title: `하위 ${label.title}`,
+          before: null,
+          after: fixes.map((row) => row.label).join(', '),
+        },
+      ] :
+      []),
+    ...(rollup && needsRollup ?
+      [
+        {
+          field: rollup.id,
+          title: rollup.title,
+          before: rollupBefore || null,
+          after: joined || null,
+        },
+      ] :
+      []),
+  ]
+  await addEditLog(db, { ...logBase(source, meta, doc), changes, ok: true })
+}
+
 /** 담당자 규칙 — 사람 칸에 보이는 이름을 글자 칸에 덮어쓴다(비었으면 비운다). 이미
  * 같으면 쓰지 않는다. */
 async function runAssigneeRule(
@@ -598,11 +841,12 @@ async function runAssigneeRule(
 export async function seedRuleStates(
   db: Firestore,
   key: TechBoardKey,
-  board: BoardShape,
+  board: FullBoard,
   docs: TechItemDoc[],
 ): Promise<number> {
   if (!hasRules(key)) return 0
-  const { watched } = resolveRules(key, board)
+  const rules = resolveRules(key, board)
+  const { watched } = rules
   if (watched.length === 0) return 0
   const missing: TechItemDoc[] = []
   const partial: Array<{ doc: TechItemDoc; ids: string[] }> = []
@@ -626,7 +870,7 @@ export async function seedRuleStates(
     for (const doc of missing.slice(i, i + BATCH_SIZE)) {
       const state: RuleState = {
         boardKey: key,
-        statuses: valuesOf(watched, doc),
+        statuses: valuesOf(rules, watched, doc),
         at: Date.now(),
       }
       // 사이에 webhook이 먼저 만들었으면 덮지 않게 create로 쓴다.
@@ -642,7 +886,7 @@ export async function seedRuleStates(
       // 없는 칸만 더한다(merge — 이미 있는 칸은 그대로).
       batch.set(
         db.collection(STATE).doc(doc.itemId),
-        { statuses: valuesOf(ids, doc) },
+        { statuses: valuesOf(rules, ids, doc) },
         { merge: true },
       )
     }

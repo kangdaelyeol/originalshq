@@ -22,8 +22,8 @@ import {
 const titleIs = (title: string, name: string) =>
   title.replace(/\s/g, '') === name
 
-/** "{이름} {수량}개" — 수량이 없으면 이름만. */
-function derivedLabel(name: string, quantity: string | null): string {
+/** "{이름} {수량}개" — 수량이 없으면 이름만. 하위 줄 규칙(rules.ts)도 쓴다. */
+export function derivedLabel(name: string, quantity: string | null): string {
   return quantity ? `${name} ${quantity}개` : name
 }
 
