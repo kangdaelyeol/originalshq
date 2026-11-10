@@ -16,13 +16,15 @@ export const TIMELINE_TITLES: Partial<Record<TechBoardKey, readonly string[]>> =
     '보류 종료일',
   ],
   repair: ['수령 후 1차 체크', '수리 중', '완료 후 견적 안내', '발송 완료', '완료일', '보류 시작일', '보류 종료일'],
+  // 아톡문의 — 시간추적(타이머, time-tracking.ts)과 상담 단계 날짜
+  techInquiry: ['시간추적', '1차 안내일', '상담 진행일', '장기 상담일', '완료일'],
 }
 
 /** 묶은 칸의 id — Monday 칸 id와 겹치지 않는 이름(칸 너비도 이 id로 기억한다) */
 export const TIMELINE_ID = '__timeline'
 const TIMELINE_TYPE = 'timeline'
 
-/** 묶은 "타임라인" 칸 — 화면 전용 가짜 칸. parts는 묶인 날짜 칸(단계 순서) */
+/** 묶은 "타임라인" 칸 — 화면 전용 가짜 칸. parts는 묶인 날짜·시간 추적 칸(단계 순서) */
 export interface TimelineColumn extends TechColumn {
   parts: TechColumn[]
 }
@@ -30,19 +32,38 @@ export interface TimelineColumn extends TechColumn {
 // 제목 비교 — 공백·보이지 않는 글자를 빼고, 한글 조합 방식(NFC/NFD) 차이도 없앤다(서버 rules.ts와 같다).
 export const titleKey = (title: string) => title.normalize('NFC').replace(/[\s\u200B-\u200D\uFEFF]/g, '')
 
+// 타임라인에 넣을 수 있는 칸 종류 — 날짜, 시간 추적(타이머)
+const TIMELINE_TYPES = new Set(['date', 'time_tracking'])
+
 /**
- * 보드의 타임라인 칸(날짜 칸만, 단계 순서) — 제목이 같은 날짜 칸, 없으면 제목을 포함하는 날짜 칸이 하나뿐일 때
- * 그것(예: "1차 안내일" — 서버 rules.ts findDateColumn과 같다). 목록에 없는 보드거나 칸을 못 찾으면 빈 목록.
+ * 보드의 타임라인 칸(날짜·시간 추적 칸만, 단계 순서) — 제목이 같은 칸, 없으면 제목을 포함하는 칸이 하나뿐일 때 그것
+ * (예: "1차 안내일"), 그것도 없으면 제목이 목록 제목 안에 들어가는 칸이 하나뿐일 때 그것(예: 목록 "완료일" ↔ 칸
+ * "완료", 두 글자 이상 — 서버 rules.ts findDateColumn과 같다). 목록에 없는 보드거나 칸을 못 찾으면 빈 목록.
  */
 export function timelineColumns(boardKey: TechBoardKey, columns: readonly TechColumn[]): TechColumn[] {
+  return matchTimeline(boardKey, columns).flatMap((m) => (m.column ? [m.column] : []))
+}
+
+/** 목록의 타임라인 제목 중 보드에서 못 찾은 것(관리 화면 칸 이름 점검) */
+export const missingTimelineTitles = (boardKey: TechBoardKey, columns: readonly TechColumn[]): string[] =>
+  matchTimeline(boardKey, columns).flatMap((m) => (m.column ? [] : [m.title]))
+
+/** 목록 제목마다 찾은 칸(못 찾으면 null) */
+function matchTimeline(
+  boardKey: TechBoardKey,
+  columns: readonly TechColumn[],
+): Array<{ title: string; column: TechColumn | null }> {
   const taken = new Set<string>()
-  return (TIMELINE_TITLES[boardKey] ?? []).flatMap((title) => {
-    const dates = columns.filter((c) => c.type === 'date' && !taken.has(c.id))
-    const near = dates.filter((c) => titleKey(c.title).includes(titleKey(title)))
-    const column = dates.find((c) => titleKey(c.title) === titleKey(title)) ?? (near.length === 1 ? near[0] : undefined)
-    if (!column) return []
-    taken.add(column.id)
-    return [column]
+  return (TIMELINE_TITLES[boardKey] ?? []).map((title) => {
+    const key = titleKey(title)
+    const candidates = columns.filter((c) => TIMELINE_TYPES.has(c.type) && !taken.has(c.id))
+    const near = candidates.filter((c) => titleKey(c.title).includes(key))
+    const inner = candidates.filter((c) => titleKey(c.title).length >= 2 && key.includes(titleKey(c.title)))
+    const column =
+      candidates.find((c) => titleKey(c.title) === key) ??
+      (near.length === 1 ? near[0] : near.length === 0 && inner.length === 1 ? inner[0] : undefined)
+    if (column) taken.add(column.id)
+    return { title, column: column ?? null }
   })
 }
 

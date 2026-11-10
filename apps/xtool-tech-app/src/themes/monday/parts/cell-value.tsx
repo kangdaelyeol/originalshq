@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { Linking, Pressable, View } from 'react-native';
-import { CalendarDays, Check, FileText, MapPin, Phone } from 'lucide-react-native';
+import { CalendarDays, Check, FileText, MapPin, Phone, Timer } from 'lucide-react-native';
 import { fileCount, isChecked, mondayDate, parseJson, splitNames, splitText } from '@xtool-core/monday-values';
 import { formatPhone } from '@xtool-core/tech-stage';
 import { isPhoneColumn } from '@xtool-core/tech-edit';
+import { elapsedSeconds, formatDuration, hasTime, timeTracking, useTickingNow } from '@xtool-core/time-tracking';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import { STATE } from '../theme';
 import { useMon } from '../theme-context';
@@ -20,6 +21,7 @@ const CHIP_TYPES = new Set(['dropdown', 'board_relation']);
 export const hasValue = (column: TechColumn, cell: TechCellValue | undefined): boolean => {
   if (column.type === 'checkbox') return isChecked(cell);
   if (column.type === 'file') return fileCount(cell) > 0;
+  if (column.type === 'time_tracking') return hasTime(timeTracking(cell)) || Boolean(cell?.text?.trim());
   return Boolean(cell?.text?.trim());
 };
 
@@ -138,6 +140,8 @@ export function CellValue({
     );
   }
 
+  if (column.type === 'time_tracking') return <TimeTrackingValue cell={cell} full={full} />;
+
   if (column.type === 'location') {
     return (
       <Row>
@@ -153,6 +157,23 @@ export function CellValue({
     <MText size={full ? 14 : 13} numberOfLines={full ? undefined : 1} style={full ? { lineHeight: 21 } : undefined}>
       {text}
     </MText>
+  );
+}
+
+/** 시간 추적(타이머) — 켜져 있으면 1초마다 올라간다(값은 Monday에서 켜고 끌 때만 바뀐다 — core time-tracking) */
+function TimeTrackingValue({ cell, full }: { cell: TechCellValue | undefined; full: boolean }) {
+  const p = useMon();
+  const t = timeTracking(cell);
+  const now = useTickingNow(!!t?.running);
+  if (!t) return <MText size={full ? 14 : 13}>{cell?.text?.trim() || '—'}</MText>;
+  return (
+    <Row>
+      <Timer size={13} color={t.running ? p.link : p.text2} />
+      <MText size={full ? 14 : 13} style={{ fontVariant: ['tabular-nums'] }}>
+        {formatDuration(elapsedSeconds(t, now))}
+        {t.running ? ' · 진행 중' : ''}
+      </MText>
+    </Row>
   );
 }
 

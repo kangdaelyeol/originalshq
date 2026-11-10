@@ -1,10 +1,11 @@
-import { Check, FileText, MapPin, UserRound } from 'lucide-react'
+import { Check, FileText, MapPin, Timer, UserRound } from 'lucide-react'
 import type { CSSProperties } from 'react'
 import { initialsOf } from '@/xtool-auth/use-xtool-session'
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards'
 import { usePhotoOf } from '../../data/tech-profiles'
 import { isPhoneColumn } from '@xtool-core/tech-edit'
 import { formatPhone } from '@xtool-core/tech-stage'
+import { elapsedSeconds, formatDuration, hasTime, timeTracking, useTickingNow } from '@xtool-core/time-tracking'
 import { cx } from '@/ohq-ui/lib/cx'
 import { personColor } from '../../lib/person-color'
 import { useAssigneeHover } from '../assignee-hover'
@@ -42,6 +43,20 @@ function People({ names }: { names: string[] }) {
       {names.length > 2 && <span className="mon-avatar mon-avatar--more">+{names.length - 1}</span>}
       <span className="sr-only">{names.join(', ')}</span>
       {hover.card}
+    </span>
+  )
+}
+
+/** 시간 추적(타이머) — 켜져 있으면 1초마다 올라간다(값은 Monday에서 켜고 끌 때만 바뀐다 — time-tracking.ts) */
+function TimeTrackingView({ cell }: { cell: TechCellValue | undefined }) {
+  const t = timeTracking(cell)
+  const now = useTickingNow(!!t?.running)
+  if (!t) return cell?.text?.trim() ? <span className="mon-text">{cell.text}</span> : null
+  if (!hasTime(t)) return null
+  return (
+    <span className={cx('mon-timer', t.running && 'is-running')} title={t.running ? '진행 중' : '멈춤'}>
+      <Timer size={13} aria-hidden />
+      <span className="mon-text">{formatDuration(elapsedSeconds(t, now))}</span>
     </span>
   )
 }
@@ -98,6 +113,8 @@ export function CellView({ column, cell }: CellViewProps) {
     case 'phone':
       // 글자 칸과 같은 모양 — 010-1234-5678
       return text ? <span className="mon-text">{formatPhone(text) ?? text}</span> : null
+    case 'time_tracking':
+      return <TimeTrackingView cell={cell} />
     case 'file': {
       const count = fileCount(cell)
       return count > 0 ? (

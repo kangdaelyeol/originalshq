@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { TechColumn } from '@xtool-core/tech-boards'
 import type { TechBoardKey } from '@xtool-core/tech-boards'
 import { orderColumns } from '@xtool-core/column-order'
-import { isTimelineColumn, TIMELINE_ID, timelineColumns } from '@xtool-core/tech-timeline'
+import { isTimelineColumn, missingTimelineTitles, TIMELINE_ID, timelineColumns } from '@xtool-core/tech-timeline'
 
 // 타임라인 칸 묶기(xtool-core/tech-timeline) — 나머지 칸은 Monday 순서, 타임라인은 맨 오른쪽에 단계 순서.
 
@@ -97,8 +97,28 @@ describe('타임라인 칸', () => {
     ])
   })
 
+  it('아톡문의는 시간추적(타이머)과 상담 단계 날짜 — 칸 이름이 목록보다 짧아도("완료") 찾는다', () => {
+    const columns = [
+      col('status', '상담 상태', 'status'),
+      col('received', '접수일자'),
+      col('timer', '시간 추적', 'time_tracking'),
+      col('first', '1차 안내'),
+      col('done', '완료'),
+    ]
+    expect(timelineColumns('techInquiry', columns).map((c) => c.id)).toEqual(['timer', 'first', 'done'])
+  })
+
   it('목록이 없는 보드나 타임라인 칸이 없으면 그대로', () => {
-    expect(arrange('techInquiry', FIELD, false).map((c) => c.id)).toEqual(FIELD.map((c) => c.id))
+    expect(arrange('techTask', FIELD, false).map((c) => c.id)).toEqual(FIELD.map((c) => c.id))
     expect(arrange('fieldService', [col('memo', '비고', 'text')], false).map((c) => c.id)).toEqual(['memo'])
+  })
+
+  it('칸 이름 점검 — 목록에서 못 찾은 타임라인 제목', () => {
+    expect(missingTimelineTitles('fieldService', FIELD)).toEqual([
+      '최신 연락 일자 (일정 조율)',
+      '일정 확정일',
+      '보류 종료일',
+    ])
+    expect(missingTimelineTitles('techTask', FIELD)).toEqual([])
   })
 })

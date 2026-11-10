@@ -517,6 +517,23 @@ $group-title-h: 40px;
   }
 }
 
+// 시간 추적(타이머) 칸 — 켜져 있으면 아이콘이 강조색
+.mon-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--mon-text-2);
+  font-variant-numeric: tabular-nums;
+
+  &.is-running {
+    color: var(--mon-text);
+
+    svg {
+      color: var(--mon-primary);
+    }
+  }
+}
+
 // "+ 고객 추가"
 .mon-row--add .mon-cell--name {
   border-left-color: color-mix(in srgb, var(--group) 45%, transparent);
