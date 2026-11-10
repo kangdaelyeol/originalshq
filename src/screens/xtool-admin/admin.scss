@@ -283,6 +283,13 @@
     overflow: auto;
   }
 
+  // ── 출장업무 설치 품목 점검 — 고칠 품명(줄마다 "지금 → 맞는 값") ─────────────────────
+  .install-check__fixes {
+    display: grid;
+    gap: 2px;
+    font-size: 12px;
+  }
+
   // ── 임시 비밀번호 ─────────────────────────────────────────────────────────
   .member-form__password {
     display: flex;

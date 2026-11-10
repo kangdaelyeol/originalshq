@@ -29,3 +29,5 @@ export {
 } from './updates'
 export type { TechUpdate } from './updates'
 export { refreshItems } from './edits'
+export { checkInstallItems } from './install-items'
+export type { InstallItemsResult } from './install-items'

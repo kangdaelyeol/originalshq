@@ -35,6 +35,7 @@ import {
   refreshItems,
   searchAddress,
   setupTechWebhooks,
+  checkInstallItems,
   syncTechBoard,
   syncTechBoards,
   TechBoardKey,
@@ -515,6 +516,51 @@ export const techCopyPhones = onCall(
           targets: result.targets.slice(0, PHONE_LIST_LIMIT),
           noPhone: result.noPhone.slice(0, PHONE_LIST_LIMIT),
           errors: result.errors.slice(0, PHONE_LIST_LIMIT),
+        }
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techCheckInstallItems — 출장업무 설치 품목 점검·채워넣기(관리자). 설치 품목은 하위 줄 품명을
+// 비추는 미러 칸이라 품명이 "{이름} {수량}개"와 다른 하위 줄을 찾아 고친다. dryRun이면 점검만.
+// 시간이 모자라면 remaining을 돌려주고 — 다시 부르면 이어서 고친다. 고쳤으면 보드를 다시
+// 동기화해 캐시를 맞춘다(tech-boards/install-items.ts).
+// ────────────────────────────────
+// 화면에 돌려줄 목록 길이 — 나머지는 건수만
+const INSTALL_LIST_LIMIT = 50
+
+export const techCheckInstallItems = onCall(
+  { secrets: [mondayApiKey], timeoutSeconds: TECH_SYNC_TIMEOUT_SECONDS },
+  traced(
+    'techCheckInstallItems',
+    'callable',
+    async (request: CallableRequest<{ dryRun?: boolean }>) => {
+      await requireMember(request, true)
+      const source = findTechBoard({ key: 'fieldService' })
+      if (!source) throw new HttpsError('not-found', '출장업무 보드가 없어요')
+      const dryRun = request.data?.dryRun !== false
+      try {
+        const result = await checkInstallItems(
+          mondayApiKey.value(),
+          source,
+          dryRun,
+        )
+        const sync = dryRun || result.written === 0 ?
+          null :
+          await syncTechBoard(db, mondayApiKey.value(), source)
+        return {
+          ...result,
+          dryRun,
+          sync: sync ? { ok: sync.ok, error: sync.error ?? null } : null,
+          mismatchCount: result.mismatches.length,
+          mirrorOnlyCount: result.mirrorOnly.length,
+          mismatches: result.mismatches.slice(0, INSTALL_LIST_LIMIT),
+          mirrorOnly: result.mirrorOnly.slice(0, INSTALL_LIST_LIMIT),
+          errors: result.errors.slice(0, INSTALL_LIST_LIMIT),
         }
       } catch (error) {
         throw toHttpsError(error)
