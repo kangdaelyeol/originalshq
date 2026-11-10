@@ -64,11 +64,13 @@ export interface TechAssigneeRule {
 // 칸·그룹은 제목으로 찾는다(공백 무시). 못 찾은 칸·그룹·라벨은 오류 로그를 남기고(후보
 // 목록과 함께) 찾은 것만 한다. AS 2026 — 수리 진행 상태에 따라 단계별 날짜 칸과 그룹
 // (2026-11-09·11-10). 보류에서 다른 상태로 가면 보류 종료일과 새 상태 규칙이 같이 돈다.
-// 출장업무 2026 — 상태에 따라 단계별 그룹과 날짜 칸(2026-11-10).
+// 출장업무 2026 — 상태에 따라 단계별 그룹과 날짜 칸(2026-11-10). 아톡문의 — 상담 상태에
+// 따라 단계별 그룹과 날짜 칸(2026-11-10).
 const REPAIR_STATUS = '수리 진행 상태'
 const REPAIR_NEW = '새로 인입된 건 <접수>'
 const REPAIR_WORKING = '현재 진행중인 업무'
 const FIELD_STATUS = '상태'
+const INQUIRY_STATUS = '상담 상태'
 export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
   {
     board: 'repair',
@@ -167,6 +169,41 @@ export const TECH_STATUS_RULES: readonly TechStatusRule[] = [
     label: '보류',
     when: 'leave',
     dates: ['보류 종료일'],
+  },
+  {
+    board: 'techInquiry',
+    status: INQUIRY_STATUS,
+    label: '신규 문의',
+    dates: [],
+    group: '신규 접수 문의',
+  },
+  {
+    board: 'techInquiry',
+    status: INQUIRY_STATUS,
+    label: '1차 안내',
+    dates: ['1차 안내일'],
+    group: '1차 안내',
+  },
+  {
+    board: 'techInquiry',
+    status: INQUIRY_STATUS,
+    label: '상담 진행중',
+    dates: ['상담 진행일'],
+    group: '상담 진행중',
+  },
+  {
+    board: 'techInquiry',
+    status: INQUIRY_STATUS,
+    label: '장기 상담',
+    dates: ['장기 상담일'],
+    group: '장기 상담',
+  },
+  {
+    board: 'techInquiry',
+    status: INQUIRY_STATUS,
+    label: '완료',
+    dates: ['완료일'],
+    group: '완료된 문의',
   },
 ]
 
@@ -271,13 +308,19 @@ const norm = (title: string) =>
 const same = (a: string, b: string) => norm(a) === norm(b)
 
 /** 날짜 칸 — 제목이 같은 것, 없으면 제목을 포함하는 날짜 칸이 하나뿐일 때 그것
- * (예: "발송 완료일"). */
+ * (예: "발송 완료일"), 그것도 없으면 제목이 규칙 제목 안에 들어가는 날짜 칸이 하나뿐일
+ * 때 그것(예: 규칙 "1차 안내일" ↔ 칸 "1차 안내", 두 글자 이상). */
 function findDateColumn(columns: Column[], title: string): Column | undefined {
   const dates = columns.filter((c) => c.type === 'date')
   const exact = dates.find((c) => same(c.title, title))
   if (exact) return exact
   const near = dates.filter((c) => norm(c.title).includes(norm(title)))
-  return near.length === 1 ? near[0] : undefined
+  if (near.length === 1) return near[0]
+  if (near.length > 1) return undefined
+  const inner = dates.filter(
+    (c) => norm(c.title).length >= 2 && norm(title).includes(norm(c.title)),
+  )
+  return inner.length === 1 ? inner[0] : undefined
 }
 
 // 못 찾은 칸 로그는 인스턴스마다 규칙당 한 번만(알림마다 남지 않게).
