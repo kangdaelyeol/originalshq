@@ -38,6 +38,16 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     timeoutSeconds: 540,
   },
   {
+    id: 'capi-auto',
+    label: 'CAPI 자동 전송',
+    description:
+      '오프라인 결제는 모두, 기타 온라인 문의·B2G 문의는 상태가 신규 상담 유입·오기입이 아니게 된 기록을 Meta CAPI로 보내고 CAPI 관리 탭의 리드에 더합니다. Monday 동기화 직후에 돕니다.',
+    codebase: 'xtool',
+    functionName: 'syncMondayBoardsScheduled',
+    timeoutSeconds: 540,
+    recordingSince: '2026-11-11T22:00:00+09:00',
+  },
+  {
     id: 'tech-boards',
     label: '기술팀 보드 동기화',
     description:

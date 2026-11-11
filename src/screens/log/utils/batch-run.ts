@@ -219,6 +219,23 @@ export const summarizeRun = (run: BatchRun): string => {
             : '-'
         }`,
       ].join(' · ')
+    case 'capi-auto': {
+      const count = (key: string) =>
+        Array.isArray(result[key]) ? (result[key] as unknown[]).length : 0
+      if (result.busy) return '다른 실행이 돌고 있어 건너뜀'
+      return [
+        result.live
+          ? `보냄 ${num(count('sent'))}건`
+          : `미리보기 — 보낼 것 ${num(count('preview'))}건`,
+        `건너뜀 ${num(count('skipped'))} · 실패 ${num(count('failed'))}`,
+        result.baselineCreated &&
+          `첫 실행: 지난 기록 ${num(result.baselineCount)}건은 보낸 것으로 침`,
+        Number(result.deferredCount) > 0 &&
+          `다음으로 미룸 ${num(result.deferredCount)}건`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+    }
     case 'tech-boards': {
       const ok = result.okCount as number
       const failed = result.failedCount as number

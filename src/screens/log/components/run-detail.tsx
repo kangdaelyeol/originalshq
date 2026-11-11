@@ -1,4 +1,5 @@
 import type { BatchRun } from '../client/batch-run-client'
+import { CapiAutoDetail } from './capi-auto-detail'
 import {
   findJob,
   formatDateTime,
@@ -78,6 +79,8 @@ export const RunDetail = ({ run }: { run: BatchRun }) => {
           </pre>
         </>
       )}
+
+      {run.job === 'capi-auto' && <CapiAutoDetail result={result} />}
 
       {result !== null && (
         <>
