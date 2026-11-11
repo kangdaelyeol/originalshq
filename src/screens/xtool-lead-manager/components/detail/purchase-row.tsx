@@ -122,8 +122,12 @@ export function PurchaseRow({
         />
       )}
       {/* ConsultationRow와 같은 이유 — CAPI로 실제 보낸 값의 스냅샷. */}
-      {(record.eventId || record.externalId) && (
+      {(record.eventId || record.externalId || record.auto) && (
         <div className="record_meta">
+          {/* Monday 기록으로 서버가 자동으로 보낸 기록(capi-auto). */}
+          {record.auto && (
+            <span>자동 전송 · Monday {record.auto.boardName}</span>
+          )}
           {record.eventId && <span>event_id: {record.eventId}</span>}
           {record.externalId && <span>external_id: {record.externalId}</span>}
         </div>

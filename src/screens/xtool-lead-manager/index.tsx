@@ -38,7 +38,7 @@ import {
 // XtoolLeadManager가 아니라 Provider 안의 이 컴포넌트에서 호출한다.
 const XtoolLeadManagerScreen = () => {
   // 최상위 탭 — 리드(이 화면에서 직접 관리하는 데이터) / Monday 고객(Monday
-  // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). 리드 목록은 cmip 관리
+  // CRM 보드들을 번호 기준으로 통합한 읽기 전용 데이터). 리드 목록은 CAPI 관리
   // 탭을, Monday 목록은 그 탭이나 퍼널 통계 탭을 처음 열 때 받아온다.
   const pageTab = usePageTabViewModel()
   const { tab } = pageTab.state

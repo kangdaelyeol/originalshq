@@ -12,11 +12,11 @@ export const PAGE_TABS: { id: PageTab; label: string }[] = [
   { id: 'stats', label: '퍼널 통계' },
   { id: 'trend', label: '통계' },
   { id: 'tracking', label: '오기입 추적' },
-  // 리드(cmip로 보내는 전환 기록) — 이름은 'cmip 관리', 맨 오른쪽.
-  { id: 'leads', label: 'cmip 관리' },
+  // 리드(Meta CAPI로 보내는 전환 기록) — 이름은 'CAPI 관리', 맨 오른쪽.
+  { id: 'leads', label: 'CAPI 관리' },
 ]
 
-/** 최상위 탭(Monday 고객 / 리드 분석 / 퍼널 통계 / 통계 / 오기입 추적 / cmip 관리). 어느 탭인지는 주소의 ?tab= 에 둔다 — 헤더
+/** 최상위 탭(Monday 고객 / 리드 분석 / 퍼널 통계 / 통계 / 오기입 추적 / CAPI 관리). 어느 탭인지는 주소의 ?tab= 에 둔다 — 헤더
  * (pages/xtool-page)와 화면(index.tsx)이 서로 다른 곳에서 같은 값을 봐야 하고,
  * 새로고침하거나 주소를 공유해도 같은 탭이 열리게 하기 위해서다. 탭 지정이
  * 없으면 Monday 고객(기본 탭 — 주소에 ?tab을 붙이지 않는다). */

@@ -31,7 +31,7 @@ const registerExtras = (form: RegisterFormValues) => {
  * 맡고, 여기서는 둘을 묶고 확인창(고객 삭제·상담/구매 등록)과 상세 모달을
  * 다룬다.
  */
-/** active — 리드 탭(cmip 관리)이 열려 있는지. 목록은 처음 열 때 받는다. */
+/** active — 리드 탭(CAPI 관리)이 열려 있는지. 목록은 처음 열 때 받는다. */
 export const useMainViewModel = (active: boolean) => {
   const [loading, setLoading] = useState(false)
   const { showToast, ToastContainer } = useToast()

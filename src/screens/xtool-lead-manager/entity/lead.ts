@@ -51,6 +51,14 @@ export type ConsultationRecord = {
   /** 이 상담 건에 대한 메모 — 나중에 Monday CRM에 쌓인 상담 메모를 이 필드로
    * 가져올 예정이라 미리 스키마를 만들어둔다. 그 전까지는 수기 입력도 가능. */
   note?: string
+  auto?: AutoSource
+}
+
+/** CAPI 자동 전송이 Monday 기록으로 보낸 기록 — 어느 보드·item에서 왔는지
+ * (functions-xtool capi-auto). 사람이 보낸 기록에는 없다. */
+export type AutoSource = {
+  itemId: string
+  boardName: string
 }
 
 /** 구매 1건. externalId/eventId는 ConsultationRecord와 같은 이유(이 구매를
@@ -62,6 +70,7 @@ export type PurchaseRecord = {
   price: number
   externalId?: string
   eventId?: string
+  auto?: AutoSource
 }
 
 export type Lead = {

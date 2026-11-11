@@ -38,8 +38,17 @@ import {
   validateRemoveMondayBoard,
   validateSyncMondayBoards,
 } from '../validation'
-import { db, mondayApiKey } from '../app'
+import {
+  db,
+  ga4ApiSecret,
+  ga4MeasurementId,
+  metaAccessToken,
+  metaPixelId,
+  mondayApiKey,
+} from '../app'
 import { endpoint } from '../http'
+import { runCapiAuto, type CapiAutoResult } from '../capi-auto/run'
+import { CAPI_AUTO_LIVE } from '../capi-auto/rules'
 
 // 보드 16개 · 약 1만 건을 받아 쓰는 작업 — 4개씩 같이 돌려 보통 1~2분이면
 // 끝나지만, Monday 응답이 느린 날을 대비해 넉넉히 둔다.
@@ -47,6 +56,44 @@ const MONDAY_SYNC_TIMEOUT_SECONDS = 540
 
 // 여러 보드의 응답(보드당 수 MB JSON)을 동시에 들고 있어 기본 256MB로는 부족하다.
 const MONDAY_SYNC_MEMORY = '1GiB'
+
+// CAPI 자동 전송(capi-auto) — 실제로 보낼 때만 시크릿 값을 읽는다.
+const CAPI_SECRETS = [
+  metaPixelId,
+  metaAccessToken,
+  ga4MeasurementId,
+  ga4ApiSecret,
+]
+const capiSecrets = () => ({
+  pixelId: metaPixelId.value(),
+  accessToken: metaAccessToken.value(),
+  ga4MeasurementId: ga4MeasurementId.value(),
+  ga4ApiSecret: ga4ApiSecret.value(),
+})
+
+/** 자동 전송을 batchRuns에 기록하며 돈다 — 실패한 건이 있으면 "일부 실패". */
+const recordCapiAuto = (
+  trigger: 'scheduled' | 'manual',
+  scheduledAt?: string,
+) =>
+  recordBatchRun(
+    db,
+    {
+      job: 'capi-auto',
+      codebase: 'xtool',
+      trigger,
+      scheduledAt: scheduledAt ?? null,
+      params: { live: CAPI_AUTO_LIVE },
+    },
+    () => runCapiAuto(db, { live: CAPI_AUTO_LIVE, getSecrets: capiSecrets }),
+    (result: CapiAutoResult) => {
+      const notes = [
+        result.failed.length > 0 ? `전송 실패 ${result.failed.length}건` : null,
+        result.busy ? '다른 실행이 돌고 있어 건너뜀' : null,
+      ].filter(Boolean)
+      return { partial: notes.length > 0, note: notes.join(', ') }
+    },
+  )
 
 /** 잠금(monday/lock.ts)을 잡고 돌린다 — 다른 Monday 작업(예약 동기화 등)이 돌고
  * 있으면 겹쳐 돌지 않고 409로 끝낸다. */
@@ -621,7 +668,7 @@ export const syncMondayBoardsScheduled = onSchedule(
   {
     schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
-    secrets: [mondayApiKey],
+    secrets: [mondayApiKey, ...CAPI_SECRETS],
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
     memory: MONDAY_SYNC_MEMORY,
   },
@@ -694,5 +741,36 @@ export const syncMondayBoardsScheduled = onSchedule(
       logger.error('GA4 이벤트 수집 실패:', error)
       await saveGaSyncError(db, error)
     }
+
+    // 이어서 CAPI 자동 전송 — 방금 저장한 오프라인 결제·기타 온라인 문의·
+    // B2G 문의 보드에서 보낼 때가 된 기록을 보낸다(capi-auto/rules.ts).
+    // /log에는 별도 작업(capi-auto)으로 남는다.
+    try {
+      const result = await recordCapiAuto('scheduled', event.scheduleTime)
+      logger.info('CAPI 자동 전송 완료:', {
+        live: result.live,
+        sent: result.sent.length,
+        preview: result.preview.length,
+        skipped: result.skipped.length,
+        failed: result.failed.length,
+      })
+    } catch (error) {
+      logger.error('CAPI 자동 전송 실패:', error)
+    }
   }),
+)
+
+// ────────────────────────────────
+// runMondayCapiAuto — CAPI 자동 전송을 지금 바로 한 번. 예약 실행(동기화
+// 직후)과 같은 함수이고, /log에는 수동 실행으로 남는다. 저장된 Monday item
+// 기준이라 Monday에서 방금 바꾼 것은 동기화 뒤에 잡힌다.
+// ────────────────────────────────
+export const runMondayCapiAuto = onRequest(
+  { secrets: CAPI_SECRETS, timeoutSeconds: 300, memory: '512MiB' },
+  endpoint(
+    { name: 'runMondayCapiAuto', member: true, method: 'POST' },
+    async ({ response }) => {
+      response.status(200).send(await recordCapiAuto('manual'))
+    },
+  ),
 )

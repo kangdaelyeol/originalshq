@@ -114,8 +114,12 @@ export function ConsultationRow({
       {/* CAPI로 마지막에 실제 보낸 값의 스냅샷 — 이벤트 매니저에서 이
           상담 건이 어느 이벤트로 잡혔는지 대조해볼 때 쓴다. 둘 다 없으면
           (마이그레이션 전 레코드) 아예 안 보여준다. */}
-      {(record.eventId || record.externalId) && (
+      {(record.eventId || record.externalId || record.auto) && (
         <div className="record_meta">
+          {/* Monday 기록으로 서버가 자동으로 보낸 기록(capi-auto). */}
+          {record.auto && (
+            <span>자동 전송 · Monday {record.auto.boardName}</span>
+          )}
           {record.eventId && <span>event_id: {record.eventId}</span>}
           {record.externalId && <span>external_id: {record.externalId}</span>}
         </div>

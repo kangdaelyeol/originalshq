@@ -6,7 +6,7 @@
 // 앞자리: 1.0.0 리드가 서버에 저장되기 시작(08-19) · 2.0.0 검은 화면 개편(09-20) · 3.0.0 유리 디자인(10-29).
 // 업데이트 기록(LM_CHANGELOG)은 맨 위에 더한다. 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const LM_VERSION = '3.10.0'
+export const LM_VERSION = '3.11.0'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 
@@ -20,6 +20,19 @@ export interface LmRelease {
 
 /** 업데이트 기록 — 최근 것부터 */
 export const LM_CHANGELOG: readonly LmRelease[] = [
+  {
+    version: '3.11.0',
+    date: '2026-11-11',
+    title: 'CAPI 자동 전송',
+    changes: [
+      {
+        kind: 'new',
+        text: '오프라인 결제와 기타 온라인·B2G 문의(신규 상담 유입·오기입 제외)를 Monday 동기화 뒤 자동으로 CAPI에 보내요 — 지금은 보낼 목록만 확인하는 미리보기예요',
+      },
+      { kind: 'new', text: '자동으로 보낸 기록은 리드 이력에 "자동 전송"으로 표시돼요' },
+      { kind: 'improved', text: '탭 이름을 CAPI 관리로 바꿨어요' },
+    ],
+  },
   {
     version: '3.10.0',
     date: '2026-11-10',
