@@ -642,8 +642,13 @@ export function InquiryPanel() {
                         <td>
                           <StepBadge status={inquiry.sms.status} />
                         </td>
-                        <td className="batch-log__caret" aria-hidden="true">
-                          {open ? '▾' : '▸'}
+                        {/* 화살표는 칸 안의 span에 — .batch-log__caret이
+                            inline-block이라 td에 붙이면 칸이 표에서 빠져
+                            구분선이 어긋난다(run-table.tsx와 같게). */}
+                        <td>
+                          <span className="batch-log__caret" aria-hidden="true">
+                            {open ? '▾' : '▸'}
+                          </span>
                         </td>
                       </tr>
                       {open && (
