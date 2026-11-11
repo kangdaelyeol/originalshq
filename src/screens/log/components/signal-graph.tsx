@@ -473,30 +473,50 @@ const SAMPLE_STEP = 6
 const MOTION_REBUILD_MS = 180
 
 /** 그림을 가로로 벌린다 — 노드 크기는 그대로, 가운데 x·열·기둥·꺾는 자리만
- * k배. 넓은 화면에서 노드가 한쪽에 몰리지 않고 고르게 퍼지게. */
+ * k배. 넓은 화면에서 노드가 한쪽에 몰리지 않고 고르게 퍼지게.
+ *
+ * 꺾은선(via)의 점은 통째로 k배 하면 안 된다 — 첫 점·끝 점은 카드 가장자리
+ * (가운데 x ± 폭/2)인데 카드 폭은 그대로라, k배 하면 선 끝이 카드에서 떨어진다.
+ * 그래서 점마다 붙어 있는 것(첫 점은 출발 카드, 끝 점은 도착 카드, 가운데 점은
+ * 가까운 기둥)이 옮겨 간 만큼만 민다. */
 const stretchX = (
   k: number,
   nodes: SignalNode[],
   edges: SignalEdge[],
   columns: SignalColumn[],
   spines: number[],
-) =>
-  k === 1
-    ? { nodes, edges, columns, spines }
-    : {
-        nodes: nodes.map((node) => ({ ...node, x: node.x * k })),
-        edges: edges.map((edge) => ({
-          ...edge,
-          turnX: edge.turnX === undefined ? undefined : edge.turnX * k,
-          via: edge.via?.map((point) => ({ ...point, x: point.x * k })),
-        })),
-        columns: columns.map((column) => ({
-          ...column,
-          x: column.x * k,
-          width: column.width * k,
-        })),
-        spines: spines.map((x) => x * k),
-      }
+) => {
+  if (k === 1) return { nodes, edges, columns, spines }
+  const nodeX = new Map(nodes.map((node) => [node.id, node.x]))
+  /** 점 x를 anchor가 옮겨 간 만큼 민다(anchor × (k − 1)). */
+  const shift = (x: number, anchor: number) => x + anchor * (k - 1)
+  const spineNear = (x: number) =>
+    spines.find((spine) => Math.abs(spine - x) < 12) ?? x
+  return {
+    nodes: nodes.map((node) => ({ ...node, x: node.x * k })),
+    edges: edges.map((edge) => ({
+      ...edge,
+      turnX: edge.turnX === undefined ? undefined : edge.turnX * k,
+      via: edge.via?.map((point, index, via) => ({
+        ...point,
+        x: shift(
+          point.x,
+          index === 0
+            ? (nodeX.get(edge.from) ?? point.x)
+            : index === via.length - 1
+              ? (nodeX.get(edge.to) ?? point.x)
+              : spineNear(point.x),
+        ),
+      })),
+    })),
+    columns: columns.map((column) => ({
+      ...column,
+      x: column.x * k,
+      width: column.width * k,
+    })),
+    spines: spines.map((x) => x * k),
+  }
+}
 
 /**
  * 신호 그래프 — 노드(작업·단계·탭)와 그 사이 흐름을 퍼셉트론 영상의 신경망처럼
