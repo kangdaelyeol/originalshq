@@ -1,6 +1,6 @@
 import { Pressable, Text as RNText, View } from 'react-native';
-import { MessageCircle, MessageCirclePlus } from 'lucide-react-native';
-import { upcomingRow } from '../../../features/dashboard/part-data';
+import { ChevronRight, MessageCircle, MessageCirclePlus, Phone } from 'lucide-react-native';
+import { callPhone, phoneText, upcomingRow } from '../../../features/dashboard/part-data';
 import type { MiniListProps, RecordListProps, RecordRowProps, UpcomingListProps } from '../../dashboard/parts';
 import { alpha, FAMILY, font, RADIUS, RAISED, T, TABULAR, WELL } from '../theme';
 import { useGlass, useStyles, type GlassState } from '../theme-context';
@@ -11,12 +11,55 @@ import { SpinIcon } from './text';
 // 보드 목록 — 웹 RecordTable(유리 판 + 표)을 폰에서는 판 안 줄 목록으로. 표 칸(이름·사람·날짜·단계·담당자)을 한 줄에
 // 모으고, 줄 사이는 웹 표처럼 가는 선(--line). 일정(UpcomingList)·짧은 목록(MiniList)은 웹 그대로.
 
-/** 기록 줄(웹 record-table 한 줄) — 이름 13.5/600 · 작은 글 · 메타 · 단계·담당자 / 오른쪽 날짜·값. 고른 줄은 강조 .06 */
+/** 전화 단추 — 안내색 알약(전화 아이콘 + 010-1234-5678). 누르면 전화, 고르는 중에는 누르지 않는다(줄 누름이 고르기로) */
+function PhoneButton({ number, disabled }: { number: string; disabled?: boolean }) {
+  const s = useStyles(phoneStyles);
+  const text = phoneText(number) ?? number;
+  return (
+    <Pressable
+      onPress={() => callPhone(number)}
+      disabled={disabled}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={`${text}로 전화`}
+      style={({ pressed }) => [s.button, pressed && s.pressed]}
+    >
+      <Phone size={11} strokeWidth={2.2} color={T.info} />
+      <RNText style={s.text} numberOfLines={1}>
+        {text}
+      </RNText>
+    </Pressable>
+  );
+}
+
+const phoneStyles = () => ({
+  button: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    alignSelf: 'flex-start' as const,
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: alpha(T.info, 0.1),
+    borderWidth: 1,
+    borderColor: alpha(T.info, 0.26),
+    flexShrink: 1,
+  },
+  pressed: { backgroundColor: alpha(T.info, 0.22) },
+  text: { ...font(11.5, 600), ...TABULAR, color: T.info, flexShrink: 1 },
+});
+
+/**
+ * 기록 줄(웹 record-table 한 줄) — 이름 13.5/600(옆이나 아래에 전화 단추) · 작은 글 · 메타 · 하위 아이템 단추·단계·담당자 /
+ * 오른쪽 위 날짜·값, 오른쪽 아래 작은 글(접수일). 고른 줄은 강조 .06
+ */
 export function RecordRow({
   row,
   onPress,
   onLongPress,
   onPressUpdates,
+  onPressSubitems,
   selecting,
   selected,
   style,
@@ -25,7 +68,8 @@ export function RecordRow({
   const s = useStyles(rowStyles);
   const { a } = useGlass();
   const meta = row.meta?.filter(Boolean).join(' · ');
-  const hasFoot = row.stage || row.pill || (row.assignees && row.assignees.length > 0) || row.saving;
+  const hasFoot =
+    row.subitems || row.stage || row.pill || (row.assignees && row.assignees.length > 0) || row.saving;
   const dateColor = row.date?.tone === 'crit' ? T.crit : row.date?.tone === 'muted' ? T.text3 : T.text2;
   return (
     <Pressable
@@ -52,6 +96,11 @@ export function RecordRow({
           <RNText style={[s.title, row.done && s.titleDone]} numberOfLines={2}>
             {row.title || '(이름 없음)'}
           </RNText>
+          {row.phone?.beside ? (
+            <View style={s.phoneBeside}>
+              <PhoneButton number={row.phone.number} disabled={selecting} />
+            </View>
+          ) : null}
           {row.updates !== null && row.updates !== undefined ? (
             <Pressable
               onPress={onPressUpdates}
@@ -75,6 +124,11 @@ export function RecordRow({
             {row.subtitle}
           </RNText>
         ) : null}
+        {row.phone && !row.phone.beside ? (
+          <View style={s.phoneBelow}>
+            <PhoneButton number={row.phone.number} disabled={selecting} />
+          </View>
+        ) : null}
         {meta ? (
           <RNText style={s.meta} numberOfLines={1}>
             {meta}
@@ -82,6 +136,21 @@ export function RecordRow({
         ) : null}
         {hasFoot ? (
           <View style={s.foot}>
+            {row.subitems ? (
+              <Pressable
+                onPress={onPressSubitems}
+                disabled={selecting || !onPressSubitems}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`${row.subitems.label} ${row.subitems.count}개 보기`}
+                style={({ pressed }) => [s.subitems, pressed && s.subitemsOn]}
+              >
+                <RNText style={s.subitemsText}>
+                  {row.subitems.label} {row.subitems.count}개
+                </RNText>
+                <ChevronRight size={12} strokeWidth={2.2} color={T.text3} />
+              </Pressable>
+            ) : null}
             {row.stage ? <StagePill stage={row.stage.stage} status={row.stage.status} /> : null}
             {row.pill ? <StatusPill tone={row.pill.tone} label={row.pill.label} dot={row.pill.dot} /> : null}
             {row.assignees && row.assignees.length > 0 ? <Assignees names={row.assignees} style={s.assignees} /> : null}
@@ -94,8 +163,8 @@ export function RecordRow({
           </View>
         ) : null}
       </View>
-      {row.date || row.value ? (
-        <View style={s.side}>
+      {row.date || row.value || row.corner ? (
+        <View style={[s.side, row.corner ? s.sideTall : null]}>
           {row.date ? (
             <>
               <RNText style={[s.date, { color: dateColor }]}>{row.date.text}</RNText>
@@ -107,6 +176,11 @@ export function RecordRow({
             </>
           ) : null}
           {row.value ? <RNText style={[s.value, row.value.alert && { color: T.crit }]}>{row.value.text}</RNText> : null}
+          {row.corner ? (
+            <RNText style={s.corner} numberOfLines={1}>
+              {row.corner}
+            </RNText>
+          ) : null}
         </View>
       ) : null}
     </Pressable>
@@ -131,6 +205,9 @@ const rowStyles = () => ({
   titleRow: { flexDirection: 'row' as const, alignItems: 'flex-start' as const, gap: 8 },
   title: { ...font(13.5, 600, { lh: 1.45 }), color: T.text1, flexShrink: 1 },
   titleDone: { fontFamily: FAMILY[500], color: T.text3 },
+  // 이름 옆 전화 단추 — 이름이 길면 이름이 먼저 줄어든다 / 이름 아래 전화 단추
+  phoneBeside: { flexShrink: 0, maxWidth: '55%' as const },
+  phoneBelow: { flexDirection: 'row' as const, marginTop: 2 },
   // 웹 .record-row__updates — 말풍선 + 수, 없으면 쓰기 아이콘만
   updates: {
     flexDirection: 'row' as const,
@@ -155,9 +232,25 @@ const rowStyles = () => ({
     marginTop: 4,
   },
   assignees: { flexShrink: 1 },
+  // 하위 아이템 단추 "설치 품목 3개 ›" — 말풍선과 같은 알약
+  subitems: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 2,
+    paddingLeft: 8,
+    paddingRight: 5,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  subitemsOn: { backgroundColor: 'rgba(255, 255, 255, 0.16)' },
+  subitemsText: { ...font(11, 600), ...TABULAR, color: T.text2 },
   saving: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 4 },
   savingText: font(10.5, 600),
   side: { alignItems: 'flex-end' as const, gap: 2, paddingTop: 1, maxWidth: '38%' as const },
+  // 오른쪽 아래 글이 있으면 줄 높이만큼 늘리고 그 글만 아래 끝으로(marginTop auto)
+  sideTall: { alignSelf: 'stretch' as const },
+  corner: { ...font(11, 400), ...TABULAR, color: T.text3, marginTop: 'auto' as const, paddingTop: 4 },
   date: { ...font(12, 600), ...TABULAR },
   hint: font(11, 600),
   value: { ...font(12.5, 700), ...TABULAR, color: T.text2 },
@@ -175,6 +268,7 @@ export function RecordList({
   onPressRow,
   onLongPressRow,
   onPressUpdates,
+  onPressSubitems,
   selecting,
   selected,
   more,
@@ -206,6 +300,7 @@ export function RecordList({
             onPress={() => onPressRow(row.id)}
             onLongPress={onLongPressRow ? () => onLongPressRow(row.id) : undefined}
             onPressUpdates={onPressUpdates ? () => onPressUpdates(row.id) : undefined}
+            onPressSubitems={onPressSubitems ? () => onPressSubitems(row.id) : undefined}
             selecting={selecting}
             selected={selected?.has(row.id)}
           />

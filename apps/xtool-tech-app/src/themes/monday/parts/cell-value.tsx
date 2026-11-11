@@ -6,6 +6,7 @@ import { formatPhone } from '@xtool-core/tech-stage';
 import { isPhoneColumn } from '@xtool-core/tech-edit';
 import { elapsedSeconds, formatDuration, hasTime, timeTracking, useTickingNow } from '@xtool-core/time-tracking';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
+import { callPhone, dialNumber } from '../../../features/phone-call';
 import { STATE } from '../theme';
 import { useMon } from '../theme-context';
 import { AvatarStack, Chip, MText, StatusBlock } from './basics';
@@ -34,10 +35,13 @@ export function CellValue({
   column,
   cell,
   mode,
+  callable,
 }: {
   column: TechColumn;
   cell: TechCellValue | undefined;
   mode: CellMode;
+  /** 전화 칸을 눌러 전화 걸 수 있게 — 정보 목록(full)은 늘, 카드는 화면이 넘긴다(고르는 중이면 false) */
+  callable?: boolean;
 }) {
   const p = useMon();
   const text = cell?.text?.trim() ?? '';
@@ -116,12 +120,19 @@ export function CellValue({
 
   if (column.type === 'phone' || isPhoneColumn(column)) {
     const phone = formatPhone(text) ?? text;
-    const digits = text.replace(/\D/g, '');
+    // 번호가 둘 적힌 칸도 있어서 첫 번호만 건다(phone-call)
+    const canCall = (callable ?? full) && !!dialNumber(text);
     return (
-      <Pressable disabled={!full || !digits} onPress={() => Linking.openURL(`tel:${digits}`)} hitSlop={6}>
+      <Pressable
+        disabled={!canCall}
+        onPress={() => callPhone(text)}
+        hitSlop={6}
+        accessibilityRole={canCall ? 'button' : undefined}
+        accessibilityLabel={canCall ? `${phone}로 전화` : undefined}
+      >
         <Row>
-          <Phone size={13} color={full ? p.link : p.text2} />
-          <MText size={full ? 14 : 13} color={full ? p.link : p.text}>
+          <Phone size={13} color={canCall ? p.link : p.text2} />
+          <MText size={full ? 14 : 13} color={canCall ? p.link : p.text}>
             {phone}
           </MText>
         </Row>

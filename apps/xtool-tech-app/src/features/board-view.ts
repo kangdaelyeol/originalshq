@@ -19,7 +19,7 @@ import { useTechBoard } from '@xtool-core/tech-boards-store';
 import { createItem } from '@xtool-core/tech-outbox';
 import { isDone } from '@xtool-core/tech-stage';
 import { applyViewRules, NAME_COLUMN, ruleReady, useBoardViews, type BoardView } from '@xtool-core/tech-views';
-import { buildGroups, type GroupBlock } from './board-model';
+import { buildGroups, type GroupBlock, type SortNames } from './board-model';
 import { usePref } from './prefs';
 
 // 보드 화면의 동작 — 모든 레이아웃(Monday 표·대시보드·물)이 같이 쓴다. 보기(저장된 조건·정렬·숨길 칸), 검색, 담당자로
@@ -30,6 +30,23 @@ import { usePref } from './prefs';
 
 export const boardLabel = (key: TechBoardKey) => BOARD_TABS.find(t => t.key === key)?.label ?? key;
 const PEOPLE_TYPES = new Set(['people', 'assignee']);
+
+// 보드를 열 때의 정렬(보기에 정렬이 저장돼 있으면 그것이 먼저) — 칸은 제목·종류로 찾고, 못 찾으면 정렬 없이.
+// 출장업무·AS·아톡문의는 접수일 최근 먼저(2026-11-11). 접수 날짜 칸은 보드마다 "접수일"·"접수일자"라 띄어쓰기를 빼고
+// "접수일"이 든 날짜 칸으로 찾는다.
+const isReceivedDate = (c: TechColumn) => c.type === 'date' && c.title.replace(/\s/g, '').includes('접수일');
+const RECEIVED_DESC = { column: isReceivedDate, dir: -1 } as const;
+const DEFAULT_SORT: Partial<Record<TechBoardKey, { column: (c: TechColumn) => boolean; dir: 1 | -1 }>> = {
+  fieldService: RECEIVED_DESC,
+  repair: RECEIVED_DESC,
+  techInquiry: RECEIVED_DESC,
+};
+
+const defaultSort = (boardKey: TechBoardKey, columns: TechColumn[]): MonSort => {
+  const want = DEFAULT_SORT[boardKey];
+  const column = want ? columns.find(want.column) : undefined;
+  return want && column ? { columnId: column.id, dir: want.dir } : null;
+};
 
 export interface BoardViewModel {
   boardKey: TechBoardKey;
@@ -117,8 +134,10 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
   const shownColumns = useMemo(() => columns.filter(c => !view?.hidden.includes(c.id)), [columns, view]);
   const peopleColumns = useMemo(() => columns.filter(c => PEOPLE_TYPES.has(c.type)), [columns]);
   const statusColumn = shownColumns.find(c => c.type === 'status');
-  // 직접 고른 정렬이 있으면 그것, 없으면 보기의 정렬(해제했으면 null)
-  const sort = localSort !== undefined ? localSort : view?.sort ?? null;
+  const initialSort = useMemo(() => defaultSort(boardKey, columns), [boardKey, columns]);
+  // 직접 고른 정렬이 있으면 그것, 없으면 보기의 정렬, 그것도 없으면 보드의 기본 정렬(출장업무: 접수일 최근 먼저).
+  // 직접 해제했으면 null
+  const sort = localSort !== undefined ? localSort : view?.sort ?? initialSort;
   const sortColumn = sort && sort.columnId !== NAME_COLUMN ? columns.find(c => c.id === sort.columnId) : undefined;
 
   // 입력 칸은 바로 바뀌고, 거르기·그룹 만들기는 한 박자 늦게 따라간다(글자마다 전체 항목을 다시 거르지 않게)
@@ -133,9 +152,16 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
   }, [meta, items, view, boardKey, peopleColumns, needle, person]);
   const filtering = Boolean(needle || person || view);
 
+  const names = useMemo<SortNames>(
+    () =>
+      PHONE_IN_NAME_BOARDS.has(boardKey)
+        ? { nameOf: item => splitNamePhone(item.name).label, namePhonesOf: item => splitNamePhone(item.name).phones }
+        : {},
+    [boardKey],
+  );
   const allGroups = useMemo(
-    () => (meta ? buildGroups(meta, filtered, { statusColumn, sortColumn, sort }) : []),
-    [meta, filtered, statusColumn, sortColumn, sort],
+    () => (meta ? buildGroups(meta, filtered, { statusColumn, sortColumn, sort, names }) : []),
+    [meta, filtered, statusColumn, sortColumn, sort, names],
   );
   const groups = filtering ? allGroups.filter(g => g.items.length > 0) : allGroups;
   const hideEmptyGroups = Boolean(needle || person) || (view?.rules.some(ruleReady) ?? false);

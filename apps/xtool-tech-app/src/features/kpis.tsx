@@ -32,8 +32,8 @@ import type { Period } from '@xtool-core/period';
 import type { TechBoardKey } from '@xtool-core/tech-boards';
 import { useTechBoard } from '@xtool-core/tech-boards-store';
 
-// 보드 숫자 카드 — 세는 법은 웹과 같이 쓴다(@xtool-core/board-kpis). 대시보드 짜임(글라스·물)은 카드 네 장으로,
-// Monday 표는 요약 줄로 그린다. 기간은 앱 전체에 하나 — 웹 PeriodProvider처럼 처음은 30일, 기기에 남기지 않는다.
+// 보드 숫자 카드 — 세는 법은 웹과 같이 쓴다(@xtool-core/board-kpis). 대시보드 짜임(글라스·물)은 카드 네 장으로
+// 그린다(Monday 표는 앱에서 요약 줄을 두지 않는다 — 2026-11-11). 기간은 앱 전체에 하나 — 웹 PeriodProvider처럼 처음은 30일, 기기에 남기지 않는다.
 
 interface PeriodState {
   period: Period;

@@ -1,7 +1,7 @@
 import { doneOn } from '@xtool-core/board-kpis/repair';
 import { byDateAsc, byDateDesc, daysBetween, inRange, koreaToday, periodRange, shortDate } from '@xtool-core/dates';
 import { PERIOD_COMPARE } from '@xtool-core/period';
-import { formatPhone, isDone, splitNames } from '@xtool-core/tech-stage';
+import { isDone, splitNames } from '@xtool-core/tech-stage';
 import { countBy, formatInt } from '../part-data';
 import type { BoardRecord, DashboardBoardDef } from './types';
 import { dateOrNull, nameOf, pieces } from './util';
@@ -42,7 +42,9 @@ export const repairDef: DashboardBoardDef<'repair'> = {
     return {
       id: r.itemId,
       title: nameOf(r.name),
-      subtitle: formatPhone(r.phone) ?? '연락처 없음',
+      // 연락처 — 있으면 이름 아래 전화 단추(누르면 전화), 없으면 그 자리에 '연락처 없음'
+      subtitle: r.phone ? null : '연락처 없음',
+      phone: r.phone ? { number: r.phone } : null,
       stage: { stage: r.stage, status: r.status },
       meta: pieces(r.device, r.symptom),
       assignees: assigneesOf(r),

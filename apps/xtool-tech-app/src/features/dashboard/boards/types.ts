@@ -42,6 +42,12 @@ export interface DetailFieldSpec {
   link?: { url: string; label: string } | null;
 }
 
+/** 하위 아이템 간단 목록 — 줄의 "설치 품목 N개" 단추로 여는 시트(label은 시트 제목에, items는 그 목록) */
+export interface SubitemSheetSpec {
+  label: string;
+  items: DetailListItem[];
+}
+
 /** 상세 본문(웹 RecordDrawer의 fields·texts·children) */
 export interface DetailSpec {
   fields: DetailFieldSpec[];
@@ -72,4 +78,6 @@ export interface DashboardBoardDef<K extends TechBoardKey> {
   detail: (r: BoardRecord<K>, today: string) => DetailSpec;
   /** 상세 머리에 단계 대신 보일 알약(대여품 상태) — 없으면 단계 알약 */
   pill?: (r: BoardRecord<K>) => PillData | null;
+  /** 줄의 하위 아이템 단추로 여는 목록 — 없으면 단추 시트를 열지 않는다(줄의 subitems와 같이 넣는다) */
+  subitems?: (r: BoardRecord<K>) => SubitemSheetSpec | null;
 }

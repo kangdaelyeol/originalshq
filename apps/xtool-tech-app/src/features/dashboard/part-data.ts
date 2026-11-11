@@ -1,4 +1,3 @@
-import { Linking } from 'react-native';
 import { daysBetween, koreaNow, relativeDay, shortDate } from '@xtool-core/dates';
 import { personColor } from '@xtool-core/monday-colors';
 import { urgencyText, type MyWorkItem } from '@xtool-core/my-work';
@@ -320,11 +319,8 @@ export function fileView(file: {
 /** 010-1234-5678 모양 — 번호가 없으면 null */
 export const phoneText = (phone: string | null | undefined): string | null => formatPhone(phone);
 
-/** 전화 걸기 */
-export function callPhone(phone: string | null | undefined): void {
-  const digits = (phone ?? '').replace(/[^\d+]/g, '');
-  if (digits) Linking.openURL(`tel:${digits}`).catch(() => undefined);
-}
+/** 전화 걸기 — 첫 번호만(features/phone-call) */
+export { callPhone } from '../phone-call';
 
 // ── 아바타 (웹 Avatar — initialsOf·personColor) ─────────────────────────────────────────────────────────
 

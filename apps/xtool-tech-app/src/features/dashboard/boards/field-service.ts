@@ -1,7 +1,8 @@
 import { doneOn, upcomingVisits } from '@xtool-core/board-kpis/field-service';
 import { byDateAsc, byDateDesc, inRange, periodRange, relativeDay, shortDate } from '@xtool-core/dates';
 import { PERIOD_COMPARE } from '@xtool-core/period';
-import { formatPhone, isDone, splitNames } from '@xtool-core/tech-stage';
+import { isDone, splitNames } from '@xtool-core/tech-stage';
+import { SUBITEM_LABEL } from '@xtool-core/tech-subitems';
 import { countBy } from '../part-data';
 import type { BoardRecord, DashboardBoardDef } from './types';
 import { dated, nameOf, pieces } from './util';
@@ -12,6 +13,14 @@ type R = BoardRecord<'fieldService'>;
 
 const assigneesOf = (r: R) => splitNames(r.assignee);
 const searchOf = (r: R) => [r.name, r.phone, r.type, r.region, r.address, r.notes, r.assignee].join(' ');
+const ITEMS_LABEL = SUBITEM_LABEL.fieldService ?? '설치 품목';
+// 설치 품목 줄 — 이름(비고가 있으면 괄호로)과 오른쪽 수량. 상세 목록과 줄 단추 시트가 같이 쓴다
+const itemRows = (r: R) =>
+  r.items.map((item, i) => ({
+    key: String(i),
+    label: item.note ? `${item.name} (${item.note})` : item.name,
+    meta: item.quantity !== null ? `${item.quantity}개` : undefined,
+  }));
 
 export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
   key: 'fieldService',
@@ -32,12 +41,15 @@ export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
     { key: 'assignee', header: '담당자', sortValue: r => assigneesOf(r)[0] },
     { key: 'stage', header: '단계', sortValue: r => r.stage },
   ],
+  // 카드 모양은 Monday 테마와 같게 — 단계 알약 없음(그룹으로 알 수 있고 상세에 있다), 이름 옆 전화 단추, 오른쪽 아래
+  // 접수일, "설치 품목 N개" 단추
   row: (r, today) => ({
     id: r.itemId,
     title: nameOf(r.name),
-    subtitle: formatPhone(r.phone) ?? '연락처 없음',
-    stage: { stage: r.stage, status: r.status },
-    meta: pieces(r.type, r.region, dated('접수', r.receivedAt, today)),
+    phone: r.phone ? { number: r.phone, beside: true } : null,
+    meta: pieces(r.type, r.region),
+    corner: dated('접수', r.receivedAt, today),
+    subitems: r.items.length > 0 ? { label: ITEMS_LABEL, count: r.items.length } : null,
     assignees: assigneesOf(r),
     // 방문 일정 — 시각, 아직 안 끝난 앞날이면 '내일'·'3일 후'(웹 표 칸과 같다)
     date: r.visitAt
@@ -100,14 +112,11 @@ export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
         ? [
             {
               key: 'items',
-              title: `설치 품목 ${r.items.length}`,
-              items: r.items.map((item, i) => ({
-                key: String(i),
-                label: item.name,
-                meta: item.quantity !== null ? `${item.quantity}개` : undefined,
-              })),
+              title: `${ITEMS_LABEL} ${r.items.length}`,
+              items: itemRows(r),
             },
           ]
         : [],
   }),
+  subitems: r => (r.items.length > 0 ? { label: ITEMS_LABEL, items: itemRows(r) } : null),
 };

@@ -8,6 +8,7 @@ import { UPDATE_BOARDS } from '@xtool-core/use-item-updates';
 import { KPI_ICONS, useBoardKpis, usePeriod } from '../kpis';
 import type { RecordRowData, StatCardData } from '../../themes/dashboard/parts';
 import { dashboardBoard, type SidePanel } from './boards';
+import type { SubitemSheetSpec } from './boards/types';
 import type { RecordLike } from './record-rows';
 import {
   sortLabel,
@@ -56,6 +57,10 @@ export interface DashboardBoardModel {
   actions: SelectionActions;
   /** 옮길 수 있는 진행 단계(그룹) */
   groups: { id: string; title: string }[];
+  /** 하위 아이템 단추가 있는 보드(출장업무) — 줄의 "설치 품목 N개" 시트 */
+  hasSubitems: boolean;
+  /** 그 줄의 하위 아이템 목록(시트) — 이름과 함께. 없으면 null */
+  subitemsOf: (itemId: string) => (SubitemSheetSpec & { title: string }) | null;
 }
 
 /** 보드 하나 — open은 줄·옆 판을 눌렀을 때(상세 화면으로) */
@@ -133,5 +138,11 @@ export function useDashboardBoard(boardKey: TechBoardKey, open: (itemId: string)
     selection,
     actions,
     groups: state.meta?.groups ?? [],
+    hasSubitems: !!def.subitems,
+    subitemsOf: itemId => {
+      const r = def.subitems ? records.find(each => each.itemId === itemId) : undefined;
+      const spec = r && def.subitems ? def.subitems(r) : null;
+      return r && spec ? { ...spec, title: def.row(r, today).title } : null;
+    },
   };
 }

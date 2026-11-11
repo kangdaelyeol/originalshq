@@ -1,6 +1,5 @@
 import { PHASE, phaseOf } from '@xtool-core/board-kpis/rentals';
 import { byDateAsc, shortDate } from '@xtool-core/dates';
-import { formatPhone } from '@xtool-core/tech-stage';
 import { countBy } from '../part-data';
 import type { BoardRecord, DashboardBoardDef } from './types';
 import { dated, dateOrNull, nameOf, pieces } from './util';
@@ -36,10 +35,9 @@ export const rentalsDef: DashboardBoardDef<'rentals'> = {
     title: nameOf(r.name),
     subtitle: r.serialNumber ? `SN ${r.serialNumber}` : null,
     pill: pillOf(r),
-    meta: pieces(
-      r.renter ? `${r.renter} ${formatPhone(r.renterPhone) ?? '연락처 없음'}` : null,
-      dated('회수', r.returnedAt, today),
-    ),
+    // 대여자 번호는 이름 아래 전화 단추로(누르면 전화) — 메타에는 대여자 이름만
+    phone: r.renterPhone ? { number: r.renterPhone } : null,
+    meta: pieces(r.renter, dated('회수', r.returnedAt, today)),
     assignees: r.assignees,
     date: r.rentedAt ? { text: `대여 ${shortDate(r.rentedAt, today)}`, tone: 'muted' } : null,
   }),

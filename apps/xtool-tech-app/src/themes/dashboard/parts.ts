@@ -27,6 +27,12 @@ import type { KingDef, KingPeriod, KingResult, KingRow } from '@xtool-core/tech-
  *   좌우 여백은 테마가 준다(Screen처럼). Card padded=false 안에는 줄 부품(WorkRow·PersonRow·OptionRow·RecordRow)이 차례로
  *   오고 그 뒤에 "더 보기" Button(plain, block)이 올 수 있다 — 줄 사이 구분선은 테마가. Sheet 안에는 OptionRow가 차례로
  *   오거나(고르기) 화면이 쌓은 View 하나(편집 칸들)가 온다.
+ * 1.3 (2026-11-11) — 기록 줄에 선택 칸 더함(출장업무 카드를 Monday 테마와 같게): RecordRowData에 `phone?`(전화 단추 —
+ *   {number, beside?}: beside면 이름 오른쪽, 아니면 이름 아래 한 줄. 누르면 전화(part-data callPhone)), `corner?`(오른쪽
+ *   아래 작은 글 — '접수 11/9'), `subitems?`({label, count} — 하위 아이템 단추 "설치 품목 3개 ›"), RecordRowProps에
+ *   `onPressSubitems?`, RecordListProps에 `onPressSubitems?(id)`. 단추(전화·하위 아이템)는 고르는 중에는 누르지 않게(줄
+ *   누름과 같게 고르기로) 그린다. 출장업무는 stage·subtitle을 넣지 않고, 전화번호를 보이던 보드(AS·아톡문의·AS 신청서·
+ *   대여품)는 subtitle·meta의 번호 대신 phone으로 넣는다.
  * ─────────────────────────────────────────────────────────────────────────────────────────────────────────
  */
 
@@ -435,6 +441,15 @@ export interface RecordRowData {
   title: string;
   /** 이름 아래 한 줄 — 연락처·기기 등(웹 cell-person의 작은 글) */
   subtitle?: string | null;
+  /**
+   * 전화 단추 — number는 칸의 번호 그대로(보일 때 part-data phoneText로 다듬고, 누르면 callPhone). beside면 이름 오른쪽(이름이
+   * 길면 이름이 먼저 줄어든다), 아니면 이름 아래 한 줄(subtitle 다음). 고르는 중에는 누르지 않는다(1.3)
+   */
+  phone?: { number: string; beside?: boolean } | null;
+  /** 오른쪽 아래 작은 글('접수 11/9')(1.3) */
+  corner?: string | null;
+  /** 하위 아이템 단추 "설치 품목 3개 ›" — 누르면 onPressSubitems(1.3) */
+  subitems?: { label: string; count: number } | null;
   /** 단계 알약(웹 StagePill) */
   stage?: StageValue | null;
   /** 단계 대신 다른 알약(대여품 상태·재고 상태 등) */
@@ -462,6 +477,8 @@ export interface RecordRowProps extends Outer {
   onLongPress?: () => void;
   /** 말풍선을 누르면 — 화면이 업데이트 시트를 연다 */
   onPressUpdates?: () => void;
+  /** 하위 아이템 단추를 누르면 — 화면이 하위 아이템 시트를 연다(1.3) */
+  onPressSubitems?: () => void;
   /** 고르는 중 — 왼쪽에 체크 칸 */
   selecting?: boolean;
   selected?: boolean;
@@ -489,6 +506,8 @@ export interface RecordListProps extends Outer {
   /** 길게 눌러 고르기 — 편집할 수 있는 보드만 */
   onLongPressRow?: (id: string) => void;
   onPressUpdates?: (id: string) => void;
+  /** 하위 아이템 단추(1.3) */
+  onPressSubitems?: (id: string) => void;
   selecting?: boolean;
   selected?: ReadonlySet<string>;
   /** "더 보기 · N건 남음" — 남은 것이 없으면 null */

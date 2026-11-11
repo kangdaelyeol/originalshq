@@ -1,5 +1,4 @@
 import { byDateDesc, shortDate } from '@xtool-core/dates';
-import { formatPhone } from '@xtool-core/tech-stage';
 import { countBy } from '../part-data';
 import type { BoardRecord, DashboardBoardDef } from './types';
 import { dateOrNull, nameOf, pieces } from './util';
@@ -33,7 +32,9 @@ export const asRequestsDef: DashboardBoardDef<'asRequests'> = {
   row: (r, today) => ({
     id: r.itemId,
     title: nameOf(r.name),
-    subtitle: formatPhone(r.phone) ?? '연락처 없음',
+    // 연락처 — 있으면 이름 아래 전화 단추(누르면 전화), 없으면 그 자리에 '연락처 없음'
+    subtitle: r.phone ? null : '연락처 없음',
+    phone: r.phone ? { number: r.phone } : null,
     // 표의 "확인" 칸 — 확인함이면 초록 알약
     pill: r.agreed ? { label: '확인함', tone: 'good' } : null,
     meta: pieces(deviceOf(r), r.symptom, r.purchaseChannel),

@@ -13,12 +13,15 @@ import {
   X,
 } from 'lucide-react-native';
 import { groupColor } from '@xtool-core/monday-colors';
-import { rowKey } from '@xtool-core/monday-values';
-import type { TechColumn, TechItemDoc } from '@xtool-core/tech-boards';
+import { mondayDate, PHONE_IN_NAME_BOARDS, rowKey, splitNamePhone } from '@xtool-core/monday-values';
+import { SUBITEM_LABEL } from '@xtool-core/tech-subitems';
+import { formatPhone } from '@xtool-core/tech-stage';
+import type { TechBoardKey, TechBoardMeta, TechItemDoc } from '@xtool-core/tech-boards';
 import type { BoardView, BoardViewSpec } from '@xtool-core/tech-views';
 import { numberSum, type GroupBlock } from '../../../features/board-model';
 import { useBoardView } from '../../../features/board-view';
-import { cardColumns } from '../../../features/card-columns';
+import { cardLayout, type CardLayout } from '../../../features/card-columns';
+import { subitemLines } from '../../../features/subitem-lines';
 import {
   DELETE_CONFIRM_MESSAGE,
   useRecordSelection,
@@ -42,14 +45,13 @@ import {
 } from '../parts/chrome';
 import { ConfirmDialog } from '../parts/confirm';
 import { MoveSheet } from '../parts/move-sheet';
-import { MondayNumbers } from '../parts/numbers';
 import { SelectionBar } from '../parts/selection-bar';
 import { UpdatesSheet, type UpdatesTarget } from '../parts/updates-sheet';
 import { ViewEditorSheet } from '../parts/view-editor';
 import { FONT, INK, type MonPalette } from '../theme';
 import { useMon, useStyles } from '../theme-context';
 
-// 보드 — 웹 Monday 표(monday-board.tsx)를 폰에 맞게: 머리(보드 이름) · 보기 탭(메뉴·"+") · 요약 줄 · 도구 줄(새로운 …·
+// 보드 — 웹 Monday 표(monday-board.tsx)를 폰에 맞게: 머리(보드 이름) · 보기 탭(메뉴·"+") · 도구 줄(새로운 …·
 // 검색·사람·조건·정렬·모두 접기·개수) · 그룹(색 제목, 접기, 상태 요약 막대) · 항목 카드 · 그룹 끝 "+ 추가"와 숫자 합계.
 // 카드 말풍선은 업데이트 시트(화면 이동 없이). 카드를 길게 누르면 고르기(웹 체크) — 아래 고르기 막대에서 옮기기·지우기.
 // 칸을 고치는 것은 항목 화면에서 한다.
@@ -77,7 +79,11 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
     setSheet(null);
   };
 
-  const onCard = useMemo(() => cardColumns(boardKey, v.shownColumns), [boardKey, v.shownColumns]);
+  // 카드 모양 — 보드마다(card-columns cardLayout): 둘째 줄 미니 칸·이름 옆 전화번호·오른쪽 아래 날짜·하위 아이템 단추
+  const layout = useMemo(() => cardLayout(boardKey, v.shownColumns), [boardKey, v.shownColumns]);
+  // 하위 아이템 목록 시트("설치 품목 N개" 단추) — 연 카드의 줄 열쇠
+  const [subitemsFor, setSubitemsFor] = useState<string | null>(null);
+  const openSubitems = useCallback((key: string) => setSubitemsFor(key), []);
   const numberColumns = v.shownColumns.filter(c => c.type === 'numbers');
   const groups = v.hideEmptyGroups ? v.allGroups.filter(g => g.items.length > 0) : v.allGroups;
   const sections = groups.map(g => ({ group: g, data: v.isCollapsed(g.id) ? [] : g.items }));
@@ -164,9 +170,11 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         renderItem={({ item, section }) => (
           <BoardCard
             item={item}
+            boardKey={boardKey}
             name={v.nameOf(item)}
             color={(section.group as GroupBlock).color}
-            columns={onCard}
+            layout={layout}
+            onSubitems={openSubitems}
             updates={v.updatesOf(item)}
             picked={selection.selected.has(rowKey(item))}
             selecting={selecting}
@@ -200,7 +208,6 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         onMore={() => setSheet('view')}
         onAdd={ready ? () => setEditor({ view: null }) : undefined}
       />
-      {!blocked && <MondayNumbers boardKey={boardKey} />}
       {ready ? (
         <ScrollView
           horizontal
@@ -397,6 +404,20 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
         onCreate={v.create}
       />
       <UpdatesSheet target={updatesFor} onClose={() => setUpdatesFor(null)} />
+      <SubitemsSheet
+        boardKey={boardKey}
+        meta={meta}
+        item={subitemsFor ? ((items ?? []).find(i => rowKey(i) === subitemsFor) ?? null) : null}
+        name={(() => {
+          const item = subitemsFor ? (items ?? []).find(i => rowKey(i) === subitemsFor) : undefined;
+          return item ? v.nameOf(item) : '';
+        })()}
+        onClose={() => setSubitemsFor(null)}
+        onOpenItem={key => {
+          setSubitemsFor(null);
+          navigation.navigate('Item', { boardKey, itemId: key });
+        }}
+      />
     </View>
   );
 }
@@ -492,38 +513,64 @@ function NewItemSheet({
   );
 }
 
-/** 보드 카드 한 장 — props가 같으면 다시 그리지 않는다(누르기 함수는 화면이 늘 같은 것을 넘긴다) */
+/** 보드 카드 한 장 — props가 같으면 다시 그리지 않는다(누르기 함수는 화면이 늘 같은 것을 넘긴다). 모양은 보드별
+ * 카드 모양(layout)을 따른다 — 출장업무: 이름 옆 전화번호, 오른쪽 아래 접수일, "설치 품목 N개" 단추, 상태 칸 없음. */
 const BoardCard = memo(function BoardCard({
   item,
+  boardKey,
   name,
   color,
-  columns,
+  layout,
   updates,
   picked,
   selecting,
   onOpen,
   onPick,
   onUpdates,
+  onSubitems,
 }: {
   item: TechItemDoc;
+  boardKey: TechBoardKey;
   name: string;
   color: string;
-  columns: TechColumn[];
+  layout: CardLayout;
   updates?: number;
   picked: boolean;
   selecting: boolean;
   onOpen: (key: string) => void;
   onPick: (key: string) => void;
   onUpdates: (key: string, name: string, count?: number) => void;
+  onSubitems: (key: string) => void;
 }) {
+  const p = useMon();
   const key = rowKey(item);
+  // 전화번호 — 전화번호 칸, 비었으면 이름에 적힌 번호(출장업무는 이름 뒤에 번호를 적는다)
+  const phoneText = layout.phone ? (item.values[layout.phone.id]?.text ?? '').trim() : '';
+  const phone = layout.phone
+    ? formatPhone(phoneText) ??
+      (phoneText || (PHONE_IN_NAME_BOARDS.has(boardKey) ? splitNamePhone(item.name).phones : '')) ??
+      null
+    : null;
+  const cornerText = layout.corner ? (item.values[layout.corner.id]?.text ?? '').trim() : '';
+  const subitemLabel = layout.subitemButton ? SUBITEM_LABEL[boardKey] ?? '하위 아이템' : null;
   return (
     <ItemCard
       name={name}
       color={color}
-      columns={columns}
+      columns={layout.columns}
       values={item.values}
       subitemCount={item.subitems?.length}
+      phone={phone || null}
+      corner={
+        cornerText ? (
+          <MText size={12} color={p.text2}>
+            접수 {mondayDate(cornerText)}
+          </MText>
+        ) : null
+      }
+      subitemButton={
+        subitemLabel ? { label: subitemLabel, onPress: selecting ? undefined : () => onSubitems(key) } : null
+      }
       updates={updates}
       onUpdates={() => onUpdates(key, name, updates)}
       faded={item.draft}
@@ -535,7 +582,56 @@ const BoardCard = memo(function BoardCard({
   );
 });
 
+/** 하위 아이템 간단 목록(카드의 "설치 품목 N개") — 품명·비고만, 아래에 항목 열기 */
+function SubitemsSheet({
+  boardKey,
+  meta,
+  item,
+  name,
+  onClose,
+  onOpenItem,
+}: {
+  boardKey: TechBoardKey;
+  meta: TechBoardMeta | null;
+  item: TechItemDoc | null;
+  name: string;
+  onClose: () => void;
+  onOpenItem: (key: string) => void;
+}) {
+  const p = useMon();
+  const s = useStyles(styles);
+  const label = SUBITEM_LABEL[boardKey] ?? '하위 아이템';
+  const lines = item ? subitemLines(meta, item) : [];
+  return (
+    <Sheet visible={item !== null} onClose={onClose} title={name ? `${name} · ${label}` : label}>
+      <View style={s.subList}>
+        {lines.length === 0 ? (
+          <MText size={14} color={p.text2}>
+            {label}이 없어요.
+          </MText>
+        ) : (
+          lines.map((line, i) => (
+            <View key={line.id} style={[s.subRow, i > 0 && s.subRowLine]}>
+              <MText size={15}>{line.title}</MText>
+              {!!line.note && (
+                <MText size={13} color={p.text2}>
+                  {line.note}
+                </MText>
+              )}
+            </View>
+          ))
+        )}
+      </View>
+      {item && <SheetRow label="항목 열기" onPress={() => onOpenItem(rowKey(item))} />}
+    </Sheet>
+  );
+}
+
 const styles = (p: MonPalette) => ({
+  // 하위 아이템 목록 시트
+  subList: { paddingHorizontal: 16, paddingBottom: 8 },
+  subRow: { paddingVertical: 10, gap: 2 },
+  subRowLine: { borderTopWidth: 1, borderColor: p.line },
   screen: { flex: 1, backgroundColor: p.bg },
   // 가로 스크롤은 세로로 늘어나지 않게(그대로 두면 남는 높이를 차지해 도구 줄이 아래로 밀린다)
   toolbarScroll: { flexGrow: 0 },

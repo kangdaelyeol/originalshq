@@ -1,5 +1,4 @@
 import type { TextStyle } from 'react-native';
-import type { KpiTint } from '@xtool-core/board-kpis';
 
 // Monday 테마 — 웹(ohq-ui/styles/themes/_monday-palettes.scss, _monday.scss)의 --mon-* 값을 그대로 옮겼다.
 // 처음 들어온 사람은 남색(navy). 설정에서 라이트·블랙으로 바꾼다(웹 설정 > 레이아웃 > Monday 색상과 같은 셋).
@@ -189,8 +188,6 @@ export const STATE = { good: '#00c875', warn: '#fdab3d', crit: '#e2445c', info: 
 export const TOAST = { success: '#00854d', error: '#d83a52' } as const;
 /** Monday 강조색(웹 MONDAY_ACCENT) — "나" 동그라미 등 */
 export const MONDAY_ACCENT = '#2364e3';
-/** 요약 숫자 칸 이름 앞 점 — 대시보드 카드 색조를 Monday 라벨 색으로(웹 _monday-numbers.scss) */
-export const TINT: Record<KpiTint, string> = { blue: '#579bfc', violet: '#a25ddc', green: '#00c875', amber: '#fdab3d' };
 /** 고른 칸·체크 칸의 흰 글자·체크(라벨 색·파란 바탕 위) */
 export const INK = '#ffffff';
 

@@ -21,7 +21,17 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, FileText, ImageIcon, MessageCircle, MessageCirclePlus, PenLine, X } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  ImageIcon,
+  MessageCircle,
+  MessageCirclePlus,
+  PenLine,
+  Phone,
+  X,
+} from 'lucide-react-native';
 import { stageLabel, stageTone } from '@xtool-core/tech-stage';
 import { avatarView, callPhone, phoneText, upcomingRow } from '../../../features/dashboard/part-data';
 import { useFocusFade } from '../../../features/focus-fade';
@@ -165,19 +175,74 @@ function UpdatesBubble({ count, onPress, onDark }: { count: number; onPress?: ()
   );
 }
 
-/** 기록 줄의 모양 — onDark면 어두운 표시 알약 위(흰 글자) */
+/** 전화 단추 — 흰 알약에 전화 아이콘 + 010-1234-5678(안내색). 누르면 전화, 고르는 중에는 누르지 않는다 */
+function PhoneButton({ number, disabled, onDark }: { number: string; disabled?: boolean; onDark: boolean }) {
+  const text = phoneText(number) ?? number;
+  const ink = onDark ? '#ffffff' : W.infoInk;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${text}로 전화`}
+      hitSlop={6}
+      onPress={() => callPhone(number)}
+      disabled={disabled}
+      style={[styles.bubble, styles.phoneChip, onDark ? styles.bubbleOnDark : styles.bubbleFill]}
+    >
+      <Phone size={11} color={ink} strokeWidth={2.2} />
+      <WText size={11.5} weight="600" color={ink} tabular numberOfLines={1} style={styles.shrink}>
+        {text}
+      </WText>
+    </Pressable>
+  );
+}
+
+/** 하위 아이템 단추 "설치 품목 3개 ›" — 말풍선과 같은 흰 알약. 고르는 중에는 누르지 않는다(줄 누름이 고르기로) */
+function SubitemsChip({
+  label,
+  count,
+  onPress,
+  disabled,
+  onDark,
+}: {
+  label: string;
+  count: number;
+  onPress?: () => void;
+  disabled?: boolean;
+  onDark: boolean;
+}) {
+  const ink = onDark ? '#ffffff' : W.ink2;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${label} ${count}개 보기`}
+      hitSlop={6}
+      onPress={onPress}
+      disabled={disabled || !onPress}
+      style={[styles.bubble, styles.subChip, onDark ? styles.bubbleOnDark : styles.bubbleFill]}
+    >
+      <WText size={11.5} weight="600" color={ink} tabular>
+        {`${label} ${count}개`}
+      </WText>
+      <ChevronRight size={12} color={ink} strokeWidth={2.2} />
+    </Pressable>
+  );
+}
+
+/** 기록 줄의 모양 — onDark면 어두운 표시 알약 위(흰 글자). 이름 옆이나 아래에 전화 단추, 아래 줄 끝에 작은 글(접수일) */
 const RowFace = memo(function RowFaceView({
   row,
   onDark,
   selecting,
   selected,
   onPressUpdates,
+  onPressSubitems,
 }: {
   row: RecordRowData;
   onDark: boolean;
   selecting?: boolean;
   selected?: boolean;
   onPressUpdates?: () => void;
+  onPressSubitems?: () => void;
 }) {
   const ink = onDark ? '#ffffff' : W.ink;
   const ink2 = onDark ? W.onDark2 : W.ink2;
@@ -199,6 +264,11 @@ const RowFace = memo(function RowFaceView({
               <WText size={13} weight="600" color={ink} numberOfLines={1} onDark={onDark} style={styles.shrink}>
                 {row.title}
               </WText>
+              {row.phone?.beside ? (
+                <View style={styles.phoneBeside}>
+                  <PhoneButton number={row.phone.number} disabled={selecting} onDark={onDark} />
+                </View>
+              ) : null}
               {row.updates != null ? (
                 <UpdatesBubble count={row.updates} onPress={onPressUpdates} onDark={onDark} />
               ) : null}
@@ -207,6 +277,11 @@ const RowFace = memo(function RowFaceView({
               <WText size={11} color={ink2} tabular numberOfLines={1} style={styles.rowSub}>
                 {row.subtitle}
               </WText>
+            ) : null}
+            {row.phone && !row.phone.beside ? (
+              <View style={styles.phoneBelow}>
+                <PhoneButton number={row.phone.number} disabled={selecting} onDark={onDark} />
+              </View>
             ) : null}
           </View>
           {row.date ? (
@@ -231,8 +306,23 @@ const RowFace = memo(function RowFaceView({
             )
           ) : null}
         </View>
-        {row.stage || row.pill || meta || (row.assignees && row.assignees.length > 0) || row.saving ? (
+        {row.subitems ||
+        row.stage ||
+        row.pill ||
+        meta ||
+        (row.assignees && row.assignees.length > 0) ||
+        row.saving ||
+        row.corner ? (
           <View style={styles.rowMeta}>
+            {row.subitems ? (
+              <SubitemsChip
+                label={row.subitems.label}
+                count={row.subitems.count}
+                onPress={onPressSubitems}
+                disabled={selecting}
+                onDark={onDark}
+              />
+            ) : null}
             {row.stage ? (
               <WPill tone={stageTone(row.stage)} onDark={onDark}>
                 {stageLabel(row.stage.stage)}
@@ -257,6 +347,11 @@ const RowFace = memo(function RowFaceView({
                 </WText>
               </View>
             ) : null}
+            {row.corner ? (
+              <WText size={11.5} color={ink2} tabular numberOfLines={1} onDark={onDark} style={styles.corner}>
+                {row.corner}
+              </WText>
+            ) : null}
           </View>
         ) : null}
       </View>
@@ -265,7 +360,16 @@ const RowFace = memo(function RowFaceView({
 });
 
 /** 기록 줄 하나(목록 밖에서 쓸 때) — 누르면 흰 칩이 깔린다 */
-export function RecordRow({ row, onPress, onLongPress, onPressUpdates, selecting, selected, style }: RecordRowProps) {
+export function RecordRow({
+  row,
+  onPress,
+  onLongPress,
+  onPressUpdates,
+  onPressSubitems,
+  selecting,
+  selected,
+  style,
+}: RecordRowProps) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -278,7 +382,14 @@ export function RecordRow({ row, onPress, onLongPress, onPressUpdates, selecting
       {({ pressed }) => (
         <View style={styles.rowAlone}>
           {pressed ? <View style={[FILL, styles.rowPressed]} /> : null}
-          <RowFace row={row} onDark={false} selecting={selecting} selected={selected} onPressUpdates={onPressUpdates} />
+          <RowFace
+            row={row}
+            onDark={false}
+            selecting={selecting}
+            selected={selected}
+            onPressUpdates={onPressUpdates}
+            onPressSubitems={onPressSubitems}
+          />
         </View>
       )}
     </Pressable>
@@ -316,6 +427,7 @@ export function RecordList({
   onPressRow,
   onLongPressRow,
   onPressUpdates,
+  onPressSubitems,
   selecting,
   selected,
   more,
@@ -422,6 +534,7 @@ export function RecordList({
                     selecting={selecting}
                     selected={selected?.has(row.id)}
                     onPressUpdates={onPressUpdates ? () => onPressUpdates(row.id) : undefined}
+                    onPressSubitems={onPressSubitems ? () => onPressSubitems(row.id) : undefined}
                   />
                 </View>
               )}
@@ -938,6 +1051,13 @@ const styles = StyleSheet.create({
   rowTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   titleLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowSub: { marginTop: 1 },
+  // 이름 옆 전화 단추(이름이 먼저 줄어든다) / 이름 아래 전화 단추
+  phoneBeside: { flexShrink: 0, maxWidth: '55%' },
+  phoneBelow: { flexDirection: 'row', marginTop: 4 },
+  phoneChip: { gap: 4, maxWidth: '100%' },
+  subChip: { gap: 2, paddingRight: 5 },
+  // 아래 줄 오른쪽 끝(접수일) — 줄이 넘치면 다음 줄 오른쪽으로
+  corner: { marginLeft: 'auto' },
   rowDate: { alignItems: 'flex-end', gap: 1 },
   rowMeta: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 7 },
   saving: { flexDirection: 'row', alignItems: 'center', gap: 4 },

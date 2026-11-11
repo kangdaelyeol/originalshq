@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
-import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus } from 'lucide-react-native';
+import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus, Phone } from 'lucide-react-native';
 import { labelColor, NEUTRAL } from '@xtool-core/monday-colors';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import { formatInt } from '../../../features/dashboard/part-data';
+import { callPhone } from '../../../features/phone-call';
 import { useMon, useStyles } from '../theme-context';
 import { FONT, INK, type MonPalette } from '../theme';
 import { CountBadge, MText, withAlpha } from './basics';
@@ -212,6 +213,9 @@ export function ItemCard({
   columns,
   values,
   subitemCount,
+  phone,
+  corner,
+  subitemButton,
   updates,
   onUpdates,
   onPress,
@@ -225,6 +229,12 @@ export function ItemCard({
   columns: TechColumn[];
   values: Record<string, TechCellValue>;
   subitemCount?: number;
+  /** 이름 오른쪽 전화 단추에 보일 번호(보드별 카드 모양 — card-columns cardLayout). 누르면 전화(고르는 중에는 안 걸린다) */
+  phone?: string | null;
+  /** 오른쪽 아래(접수일 등) */
+  corner?: ReactNode;
+  /** 하위 아이템을 숫자 대신 "{label} N개" 단추로 — 누르면 목록(고르는 중에는 onPress 없음) */
+  subitemButton?: { label: string; onPress?: () => void } | null;
   /** 업데이트 말풍선을 보이는 보드면 개수(0 포함), 아니면 undefined */
   updates?: number;
   /** 말풍선 누르기 — 업데이트 시트(고르는 중에는 넘기지 않는다) */
@@ -261,16 +271,48 @@ export function ItemCard({
           <MText size={15} numberOfLines={1} style={s.name}>
             {name}
           </MText>
-          {!!subitemCount && <CountBadge count={subitemCount} />}
+          {!!phone && (
+            <Pressable
+              onPress={() => callPhone(phone)}
+              disabled={selecting}
+              hitSlop={6}
+              accessibilityRole="button"
+              accessibilityLabel={`${phone}로 전화`}
+              style={({ pressed }) => [s.phone, pressed && { backgroundColor: p.overlay }]}
+            >
+              <Phone size={12} color={p.link} />
+              <MText size={13} color={p.link} numberOfLines={1} style={s.phoneText}>
+                {phone}
+              </MText>
+            </Pressable>
+          )}
+          <View style={s.spacer} />
+          {!subitemButton && !!subitemCount && <CountBadge count={subitemCount} />}
           {updates !== undefined && <UpdatesBubble count={updates} onPress={selecting ? undefined : onUpdates} />}
         </View>
-        {shown.length > 0 && (
+        {(shown.length > 0 || (!!subitemButton && !!subitemCount) || !!corner) && (
           <View style={s.line2}>
+            {!!subitemButton && !!subitemCount && (
+              <Pressable
+                onPress={subitemButton.onPress}
+                disabled={!subitemButton.onPress}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={`${subitemButton.label} ${subitemCount}개 보기`}
+                style={({ pressed }) => [s.chip, pressed && { backgroundColor: p.overlay }]}
+              >
+                <MText size={12} color={p.text}>
+                  {subitemButton.label} {subitemCount}개
+                </MText>
+                <ChevronRight size={12} color={p.text2} />
+              </Pressable>
+            )}
             {shown.map(c => (
               <View key={c.id} style={s.mini}>
-                <CellValue column={c} cell={values[c.id]} mode="card" />
+                <CellValue column={c} cell={values[c.id]} mode="card" callable={!selecting} />
               </View>
             ))}
+            {!!corner && <View style={s.corner}>{corner}</View>}
           </View>
         )}
       </View>
@@ -291,9 +333,38 @@ const cardStyles = (p: MonPalette) => ({
   bar: { width: 6 },
   body: { flex: 1, paddingVertical: 10, paddingLeft: 12, paddingRight: 8, gap: 10 },
   line1: { flexDirection: 'row' as const, alignItems: 'center' as const, gap: 8, minHeight: 28 },
-  name: { flex: 1 },
+  name: { flexShrink: 1 },
+  // 이름 옆 전화 단추 — 이름이 길면 이름이 먼저 줄어든다
+  phone: {
+    flexShrink: 0,
+    maxWidth: '55%' as const,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 4,
+    height: 26,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderColor: p.line,
+    borderRadius: 4,
+  },
+  phoneText: { flexShrink: 1 },
+  spacer: { flex: 1 },
   line2: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, alignItems: 'center' as const, gap: 10 },
   mini: { flexShrink: 1, maxWidth: '100%' as const },
+  // 하위 아이템 단추("설치 품목 N개")
+  chip: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 2,
+    height: 26,
+    paddingLeft: 8,
+    paddingRight: 5,
+    borderWidth: 1,
+    borderColor: p.line,
+    borderRadius: 4,
+  },
+  // 오른쪽 아래(접수일)
+  corner: { marginLeft: 'auto' as const },
 });
 
 /**
