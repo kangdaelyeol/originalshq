@@ -252,9 +252,10 @@ function StatPlaceholder() {
 /** 숫자 카드 묶음 — 폰은 두 칸씩, 카드는 21ms 간격으로 진해진다 */
 export function KpiGrid({ items, placeholders = 4, style }: KpiGridProps) {
   const cells: ReactNode[] = items
-    ? items.map((item, i) => (
-        <Reveal key={item.key} index={i} style={styles.kpiCell}>
-          <StatCard {...item} />
+    ? items.map(({ key, ...card }, i) => (
+        // key는 펼쳐 넘기지 않는다(React 경고) — 글라스 KpiGrid와 같게
+        <Reveal key={key} index={i} style={styles.kpiCell}>
+          <StatCard {...card} />
         </Reveal>
       ))
     : Array.from({ length: placeholders }, (_, i) => (

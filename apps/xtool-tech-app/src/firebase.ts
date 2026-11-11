@@ -43,7 +43,11 @@ function xtoolFirebase(): XtoolFirebase {
   const db = existing
     ? getFirestore(app, DATABASE_ID)
     : initializeFirestore(app, { experimentalAutoDetectLongPolling: true }, DATABASE_ID);
-  const functions = getFunctions(app, 'us-central1');
+  // 지역 이름('us-central1') 대신 함수 서버 주소를 통째로 준다 — 라이브러리는 받은 글자를 먼저 URL로 읽어 보고, 읽히면
+  // 따로 정한 서버 주소로 쓴다. RN의 URL은 'us-central1'도 거절하지 않고 서버 주소를 빈 글자로 읽어서 요청 주소가
+  // '/techUpdateItem'처럼 함수 이름만 남았다(그래서 앱에서는 함수 호출이 모두 "internal"로 실패했다). 주소를 다 주면
+  // RN URL도 제대로 읽는다. 에뮬레이터는 connectFunctionsEmulator가 이것보다 먼저다.
+  const functions = getFunctions(app, `https://us-central1-${XTOOL_FIREBASE_CONFIG.projectId}.cloudfunctions.net`);
   if (useEmulator && !existing) {
     connectAuthEmulator(auth, `http://${EMULATOR_HOST}:${EMULATOR_PORTS.auth}`, { disableWarnings: true });
     connectFirestoreEmulator(db, EMULATOR_HOST, EMULATOR_PORTS.firestore);
