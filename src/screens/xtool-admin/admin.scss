@@ -313,6 +313,30 @@
     font-size: 12px;
   }
 
+  // ── 아톡문의 새 문의 웍스 알림 — 켜기·채널 ID ─────────────────────────────────
+  .inquiry-notify {
+    display: grid;
+    gap: 12px;
+  }
+
+  .inquiry-notify__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+  }
+
+  .inquiry-notify__field {
+    display: grid;
+    gap: 6px;
+    max-width: 420px;
+
+    span {
+      font-size: 12px;
+      opacity: 0.7;
+    }
+  }
+
   // ── 네이버 웍스 연결 확인 — 보낼 곳 고르기·웍스 아이디(채널 ID) 입력 ───────────────
   .works-test__select,
   .works-test__input {

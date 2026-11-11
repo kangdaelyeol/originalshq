@@ -37,6 +37,9 @@ import {
   setupTechWebhooks,
   checkColumnNames,
   checkInstallItems,
+  getInquiryNotify,
+  sendInquiryTest,
+  setInquiryNotify,
   syncTechBoard,
   syncTechBoards,
   TechBoardKey,
@@ -594,6 +597,63 @@ export const techCheckColumns = onCall(
 )
 
 // ────────────────────────────────
+// techInquiryNotify — 아톡문의 새 문의 웍스 알림 설정(관리자). get: 지금 설정,
+// set: 켜고 끄기·채널 ID 저장, test: 저장한 채널로 예시 메시지. 알림은 webhook이
+// 보낸다(tech-boards/inquiry-notify.ts).
+// ────────────────────────────────
+interface InquiryNotifyInput {
+  action?: 'get' | 'set' | 'test'
+  enabled?: boolean
+  channelId?: string | null
+}
+
+export const techInquiryNotify = onCall(
+  { secrets: WORKS_SECRETS, timeoutSeconds: 30 },
+  traced(
+    'techInquiryNotify',
+    'callable',
+    async (request: CallableRequest<InquiryNotifyInput>) => {
+      const editor = await requireMember(request, true)
+      const action = request.data?.action ?? 'get'
+      if (action === 'set') {
+        const channelId = String(request.data?.channelId ?? '').trim()
+        if (channelId && !WORKS_CHANNEL_ID.test(channelId)) {
+          throw new HttpsError(
+            'invalid-argument',
+            '채널 ID에 빈칸·빗금 없이 적어 주세요',
+          )
+        }
+        const enabled = request.data?.enabled === true
+        if (enabled && !channelId) {
+          throw new HttpsError(
+            'invalid-argument',
+            '알림을 켜려면 채널 ID를 적어 주세요',
+          )
+        }
+        return {
+          settings: await setInquiryNotify(
+            db,
+            { enabled, channelId: channelId || null },
+            editor.name,
+          ),
+        }
+      }
+      if (action === 'test') {
+        const source = findTechBoard({ key: 'techInquiry' })
+        if (!source) throw new HttpsError('not-found', '아톡문의 보드가 없어요')
+        try {
+          await sendInquiryTest(db, source)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          throw new HttpsError('failed-precondition', message)
+        }
+      }
+      return { settings: await getInquiryNotify(db) }
+    },
+  ),
+)
+
+// ────────────────────────────────
 // techWorksTest — 네이버 웍스 봇 연결 확인(관리자). 확인 메시지를 하나 보낸다 — 나에게
 // 1:1(userId — 웍스 아이디), 채널 ID를 직접 적은 채팅방(channelId), 정해 둔 채팅방
 // (channel) 중 하나. 비밀 값 5개(WORKS_*)·봇 초대가 맞는지 알림을 켜기 전에 본다.
@@ -732,8 +792,9 @@ export const techSetupWebhooks = onCall(
 // mondayTechWebhook — Monday가 보내는 변경 알림. 처음 등록할 때 오는 challenge는
 // 그대로 돌려줘야 등록된다.
 // ────────────────────────────────
+// 웍스 비밀 값 — 아톡문의 새 문의 알림(tech-boards/inquiry-notify.ts)을 보낸다.
 export const mondayTechWebhook = onRequest(
-  { secrets: [mondayApiKey], timeoutSeconds: 60 },
+  { secrets: [mondayApiKey, ...WORKS_SECRETS], timeoutSeconds: 60 },
   (request, response) => traceRun(
     { fn: 'mondayTechWebhook', trigger: 'http', method: request.method },
     async (trace) => {

@@ -33,3 +33,9 @@ export { checkInstallItems } from './install-items'
 export type { InstallItemsResult } from './install-items'
 export { checkColumnNames } from './column-check'
 export type { ColumnCheckBoard } from './column-check'
+export {
+  getInquiryNotify,
+  sendInquiryTest,
+  setInquiryNotify,
+} from './inquiry-notify'
+export type { InquiryNotifySettings } from './inquiry-notify'

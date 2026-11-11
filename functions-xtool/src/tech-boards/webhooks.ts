@@ -6,6 +6,7 @@ import { getBoardMeta, saveBoardMeta } from './firestore'
 import { createWebhook, deleteWebhook } from './monday-api'
 import { fillPhoneFromName, PHONE_COPY } from './phones'
 import { applyBoardRules } from './rules'
+import { notifyNewInquiry } from './inquiry-notify'
 import { refreshItemUpdates } from './updates'
 
 // Monday webhook — Monday에서 직접 고친 내용을 몇 초 안에 캐시에 반영한다.
@@ -111,6 +112,19 @@ export async function handleWebhookEvent(
   if (doc && meta) {
     await applyBoardRules(db, apiKey, source, meta, doc).catch((error) =>
       logger.error(`보드 규칙 처리 실패(${itemId}):`, error),
+    )
+  }
+  // 아톡문의 새 문의 — 웍스 기술팀 채팅방 알림(inquiry-notify.ts, 관리 화면에서 켜고 채널을 정한다)
+  if (doc && meta && !event.parentItemId) {
+    await notifyNewInquiry(
+      db,
+      apiKey,
+      source,
+      meta,
+      doc,
+      String(event.type ?? ''),
+    ).catch((error) =>
+      logger.error(`아톡문의 웍스 알림 실패(${itemId}):`, error),
     )
   }
   // 하위 아이템 이벤트(parentItemId)는 부모 이름이 바뀐 게 아니라 빼고 본다.

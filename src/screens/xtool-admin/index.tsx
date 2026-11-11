@@ -14,6 +14,7 @@ import { AdminSignIn } from './admin-sign-in'
 import { AssigneeCopyCard } from './assignee-copy-card'
 import { InstallItemsCard } from './install-items-card'
 import { WorksTestCard } from './works-test-card'
+import { InquiryNotifyCard } from './inquiry-notify-card'
 import { ColumnCheckCard } from './column-check-card'
 import { EditLogCard } from './edit-log-card'
 import { MemberForm } from './member-form'
@@ -131,6 +132,7 @@ function AdminScreen() {
                 <InstallItemsCard />
                 <ColumnCheckCard />
                 <WorksTestCard />
+                <InquiryNotifyCard />
               </>
             )}
             {tab === 'logs' && <EditLogCard />}
