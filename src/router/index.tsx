@@ -150,7 +150,7 @@ export const router = createBrowserRouter([
   },
   {
     // Lazy: 기술문의 접수 폼 — 고객이 휴대폰으로 여는 공개 페이지(아톡 폼 대신). 로그인 없이 연다.
-    path: '/form/techsupport',
+    path: '/xtool/support',
     lazy: async () => ({
       Component: (await import('@/screens/tech-form')).default,
     }),

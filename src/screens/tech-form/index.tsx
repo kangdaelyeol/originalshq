@@ -10,14 +10,14 @@ import { PolicyModal } from './policy-modal'
 import { SupportCenterLogo } from './xtool-logo'
 import './tech-form.scss'
 
-// 기술문의 접수 폼(/form/techsupport) — 고객이 휴대폰으로 여는 공개 페이지. 아톡 폼을 대신한다: 제출하면 우리 서버가
+// 기술문의 접수 폼(/xtool/support) — 고객이 휴대폰으로 여는 공개 페이지. 아톡 폼을 대신한다: 제출하면 우리 서버가
 // 아톡문의 보드에 항목을 만들고 기술팀 웍스 채팅방에 알린다(제출 함수는 다음 단계 — 지금은 3초 기다리는 흉내).
 // 모바일 전용이라 폭을 좁게 둔다.
 //
 // 화면 차례: 시작(사진·문의 종류 — AS 접수 / 기타 문의) → (기타 문의만) 문의 종류(사용 방법·오작동·설정값) →
 // 연락처(성함을 적고 "다음"을 누르면 아래에 연락처 칸이 생긴다) → 기기(시리즈 단추) → 모델(시리즈 안 기기 단추) →
 // 자료·문의 내용(AS 접수는 구매경로·구매일자·기기 수령 주소부터, 첨부(선택)·내용, "접수하기") → 확인(지금까지 고른·적은 것, "이대로 접수하기") → 로딩 → 완료(사진).
-// 단추 화면은 누르면 저절로 다음 화면으로 가서 "다음"이 없다(단추 목록 밑에 "이전"만) — 모델이 없는 기기(O1·DTF)는
+// 단추 화면은 누르면 저절로 다음 화면으로 가서 "다음"이 없다(단추 목록 밑에 "이전"만) — 모델이 없는 기기(O1·DTF·MetalFab)는
 // 모델 화면을 건너뛴다. 화면이 바뀔 때마다 살짝 올라오며 나타난다. 머리에는 xTool Support Center 로고만 보이고
 // "기술문의 접수"는 화면 읽기용 제목으로만 둔다.
 
@@ -38,6 +38,7 @@ const DEVICES: readonly { key: string; label: string; models: readonly string[] 
   { key: 'P', label: 'P 시리즈', models: ['P2', 'P2S', 'P3'] },
   { key: 'O1', label: 'O1', models: [] },
   { key: 'DTF', label: 'DTF', models: [] },
+  { key: 'MetalFab', label: 'MetalFab', models: [] },
   { key: 'etc', label: '기타', models: ['AP2', '소형 집진기', 'D1 pro', 'S1', '기타'] },
 ]
 
