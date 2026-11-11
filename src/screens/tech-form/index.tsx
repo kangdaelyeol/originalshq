@@ -1,8 +1,22 @@
-import { Check, ChevronRight, FileText, LoaderCircle, Paperclip, X } from 'lucide-react'
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import {
+  Check,
+  ChevronRight,
+  FileText,
+  LoaderCircle,
+  Paperclip,
+  X,
+} from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import { flushSync } from 'react-dom'
 import { formatPhoneTyping } from '@xtool-core/tech-edit'
-import heroImage from '@/assets/xtool-tech-support.jpg'
+import heroImage from '@/assets/xtool-tech-support-korean.jpeg'
 import faviconUrl from '@/screens/xtool-tech/assets/symbols/favicon-64.png'
 import { useDocumentHead } from '@/screens/xtool-tech/lib/use-document-head'
 import { DateSelect } from './date-select'
@@ -14,7 +28,7 @@ import './tech-form.scss'
 // 아톡문의 보드에 항목을 만들고 기술팀 웍스 채팅방에 알린다(제출 함수는 다음 단계 — 지금은 3초 기다리는 흉내).
 // 모바일 전용이라 폭을 좁게 둔다.
 //
-// 화면 차례: 시작(사진·문의 종류 — AS 접수 / 기타 문의) → (기타 문의만) 문의 종류(사용 방법·오작동·설정값) →
+// 화면 차례: 시작(사진·문의 종류 — AS 접수 / 사용 문의) → (사용 문의만) 문의 종류(사용 방법·오작동·설정값) →
 // 연락처(성함을 적고 "다음"을 누르면 아래에 연락처 칸이 생긴다) → 기기(시리즈 단추) → 모델(시리즈 안 기기 단추) →
 // 자료·문의 내용(AS 접수는 구매경로·구매일자·기기 수령 주소부터, 첨부(선택)·내용, "접수하기") → 확인(지금까지 고른·적은 것, "이대로 접수하기") → 로딩 → 완료(사진).
 // 단추 화면은 누르면 저절로 다음 화면으로 가서 "다음"이 없다(단추 목록 밑에 "이전"만) — 모델이 없는 기기(O1·DTF·MetalFab)는
@@ -32,23 +46,39 @@ const ADVANCE_MS = 160
 const FAKE_SUBMIT_MS = 3000
 
 /** 문의 기기 — 시리즈 단추와 그 안의 기기. models가 비면 고르는 즉시 다음 화면으로 */
-const DEVICES: readonly { key: string; label: string; models: readonly string[] }[] = [
+const DEVICES: readonly {
+  key: string
+  label: string
+  models: readonly string[]
+}[] = [
   { key: 'M', label: 'M 시리즈', models: ['M1', 'M1 Ultra', 'M2'] },
-  { key: 'F', label: 'F 시리즈', models: ['F1', 'F2', 'F1 Ultra', 'F2 Ultra', 'F1 Ultra UV', 'F2 Ultra UV'] },
+  {
+    key: 'F',
+    label: 'F 시리즈',
+    models: ['F1', 'F2', 'F1 Ultra', 'F2 Ultra', 'F1 Ultra UV', 'F2 Ultra UV'],
+  },
   { key: 'P', label: 'P 시리즈', models: ['P2', 'P2S', 'P3'] },
   { key: 'O1', label: 'O1', models: [] },
   { key: 'DTF', label: 'DTF', models: [] },
   { key: 'MetalFab', label: 'MetalFab', models: [] },
-  { key: 'etc', label: '기타', models: ['AP2', '소형 집진기', 'D1 pro', 'S1', '기타'] },
+  {
+    key: 'etc',
+    label: '기타',
+    models: ['AP2', '소형 집진기', 'D1 pro', 'S1', '기타'],
+  },
 ]
 
 /** 문의 종류 — 시작 화면 단추 */
 const KINDS: readonly { key: string; label: string; description?: string }[] = [
   { key: 'as', label: 'AS 접수' },
-  { key: 'other', label: '기타 문의', description: '사용 방법, 설정값, 오작동 문의 등' },
+  {
+    key: 'other',
+    label: '사용 문의',
+    description: '사용 방법, 설정값, 오작동 문의 등',
+  },
 ]
 
-/** 기타 문의의 문의 종류 */
+/** 사용 문의의 문의 종류 */
 const INQUIRY_TYPES: readonly { value: string; label: string }[] = [
   { value: 'usage', label: '사용 방법 문의' },
   { value: 'malfunction', label: '기기 오작동 문의' },
@@ -78,7 +108,15 @@ const todayText = () => {
 
 type DetailKey = 'purchase' | 'date' | 'address' | 'content'
 
-type Step = 'start' | 'type' | 'contact' | 'series' | 'model' | 'details' | 'review' | 'done'
+type Step =
+  | 'start'
+  | 'type'
+  | 'contact'
+  | 'series'
+  | 'model'
+  | 'details'
+  | 'review'
+  | 'done'
 type FieldKey = 'name' | 'phone'
 
 /** 첨부 파일 하나 — 미리 보기 주소(object URL)는 뺄 때·떠날 때 돌려준다 */
@@ -163,7 +201,10 @@ function ChoiceGrid({
 }) {
   const id = useId()
   return (
-    <fieldset className="tech-form__choice-set" aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}>
+    <fieldset
+      className="tech-form__choice-set"
+      aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
+    >
       <legend className="tech-form__label">
         {label}
         <Required />
@@ -171,10 +212,18 @@ function ChoiceGrid({
       <p className="tech-form__hint" id={`${id}-hint`}>
         {hint}
       </p>
-      <div className={list ? 'tech-form__list tech-form__list--in-set' : 'tech-form__choices'}>
+      <div
+        className={
+          list
+            ? 'tech-form__list tech-form__list--in-set'
+            : 'tech-form__choices'
+        }
+      >
         {options.map((option) => {
           const on = option.value === value
-          const base = list ? 'tech-form__choice tech-form__choice--row' : 'tech-form__choice'
+          const base = list
+            ? 'tech-form__choice tech-form__choice--row'
+            : 'tech-form__choice'
           return (
             <button
               key={option.value}
@@ -219,7 +268,9 @@ function ChoiceList({
             key={option.key}
             type="button"
             className={
-              on ? 'tech-form__choice tech-form__choice--wide is-on' : 'tech-form__choice tech-form__choice--wide'
+              on
+                ? 'tech-form__choice tech-form__choice--wide is-on'
+                : 'tech-form__choice tech-form__choice--wide'
             }
             aria-pressed={on}
             onClick={() => onPick(option.key)}
@@ -228,7 +279,11 @@ function ChoiceList({
               <strong>{option.label}</strong>
               {option.description && <small>{option.description}</small>}
             </span>
-            {on ? <Check size={20} strokeWidth={2.6} aria-hidden /> : <ChevronRight size={20} aria-hidden />}
+            {on ? (
+              <Check size={20} strokeWidth={2.6} aria-hidden />
+            ) : (
+              <ChevronRight size={20} aria-hidden />
+            )}
           </button>
         )
       })}
@@ -238,12 +293,21 @@ function ChoiceList({
 
 /** 파일 크기 글자 */
 const sizeText = (bytes: number) =>
-  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(bytes / 1024))}KB`
+  bytes >= 1024 * 1024
+    ? `${(bytes / 1024 / 1024).toFixed(1)}MB`
+    : `${Math.max(1, Math.round(bytes / 1024))}KB`
 
 /** 첨부 미리 보기 — 사진은 그대로, 동영상은 첫 장면(소리 없이, 재생하지 않는다) */
 function Thumb({ item, className }: { item: Attachment; className: string }) {
   return item.file.type.startsWith('video/') ? (
-    <video className={className} src={`${item.url}#t=0.1`} muted playsInline preload="metadata" aria-hidden />
+    <video
+      className={className}
+      src={`${item.url}#t=0.1`}
+      muted
+      playsInline
+      preload="metadata"
+      aria-hidden
+    />
   ) : (
     <img className={className} src={item.url} alt="" />
   )
@@ -269,7 +333,9 @@ function AttachField({
       <p className="tech-form__hint" id={`${id}-hint`}>
         증상과 관련된 자료를 첨부해 주세요.
       </p>
-      <label className={full ? 'tech-form__attach is-disabled' : 'tech-form__attach'}>
+      <label
+        className={full ? 'tech-form__attach is-disabled' : 'tech-form__attach'}
+      >
         <input
           type="file"
           accept="image/*,video/*"
@@ -292,7 +358,9 @@ function AttachField({
             <li key={item.id}>
               <Thumb item={item} className="tech-form__file-thumb" />
               <span className="tech-form__file-name">{item.file.name}</span>
-              <span className="tech-form__file-size">{sizeText(item.file.size)}</span>
+              <span className="tech-form__file-size">
+                {sizeText(item.file.size)}
+              </span>
               <button
                 type="button"
                 className="tech-form__file-remove"
@@ -310,7 +378,13 @@ function AttachField({
 }
 
 /** "이전" — "다음"과 같은 크기의 흰 단추 */
-function BackButton({ onClick, disabled }: { onClick: () => void; disabled?: boolean }) {
+function BackButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void
+  disabled?: boolean
+}) {
   return (
     <button
       type="button"
@@ -324,7 +398,13 @@ function BackButton({ onClick, disabled }: { onClick: () => void; disabled?: boo
 }
 
 /** 확인 화면 한 줄 — 이름 · 값 */
-function ReviewRow({ label, children }: { label: string; children: ReactNode }) {
+function ReviewRow({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) {
   return (
     <div className="tech-form__review-row">
       <dt>{label}</dt>
@@ -354,7 +434,7 @@ export default function TechFormScreen() {
   const id = useId()
   const [step, setStep] = useState<Step>('start')
   const [kind, setKind] = useState<string | null>(null)
-  // 기타 문의의 문의 종류
+  // 사용 문의의 문의 종류
   const [inquiryType, setInquiryType] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -372,7 +452,9 @@ export default function TechFormScreen() {
   const [purchase, setPurchase] = useState<string | null>(null)
   const [purchaseDate, setPurchaseDate] = useState('')
   const [address, setAddress] = useState('')
-  const [detailErrors, setDetailErrors] = useState<Partial<Record<DetailKey, string>>>({})
+  const [detailErrors, setDetailErrors] = useState<
+    Partial<Record<DetailKey, string>>
+  >({})
   const [submitting, setSubmitting] = useState(false)
   // AS 정책 안내 창 — 닫으면 연 단추로 초점을 돌려준다
   const [policyOpen, setPolicyOpen] = useState(false)
@@ -403,8 +485,13 @@ export default function TechFormScreen() {
 
   const group = DEVICES.find((d) => d.key === series) ?? null
   const kindLabel = KINDS.find((k) => k.key === kind)?.label ?? ''
-  const typeLabel = INQUIRY_TYPES.find((t) => t.value === inquiryType)?.label ?? null
-  const deviceLabel = group ? (model && model !== group.label ? `${group.label} · ${model}` : group.label) : ''
+  const typeLabel =
+    INQUIRY_TYPES.find((t) => t.value === inquiryType)?.label ?? null
+  const deviceLabel = group
+    ? model && model !== group.label
+      ? `${group.label} · ${model}`
+      : group.label
+    : ''
 
   const go = (next: Step) => {
     window.clearTimeout(advance.current)
@@ -418,7 +505,8 @@ export default function TechFormScreen() {
   }
 
   // 고치면 그 칸 오류는 지운다
-  const clearError = (key: FieldKey) => setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev))
+  const clearError = (key: FieldKey) =>
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev))
 
   const validateContact = () => {
     const next: Partial<Record<FieldKey, string>> = {}
@@ -430,7 +518,7 @@ export default function TechFormScreen() {
     return Object.keys(next).length === 0
   }
 
-  // 기타 문의는 문의 종류를 먼저 고른다
+  // 사용 문의는 문의 종류를 먼저 고른다
   const pickKind = (key: string) => {
     setKind(key)
     goSoon(key === 'other' ? 'type' : 'contact')
@@ -445,7 +533,8 @@ export default function TechFormScreen() {
     const picked = DEVICES.find((d) => d.key === key)
     if (!picked) return
     // 다른 시리즈로 바꾸면 고른 모델은 비운다. 모델이 하나뿐이면 그것으로 고르고 모델 화면을 건너뛴다.
-    if (key !== series) setModel(picked.models.length === 1 ? picked.models[0] : null)
+    if (key !== series)
+      setModel(picked.models.length === 1 ? picked.models[0] : null)
     setSeries(key)
     goSoon(picked.models.length > 1 ? 'model' : 'details')
   }
@@ -460,7 +549,8 @@ export default function TechFormScreen() {
     else if (step === 'contact') go(kind === 'other' ? 'type' : 'start')
     else if (step === 'series') go('contact')
     else if (step === 'model') go('series')
-    else if (step === 'details') go(group && group.models.length > 1 ? 'model' : 'series')
+    else if (step === 'details')
+      go(group && group.models.length > 1 ? 'model' : 'series')
     else if (step === 'review') go('details')
   }
 
@@ -498,7 +588,10 @@ export default function TechFormScreen() {
   const isAs = kind === 'as'
 
   // 고치면 그 칸 안내를 지운다
-  const clearDetail = (key: DetailKey) => setDetailErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev))
+  const clearDetail = (key: DetailKey) =>
+    setDetailErrors((prev) =>
+      prev[key] ? { ...prev, [key]: undefined } : prev,
+    )
 
   // 접수하기 — 칸을 확인하고(AS 접수는 구매 정보까지) 확인 화면으로
   const submitDetails = () => {
@@ -506,7 +599,8 @@ export default function TechFormScreen() {
     if (isAs) {
       if (!purchase) next.purchase = '구매경로를 선택해 주세요.'
       if (!purchaseDate) next.date = '구매일자를 선택해 주세요.'
-      else if (purchaseDate > todayText()) next.date = '오늘 이후 날짜는 선택할 수 없어요.'
+      else if (purchaseDate > todayText())
+        next.date = '오늘 이후 날짜는 선택할 수 없어요.'
       if (!address.trim()) next.address = '기기 수령 주소를 입력해 주세요.'
     }
     if (!content.trim()) next.content = '문의 내용을 입력해 주세요.'
@@ -524,8 +618,12 @@ export default function TechFormScreen() {
   }
 
   const describedBy = (key: FieldKey, hint: boolean) =>
-    [hint ? `${id}-${key}-hint` : null, errors[key] ? `${id}-${key}-error` : null].filter(Boolean).join(' ') ||
-    undefined
+    [
+      hint ? `${id}-${key}-hint` : null,
+      errors[key] ? `${id}-${key}-error` : null,
+    ]
+      .filter(Boolean)
+      .join(' ') || undefined
 
   const photo = step === 'start' || step === 'done'
 
@@ -554,7 +652,12 @@ export default function TechFormScreen() {
               <h2 className="tech-form__question" id={`${id}-kind`}>
                 문의 종류를 선택해 주세요.
               </h2>
-              <ChoiceList options={KINDS} value={kind} onPick={pickKind} labelledBy={`${id}-kind`} />
+              <ChoiceList
+                options={KINDS}
+                value={kind}
+                onPick={pickKind}
+                labelledBy={`${id}-kind`}
+              />
               <button
                 ref={policyButton}
                 type="button"
@@ -649,7 +752,10 @@ export default function TechFormScreen() {
               )}
               {/* 늘 마지막 칸 바로 아래 — 엔터로도 같은 일. 그 밑에 같은 크기 "이전" */}
               <div className="tech-form__actions">
-                <button type="submit" className="tech-form__button tech-form__button--block">
+                <button
+                  type="submit"
+                  className="tech-form__button tech-form__button--block"
+                >
                   다음
                 </button>
                 <BackButton onClick={back} />
@@ -715,13 +821,20 @@ export default function TechFormScreen() {
                       }}
                       invalid={!!detailErrors.date}
                       labelledBy={`${id}-date-label`}
-                      describedBy={[`${id}-date-hint`, detailErrors.date ? `${id}-date-error` : null]
+                      describedBy={[
+                        `${id}-date-hint`,
+                        detailErrors.date ? `${id}-date-error` : null,
+                      ]
                         .filter(Boolean)
                         .join(' ')}
                     />
                     {detailErrors.date && (
                       <div className="tech-form__under">
-                        <p className="tech-form__error" id={`${id}-date-error`} role="alert">
+                        <p
+                          className="tech-form__error"
+                          id={`${id}-date-error`}
+                          role="alert"
+                        >
                           {detailErrors.date}
                         </p>
                       </div>
@@ -744,7 +857,10 @@ export default function TechFormScreen() {
                       placeholder="예: 서울시 강남구 테헤란로 123, 4층"
                       aria-required
                       aria-invalid={!!detailErrors.address}
-                      aria-describedby={[`${id}-address-hint`, detailErrors.address ? `${id}-address-error` : null]
+                      aria-describedby={[
+                        `${id}-address-hint`,
+                        detailErrors.address ? `${id}-address-error` : null,
+                      ]
                         .filter(Boolean)
                         .join(' ')}
                       onChange={(e) => {
@@ -755,7 +871,11 @@ export default function TechFormScreen() {
                   </Field>
                 </>
               )}
-              <AttachField items={attachments} onAdd={addFiles} onRemove={removeFile} />
+              <AttachField
+                items={attachments}
+                onAdd={addFiles}
+                onRemove={removeFile}
+              />
               <Field
                 id={`${id}-content`}
                 label="문의 내용"
@@ -776,7 +896,10 @@ export default function TechFormScreen() {
                   rows={7}
                   aria-required
                   aria-invalid={!!detailErrors.content}
-                  aria-describedby={[`${id}-content-hint`, detailErrors.content ? `${id}-content-error` : null]
+                  aria-describedby={[
+                    `${id}-content-hint`,
+                    detailErrors.content ? `${id}-content-error` : null,
+                  ]
                     .filter(Boolean)
                     .join(' ')}
                   onChange={(e) => {
@@ -786,7 +909,10 @@ export default function TechFormScreen() {
                 />
               </Field>
               <div className="tech-form__actions">
-                <button type="submit" className="tech-form__button tech-form__button--block">
+                <button
+                  type="submit"
+                  className="tech-form__button tech-form__button--block"
+                >
                   접수하기
                 </button>
                 <BackButton onClick={back} />
@@ -795,26 +921,39 @@ export default function TechFormScreen() {
           )}
 
           {step === 'review' && (
-            <section className="tech-form__fields" aria-labelledby={`${id}-review`}>
+            <section
+              className="tech-form__fields"
+              aria-labelledby={`${id}-review`}
+            >
               <div className="tech-form__field">
                 <h2 className="tech-form__label" id={`${id}-review`}>
                   접수 내용 확인
                 </h2>
-                <p className="tech-form__hint">아래 내용으로 접수할게요. 고칠 내용이 있으면 이전을 눌러 주세요.</p>
+                <p className="tech-form__hint">
+                  아래 내용으로 접수할게요. 고칠 내용이 있으면 이전을 눌러
+                  주세요.
+                </p>
               </div>
               <dl className="tech-form__review">
-                <ReviewRow label="문의 유형">{typeLabel ? `${kindLabel} · ${typeLabel}` : kindLabel}</ReviewRow>
+                <ReviewRow label="문의 유형">
+                  {typeLabel ? `${kindLabel} · ${typeLabel}` : kindLabel}
+                </ReviewRow>
                 <ReviewRow label="성함">{name.trim()}</ReviewRow>
                 <ReviewRow label="연락처">{phone}</ReviewRow>
                 <ReviewRow label="문의 기기">{deviceLabel}</ReviewRow>
                 {isAs && (
                   <>
                     <ReviewRow label="구매경로">
-                      {PURCHASE_CHANNELS.find((c) => c.value === purchase)?.label ?? ''}
+                      {PURCHASE_CHANNELS.find((c) => c.value === purchase)
+                        ?.label ?? ''}
                     </ReviewRow>
-                    <ReviewRow label="구매일자">{dateText(purchaseDate)}</ReviewRow>
+                    <ReviewRow label="구매일자">
+                      {dateText(purchaseDate)}
+                    </ReviewRow>
                     <ReviewRow label="수령 주소">
-                      <span className="tech-form__review-text">{address.trim()}</span>
+                      <span className="tech-form__review-text">
+                        {address.trim()}
+                      </span>
                     </ReviewRow>
                   </>
                 )}
@@ -824,14 +963,22 @@ export default function TechFormScreen() {
                   ) : (
                     <span className="tech-form__review-thumbs">
                       {attachments.map((item) => (
-                        <Thumb key={item.id} item={item} className="tech-form__review-thumb" />
+                        <Thumb
+                          key={item.id}
+                          item={item}
+                          className="tech-form__review-thumb"
+                        />
                       ))}
-                      <span className="tech-form__review-count">{attachments.length}개</span>
+                      <span className="tech-form__review-count">
+                        {attachments.length}개
+                      </span>
                     </span>
                   )}
                 </ReviewRow>
                 <ReviewRow label="문의 내용">
-                  <span className="tech-form__review-text">{content.trim()}</span>
+                  <span className="tech-form__review-text">
+                    {content.trim()}
+                  </span>
                 </ReviewRow>
               </dl>
               <div className="tech-form__actions">
@@ -856,7 +1003,9 @@ export default function TechFormScreen() {
               <h2 className="tech-form__done-title" id={`${id}-done`}>
                 문의가 접수되었어요
               </h2>
-              <p className="tech-form__done-text">담당자가 확인한 뒤 남겨 주신 연락처로 연락드릴게요.</p>
+              <p className="tech-form__done-text">
+                담당자가 확인한 뒤 남겨 주신 연락처로 연락드릴게요.
+              </p>
             </section>
           )}
 
@@ -873,7 +1022,11 @@ export default function TechFormScreen() {
         {/* 접수하는 동안 — 화면을 덮는 로딩 */}
         {submitting && (
           <div className="tech-form__loading" role="status" aria-live="polite">
-            <LoaderCircle className="tech-form__spinner" size={40} aria-hidden />
+            <LoaderCircle
+              className="tech-form__spinner"
+              size={40}
+              aria-hidden
+            />
             <p>접수하고 있어요…</p>
           </div>
         )}

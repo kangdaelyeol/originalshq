@@ -12,8 +12,24 @@
   --tf-accent-press: #2560cc;
   --tf-danger: #d4373b;
   --tf-logo-green: #28be44;
-  // 시작 화면 사진의 위쪽 바탕색 — 헤더를 같은 색으로 칠해 사진과 한 장처럼 보이게
-  --tf-photo-bg: #edf3ff;
+  // 시작·완료 화면 사진(xtool-tech-support-korean.jpeg)의 위쪽 가장자리 색 — 양 끝이 조금 진하고 가운데가 밝은 빛
+  // 번짐이라, 헤더를 위쪽 가장자리에서 10%마다 뽑은 색의 가로 그라데이션으로 칠해 사진과 한 장처럼 이어지게 한다.
+  // 사진을 바꾸면 다시 뽑는다. --tf-photo-bg는 그 평균(사진이 오기 전 자리 색)
+  --tf-photo-bg: #cbd6e5;
+  --tf-photo-edge: linear-gradient(
+    90deg,
+    #c2cfe0 0%,
+    #c6d3e3 10%,
+    #c7d4e4 20%,
+    #cdd6e5 30%,
+    #ced7e6 40%,
+    #cfd8e7 50%,
+    #cfd8e7 60%,
+    #ced7e6 70%,
+    #cbd7e5 80%,
+    #c8d3e5 90%,
+    #c2cfe0 100%
+  );
 
   color-scheme: light;
   display: flex;
@@ -72,10 +88,10 @@
   padding: 36px 24px 32px;
 }
 
-// 시작 화면 헤더 — 로고·제목 한 줄. 바탕을 사진 위쪽 색과 같게 해 아래 사진과 이어진다.
+// 시작·완료 화면 헤더 — 로고. 바탕을 사진 위쪽 가장자리 색(가로 그라데이션)과 같게 해 아래 사진과 이어진다.
 .tech-form__header {
   padding: 24px 24px 8px;
-  background: var(--tf-photo-bg);
+  background: var(--tf-photo-edge), var(--tf-photo-bg);
 }
 
 // 시작 화면 사진 — 헤더 바로 아래, 같은 바탕색. 사람 얼굴이 잘리지 않게 위쪽을 맞춘다.
