@@ -319,11 +319,65 @@
     gap: 12px;
   }
 
+  .inquiry-notify__toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+  }
+
   .inquiry-notify__toggle {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     font-weight: 600;
+  }
+
+  // 공휴일 — 날짜 넣기 + 넣은 날짜 알약(빼기)
+  .inquiry-notify__holiday-add {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .field__input {
+      width: auto;
+      min-width: 160px;
+    }
+  }
+
+  .inquiry-notify__holidays {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 4px 3px 10px;
+      border-radius: 999px;
+      background: rgba(127, 127, 127, 0.14);
+      font-size: 12.5px;
+    }
+
+    button {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+
+      &:hover {
+        background: rgba(127, 127, 127, 0.2);
+      }
+    }
   }
 
   .inquiry-notify__field {

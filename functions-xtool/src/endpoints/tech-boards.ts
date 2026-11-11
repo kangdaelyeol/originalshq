@@ -35,9 +35,14 @@ import {
   refreshItems,
   searchAddress,
   setupTechWebhooks,
+  baselineInquiryDelays,
   checkColumnNames,
+  checkInquiryDelays,
   checkInstallItems,
+  getBoardMeta,
+  getHolidays,
   getInquiryNotify,
+  setHolidays,
   sendInquiryTest,
   setInquiryNotify,
   syncTechBoard,
@@ -602,19 +607,26 @@ export const techCheckColumns = onCall(
 // 보낸다(tech-boards/inquiry-notify.ts).
 // ────────────────────────────────
 interface InquiryNotifyInput {
-  action?: 'get' | 'set' | 'test'
+  action?: 'get' | 'set' | 'test' | 'holidays'
   enabled?: boolean
+  delayEnabled?: boolean
   channelId?: string | null
+  /** action 'holidays' — 지연 알림을 보내지 않는 날(YYYY-MM-DD) 전체 */
+  holidays?: string[]
 }
 
 export const techInquiryNotify = onCall(
-  { secrets: WORKS_SECRETS, timeoutSeconds: 30 },
+  { secrets: WORKS_SECRETS, timeoutSeconds: 60 },
   traced(
     'techInquiryNotify',
     'callable',
     async (request: CallableRequest<InquiryNotifyInput>) => {
       const editor = await requireMember(request, true)
       const action = request.data?.action ?? 'get'
+      const current = () =>
+        Promise.all([getInquiryNotify(db), getHolidays(db)]).then(
+          ([settings, holidays]) => ({ settings, holidays }),
+        )
       if (action === 'set') {
         const channelId = String(request.data?.channelId ?? '').trim()
         if (channelId && !WORKS_CHANNEL_ID.test(channelId)) {
@@ -624,19 +636,40 @@ export const techInquiryNotify = onCall(
           )
         }
         const enabled = request.data?.enabled === true
-        if (enabled && !channelId) {
+        const delayEnabled = request.data?.delayEnabled === true
+        if ((enabled || delayEnabled) && !channelId) {
           throw new HttpsError(
             'invalid-argument',
             '알림을 켜려면 채널 ID를 적어 주세요',
           )
         }
-        return {
-          settings: await setInquiryNotify(
-            db,
-            { enabled, channelId: channelId || null },
-            editor.name,
-          ),
+        const before = await getInquiryNotify(db)
+        // 지연 알림을 켤 때 — 이미 10분을 넘어 있는 건은 보낸 것으로 기록만(한꺼번에
+        // 몰려 가지 않게)
+        let baselined = 0
+        if (delayEnabled && !before.delayEnabled) {
+          const meta = await getBoardMeta(db, 'techInquiry')
+          if (meta) {
+            baselined = await baselineInquiryDelays(
+              db,
+              meta.columns,
+              (id) => meta.groups.find((g) => g.id === id)?.title ?? null,
+            )
+          }
         }
+        await setInquiryNotify(
+          db,
+          { enabled, delayEnabled, channelId: channelId || null },
+          editor.name,
+        )
+        return { ...(await current()), baselined }
+      }
+      if (action === 'holidays') {
+        const dates = Array.isArray(request.data?.holidays) ?
+          request.data.holidays.map(String) :
+          []
+        await setHolidays(db, dates)
+        return current()
       }
       if (action === 'test') {
         const source = findTechBoard({ key: 'techInquiry' })
@@ -648,9 +681,38 @@ export const techInquiryNotify = onCall(
           throw new HttpsError('failed-precondition', message)
         }
       }
-      return { settings: await getInquiryNotify(db) }
+      return current()
     },
   ),
+)
+
+// ────────────────────────────────
+// techInquiryDelayCheck — 아톡문의 10분 지연 알림 점검(1분마다, 평일 9~17시).
+// 예정 시각(delayDueAt)이 지난 항목만 읽는다 — 대개 0건이라 읽기 1회
+// (tech-boards/inquiry-delay.ts). 켜고 끄기·공휴일은 관리 화면.
+// ────────────────────────────────
+export const techInquiryDelayCheck = onSchedule(
+  {
+    schedule: '* 9-16 * * 1-5',
+    timeZone: 'Asia/Seoul',
+    secrets: WORKS_SECRETS,
+    timeoutSeconds: 60,
+    retryCount: 0,
+  },
+  traced('techInquiryDelayCheck', 'schedule', async () => {
+    try {
+      const meta = await getBoardMeta(db, 'techInquiry')
+      if (!meta) return
+      const groupTitle = (id: string | null) =>
+        meta.groups.find((g) => g.id === id)?.title ?? null
+      const result = await checkInquiryDelays(db, meta.columns, groupTitle)
+      if (result.sent || result.errors) {
+        logger.info('아톡문의 지연 알림:', result)
+      }
+    } catch (error) {
+      logger.error('아톡문의 지연 알림 점검 실패:', error)
+    }
+  }),
 )
 
 // ────────────────────────────────

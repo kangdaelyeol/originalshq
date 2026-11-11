@@ -8,7 +8,7 @@ export {
 } from './edits'
 export { TechEditError } from './errors'
 export type { Editor } from './edits'
-export { getMember } from './firestore'
+export { getBoardMeta, getMember } from './firestore'
 export { syncTechBoard, syncTechBoards } from './sync'
 export type { TechBoardsSyncSummary } from './sync'
 export { handleWebhookEvent, setupTechWebhooks } from './webhooks'
@@ -39,3 +39,10 @@ export {
   setInquiryNotify,
 } from './inquiry-notify'
 export type { InquiryNotifySettings } from './inquiry-notify'
+export {
+  baselineInquiryDelays,
+  checkInquiryDelays,
+  getHolidays,
+  setHolidays,
+} from './inquiry-delay'
+export type { DelayCheckResult } from './inquiry-delay'

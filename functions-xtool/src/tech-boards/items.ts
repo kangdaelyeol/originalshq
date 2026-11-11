@@ -4,6 +4,7 @@ import { MondayColumn } from '../monday/types'
 import { convertTechItem, TechBoardSource } from './boards'
 import { TechRawItem } from './monday-api'
 import { TechCellValue, TechItemDoc, TechSubitemDoc } from './types'
+import { inquiryDelayDue } from './inquiry-delay-due'
 
 /** Monday에서 받은 item들 → techItems 문서. 보드 이름·컬럼은 item에 없어서
  * 따로 받는다(전체 동기화는 방금 받은 보드, 한 건 갱신은 저장된 meta). */
@@ -58,6 +59,12 @@ export function toItemDocs(
         : {}),
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
+      // 아톡문의 10분 지연 알림 — 보낼 시각(1분마다 이 시각이 지난 것만 본다)
+      ...(source.key === 'techInquiry' ?
+        {
+          delayDueAt: inquiryDelayDue(board.columns, values, item.groupTitle),
+        } :
+        {}),
     }
     // 수정 시각은 빼고 비교한다 — 값이 같으면 다시 쓰지 않게.
     const hash = createHash('sha1')

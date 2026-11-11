@@ -26,6 +26,8 @@ const MONDAY_BOARD_URL = 'https://cyankorea-company.monday.com/boards'
 /** 관리 화면이 정하는 알림 설정 */
 export interface InquiryNotifySettings {
   enabled: boolean
+  /** 10분 지연 알림(inquiry-delay.ts) — 같은 채팅방, 따로 켜고 끈다 */
+  delayEnabled: boolean
   /** 보낼 채팅방 채널 ID — 봇이 그 방에 초대돼 있어야 한다 */
   channelId: string | null
   updatedAt: number | null
@@ -34,6 +36,7 @@ export interface InquiryNotifySettings {
 
 const EMPTY: InquiryNotifySettings = {
   enabled: false,
+  delayEnabled: false,
   channelId: null,
   updatedAt: null,
   updatedBy: null,
@@ -53,11 +56,12 @@ export async function getInquiryNotify(
 
 export async function setInquiryNotify(
   db: Firestore,
-  input: { enabled: boolean; channelId: string | null },
+  input: { enabled: boolean; delayEnabled: boolean; channelId: string | null },
   editorName: string,
 ): Promise<InquiryNotifySettings> {
   const next: InquiryNotifySettings = {
     enabled: input.enabled,
+    delayEnabled: input.delayEnabled,
     channelId: input.channelId,
     updatedAt: Date.now(),
     updatedBy: editorName,

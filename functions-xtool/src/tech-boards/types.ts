@@ -199,6 +199,8 @@ export interface TechItemDoc<K extends TechBoardKey = TechBoardKey> {
   syncedAt: number
   /** 내용이 바뀌었는지 가리는 값 — 같으면 다시 쓰지 않는다. */
   hash: string
+  /** 아톡문의만 — 10분 지연 알림을 보낼 시각(ms, inquiry-delay-due.ts). 보낼 일이 없으면 null */
+  delayDueAt?: number | null
 }
 
 /** techMeta/mondayUsers — 담당자 칸에 고를 수 있는 Monday 사용자. */
