@@ -1,0 +1,63 @@
+// 리드 매니저 보드 카드(crm-boards-card.tsx) — 보드 id 입력, 미리보기 요약, 목록 머리, 해제 단추. 표·알약·안내 글은
+// admin.scss의 것을 그대로 쓴다.
+
+.xtool-admin {
+  .crm-boards__input {
+    width: auto;
+    min-width: 220px;
+    height: 32px;
+    padding-block: 0;
+  }
+
+  .crm-boards__preview {
+    display: grid;
+    gap: 6px;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-size: 13px;
+
+    > div {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 10px;
+    }
+
+    dt {
+      color: var(--text-3);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 600;
+    }
+  }
+
+  .crm-boards__warn {
+    color: var(--crit);
+  }
+
+  .crm-boards__list-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  .crm-boards__actions {
+    white-space: nowrap;
+    text-align: right;
+
+    .button + .button {
+      margin-left: 6px;
+    }
+  }
+
+  .crm-boards__danger {
+    background: var(--crit);
+    border-color: var(--crit);
+    color: #fff;
+  }
+}

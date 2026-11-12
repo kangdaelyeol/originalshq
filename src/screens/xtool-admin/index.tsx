@@ -21,6 +21,7 @@ import { MemberForm } from './member-form'
 import { MembersTable, type MemberFilter } from './members-table'
 import { PhoneCopyCard } from './phone-copy-card'
 import { TechSyncCard } from './tech-sync-card'
+import { CrmBoardsCard } from './crm-boards-card'
 import './admin.scss'
 
 // 시스템 지도 — D14 두뇌 지도 장면(캔버스 엔진·별 판 스타일)이 커서 따로 받는다
@@ -133,6 +134,7 @@ function AdminScreen() {
                 <ColumnCheckCard />
                 <WorksTestCard />
                 <InquiryNotifyCard />
+                <CrmBoardsCard />
               </>
             )}
             {tab === 'logs' && <EditLogCard />}
