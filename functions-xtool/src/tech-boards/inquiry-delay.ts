@@ -100,7 +100,7 @@ function delayMessage(
     `경과 시간: ${minutesText(elapsed)}`,
     `상담 상태: ${status}`,
     '',
-    '10분을 넘겼습니다. 담당자님 확인을 해주세요.',
+    '10분을 넘겼습니다! 담당자님 확인해주세요!!',
     '',
     `${MONDAY_ITEM_URL}/${doc.itemId}`,
   ].join('\n')
