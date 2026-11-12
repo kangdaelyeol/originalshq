@@ -12,6 +12,7 @@ export const INQUIRY_BOARDS = {
   M2: { boardId: '5031196408', label: 'M2' },
   o1: { boardId: '5031196400', label: 'O1' },
   Metalfab: { boardId: '5026295489', label: '메탈팹' },
+  X1: { boardId: '5032435739', label: 'X1' },
   other: { boardId: '5031373952', label: '기타 온라인 문의' },
   // 기업·교육기관·공공기관 도입 문의 — 아이템 이름이 회사명이다.
   B2B: { boardId: '5027795374', label: 'B2B 솔루션' },
@@ -33,8 +34,9 @@ export interface InquiryInput {
   email: string
   installment: string
   /** 고객이 적은 문의 내용 — 보드의 "고객 문의 상세 내용" 컬럼에 넣는다.
-   * INQUIRY_BOARDS 열두 개 모두에 그 컬럼이 있다(2026-11-08 Monday API로
-   * 확인). 나중에 빠진 보드가 생기면 그 보드는 건너뛴다. */
+   * 2026-11-08에 있던 열두 보드 모두에 그 컬럼이 있다(Monday API로 확인).
+   * X1(2026-11-12 추가)은 같은 형식이라고 해서 확인 전이다 — 그 컬럼이 없는
+   * 보드는 건너뛴다. */
   message: string
   /** 도입 시기(예: "3개월 이내") — 메탈팹 보드의 "도입시기" 컬럼에 넣는다(다른
    * 보드에는 그 컬럼이 없다). */

@@ -122,6 +122,8 @@ export const INQUIRY_DEVICES = [
   { device: 'M2', label: 'M2' },
   { device: 'o1', label: 'O1' },
   { device: 'Metalfab', label: '메탈팹' },
+  { device: 'X1', label: 'X1' },
   { device: 'other', label: '기타 온라인 문의' },
   { device: 'B2B', label: 'B2B 솔루션' },
+  { device: 'survey', label: '앙케이트 문의' },
 ] as const
