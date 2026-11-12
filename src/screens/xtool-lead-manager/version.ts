@@ -6,7 +6,7 @@
 // 앞자리: 1.0.0 리드가 서버에 저장되기 시작(08-19) · 2.0.0 검은 화면 개편(09-20) · 3.0.0 유리 디자인(10-29).
 // 업데이트 기록(LM_CHANGELOG)은 맨 위에 더한다. 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const LM_VERSION = '3.11.0'
+export const LM_VERSION = '3.11.1'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 
@@ -20,6 +20,16 @@ export interface LmRelease {
 
 /** 업데이트 기록 — 최근 것부터 */
 export const LM_CHANGELOG: readonly LmRelease[] = [
+  {
+    version: '3.11.1',
+    date: '2026-11-12',
+    changes: [
+      {
+        kind: 'fixed',
+        text: 'CAPI 자동 전송이 Monday 동기화 20분 뒤에 따로 돌아요 — 동기화가 길어진 날에도 중간에 끊기지 않고, 보낸 건은 바로바로 기록돼요',
+      },
+    ],
+  },
   {
     version: '3.11.0',
     date: '2026-11-11',

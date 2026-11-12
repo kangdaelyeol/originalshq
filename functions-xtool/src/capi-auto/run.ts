@@ -1,4 +1,4 @@
-// CAPI 자동 전송 실행 — Monday 동기화 직후(syncMondayBoardsScheduled)에
+// CAPI 자동 전송 실행 — Monday 동기화 20분 뒤(sendCapiAutoScheduled)에
 // 돈다. 방금 저장된 Monday item에서 보낼 때가 된 기록을 골라(rules.ts), 수동
 // 전송 모달과 같이 리드(CAPI 관리 탭의 lead 문서)를 찾거나 만들고 Meta
 // CAPI 이벤트(상담 Contact · 결제 Purchase)를 보낸 뒤 그 기록을 리드에
@@ -99,15 +99,31 @@ export interface CapiAutoResult {
   readyCount: number
   /** 이번에 baseline으로 넘긴 수. */
   baselineCount: number
-  /** 미리보기 — 실제로 켜면 보낼 기록. */
+  /** 미리보기 — 실제로 켜면 보낼 기록. 아래 네 목록은 앞 LISTED_MAX건만
+   * 담는다(미리보기가 길어지면 실행 기록이 batchRuns 한도에 걸려 잘린다).
+   * 전체 수는 counts. */
   preview: CapiAutoEntry[]
   sent: CapiAutoEntry[]
   skipped: CapiAutoEntry[]
   failed: CapiAutoEntry[]
+  counts: Record<ListKey, number>
   /** 한 번에 보내는 수(CAPI_AUTO_MAX_SENDS)를 넘어 다음 실행으로 미룬 수. */
   deferredCount: number
   /** 다른 실행이 돌고 있어 건너뛰었으면 true. */
   busy?: boolean
+}
+
+type ListKey = 'preview' | 'sent' | 'skipped' | 'failed'
+const LISTED_MAX = 200
+
+/** 목록에 한 줄 — 앞 LISTED_MAX건까지만 담고 수는 늘 센다. */
+const listEntry = (
+  result: CapiAutoResult,
+  key: ListKey,
+  entry: CapiAutoEntry,
+) => {
+  result.counts[key] += 1
+  if (result[key].length < LISTED_MAX) result[key].push(entry)
 }
 
 const parseMap = <T>(json: string | undefined): Record<string, T> => {
@@ -329,6 +345,7 @@ export async function runCapiAuto(
     sent: [],
     skipped: [],
     failed: [],
+    counts: { preview: 0, sent: 0, skipped: 0, failed: 0 },
     deferredCount: 0,
   }
 
@@ -338,6 +355,19 @@ export async function runCapiAuto(
   // baseline을 다 만든 뒤에만 baselineAt을 적는다 — 그 전에 실패하면 다음
   // 실행이 다시 처음 실행으로 baseline을 만든다.
   let baselineAt = state.baselineAt
+  // 처리한 것을 바로바로 남긴다 — 함수가 제한 시간에 걸려 강제로 끝나면
+  // finally가 돌지 않아, 끝에서 한 번만 쓰면 그 실행의 결과(보낸 것·실패
+  // 횟수)를 다 잃는다.
+  const saveState = (extra: Partial<StateDoc> = {}) =>
+    db.doc(STATE_DOC).set(
+      {
+        baselineAt,
+        handledJson: JSON.stringify(handled),
+        failuresJson: JSON.stringify(failures),
+        ...extra,
+      },
+      { merge: true },
+    )
 
   try {
     // 대상 보드와 그 item — 고객 묶기는 동기화와 같은 함수로(번호·기록 읽는
@@ -377,6 +407,7 @@ export async function runCapiAuto(
     }
     result.baselineCreated = !baselineDone
     baselineAt ??= now
+    if (result.baselineCount > 0 || !baselineDone) await saveState()
 
     if (toSend.length > 0) {
       const snapshot = await db.collection(LEADS_COLLECTION).get()
@@ -397,7 +428,9 @@ export async function runCapiAuto(
         }
         if (existing && sentManuallyThatDay(existing, candidate)) {
           if (live) handled[candidate.itemId] = 'manual'
-          result.skipped.push(
+          listEntry(
+            result,
+            'skipped',
             entryOf(candidate, existing, {
               reason: '같은 날 수동으로 보낸 기록이 있음',
             }),
@@ -405,7 +438,7 @@ export async function runCapiAuto(
           continue
         }
         if (!secrets) {
-          result.preview.push(entryOf(candidate, existing))
+          listEntry(result, 'preview', entryOf(candidate, existing))
           continue
         }
         if (sentCount >= CAPI_AUTO_MAX_SENDS) {
@@ -429,9 +462,12 @@ export async function runCapiAuto(
           leads.put(lead)
           handled[candidate.itemId] = 'sent'
           delete failures[candidate.itemId]
-          result.sent.push(
+          listEntry(
+            result,
+            'sent',
             entryOf(candidate, existing, { leadId: lead.id, eventId }),
           )
+          await saveState()
         } catch (error) {
           const attempts = (failures[candidate.itemId] ?? 0) + 1
           failures[candidate.itemId] = attempts
@@ -440,25 +476,20 @@ export async function runCapiAuto(
           }
           const message = error instanceof Error ? error.message : String(error)
           logger.error('CAPI 자동 전송 실패:', candidate.itemId, message)
-          result.failed.push(
+          listEntry(
+            result,
+            'failed',
             entryOf(candidate, existing, {
               reason: `${message} (${attempts}/${CAPI_AUTO_MAX_ATTEMPTS}회)`,
             }),
           )
+          await saveState()
         }
       }
     }
   } finally {
     // 실패해도 지금까지 처리한 것은 남기고 자리를 놓는다.
-    await db.doc(STATE_DOC).set(
-      {
-        baselineAt,
-        handledJson: JSON.stringify(handled),
-        failuresJson: JSON.stringify(failures),
-        runningUntil: 0,
-      },
-      { merge: true },
-    )
+    await saveState({ runningUntil: 0 })
   }
   return result
 }

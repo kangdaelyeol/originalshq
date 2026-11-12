@@ -668,7 +668,7 @@ export const syncMondayBoardsScheduled = onSchedule(
   {
     schedule: '0 9,11,13,15,17,22 * * *',
     timeZone: 'Asia/Seoul',
-    secrets: [mondayApiKey, ...CAPI_SECRETS],
+    secrets: [mondayApiKey],
     timeoutSeconds: MONDAY_SYNC_TIMEOUT_SECONDS,
     memory: MONDAY_SYNC_MEMORY,
   },
@@ -741,18 +741,29 @@ export const syncMondayBoardsScheduled = onSchedule(
       logger.error('GA4 이벤트 수집 실패:', error)
       await saveGaSyncError(db, error)
     }
+  }),
+)
 
-    // 이어서 CAPI 자동 전송 — 방금 저장한 오프라인 결제·기타 온라인 문의·
-    // B2G 문의 보드에서 보낼 때가 된 기록을 보낸다(capi-auto/rules.ts).
-    // /log에는 별도 작업(capi-auto)으로 남는다.
+// ────────────────────────────────
+// sendCapiAutoScheduled — CAPI 자동 전송. 동기화(정각) 20분 뒤에 따로 돈다:
+// 동기화 함수 끝에 붙여 두면 동기화가 길어진 날 제한 시간(9분)에 걸려 중간에
+// 끊긴다. 저장된 오프라인 결제·기타 온라인 문의·B2G 문의 보드에서 보낼 때가
+// 된 기록을 보낸다(capi-auto/rules.ts). /log에는 capi-auto 작업으로 남는다.
+// ────────────────────────────────
+export const sendCapiAutoScheduled = onSchedule(
+  {
+    schedule: '20 9,11,13,15,17,22 * * *',
+    timeZone: 'Asia/Seoul',
+    secrets: CAPI_SECRETS,
+    timeoutSeconds: 540,
+    memory: '512MiB',
+  },
+  traced('sendCapiAutoScheduled', 'schedule', async (event) => {
     try {
       const result = await recordCapiAuto('scheduled', event.scheduleTime)
       logger.info('CAPI 자동 전송 완료:', {
         live: result.live,
-        sent: result.sent.length,
-        preview: result.preview.length,
-        skipped: result.skipped.length,
-        failed: result.failed.length,
+        ...result.counts,
       })
     } catch (error) {
       logger.error('CAPI 자동 전송 실패:', error)
@@ -761,14 +772,15 @@ export const syncMondayBoardsScheduled = onSchedule(
 )
 
 // ────────────────────────────────
-// runMondayCapiAuto — CAPI 자동 전송을 지금 바로 한 번. 예약 실행(동기화
-// 직후)과 같은 함수이고, /log에는 수동 실행으로 남는다. 저장된 Monday item
-// 기준이라 Monday에서 방금 바꾼 것은 동기화 뒤에 잡힌다.
+// runMondayCapiAuto — CAPI 자동 전송을 지금 바로 한 번(관리자만 — 켜면
+// 실제로 Meta에 보낸다). 예약 실행(sendCapiAutoScheduled)과 같은 함수이고,
+// /log에는 수동 실행으로 남는다. 저장된 Monday item 기준이라 Monday에서 방금
+// 바꾼 것은 동기화 뒤에 잡힌다.
 // ────────────────────────────────
 export const runMondayCapiAuto = onRequest(
-  { secrets: CAPI_SECRETS, timeoutSeconds: 300, memory: '512MiB' },
+  { secrets: CAPI_SECRETS, timeoutSeconds: 540, memory: '512MiB' },
   endpoint(
-    { name: 'runMondayCapiAuto', member: true, method: 'POST' },
+    { name: 'runMondayCapiAuto', admin: true, method: 'POST' },
     async ({ response }) => {
       response.status(200).send(await recordCapiAuto('manual'))
     },
