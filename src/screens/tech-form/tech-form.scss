@@ -948,6 +948,13 @@
   animation: tech-form-sheet 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+// 짧은 안내(A/S 신청 확인사항) — 내용만큼만 올라온다
+.tech-form__modal--fit {
+  height: auto;
+  max-height: 92vh;
+  max-height: 92dvh;
+}
+
 .tech-form__modal-head {
   display: flex;
   align-items: center;
@@ -1083,5 +1090,81 @@
     background: var(--tf-bg);
     font-weight: 700;
     white-space: nowrap;
+  }
+}
+
+// ── A/S 신청 확인사항 — 번호 매긴 항목 · 택배 주소 상자 ─────────────────────────
+.tech-form__notice {
+  display: grid;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: tech-form-notice;
+  color: var(--tf-text);
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: keep-all;
+
+  > li {
+    position: relative;
+    padding-left: 34px;
+    counter-increment: tech-form-notice;
+
+    &::before {
+      content: counter(tech-form-notice);
+      position: absolute;
+      top: 1px;
+      left: 0;
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(47, 111, 228, 0.1);
+      color: var(--tf-accent);
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+  }
+
+  strong {
+    color: #000;
+    font-weight: 700;
+  }
+}
+
+// 택배 주소·연락처 — 항목 글 아래에 옅은 상자로
+.tech-form__notice-address {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--tf-bg);
+  list-style: none;
+  font-size: 14.5px;
+
+  li {
+    position: relative;
+    padding-left: 12px;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0.78em;
+      left: 0;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--tf-text-2);
+    }
+  }
+
+  a {
+    color: var(--tf-accent);
+    font-weight: 600;
+    text-decoration: none;
   }
 }

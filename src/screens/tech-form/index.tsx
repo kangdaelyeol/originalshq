@@ -21,6 +21,7 @@ import faviconUrl from '@/screens/xtool-tech/assets/symbols/favicon-64.png'
 import { useDocumentHead } from '@/screens/xtool-tech/lib/use-document-head'
 import { DateSelect } from './date-select'
 import { PolicyModal } from './policy-modal'
+import { AsNoticeModal } from './as-notice-modal'
 import { SupportCenterLogo } from './xtool-logo'
 import './tech-form.scss'
 
@@ -28,9 +29,9 @@ import './tech-form.scss'
 // 아톡문의 보드에 항목을 만들고 기술팀 웍스 채팅방에 알린다(제출 함수는 다음 단계 — 지금은 3초 기다리는 흉내).
 // 모바일 전용이라 폭을 좁게 둔다.
 //
-// 화면 차례: 시작(사진·문의 종류 — AS 접수 / 사용 문의) → (사용 문의만) 문의 종류(사용 방법·오작동·설정값) →
+// 화면 차례: 시작(사진·문의 종류 — AS 접수 / 사용 문의) → (AS 접수만) A/S 신청 확인사항 창 → (사용 문의만) 문의 종류(사용 방법·오작동·설정값) →
 // 연락처(성함을 적고 "다음"을 누르면 아래에 연락처 칸이 생긴다) → 기기(시리즈 단추) → 모델(시리즈 안 기기 단추) →
-// 자료·문의 내용(AS 접수는 구매경로·구매일자·기기 수령 주소부터, 첨부(선택)·내용, "접수하기") → 확인(지금까지 고른·적은 것, "이대로 접수하기") → 로딩 → 완료(사진).
+// 자료·문의 내용(AS 접수는 구매경로·구매시기(·구매일자 선택)·기기 수령 주소부터, 첨부(선택)·내용, "접수하기") → 확인(지금까지 고른·적은 것, "이대로 접수하기") → 로딩 → 완료(사진).
 // 단추 화면은 누르면 저절로 다음 화면으로 가서 "다음"이 없다(단추 목록 밑에 "이전"만) — 모델이 없는 기기(O1·DTF·MetalFab)는
 // 모델 화면을 건너뛴다. 화면이 바뀔 때마다 살짝 올라오며 나타난다. 머리에는 xTool Support Center 로고만 보이고
 // "기술문의 접수"는 화면 읽기용 제목으로만 둔다.
@@ -90,6 +91,17 @@ const PURCHASE_CHANNELS: readonly { value: string; label: string }[] = [
   { value: 'online', label: '온라인' },
   { value: 'offline', label: '오프라인' },
 ]
+/** AS 접수 — 구매시기. "정확히 기억나지 않음"이 아니면 아래에 구매일자(선택) 칸이 생긴다 */
+const PURCHASE_PERIODS: readonly { value: string; label: string }[] = [
+  { value: 'within1m', label: '최근 1개월 이내' },
+  { value: '1to3m', label: '1~3개월 전' },
+  { value: '3to6m', label: '3~6개월 전' },
+  { value: '6to12m', label: '6개월~1년 전' },
+  { value: 'over1y', label: '1년 이상' },
+  { value: 'unknown', label: '정확히 기억나지 않음' },
+]
+// 구매일자 칸을 보이지 않는 구매시기
+const PERIOD_UNKNOWN = 'unknown'
 // 기기 수령 주소 글자 수
 const ADDRESS_MAX = 300
 
@@ -106,7 +118,7 @@ const todayText = () => {
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
 }
 
-type DetailKey = 'purchase' | 'date' | 'address' | 'content'
+type DetailKey = 'purchase' | 'period' | 'date' | 'address' | 'content'
 
 type Step =
   | 'start'
@@ -448,8 +460,9 @@ export default function TechFormScreen() {
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const nextAttachment = useRef(1)
   const [content, setContent] = useState('')
-  // AS 접수만 — 구매경로·구매일자·기기 수령 주소
+  // AS 접수만 — 구매경로·구매시기·구매일자(선택)·기기 수령 주소
   const [purchase, setPurchase] = useState<string | null>(null)
+  const [purchasePeriod, setPurchasePeriod] = useState<string | null>(null)
   const [purchaseDate, setPurchaseDate] = useState('')
   const [address, setAddress] = useState('')
   const [detailErrors, setDetailErrors] = useState<
@@ -463,6 +476,9 @@ export default function TechFormScreen() {
     setPolicyOpen(false)
     policyButton.current?.focus()
   }, [])
+  // A/S 신청 확인사항 창 — "AS 접수"를 고르면 다음 화면으로 가기 전에 띄운다
+  const [asNoticeOpen, setAsNoticeOpen] = useState(false)
+  const closeAsNotice = useCallback(() => setAsNoticeOpen(false), [])
   const advance = useRef<number | undefined>(undefined)
   const submitTimer = useRef<number | undefined>(undefined)
   // 떠날 때 미리 보기 주소를 돌려주려고 지금 목록을 들고 있는다
@@ -521,7 +537,21 @@ export default function TechFormScreen() {
   // 사용 문의는 문의 종류를 먼저 고른다
   const pickKind = (key: string) => {
     setKind(key)
+    if (key === 'as') {
+      // AS 접수 — 고른 표시를 잠깐 보인 뒤 확인사항 창을 띄우고, "확인했습니다"를 눌러야 넘어간다
+      window.clearTimeout(advance.current)
+      advance.current = window.setTimeout(
+        () => setAsNoticeOpen(true),
+        ADVANCE_MS,
+      )
+      return
+    }
     goSoon(key === 'other' ? 'type' : 'contact')
+  }
+
+  const confirmAsNotice = () => {
+    setAsNoticeOpen(false)
+    go('contact')
   }
 
   const pickType = (value: string) => {
@@ -598,8 +628,9 @@ export default function TechFormScreen() {
     const next: Partial<Record<DetailKey, string>> = {}
     if (isAs) {
       if (!purchase) next.purchase = '구매경로를 선택해 주세요.'
-      if (!purchaseDate) next.date = '구매일자를 선택해 주세요.'
-      else if (purchaseDate > todayText())
+      if (!purchasePeriod) next.period = '구매시기를 선택해 주세요.'
+      // 구매일자는 선택 — 적었을 때만 오늘까지인지 본다
+      if (purchaseDate && purchaseDate > todayText())
         next.date = '오늘 이후 날짜는 선택할 수 없어요.'
       if (!address.trim()) next.address = '기기 수령 주소를 입력해 주세요.'
     }
@@ -727,7 +758,7 @@ export default function TechFormScreen() {
                     id={`${id}-phone`}
                     label="연락처"
                     required
-                    hint="담당자가 연락드릴 번호를 입력해 주세요. 번호가 정확하지 않으면 연락드리기 어려울 수 있습니다."
+                    hint="담당자가 연락드릴 번호를 입력해 주세요. 번호가 정확하지 않을 경우 연락드리기 어려울 수 있습니다."
                     error={errors.phone}
                   >
                     <input
@@ -805,46 +836,64 @@ export default function TechFormScreen() {
                     }}
                     error={detailErrors.purchase}
                   />
-                  <div className="tech-form__field">
-                    <p className="tech-form__label" id={`${id}-date-label`}>
-                      구매일자
-                      <Required />
-                    </p>
-                    <p className="tech-form__hint" id={`${id}-date-hint`}>
-                      영수증이나 주문 내역의 날짜를 선택해 주세요.
-                    </p>
-                    <DateSelect
-                      value={purchaseDate}
-                      onChange={(value) => {
-                        setPurchaseDate(value)
-                        if (value) clearDetail('date')
-                      }}
-                      invalid={!!detailErrors.date}
-                      labelledBy={`${id}-date-label`}
-                      describedBy={[
-                        `${id}-date-hint`,
-                        detailErrors.date ? `${id}-date-error` : null,
-                      ]
-                        .filter(Boolean)
-                        .join(' ')}
-                    />
-                    {detailErrors.date && (
-                      <div className="tech-form__under">
-                        <p
-                          className="tech-form__error"
-                          id={`${id}-date-error`}
-                          role="alert"
-                        >
-                          {detailErrors.date}
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <ChoiceGrid
+                    label="구매시기"
+                    hint="제품을 구매하신 시기를 선택해 주세요."
+                    options={PURCHASE_PERIODS}
+                    value={purchasePeriod}
+                    list
+                    onPick={(value) => {
+                      setPurchasePeriod(value)
+                      clearDetail('period')
+                      // 기억나지 않음 — 구매일자 칸이 사라지므로 적어 둔 날짜도 비운다
+                      if (value === PERIOD_UNKNOWN) {
+                        setPurchaseDate('')
+                        clearDetail('date')
+                      }
+                    }}
+                    error={detailErrors.period}
+                  />
+                  {purchasePeriod && purchasePeriod !== PERIOD_UNKNOWN && (
+                    <div className="tech-form__field tech-form__reveal">
+                      <p className="tech-form__label" id={`${id}-date-label`}>
+                        구매일자(선택)
+                      </p>
+                      <p className="tech-form__hint" id={`${id}-date-hint`}>
+                        정확한 구매일을 알고 계신 경우 입력해 주세요.
+                      </p>
+                      <DateSelect
+                        value={purchaseDate}
+                        onChange={(value) => {
+                          setPurchaseDate(value)
+                          clearDetail('date')
+                        }}
+                        invalid={!!detailErrors.date}
+                        labelledBy={`${id}-date-label`}
+                        describedBy={[
+                          `${id}-date-hint`,
+                          detailErrors.date ? `${id}-date-error` : null,
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      />
+                      {detailErrors.date && (
+                        <div className="tech-form__under">
+                          <p
+                            className="tech-form__error"
+                            id={`${id}-date-error`}
+                            role="alert"
+                          >
+                            {detailErrors.date}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <Field
                     id={`${id}-address`}
                     label="기기 수령 주소"
                     required
-                    hint="AS가 끝난 기기를 받으실 주소를 상세 주소까지 입력해 주세요."
+                    hint="AS가 완료된 기기를 받으실 주소를 상세 주소까지 입력해 주세요."
                     error={detailErrors.address}
                   >
                     <textarea
@@ -880,7 +929,7 @@ export default function TechFormScreen() {
                 id={`${id}-content`}
                 label="문의 내용"
                 required
-                hint="담당자가 빠르게 파악할 수 있도록 최대한 자세하게 작성해 주세요."
+                hint="담당자가 신속하게 파악할 수 있도록 최대한 자세히 작성해 주세요."
                 error={detailErrors.content}
                 footer={
                   <span className="tech-form__count">
@@ -947,9 +996,15 @@ export default function TechFormScreen() {
                       {PURCHASE_CHANNELS.find((c) => c.value === purchase)
                         ?.label ?? ''}
                     </ReviewRow>
-                    <ReviewRow label="구매일자">
-                      {dateText(purchaseDate)}
+                    <ReviewRow label="구매시기">
+                      {PURCHASE_PERIODS.find((p) => p.value === purchasePeriod)
+                        ?.label ?? ''}
                     </ReviewRow>
+                    {purchaseDate && (
+                      <ReviewRow label="구매일자">
+                        {dateText(purchaseDate)}
+                      </ReviewRow>
+                    )}
                     <ReviewRow label="수령 주소">
                       <span className="tech-form__review-text">
                         {address.trim()}
@@ -1018,6 +1073,9 @@ export default function TechFormScreen() {
         </div>
 
         {policyOpen && <PolicyModal onClose={closePolicy} />}
+        {asNoticeOpen && (
+          <AsNoticeModal onConfirm={confirmAsNotice} onClose={closeAsNotice} />
+        )}
 
         {/* 접수하는 동안 — 화면을 덮는 로딩 */}
         {submitting && (
