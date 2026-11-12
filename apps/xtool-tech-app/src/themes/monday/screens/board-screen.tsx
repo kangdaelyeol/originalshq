@@ -52,7 +52,7 @@ import { FONT, INK, type MonPalette } from '../theme';
 import { useMon, useStyles } from '../theme-context';
 
 // 보드 — 웹 Monday 표(monday-board.tsx)를 폰에 맞게: 머리(보드 이름) · 보기 탭(메뉴·"+") · 도구 줄(새로운 …·
-// 검색·사람·조건·정렬·모두 접기·개수) · 그룹(색 제목, 접기, 상태 요약 막대) · 항목 카드 · 그룹 끝 "+ 추가"와 숫자 합계.
+// 검색·사람·조건·정렬·모두 접기·개수) · 그룹(색 제목, 접기, 그룹 색 선) · 항목 카드 · 그룹 끝 "+ 추가"와 숫자 합계.
 // 카드 말풍선은 업데이트 시트(화면 이동 없이). 카드를 길게 누르면 고르기(웹 체크) — 아래 고르기 막대에서 옮기기·지우기.
 // 칸을 고치는 것은 항목 화면에서 한다.
 // 동작(거르기·정렬·그룹·새 항목·보기)은 공용 훅(features/board-view·view-editor)이 한다.
@@ -154,7 +154,7 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
               count={section.group.items.length}
               open={!v.isCollapsed(section.group.id)}
               onToggle={() => v.toggleGroup(section.group.id)}
-              battery={section.group.battery}
+              rule
               check={
                 selecting && groupIds.length > 0
                   ? {

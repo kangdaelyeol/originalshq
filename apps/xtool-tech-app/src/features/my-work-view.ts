@@ -109,13 +109,8 @@ export function useWorkBox(boardKey: TechBoardKey, ids: ReadonlySet<string>, nee
     [items, ids, people, needle],
   );
   const groups: GroupBlock[] = useMemo(
-    () =>
-      meta
-        ? buildGroups(meta, mine, { statusColumn: columns.find(c => c.type === 'status'), sort: null }).filter(
-            g => g.items.length > 0,
-          )
-        : [],
-    [meta, mine, columns],
+    () => (meta ? buildGroups(meta, mine, { sort: null }).filter(g => g.items.length > 0) : []),
+    [meta, mine],
   );
   return { meta, columns, items: mine, groups };
 }

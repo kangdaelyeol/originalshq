@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus, Phone } from 'lucide-react-native';
-import { labelColor, NEUTRAL } from '@xtool-core/monday-colors';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import { formatInt } from '../../../features/dashboard/part-data';
 import { callPhone } from '../../../features/phone-call';
@@ -64,14 +63,14 @@ export function RowCheck({
   );
 }
 
-/** 그룹 머리 — 접기 단추 + 그룹 색 18/500 제목 + "N개 항목", 아래에 상태 요약 막대(웹 그룹 아래 "배터리") */
+/** 그룹 머리 — 접기 단추 + 그룹 색 18/500 제목 + "N개 항목", 펼치면 아래에 그룹 색 선(rule) */
 export function GroupHeader({
   title,
   color,
   count,
   open,
   onToggle,
-  battery,
+  rule,
   background,
   check,
 }: {
@@ -80,8 +79,9 @@ export function GroupHeader({
   count: number;
   open: boolean;
   onToggle: () => void;
-  /** 상태 라벨별 개수 — 있으면 제목 아래 얇은 색 막대 */
-  battery?: { label: string; count: number }[];
+  /** 펼쳤을 때 제목 아래 그룹 색 선(카드 목록과 나누는 줄) — 예전 상태 요약 막대 자리. 그룹이 상태를 따라 나뉘어
+   * 막대가 거의 늘 한 색(상태 라벨 색)이라 그룹 색과 어긋나 보여서 그룹 색 한 줄로 바꿨다(2026-11-12) */
+  rule?: boolean;
   /** 머리 바탕(붙어 있을 때 아래 카드를 가린다) — 기본은 보드 바탕 */
   background?: string;
   /** 고르는 중이면 그룹 체크(모두·일부) */
@@ -117,16 +117,7 @@ export function GroupHeader({
           </MText>
         </Pressable>
       </View>
-      {open && battery && battery.length > 0 && (
-        <View style={s.battery}>
-          {battery.map(seg => (
-            <View
-              key={seg.label || '(빈 값)'}
-              style={{ flexGrow: seg.count, minWidth: 2, backgroundColor: seg.label ? labelColor(seg.label) : NEUTRAL }}
-            />
-          ))}
-        </View>
-      )}
+      {open && rule && <View style={[s.rule, { backgroundColor: color }]} />}
     </View>
   );
 }
@@ -144,14 +135,7 @@ const groupStyles = (p: MonPalette) => ({
     borderRadius: 4,
   },
   title: { letterSpacing: -0.18, flexShrink: 1, marginRight: 4 },
-  battery: {
-    flexDirection: 'row' as const,
-    height: 6,
-    borderRadius: 3,
-    overflow: 'hidden' as const,
-    gap: 1,
-    marginTop: 8,
-  },
+  rule: { height: 6, borderRadius: 3, marginTop: 8 },
 });
 
 /**

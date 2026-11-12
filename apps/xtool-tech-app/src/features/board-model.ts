@@ -11,8 +11,6 @@ export interface GroupBlock {
   title: string;
   color: string;
   items: TechItemDoc[];
-  /** 상태 칸 라벨별 개수(그룹 아래 요약 막대) */
-  battery: { label: string; count: number }[];
 }
 
 export const OTHER_GROUP_TITLE = '그 밖의 항목';
@@ -57,12 +55,7 @@ export const numberSum = (items: readonly TechItemDoc[], column: TechColumn): nu
 export function buildGroups(
   meta: TechBoardMeta,
   items: TechItemDoc[],
-  {
-    statusColumn,
-    sortColumn,
-    sort,
-    names,
-  }: { statusColumn?: TechColumn; sortColumn?: TechColumn; sort: MonSort; names?: SortNames },
+  { sortColumn, sort, names }: { sortColumn?: TechColumn; sort: MonSort; names?: SortNames },
 ): GroupBlock[] {
   const byGroup = new Map<string, TechItemDoc[]>();
   for (const item of items) {
@@ -81,20 +74,7 @@ export function buildGroups(
       const settled = list.filter(i => !i.draft);
       const drafts = list.filter(i => i.draft);
       const sorted = [...sortItems(settled, sortColumn, sort, names), ...drafts];
-      const counts = new Map<string, number>();
-      if (statusColumn) {
-        for (const item of sorted) {
-          const label = item.values[statusColumn.id]?.text?.trim() ?? '';
-          counts.set(label, (counts.get(label) ?? 0) + 1);
-        }
-      }
-      return {
-        id: g.id,
-        title: g.title,
-        color: groupColor(index),
-        items: sorted,
-        battery: [...counts.entries()].map(([label, count]) => ({ label, count })),
-      };
+      return { id: g.id, title: g.title, color: groupColor(index), items: sorted };
     })
     .filter(g => g.items.length > 0 || g.id !== OTHER_GROUP);
 }
