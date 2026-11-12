@@ -1,16 +1,16 @@
-import { Pressable, ScrollView, View } from 'react-native';
-import { Check, LogOut } from 'lucide-react-native';
-import { signOutXtool } from '@xtool-core/auth';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { BellRing, Check, LogOut, RotateCw, Settings, type LucideIcon } from 'lucide-react-native';
 import { useCurrentMember } from '@xtool-core/member-context';
 import { APP_VERSION } from '../../../features/app-info';
 import { LAYOUT_CHOICES, useLayout } from '../../../features/layout';
+import { signOutPressed, usePushSetting } from '../../../features/push';
 import { Avatar, MText } from '../parts/basics';
 import { ScreenHeader } from '../parts/chrome';
 import { MONDAY_ACCENT, PALETTE_CHOICES, type MonPalette } from '../theme';
 import { useMon, useSetPalette, useStyles } from '../theme-context';
 
 // 설정 — 웹 설정 화면 중 폰에 필요한 것만: 내 정보, 레이아웃(Monday 표·대시보드·물), Monday 색상(남색·라이트·블랙),
-// 버전(대시보드 설정과 같은 features/app-info), 로그아웃.
+// 신규 문의 알림(대시보드 설정과 같은 features/push), 버전(features/app-info), 로그아웃.
 
 export function SettingsScreen() {
   const p = useMon();
@@ -18,6 +18,7 @@ export function SettingsScreen() {
   const setPalette = useSetPalette();
   const { layout, setLayout } = useLayout();
   const member = useCurrentMember();
+  const push = usePushSetting();
   const name = member?.name || member?.email || '';
   return (
     <View style={s.screen}>
@@ -95,6 +96,37 @@ export function SettingsScreen() {
           </View>
         </View>
 
+        {push.supported && (
+          <View style={s.card}>
+            <MText size={15} weight="semibold">
+              알림
+            </MText>
+            <MText size={12} color={p.text2} style={s.cardSub}>
+              {push.text}
+            </MText>
+            <View style={[s.layoutRow, s.pushSwitch]}>
+              <MText size={14} style={s.flex}>
+                신규 문의 알림
+              </MText>
+              <Switch
+                value={push.enabled}
+                onValueChange={push.setEnabled}
+                disabled={push.busy}
+                trackColor={{ true: p.primary, false: p.control }}
+              />
+            </View>
+            {push.test || push.openSettings || push.retry ? (
+              <View style={s.pushActions}>
+                {push.test && <PushButton icon={BellRing} label="테스트 알림" onPress={push.test} />}
+                {push.openSettings && (
+                  <PushButton icon={Settings} label="iPhone 설정 열기" onPress={push.openSettings} />
+                )}
+                {push.retry && <PushButton icon={RotateCw} label="다시 켜기" onPress={push.retry} />}
+              </View>
+            ) : null}
+          </View>
+        )}
+
         <View style={s.card}>
           <MText size={15} weight="semibold">
             버전 정보
@@ -105,7 +137,7 @@ export function SettingsScreen() {
         </View>
 
         <Pressable
-          onPress={signOutXtool}
+          onPress={signOutPressed}
           style={({ pressed }) => [s.logout, pressed && { backgroundColor: p.overlay }]}
         >
           <LogOut size={16} color={p.dangerText} />
@@ -113,6 +145,18 @@ export function SettingsScreen() {
         </Pressable>
       </ScrollView>
     </View>
+  );
+}
+
+/** 알림 카드의 작은 단추 — 테두리 단추(로그아웃 단추와 같은 결) */
+function PushButton({ icon: Icon, label, onPress }: { icon: LucideIcon; label: string; onPress: () => void }) {
+  const p = useMon();
+  const s = useStyles(styles);
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [s.pushButton, pressed && { backgroundColor: p.overlay }]}>
+      <Icon size={14} color={p.text} />
+      <MText size={13}>{label}</MText>
+    </Pressable>
   );
 }
 
@@ -147,6 +191,18 @@ const styles = (p: MonPalette) => ({
   swatchBar: { height: 12, borderRadius: 3 },
   swatchDot: { width: 28, height: 12, borderRadius: 3 },
   tileLabel: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'space-between' as const },
+  pushSwitch: { marginTop: 14 },
+  pushActions: { flexDirection: 'row' as const, flexWrap: 'wrap' as const, gap: 8, marginTop: 10 },
+  pushButton: {
+    height: 34,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: p.control,
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+    paddingHorizontal: 12,
+  },
   logout: {
     height: 46,
     borderRadius: 4,

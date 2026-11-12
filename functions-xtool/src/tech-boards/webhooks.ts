@@ -7,6 +7,7 @@ import { createWebhook, deleteWebhook } from './monday-api'
 import { fillPhoneFromName, PHONE_COPY } from './phones'
 import { applyBoardRules } from './rules'
 import { notifyNewInquiry } from './inquiry-notify'
+import { ApnsCredentials, pushNewInquiry } from './push'
 import { refreshItemUpdates } from './updates'
 
 // Monday webhook — Monday에서 직접 고친 내용을 몇 초 안에 캐시에 반영한다.
@@ -77,6 +78,7 @@ export async function handleWebhookEvent(
   db: Firestore,
   apiKey: string,
   event: MondayWebhookEvent,
+  apns?: ApnsCredentials,
 ): Promise<'ignored' | 'refreshed'> {
   const boardId = String(
     event.parentItemBoardId ?? event.parentBoardId ?? event.boardId ?? '',
@@ -114,18 +116,20 @@ export async function handleWebhookEvent(
       logger.error(`보드 규칙 처리 실패(${itemId}):`, error),
     )
   }
-  // 아톡문의 새 문의 — 웍스 기술팀 채팅방 알림(inquiry-notify.ts, 관리 화면에서 켜고 채널을 정한다)
+  // 아톡문의 새 문의 — 웍스 기술팀 채팅방 알림(inquiry-notify.ts, 관리 화면에서 켜고 채널을 정한다)과
+  // 앱 푸시(push.ts, 알림을 켠 기술팀 폰). 서로 기다리지 않고 따로 보낸다.
   if (doc && meta && !event.parentItemId) {
-    await notifyNewInquiry(
-      db,
-      apiKey,
-      source,
-      meta,
-      doc,
-      String(event.type ?? ''),
-    ).catch((error) =>
-      logger.error(`아톡문의 웍스 알림 실패(${itemId}):`, error),
-    )
+    const type = String(event.type ?? '')
+    await Promise.all([
+      notifyNewInquiry(db, apiKey, source, meta, doc, type).catch((error) =>
+        logger.error(`아톡문의 웍스 알림 실패(${itemId}):`, error),
+      ),
+      apns ?
+        pushNewInquiry(db, apns, source, meta, doc, type).catch((error) =>
+          logger.error(`아톡문의 앱 푸시 실패(${itemId}):`, error),
+        ) :
+        null,
+    ])
   }
   // 하위 아이템 이벤트(parentItemId)는 부모 이름이 바뀐 게 아니라 빼고 본다.
   if (

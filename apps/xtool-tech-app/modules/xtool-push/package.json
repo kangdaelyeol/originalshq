@@ -1,0 +1,18 @@
+{
+  "name": "xtool-push",
+  "version": "1.0.0",
+  "description": "xtool tech 앱 신규 문의 알림(APNs 직접) — 앱 안에서만 쓰는 네이티브 모듈",
+  "private": true,
+  "main": "src/index.ts",
+  "react-native": "src/index.ts",
+  "codegenConfig": {
+    "name": "XtoolPushSpec",
+    "type": "modules",
+    "jsSrcsDir": "src",
+    "ios": {
+      "modulesProvider": {
+        "XtoolPush": "XtoolPush"
+      }
+    }
+  }
+}

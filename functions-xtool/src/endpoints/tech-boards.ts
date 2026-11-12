@@ -39,6 +39,13 @@ import {
   checkColumnNames,
   checkInquiryDelays,
   checkInstallItems,
+  claimInquiry,
+  PushActionError,
+  PushActionInput,
+  PushRegisterInput,
+  pushTest,
+  registerPushDevice,
+  unregisterPushDevice,
   getBoardMeta,
   getHolidays,
   getInquiryNotify,
@@ -73,6 +80,16 @@ import {
 // 카카오 로컬 API(주소 검색) — 카카오 개발자 콘솔 > 내 애플리케이션 > 앱 키의
 // REST API 키. `firebase functions:secrets:set KAKAO_REST_API_KEY`로 넣는다.
 const kakaoApiKey = defineSecret('KAKAO_REST_API_KEY')
+
+// 앱 푸시(iOS) — Apple 개발자 사이트 > Keys에서 만든 APNs 키(.p8) 내용과 그 키 ID.
+// `firebase functions:secrets:set APNS_KEY --data-file AuthKey_XXXX.p8`,
+// `firebase functions:secrets:set APNS_KEY_ID`로 넣는다(tech-boards/push.ts).
+const apnsKey = defineSecret('APNS_KEY')
+const apnsKeyId = defineSecret('APNS_KEY_ID')
+const apnsCredentials = () => ({
+  key: apnsKey.value(),
+  keyId: apnsKeyId.value(),
+})
 
 // 보드 아홉 개, 합쳐 천 건 남짓 — 보통 1분 안에 끝난다.
 const TECH_SYNC_TIMEOUT_SECONDS = 300
@@ -856,7 +873,10 @@ export const techSetupWebhooks = onCall(
 // ────────────────────────────────
 // 웍스 비밀 값 — 아톡문의 새 문의 알림(tech-boards/inquiry-notify.ts)을 보낸다.
 export const mondayTechWebhook = onRequest(
-  { secrets: [mondayApiKey, ...WORKS_SECRETS], timeoutSeconds: 60 },
+  {
+    secrets: [mondayApiKey, ...WORKS_SECRETS, apnsKey, apnsKeyId],
+    timeoutSeconds: 60,
+  },
   (request, response) => traceRun(
     { fn: 'mondayTechWebhook', trigger: 'http', method: request.method },
     async (trace) => {
@@ -879,7 +899,12 @@ export const mondayTechWebhook = onRequest(
     }
     try {
       const result = body.event ?
-        await handleWebhookEvent(db, mondayApiKey.value(), body.event) :
+        await handleWebhookEvent(
+          db,
+          mondayApiKey.value(),
+          body.event,
+          apnsCredentials(),
+        ) :
         'ignored'
       response.status(200).send({ ok: true, result })
     } catch (error) {
@@ -889,6 +914,92 @@ export const mondayTechWebhook = onRequest(
       response.status(200).send({ ok: false })
     }
     }),
+)
+
+// ────────────────────────────────
+// techRegisterPush · techUnregisterPush — 앱 알림 받는 기기 등록·풀기
+// (tech-boards/push.ts). 기술팀만.
+// 앱이 로그인 뒤 알림을 허락하면 등록하고, 알림을 끄거나 로그아웃하면 푼다.
+// ────────────────────────────────
+export const techRegisterPush = onCall(
+  { timeoutSeconds: 30 },
+  traced(
+    'techRegisterPush',
+    'callable',
+    async (request: CallableRequest<PushRegisterInput>) => {
+      const editor = await requireMember(request)
+      try {
+        await registerPushDevice(db, editor, request.data)
+        return { ok: true }
+      } catch (error) {
+        throw toHttpsError(error)
+      }
+    },
+  ),
+)
+
+export const techUnregisterPush = onCall(
+  { timeoutSeconds: 30 },
+  traced(
+    'techUnregisterPush',
+    'callable',
+    async (request: CallableRequest<{ deviceId: string }>) => {
+      const editor = await requireMember(request)
+      const deviceId = String(request.data?.deviceId ?? '')
+      await unregisterPushDevice(db, editor, deviceId)
+      return { ok: true }
+    },
+  ),
+)
+
+// ────────────────────────────────
+// techPushTest — 부른 사람의 기기에 예시 알림(앱 설정 "테스트 알림"). 기술팀만.
+// ────────────────────────────────
+export const techPushTest = onCall(
+  { secrets: [apnsKey, apnsKeyId], timeoutSeconds: 30 },
+  traced('techPushTest', 'callable', async (request: CallableRequest) => {
+    const editor = await requireMember(request)
+    try {
+      const sent = await pushTest(db, apnsCredentials(), editor)
+      return { sent }
+    } catch (error) {
+      throw toHttpsError(error)
+    }
+  }),
+)
+
+// ────────────────────────────────
+// techPushAction — 알림의 "내가 맡기" 단추. 앱을 열지 않고 Swift 코드가 바로 부른다(로그인
+// 토큰 없음) — 기기 id와 그 기기가 등록 때 낸 비밀 값으로 누가 눌렀는지 확인한다(push.ts).
+//   POST { deviceId, secret, itemId, action: 'claim' } → { ok, title, message }
+//   결과(title·message)는 앱이 그대로 알림으로 띄운다 — 실패도 같은 모양(상태 코드만 다르다).
+// ────────────────────────────────
+export const techPushAction = onRequest(
+  { secrets: [mondayApiKey], timeoutSeconds: 60 },
+  endpoint(
+    { name: 'techPushAction', method: 'POST' },
+    async ({ request, response }) => {
+      try {
+        const result = await claimInquiry(
+          db,
+          mondayApiKey.value(),
+          (request.body ?? {}) as PushActionInput,
+        )
+        response.status(200).send(result)
+      } catch (error) {
+        if (error instanceof PushActionError) {
+          response.status(error.status).send(error.result)
+          return
+        }
+        logger.error('알림 단추 처리 실패:', error)
+        response.status(500).send({
+          ok: false,
+          title: '맡지 못했어요',
+          message: '서버 오류예요. 잠시 뒤 앱에서 다시 해 주세요',
+        })
+      }
+    },
+  ),
 )
 
 // ────────────────────────────────

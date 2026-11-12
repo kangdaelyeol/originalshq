@@ -1,11 +1,18 @@
-import { Fragment, useMemo } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { StatusBar, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DarkTheme, DefaultTheme, NavigationContainer, type Theme } from '@react-navigation/native';
+import {
+  createNavigationContainerRef,
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+  type Theme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { PeriodProvider } from '../features/kpis';
 import { useLayout } from '../features/layout';
+import { usePushOpen, usePushRegistration } from '../features/push';
 import { THEMES } from '../themes';
 import type { ThemeModule } from '../themes/types';
 import type { RootScreenProps, RootStackParams, TabParams } from './types';
@@ -15,6 +22,8 @@ import type { RootScreenProps, RootStackParams, TabParams } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParams>();
 const Tabs = createBottomTabNavigator<TabParams>();
+/** 화면 밖(알림을 눌러 열기)에서 화면을 옮길 때 */
+const navRef = createNavigationContainerRef<RootStackParams>();
 
 function ThemedApp({ theme }: { theme: ThemeModule }) {
   const chrome = theme.useChrome();
@@ -35,12 +44,18 @@ function ThemedApp({ theme }: { theme: ThemeModule }) {
   const Frame = theme.Frame ?? Fragment;
   // 화면 부품은 테마마다 한 번만 만든다 — 렌더마다 새로 만들면 화면이 처음부터 다시 그려진다.
   const { TabsScreen, PersonWork } = useMemo(() => makeScreens(theme), [theme]);
+  // 신규 문의 알림을 눌러 열렸으면 그 문의 상세 — 화면 이동이 준비된 뒤에
+  const [navReady, setNavReady] = useState(false);
+  const openInquiry = useCallback((itemId: string) => {
+    if (navRef.isReady()) navRef.navigate('Item', { boardKey: 'techInquiry', itemId });
+  }, []);
+  usePushOpen(navReady ? openInquiry : null);
 
   return (
     <Frame>
       <View style={{ flex: 1, backgroundColor: theme.Frame ? 'transparent' : chrome.background }}>
         <StatusBar barStyle={chrome.statusBar} />
-        <NavigationContainer theme={navTheme}>
+        <NavigationContainer ref={navRef} theme={navTheme} onReady={() => setNavReady(true)}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
@@ -78,6 +93,8 @@ function makeScreens(theme: ThemeModule) {
 
 export function MainApp() {
   const { layout, ready } = useLayout();
+  // 신규 문의 알림 — 로그인한 동안 이 기기 등록(features/push)
+  usePushRegistration();
   if (!ready) return null;
   // 기간은 레이아웃을 바꿔도 그대로 둔다(틀 바깥).
   return (
