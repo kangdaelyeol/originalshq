@@ -33,7 +33,7 @@ import { shade } from '../motion';
 import { darkFill, QUICK_MS, shadow, springConfig, W, WATER_REVEAL, WATER_SPRING } from '../theme';
 import { useWater } from '../theme-context';
 import { WButton, WIconButton } from './controls';
-import { DarkPill, glassLayer, Groove, solidLayer } from './glass';
+import { Backing, DarkPill, glassLayer, Groove, solidLayer } from './glass';
 import { OptionRow, Sheet } from './screen';
 import { WText } from './text';
 import { useWaterIndicator } from './use-indicator';
@@ -120,7 +120,7 @@ function GlassBox({
   const p = useWater();
   return (
     <View collapsable={false} style={[styles.box, { borderRadius: radius }, style]}>
-      <View pointerEvents="none" style={glassLayer(p, 0.46, 0.2, radius)} />
+      <Backing style={glassLayer(p, 0.46, 0.2, radius)} />
       {/* 오류 테두리는 늘 그려 두고 불투명도만 — 입력 중에 형제가 붙었다 떨어지지 않게 */}
       <View
         pointerEvents="none"
@@ -264,7 +264,7 @@ export function WCheck({ checked, size = 18 }: { checked: boolean; size?: number
   const r = size === 18 ? 6 : 5;
   return (
     <View style={{ width: size, height: size, borderRadius: r }}>
-      <View pointerEvents="none" style={glassLayer(p, 0.36, 0.3, r)} />
+      <Backing style={glassLayer(p, 0.36, 0.3, r)} />
       <Animated.View
         style={[
           styles.fill,

@@ -579,7 +579,8 @@ export function WBarList({
 
 const AVATAR = { xs: { d: 20, font: 8 }, sm: { d: 32, font: 11 }, md: { d: 38, font: 13 } } as const;
 
-/** 물 아바타 — 사람 색이 물든 유리 구슬 + 그림자 진 흰 이니셜. 사진이면 사진 위에 같은 유리 테두리 */
+/** 물 아바타 — 사람 색이 물든 유리 구슬 + 그림자 진 흰 이니셜. 사진이면 사진 위에 같은 유리 테두리. 그림자·테두리 겹이
+ * 여섯이라 줄마다 쌓이면 무거워 구슬 전체를 한 장으로 캐시한다 */
 export function WAvatar({
   initials,
   color,
@@ -600,6 +601,7 @@ export function WAvatar({
   const r = a.d / 2;
   return (
     <View
+      shouldRasterizeIOS
       style={[
         {
           width: a.d,

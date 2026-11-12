@@ -63,14 +63,15 @@ import {
 } from '../theme';
 import { useWater } from '../theme-context';
 import { WButton, WChipBox, WIconButton } from './controls';
-import { DarkPill, Glass, glassLayer, Groove, solidLayer } from './glass';
+import { Backing, DarkPill, Glass, glassLayer, Groove, solidLayer } from './glass';
 import { WEmpty } from './surfaces';
 import { InCard, useInCard } from './context';
 import { WText } from './text';
 
 // 물 화면 틀(웹 water-shell·water-topbar·drawer-shell·WaterDialog) — 화면 바탕은 비워 두고(틀의 무대 벽이 비친다)
-// 판 사이 20px(웹 --wl-gap)·좌우 12px(웹 좁은 화면 셸 여백). 화면이 바뀌면 0.18초에 진해지며 6px 아래에서 move
-// 스프링으로 떠오른다. 시트는 불투명 유리 판이 아래에서 move 스프링으로 들어오고 trail(임계 감쇠)로 나간다. 확인 창은
+// 판 사이 20px(웹 --wl-gap)·좌우 12px(웹 좁은 화면 셸 여백). 화면이 바뀌면 6px 아래에서 move 스프링으로 떠오른다
+// (투명도는 바꾸지 않는다 — 화면 전체를 흐리게 하면 그림자 겹 수백 개를 매 프레임 화면 밖에서 다시 그린다). 시트는
+// 불투명 유리 판이 아래에서 move 스프링으로 들어오고 trail(임계 감쇠)로 나간다. 확인 창은
 // 유리 판이 물방울에서 가로로 뻗고(extend) 세로로 떨어져 나가듯(detach) 펼쳐진다(D7 펼침·접힘).
 
 const PAGE_X = 12;
@@ -103,18 +104,17 @@ export function Spinner({ size = 'small', style }: SpinnerProps) {
 
 // ── 화면 ─────────────────────────────────────────────────────────────────────
 
-/** 화면이 새로 그려질 때 — 0.18초에 진해지고 6px 아래에서 move 스프링으로 떠오른다(웹 .wl-page) */
+/** 화면이 새로 그려질 때 — 6px 아래에서 move 스프링으로 떠오른다(웹 .wl-page의 0.18초 진해짐은 뺀다: 화면 전체 투명도는
+ * 모든 그림자 층을 화면 밖에서 다시 그리게 해 끊긴다) */
 function useEnter() {
   const reduced = useReducedMotion();
-  const o = useSharedValue(0);
   const y = useSharedValue(reduced ? 0 : 6);
   useEffect(() => {
-    o.value = withTiming(1, { duration: reduced ? 120 : 180, easing: Easing.out(Easing.quad) });
     if (!reduced) y.value = withSpring(0, MOVE);
     // 붙을 때 한 번
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  return useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: y.value }] }));
+  return useAnimatedStyle(() => ({ transform: [{ translateY: y.value }] }));
 }
 
 export function Screen({
@@ -128,7 +128,7 @@ export function Screen({
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const enter = useEnter();
-  const fade = useFocusFade();
+  const fade = useFocusFade(true);
   const top = header ? 6 : insets.top + 12;
   const bottom = (footer ? 84 : 0) + (inTabs ? PAGE_GAP : insets.bottom + PAGE_GAP);
   // 화면 바탕이 투명해(무대는 Frame이 한 장 그린다) 포커스를 잃으면 내용을 감춘다 — 위에 밀어 넣은 화면에 비치지 않게
@@ -286,7 +286,7 @@ function WellSpinner() {
   return (
     <View style={styles.wellShadow}>
       <View style={styles.well}>
-        <View pointerEvents="none" style={solidLayer(p, 0.46, 28)} />
+        <Backing style={solidLayer(p, 0.46, 28)} />
         <Spin size={24} color="#ffffff" />
       </View>
     </View>
@@ -419,7 +419,7 @@ export function Sheet({
             onLayout={(e: LayoutChangeEvent) => setPanelH(e.nativeEvent.layout.height)}
             style={[styles.sheet, { maxHeight: maxH }, tall && { height: maxH }, panelStyle]}
           >
-            <View pointerEvents="none" style={glassLayer(p, 1, 1, 24, 'pane')} />
+            <Backing style={glassLayer(p, 1, 1, 24, 'pane')} fit />
             {title ? (
               <Animated.View style={[styles.sheetHead, r0]}>
                 <View style={styles.flex}>

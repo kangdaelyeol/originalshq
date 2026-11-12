@@ -54,7 +54,6 @@ import type {
 } from '../../dashboard/parts';
 import { nowSec } from '../motion';
 import {
-  CHIP_RING,
   glassShadow,
   shadow,
   springArrival,
@@ -69,7 +68,7 @@ import { useWater } from '../theme-context';
 import { WButton, WFlag, WIconButton, WPill } from './controls';
 import { InCard } from './context';
 import { WCheck } from './fields';
-import { DarkPill, darkLayer, Glass, glassLayer, Groove, solidLayer } from './glass';
+import { Backing, DarkPill, darkLayer, Glass, glassLayer, Groove, solidLayer } from './glass';
 import { Spin } from './screen';
 import { WSegmented } from './segmented';
 import { Reveal, WAvatar, WEmpty, WSkel } from './surfaces';
@@ -254,8 +253,10 @@ const RowFace = memo(function RowFaceView({
     ? W.ink2
     : W.ink;
   const meta = row.meta?.filter(Boolean).join(' · ');
+  const dim = !!row.done && !onDark;
+  // 끝난 줄의 흐림(opacity)은 줄 전체를 화면 밖에서 다시 그리게 하니 한 장으로 캐시해 둔다
   return (
-    <View style={[styles.rowFace, row.done && !onDark ? styles.done : null]}>
+    <View style={[styles.rowFace, dim ? styles.done : null]} shouldRasterizeIOS={dim}>
       {selecting ? <WCheck checked={!!selected} /> : null}
       <View style={styles.flex}>
         <View style={styles.rowTop}>
@@ -401,15 +402,72 @@ function SkeletonRows() {
   return (
     <View>
       {[72, 48, 64, 56, 80].map((w, i) => (
-        <View key={i} style={[styles.skelRow, i < 4 && styles.rule]}>
+        <View key={i} style={styles.skelRow}>
           <WSkel width={`${w}%`} />
           <WSkel width={`${Math.max(28, w - 30)}%`} />
           <WSkel shape="pill" width={72} />
+          {i < 4 ? <View style={styles.ruleLine} /> : null}
         </View>
       ))}
     </View>
   );
 }
+
+/** 목록 줄 하나 — 바뀐 줄만 다시 그리게 memo(누른 줄 알약이 옮겨 가도 다른 줄은 그대로). 손잡이는 목록이 고정해 넘긴다 */
+const RecordItem = memo(function RecordItemView({
+  row,
+  index,
+  last,
+  active,
+  selecting,
+  selected,
+  onPress,
+  onLongPress,
+  onPressUpdates,
+  onPressSubitems,
+  onMeasure,
+}: {
+  row: RecordRowData;
+  index: number;
+  last: boolean;
+  active: boolean;
+  selecting?: boolean;
+  selected: boolean;
+  onPress: (id: string, index: number) => void;
+  onLongPress?: (id: string) => void;
+  onPressUpdates?: (id: string) => void;
+  onPressSubitems?: (id: string) => void;
+  onMeasure: (id: string, y: number, h: number) => void;
+}) {
+  const id = row.id;
+  const updates = useCallback(() => onPressUpdates?.(id), [onPressUpdates, id]);
+  const subitems = useCallback(() => onPressSubitems?.(id), [onPressSubitems, id]);
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onLayout={(e: LayoutChangeEvent) => onMeasure(id, e.nativeEvent.layout.y, e.nativeEvent.layout.height)}
+      onPress={() => onPress(id, index)}
+      onLongPress={onLongPress ? () => onLongPress(id) : undefined}
+      delayLongPress={350}
+    >
+      {({ pressed }) => (
+        <View style={styles.row}>
+          {pressed && !active ? <View style={[FILL, styles.rowHover]} /> : null}
+          <RowFace
+            row={row}
+            onDark={active}
+            selecting={selecting}
+            selected={selected}
+            onPressUpdates={onPressUpdates ? updates : undefined}
+            onPressSubitems={onPressSubitems ? subitems : undefined}
+          />
+          {last ? null : <View style={styles.ruleLine} />}
+        </View>
+      )}
+    </Pressable>
+  );
+});
 
 /**
  * 기록 목록(WaterRecordTable) — 판(w-glass 1·0.5, 둥글기 24) 머리 + 도구 줄 + 줄들 + "더 보기" 홈 알약. 줄을 누르면 그 줄
@@ -442,6 +500,9 @@ export function RecordList({
   const [active, setActive] = useState<string | null>(null);
   const shownO = useSharedValue(0);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const measure = useCallback((id: string, y: number, h: number) => {
+    boxes.current.set(id, { y, h });
+  }, []);
 
   useEffect(
     () => () => {
@@ -513,32 +574,20 @@ export function RecordList({
             <View style={darkLayer(p, 999, 10)} />
           </Animated.View>
           {rows.map((row, i) => (
-            <Pressable
+            <RecordItem
               key={row.id}
-              accessibilityRole="button"
-              accessibilityState={{ selected: selected?.has(row.id) }}
-              onLayout={(e: LayoutChangeEvent) => {
-                const { y, height } = e.nativeEvent.layout;
-                boxes.current.set(row.id, { y, h: height });
-              }}
-              onPress={() => press(row.id, i)}
-              onLongPress={onLongPressRow ? () => onLongPressRow(row.id) : undefined}
-              delayLongPress={350}
-            >
-              {({ pressed }) => (
-                <View style={[styles.row, i < rows.length - 1 && styles.rule]}>
-                  {pressed && active !== row.id ? <View style={[FILL, styles.rowHover]} /> : null}
-                  <RowFace
-                    row={row}
-                    onDark={active === row.id}
-                    selecting={selecting}
-                    selected={selected?.has(row.id)}
-                    onPressUpdates={onPressUpdates ? () => onPressUpdates(row.id) : undefined}
-                    onPressSubitems={onPressSubitems ? () => onPressSubitems(row.id) : undefined}
-                  />
-                </View>
-              )}
-            </Pressable>
+              row={row}
+              index={i}
+              last={i === rows.length - 1}
+              active={active === row.id}
+              selecting={selecting}
+              selected={!!selected?.has(row.id)}
+              onPress={press}
+              onLongPress={onLongPressRow}
+              onPressUpdates={onPressUpdates}
+              onPressSubitems={onPressSubitems}
+              onMeasure={measure}
+            />
           ))}
         </View>
       )}
@@ -615,7 +664,7 @@ export function UpcomingList({ items, today, empty, mode = 'due', style }: Upcom
                 <View style={styles.upRow}>
                   {pressed ? <View style={[FILL, styles.rowPressed]} /> : null}
                   <View style={styles.dateTile}>
-                    <View style={v.isToday ? darkLayer(p, 13, 10) : solidLayer(p, 0.38, 13, 'ellipse')} />
+                    <Backing style={v.isToday ? darkLayer(p, 13, 10) : solidLayer(p, 0.38, 13, 'ellipse')} />
                     <WText size={13} weight="700" tabular onDark={v.isToday} color={v.isToday ? '#ffffff' : W.ink}>
                       {v.md}
                     </WText>
@@ -742,15 +791,14 @@ export function DetailShell({
   const p = useWater();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
+  // 판은 투명도 없이 떠오르기만(판 전체를 흐리게 하면 그림자 겹을 매 프레임 화면 밖에서 다시 그린다)
   const rise = useSharedValue(reduced ? 0 : 28);
-  const o = useSharedValue(reduced ? 1 : 0);
   useEffect(() => {
-    o.value = withTiming(1, { duration: 120 });
     if (!reduced) rise.value = withSpring(0, springConfig(WATER_SPRING.move));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const panelStyle = useAnimatedStyle(() => ({ opacity: o.value, transform: [{ translateY: rise.value }] }));
-  const fade = useFocusFade();
+  const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: rise.value }] }));
+  const fade = useFocusFade(true);
   return (
     <Animated.View collapsable={false} style={[styles.flex, fade]}>
       <View style={[styles.detailBar, { paddingTop: insets.top + 6 }]}>
@@ -769,7 +817,7 @@ export function DetailShell({
         )}
       </View>
       <Animated.View collapsable={false} style={[styles.detailPanel, { marginBottom: insets.bottom + 8 }, panelStyle]}>
-        <View pointerEvents="none" style={glassLayer(p, 1, 1, 24, 'pane')} />
+        <Backing style={glassLayer(p, 1, 1, 24, 'pane')} fit />
         <DetailReveal index={0}>
           <View style={styles.detailHead}>
             {eyebrow ? (
@@ -911,7 +959,7 @@ export function DetailList({ title, items, style }: DetailListProps) {
     <View style={style}>
       <SectionTitle>{title}</SectionTitle>
       {items.map((item, i) => (
-        <View key={item.key} style={[styles.smallRow, i < items.length - 1 && styles.rule]}>
+        <View key={item.key} style={styles.smallRow}>
           <WText size={12.5} color={W.ink2} style={styles.flex}>
             {item.label}
           </WText>
@@ -920,6 +968,7 @@ export function DetailList({ title, items, style }: DetailListProps) {
               {item.meta}
             </WText>
           ) : null}
+          {i < items.length - 1 ? <View style={styles.ruleLine} /> : null}
         </View>
       ))}
     </View>
@@ -963,14 +1012,7 @@ export function FileList({ title, files, empty = '파일이 없어요', onPressF
       {docs.map((f, i) => (
         <Pressable key={f.key} accessibilityRole="link" disabled={!f.url} onPress={() => onPressFile(f)}>
           {({ pressed }) => (
-            <View
-              style={[
-                styles.fileRow,
-                i < docs.length - 1 && styles.rule,
-                !f.url && styles.dim,
-                pressed && styles.filePressed,
-              ]}
-            >
+            <View style={[styles.fileRow, !f.url && styles.dim, pressed && styles.filePressed]}>
               <FileText size={15} color={W.ink2} strokeWidth={2} />
               <WText size={12.5} weight="500" numberOfLines={1} style={styles.flex}>
                 {f.name}
@@ -980,6 +1022,7 @@ export function FileList({ title, files, empty = '파일이 없어요', onPressF
                   {f.meta}
                 </WText>
               ) : null}
+              {i < docs.length - 1 ? <View style={styles.ruleLine} /> : null}
             </View>
           )}
         </Pressable>
@@ -995,7 +1038,7 @@ export function SubitemList({ title, items, empty = '하위 아이템이 없어�
       <SectionTitle>{title}</SectionTitle>
       {items.length === 0 ? <WEmpty title={empty} /> : null}
       {items.map((item, i) => (
-        <View key={item.key} style={[styles.subRow, i < items.length - 1 && styles.rule]}>
+        <View key={item.key} style={styles.subRow}>
           <View style={styles.flex}>
             <WText size={13} weight="600" numberOfLines={2}>
               {item.name}
@@ -1011,6 +1054,7 @@ export function SubitemList({ title, items, empty = '하위 아이템이 없어�
               {item.pill.label}
             </WPill>
           ) : null}
+          {i < items.length - 1 ? <View style={styles.ruleLine} /> : null}
         </View>
       ))}
     </View>
@@ -1024,7 +1068,8 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.5 },
   done: { opacity: 0.7 },
   underline: { textDecorationLine: 'underline', textDecorationColor: W.linkLine },
-  rule: { boxShadow: [shadow(0, -1, 0, 0, W.rule, true)] },
+  // 줄 사이 가는 선 — 1px 뷰(안쪽 그림자 한 겹도 iOS에서는 마스크 층이라 줄마다 쌓이면 무겁다)
+  ruleLine: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 1, backgroundColor: W.rule },
   assignees: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
   more: {
     minWidth: 24,
@@ -1037,15 +1082,18 @@ const styles = StyleSheet.create({
   },
   moreOnDark: { backgroundColor: W.onDarkFill },
   phone: { textDecorationLine: 'underline', textDecorationColor: 'rgba(63, 62, 67, 0.25)' },
+  // 흰 1px 테는 그림자 대신 테두리로 — 테가 없는 모양도 같은 크기가 되게 투명 테를 늘 두른다
   bubble: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
+    paddingVertical: 1,
+    paddingHorizontal: 7,
     borderRadius: 11,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  bubbleFill: { backgroundColor: W.chip, boxShadow: CHIP_RING },
+  bubbleFill: { backgroundColor: W.chip, borderColor: W.chipRing },
   bubbleOnDark: { backgroundColor: W.rowHover },
   rowFace: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   rowTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
@@ -1055,7 +1103,7 @@ const styles = StyleSheet.create({
   phoneBeside: { flexShrink: 0, maxWidth: '55%' },
   phoneBelow: { flexDirection: 'row', marginTop: 4 },
   phoneChip: { gap: 4, maxWidth: '100%' },
-  subChip: { gap: 2, paddingRight: 5 },
+  subChip: { gap: 2, paddingRight: 4 },
   // 아래 줄 오른쪽 끝(접수일) — 줄이 넘치면 다음 줄 오른쪽으로
   corner: { marginLeft: 'auto' },
   rowDate: { alignItems: 'flex-end', gap: 1 },

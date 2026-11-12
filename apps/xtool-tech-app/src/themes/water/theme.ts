@@ -410,9 +410,6 @@ export function avatarRim(d: number): BoxShadowValue[] {
   ];
 }
 
-/** 반투명 흰 칩 둘레 1px 흰 테(저장 표시·말풍선) */
-export const CHIP_RING: BoxShadowValue[] = [sh(0, 0, 0, 1, W.chipRing, true)];
-
 /** 초점·누름 흰 2px 고리 */
 export const FOCUS_RING: BoxShadowValue[] = [sh(0, 0, 0, 2, W.ring)];
 

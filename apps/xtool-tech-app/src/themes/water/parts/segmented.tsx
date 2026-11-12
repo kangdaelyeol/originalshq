@@ -19,6 +19,8 @@ import { useWaterIndicator } from './use-indicator';
 // (ζ0.65·ω30.5, 7% 넘침)으로 옮겨 가며 달리는 빠르기만큼 늘어나고, 고른 글자는 흰색이 되며 1.15배로 커진다(0.1s).
 // 알약이 지나가는 칸은 알약을 따라가는 창(같은 글을 흰 글자로 한 벌 더)으로 희게 보인다. 고르면 표시 알약 윗변에서
 // 물방울이 튀어 올랐다 통통 튀고(bounce) 닿은 자리에 물결이 두 겹 퍼진다(표시 알약 밑).
+// 누른 칸은 곧바로 고른 모양이 되고, 바깥(onChange — 목록을 새로 그리는 무거운 일)에는 고른 글자가 커지는 0.1초가 지난
+// 뒤 알린다. 같은 순간에 목록을 새로 그리면 화면이 잠깐 멈춰 그 짧은 움직임이 통째로 건너뛰어진다.
 
 /** 크기 — 표시 알약 높이(ih)·둘레(pad)·글자·옆 여백. k = ih / 50.5 */
 const SEG = {
@@ -29,6 +31,8 @@ const SEG = {
 
 /** 움직임이 끝났다고 보는 때 — 표시 알약 엔진과 같다(0.9s) */
 const SETTLE = 0.9;
+/** 고른 칸을 바깥에 알리기까지(ms) — 글자가 커지는 0.1초 + 한 프레임 */
+const SEND_AFTER_MS = QUICK_MS + 20;
 
 export interface WSegOption<T extends string> {
   value: T;
@@ -58,7 +62,21 @@ export function WSegmented<T extends string>({
   const s = SEG[size];
   const k = s.ih / 50.5;
   const reduced = useReducedMotion();
-  const index = options.findIndex(o => o.value === value);
+  // 눌렀지만 아직 바깥에 알리지 않은 칸 — 그동안은 이 칸을 고른 것으로 그린다
+  const [pending, setPending] = useState<T | null>(null);
+  const picked = pending ?? value;
+  const index = options.findIndex(o => o.value === picked);
+  const sendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  useEffect(
+    () => () => {
+      if (sendTimer.current) clearTimeout(sendTimer.current);
+    },
+    [],
+  );
   const ind = useWaterIndicator();
   const fx = useDropFx(ind.pose);
   const [fxOn, setFxOn] = useState(false);
@@ -182,10 +200,29 @@ export function WSegmented<T extends string>({
                   return next;
                 });
               }}
+              onPressIn={() => {
+                // 물방울 층(Skia 캔버스 둘)은 처음 누를 때 만든다 — 손가락이 닿는 동안 미리 만들어 둬야 고른 뒤
+                // 움직임이 멈추지 않는다
+                if (!fxOn && effect !== 'none' && !reduced) setFxOn(true);
+              }}
               onPress={() => {
-                if (o.value === value) return;
+                if (o.value === picked) return;
                 pressedAt.current = nowSec();
-                onChange(o.value);
+                if (sendTimer.current) clearTimeout(sendTimer.current);
+                sendTimer.current = null;
+                if (o.value === value || reduced) {
+                  setPending(null);
+                  if (o.value !== value) onChange(o.value);
+                  return;
+                }
+                const next = o.value;
+                setPending(next);
+                sendTimer.current = setTimeout(() => {
+                  sendTimer.current = null;
+                  // 바깥 값과 함께 한 번에 그려진다(자동 일괄 처리) — 고른 칸은 그대로라 움직임이 다시 시작되지 않는다
+                  onChangeRef.current(next);
+                  setPending(null);
+                }, SEND_AFTER_MS);
               }}
               style={[styles.item, { height: s.ih, paddingHorizontal: s.padx }]}
             >

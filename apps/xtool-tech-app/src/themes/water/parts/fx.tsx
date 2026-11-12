@@ -1,12 +1,16 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { BlurMask, Canvas, Circle, Group, Oval, Path, rect, rrect, Skia } from '@shopify/react-native-skia';
 import {
   cancelAnimation,
   Easing,
+  runOnJS,
   useDerivedValue,
+  useFrameCallback,
   useSharedValue,
   withTiming,
+  type FrameCallback,
+  type FrameInfo,
   type SharedValue,
 } from 'react-native-reanimated';
 import type { IndicatorPose } from './use-indicator';
@@ -14,7 +18,8 @@ import type { IndicatorPose } from './use-indicator';
 // 물결·물방울(D7, 웹 ohq-ui/water/ripple.ts·fx.ts) — 누르면 그 자리에서 물결이 두 겹 퍼지고(반지름 22에서 초속
 // 525px, 22px 간격, 0.3초, 1-u²로 흐려짐), 고르면 표시 알약 윗변에서 물방울이 튀어 올랐다 아이콘 위에 앉아 두 번
 // 통통 튄 뒤(bounce) 닿은 자리에 물결이 퍼진다. 값은 영상 px라 작은 부품은 k(= 높이 / 50.5)로 줄인다(시간표는 같다).
-// 그리기는 Skia — 시각 하나(공유 값)를 withTiming으로 흘리고 모양은 UI 스레드에서 계산한다(프레임마다 JS 없음).
+// 그리기는 Skia — 시각 하나(공유 값)를 흘리고(누른 물결은 withTiming, 고를 때 물방울은 프레임마다 조금씩 — 화면이 멈춰도
+// 건너뛰지 않게) 모양은 UI 스레드에서 계산한다(프레임마다 JS 없음).
 
 export const WATER_RIPPLE = { r0: 22, speed: 525, gap: 22, life: 0.3, inner: 11 } as const;
 
@@ -221,22 +226,50 @@ function landTime(k: number) {
   return (launch + Math.sqrt(launch * launch + 2 * g * b.sink * k)) / g;
 }
 
+/** 물방울 시각을 한 프레임에 흘려보내는 가장 긴 시간(초) — 목록을 새로 그리느라 화면이 멈췄다 돌아와도 물방울이
+ * 건너뛰지 않고 멈춘 자리에서 이어 간다(시각 기준 withTiming은 멈춘 만큼 한꺼번에 건너뛴다) */
+const MAX_STEP = 1 / 30;
+
 export function useDropFx(follow?: SharedValue<IndicatorPose>): WaterDropFx {
   const t = useSharedValue(-1);
+  const end = useSharedValue(0);
   const ev = useSharedValue<DropEvent>({ x: 0, surface: 0, rippleY: 0, k: 1, delay: 0, clip: NONE.clip });
+  // 몇 번째 물방울인지 — 끝난 물방울의 끄기가 새로 시작한 물방울을 끄지 않게
+  const run = useSharedValue(0);
+  const gen = useRef(0);
+  const holder = useRef<FrameCallback | null>(null);
+  const stop = useCallback((g: number) => {
+    if (g === gen.current) holder.current?.setActive(false);
+  }, []);
+  const onFrame = useCallback(
+    (info: FrameInfo) => {
+      'worklet';
+      const step = Math.min(MAX_STEP, (info.timeSincePreviousFrame ?? 16) / 1000);
+      const next = t.value + step;
+      if (next >= end.value) {
+        t.value = end.value;
+        runOnJS(stop)(run.value);
+      } else {
+        t.value = next;
+      }
+    },
+    [t, end, run, stop],
+  );
+  const frame = useFrameCallback(onFrame, false);
+  holder.current = frame;
   const trigger = useCallback(
     (o: WaterDropOptions) => {
       const steps = Math.max(1, o.steps);
       const delay = WATER_DROP.delay.base + WATER_DROP.delay.perStep * (steps - 1);
       const k = o.scale;
-      const end = delay + landTime(k) + WATER_RIPPLE.life;
-      const from = Math.min(0.12, Math.max(0, o.ago ?? 0));
-      cancelAnimation(t);
+      gen.current += 1;
+      run.value = gen.current;
       ev.value = { x: o.x, surface: o.surface, rippleY: o.rippleY, k, delay, clip: o.clip };
-      t.value = from;
-      t.value = withTiming(end, { duration: Math.max(1, (end - from) * 1000), easing: Easing.linear });
+      end.value = delay + landTime(k) + WATER_RIPPLE.life;
+      t.value = Math.min(0.12, Math.max(0, o.ago ?? 0));
+      frame.setActive(true);
     },
-    [t, ev],
+    [t, end, ev, run, frame],
   );
   return useMemo(() => ({ t, ev, follow, trigger }), [t, ev, follow, trigger]);
 }

@@ -13,7 +13,6 @@ import Animated, {
 import Svg, { Defs, FeGaussianBlur, Filter, G, Path } from 'react-native-svg';
 import type { LucideIcon } from 'lucide-react-native';
 import {
-  CHIP_RING,
   DANGER_FILL,
   darkChipFill,
   darkFill,
@@ -136,7 +135,8 @@ export function WButton({
       >
         {({ pressed }) => (
           <>
-            <View pointerEvents="none" style={buttonFill(p, variant, sz.h)} />
+            {/* 바탕(그러데이션·그림자 겹)은 한 장으로 캐시 — 반투명 흰 칩(ghost)은 색 한 겹이라 그대로 */}
+            <View pointerEvents="none" style={buttonFill(p, variant, sz.h)} shouldRasterizeIOS={variant !== 'ghost'} />
             {/* 겹친 빛(웹 hover ::before 흰 13%) — 폰은 누르는 동안 */}
             <View
               pointerEvents="none"
@@ -258,6 +258,7 @@ export function WIconButton({
       >
         <View
           pointerEvents="none"
+          shouldRasterizeIOS
           style={[
             styles.fill,
             {
@@ -430,7 +431,8 @@ function Dot({ color, pulse }: { color: string; pulse: boolean }) {
     return { opacity: t.value === 0 ? 0 : 1 - u * u, transform: [{ scale: 1 + 2.4 * u }] };
   });
   return (
-    <View style={[styles.dot, { backgroundColor: color, boxShadow: DOT_SHADOW }]}>
+    // 유리구슬 그림자 두 겹은 한 장으로 캐시 — 물결(pulse)이 퍼지는 점은 매 프레임 바뀌니 그대로
+    <View style={[styles.dot, { backgroundColor: color, boxShadow: DOT_SHADOW }]} shouldRasterizeIOS={!pulse}>
       {pulse && <Animated.View style={[styles.dotRing, { borderColor: color }, ring]} />}
     </View>
   );
@@ -448,7 +450,7 @@ export function WFlag({ tone, children, style }: { tone: WTone; children: ReactN
   );
 }
 
-/** 저장 표시·말풍선 같은 반투명 흰 알약(흰 1px 테) */
+/** 저장 표시·말풍선 같은 반투명 흰 알약(흰 1px 테 — 그림자 대신 테두리) */
 export function WChipBox({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
   return <View style={[styles.chipBox, style]}>{children}</View>;
 }
@@ -515,9 +517,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     height: 30,
-    paddingHorizontal: 12,
+    paddingHorizontal: 11,
     borderRadius: 15,
+    borderWidth: 1,
+    borderColor: W.chipRing,
     backgroundColor: W.chip,
-    boxShadow: CHIP_RING,
   },
 });

@@ -34,7 +34,7 @@ export function WaterTabBar({ state, navigation }: BottomTabBarProps) {
   const p = useWater();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
-  const fadeStyle = useFocusFade();
+  const fadeStyle = useFocusFade(true);
   const [rowW, setRowW] = useState(0);
   const count = state.routes.length;
   const itemW = rowW > 0 ? (rowW - GAP * (count - 1)) / count : 0;

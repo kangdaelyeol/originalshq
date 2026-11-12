@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Dimensions, View, type LayoutChangeEvent, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 import {
   darkFill,
   dropShadow,
@@ -16,7 +16,8 @@ import { useWater } from '../theme-context';
 
 // 물 바탕 조각 — 유리 판(w-glass)·불투명 유리 단추 속(w-solid)·홈(w-groove)·어두운 표시 알약(D7 indicator).
 // 그림자(inset 포함)는 내용 뒤 형제 바탕 층에만 칠한다: iOS는 테두리 없는 뷰의 그림자 층을 자식 위에 얹을 수 있고,
-// 포커스로 조상 스타일이 바뀌면 키보드가 내려가는 함정(Fabric)도 피한다. 바탕 층은 설정·크기마다 한 번 만들어 둔다.
+// 포커스로 조상 스타일이 바뀌면 키보드가 내려가는 함정(Fabric)도 피한다. 바탕 층 스타일은 설정·크기마다 한 번 만들어
+// 두고, 그린 결과는 Backing이 비트맵 한 장으로 캐시한다.
 
 type Fill = 'glass' | 'pane' | 'none';
 
@@ -85,6 +86,28 @@ export function darkLayer(p: WaterPalette, radius: number, em = 10): ViewStyle {
   }));
 }
 
+/**
+ * 바탕 층 — 그림자 겹을 처음 한 번 비트맵으로 그려 두고 그 뒤로는 그림 한 장으로 옮긴다(shouldRasterizeIOS). iOS는
+ * 그림자 한 겹마다 마스크 층을 따로 만들어 화면이 움직일 때마다 화면 밖 그림판에서 다시 그리니, 움직이지 않는 바탕은
+ * 캐시가 훨씬 싸다. 크기·설정이 바뀌면 한 번 다시 그린다. 화면보다 큰 판은 캐시에 들지 못해 매 프레임 다시 그리게 되므로
+ * fit이면 재어 보고 화면 높이 안일 때만 캐시한다. 크기가 매 프레임 바뀌는 층(표시 알약)에는 쓰지 않는다.
+ */
+export function Backing({ style, fit = false }: { style: StyleProp<ViewStyle>; fit?: boolean }) {
+  const [fits, setFits] = useState(!fit);
+  return (
+    <View
+      pointerEvents="none"
+      style={style}
+      shouldRasterizeIOS={fits}
+      onLayout={
+        fit
+          ? (e: LayoutChangeEvent) => setFits(e.nativeEvent.layout.height <= Dimensions.get('window').height)
+          : undefined
+      }
+    />
+  );
+}
+
 interface BoxProps extends ViewProps {
   radius: number;
   style?: StyleProp<ViewStyle>;
@@ -106,7 +129,7 @@ export function Glass({
   const p = useWater();
   return (
     <View {...rest} style={[{ borderRadius: radius }, style]}>
-      {bare ? null : <View pointerEvents="none" style={glassLayer(p, k, lift, radius, fill)} />}
+      {bare ? null : <Backing style={glassLayer(p, k, lift, radius, fill)} fit />}
       {children}
     </View>
   );
@@ -125,7 +148,7 @@ export function Solid({
   const p = useWater();
   return (
     <View {...rest} style={[{ borderRadius: radius }, style]}>
-      <View pointerEvents="none" style={solidLayer(p, k, radius, shape, drop)} />
+      <Backing style={solidLayer(p, k, radius, shape, drop)} />
       {children}
     </View>
   );
@@ -136,7 +159,7 @@ export function Groove({ k = 1, radius, style, children, ...rest }: BoxProps & {
   const p = useWater();
   return (
     <View {...rest} style={[{ borderRadius: radius }, style]}>
-      <View pointerEvents="none" style={grooveLayer(p, k, radius)} />
+      <Backing style={grooveLayer(p, k, radius)} />
       {children}
     </View>
   );
@@ -147,7 +170,7 @@ export function DarkPill({ radius, em = 10, style, children, ...rest }: BoxProps
   const p = useWater();
   return (
     <View {...rest} style={[{ borderRadius: radius }, style]}>
-      <View pointerEvents="none" style={darkLayer(p, radius, em)} />
+      <Backing style={darkLayer(p, radius, em)} />
       {children}
     </View>
   );

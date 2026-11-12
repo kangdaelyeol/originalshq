@@ -6,7 +6,7 @@ import type { UpdateCardProps, UpdateComposerProps, UpdateView } from '../../das
 import { QUICK_MS, shadow, W } from '../theme';
 import { useWater } from '../theme-context';
 import { WButton } from './controls';
-import { glassLayer } from './glass';
+import { Backing, glassLayer } from './glass';
 import { Spin } from './screen';
 import { WText } from './text';
 
@@ -45,7 +45,7 @@ function GlassArea({
   const ring = useRing();
   return (
     <View collapsable={false} style={[styles.area, { borderRadius: radius }]}>
-      <View pointerEvents="none" style={glassLayer(p, 0.46, 0.2, radius)} />
+      <Backing style={glassLayer(p, 0.46, 0.2, radius)} />
       <Animated.View pointerEvents="none" style={[styles.ring, { borderRadius: radius }, ring.style]} />
       <TextInput
         value={value}
@@ -124,7 +124,7 @@ export function UpdateCard({ update, me, onReply, style }: UpdateCardProps) {
   };
   return (
     <View style={[styles.card, update.pending && styles.pending, style]}>
-      <View pointerEvents="none" style={glassLayer(p, 0.6, 0, 16)} />
+      <Backing style={glassLayer(p, 0.6, 0, 16)} fit />
       <Author u={update} />
       <WText size={13.5} lh={1.55} color={W.ink2} selectable style={styles.text}>
         {update.text}

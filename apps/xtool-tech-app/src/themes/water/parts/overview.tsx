@@ -16,7 +16,7 @@ import type {
 import { shadow, springConfig, W, WATER_SPRING } from '../theme';
 import { useWater } from '../theme-context';
 import { WPill } from './controls';
-import { DarkPill, darkLayer, Glass, Solid, solidLayer } from './glass';
+import { Backing, DarkPill, darkLayer, Glass, Solid, solidLayer } from './glass';
 import { Reveal, Sheen, WBar, WCard, WEmpty, WNumber, WSkel } from './surfaces';
 import { PickedMark } from './screen';
 import { WText } from './text';
@@ -240,7 +240,7 @@ function Face({ name, me }: { name: string; me: boolean }) {
   const p = useWater();
   return (
     <View style={styles.face}>
-      <View style={me ? darkLayer(p, 15, 10) : solidLayer(p, 0.25, 15)} />
+      <Backing style={me ? darkLayer(p, 15, 10) : solidLayer(p, 0.25, 15)} />
       <WText size={11} weight="700" color={me ? '#ffffff' : W.ink} onDark={me}>
         {avatarView(name).initials}
       </WText>
