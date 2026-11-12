@@ -80,7 +80,9 @@ export const useInquiryLogViewModel = () => {
   const [deleting, setDeleting] = useState(false)
   const [openId, setOpenId] = useState<string | null>(null)
   // 다시 실행 중인 "id:step" — 버튼을 잠근다.
-  const [retrying, setRetrying] = useState<string | null>(null)
+  // 진행 중인 다시 실행('id:단계') — 줄마다 따로 들고, 끝난 것만 뺀다(하나로
+  // 들면 다른 줄의 응답에 아직 도는 줄의 버튼까지 다시 켜져 두 번 누를 수 있다).
+  const [retrying, setRetrying] = useState<ReadonlySet<string>>(() => new Set())
   const [actionError, setActionError] = useState<string | null>(null)
 
   // 문자 설정 — 서버 값과, 화면에서 고치는 중인 값.
@@ -134,10 +136,15 @@ export const useInquiryLogViewModel = () => {
 
   const retry = useCallback(
     async (id: string, step: 'monday' | 'sms') => {
-      setRetrying(`${id}:${step}`)
+      const key = `${id}:${step}`
+      setRetrying((prev) => new Set(prev).add(key))
       setActionError(null)
       const res = await retryInquiry(id, step)
-      setRetrying(null)
+      setRetrying((prev) => {
+        const next = new Set(prev)
+        next.delete(key)
+        return next
+      })
       if (!res.ok) {
         setActionError(res.error)
         return

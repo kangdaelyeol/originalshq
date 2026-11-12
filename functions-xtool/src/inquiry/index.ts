@@ -2,7 +2,7 @@
 // 대신한다. 신청 1건을 inquiries/{id}에 먼저 저장하고, Monday 아이템 생성과
 // 접수 안내 문자를 차례로 실행해 단계마다 결과를 남긴다. 실패한 단계는 접수
 // 로그 화면(/log의 "문의 접수")에서 다시 실행한다.
-import type { Firestore } from 'firebase-admin/firestore'
+import type { DocumentReference, Firestore } from 'firebase-admin/firestore'
 import * as logger from 'firebase-functions/logger'
 import { isMobilePhone } from '../monday/helper'
 import { normalizeDomesticPhone } from '../utils'
@@ -435,6 +435,10 @@ export const submitInquiry = async (
   return { inquiry, duplicate: false }
 }
 
+// 접수 처리·다시 실행이 아직 돌고 있다고 보는 시간 — 두 함수의 제한 시간
+// (120초)보다 조금 길게.
+const STILL_RUNNING_MS = 3 * 60_000
+
 /** 실패(또는 건너뛴) 단계를 다시 실행한다 — Monday는 이미 만들어졌으면
  * 다시 만들지 않는다(아이템이 두 개 생기지 않게). */
 export const retryInquiryStep = async (
@@ -444,9 +448,47 @@ export const retryInquiryStep = async (
   secrets: InquirySecrets,
 ): Promise<Inquiry> => {
   const ref = db.collection(INQUIRIES).doc(id)
-  const snapshot = await ref.get()
-  if (!snapshot.exists) throw new Error('문의를 찾을 수 없습니다')
-  const inquiry = snapshot.data() as Inquiry
+  const now = Date.now()
+  // 다시 실행할 수 있는지 보고, 그 단계에 자리를 잡는다(트랜잭션) — 두 사람이
+  // 같이 누르거나 한 사람이 두 번 눌러도 한 번만 돈다.
+  const inquiry = await db.runTransaction(async (tx) => {
+    const snapshot = await tx.get(ref)
+    if (!snapshot.exists) throw new Error('문의를 찾을 수 없습니다')
+    const data = snapshot.data() as Inquiry & {
+      retryingUntil?: Partial<Record<'monday' | 'sms', number>>
+    }
+    // 접수 처리(submitInquiry)가 아직 도는 중 — 이때 다시 실행하면 그 처리도
+    // 문자를 보내 고객이 두 번 받고, 끝나면서 이쪽 결과를 덮어쓴다. 접수
+    // 처리는 함수 제한 시간(120초) 안에 끝나므로 그 뒤로는 다시 실행할 수 있다.
+    const stillRunning =
+      data[step].status === 'pending' &&
+      now - data.receivedAt < STILL_RUNNING_MS
+    if (stillRunning) {
+      throw new Error(
+        '아직 접수 처리 중인 문의입니다. 2~3분 뒤 다시 시도해 주세요',
+      )
+    }
+    if ((data.retryingUntil?.[step] ?? 0) > now) {
+      throw new Error('다른 다시 실행이 진행 중입니다. 잠시 뒤 확인해 주세요')
+    }
+    tx.update(ref, { [`retryingUntil.${step}`]: now + STILL_RUNNING_MS })
+    return data as Inquiry
+  })
+  try {
+    return await runRetryStep(db, ref, inquiry, step, secrets)
+  } finally {
+    await ref.update({ [`retryingUntil.${step}`]: 0 })
+  }
+}
+
+/** 다시 실행 본체 — 자리를 잡은 뒤에 부른다(retryInquiryStep). */
+const runRetryStep = async (
+  db: Firestore,
+  ref: DocumentReference,
+  inquiry: Inquiry,
+  step: 'monday' | 'sms',
+  secrets: InquirySecrets,
+): Promise<Inquiry> => {
   if (step === 'monday') {
     if (inquiry.monday.status === 'success') {
       throw new Error('이미 Monday에 등록된 문의입니다')

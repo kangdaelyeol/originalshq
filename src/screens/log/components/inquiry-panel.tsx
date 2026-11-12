@@ -92,10 +92,10 @@ const InquiryDetail = ({
   onRetry,
 }: {
   inquiry: Inquiry
-  retrying: string | null
+  retrying: ReadonlySet<string>
   onRetry: (id: string, step: 'monday' | 'sms') => void
 }) => {
-  const busy = (step: string) => retrying === `${inquiry.id}:${step}`
+  const busy = (step: string) => retrying.has(`${inquiry.id}:${step}`)
   return (
     <div className="inquiry-log__detail">
       <dl className="inquiry-log__facts">
