@@ -8,7 +8,7 @@ import {
   saveUsageSegments,
   type UsageSegment,
 } from '../usage'
-import { listBatchRuns } from '../batch-log'
+import { listBatchRuns, readBatchRun } from '../batch-log'
 import { db } from '../app'
 import { endpoint, parseSince } from '../http'
 
@@ -115,10 +115,13 @@ export const getUsageSegments = onRequest(
 // ────────────────────────────────
 // getBatchRuns — 배치(예약 실행) 함수들의 실행 기록(/log 화면). xtool과 cmip
 // 두 코드베이스가 같은 batchRuns 컬렉션에 쌓으므로 여기 하나에서 같이 준다.
-// ?days=N(기본 7, 최대 90)일 안의 기록을 최근 것부터 최대 2,000건. ?since=를
-// 주면 그 뒤에 바뀌었을 수 있는 실행(30분 앞부터 시작한 것)만 준다.
+// ?days=N(기본 7, 최대 90)일 안의 기록을 최근 것부터 하루 200건꼴까지(지금
+// 하루 130건 남짓 — 예전 2,000건 한도는 30일이면 앞 2주를 잘랐다). ?since=를
+// 주면 그 뒤에 바뀌었을 수 있는 실행(30분 앞부터 시작한 것)만 준다. 결과는
+// 큰 칸을 줄여서 준다(listBatchRuns) — 원본은 getBatchRun.
 // ────────────────────────────────
 export const getBatchRuns = onRequest(
+  { memory: '512MiB' },
   endpoint(
     { name: 'getBatchRuns', method: 'GET', admin: true },
     async ({ request, response }) => {
@@ -134,11 +137,43 @@ export const getBatchRuns = onRequest(
         since === null
           ? windowStart
           : Math.max(windowStart, since - RUN_OVERLAP_MS),
-        2_000,
+        days * RUNS_PER_DAY_MAX,
       )
-      response
-        .status(200)
-        .send({ runs, days, fetchedAt: now, incremental: since !== null })
+      response.status(200).send({
+        runs,
+        days,
+        fetchedAt: now,
+        incremental: since !== null,
+        // 한도까지 찼으면 앞쪽이 잘렸을 수 있다.
+        truncated: runs.length === days * RUNS_PER_DAY_MAX,
+      })
+    },
+  ),
+)
+
+// 하루에 받는 실행 기록 수의 한도 — 지금 하루 130건 남짓(수동 실행 포함)에
+// 여유를 둔다.
+const RUNS_PER_DAY_MAX = 200
+
+// ────────────────────────────────
+// getBatchRun — 실행 1건 원본(?id=). 목록(getBatchRuns)은 결과의 큰 칸을
+// 줄여서 주므로, /log에서 그런 실행을 펼칠 때 받는다.
+// ────────────────────────────────
+export const getBatchRun = onRequest(
+  endpoint(
+    { name: 'getBatchRun', method: 'GET', admin: true },
+    async ({ request, response }) => {
+      const id = String(request.query.id ?? '')
+      if (!/^[A-Za-z0-9]{1,64}$/.test(id)) {
+        response.status(400).send({ error: 'id가 올바르지 않습니다' })
+        return
+      }
+      const run = await readBatchRun(db, id)
+      if (!run) {
+        response.status(404).send({ error: '실행 기록을 찾을 수 없습니다' })
+        return
+      }
+      response.status(200).send({ run })
     },
   ),
 )

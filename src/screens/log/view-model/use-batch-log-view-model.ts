@@ -85,7 +85,7 @@ export const useBatchLogViewModel = () => {
             : codebaseSince
         const grid = gridDates.map((date) => ({
           date,
-          slots: slotsForDay(jobRuns, date, now, since),
+          slots: slotsForDay(jobRuns, date, now, since, job.minute),
         }))
         const missing = grid
           .flatMap((day) => day.slots)

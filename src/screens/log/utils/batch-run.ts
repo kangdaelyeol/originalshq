@@ -61,8 +61,10 @@ export const kstDate = (ms: number): string =>
   new Date(ms + KST_OFFSET_MS).toISOString().slice(0, 10)
 
 /** 한국 날짜 + 시 → ms. */
-export const kstTime = (date: string, hour: number): number =>
-  Date.parse(`${date}T${String(hour).padStart(2, '0')}:00:00+09:00`)
+export const kstTime = (date: string, hour: number, minute = 0): number =>
+  Date.parse(
+    `${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+09:00`,
+  )
 
 /** 오늘부터 거꾸로 count일(오늘이 먼저). */
 export const recentDates = (now: number, count: number): string[] =>
@@ -145,9 +147,11 @@ export const slotsForDay = (
   date: string,
   now: number,
   recordingSince: number | null,
+  /** 예약 시각의 분(BatchJob.minute) — 그만큼 늦은 칸으로 본다. */
+  minute = 0,
 ): Slot[] =>
   SCHEDULE_HOURS.map((hour) => {
-    const at = kstTime(date, hour)
+    const at = kstTime(date, hour, minute)
     const run = runForSlot(runs, at)
     if (run) return { at, hour, state: displayStatus(run, now), run }
     if (at > now - MISSING_GRACE_MS) return { at, hour, state: 'pending' }
@@ -170,6 +174,15 @@ export const parseResult = (run: BatchRun): unknown => {
 
 const num = (value: unknown): string =>
   typeof value === 'number' ? value.toLocaleString('ko-KR') : '-'
+
+/** 목록의 길이 — 배열이면 그 길이, 목록용으로 줄인 칸({ omitted, length })이면
+ * 남겨 둔 길이(functions-xtool batch-log.ts compactResult). */
+const listLength = (value: unknown): number =>
+  Array.isArray(value)
+    ? value.length
+    : typeof value === 'object' && value !== null && 'length' in value
+      ? Number((value as { length: unknown }).length) || 0
+      : 0
 
 /** 결과에서 핵심 숫자만 한 줄로 — 작업마다 결과 모양이 달라 작업별로 고른다. */
 export const summarizeRun = (run: BatchRun): string => {
@@ -220,8 +233,9 @@ export const summarizeRun = (run: BatchRun): string => {
         }`,
       ].join(' · ')
     case 'capi-auto': {
-      const count = (key: string) =>
-        Array.isArray(result[key]) ? (result[key] as unknown[]).length : 0
+      // 목록은 앞 200건만 담겨 있어 전체 수는 counts에서(11/11 첫 기록에는 없다).
+      const counts = result.counts as Record<string, number> | undefined
+      const count = (key: string) => counts?.[key] ?? listLength(result[key])
       if (result.busy) return '다른 실행이 돌고 있어 건너뜀'
       return [
         result.live
@@ -239,10 +253,17 @@ export const summarizeRun = (run: BatchRun): string => {
     case 'tech-boards': {
       const ok = result.okCount as number
       const failed = result.failedCount as number
-      const boards =
-        (result.boards as Record<string, unknown>[] | undefined) ?? []
+      // 목록용으로 줄인 칸이면 배열이 아니다 — 그때는 항목 수를 모른다.
+      const boards = Array.isArray(result.boards)
+        ? (result.boards as Record<string, unknown>[])
+        : null
       const sum = (key: string) =>
-        boards.reduce((total, board) => total + (Number(board[key]) || 0), 0)
+        boards === null
+          ? undefined
+          : boards.reduce(
+              (total, board) => total + (Number(board[key]) || 0),
+              0,
+            )
       return [
         `보드 ${num(ok)}/${num(ok + failed)} 성공`,
         `항목 ${num(sum('count'))}건 (변경 ${num(sum('written'))}·삭제 ${num(sum('deleted'))})`,
@@ -253,7 +274,7 @@ export const summarizeRun = (run: BatchRun): string => {
     case 'google-creatives':
     case 'naver-creatives':
     case 'openai-creatives': {
-      const failed = (result.failed as unknown[] | undefined) ?? []
+      const failed = { length: listLength(result.failed) }
       return [
         `소재 ${num(result.creatives)}개 (새 ${num(result.newCreatives)})`,
         `처리 ${num(result.processed)} · 실패 ${num(failed.length)} · 남음 ${num(result.pending)}`,

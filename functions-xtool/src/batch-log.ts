@@ -11,7 +11,7 @@ export const BATCH_RUNS_COLLECTION = 'batchRuns'
 
 // 기록을 얼마나 남길지 — expireAt에 적어 두고, Firestore TTL 정책을
 // batchRuns.expireAt에 걸면 그 뒤로 자동으로 지워진다(정책이 없으면 그냥
-// 남는다. 하루 36건 남짓이라 쌓여도 부담은 적다).
+// 남는다. 하루 130건 남짓 — 두 코드베이스의 예약 작업 21개 × 6번).
 const RETENTION_DAYS = 90
 
 // 결과(요약 객체)를 저장할 때의 최대 길이 — 문서 한도(1MB)보다 한참 작게.
@@ -129,7 +129,50 @@ export async function recordBatchRun<T>(
   }
 }
 
-/** /log 화면용 — 최근 기록부터 since(ms) 이후 것만. */
+// 목록에서 결과(resultJson)의 맨 위 칸 하나가 이보다 길면 줄여서 보낸다.
+const LIST_FIELD_MAX = 2_000
+
+/**
+ * 목록용으로 결과를 줄인다 — 화면의 한 줄 요약은 맨 위의 숫자 칸만 보는데,
+ * 결과에는 보드별 시간·건별 목록처럼 큰 칸이 있어 30일치를 통째로 보내면
+ * 수십 MB가 된다. 큰 칸은 { omitted, length }로 바꾸고(배열이면 길이를
+ * 남긴다) resultCompacted를 붙인다. 원본은 펼칠 때 getBatchRun(readBatchRun)으로 받는다.
+ */
+const compactResult = (
+  resultJson: unknown,
+): { resultJson: string | null; resultCompacted?: true } => {
+  if (typeof resultJson !== 'string' || resultJson.length <= LIST_FIELD_MAX) {
+    return { resultJson: (resultJson as string | null) ?? null }
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(resultJson)
+  } catch {
+    return { resultJson: null, resultCompacted: true }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { resultJson: null, resultCompacted: true }
+  }
+  const compact: Record<string, unknown> = {}
+  let changed = false
+  for (const [key, value] of Object.entries(parsed)) {
+    if (JSON.stringify(value)?.length > LIST_FIELD_MAX) {
+      compact[key] = {
+        omitted: true,
+        ...(Array.isArray(value) ? { length: value.length } : {}),
+      }
+      changed = true
+    } else {
+      compact[key] = value
+    }
+  }
+  return changed
+    ? { resultJson: JSON.stringify(compact), resultCompacted: true }
+    : { resultJson }
+}
+
+/** /log 화면용 — 최근 기록부터 since(ms) 이후 것만. 결과는 줄여서
+ * (compactResult). */
 export async function listBatchRuns(
   db: Firestore,
   since: number,
@@ -145,6 +188,18 @@ export async function listBatchRuns(
   return snapshot.docs.map((doc) => {
     const data = doc.data()
     delete data.expireAt
-    return { id: doc.id, ...data }
+    return { id: doc.id, ...data, ...compactResult(data.resultJson) }
   })
+}
+
+/** 실행 1건 원본 — /log에서 줄인 결과를 펼칠 때. 없으면 null. */
+export async function readBatchRun(
+  db: Firestore,
+  id: string,
+): Promise<Record<string, unknown> | null> {
+  const doc = await db.collection(BATCH_RUNS_COLLECTION).doc(id).get()
+  if (!doc.exists) return null
+  const data = doc.data() ?? {}
+  delete data.expireAt
+  return { id: doc.id, ...data }
 }

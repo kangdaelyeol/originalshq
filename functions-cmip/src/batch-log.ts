@@ -11,7 +11,7 @@ export const BATCH_RUNS_COLLECTION = 'batchRuns'
 
 // 기록을 얼마나 남길지 — expireAt에 적어 두고, Firestore TTL 정책을
 // batchRuns.expireAt에 걸면 그 뒤로 자동으로 지워진다(정책이 없으면 그냥
-// 남는다. 하루 36건 남짓이라 쌓여도 부담은 적다).
+// 남는다. 하루 130건 남짓 — 두 코드베이스의 예약 작업 21개 × 6번).
 const RETENTION_DAYS = 90
 
 // 결과(요약 객체)를 저장할 때의 최대 길이 — 문서 한도(1MB)보다 한참 작게.

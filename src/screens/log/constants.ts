@@ -12,6 +12,8 @@ export interface BatchJob {
   functionName: string
   /** 함수 제한 시간(초) — 이보다 오래 "실행 중"이면 시간 초과로 본다. */
   timeoutSeconds: number
+  /** 예약 시각의 분 — 정각이 아닌 작업만(capi-auto는 동기화 20분 뒤). */
+  minute?: number
   /** 나중에 더한 작업만 — 기록을 남기기 시작한 첫 예약 시각. 그 전 칸은
    * 누락이 아니라 "기록 전"이다(코드베이스의 기록 시작보다 늦을 때). */
   recordingSince?: string
@@ -41,10 +43,11 @@ export const BATCH_JOBS: readonly BatchJob[] = [
     id: 'capi-auto',
     label: 'CAPI 자동 전송',
     description:
-      '오프라인 결제는 모두, 기타 온라인 문의·B2G 문의는 상태가 신규 상담 유입·오기입이 아니게 된 기록을 Meta CAPI로 보내고 CAPI 관리 탭의 리드에 더합니다. Monday 동기화 직후에 돕니다.',
+      '오프라인 결제는 모두, 기타 온라인 문의·B2G 문의는 상태가 신규 상담 유입·오기입이 아니게 된 기록을 Meta CAPI로 보내고 CAPI 관리 탭의 리드에 더합니다. Monday 동기화 20분 뒤에 돕니다.',
     codebase: 'xtool',
-    functionName: 'syncMondayBoardsScheduled',
+    functionName: 'sendCapiAutoScheduled',
     timeoutSeconds: 540,
+    minute: 20,
     recordingSince: '2026-11-11T22:00:00+09:00',
   },
   {

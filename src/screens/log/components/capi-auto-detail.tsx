@@ -33,6 +33,8 @@ export const CapiAutoDetail = ({ result }: { result: unknown }) => {
   const rows = GROUPS.flatMap(({ key, label }) =>
     Array.isArray(data[key]) ? (data[key] as Entry[]).map((entry) => ({ ...entry, group: label })) : [],
   )
+  const counts = data.counts as Record<string, number> | undefined
+  const total = counts ? Object.values(counts).reduce((sum, n) => sum + n, 0) : rows.length
   const boards = Array.isArray(data.boards) ? (data.boards as { name: string }[]).map((board) => board.name) : []
 
   return (
@@ -41,6 +43,9 @@ export const CapiAutoDetail = ({ result }: { result: unknown }) => {
         {data.live ? '보낸 기록' : '미리보기 — 실제로 켜면 보낼 기록'}
         {boards.length > 0 && <span className="batch-log__muted"> · 대상 보드 {boards.join(', ')}</span>}
       </h3>
+      {total > rows.length && (
+        <p className="batch-log__muted">전체 {total.toLocaleString('ko-KR')}건 중 구분마다 앞 200건만 보입니다.</p>
+      )}
       {rows.length === 0 ? (
         <p className="batch-log__muted">이번 실행에서 보낼 기록이 없었습니다.</p>
       ) : (
