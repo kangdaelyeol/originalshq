@@ -156,6 +156,13 @@ export const router = createBrowserRouter([
     }),
   },
   {
+    // Lazy: 제품 대여 신청 폼 — 기술문의 폼과 같은 모양의 공개 페이지(구글 폼 "제품 대여 동의서" 대신). 로그인 없이 연다.
+    path: '/xtool/rental',
+    lazy: async () => ({
+      Component: (await import('@/screens/rental-form')).default,
+    }),
+  },
+  {
     path: '/dev',
     element: <DevPage />,
     children: [{ index: true, element: <Dev /> }],

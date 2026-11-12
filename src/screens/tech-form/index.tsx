@@ -6,20 +6,20 @@ import {
   Paperclip,
   X,
 } from 'lucide-react'
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { formatPhoneTyping } from '@xtool-core/tech-edit'
-import heroImage from '@/assets/xtool-tech-support-korean.jpeg'
 import faviconUrl from '@/screens/xtool-tech/assets/symbols/favicon-64.png'
 import { useDocumentHead } from '@/screens/xtool-tech/lib/use-document-head'
 import { DateSelect } from './date-select'
+import {
+  BackButton,
+  ChoiceGrid,
+  ChoiceList,
+  Field,
+  PhotoHead,
+  ReviewRow,
+} from './parts'
 import { PolicyModal } from './policy-modal'
 import { AsNoticeModal } from './as-notice-modal'
 import { SupportCenterLogo } from './xtool-logo'
@@ -138,171 +138,6 @@ interface Attachment {
   url: string
 }
 
-/** 칸 하나 — 이름(필수 표시)·설명·입력·오류(·글자 수) */
-function Field({
-  id,
-  label,
-  required,
-  hint,
-  error,
-  footer,
-  children,
-}: {
-  id: string
-  label: string
-  required?: boolean
-  hint?: string
-  error?: string
-  footer?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <div className="tech-form__field">
-      <label className="tech-form__label" htmlFor={id}>
-        {label}
-        {required && <Required />}
-      </label>
-      {hint && (
-        <p className="tech-form__hint" id={`${id}-hint`}>
-          {hint}
-        </p>
-      )}
-      {children}
-      {(error || footer) && (
-        <div className="tech-form__under">
-          {error ? (
-            <p className="tech-form__error" id={`${id}-error`} role="alert">
-              {error}
-            </p>
-          ) : (
-            <span />
-          )}
-          {footer}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function Required() {
-  return (
-    <span className="tech-form__required" aria-hidden>
-      *
-    </span>
-  )
-}
-
-/** 단추 고르기 — 2열 큰 단추(list면 세로 한 줄씩 넓게), 고른 것은 강조색 테두리·체크 */
-function ChoiceGrid({
-  label,
-  hint,
-  options,
-  value,
-  onPick,
-  list = false,
-  error,
-}: {
-  label: string
-  hint: string
-  options: readonly { value: string; label: string }[]
-  value: string | null
-  onPick: (value: string) => void
-  list?: boolean
-  /** 안 골랐을 때 안내(구매경로) */
-  error?: string
-}) {
-  const id = useId()
-  return (
-    <fieldset
-      className="tech-form__choice-set"
-      aria-describedby={error ? `${id}-hint ${id}-error` : `${id}-hint`}
-    >
-      <legend className="tech-form__label">
-        {label}
-        <Required />
-      </legend>
-      <p className="tech-form__hint" id={`${id}-hint`}>
-        {hint}
-      </p>
-      <div
-        className={
-          list
-            ? 'tech-form__list tech-form__list--in-set'
-            : 'tech-form__choices'
-        }
-      >
-        {options.map((option) => {
-          const on = option.value === value
-          const base = list
-            ? 'tech-form__choice tech-form__choice--row'
-            : 'tech-form__choice'
-          return (
-            <button
-              key={option.value}
-              type="button"
-              className={on ? `${base} is-on` : base}
-              aria-pressed={on}
-              onClick={() => onPick(option.value)}
-            >
-              <span>{option.label}</span>
-              {on && <Check size={18} strokeWidth={2.6} aria-hidden />}
-            </button>
-          )
-        })}
-      </div>
-      {error && (
-        <p className="tech-form__error" id={`${id}-error`} role="alert">
-          {error}
-        </p>
-      )}
-    </fieldset>
-  )
-}
-
-/** 세로 큰 단추 목록(시작 화면 문의 종류) — 이름·설명, 고른 것은 강조색 테두리 */
-function ChoiceList({
-  options,
-  value,
-  onPick,
-  labelledBy,
-}: {
-  options: readonly { key: string; label: string; description?: string }[]
-  value: string | null
-  onPick: (key: string) => void
-  labelledBy: string
-}) {
-  return (
-    <div className="tech-form__list" role="group" aria-labelledby={labelledBy}>
-      {options.map((option) => {
-        const on = option.key === value
-        return (
-          <button
-            key={option.key}
-            type="button"
-            className={
-              on
-                ? 'tech-form__choice tech-form__choice--wide is-on'
-                : 'tech-form__choice tech-form__choice--wide'
-            }
-            aria-pressed={on}
-            onClick={() => onPick(option.key)}
-          >
-            <span className="tech-form__choice-text">
-              <strong>{option.label}</strong>
-              {option.description && <small>{option.description}</small>}
-            </span>
-            {on ? (
-              <Check size={20} strokeWidth={2.6} aria-hidden />
-            ) : (
-              <ChevronRight size={20} aria-hidden />
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 /** 파일 크기 글자 */
 const sizeText = (bytes: number) =>
   bytes >= 1024 * 1024
@@ -386,59 +221,6 @@ function AttachField({
         </ul>
       )}
     </div>
-  )
-}
-
-/** "이전" — "다음"과 같은 크기의 흰 단추 */
-function BackButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void
-  disabled?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      className="tech-form__button tech-form__button--block tech-form__button--ghost"
-      disabled={disabled}
-      onClick={onClick}
-    >
-      이전
-    </button>
-  )
-}
-
-/** 확인 화면 한 줄 — 이름 · 값 */
-function ReviewRow({
-  label,
-  children,
-}: {
-  label: string
-  children: ReactNode
-}) {
-  return (
-    <div className="tech-form__review-row">
-      <dt>{label}</dt>
-      <dd>{children}</dd>
-    </div>
-  )
-}
-
-/** 사진 머리(시작·완료 화면) — 로고 헤더와 사진이 같은 바탕색(사진 위쪽 색)이라 한 장처럼 보인다 */
-function PhotoHead() {
-  return (
-    <>
-      <header className="tech-form__header">
-        <div className="tech-form__brand">
-          <SupportCenterLogo className="tech-form__support-logo" />
-          <h1 className="tech-form__sr-only">xTool 기술문의 접수</h1>
-        </div>
-      </header>
-      <div className="tech-form__hero" aria-hidden>
-        <img src={heroImage} alt="" />
-      </div>
-    </>
   )
 }
 
@@ -526,7 +308,7 @@ export default function TechFormScreen() {
 
   const validateContact = () => {
     const next: Partial<Record<FieldKey, string>> = {}
-    if (!name.trim()) next.name = '성함을 입력해 주세요.'
+    if (!name.trim()) next.name = '성함 또는 업체명을 입력해 주세요.'
     const digits = phone.replace(/\D/g, '').length
     if (digits === 0) next.phone = '연락처를 입력해 주세요.'
     else if (digits < 9) next.phone = '연락처를 끝까지 입력해 주세요.'
@@ -589,7 +371,7 @@ export default function TechFormScreen() {
   const submitContact = () => {
     if (!phoneShown) {
       if (!name.trim()) {
-        setErrors({ name: '성함을 입력해 주세요.' })
+        setErrors({ name: '성함 또는 업체명을 입력해 주세요.' })
         return
       }
       flushSync(() => setPhoneShown(true))
@@ -661,7 +443,7 @@ export default function TechFormScreen() {
   return (
     <div className="tech-form">
       <main className="tech-form__card">
-        {photo && <PhotoHead />}
+        {photo && <PhotoHead title="xTool 기술문의 접수" />}
         {/* key — 화면이 바뀔 때마다 새로 그려 살짝 올라오며 나타난다 */}
         <div
           key={step}
@@ -725,10 +507,14 @@ export default function TechFormScreen() {
             >
               <Field
                 id={`${id}-name`}
-                label="성함"
+                label="성함 또는 업체명"
                 required
                 // 연락처 칸이 생기면 위 칸 안내는 숨긴다(지금 적는 칸 안내만)
-                hint={phoneShown ? undefined : '성함을 입력해 주세요.'}
+                hint={
+                  phoneShown
+                    ? undefined
+                    : '구매 당시 등록한 성함 또는 업체명을 입력해 주세요.'
+                }
                 error={errors.name}
                 footer={
                   <span className="tech-form__count">
@@ -987,7 +773,7 @@ export default function TechFormScreen() {
                 <ReviewRow label="문의 유형">
                   {typeLabel ? `${kindLabel} · ${typeLabel}` : kindLabel}
                 </ReviewRow>
-                <ReviewRow label="성함">{name.trim()}</ReviewRow>
+                <ReviewRow label="성함·업체명">{name.trim()}</ReviewRow>
                 <ReviewRow label="연락처">{phone}</ReviewRow>
                 <ReviewRow label="문의 기기">{deviceLabel}</ReviewRow>
                 {isAs && (

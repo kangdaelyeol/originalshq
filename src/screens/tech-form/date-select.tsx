@@ -1,9 +1,10 @@
 import { Check, ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react'
+import { localDate } from './dates'
 
-// 구매일자 고르기 — 연도·월·일 드롭다운 세 개(휴대폰 기본 날짜 칸 대신 폼 모양에 맞춘 것). 고를 수 있는 날짜는 올해부터
-// YEARS_BACK년 전까지, 올해·이번 달이면 오늘까지만. 연도·월을 바꿔 이미 고른 월·일이 맞지 않으면 그 칸만 비운다.
-// 세 칸이 다 차면 'YYYY-MM-DD', 아니면 ''를 알린다.
+// 날짜 고르기 — 연도·월·일 드롭다운 세 개(휴대폰 기본 날짜 칸 대신 폼 모양에 맞춘 것). 고를 수 있는 날짜는 min~max
+// (기본: YEARS_BACK년 전 1월 1일 ~ 오늘 — 기술문의 폼의 구매일자). 대여 폼은 오늘부터 앞날을 고른다. 연도·월을 바꿔 이미
+// 고른 월·일이 범위에 맞지 않으면 그 칸만 비운다. 세 칸이 다 차면 'YYYY-MM-DD', 아니면 ''를 알린다.
 
 // 연도 목록 — 올해부터 몇 년 전까지
 const YEARS_BACK = 10
@@ -180,35 +181,47 @@ const parse = (value: string): Parts => {
   return match ? { y: Number(match[1]), m: Number(match[2]), d: Number(match[3]) } : { y: null, m: null, d: null }
 }
 
-/** 구매일자 — 연도·월·일 드롭다운. labelledBy·describedBy는 칸 이름·안내(·오류) id */
+/** 날짜 — 연도·월·일 드롭다운. labelledBy·describedBy는 칸 이름·안내(·오류) id. min·max(YYYY-MM-DD)는 고를 수 있는
+ * 첫날·마지막 날(기본은 YEARS_BACK년 전 1월 1일 ~ 오늘), name은 드롭다운마다 읽어 주는 이름 앞말("구매" → "구매 연도"). 연도
+ * 목록은 기본(지난 날짜)이면 최근 해부터, 앞날을 고르는 범위면 올해부터 차례로 */
 export function DateSelect({
   value,
   onChange,
   invalid,
   labelledBy,
   describedBy,
+  min,
+  max,
+  name = '구매',
 }: {
   value: string
   onChange: (value: string) => void
   invalid?: boolean
   labelledBy: string
   describedBy?: string
+  min?: string
+  max?: string
+  name?: string
 }) {
   const [parts, setParts] = useState<Parts>(() => parse(value))
-  const now = new Date()
-  const thisYear = now.getFullYear()
-  const thisMonth = now.getMonth() + 1
-  const today = now.getDate()
+  const today = localDate()
+  const first = parse(min ?? `${new Date().getFullYear() - YEARS_BACK}-01-01`)
+  const last = parse(max ?? today)
+  const [minY, minM, minD] = [first.y ?? 1900, first.m ?? 1, first.d ?? 1]
+  const [maxY, maxM, maxD] = [last.y ?? 2100, last.m ?? 12, last.d ?? 31]
+  const future = (min ?? '') >= today
 
-  // 고를 수 있는 마지막 월·일 — 올해·이번 달이면 오늘까지
-  const lastMonth = (y: number | null) => (y === thisYear ? thisMonth : 12)
+  // 고를 수 있는 첫·마지막 월·일 — 범위의 첫 해·첫 달, 마지막 해·마지막 달이면 그날까지
+  const firstMonth = (y: number | null) => (y === minY ? minM : 1)
+  const lastMonth = (y: number | null) => (y === maxY ? maxM : 12)
+  const firstDay = (y: number | null, m: number | null) => (y === minY && m === minM ? minD : 1)
   const lastDay = (y: number | null, m: number | null) =>
-    y && m ? (y === thisYear && m === thisMonth ? today : daysIn(y, m)) : 31
+    y && m ? (y === maxY && m === maxM ? maxD : daysIn(y, m)) : 31
 
   const update = (next: Parts) => {
     // 바꾼 연도·월에 맞지 않는 월·일은 비운다
-    const m = next.m && next.m > lastMonth(next.y) ? null : next.m
-    const d = next.d && next.d > lastDay(next.y, m) ? null : next.d
+    const m = next.m && (next.m < firstMonth(next.y) || next.m > lastMonth(next.y)) ? null : next.m
+    const d = next.d && (next.d < firstDay(next.y, m) || next.d > lastDay(next.y, m)) ? null : next.d
     const fixed = { y: next.y, m, d }
     setParts(fixed)
     onChange(fixed.y && fixed.m && fixed.d ? `${fixed.y}-${pad(fixed.m)}-${pad(fixed.d)}` : '')
@@ -217,26 +230,29 @@ export function DateSelect({
   return (
     <div className="tech-form__date-row" role="group" aria-labelledby={labelledBy} aria-describedby={describedBy}>
       <Dropdown
-        label="구매 연도"
+        label={`${name} 연도`}
         placeholder="연도"
         value={parts.y}
-        options={range(thisYear, thisYear - YEARS_BACK).map((y) => ({ value: y, label: `${y}년` }))}
+        options={(future ? range(minY, maxY) : range(maxY, minY)).map((y) => ({ value: y, label: `${y}년` }))}
         onChange={(y) => update({ ...parts, y })}
         invalid={invalid && !parts.y}
       />
       <Dropdown
-        label="구매 월"
+        label={`${name} 월`}
         placeholder="월"
         value={parts.m}
-        options={range(1, lastMonth(parts.y)).map((m) => ({ value: m, label: `${m}월` }))}
+        options={range(firstMonth(parts.y), lastMonth(parts.y)).map((m) => ({ value: m, label: `${m}월` }))}
         onChange={(m) => update({ ...parts, m })}
         invalid={invalid && !parts.m}
       />
       <Dropdown
-        label="구매 일"
+        label={`${name} 일`}
         placeholder="일"
         value={parts.d}
-        options={range(1, lastDay(parts.y, parts.m)).map((d) => ({ value: d, label: `${d}일` }))}
+        options={range(firstDay(parts.y, parts.m), lastDay(parts.y, parts.m)).map((d) => ({
+          value: d,
+          label: `${d}일`,
+        }))}
         onChange={(d) => update({ ...parts, d })}
         invalid={invalid && !parts.d}
       />

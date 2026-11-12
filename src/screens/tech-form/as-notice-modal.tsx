@@ -27,7 +27,7 @@ export function AsNoticeModal({ onConfirm, onClose }: { onConfirm: () => void; o
           <strong>기기 본품 + 어댑터(전원선)</strong>까지 보내주셔야 합니다.
         </li>
         <li>
-          A/S는 제품 수령 후로부터 약 <strong>2주</strong>의 시간이 소요됩니다.
+          A/S는 제품 상태, 부품 수급 및 점검 내용에 따라 <strong>2주 이상</strong> 소요될 수 있습니다.
         </li>
         <li>
           제품 구매일로부터 <strong>최대 1년 이내의 경우 무상A/S</strong>가 지원됩니다.
