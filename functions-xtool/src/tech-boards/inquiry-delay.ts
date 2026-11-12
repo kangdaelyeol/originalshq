@@ -10,6 +10,7 @@ import {
   timeTracking,
 } from './inquiry-delay-due'
 import { getInquiryNotify } from './inquiry-notify'
+import { ApnsCredentials, pushInquiryDelay } from './push'
 import { TechItemDoc } from './types'
 
 const NOTICES = 'techNotices'
@@ -20,8 +21,8 @@ const MONDAY_ITEM_URL =
   'https://cyankorea-company.monday.com/boards/5030892209/pulses'
 
 // 아톡문의 10분 지연 알림 — 상담 상태가 "신규 문의"인 채로 시간추적이 10분을 넘으면
-// 기술팀 채팅방(새 문의 알림과 같은 방)에 한 번 알린다. 옛 Lightsail
-// notify_overtime(5분마다 보드 전체를 Monday에서 읽음)을 대신한다.
+// 기술팀 채팅방(새 문의 알림과 같은 방)과 앱 알림을 켠 폰(push.ts)에 한 번 알린다.
+// 옛 Lightsail notify_overtime(5분마다 보드 전체를 Monday에서 읽음)을 대신한다.
 //
 // 비용: 보드 전체를 보지 않는다. 항목을 캐시에 쓸 때(webhook·동기화 — items.ts)
 // "10분을 넘는 시각"(delayDueAt)을 같이 적고, 1분마다 도는 점검은 그 시각이 지난
@@ -29,8 +30,9 @@ const MONDAY_ITEM_URL =
 // 그때 미리 계산할 수 있다. 같은 값이면 같은 시각이 나오게 계산해 동기화가 다시
 // 쓰지 않게 한다(멈춘 채 10분을 넘었으면 1 — 이미 지난 시각).
 //
-// 한 번만: 보내기 전에 techNotices/{항목}-delay를 먼저 만든다(있으면 다른 점검이
-// 보냈다). 보낸 뒤 예정 시각을 비운다. 영업시간(평일 9~17시, 공휴일 빼고)에만 —
+// 한 번만: 보내기 전에 techNotices/{항목}-delay(웍스)·{항목}-delay-push(앱)를 먼저
+// 만든다(있으면 다른 점검이 보냈다). 둘 다 보낸 뒤 예정 시각을 비운다 — 하나가
+// 실패하면 남겨 다음 점검에 그것만 다시 보낸다. 영업시간(평일 9~17시, 공휴일 빼고)에만 —
 // 밤·주말에 넘긴 건은 다음 영업 시간 첫 점검에 간다. 켜고 끄기·공휴일은 관리 화면
 // (techMeta/worksNotify의 inquiry.delayEnabled·holidays).
 
@@ -119,8 +121,9 @@ export async function checkInquiryDelays(
   db: Firestore,
   columns: Array<{ id: string; title: string; type: string }>,
   groupTitleOf: (groupId: string | null) => string | null,
-  now = Date.now(),
+  options: { apns?: ApnsCredentials; now?: number } = {},
 ): Promise<DelayCheckResult> {
+  const now = options.now ?? Date.now()
   const result: DelayCheckResult = {
     skipped: null,
     due: 0,
@@ -128,8 +131,12 @@ export async function checkInquiryDelays(
     cleared: 0,
     errors: 0,
   }
+  // 웍스(채팅방이 있을 때)와 앱 푸시(APNs 비밀 값이 있을 때)를 같은 스위치·영업시간으로 —
+  // 켤 때 이미 넘은 건을 보낸 것으로 기록하는 일(baseline)이 둘 다를 막아 옛 건이 몰려 가지 않는다.
   const settings = await getInquiryNotify(db)
-  if (!settings.delayEnabled || !settings.channelId) {
+  const channelId = settings.delayEnabled ? settings.channelId : null
+  const apns = settings.delayEnabled ? options.apns : undefined
+  if (!channelId && !apns) {
     result.skipped = '꺼짐'
     return result
   }
@@ -158,36 +165,75 @@ export async function checkInquiryDelays(
       await clear()
       continue
     }
-    const notice = db.collection(NOTICES).doc(`${doc.itemId}-delay`)
-    try {
-      await notice.create({
-        kind: 'delay',
-        at: now,
-        channelId: settings.channelId,
-      })
-    } catch {
-      // 이미 보냈다(또는 켤 때 이미 넘은 건으로 기록했다).
-      await clear()
-      continue
-    }
-    try {
-      const timer = inquiryColumns(columns).timerId
-      const t = timer ? timeTracking(doc.values[timer]) : null
-      const elapsed = t ? elapsedSeconds(t, now) : DELAY_SECONDS
-      const status = statusId ? (doc.values[statusId]?.text ?? '') : ''
-      await sendChannelText(
-        settings.channelId,
+    const timer = inquiryColumns(columns).timerId
+    const t = timer ? timeTracking(doc.values[timer]) : null
+    const elapsed = t ? elapsedSeconds(t, now) : DELAY_SECONDS
+    const status = statusId ? (doc.values[statusId]?.text ?? '') : ''
+    const record = doc.record as { assignee?: string | null }
+    // 웍스·앱 푸시는 따로 한 번씩(각자 기록을 먼저 만든다) — 하나가 실패하면 예정 시각을
+    // 남겨 다음 점검에 그것만 다시 보낸다(보낸 쪽은 기록이 있어 건너뛴다).
+    const works = () =>
+      sendChannelText(
+        channelId as string,
         delayMessage(doc, columns, elapsed, status),
       )
-      result.sent += 1
-      await clear()
-    } catch (error) {
+    const push = () =>
+      pushInquiryDelay(db, apns as ApnsCredentials, doc.itemId, {
+        name: doc.name,
+        assignee: record.assignee ?? '',
+        elapsed: `${Math.floor(elapsed / 60)}분`,
+        status,
+      })
+    const outcomes = await Promise.all([
+      channelId ?
+        sendOnce(db, `${doc.itemId}-delay`, {
+          kind: 'delay',
+          at: now,
+          channelId,
+        }, works) :
+        null,
+      apns ?
+        sendOnce(db, `${doc.itemId}-delay-push`, {
+          kind: 'delay-push',
+          at: now,
+        }, push) :
+        null,
+    ])
+    if (outcomes.includes('sent')) result.sent += 1
+    const failed = outcomes.filter((o) => o instanceof Error)
+    if (failed.length > 0) {
       result.errors += 1
-      await notice.delete().catch(() => undefined)
-      logger.error(`아톡문의 지연 알림 실패(${doc.itemId}):`, error)
+      failed.forEach((error) =>
+        logger.error(`아톡문의 지연 알림 실패(${doc.itemId}):`, error),
+      )
+    } else {
+      await clear()
     }
   }
   return result
+}
+
+/** 기록(techNotices/{id})을 먼저 만들고 보낸다 — 이미 있으면 'done', 보냈으면 'sent', 실패하면
+ * 기록을 지우고 그 오류(다음 점검에 다시 보낸다) */
+async function sendOnce(
+  db: Firestore,
+  id: string,
+  record: Record<string, unknown>,
+  send: () => Promise<unknown>,
+): Promise<'sent' | 'done' | Error> {
+  const notice = db.collection(NOTICES).doc(id)
+  try {
+    await notice.create(record)
+  } catch {
+    return 'done'
+  }
+  try {
+    await send()
+    return 'sent'
+  } catch (error) {
+    await notice.delete().catch(() => undefined)
+    return error instanceof Error ? error : new Error(String(error))
+  }
 }
 
 /**
@@ -211,10 +257,14 @@ export async function baselineInquiryDelays(
     const group = groupTitleOf(doc.groupId)
     const dueAt = inquiryDelayDue(columns, doc.values, group)
     if (dueAt === null || dueAt > now) continue
-    await db
-      .collection(NOTICES)
-      .doc(`${item.id}-delay`)
-      .set({ kind: 'delay', at: now, baseline: true }, { merge: true })
+    await Promise.all(
+      ['delay', 'delay-push'].map((kind) =>
+        db
+          .collection(NOTICES)
+          .doc(`${item.id}-${kind}`)
+          .set({ kind, at: now, baseline: true }, { merge: true }),
+      ),
+    )
     await item.ref.update({ delayDueAt: null })
     count += 1
   }

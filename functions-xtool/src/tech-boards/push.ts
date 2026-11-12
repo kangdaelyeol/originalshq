@@ -425,6 +425,53 @@ export async function pushNewInquiry(
   }
 }
 
+/** 아톡문의 10분 지연 알림(inquiry-delay.ts가 부른다) — 앱 알림을 켠 기기 전부에. 웍스 지연 알림과 같은 때
+ * (관리 화면 "10분 지연 알림"이 켜져 있고 평일 9~17시)에 보낸다. "내가 맡기" 단추는 새 문의 알림과 같다 */
+export interface DelayAlertInfo {
+  name: string
+  /** 담당자(엑스툴) — 없으면 빈 글자 */
+  assignee: string
+  /** "12분"처럼 */
+  elapsed: string
+  status: string
+}
+
+/** 보낸 기기 수 — 받을 기기가 없으면 0(실패 아님) */
+export async function pushInquiryDelay(
+  db: Firestore,
+  creds: ApnsCredentials,
+  itemId: string,
+  info: DelayAlertInfo,
+): Promise<number> {
+  const devices = await activeDevices(db)
+  if (devices.length === 0) return 0
+  const alert = {
+    title: `신규 문의 지연 · ${clip(info.name.trim() || '이름 없음', 40)}`,
+    subtitle: [
+      `${info.elapsed} 경과`,
+      `담당 ${info.assignee || '미배정'}`,
+      info.status,
+    ]
+      .filter(Boolean)
+      .join(' · '),
+    body: '10분을 넘겼습니다! 담당자님 확인해주세요!!',
+  }
+  return sendToDevices(db, creds, devices, (device) => ({
+    token: device.token,
+    collapseId: `delay-${itemId}`,
+    payload: {
+      'aps': {
+        'alert': alert,
+        'sound': 'default',
+        'category': CATEGORY,
+        'thread-id': 'techInquiry',
+      },
+      'itemId': itemId,
+      'boardKey': 'techInquiry',
+    },
+  }))
+}
+
 /** 설정 화면 "테스트 알림" — 부른 사람의 기기에만 예시 알림(단추는 누르면 "테스트예요"만 알린다) */
 export async function pushTest(
   db: Firestore,

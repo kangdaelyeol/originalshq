@@ -9,7 +9,8 @@ import { pushToast } from '@xtool-core/tech-save-queue';
 import { XtoolPush, type PushDevice } from '../../modules/xtool-push/src';
 import { XTOOL_FIREBASE_CONFIG } from '../firebase-config';
 
-// 신규 문의 알림(앱 푸시) — 아톡문의에 새 문의가 오면 이 폰에 알림, 알림을 길게 눌러 "내가 맡기"(담당자 = 나, 상태 =
+// 신규 문의 알림(앱 푸시) — 아톡문의에 새 문의가 오면, 그리고 신규 문의인 채 10분을 넘기면(관리 화면 지연 알림 스위치·
+// 평일 9~17시 — inquiry-delay.ts) 이 폰에 알림, 알림을 길게 눌러 "내가 맡기"(담당자 = 나, 상태 =
 // 1차 안내 — 서버 functions-xtool tech-boards/push.ts). 기술팀 전원이 받고 각자 설정에서 끈다(이 기기에 남김, 처음엔 켬).
 // - 로그인 뒤(startPush): 켜 두었으면 권한을 묻고(처음 한 번) 이 기기를 등록한다 — 앱을 켤 때마다 다시 등록해
 //   토큰이 바뀌어도 맞춘다.
@@ -130,7 +131,7 @@ function describe(s: PushState): string {
     case 'working':
       return s.enabled ? '알림을 켜는 중…' : '알림을 끄는 중…';
     case 'on':
-      return '새 문의가 오면 알려요 · 알림을 길게 누르면 "내가 맡기"(담당자 나 · 1차 안내)';
+      return '새 문의와 10분 지연(평일 9~17시)을 알려요 · 알림을 길게 누르면 "내가 맡기"(담당자 나 · 1차 안내)';
     case 'denied':
       return 'iPhone 설정에서 이 앱의 알림이 꺼져 있어요';
     case 'error':

@@ -704,7 +704,8 @@ export const techInquiryNotify = onCall(
 )
 
 // ────────────────────────────────
-// techInquiryDelayCheck — 아톡문의 10분 지연 알림 점검(1분마다, 평일 9~17시).
+// techInquiryDelayCheck — 아톡문의 10분 지연 알림 점검(1분마다, 평일 9~17시) — 웍스
+// 채팅방과 앱 알림을 켠 폰(tech-boards/push.ts).
 // 예정 시각(delayDueAt)이 지난 항목만 읽는다 — 대개 0건이라 읽기 1회
 // (tech-boards/inquiry-delay.ts). 켜고 끄기·공휴일은 관리 화면.
 // ────────────────────────────────
@@ -712,7 +713,7 @@ export const techInquiryDelayCheck = onSchedule(
   {
     schedule: '* 9-16 * * 1-5',
     timeZone: 'Asia/Seoul',
-    secrets: WORKS_SECRETS,
+    secrets: [...WORKS_SECRETS, apnsKey, apnsKeyId],
     timeoutSeconds: 60,
     retryCount: 0,
   },
@@ -722,7 +723,9 @@ export const techInquiryDelayCheck = onSchedule(
       if (!meta) return
       const groupTitle = (id: string | null) =>
         meta.groups.find((g) => g.id === id)?.title ?? null
-      const result = await checkInquiryDelays(db, meta.columns, groupTitle)
+      const result = await checkInquiryDelays(db, meta.columns, groupTitle, {
+        apns: apnsCredentials(),
+      })
       if (result.sent || result.errors) {
         logger.info('아톡문의 지연 알림:', result)
       }
