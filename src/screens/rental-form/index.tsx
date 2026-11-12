@@ -258,7 +258,7 @@ export default function RentalFormScreen() {
     else if (startDate < localDate()) next.period = '대여 시작일자는 오늘 이후로 선택해 주세요.'
     else if (!endDate) next.period = '대여 종료일자를 선택해 주세요.'
     else if (endDate < startDate) next.period = '대여 종료일자는 시작일자 이후로 선택해 주세요.'
-    if (!agreed) next.agree = '계약 내용을 확인하고 동의란에 체크해 주세요.'
+    if (!agreed) next.agree = '계약서를 열어 아래 동의란에 체크해 주세요.'
     setDetailErrors(next)
     if (Object.keys(next).length === 0) go('review')
   }
@@ -304,11 +304,10 @@ export default function RentalFormScreen() {
   const total = fee + deposit
   const totalText = days ? `${won(total)} (대여료 ${won(fee)}${deposit ? ` + 보증금 ${won(deposit)}` : ''})` : ''
 
-  // 계약서 창에서 "동의합니다" — 동의란을 체크하고 닫는다
-  const agreeContract = () => {
-    setAgreed(true)
-    clearDetail('agree')
-    setContractOpen(false)
+  // 계약 동의 — 계약서 창 아래 동의란에서만 바꾼다
+  const changeAgreed = (value: boolean) => {
+    setAgreed(value)
+    if (value) clearDetail('agree')
   }
 
   // 고른 순서가 아니라 목록 순서로 — 기타는 적은 제품명으로
@@ -642,7 +641,7 @@ export default function RentalFormScreen() {
                   <Required />
                 </p>
                 <p className="tech-form__hint" id={`${id}-agree-hint`}>
-                  ㈜시안인터내셔널과 맺는 물품 대여 계약입니다. 계약서를 확인한 뒤 동의해 주세요.
+                  ㈜시안인터내셔널과 맺는 물품 대여 계약입니다. 계약서를 확인한 뒤 계약서 아래 동의란에 체크해 주세요.
                 </p>
                 <button
                   type="button"
@@ -654,23 +653,20 @@ export default function RentalFormScreen() {
                   물품 대여 계약서 보기
                   <ChevronRight size={17} aria-hidden />
                 </button>
-                <label className={agreed ? 'rental-form__agree is-on' : 'rental-form__agree'}>
-                  <input
-                    type="checkbox"
-                    checked={agreed}
-                    aria-required
-                    aria-invalid={!!detailErrors.agree}
-                    aria-describedby={describedBy(`${id}-agree-hint`, detailErrors.agree && `${id}-agree-error`)}
-                    onChange={(e) => {
-                      setAgreed(e.target.checked)
-                      clearDetail('agree')
-                    }}
-                  />
+                {/* 동의 상태 — 여기서는 체크하지 않고, 누르면 계약서 창을 연다(체크는 계약서 창 아래에서만) */}
+                <button
+                  type="button"
+                  className={agreed ? 'rental-form__agree is-on' : 'rental-form__agree'}
+                  aria-haspopup="dialog"
+                  aria-invalid={!!detailErrors.agree}
+                  aria-describedby={describedBy(`${id}-agree-hint`, detailErrors.agree && `${id}-agree-error`)}
+                  onClick={() => setContractOpen(true)}
+                >
                   <span className="rental-form__agree-box" aria-hidden>
                     {agreed && <Check size={16} strokeWidth={3} />}
                   </span>
                   위 계약 내용을 모두 확인하였으며, 이에 동의합니다.
-                </label>
+                </button>
                 {detailErrors.agree && (
                   <div className="tech-form__under">
                     <p className="tech-form__error" id={`${id}-agree-error`} role="alert">
@@ -767,7 +763,8 @@ export default function RentalFormScreen() {
               deposit: depositText,
               total: totalText,
             }}
-            onAgree={agreeContract}
+            agreed={agreed}
+            onAgreeChange={changeAgreed}
             onClose={closeContract}
           />
         )}

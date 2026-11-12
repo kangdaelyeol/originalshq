@@ -81,6 +81,30 @@
     }
   }
 
+  // 상세 화면의 동의 상태 줄 — 단추(누르면 계약서 창)라 글자 모양을 맞춘다
+  button.rental-form__agree {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+
+    &:focus-visible {
+      outline: 3px solid rgba(47, 111, 228, 0.35);
+      outline-offset: 2px;
+    }
+  }
+
+  // 계약서 창 아래 — 동의란 위, 확인 단추 아래
+  .rental-form__contract-foot {
+    display: grid;
+    gap: 10px;
+
+    .rental-form__agree {
+      margin-top: 0;
+    }
+  }
+
   .rental-form__agree-box {
     display: grid;
     flex: none;

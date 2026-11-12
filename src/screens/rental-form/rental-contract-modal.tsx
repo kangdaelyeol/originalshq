@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import { FormSheet } from '@/screens/tech-form/policy-modal'
 
 // 물품 대여 계약서 — 기술지원팀이 준 계약서 글을 그대로 옮겼다(바뀌면 그대로 고친다). 빈칸(성함·연락처·배송 주소·대여
@@ -27,16 +28,18 @@ function Blank({ value }: { value: string }) {
 }
 
 /**
- * 계약서 창 — 상세 화면의 "계약서 보기"로 연다. "동의합니다"를 누르면 동의 칸을 체크하고 닫는다(onAgree). 닫기(X)·Esc·
- * 바깥 누르기는 체크하지 않고 닫는다(onClose).
+ * 계약서 창 — 상세 화면의 "계약서 보기"나 동의 줄로 연다. 계약 동의는 이 창 아래의 동의란에서만 체크한다(onAgreeChange —
+ * 상세 화면에서는 체크할 수 없다). "확인"·닫기(X)·Esc·바깥 누르기는 체크 상태를 그대로 두고 닫는다(onClose).
  */
 export function RentalContractModal({
   applicant,
-  onAgree,
+  agreed,
+  onAgreeChange,
   onClose,
 }: {
   applicant: ContractApplicant
-  onAgree: () => void
+  agreed: boolean
+  onAgreeChange: (agreed: boolean) => void
   onClose: () => void
 }) {
   return (
@@ -44,9 +47,18 @@ export function RentalContractModal({
       title="물품 대여 계약서"
       onClose={onClose}
       footer={
-        <button type="button" className="tech-form__button tech-form__button--block" onClick={onAgree}>
-          동의합니다
-        </button>
+        <div className="rental-form__contract-foot">
+          <label className={agreed ? 'rental-form__agree is-on' : 'rental-form__agree'}>
+            <input type="checkbox" checked={agreed} onChange={(e) => onAgreeChange(e.target.checked)} />
+            <span className="rental-form__agree-box" aria-hidden>
+              {agreed && <Check size={16} strokeWidth={3} />}
+            </span>
+            위 계약 내용을 모두 확인하였으며, 이에 동의합니다.
+          </label>
+          <button type="button" className="tech-form__button tech-form__button--block" onClick={onClose}>
+            확인
+          </button>
+        </div>
       }
     >
       <div className="tech-form__policy">
