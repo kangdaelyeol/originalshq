@@ -6,7 +6,7 @@
 // 앞자리: 1.0.0 리드가 서버에 저장되기 시작(08-19) · 2.0.0 검은 화면 개편(09-20) · 3.0.0 유리 디자인(10-29).
 // 업데이트 기록(LM_CHANGELOG)은 맨 위에 더한다. 직원이 읽는 글이라 화면에서 보이는 말로 쓴다.
 
-export const LM_VERSION = '3.12.0'
+export const LM_VERSION = '3.12.1'
 
 export type ChangeKind = 'new' | 'improved' | 'fixed'
 
@@ -20,6 +20,16 @@ export interface LmRelease {
 
 /** 업데이트 기록 — 최근 것부터 */
 export const LM_CHANGELOG: readonly LmRelease[] = [
+  {
+    version: '3.12.1',
+    date: '2026-11-13',
+    changes: [
+      {
+        kind: 'improved',
+        text: '다시 들어올 때 화면 파일을 다시 받지 않아 더 빨리 뜨고, 데이터를 부를 때 브라우저가 서버에 미리 묻는 왕복도 줄었어요',
+      },
+    ],
+  },
   {
     version: '3.12.0',
     date: '2026-11-13',

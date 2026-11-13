@@ -10,7 +10,11 @@ import { db } from './app'
 import { traceRun, attachServerTiming } from './cost-trace'
 import { Lead, ValidationResponse } from './types'
 
-const corsHandler = cors({ origin: true })
+// 사전 확인 요청(OPTIONS) 결과를 브라우저가 기억할 시간(초) — 로그인 토큰을 붙인 요청은
+// 보내기 전에 브라우저가 "보내도 되는지" 한 번 더 묻는다(전체 요청의 약 31%였다). 그 답을
+// 기억하게 해서 같은 주소로 다시 부를 때는 묻지 않게 한다. 브라우저마다 상한이 있다
+// (Chrome 2시간, Firefox 24시간, Safari 10분 — 더 길게 줘도 각자 상한까지만 쓴다).
+const corsHandler = cors({ origin: true, maxAge: 86_400 })
 
 type Method = 'GET' | 'POST'
 
