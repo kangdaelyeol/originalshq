@@ -14,6 +14,8 @@ Pod::Spec.new do |s|
   s.source       = { :git => "" }
 
   s.source_files = "ios/**/*.{h,m,mm,swift}"
+  # 아톡문의 알림음(sounds/make-sounds.py로 만든다) — 앱 번들 맨 위로 복사돼 서버가 보낸 이름(tech-new.caf 등)으로 울린다
+  s.resources    = "sounds/*.caf"
   s.swift_version = "5.9"
   s.frameworks   = "UserNotifications", "Security"
 

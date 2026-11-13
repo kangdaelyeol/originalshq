@@ -23,6 +23,8 @@ import { TechBoardMeta, TechItemDoc } from './types'
 //   (techNotices/{항목}-claim을 먼저 만든 쪽). 상태는 지금이 "신규 문의"일 때만 바꾼다 — 그룹
 //   이동·"1차 안내일"은 Monday가 보내는 변경 알림을 받아 보드 규칙(rules.ts)이 맞춘다.
 // - 비밀 값: APNS_KEY(Apple 개발자 사이트에서 만든 .p8 키 파일 내용), APNS_KEY_ID(그 키 ID).
+// - 눈에 띄게(2026-11-13): 시간 민감 알림(집중 모드·알림 요약을 지나 바로 뜬다), 신규·지연마다
+//   다른 알림음(앱 모듈 xtool-push/sounds — 소리 파일이 없는 옛 앱은 기본 소리), 제목 앞 표시.
 
 /** Apple 개발자 팀 ID — 앱 서명 팀(비밀 아님) */
 const APNS_TEAM_ID = 'UH6A8VQ5HY'
@@ -52,6 +54,29 @@ const CLAIM_LOCK_MS = 2 * 60 * 1000
 const STATUS_TITLE = '상담 상태'
 const STATUS_NEW = '신규 문의'
 const STATUS_FIRST = '1차 안내'
+
+/** 알림 종류마다 소리·제목 앞 표시 — 소리 파일은 앱 번들에 든 이름(xtool-push/sounds) */
+const ALERT_STYLE = {
+  new: { sound: 'tech-new.caf', mark: '🔔' },
+  delay: { sound: 'tech-delay.caf', mark: '🚨' },
+} as const
+type AlertKind = keyof typeof ALERT_STYLE
+
+interface AlertText {
+  title: string
+  subtitle?: string
+  body: string
+}
+
+/** 아톡문의 알림의 aps — 제목 앞 표시, 종류별 소리, 시간 민감(방해 금지·집중 모드에서도
+ * 뜬다, 앱에 권한이 없으면 보통 알림으로), "내가 맡기" 단추 묶음, 아톡문의끼리 묶기 */
+const inquiryAps = (kind: AlertKind, alert: AlertText) => ({
+  'alert': { ...alert, title: `${ALERT_STYLE[kind].mark} ${alert.title}` },
+  'sound': ALERT_STYLE[kind].sound,
+  'interruption-level': 'time-sensitive',
+  'category': CATEGORY,
+  'thread-id': 'techInquiry',
+})
 
 export interface ApnsCredentials {
   /** .p8 키 내용(PEM) */
@@ -353,7 +378,7 @@ const clip = (text: string, max: number) =>
   text.length > max ? `${text.slice(0, max - 1)}…` : text
 
 /** 알림 내용 — 제목 "신규 문의 · 고객명", 부제 기기·문의 종류, 본문 문의 내용(없으면 연락처) */
-function inquiryAlert(meta: TechBoardMeta, doc: TechItemDoc) {
+function inquiryAlert(meta: TechBoardMeta, doc: TechItemDoc): AlertText {
   const name = textOf(meta, doc, '고객명') || doc.name.trim() || '이름 없음'
   const subtitle = [textOf(meta, doc, '기기 종류'), textOf(meta, doc, '문의 종류')]
     .filter(Boolean)
@@ -378,12 +403,7 @@ const inquiryMessage =
       token: device.token,
       collapseId: `inquiry-${doc.itemId}`,
       payload: {
-        'aps': {
-          'alert': inquiryAlert(meta, doc),
-          'sound': 'default',
-          'category': CATEGORY,
-          'thread-id': 'techInquiry',
-        },
+        'aps': inquiryAps('new', inquiryAlert(meta, doc)),
         'itemId': doc.itemId,
         'boardKey': 'techInquiry',
       },
@@ -445,7 +465,7 @@ export async function pushInquiryDelay(
 ): Promise<number> {
   const devices = await activeDevices(db)
   if (devices.length === 0) return 0
-  const alert = {
+  const alert: AlertText = {
     title: `신규 문의 지연 · ${clip(info.name.trim() || '이름 없음', 40)}`,
     subtitle: [
       `${info.elapsed} 경과`,
@@ -460,12 +480,7 @@ export async function pushInquiryDelay(
     token: device.token,
     collapseId: `delay-${itemId}`,
     payload: {
-      'aps': {
-        'alert': alert,
-        'sound': 'default',
-        'category': CATEGORY,
-        'thread-id': 'techInquiry',
-      },
+      'aps': inquiryAps('delay', alert),
       'itemId': itemId,
       'boardKey': 'techInquiry',
     },
@@ -485,16 +500,12 @@ export async function pushTest(
   return sendToDevices(db, creds, devices, (device) => ({
     token: device.token,
     payload: {
-      'aps': {
-        'alert': {
-          title: '신규 문의 · 홍길동 (테스트)',
-          subtitle: 'F2 Ultra · 사용 방법',
-          body: '알림이 잘 오는지 확인하는 테스트예요. 길게 누르면 "내가 맡기" 단추가 보여요.',
-        },
-        'sound': 'default',
-        'category': CATEGORY,
-        'thread-id': 'techInquiry',
-      },
+      'aps': inquiryAps('new', {
+        title: '신규 문의 · 홍길동 (테스트)',
+        subtitle: 'F2 Ultra · 사용 방법',
+        body: '알림이 잘 오는지 확인하는 테스트예요. ' +
+          '길게 누르면 "내가 맡기" 단추가 보여요.',
+      }),
       'itemId': 'test',
       'boardKey': 'techInquiry',
     },
