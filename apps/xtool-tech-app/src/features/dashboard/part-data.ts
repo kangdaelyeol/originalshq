@@ -319,8 +319,8 @@ export function fileView(file: {
 /** 010-1234-5678 모양 — 번호가 없으면 null */
 export const phoneText = (phone: string | null | undefined): string | null => formatPhone(phone);
 
-/** 전화 걸기 — 첫 번호만(features/phone-call) */
-export { callPhone } from '../phone-call';
+/** 전화 걸기·복사 — 첫 번호만(features/phone-call). 출장업무는 누르면 복사(action 'copy') */
+export { callPhone, phoneActionLabel, pressPhone, type PhoneAction } from '../phone-call';
 
 // ── 아바타 (웹 Avatar — initialsOf·personColor) ─────────────────────────────────────────────────────────
 

@@ -3,6 +3,7 @@ import { byDateAsc, byDateDesc, inRange, periodRange, relativeDay, shortDate } f
 import { PERIOD_COMPARE } from '@xtool-core/period';
 import { isDone, splitNames } from '@xtool-core/tech-stage';
 import { SUBITEM_LABEL } from '@xtool-core/tech-subitems';
+import { phoneActionOf } from '../../phone-call';
 import { countBy } from '../part-data';
 import type { BoardRecord, DashboardBoardDef } from './types';
 import { dated, nameOf, pieces } from './util';
@@ -14,6 +15,8 @@ type R = BoardRecord<'fieldService'>;
 const assigneesOf = (r: R) => splitNames(r.assignee);
 const searchOf = (r: R) => [r.name, r.phone, r.type, r.region, r.address, r.notes, r.assignee].join(' ');
 const ITEMS_LABEL = SUBITEM_LABEL.fieldService ?? '설치 품목';
+// 번호를 누르면 복사(2026-11-13 — 출장업무만, features/phone-call)
+const PHONE_ACTION = phoneActionOf('fieldService');
 // 설치 품목 줄 — 이름(비고가 있으면 괄호로)과 오른쪽 수량. 상세 목록과 줄 단추 시트가 같이 쓴다
 const itemRows = (r: R) =>
   r.items.map((item, i) => ({
@@ -41,12 +44,12 @@ export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
     { key: 'assignee', header: '담당자', sortValue: r => assigneesOf(r)[0] },
     { key: 'stage', header: '단계', sortValue: r => r.stage },
   ],
-  // 카드 모양은 Monday 테마와 같게 — 단계 알약 없음(그룹으로 알 수 있고 상세에 있다), 이름 옆 전화 단추, 오른쪽 아래
-  // 접수일, "설치 품목 N개" 단추
+  // 카드 모양은 Monday 테마와 같게 — 단계 알약 없음(그룹으로 알 수 있고 상세에 있다), 이름 옆 전화 단추(누르면 복사),
+  // 오른쪽 아래 접수일, "설치 품목 N개" 단추
   row: (r, today) => ({
     id: r.itemId,
     title: nameOf(r.name),
-    phone: r.phone ? { number: r.phone, beside: true } : null,
+    phone: r.phone ? { number: r.phone, beside: true, action: PHONE_ACTION } : null,
     meta: pieces(r.type, r.region),
     corner: dated('접수', r.receivedAt, today),
     subitems: r.items.length > 0 ? { label: ITEMS_LABEL, count: r.items.length } : null,
@@ -103,7 +106,7 @@ export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
       },
       { key: 'received', label: '접수일', value: shortDate(r.receivedAt, today) },
       { key: 'assignee', label: '담당자', value: assigneesOf(r).join(', ') || null },
-      { key: 'phone', label: '연락처', value: null, phone: r.phone },
+      { key: 'phone', label: '연락처', value: null, phone: r.phone, phoneAction: PHONE_ACTION },
       { key: 'address', label: '주소', value: r.address },
     ],
     texts: [{ label: '비고', text: r.notes }],
@@ -118,5 +121,6 @@ export const fieldServiceDef: DashboardBoardDef<'fieldService'> = {
           ]
         : [],
   }),
-  subitems: r => (r.items.length > 0 ? { label: ITEMS_LABEL, items: itemRows(r) } : null),
+  // 줄 단추 시트 — 품목 위에 주소(누르면 복사, 2026-11-13)
+  subitems: r => (r.items.length > 0 ? { label: ITEMS_LABEL, items: itemRows(r), address: r.address } : null),
 };

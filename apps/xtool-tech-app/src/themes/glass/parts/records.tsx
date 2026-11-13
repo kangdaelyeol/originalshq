@@ -1,6 +1,12 @@
 import { Pressable, Text as RNText, View } from 'react-native';
 import { ChevronRight, MessageCircle, MessageCirclePlus, Phone } from 'lucide-react-native';
-import { callPhone, phoneText, upcomingRow } from '../../../features/dashboard/part-data';
+import {
+  phoneActionLabel,
+  phoneText,
+  pressPhone,
+  upcomingRow,
+  type PhoneAction,
+} from '../../../features/dashboard/part-data';
 import type { MiniListProps, RecordListProps, RecordRowProps, UpcomingListProps } from '../../dashboard/parts';
 import { alpha, FAMILY, font, RADIUS, RAISED, T, TABULAR, WELL } from '../theme';
 import { useGlass, useStyles, type GlassState } from '../theme-context';
@@ -11,17 +17,20 @@ import { SpinIcon } from './text';
 // 보드 목록 — 웹 RecordTable(유리 판 + 표)을 폰에서는 판 안 줄 목록으로. 표 칸(이름·사람·날짜·단계·담당자)을 한 줄에
 // 모으고, 줄 사이는 웹 표처럼 가는 선(--line). 일정(UpcomingList)·짧은 목록(MiniList)은 웹 그대로.
 
-/** 전화 단추 — 안내색 알약(전화 아이콘 + 010-1234-5678). 누르면 전화, 고르는 중에는 누르지 않는다(줄 누름이 고르기로) */
-function PhoneButton({ number, disabled }: { number: string; disabled?: boolean }) {
+/**
+ * 전화 단추 — 안내색 알약(전화 아이콘 + 010-1234-5678). 누르면 전화(action 'copy'면 복사), 고르는 중에는 누르지 않는다(줄
+ * 누름이 고르기로)
+ */
+function PhoneButton({ number, action, disabled }: { number: string; action?: PhoneAction; disabled?: boolean }) {
   const s = useStyles(phoneStyles);
   const text = phoneText(number) ?? number;
   return (
     <Pressable
-      onPress={() => callPhone(number)}
+      onPress={() => pressPhone(number, action)}
       disabled={disabled}
       hitSlop={6}
       accessibilityRole="button"
-      accessibilityLabel={`${text}로 전화`}
+      accessibilityLabel={phoneActionLabel(text, action)}
       style={({ pressed }) => [s.button, pressed && s.pressed]}
     >
       <Phone size={11} strokeWidth={2.2} color={T.info} />
@@ -98,7 +107,7 @@ export function RecordRow({
           </RNText>
           {row.phone?.beside ? (
             <View style={s.phoneBeside}>
-              <PhoneButton number={row.phone.number} disabled={selecting} />
+              <PhoneButton number={row.phone.number} action={row.phone.action} disabled={selecting} />
             </View>
           ) : null}
           {row.updates !== null && row.updates !== undefined ? (
@@ -126,7 +135,7 @@ export function RecordRow({
         ) : null}
         {row.phone && !row.phone.beside ? (
           <View style={s.phoneBelow}>
-            <PhoneButton number={row.phone.number} disabled={selecting} />
+            <PhoneButton number={row.phone.number} action={row.phone.action} disabled={selecting} />
           </View>
         ) : null}
         {meta ? (

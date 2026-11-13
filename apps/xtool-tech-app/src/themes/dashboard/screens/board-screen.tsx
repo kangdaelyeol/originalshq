@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
 import { View } from 'react-native';
-import { ArrowRight, ArrowUpDown, ChevronRight, CloudOff, Plus, Trash2 } from 'lucide-react-native';
+import { ArrowRight, ArrowUpDown, ChevronRight, CloudOff, MapPin, Plus, Trash2 } from 'lucide-react-native';
 import { koreaToday } from '@xtool-core/dates';
 import { useTechBoard } from '@xtool-core/tech-boards-store';
+import { copyText } from '../../../features/copy-text';
 import { useDashboardBoard, type DashboardBoardModel } from '../../../features/dashboard/board-screen';
 import { DELETE_CONFIRM_MESSAGE } from '../../../features/dashboard/record-rows';
 import type { RootScreenProps } from '../../../navigation/types';
@@ -15,7 +16,7 @@ import { PickSheet } from '../pick-sheet';
 
 // 보드 — 웹 board-page(대시보드 짜임): 기간 → 숫자 카드 네 장 → 목록(진행 상태·검색·담당자·정렬·새로 만들기·더 보기,
 // 길게 눌러 고르기 → 이동·삭제) → 옆 판 두 장(폰에서는 아래로). 줄을 누르면 상세 화면, 말풍선은 업데이트 시트, "설치 품목 N개"
-// 단추는 설치 품목 시트. 불러오는 중·오류·동기화 안 됨도
+// 단추는 설치 품목 시트(품목 위 주소는 누르면 복사). 불러오는 중·오류·동기화 안 됨도
 // 웹처럼. 보드마다 다른 것(칸·옆 판·상세)은 features/dashboard/boards의 정의가 정한다.
 
 type Picker = 'people' | 'sort' | null;
@@ -235,6 +236,14 @@ export function BoardScreen({ route, navigation }: RootScreenProps<'Board'>) {
           />
         }
       >
+        {subitems?.address ? (
+          <P.OptionRow
+            icon={MapPin}
+            label={subitems.address}
+            description="누르면 주소를 복사해요"
+            onPress={() => copyText(subitems.address, '주소를 복사했어요')}
+          />
+        ) : null}
         {subitems ? (
           <P.DetailList title={`${subitems.label} ${subitems.items.length}개`} items={subitems.items} />
         ) : null}

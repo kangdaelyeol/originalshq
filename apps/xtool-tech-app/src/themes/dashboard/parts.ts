@@ -6,6 +6,7 @@ import type { KpiTint, KpiTone } from '@xtool-core/board-kpis';
 import type { TeamMemberStatus } from '@xtool-core/team-status';
 import type { TechBoardKey } from '@xtool-core/tech-boards';
 import type { KingDef, KingPeriod, KingResult, KingRow } from '@xtool-core/tech-kings';
+import type { PhoneAction } from '../../features/phone-call';
 
 /*
  * ── 바뀐 기록 ────────────────────────────────────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ import type { KingDef, KingPeriod, KingResult, KingRow } from '@xtool-core/tech-
  *   `onPressSubitems?`, RecordListProps에 `onPressSubitems?(id)`. 단추(전화·하위 아이템)는 고르는 중에는 누르지 않게(줄
  *   누름과 같게 고르기로) 그린다. 출장업무는 stage·subtitle을 넣지 않고, 전화번호를 보이던 보드(AS·아톡문의·AS 신청서·
  *   대여품)는 subtitle·meta의 번호 대신 phone으로 넣는다.
+ * 1.4 (2026-11-13) — 번호를 누르면 복사(출장업무): RecordRowData `phone`에 `action?`, PhoneLinkProps에 `action?`
+ *   ('call' | 'copy', 없으면 전화). 누름은 part-data pressPhone(number, action), 화면 읽기 이름은 phoneActionLabel로.
  * ─────────────────────────────────────────────────────────────────────────────────────────────────────────
  */
 
@@ -443,9 +446,10 @@ export interface RecordRowData {
   subtitle?: string | null;
   /**
    * 전화 단추 — number는 칸의 번호 그대로(보일 때 part-data phoneText로 다듬고, 누르면 callPhone). beside면 이름 오른쪽(이름이
-   * 길면 이름이 먼저 줄어든다), 아니면 이름 아래 한 줄(subtitle 다음). 고르는 중에는 누르지 않는다(1.3)
+   * 길면 이름이 먼저 줄어든다), 아니면 이름 아래 한 줄(subtitle 다음). 고르는 중에는 누르지 않는다(1.3).
+   * action이 'copy'면 누를 때 전화 대신 번호를 복사한다(출장업무, part-data pressPhone)(1.4)
    */
-  phone?: { number: string; beside?: boolean } | null;
+  phone?: { number: string; beside?: boolean; action?: PhoneAction } | null;
   /** 오른쪽 아래 작은 글('접수 11/9')(1.3) */
   corner?: string | null;
   /** 하위 아이템 단추 "설치 품목 3개 ›" — 누르면 onPressSubitems(1.3) */
@@ -544,6 +548,8 @@ export interface AssigneesProps extends Outer {
 /** 전화 걸기(웹 PhoneLink) — 010-1234-5678 모양(part-data phoneText), 누르면 전화(part-data callPhone). 없으면 안 그림 */
 export interface PhoneLinkProps extends Outer {
   phone: string | null;
+  /** 'copy'면 누를 때 전화 대신 번호 복사(출장업무, part-data pressPhone) — 없으면 전화(1.4) */
+  action?: PhoneAction;
 }
 
 /** 다가오는 일정 한 줄(웹 UpcomingItem) */

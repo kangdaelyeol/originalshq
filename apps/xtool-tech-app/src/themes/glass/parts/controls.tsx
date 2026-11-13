@@ -22,7 +22,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Check, ChevronDown, Phone, Search, X } from 'lucide-react-native';
 import { stageLabel, stageTone } from '@xtool-core/tech-stage';
-import { avatarView, callPhone, phoneText } from '../../../features/dashboard/part-data';
+import { avatarView, phoneActionLabel, phoneText, pressPhone } from '../../../features/dashboard/part-data';
 import type {
   AssigneesProps,
   AvatarProps,
@@ -794,15 +794,15 @@ const assignees = StyleSheet.create({
   muted: { ...font(12.5), color: T.text3 },
 });
 
-/** 전화 걸기(웹 PhoneLink — 안내색 링크) */
-export function PhoneLink({ phone, style }: PhoneLinkProps) {
+/** 전화 걸기(웹 PhoneLink — 안내색 링크). action 'copy'면 누를 때 복사 */
+export function PhoneLink({ phone, action, style }: PhoneLinkProps) {
   const text = phoneText(phone);
   if (!text) return null;
   return (
     <Pressable
-      onPress={() => callPhone(phone)}
-      accessibilityRole="link"
-      accessibilityLabel={`${text}로 전화`}
+      onPress={() => pressPhone(phone, action)}
+      accessibilityRole={action === 'copy' ? 'button' : 'link'}
+      accessibilityLabel={phoneActionLabel(text, action)}
       hitSlop={6}
       style={({ pressed }) => [
         { flexDirection: 'row', alignItems: 'center', gap: 5, opacity: pressed ? 0.7 : 1 },

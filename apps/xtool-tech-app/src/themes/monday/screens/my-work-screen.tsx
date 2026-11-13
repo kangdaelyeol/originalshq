@@ -11,6 +11,7 @@ import { BOARD_ICONS } from '../../../features/board-icons';
 import { cardColumns } from '../../../features/card-columns';
 import { DELETE_CONFIRM_MESSAGE } from '../../../features/dashboard/record-rows';
 import { useMyWorkView, useWorkBox, WORK_STATES } from '../../../features/my-work-view';
+import { phoneActionOf } from '../../../features/phone-call';
 import { useWorkSelection, type WorkSelection } from '../../../features/work-selection';
 import { Avatar, MText } from '../parts/basics';
 import { GroupHeader, ItemCard } from '../parts/board-parts';
@@ -284,6 +285,7 @@ function WorkBox({
                       columns={onCard}
                       values={item.values}
                       subitemCount={item.subitems?.length}
+                      phoneAction={phoneActionOf(boardKey)}
                       updates={updates}
                       onUpdates={() => onOpenUpdates({ boardKey, itemId: id, name, count: updates })}
                       picked={selection.has(boardKey, id)}

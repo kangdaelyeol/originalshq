@@ -8,7 +8,9 @@ import {
   ChevronsUpDown,
   CircleUserRound,
   CloudOff,
+  Copy,
   Filter,
+  MapPin,
   Search,
   X,
 } from 'lucide-react-native';
@@ -21,7 +23,9 @@ import type { BoardView, BoardViewSpec } from '@xtool-core/tech-views';
 import { numberSum, type GroupBlock } from '../../../features/board-model';
 import { useBoardView } from '../../../features/board-view';
 import { cardLayout, type CardLayout } from '../../../features/card-columns';
-import { subitemLines } from '../../../features/subitem-lines';
+import { copyText } from '../../../features/copy-text';
+import { phoneActionOf } from '../../../features/phone-call';
+import { subitemAddress, subitemLines } from '../../../features/subitem-lines';
 import {
   DELETE_CONFIRM_MESSAGE,
   useRecordSelection,
@@ -561,6 +565,7 @@ const BoardCard = memo(function BoardCard({
       values={item.values}
       subitemCount={item.subitems?.length}
       phone={phone || null}
+      phoneAction={phoneActionOf(boardKey)}
       corner={
         cornerText ? (
           <MText size={12} color={p.text2}>
@@ -582,7 +587,7 @@ const BoardCard = memo(function BoardCard({
   );
 });
 
-/** 하위 아이템 간단 목록(카드의 "설치 품목 N개") — 품명·비고만, 아래에 항목 열기 */
+/** 하위 아이템 간단 목록(카드의 "설치 품목 N개") — (출장업무는 위에 주소, 누르면 복사) 품명·비고, 아래에 항목 열기 */
 function SubitemsSheet({
   boardKey,
   meta,
@@ -602,8 +607,23 @@ function SubitemsSheet({
   const s = useStyles(styles);
   const label = SUBITEM_LABEL[boardKey] ?? '하위 아이템';
   const lines = item ? subitemLines(meta, item) : [];
+  const address = item ? subitemAddress(boardKey, meta, item) : null;
   return (
     <Sheet visible={item !== null} onClose={onClose} title={name ? `${name} · ${label}` : label}>
+      {!!address && (
+        <Pressable
+          onPress={() => copyText(address, '주소를 복사했어요')}
+          accessibilityRole="button"
+          accessibilityLabel={`주소 ${address} 복사`}
+          style={({ pressed }) => [s.address, pressed && { backgroundColor: p.overlay }]}
+        >
+          <MapPin size={16} color={p.text2} />
+          <MText size={14} style={s.addressText}>
+            {address}
+          </MText>
+          <Copy size={14} color={p.link} />
+        </Pressable>
+      )}
       <View style={s.subList}>
         {lines.length === 0 ? (
           <MText size={14} color={p.text2}>
@@ -628,7 +648,20 @@ function SubitemsSheet({
 }
 
 const styles = (p: MonPalette) => ({
-  // 하위 아이템 목록 시트
+  // 하위 아이템 목록 시트 — 위 주소 줄(누르면 복사)
+  address: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 10,
+    marginHorizontal: 16,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: p.line,
+    borderRadius: 8,
+  },
+  addressText: { flex: 1 },
   subList: { paddingHorizontal: 16, paddingBottom: 8 },
   subRow: { paddingVertical: 10, gap: 2 },
   subRowLine: { borderTopWidth: 1, borderColor: p.line },

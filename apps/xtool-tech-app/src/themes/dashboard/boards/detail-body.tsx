@@ -30,7 +30,7 @@ export function DetailBody({
           label: field.label,
           value: field.value,
           content: field.phone ? (
-            <P.PhoneLink phone={field.phone} />
+            <P.PhoneLink phone={field.phone} action={field.phoneAction} />
           ) : field.link ? (
             <P.Button
               variant="plain"

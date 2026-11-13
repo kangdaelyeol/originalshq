@@ -33,7 +33,14 @@ import {
   X,
 } from 'lucide-react-native';
 import { stageLabel, stageTone } from '@xtool-core/tech-stage';
-import { avatarView, callPhone, phoneText, upcomingRow } from '../../../features/dashboard/part-data';
+import {
+  avatarView,
+  phoneActionLabel,
+  phoneText,
+  pressPhone,
+  upcomingRow,
+  type PhoneAction,
+} from '../../../features/dashboard/part-data';
 import { useFocusFade } from '../../../features/focus-fade';
 import type {
   AssigneesProps,
@@ -131,12 +138,18 @@ export function Assignees({ names, style, onDark = false }: AssigneesProps & { o
   );
 }
 
-/** 전화 걸기 — 010-1234-5678(고정폭), 옅은 밑줄. 누르면 전화 */
-export function PhoneLink({ phone, style }: PhoneLinkProps) {
+/** 전화 걸기 — 010-1234-5678(고정폭), 옅은 밑줄. 누르면 전화(action 'copy'면 복사) */
+export function PhoneLink({ phone, action, style }: PhoneLinkProps) {
   const text = phoneText(phone);
   if (!text) return null;
   return (
-    <Pressable accessibilityRole="link" hitSlop={6} onPress={() => callPhone(phone)} style={style}>
+    <Pressable
+      accessibilityRole={action === 'copy' ? 'button' : 'link'}
+      accessibilityLabel={phoneActionLabel(text, action)}
+      hitSlop={6}
+      onPress={() => pressPhone(phone, action)}
+      style={style}
+    >
       {({ pressed }) => (
         <WText size={12.5} weight="500" color={pressed ? W.ink : W.ink2} tabular style={styles.phone}>
           {text}
@@ -174,16 +187,26 @@ function UpdatesBubble({ count, onPress, onDark }: { count: number; onPress?: ()
   );
 }
 
-/** 전화 단추 — 흰 알약에 전화 아이콘 + 010-1234-5678(안내색). 누르면 전화, 고르는 중에는 누르지 않는다 */
-function PhoneButton({ number, disabled, onDark }: { number: string; disabled?: boolean; onDark: boolean }) {
+/** 전화 단추 — 흰 알약에 전화 아이콘 + 010-1234-5678(안내색). 누르면 전화(action 'copy'면 복사), 고르는 중에는 누르지 않는다 */
+function PhoneButton({
+  number,
+  action,
+  disabled,
+  onDark,
+}: {
+  number: string;
+  action?: PhoneAction;
+  disabled?: boolean;
+  onDark: boolean;
+}) {
   const text = phoneText(number) ?? number;
   const ink = onDark ? '#ffffff' : W.infoInk;
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${text}로 전화`}
+      accessibilityLabel={phoneActionLabel(text, action)}
       hitSlop={6}
-      onPress={() => callPhone(number)}
+      onPress={() => pressPhone(number, action)}
       disabled={disabled}
       style={[styles.bubble, styles.phoneChip, onDark ? styles.bubbleOnDark : styles.bubbleFill]}
     >
@@ -267,7 +290,12 @@ const RowFace = memo(function RowFaceView({
               </WText>
               {row.phone?.beside ? (
                 <View style={styles.phoneBeside}>
-                  <PhoneButton number={row.phone.number} disabled={selecting} onDark={onDark} />
+                  <PhoneButton
+                    number={row.phone.number}
+                    action={row.phone.action}
+                    disabled={selecting}
+                    onDark={onDark}
+                  />
                 </View>
               ) : null}
               {row.updates != null ? (
@@ -281,7 +309,7 @@ const RowFace = memo(function RowFaceView({
             ) : null}
             {row.phone && !row.phone.beside ? (
               <View style={styles.phoneBelow}>
-                <PhoneButton number={row.phone.number} disabled={selecting} onDark={onDark} />
+                <PhoneButton number={row.phone.number} action={row.phone.action} disabled={selecting} onDark={onDark} />
               </View>
             ) : null}
           </View>

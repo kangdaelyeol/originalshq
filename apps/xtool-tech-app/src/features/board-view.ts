@@ -24,13 +24,14 @@ import { usePref } from './prefs';
 
 // 보드 화면의 동작 — 모든 레이아웃(Monday 표·대시보드·물)이 같이 쓴다. 보기(저장된 조건·정렬·숨길 칸), 검색, 담당자로
 // 거르기, 정렬, 그룹(접기), 새 항목. 모양(카드·표·숫자 카드)은 각 테마 화면이 그린다.
-// 그룹은 앱을 켜고 처음 열면 모두 접혀 있고, 펼친 그룹은 앱이 켜져 있는 동안 보드마다 기억한다(open-groups — 기기에
-// 남기지 않는다, 2026-11-12). 검색어·사람으로 찾는 중에는 찾은 것이 가려지지 않게 그룹을 펼쳐 보이고, 그때 접은 것은
+// 그룹은 앱을 켜고 처음 열면 모두 접혀 있고(출장업무는 "일정 확정 건"만 펼침, 2026-11-13), 펼친 그룹은 앱이 켜져 있는
+// 동안 보드마다 기억한다(open-groups — 기기에 남기지 않는다, 2026-11-12). 검색어·사람으로 찾는 중에는 찾은 것이 가려지지 않게 그룹을 펼쳐 보이고, 그때 접은 것은
 // 찾기가 바뀌거나 끝나면 잊는다(찾기 전의 펼침은 그대로).
 
 export const boardLabel = (key: TechBoardKey) => BOARD_TABS.find(t => t.key === key)?.label ?? key;
 const PEOPLE_TYPES = new Set(['people', 'assignee']);
 const NO_GROUPS: ReadonlySet<string> = new Set();
+const NO_META_GROUPS: readonly { id: string; title: string }[] = [];
 
 // 보드를 열 때의 정렬(보기에 정렬이 저장돼 있으면 그것이 먼저) — 칸은 제목·종류로 찾고, 못 찾으면 정렬 없이.
 // 출장업무·AS·아톡문의는 접수일 최근 먼저(2026-11-11). 접수 날짜 칸은 보드마다 "접수일"·"접수일자"라 띄어쓰기를 빼고
@@ -123,7 +124,7 @@ export function useBoardView(boardKey: TechBoardKey): BoardViewModel {
   const { meta, items } = state;
   const { views } = useBoardViews(boardKey);
   const [viewId, setViewId, viewReady] = usePref<string>(`xtool-tech:monday-view:${boardKey}`, '');
-  const [open, setOpen] = useOpenGroups(boardKey);
+  const [open, setOpen] = useOpenGroups(boardKey, meta?.groups ?? NO_META_GROUPS);
   const [query, setQuery] = useState('');
   const [person, setPerson] = useState<string | null>(null);
   const [localSort, setLocalSort] = useState<MonSort | undefined>(undefined);

@@ -5,6 +5,7 @@ import { SUBITEM_LABEL } from '@xtool-core/tech-subitems';
 import { timelineColumns } from '@xtool-core/tech-timeline';
 import { checkCommit } from '../../../features/cell-edit';
 import { useItemView, type ItemViewModel } from '../../../features/item-view';
+import { phoneActionOf } from '../../../features/phone-call';
 import type { RootScreenProps } from '../../../navigation/types';
 import { MText } from '../parts/basics';
 import { UpdatesBubble } from '../parts/board-parts';
@@ -83,7 +84,7 @@ function ItemInfo({ view, item }: { view: ItemViewModel; item: TechItemDoc }) {
     const editor = view.editorOf(c);
     return (
       <Field key={c.id} label={c.title} onPress={editor ? () => press(c) : undefined}>
-        <CellValue column={c} cell={item.values[c.id]} mode="full" />
+        <CellValue column={c} cell={item.values[c.id]} mode="full" phoneAction={phoneActionOf(view.boardKey)} />
       </Field>
     );
   };

@@ -3,7 +3,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { ChevronDown, ChevronRight, MessageCircle, MessageCirclePlus, Phone } from 'lucide-react-native';
 import type { TechCellValue, TechColumn } from '@xtool-core/tech-boards';
 import { formatInt } from '../../../features/dashboard/part-data';
-import { callPhone } from '../../../features/phone-call';
+import { phoneActionLabel, pressPhone, type PhoneAction } from '../../../features/phone-call';
 import { useMon, useStyles } from '../theme-context';
 import { FONT, INK, type MonPalette } from '../theme';
 import { CountBadge, MText, withAlpha } from './basics';
@@ -198,6 +198,7 @@ export function ItemCard({
   values,
   subitemCount,
   phone,
+  phoneAction,
   corner,
   subitemButton,
   updates,
@@ -215,6 +216,8 @@ export function ItemCard({
   subitemCount?: number;
   /** 이름 오른쪽 전화 단추에 보일 번호(보드별 카드 모양 — card-columns cardLayout). 누르면 전화(고르는 중에는 안 걸린다) */
   phone?: string | null;
+  /** 번호(전화 단추·전화 칸)를 누르면 할 일 — 출장업무는 복사(phone-call phoneActionOf). 없으면 전화 */
+  phoneAction?: PhoneAction;
   /** 오른쪽 아래(접수일 등) */
   corner?: ReactNode;
   /** 하위 아이템을 숫자 대신 "{label} N개" 단추로 — 누르면 목록(고르는 중에는 onPress 없음) */
@@ -257,11 +260,11 @@ export function ItemCard({
           </MText>
           {!!phone && (
             <Pressable
-              onPress={() => callPhone(phone)}
+              onPress={() => pressPhone(phone, phoneAction)}
               disabled={selecting}
               hitSlop={6}
               accessibilityRole="button"
-              accessibilityLabel={`${phone}로 전화`}
+              accessibilityLabel={phoneActionLabel(phone, phoneAction)}
               style={({ pressed }) => [s.phone, pressed && { backgroundColor: p.overlay }]}
             >
               <Phone size={12} color={p.link} />
@@ -293,7 +296,7 @@ export function ItemCard({
             )}
             {shown.map(c => (
               <View key={c.id} style={s.mini}>
-                <CellValue column={c} cell={values[c.id]} mode="card" callable={!selecting} />
+                <CellValue column={c} cell={values[c.id]} mode="card" callable={!selecting} phoneAction={phoneAction} />
               </View>
             ))}
             {!!corner && <View style={s.corner}>{corner}</View>}

@@ -8,6 +8,7 @@ import type {
   RecordRowData,
   UpcomingItem,
 } from '../../../themes/dashboard/parts';
+import type { PhoneAction } from '../../phone-call';
 import type { SortColumn } from '../record-rows';
 
 // 보드 하나의 대시보드 정의 — 웹 pages/boards/*-board.tsx가 보드마다 정한 것(표 칸·검색·순서, 옆 판, 상세 서랍 칸)을
@@ -33,12 +34,13 @@ export interface SideContext {
   open: (itemId: string) => void;
 }
 
-/** 상세 이름/값 한 줄 — phone이면 전화 링크, link면 여는 단추, assignees면 담당자로 그린다 */
+/** 상세 이름/값 한 줄 — phone이면 전화 링크(phoneAction 'copy'면 누르면 복사), link면 여는 단추, assignees면 담당자로 그린다 */
 export interface DetailFieldSpec {
   key: string;
   label: string;
   value: string | null;
   phone?: string | null;
+  phoneAction?: PhoneAction;
   link?: { url: string; label: string } | null;
 }
 
@@ -46,6 +48,8 @@ export interface DetailFieldSpec {
 export interface SubitemSheetSpec {
   label: string;
   items: DetailListItem[];
+  /** 목록 위 주소 — 누르면 복사(출장업무, 2026-11-13). 없으면 안 보인다 */
+  address?: string | null;
 }
 
 /** 상세 본문(웹 RecordDrawer의 fields·texts·children) */
