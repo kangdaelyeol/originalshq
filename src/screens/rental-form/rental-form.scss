@@ -95,6 +95,29 @@
     }
   }
 
+  // 계약서를 끝까지 읽기 전 — 동의란은 흐리게, 그 위에 안내
+  .rental-form__agree.is-disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .rental-form__read-hint {
+    margin: 0;
+    color: var(--tf-text-2);
+    font-size: 13px;
+    text-align: center;
+  }
+
+  // 계약서 맨 끝 표시
+  .rental-form__contract-end {
+    margin: 28px 0 0;
+    padding-top: 14px;
+    border-top: 1px solid var(--tf-rule);
+    color: var(--tf-text-2);
+    font-size: 13px;
+    text-align: center;
+  }
+
   // 계약서 창 아래 — 동의란 위, 확인 단추 아래
   .rental-form__contract-foot {
     display: grid;

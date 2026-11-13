@@ -1,9 +1,11 @@
 import { Check } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 import { FormSheet } from '@/screens/tech-form/policy-modal'
 
 // 물품 대여 계약서 — 기술지원팀이 준 계약서 글을 그대로 옮겼다(바뀌면 그대로 고친다). 빈칸(성함·연락처·배송 주소·대여
 // 물품·대여 기간·대여료·보증금·총 결제 금액)은 폼에 적은 값과 운영 기준(대여료 기기마다 1일 10,000원, 10영업일 이상이면
-// 보증금 기기마다 200,000원)으로 채운다. 제2조 아래 대여료·보증금 기준은 운영 기준을 보충한 것이다.
+// 보증금 기기마다 200,000원)으로 채운다. 제2조 아래 대여료·보증금 기준은 운영 기준(구매 취소 시 대여료, 보증금 안내
+// 전화 포함)을 보충한 것이다.
 
 /** 계약서 빈칸에 채울 신청자 정보 — 아직 안 적었으면 빈 글자 */
 export interface ContractApplicant {
@@ -27,37 +29,81 @@ function Blank({ value }: { value: string }) {
   return value ? <>{value}</> : <span className="rental-form__blank">입력 전</span>
 }
 
+// 동의란을 체크한 뒤 창이 닫히기까지 — 체크 표시가 보일 만큼만 둔다
+const CLOSE_AFTER_CHECK_MS = 250
+
 /**
  * 계약서 창 — 상세 화면의 "계약서 보기"나 동의 줄로 연다. 계약 동의는 이 창 아래의 동의란에서만 체크한다(onAgreeChange —
- * 상세 화면에서는 체크할 수 없다). "확인"·닫기(X)·Esc·바깥 누르기는 체크 상태를 그대로 두고 닫는다(onClose).
+ * 상세 화면에서는 체크할 수 없다). 동의란은 계약서를 끝까지 내려야(맨 끝 표시가 보이면 onRead) 켜진다 — 한 번 읽으면
+ * 다시 열어도 켜져 있다(read). 체크하면 잠깐 뒤 저절로 닫힌다(확인 단추 없음). 닫기(X)·Esc·바깥 누르기는 체크 상태를
+ * 그대로 두고 닫는다(onClose).
  */
 export function RentalContractModal({
   applicant,
   agreed,
   onAgreeChange,
+  read,
+  onRead,
   onClose,
 }: {
   applicant: ContractApplicant
   agreed: boolean
   onAgreeChange: (agreed: boolean) => void
+  read: boolean
+  onRead: () => void
   onClose: () => void
 }) {
+  // 계약서 맨 끝 표시 — 창 안에서 보이면(끝까지 내렸으면) 읽은 것으로 친다. 내용이 짧아 처음부터 보이면 바로 읽은 것
+  const endRef = useRef<HTMLParagraphElement>(null)
+  // 동의를 이미 했으면(다시 연 경우) 읽은 것으로 본다
+  const canCheck = read || agreed
+  // 체크하면 체크 표시를 잠깐 보인 뒤 창을 닫는다(동의가 이 창의 유일한 일). 체크를 풀 때는 닫지 않는다.
+  const closeTimer = useRef<number | undefined>(undefined)
+  useEffect(() => () => window.clearTimeout(closeTimer.current), [])
+  const changeAgreed = (checked: boolean) => {
+    onAgreeChange(checked)
+    window.clearTimeout(closeTimer.current)
+    if (checked) closeTimer.current = window.setTimeout(onClose, CLOSE_AFTER_CHECK_MS)
+  }
+  useEffect(() => {
+    const end = endRef.current
+    if (!end || canCheck) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) onRead()
+      },
+      { threshold: 1 },
+    )
+    observer.observe(end)
+    return () => observer.disconnect()
+  }, [canCheck, onRead])
+
   return (
     <FormSheet
       title="물품 대여 계약서"
       onClose={onClose}
       footer={
         <div className="rental-form__contract-foot">
-          <label className={agreed ? 'rental-form__agree is-on' : 'rental-form__agree'}>
-            <input type="checkbox" checked={agreed} onChange={(e) => onAgreeChange(e.target.checked)} />
+          {!canCheck && (
+            <p className="rental-form__read-hint" id="rental-contract-read-hint" role="status">
+              계약서를 끝까지 내려 읽으면 체크할 수 있어요.
+            </p>
+          )}
+          <label
+            className={['rental-form__agree', agreed && 'is-on', !canCheck && 'is-disabled'].filter(Boolean).join(' ')}
+          >
+            <input
+              type="checkbox"
+              checked={agreed}
+              disabled={!canCheck}
+              aria-describedby={canCheck ? undefined : 'rental-contract-read-hint'}
+              onChange={(e) => changeAgreed(e.target.checked)}
+            />
             <span className="rental-form__agree-box" aria-hidden>
               {agreed && <Check size={16} strokeWidth={3} />}
             </span>
             위 계약 내용을 모두 확인하였으며, 이에 동의합니다.
           </label>
-          <button type="button" className="tech-form__button tech-form__button--block" onClick={onClose}>
-            확인
-          </button>
         </div>
       }
     >
@@ -138,8 +184,10 @@ export function RentalContractModal({
         <h4>대여료·보증금 기준</h4>
         <ul>
           <li>대여료는 기기마다 1일당 10,000원입니다.</li>
+          <li>대여 후 제품 구매가 취소될 경우 대여료가 1일 10만원으로 변경됩니다.</li>
           <li>대여 기간이 10영업일 미만이면 보증금은 없습니다.</li>
           <li>대여 기간이 10영업일 이상이면 보증금 200,000원이 별도로 있습니다(기기마다).</li>
+          <li>보증금 발생 시 전화드려 안내드립니다.</li>
           <li>보증금은 제품 수거 및 상태 확인 후 반환합니다.</li>
         </ul>
 
@@ -171,6 +219,10 @@ export function RentalContractModal({
           <li>본 계약에 명시되지 않은 사항은 상호 협의 또는 관련 법령에 따릅니다.</li>
           <li>본 계약은 을이 아래 동의란에 체크하고 제출한 날부터 효력이 발생합니다.</li>
         </ul>
+        {/* 맨 끝 표시 — 여기까지 내려야 동의란이 켜진다 */}
+        <p ref={endRef} className="rental-form__contract-end">
+          계약서 끝
+        </p>
       </div>
     </FormSheet>
   )

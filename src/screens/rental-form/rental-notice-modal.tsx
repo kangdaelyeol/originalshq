@@ -1,9 +1,9 @@
 import { FormSheet } from '@/screens/tech-form/policy-modal'
 
 // 제품 대여 안내 — 예전 구글 폼 "제품 대여 동의서"의 안내 글을 그대로 옮겼다(바뀌면 그대로 고친다). 기본 구성품은
-// 시리즈마다 옅은 상자에 묶었다.
+// 시리즈마다 옅은 상자에 묶었다. "특이 사항" 칸을 없애(2026-11-13) 부품 요청은 "사용 목적 및 작업 내용" 칸으로 안내한다.
 
-/** 시리즈별 기본 구성품 — 따로 필요한 부품은 "특이 사항"에 적는다 */
+/** 시리즈별 기본 구성품 — 따로 필요한 부품은 "사용 목적 및 작업 내용"에 적는다 */
 const RENTAL_PARTS: readonly { series: string; parts: string }[] = [
   { series: 'F 시리즈', parts: '본품, 어댑터, 전원선, USB 케이블, USB 키, 슬레이트 패널, 배기 호스' },
   { series: 'P 시리즈', parts: '본품, 전원선, USB 케이블, USB 키, 배기 호스' },
@@ -37,7 +37,7 @@ export function RentalNoticeModal({ onConfirm, onClose }: { onConfirm: () => voi
           됩니다. 대여 중 문제가 발생하면 연락바랍니다.
         </li>
         <li>
-          기존 구성품 안내드립니다. 별도로 필요한 부품이 있을 시 "특이 사항" 란에 작성 부탁드립니다.
+          기존 구성품 안내드립니다. 별도로 필요한 부품이 있을 시 "사용 목적 및 작업 내용" 란에 작성 부탁드립니다.
           <dl className="rental-form__parts">
             {RENTAL_PARTS.map((item) => (
               <div key={item.series}>

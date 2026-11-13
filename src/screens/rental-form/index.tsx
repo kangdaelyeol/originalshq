@@ -19,7 +19,7 @@ import './rental-form.scss'
 //
 // 화면 차례: 시작(사진·"대여 신청하기") → 제품 대여 안내 창(구성품 포함, "확인했습니다") → 신청자 정보(성함 → 연락처 →
 // 배송받으실 주소, "다음"을 누를 때마다 아래에 한 칸씩) → 대여 희망 제품(여러 개 고르기, "기타"면 제품명 칸) → 사용
-// 목적·대여 희망 기간(시작일자·종료일자, 둘 다 고르면 "N일간")·특이 사항(선택)·물품 대여 계약 동의(계약서 창) → 확인("이대로 신청하기") → 로딩 → 완료(사진).
+// 목적·대여 희망 기간(시작일자·종료일자, 둘 다 고르면 "N일간")·물품 대여 계약 동의(계약서 창 — 끝까지 내려야 체크) → 확인("이대로 신청하기") → 로딩 → 완료(사진).
 
 const NAME_MAX = 255
 // 기타 제품명 글자 수
@@ -33,7 +33,7 @@ const RENTAL_DEPOSIT = 200_000
 const DEPOSIT_FROM_BUSINESS_DAYS = 10
 // 대여 기간은 오늘부터 이만큼 뒤(일)까지 고를 수 있다
 const RENTAL_DAYS_AHEAD = 365
-// 사용 목적·특이 사항 글자 수(Monday 긴 글 칸 한도)
+// 사용 목적 글자 수(Monday 긴 글 칸 한도)
 const TEXT_MAX = 2000
 // 단추를 누른 뒤 고른 표시를 잠깐 보여 주고 넘어간다(기술문의 폼과 같게)
 const ADVANCE_MS = 160
@@ -141,13 +141,15 @@ export default function RentalFormScreen() {
   const [products, setProducts] = useState<string[]>([])
   const [otherProduct, setOtherProduct] = useState('')
   const [productErrors, setProductErrors] = useState<Partial<Record<ProductKey, string>>>({})
-  // 사용 목적·대여 희망 기간·특이 사항·계약 동의
+  // 사용 목적·대여 희망 기간·계약 동의
   const [purpose, setPurpose] = useState('')
   // 대여 희망 기간 — 시작일자는 오늘로 채워 둔다. 종료일자 칸은 시작일자를 그 뒤로 옮겨 비울 때 새로 그린다(endKey)
   const [startDate, setStartDate] = useState(() => localDate())
   const [endDate, setEndDate] = useState('')
   const [endKey, setEndKey] = useState(0)
-  const [notes, setNotes] = useState('')
+  // 계약서를 끝까지 읽었는지 — 끝까지 내려야 계약서 창의 동의란을 체크할 수 있다(한 번 읽으면 다시 열어도 그대로)
+  const [contractRead, setContractRead] = useState(false)
+  const markContractRead = useCallback(() => setContractRead(true), [])
   const [agreed, setAgreed] = useState(false)
   // 물품 대여 계약서 창
   const [contractOpen, setContractOpen] = useState(false)
@@ -528,7 +530,7 @@ export default function RentalFormScreen() {
                 id={`${id}-purpose`}
                 label="사용 목적 및 작업 내용"
                 required
-                hint="대여 장비로 하실 작업을 적어 주세요. 작업에 맞는 장비를 골라 드려요."
+                hint="대여 장비로 하실 작업을 적어 주세요. 작업에 필요한 부속품을 넣어드립니다."
                 error={detailErrors.purpose}
                 footer={
                   <span className="tech-form__count">
@@ -615,26 +617,6 @@ export default function RentalFormScreen() {
                   </div>
                 )}
               </div>
-              <Field
-                id={`${id}-notes`}
-                label="특이 사항(선택)"
-                hint="기본 구성품 외에 따로 필요한 부품이 있으면 적어 주세요."
-                footer={
-                  <span className="tech-form__count">
-                    {notes.length}/{TEXT_MAX}
-                  </span>
-                }
-              >
-                <textarea
-                  id={`${id}-notes`}
-                  className="tech-form__input tech-form__textarea tech-form__textarea--short"
-                  value={notes}
-                  maxLength={TEXT_MAX}
-                  rows={3}
-                  aria-describedby={`${id}-notes-hint`}
-                  onChange={(e) => setNotes(e.target.value)}
-                />
-              </Field>
               <div className="tech-form__field">
                 <p className="tech-form__label" id={`${id}-agree-label`}>
                   물품 대여 계약
@@ -714,13 +696,6 @@ export default function RentalFormScreen() {
                   </span>
                 </ReviewRow>
                 <ReviewRow label="결제 예정">{won(total)}</ReviewRow>
-                <ReviewRow label="특이 사항">
-                  {notes.trim() ? (
-                    <span className="tech-form__review-text">{notes.trim()}</span>
-                  ) : (
-                    <span className="tech-form__review-empty">없음</span>
-                  )}
-                </ReviewRow>
                 <ReviewRow label="계약 동의">동의함</ReviewRow>
               </dl>
               <div className="tech-form__actions">
@@ -765,6 +740,8 @@ export default function RentalFormScreen() {
             }}
             agreed={agreed}
             onAgreeChange={changeAgreed}
+            read={contractRead}
+            onRead={markContractRead}
             onClose={closeContract}
           />
         )}
