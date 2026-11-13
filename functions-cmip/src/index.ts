@@ -30,7 +30,8 @@ export * from './endpoints/creatives'
 export * from './endpoints/platform-settings'
 export * from './endpoints/ad-groups'
 
-const corsHandler = cors({ origin: true })
+// 사전 확인 요청 결과를 브라우저가 기억할 시간(초) — http.ts와 같다.
+const corsHandler = cors({ origin: true, maxAge: 86_400 })
 
 function sendError(
   response: import('express').Response,
