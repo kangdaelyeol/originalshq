@@ -18,8 +18,8 @@ import type {
 export const CAPI_AUTO_START_DAY = '2026-11-11'
 
 /** 실제로 Meta에 보내는지 — false면 보낼 목록만 batchRuns(/log)에 남기는
- * 미리보기다. 목록이 맞는지 확인한 뒤 true로 바꿔 배포한다. */
-export const CAPI_AUTO_LIVE = false
+ * 미리보기다. 2026-11-13 미리보기 목록을 확인하고 실제 전송으로 켰다. */
+export const CAPI_AUTO_LIVE = true
 
 /** 한 번에 보내는 최대 건수 — 규칙이 잘못돼 한꺼번에 쏟아지는 것을 막는다.
  * 남은 것은 다음 실행에 보낸다. */
